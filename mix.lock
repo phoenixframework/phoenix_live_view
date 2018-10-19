@@ -1,0 +1,6 @@
+%{
+  "mime": {:hex, :mime, "1.3.0", "5e8d45a39e95c650900d03f897fbf99ae04f60ab1daa4a34c7a20a5151b7a5fe", [:mix], [], "hexpm"},
+  "phoenix": {:hex, :phoenix, "1.4.0-rc.1", "f27f72c5e617f25a94d30273e3c156bc82418b450a9987664b821d6af80e74c2", [:mix], [{:cowboy, "~> 1.0 or ~> 2.5", [hex: :cowboy, repo: "hexpm", optional: true]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}, {:phoenix_pubsub, "~> 1.1", [hex: :phoenix_pubsub, repo: "hexpm", optional: false]}, {:plug, "~> 1.6.4 or ~> 1.7", [hex: :plug, repo: "hexpm", optional: false]}], "hexpm"},
+  "phoenix_pubsub": {:hex, :phoenix_pubsub, "1.1.1", "6668d787e602981f24f17a5fbb69cc98f8ab085114ebfac6cc36e10a90c8e93c", [:mix], [], "hexpm"},
+  "plug": {:hex, :plug, "1.6.4", "35618dd2cc009b69b000f785452f6b370f76d099ece199733fea27bc473f809d", [:mix], [{:cowboy, "~> 1.0.1 or ~> 1.1 or ~> 2.4", [hex: :cowboy, repo: "hexpm", optional: true]}, {:mime, "~> 1.0", [hex: :mime, repo: "hexpm", optional: false]}], "hexpm"},
+}
