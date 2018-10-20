@@ -4,21 +4,24 @@ defmodule Phoenix.LiveView.Channel do
 
   alias Phoenix.LiveView
 
-  def join(_, %{"view" => token}, socket) do
-    with {:ok, pid} <- LiveView.Server.verify_token(socket, token, max_age: 1209600),
-         _ref = Process.monitor(pid),
-         :ok <- LiveView.Server.attach(pid) do
+  def join("views:" <> id, %{"params_token" => token}, socket) do
+    with {:ok, view_data} <- verify(socket, token),
+         {:ok, pid, html} <- LiveView.Server.spawn_render(self(), socket.endpoint, view_data) do
 
       new_socket =
         socket
         |> assign(:view_pid, pid)
-        |> assign(:view_id, token)
+        |> assign(:view_id, id)
 
-      {:ok, new_socket}
+      {:ok, %{html: encode_render(html)}, new_socket}
     else
       {:error, {:noproc, _}} -> {:error, %{reason: "noproc"}}
-      {:error, _reason} -> {:error, %{reason: :bad_view}}
+      {:error, _reason} -> {:error, %{reason: :bad_token}}
     end
+  end
+
+  defp verify(socket, token) do
+    LiveView.Server.verify_token(socket, token, max_age: 1209600)
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, %{assigns: %{view_pid: pid}} = socket) do
@@ -32,6 +35,11 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({:redirect, opts}, socket) do
     push_redirect(socket, opts)
+    {:noreply, socket}
+  end
+
+  def handle_info({:push_params, token}, socket) do
+    push(socket, "params", %{token: token})
     {:noreply, socket}
   end
 
@@ -52,16 +60,11 @@ defmodule Phoenix.LiveView.Channel do
   end
   defp decode(_, value), do: value
 
-  # TODO optimize encoding. Avoid IOdata => binary => json.
-  # Ideally send iodta down pipe w/ channel info
   defp push_render(socket, content) when is_list(content) do
     push(socket, "render", %{
       id: socket.assigns.view_id,
-      html: IO.iodata_to_binary(content)
+      html: encode_render(content)
     })
-  end
-  defp push_render(socket, content) when is_binary(content) do
-    push(socket, "render", %{id: socket.assigns.view_id, html: content})
   end
 
   defp push_redirect(socket, opts) do
@@ -70,6 +73,14 @@ defmodule Phoenix.LiveView.Channel do
       flash: sign_token(socket, opts[:flash])
     })
   end
+
   defp sign_token(_socket, nil), do: nil
   defp sign_token(socket, %{} = flash), do: LiveView.Flash.sign_token(socket.endpoint, flash)
+
+  # TODO optimize encoding. Avoid IOdata => binary => json.
+  # Ideally send iodta down pipe w/ channel info
+  defp encode_render(content) when is_list(content) do
+    IO.iodata_to_binary(content)
+  end
+  defp encode_render(content) when is_binary(content), do: content
 end

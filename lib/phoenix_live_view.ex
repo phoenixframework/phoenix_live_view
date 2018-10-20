@@ -7,6 +7,11 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.Socket
 
+  def push_params(%Socket{} = socket, attrs)
+    when is_list(attrs) or is_map(attrs) do
+    %Socket{socket | signed_params: Enum.into(attrs, socket.signed_params)}
+  end
+
   def assign(%Socket{assigns: assigns} = socket, key, value) do
     %Socket{socket | assigns: Map.put(assigns, key, value)}
   end
@@ -33,9 +38,12 @@ defmodule Phoenix.LiveView do
       import unquote(__MODULE__), except: [render: 2]
       import Phoenix.HTML # TODO don't import this, users can
 
-      def init(assigns), do: {:ok, assigns}
+      def before_init(%Plug.Conn{}, %{} = _unsigned_params) do
+        {:ok, %{}}
+      end
+      def init(_signed_params, assigns), do: {:ok, assigns}
       def terminate(reason, state), do: {:ok, state}
-      defoverridable init: 1, terminate: 2
+      defoverridable before_init: 2, init: 2, terminate: 2
     end
   end
 
@@ -50,10 +58,9 @@ defmodule Phoenix.LiveView do
     |> Phoenix.Controller.render("template.html")
   end
 
-
   @doc false
   # Phoenix.LiveView acts as a view via put_view to spawn the render
   def render("template.html", %{conn: conn} = assigns) do
-    Phoenix.LiveView.Server.spawn_render(conn.private.phoenix_live_view, assigns)
+    Phoenix.LiveView.Server.static_render(conn.private.phoenix_live_view, assigns)
   end
 end
