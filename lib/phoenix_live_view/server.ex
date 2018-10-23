@@ -31,6 +31,7 @@ defmodule Phoenix.LiveView.Server do
       <div id="<%= id %>" data-phx-view="<%= inspect(view) %>" data-params="<%= signed_params %>">
         <%= view.render(new_assigns) %>
       </div>
+      <div class="phx-loader"></div>
     """
   end
 
@@ -38,7 +39,7 @@ defmodule Phoenix.LiveView.Server do
     # TODO handle non ok
     endpoint = Phoenix.Controller.endpoint_module(conn)
     id = random_id()
-    {:ok, trusted_params} = before_init(view, assigns)
+    {:ok, trusted_params} = upgrade(view, assigns)
 
     socket = %Socket{
       id: id,
@@ -49,19 +50,19 @@ defmodule Phoenix.LiveView.Server do
     }
 
     trusted_params
-    |> view.init(socket)
-    |> init_ok(view)
+    |> view.prepare(socket)
+    |> prepare_ok(view)
     |> case do
-      {:ok, %Socket{} = new_socket, _} ->
+      {:ok, %Socket{} = new_socket} ->
         signed_params = sign_params(socket)
         {:ok, id, new_socket.assigns, signed_params}
     end
   end
 
-  defp before_init(view, %{conn: conn} = _assigns) do
+  defp upgrade(view, %{conn: conn} = _assigns) do
     # todo handle non-ok
     conn
-    |> view.before_init(conn.params)
+    |> view.upgrade(conn.params)
     |> case do
       {:ok, trusted_params} -> {:ok, trusted_params}
     end
@@ -100,12 +101,16 @@ defmodule Phoenix.LiveView.Server do
     Process.put(:plug_masked_csrf_token, csrf)
     socket = %Socket{endpoint: endpoint, id: id, view: view, state: :connected}
 
-    signed_params
-    |> view.init(socket)
-    |> init_ok(view)
-    |> configure_init(channel_pid, view, {ref, client_pid})
+    with {:ok, %Socket{} = socket} <- view.prepare(signed_params, socket),
+         {:ok, %Socket{} = socket} <- view.init(socket) do
+
+      configure_init(socket, channel_pid, view, {ref, client_pid})
+    else
+      {:error, reason} -> {:error, reason}
+      other -> init_ok(other, view)
+    end
   end
-  defp configure_init({:ok, %Socket{} = socket, continue}, channel_pid, view, {ref, client_pid}) do
+  defp configure_init(%Socket{} = socket, channel_pid, view, {ref, client_pid}) do
     _ref = Process.monitor(channel_pid)
     state = %{
       view_module: view,
@@ -114,35 +119,25 @@ defmodule Phoenix.LiveView.Server do
     }
     send(client_pid, {ref, rerender(state)})
 
-    init_continue(state, continue)
+    {:ok, state}
   end
-  defp configure_init(other, _channel_pid, view, {_ref, _client_pid}) do
-    raise ArgumentError, """
-    invalid init returned from #{inspect(view)}.init.
 
-    Expected {:ok, socket} | {:ok, socket, {:continue, continue}}, got: #{inspect(other)}
+  defp prepare_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket}
+  defp prepare_ok(other, view) do
+    raise ArgumentError, """
+    invalid result returned from #{inspect(view)}.prepare.
+
+    Expected {:ok, socket}, got: #{inspect(other)}
     """
   end
-  defp init_continue(state, nil), do: {:ok, state}
-  defp init_continue(state, {:continue, continue}) do
-    case handle_continue(continue, state) do
-      {:noreply, new_state} -> {:ok, new_state}
-      other -> other
-    end
-  end
 
-  defp init_ok({:ok, %Socket{} = socket, {:continue, _} = continue}, _view), do: {:ok, socket, continue}
-  defp init_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket, nil}
+  defp init_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket}
   defp init_ok(other, view) do
     raise ArgumentError, """
     invalid result returned from #{inspect(view)}.init.
 
-    Expected {:ok, socket} | {:ok, socket, {:continue, continue}}, got: #{inspect(other)}
+    Expected {:ok, socket}, got: #{inspect(other)}
     """
-  end
-
-  def handle_continue(continue, %{socket: socket} = state) do
-    noreply(state, :continue, socket, state.view_module.handle_continue(continue, socket))
   end
 
   def handle_info({:DOWN, _ref, :process, pid, _reason}, %{channel_pid: pid} = state) do

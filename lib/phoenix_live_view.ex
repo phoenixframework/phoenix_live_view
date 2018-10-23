@@ -7,6 +7,16 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.Socket
 
+  @type unsigned_params :: map
+
+  @callback upgrade(Plug.Conn.t(), unsigned_params) :: {:ok, Socket.t()} | {:error, term}
+  @callback prepare(Socket.signed_params(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
+  @callback init(Socket.t()) :: {:ok, Socket.t()} | {:error, term}
+  @callback render(Socket.assigns()) :: binary | list
+  @callback terminate(reason :: :normal | :shutdown | {:shutdown, :left | :closed | term}, Socket.t()) :: term
+
+  @optional_callbacks terminate: 2, prepare: 2, init: 1, upgrade: 2
+
   def push_params(%Socket{} = socket, attrs)
     when is_list(attrs) or is_map(attrs) do
     %Socket{socket | signed_params: Enum.into(attrs, socket.signed_params)}
@@ -38,12 +48,20 @@ defmodule Phoenix.LiveView do
       import unquote(__MODULE__), except: [render: 2]
       import Phoenix.HTML # TODO don't import this, users can
 
-      def before_init(%Plug.Conn{}, %{} = _unsigned_params) do
+      @behaviour unquote(__MODULE__)
+      @impl unquote(__MODULE__)
+      def upgrade(%Plug.Conn{}, %{} = _unsigned_params) do
         {:ok, %{}}
       end
-      def init(_signed_params, assigns), do: {:ok, assigns}
+      @impl unquote(__MODULE__)
+      def prepare(%{} = _signed_params, socket) do
+        {:ok, socket}
+      end
+      @impl unquote(__MODULE__)
+      def init(socket), do: {:ok, socket}
+      @impl unquote(__MODULE__)
       def terminate(reason, state), do: {:ok, state}
-      defoverridable before_init: 2, init: 2, terminate: 2
+      defoverridable upgrade: 2, prepare: 2, init: 1, terminate: 2
     end
   end
 
