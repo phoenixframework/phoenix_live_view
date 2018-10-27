@@ -9,13 +9,13 @@ defmodule Phoenix.LiveView do
 
   @type unsigned_params :: map
 
-  @callback upgrade(Plug.Conn.t(), unsigned_params) :: {:ok, Socket.t()} | {:error, term}
-  @callback prepare(Socket.signed_params(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
+  @callback upgrade(Plug.Conn.t(), unsigned_params) :: {:ok, Socket.signed_params(), Socket.session()} | {:error, term}
+  @callback authorize(Socket.signed_params(), Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
   @callback init(Socket.t()) :: {:ok, Socket.t()} | {:error, term}
   @callback render(Socket.assigns()) :: binary | list
   @callback terminate(reason :: :normal | :shutdown | {:shutdown, :left | :closed | term}, Socket.t()) :: term
 
-  @optional_callbacks terminate: 2, prepare: 2, init: 1, upgrade: 2
+  @optional_callbacks terminate: 2, authorize: 3, init: 1, upgrade: 2
 
   def push_params(%Socket{} = socket, attrs)
     when is_list(attrs) or is_map(attrs) do
@@ -50,18 +50,18 @@ defmodule Phoenix.LiveView do
 
       @behaviour unquote(__MODULE__)
       @impl unquote(__MODULE__)
-      def upgrade(%Plug.Conn{}, %{} = _unsigned_params) do
-        {:ok, %{}}
+      def upgrade(%Plug.Conn{} = conn, %{} = _unsigned_params) do
+        {:ok, conn.path_params, unquote(__MODULE__).__plug_session__(conn)}
       end
       @impl unquote(__MODULE__)
-      def prepare(%{} = _signed_params, socket) do
+      def authorize(path_params, session, socket) do
         {:ok, socket}
       end
       @impl unquote(__MODULE__)
       def init(socket), do: {:ok, socket}
       @impl unquote(__MODULE__)
       def terminate(reason, state), do: {:ok, state}
-      defoverridable upgrade: 2, prepare: 2, init: 1, terminate: 2
+      defoverridable upgrade: 2, authorize: 3, init: 1, terminate: 2
     end
   end
 
@@ -81,4 +81,8 @@ defmodule Phoenix.LiveView do
   def render("template.html", %{conn: conn} = assigns) do
     Phoenix.LiveView.Server.static_render(conn.private.phoenix_live_view, assigns)
   end
+
+  # TODO lobby to expose get_session/1 on plug
+  @doc false
+  def __plug_session__(%Plug.Conn{} = conn), do: conn.private.plug_session
 end

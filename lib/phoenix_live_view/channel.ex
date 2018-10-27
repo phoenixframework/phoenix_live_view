@@ -4,9 +4,10 @@ defmodule Phoenix.LiveView.Channel do
 
   alias Phoenix.LiveView
 
-  def join("views:" <> id, %{"params_token" => token}, socket) do
-    with {:ok, view_data} <- verify(socket, token),
-         {:ok, pid, html} <- LiveView.Server.spawn_render(self(), socket.endpoint, view_data) do
+  def join("views:" <> id, %{"params" => params_token, "session" => session_token}, socket) do
+    with {:ok, params} <- verify_params(socket, params_token),
+         {:ok, session} <- verify_session(socket, session_token),
+         {:ok, pid, html} <- LiveView.Server.spawn_render(self(), socket.endpoint, params, session) do
 
       new_socket =
         socket
@@ -20,8 +21,12 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp verify(socket, token) do
-    LiveView.Server.verify_token(socket, token, max_age: 1209600)
+  defp verify_params(socket, params_token) do
+    LiveView.Server.verify_token(socket, params_token, max_age: 1209600)
+  end
+
+  defp verify_session(socket, session_token) do
+    LiveView.Server.verify_token(socket, session_token, max_age: 1209600)
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, %{assigns: %{view_pid: pid}} = socket) do
