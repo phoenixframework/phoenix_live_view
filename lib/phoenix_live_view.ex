@@ -5,21 +5,25 @@ defmodule Phoenix.LiveView do
 
   @behaviour Plug
 
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.Socket
+  alias Phoenix.LiveView
 
   @type unsigned_params :: map
+  @type from :: binary
 
   @callback upgrade(Plug.Conn.t(), unsigned_params) :: {:ok, Socket.signed_params(), Socket.session()} | {:error, term}
   @callback authorize(Socket.signed_params(), Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
   @callback init(Socket.t()) :: {:ok, Socket.t()} | {:error, term}
   @callback render(Socket.assigns()) :: binary | list
   @callback terminate(reason :: :normal | :shutdown | {:shutdown, :left | :closed | term}, Socket.t()) :: term
+  @callback handle_event(event :: binary, from, unsigned_params, Socket.t()) ::
+    {:noreply, Socket.t()} | {:stop, reason :: term, Socket.t()}
 
-  @optional_callbacks terminate: 2, authorize: 3, init: 1, upgrade: 2
+  @optional_callbacks terminate: 2, authorize: 3, init: 1, upgrade: 2, handle_event: 4
 
   def push_params(%Socket{} = socket, attrs)
     when is_list(attrs) or is_map(attrs) do
-    %Socket{socket | signed_params: Enum.into(attrs, socket.signed_params)}
+    LiveView.Socket.update_private(socket, :signed_params, &(Enum.into(attrs, &1)))
   end
 
   def assign(%Socket{assigns: assigns} = socket, key, value) do

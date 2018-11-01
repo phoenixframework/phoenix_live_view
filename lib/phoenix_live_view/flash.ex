@@ -9,20 +9,30 @@ defmodule Phoenix.LiveView.Flash do
 
   """
 
+  @valid_keys [:signing_salt]
+
   @behaviour Plug
 
   @cookie_key "__phoenix_flash__"
-  @salt "phoenix liveview flash"
 
   @impl Plug
-  def init(opts), do: opts
+  def init(opts) do
+    if Keyword.keys(opts) -- @valid_keys != [] do
+      raise ArgumentError, """
+      invalid options passed to #{inspect(__MODULE__)}.
+
+      Valid options include #{inspect(@valid_keys)}, got: #{inspect(opts)}
+      """
+    end
+    opts
+  end
 
   @doc """
   Fetches the live flash from a token passed via client cookies.
   """
   @impl Plug
-  def call(conn, _opts) do
-    case cookie_flash(conn) do
+  def call(conn, opts) do
+    case cookie_flash(conn, salt(conn, opts)) do
       {conn, nil} -> Phoenix.Controller.fetch_flash(conn, [])
       {conn, flash} ->
         conn
@@ -30,21 +40,27 @@ defmodule Phoenix.LiveView.Flash do
         |> Phoenix.Controller.fetch_flash([])
     end
   end
-  defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do
+  defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn, salt) do
     flash =
-      case Phoenix.Token.verify(conn, @salt, token, max_age: 60_000) do
+      case Phoenix.Token.verify(conn, salt, token, max_age: 60_000) do
         {:ok, json_flash} -> Phoenix.json_library().decode!(json_flash)
         {:error, _reason} -> nil
       end
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
   end
-  defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
+  defp cookie_flash(%Plug.Conn{} = conn, _salt), do: {conn, nil}
+
+  defp salt(conn, opts) do
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+
+    opts[:signing_salt] || Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
+  end
 
   @doc """
   Signs the live view flash into a token.
   """
-  def sign_token(endpoint_mod, %{} = flash) do
-    Phoenix.Token.sign(endpoint_mod, @salt, Phoenix.json_library().encode!(flash))
+  def sign_token(endpoint_mod, salt, %{} = flash) do
+    Phoenix.Token.sign(endpoint_mod, salt, Phoenix.json_library().encode!(flash))
   end
 end

@@ -2,20 +2,18 @@ defmodule Phoenix.LiveView.Server do
   @moduledoc false
   use GenServer
 
-  alias Phoenix.LiveView.Socket
-
-  # TODO dynamic salt
-  @token_salt "liveview server"
+  alias Phoenix.Socket
+  alias Phoenix.LiveView
 
   def start_link(args), do: GenServer.start_link(__MODULE__, args)
 
-  def sign_token(endpoint_mod, data) do
+  def sign_token(endpoint_mod, salt, data) do
     encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
-    Phoenix.Token.sign(endpoint_mod, @token_salt, encoded_data)
+    Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
   end
 
-  def verify_token(endpoint_module, encoded_pid, opts) do
-    case Phoenix.Token.verify(endpoint_module, @token_salt, encoded_pid, opts) do
+  def verify_token(endpoint_mod, salt, encoded_pid, opts) do
+    case Phoenix.Token.verify(endpoint_mod, salt, encoded_pid, opts) do
       {:ok, encoded_pid} ->
         pid = encoded_pid |> Base.decode64!() |> :erlang.binary_to_term()
         {:ok, pid}
@@ -37,18 +35,18 @@ defmodule Phoenix.LiveView.Server do
   end
 
   defp encode_static_render(view, %{conn: conn} = assigns) do
-    # TODO handle non ok
+    # TODO handle non ok upgrade
     endpoint = Phoenix.Controller.endpoint_module(conn)
     id = random_id()
     {:ok, trusted_params, session} = upgrade(view, assigns)
 
-    socket = %Socket{
-      id: id,
-      view: view,
-      endpoint: endpoint,
-      state: :disconnected,
-      signed_params: trusted_params,
-    }
+    socket =
+      LiveView.Socket.build_socket(endpoint, %{
+        state: :disconnected,
+        id: id,
+        view: view,
+        signed_params: trusted_params,
+      })
 
     trusted_params
     |> view.authorize(session, socket)
@@ -73,36 +71,41 @@ defmodule Phoenix.LiveView.Server do
   @doc """
   TODO
   """
-  def spawn_render(channel_pid, endpoint, params, session) do
-    {:ok, pid, ref} = start_view(channel_pid, endpoint, params, session)
+  def spawn_render(socket, params, session) do
+    {:ok, pid, ref} = start_view(self(), socket, params, session)
 
     receive do
       {^ref, rendered_view} -> {:ok, pid, rendered_view}
     end
   end
-  defp start_view(channel_pid, endpoint, params, session) do
-    # TODO kill csrf
-    csrf = Plug.CSRFProtection.get_csrf_token()
+  defp start_view(channel_pid, socket, params, session) do
     ref = make_ref()
 
-    case start_dynamic_child(ref, channel_pid, endpoint, params, session, csrf) do
+    case start_dynamic_child(ref, channel_pid, socket, params, session) do
       {:ok, pid} -> {:ok, pid, ref}
       {:error, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
     end
   end
-  defp start_dynamic_child(ref, channel_pid, endpoint, params, session, csrf) do
-    args = {{ref, self()}, channel_pid, endpoint, params, session, csrf}
+  defp start_dynamic_child(ref, channel_pid, socket, params, session) do
+    args = {{ref, self()}, channel_pid, socket, params, session}
     DynamicSupervisor.start_child(
       DemoWeb.DynamicSupervisor,
       Supervisor.child_spec({Phoenix.LiveView.Server, args}, restart: :temporary)
     )
   end
 
-  def init({{ref, client_pid}, channel_pid, endpoint, params, session, csrf}) do
+  def init({{ref, client_pid}, channel_pid, socket, params, session}) do
     %{id: id, view: view, params: signed_params} = params
     %{id: ^id, view: ^view, session: signed_session} = session
-    Process.put(:plug_masked_csrf_token, csrf)
-    socket = %Socket{endpoint: endpoint, id: id, view: view, state: :connected}
+
+    socket =
+      LiveView.Socket.build_socket(socket, %{
+        state: :connected,
+        id: id,
+        view: view,
+        signed_params: signed_params,
+      })
+
 
     with {:ok, %Socket{} = socket} <- view.authorize(signed_params, signed_session, socket),
          {:ok, %Socket{} = socket, opts} <- wrap_init(view.init(socket)) do
@@ -201,18 +204,18 @@ defmodule Phoenix.LiveView.Server do
   end
 
   defp sync_assigns(state, %Socket{} = socket) do
-    new_params = for key <- state.sync_assigns, into: socket.signed_params,
+    new_params = for key <- state.sync_assigns, into: LiveView.Socket.signed_params(socket),
       do: {to_string(key), socket.assigns[key]}
 
-    new_socket = %Socket{socket | signed_params: new_params}
+    new_socket = LiveView.Socket.update_private(socket, :signed_params, fn _ -> new_params end)
     %{state | socket: new_socket}
   end
 
-  defp push_params(_, %Socket{signed_params: unchanged}, %Socket{signed_params: unchanged}) do
-    :noop
-  end
-  defp push_params(state, %Socket{signed_params: _}, %Socket{signed_params: _new} = socket) do
-    send_channel(state, {:push_params, sign_params(socket)})
+  defp push_params(state, %Socket{} = socket_before, %Socket{} = new_socket) do
+    case {LiveView.Socket.signed_params(socket_before), LiveView.Socket.signed_params(new_socket)} do
+      {unchanged, unchanged} -> :noop
+      {_old, _new} -> send_channel(state, {:push_params, sign_params(new_socket)})
+    end
   end
 
   defp rerender(%{view_module: view, socket: socket}) do
@@ -225,25 +228,29 @@ defmodule Phoenix.LiveView.Server do
     view.render(assigns)
   end
 
+  defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
+
   defp send_channel(%{channel_pid: pid}, message) do
     send(pid, message)
   end
 
-  defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
-
   defp sign_session(%Socket{} = socket, session) do
-    sign_token(socket.endpoint, %{
-      id: socket.id,
-      view: socket.view,
+    sign_token(socket.endpoint, salt(socket), %{
+      id: LiveView.Socket.dom_id(socket),
+      view: LiveView.Socket.view(socket),
       session: session,
     })
   end
 
-  defp sign_params(%Socket{signed_params: trusted_params} = socket) do
-    sign_token(socket.endpoint, %{
-      id: socket.id,
-      view: socket.view,
+  defp sign_params(%Socket{} = socket) do
+    trusted_params = LiveView.Socket.signed_params(socket)
+
+    sign_token(socket.endpoint, salt(socket), %{
+      id: LiveView.Socket.dom_id(socket),
+      view: LiveView.Socket.view(socket),
       params: trusted_params,
     })
   end
+
+  defp salt(socket), do: LiveView.Socket.signing_salt(socket)
 end

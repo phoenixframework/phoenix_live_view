@@ -1,8 +1,7 @@
 defmodule Phoenix.LiveViewTest do
   use ExUnit.Case
-  doctest PhoenixLiveView
 
-  test "greets the world" do
-    assert PhoenixLiveView.hello() == :world
+  test "todo" do
+    flunk "todo"
   end
 end

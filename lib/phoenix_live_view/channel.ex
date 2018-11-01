@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.Channel do
   def join("views:" <> id, %{"params" => params_token, "session" => session_token}, socket) do
     with {:ok, params} <- verify_params(socket, params_token),
          {:ok, session} <- verify_session(socket, session_token),
-         {:ok, pid, html} <- LiveView.Server.spawn_render(self(), socket.endpoint, params, session) do
+         {:ok, pid, html} <- LiveView.Server.spawn_render(socket.endpoint, params, session) do
 
       new_socket =
         socket
@@ -22,11 +22,11 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp verify_params(socket, params_token) do
-    LiveView.Server.verify_token(socket, params_token, max_age: 1209600)
+    LiveView.Server.verify_token(socket, salt(socket), params_token, max_age: 1209600)
   end
 
   defp verify_session(socket, session_token) do
-    LiveView.Server.verify_token(socket, session_token, max_age: 1209600)
+    LiveView.Server.verify_token(socket, salt(socket), session_token, max_age: 1209600)
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, %{assigns: %{view_pid: pid}} = socket) do
@@ -80,7 +80,13 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp sign_token(_socket, nil), do: nil
-  defp sign_token(socket, %{} = flash), do: LiveView.Flash.sign_token(socket.endpoint, flash)
+  defp sign_token(socket, %{} = flash) do
+    LiveView.Flash.sign_token(socket.endpoint, salt(socket), flash)
+  end
+
+  defp salt(%Phoenix.Socket{} = socket) do
+    Phoenix.LiveView.Socket.signing_salt(socket)
+  end
 
   # TODO optimize encoding. Avoid IOdata => binary => json.
   # Ideally send iodta down pipe w/ channel info

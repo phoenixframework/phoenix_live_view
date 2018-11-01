@@ -23,6 +23,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:phoenix, "~> 1.4-rc"},
       {:phoenix_html, "~> 2.11"},
+      {:jason, "~> 1.0", optional: true}
     ]
   end
 end
