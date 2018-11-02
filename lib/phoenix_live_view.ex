@@ -83,7 +83,16 @@ defmodule Phoenix.LiveView do
   @doc false
   # Phoenix.LiveView acts as a view via put_view to spawn the render
   def render("template.html", %{conn: conn} = assigns) do
-    Phoenix.LiveView.Server.static_render(conn.private.phoenix_live_view, assigns)
+    conn
+    |> Phoenix.Controller.endpoint_module()
+    |> render(conn.private.phoenix_live_view, assigns)
+  end
+
+  @doc """
+  TODO
+  """
+  def render(endpoint, view, assigns) do
+    Phoenix.LiveView.Server.static_render(endpoint, view, assigns)
   end
 
   # TODO lobby to expose get_session/1 on plug

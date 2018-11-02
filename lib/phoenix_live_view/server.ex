@@ -22,10 +22,10 @@ defmodule Phoenix.LiveView.Server do
     end
   end
 
-  def static_render(view, assigns) do
+  def static_render(endpoint, view, assigns) do
     import Phoenix.HTML, only: [sigil_E: 2]
 
-    {:ok, id, new_assigns, signed_params, signed_session} = encode_static_render(view, assigns)
+    {:ok, id, new_assigns, signed_params, signed_session} = encode_static_render(endpoint, view, assigns)
     ~E"""
       <div id="<%= id %>" data-phx-view="<%= inspect(view) %>" data-session="<%= signed_session %>" data-params="<%= signed_params %>">
         <%= view.render(new_assigns) %>
@@ -34,9 +34,8 @@ defmodule Phoenix.LiveView.Server do
     """
   end
 
-  defp encode_static_render(view, %{conn: conn} = assigns) do
+  defp encode_static_render(endpoint, view, assigns) do
     # TODO handle non ok upgrade
-    endpoint = Phoenix.Controller.endpoint_module(conn)
     id = random_id()
     {:ok, trusted_params, session} = upgrade(view, assigns)
 
