@@ -6,15 +6,6 @@ defmodule Phoenix.LiveView.Socket do
 
   alias Phoenix.LiveView.Socket
 
-  # TODO
-  # - own struct
-  # - don't store signing_salt (and other info) in struct. Keep it in parent DS
-  # - don't spawn extra process. Keep callbacks in channel
-  #
-  # Naming
-  # - init
-  # - socket.connected? vs socket.joined et al
-
   @salt_length 8
 
   defstruct id: nil,
@@ -25,7 +16,7 @@ defmodule Phoenix.LiveView.Socket do
             private: %{},
             connected?: false
 
-  channel("views:*", Phoenix.LiveView.Channel)
+  channel "views:*", Phoenix.LiveView.Channel
 
   @impl Phoenix.Socket
   def connect(_params, %Phoenix.Socket{} = socket, _connect_info) do
@@ -35,8 +26,11 @@ defmodule Phoenix.LiveView.Socket do
   @impl Phoenix.Socket
   def id(_socket), do: nil
 
-
   def dom_id(%Socket{id: id}), do: id
+
+  def child_dom_id(%Socket{} = parent, child_view) do
+    dom_id(parent) <> ":#{inspect(child_view)}"
+  end
 
   def view(%Socket{view: view}), do: view
 
@@ -48,13 +42,24 @@ defmodule Phoenix.LiveView.Socket do
     opts = normalize_opts!(opts)
 
     %Socket{
-      id: Map.get(opts, :id, random_id()),
+      id: Map.get_lazy(opts, :id, fn -> random_id() end),
       endpoint: endpoint,
       parent_id: opts[:parent_id],
       view: Map.fetch!(opts, :view),
       assigns: Map.get(opts, :assigns, %{}),
       connected?: Map.get(opts, :connected?, false)
     }
+  end
+
+  @doc false
+  def build_nested_socket(%Socket{endpoint: endpoint} = parent, opts) do
+    nested_opts =
+      Map.merge(opts, %{
+        id: child_dom_id(parent, Map.fetch!(opts, :view)),
+        parent_id: dom_id(parent)
+      })
+
+    build_socket(endpoint, nested_opts)
   end
 
   defp normalize_opts!(opts) do
@@ -64,9 +69,7 @@ defmodule Phoenix.LiveView.Socket do
     if provided_keys -- valid_keys != [],
       do:
         raise(ArgumentError, """
-        invalid socket keys. Expected keys #{inspect(valid_keys)}, got #{
-          inspect(provided_keys)
-        }
+        invalid socket keys. Expected keys #{inspect(valid_keys)}, got #{inspect(provided_keys)}
         """)
 
     opts

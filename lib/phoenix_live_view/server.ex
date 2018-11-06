@@ -17,11 +17,11 @@ defmodule Phoenix.LiveView.Server do
     Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
   end
 
-  def verify_token(endpoint_mod, salt, encoded_pid, opts) do
-    case Phoenix.Token.verify(endpoint_mod, salt, encoded_pid, opts) do
-      {:ok, encoded_pid} ->
-        pid = encoded_pid |> Base.decode64!() |> :erlang.binary_to_term()
-        {:ok, pid}
+  def verify_token(endpoint_mod, salt, token, opts) do
+    case Phoenix.Token.verify(endpoint_mod, salt, token, opts) do
+      {:ok, encoded_term} ->
+        term = encoded_term |> Base.decode64!() |> :erlang.binary_to_term()
+        {:ok, term}
 
       {:error, _} = error -> error
     end
@@ -31,14 +31,16 @@ defmodule Phoenix.LiveView.Server do
   TODO
   """
   def static_render(endpoint, view, opts) do
-    session = opts[:session] || %{}
-    {:ok, id, new_assigns, signed_session} = encode_static_render(endpoint, view, session)
+    session = Keyword.fetch!(opts, :session)
+    {:ok, socket, prepared_assigns, signed_session} = static_mount(endpoint, view, session)
 
     ~E"""
-      <div id="<%= id %>" data-phx-view="<%= inspect(view) %>" data-session="<%= signed_session %>">
-        <%= view.render(new_assigns) %>
-      </div>
-      <div class="phx-loader"></div>
+    <div id="<%= LiveView.Socket.dom_id(socket) %>"
+         data-phx-view="<%= inspect(view) %>"
+         data-session="<%= signed_session %>">
+      <%= view.render(prepared_assigns) %>
+    </div>
+    <div class="phx-loader"></div>
     """
   end
 
@@ -46,66 +48,55 @@ defmodule Phoenix.LiveView.Server do
   TODO
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
-    session = opts[:session] || %{}
+    session = Keyword.fetch!(opts, :session)
 
     if Socket.connected?(parent) do
       {child_id, signed_session} = sign_child_session(parent, view, session)
       ~E"""
-        <div id="<%= child_id %>"
-              data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
-              data-phx-view="<%= inspect(view) %>"
-              data-session="<%= signed_session %>">
+      <div id="<%= child_id %>"
+           data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+           data-phx-view="<%= inspect(view) %>"
+           data-session="<%= signed_session %>">
 
-        </div>
-        <div class="phx-loader"></div>
+      </div>
+      <div class="phx-loader"></div>
       """
      else
-       {:ok, id, new_assigns, signed_session} =
-         encode_static_render(parent, view, session)
+       {:ok, socket, prepared_assigns, signed_session} = static_mount(parent, view, session)
 
        ~E"""
-         <div id="<%= id %>"
-             data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
-             data-phx-view="<%= inspect(view) %>"
-             data-session="<%= signed_session %>">
+       <div id="<%= LiveView.Socket.dom_id(socket) %>"
+            data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+            data-phx-view="<%= inspect(view) %>"
+            data-session="<%= signed_session %>">
 
-           <%= view.render(new_assigns) %>
-         </div>
-         <div class="phx-loader"></div>
+         <%= view.render(prepared_assigns) %>
+       </div>
+       <div class="phx-loader"></div>
        """
     end
   end
 
-  defp encode_static_render(%Socket{} = parent, view, session) do
-    socket =
-      LiveView.Socket.build_socket(parent.endpoint, %{
-        view: view,
-        id: child_id(parent, view),
-        parent_id: LiveView.Socket.dom_id(parent),
-      })
-
-    do_encode_render(socket, view, session)
+  defp static_mount(%Socket{} = parent, view, session) do
+    parent
+    |> LiveView.Socket.build_nested_socket(%{view: view})
+    |> do_static_mount(view, session)
   end
-  defp encode_static_render(endpoint, view, session) do
-    socket = LiveView.Socket.build_socket(endpoint, %{view: view})
-
-    do_encode_render(socket, view, session)
+  defp static_mount(endpoint, view, session) do
+    endpoint
+    |> LiveView.Socket.build_socket(%{view: view})
+    |> do_static_mount(view, session)
   end
-  defp do_encode_render(socket, view, session) do
+  defp do_static_mount(socket, view, session) do
     session
-    |> view.init(socket)
-    |> init_ok(view)
+    |> view.mount(socket)
+    |> mount_ok(view)
     |> case do
       {:ok, %Socket{} = new_socket} ->
-        id = LiveView.Socket.dom_id(new_socket)
         signed_session = sign_session(socket, session)
 
-        {:ok, id, prep_assigns_for_render(new_socket, session), signed_session}
+        {:ok, new_socket, prep_assigns_for_render(new_socket, session), signed_session}
     end
-  end
-
-  defp child_id(%Socket{} = parent, child_view) do
-    LiveView.Socket.dom_id(parent) <> ":#{inspect(child_view)}"
   end
 
   defp prep_assigns_for_render(%Socket{assigns: assigns} = socket, session) do
@@ -148,16 +139,16 @@ defmodule Phoenix.LiveView.Server do
         view: view,
       })
 
-    with {:ok, %Socket{} = socket, opts} <- wrap_init(view.init(user_session, socket)) do
+    with {:ok, %Socket{} = socket, opts} <- wrap_mount(view.mount(user_session, socket)) do
       configure_init(socket, user_session, channel_pid, view, opts, {ref, client_pid})
     else
       {:error, reason} -> {:error, reason}
-      other -> init_ok(other, view)
+      other -> mount_ok(other, view)
     end
   end
-  defp wrap_init({:ok, %Socket{} = socket}), do: {:ok, socket, []}
-  defp wrap_init({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
-  defp wrap_init(other), do: other
+  defp wrap_mount({:ok, %Socket{} = socket}), do: {:ok, socket, []}
+  defp wrap_mount({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
+  defp wrap_mount(other), do: other
 
   defp configure_init(%Socket{} = socket, user_session, channel_pid, view, _opts, {ref, client_pid}) do
     _ref = Process.monitor(channel_pid)
@@ -172,10 +163,10 @@ defmodule Phoenix.LiveView.Server do
     {:ok, state}
   end
 
-  defp init_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket}
-  defp init_ok(other, view) do
+  defp mount_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket}
+  defp mount_ok(other, view) do
     raise ArgumentError, """
-    invalid result returned from #{inspect(view)}.init.
+    invalid result returned from #{inspect(view)}.mount/2.
 
     Expected {:ok, socket}, got: #{inspect(other)}
     """
@@ -252,7 +243,7 @@ defmodule Phoenix.LiveView.Server do
   end
 
   defp sign_child_session(%Socket{} = parent, child_view, session) do
-    id = child_id(parent, child_view)
+    id = LiveView.Socket.child_dom_id(parent, child_view)
     token =
       sign_token(parent.endpoint, salt(parent), %{
         id: id,

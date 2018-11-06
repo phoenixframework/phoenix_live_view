@@ -1,6 +1,11 @@
 defmodule Phoenix.LiveView do
   @moduledoc """
   TODO
+  - don't spawn extra process. Keep callbacks in channel
+
+  Naming
+  - init?
+  - socket.connected? vs socket.joined et al
   """
 
   @behaviour Plug
@@ -11,13 +16,13 @@ defmodule Phoenix.LiveView do
   @type unsigned_params :: map
   @type from :: binary
 
-  @callback init(Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
+  @callback mount(Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
   @callback render(Socket.assigns()) :: binary | list
   @callback terminate(reason :: :normal | :shutdown | {:shutdown, :left | :closed | term}, Socket.t()) :: term
   @callback handle_event(event :: binary, from, unsigned_params, Socket.t()) ::
     {:noreply, Socket.t()} | {:stop, reason :: term, Socket.t()}
 
-  @optional_callbacks terminate: 2, init: 2, handle_event: 4
+  @optional_callbacks terminate: 2, mount: 2, handle_event: 4
 
   def connected?(%Socket{} = socket), do: LiveView.Socket.connected?(socket)
 
@@ -49,10 +54,10 @@ defmodule Phoenix.LiveView do
 
       @behaviour unquote(__MODULE__)
       @impl unquote(__MODULE__)
-      def init(_session, socket), do: {:ok, socket}
+      def mount(_session, socket), do: {:ok, socket}
       @impl unquote(__MODULE__)
       def terminate(reason, state), do: {:ok, state}
-      defoverridable init: 2, terminate: 2
+      defoverridable mount: 2, terminate: 2
     end
   end
 
