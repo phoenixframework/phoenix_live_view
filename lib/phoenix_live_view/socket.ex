@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Socket do
   @moduledoc """
-  TODO
+  Holds the live view socket state.
   """
   use Phoenix.Socket
 
@@ -18,22 +18,36 @@ defmodule Phoenix.LiveView.Socket do
 
   channel "views:*", Phoenix.LiveView.Channel
 
+  @doc false
   @impl Phoenix.Socket
   def connect(_params, %Phoenix.Socket{} = socket, _connect_info) do
     {:ok, socket}
   end
 
+  @doc false
   @impl Phoenix.Socket
   def id(_socket), do: nil
 
+  @doc """
+  Returns the browser's DOM id for the socket's view.
+  """
   def dom_id(%Socket{id: id}), do: id
 
+  @doc """
+  Returns the browser's DOM id for the child view module of a parent socket.
+  """
   def child_dom_id(%Socket{} = parent, child_view) do
     dom_id(parent) <> ":#{inspect(child_view)}"
   end
 
+  @doc """
+  Returns the socket's live view module.
+  """
   def view(%Socket{view: view}), do: view
 
+  @doc """
+  Returns true if the socket is connected.
+  """
   def connected?(%Socket{connected?: true}), do: true
   def connected?(%Socket{connected?: false}), do: false
 

@@ -6,15 +6,51 @@ defmodule Phoenix.LiveView.Server do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
-  def start_link({{_ref, _pid}, _channel_pid, _socket, session} = args) do
-    GenServer.start_link(__MODULE__, args, name: name(session.id))
+  @doc """
+  Spawns a new live view server.
+
+  * `endpoint` - the endpoint module
+  * `session` - the map of session data
+  """
+  def spawn_render(endpoint, session) do
+    {:ok, pid, ref} = start_view(endpoint, session)
+
+    receive do
+      {^ref, rendered_view} -> {:ok, pid, rendered_view}
+    end
+  end
+  defp start_view(endpoint, session) do
+    ref = make_ref()
+
+    case start_dynamic_child(from: {ref, self()}, endpoint: endpoint, session: session) do
+      {:ok, pid} -> {:ok, pid, ref}
+      {:error, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+    end
+  end
+  defp start_dynamic_child(opts) do
+    DynamicSupervisor.start_child(
+      DemoWeb.DynamicSupervisor,
+      Supervisor.child_spec({Phoenix.LiveView.Server, opts}, restart: :temporary)
+    )
   end
 
-  defp name(id), do: {:via, Registry, {LiveView.Registry, id}}
 
-  def sign_token(endpoint_mod, salt, data) do
-    encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
-    Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
+  @doc """
+  Starts a LiveView server.
+
+  ## Options
+
+    * `:from` - the caller's `{ref, pid}`
+    * `:endpoint` - the originating endpoint module
+    * `:session` - the map of session data
+  """
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: name(opts))
+  end
+
+  defp name(opts) do
+    %{id: id} = Keyword.fetch!(opts, :session)
+    {:via, Registry, {LiveView.Registry, id}}
   end
 
   def verify_token(endpoint_mod, salt, token, opts) do
@@ -28,7 +64,14 @@ defmodule Phoenix.LiveView.Server do
   end
 
   @doc """
-  TODO
+  Renders a live view without spawning a liveview server.
+
+  * `endpoint` - the endpoint module
+  * `view` - the live view module
+
+  ## Options
+
+    * `session` - the required map of session data
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
@@ -45,7 +88,14 @@ defmodule Phoenix.LiveView.Server do
   end
 
   @doc """
-  TODO
+  Renders a nested live view without spawning a server.
+
+  * `parent` - the parent `%Phoenix.LiveView.Socket{}`
+  * `view` - the child live view module
+
+  ## Options
+
+    * `session` - the required map of session data
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
@@ -103,33 +153,10 @@ defmodule Phoenix.LiveView.Server do
     Map.merge(assigns, %{session: session, socket: socket})
   end
 
-  @doc """
-  TODO
-  """
-  def spawn_render(endpoint, session) do
-    {:ok, pid, ref} = start_view(self(), endpoint, session)
-
-    receive do
-      {^ref, rendered_view} -> {:ok, pid, rendered_view}
-    end
-  end
-  defp start_view(channel_pid, endpoint, session) do
-    ref = make_ref()
-
-    case start_dynamic_child(ref, channel_pid, endpoint, session) do
-      {:ok, pid} -> {:ok, pid, ref}
-      {:error, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
-    end
-  end
-  defp start_dynamic_child(ref, channel_pid, endpoint, session) do
-    args = {{ref, self()}, channel_pid, endpoint, session}
-    DynamicSupervisor.start_child(
-      DemoWeb.DynamicSupervisor,
-      Supervisor.child_spec({Phoenix.LiveView.Server, args}, restart: :temporary)
-    )
-  end
-
-  def init({{ref, client_pid}, channel_pid, endpoint, session}) do
+  def init(opts) do
+    from = Keyword.fetch!(opts, :from)
+    endpoint = Keyword.fetch!(opts, :endpoint)
+    session = Keyword.fetch!(opts, :session)
     %{id: id, view: view, session: user_session} = session
 
     socket =
@@ -139,8 +166,8 @@ defmodule Phoenix.LiveView.Server do
         view: view,
       })
 
-    with {:ok, %Socket{} = socket, opts} <- wrap_mount(view.mount(user_session, socket)) do
-      configure_init(socket, user_session, channel_pid, view, opts, {ref, client_pid})
+    with {:ok, %Socket{} = socket, user_opts} <- wrap_mount(view.mount(user_session, socket)) do
+      configure_init(socket, user_session, from, view, user_opts)
     else
       {:error, reason} -> {:error, reason}
       other -> mount_ok(other, view)
@@ -150,12 +177,12 @@ defmodule Phoenix.LiveView.Server do
   defp wrap_mount({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
   defp wrap_mount(other), do: other
 
-  defp configure_init(%Socket{} = socket, user_session, channel_pid, view, _opts, {ref, client_pid}) do
-    _ref = Process.monitor(channel_pid)
+  defp configure_init(%Socket{} = socket, user_session, {ref, client_pid}, view, _opts) do
+    _ref = Process.monitor(client_pid)
     state = %{
       view_module: view,
       socket: socket,
-      channel_pid: channel_pid,
+      channel_pid: client_pid,
       session: user_session,
     }
     send(client_pid, {ref, rerender(state)})
@@ -257,5 +284,10 @@ defmodule Phoenix.LiveView.Server do
 
   defp salt(%Socket{endpoint: endpoint}) do
     LiveView.Socket.configured_signing_salt!(endpoint)
+  end
+
+  defp sign_token(endpoint_mod, salt, data) do
+    encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
+    Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
   end
 end

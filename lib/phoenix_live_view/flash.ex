@@ -4,9 +4,16 @@ defmodule Phoenix.LiveView.Flash do
 
   ## Examples
 
-
       plug Phoenix.LiveView.Flash
 
+  By default, the signing salt for the token is pulled from
+  your endpoint's live view config, for example:
+
+      config :my_app, MyAppWeb.Endpoint,
+        ...,
+        live_view: [signing_salt: ...]
+
+  The `:signing_salt` option may also be passed directly to the plug.
   """
 
   @valid_keys [:signing_salt]
@@ -57,9 +64,7 @@ defmodule Phoenix.LiveView.Flash do
     opts[:signing_salt] || Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
   end
 
-  @doc """
-  Signs the live view flash into a token.
-  """
+  @doc false
   def sign_token(endpoint_mod, salt, %{} = flash) do
     Phoenix.Token.sign(endpoint_mod, salt, Phoenix.json_library().encode!(flash))
   end

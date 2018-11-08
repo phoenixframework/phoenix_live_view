@@ -70,12 +70,12 @@ defmodule Phoenix.LiveView.Channel do
   defp push_redirect(socket, opts) do
     push(socket, "redirect", %{
       to: Keyword.fetch!(opts, :to),
-      flash: sign_token(socket, opts[:flash])
+      flash: sign_flash(socket, opts[:flash])
     })
   end
 
-  defp sign_token(_socket, nil), do: nil
-  defp sign_token(socket, %{} = flash) do
+  defp sign_flash(_socket, nil), do: nil
+  defp sign_flash(socket, %{} = flash) do
     LiveView.Flash.sign_token(socket.endpoint, salt(socket), flash)
   end
 
