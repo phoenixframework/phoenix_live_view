@@ -22,3 +22,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 phoenix_live_view-*.tar
 
+node_modules
+

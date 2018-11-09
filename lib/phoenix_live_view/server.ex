@@ -80,7 +80,7 @@ defmodule Phoenix.LiveView.Server do
     ~E"""
     <div id="<%= LiveView.Socket.dom_id(socket) %>"
          data-phx-view="<%= inspect(view) %>"
-         data-session="<%= signed_session %>">
+         data-phx-session="<%= signed_session %>">
       <%= view.render(prepared_assigns) %>
     </div>
     <div class="phx-loader"></div>
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.Server do
       <div id="<%= child_id %>"
            data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
            data-phx-view="<%= inspect(view) %>"
-           data-session="<%= signed_session %>">
+           data-phx-session="<%= signed_session %>">
 
       </div>
       <div class="phx-loader"></div>
@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.Server do
        <div id="<%= LiveView.Socket.dom_id(socket) %>"
             data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
             data-phx-view="<%= inspect(view) %>"
-            data-session="<%= signed_session %>">
+            data-phx-session="<%= signed_session %>">
 
          <%= view.render(prepared_assigns) %>
        </div>
