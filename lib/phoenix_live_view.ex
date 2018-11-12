@@ -111,7 +111,6 @@ defmodule Phoenix.LiveView do
       let liveSocket = new LiveSocket("/live")
       liveSocket.connect()
 
-
   After the client connects, `mount/2` will be invoked inside a spawn
   live view process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
@@ -166,10 +165,9 @@ defmodule Phoenix.LiveView do
   `value` passed to `handle_event` is chosen on the client with the following
   priority:
 
-    - An optional `"phx-value"` binding on the clicked element
-    - The clicked element's `value` property
-    - An empty string
-
+    * An optional `"phx-value"` binding on the clicked element
+    * The clicked element's `value` property
+    * An empty string
 
   ### Form Events
 
