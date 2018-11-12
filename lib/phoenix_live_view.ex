@@ -23,6 +23,8 @@ defmodule Phoenix.LiveView do
   A live view begins as a regular HTTP request and HTML response,
   and then upgrades to a stateful view on client connect,
   guaranteeing a regular HTML page even if JavaScript is disabled.
+  Any time a stateful view changes or updates its socket assigns, it is
+  automatically re-rendered and the updates are pushed to the client.
 
   You begin by rendering a live view from the controller and providing
   *session* data to the view, which represents request information
@@ -59,8 +61,8 @@ defmodule Phoenix.LiveView do
           \"""
         end
 
-        def mount(%{id: id}, socket) do
-          case Thermostat.get_reading(id) do
+        def mount(%{id: id, current_user_id: user_id}, socket) do
+          case Thermostat.get_user_reading(user_id, id) do
             {:ok, temperature} ->
               {:ok, assign(socket, :temperature, temperature)}
 
@@ -74,20 +76,33 @@ defmodule Phoenix.LiveView do
   for returning rendered content. You can use `Phoenix.HTML.sigil_E` to inline
   Phoenix HTML EEx templates.
 
-  With a live view defined, you first call `live_render` from a controller:
+  With a live view defined, you first define the `socket` path in your endpoint,
+  and point it to `Phoenix.LiveView.Socket`:
 
-      def show(conn, %{"id" => thermostat_id}) do
-        Phoenix.LiveView.live_render(conn, AppWeb.ThermostatView, session: %{
-          thermostat_id: id,
-          current_user_id: get_session(conn, :user_id),
-        })
+      defmodule AppWeb.Endpoint do
+        use Phoenix.Endpoint
+
+        socket "/live", Phoenix.LiveView.Socket
+        ...
       end
 
-  As we've seen, you pass `:session` data about the request to the view,
-  such as the current user's id in the cookie session, and parameters
-  from the request. A regular HTML response is sent with a signed token
-  embedded in the DOM.
+   Next, you can `live_render` your view from any controller:
 
+      def ThermostatController do
+        ...
+
+        def show(conn, %{"id" => id}) do
+          Phoenix.LiveView.live_render(conn, AppWeb.ThermostatView, session: %{
+            id: id,
+            current_user_id: get_session(conn, :user_id),
+          })
+        end
+      end
+
+  As we saw in the life-cycle section, you pass `:session` data about the
+  request to the view, such as the current user's id in the cookie session,
+  and parameters from the request. A regular HTML response is sent with a
+  signed token embedded in the DOM containing your live view session data.
 
   Next, your client code connects to the server:
 
@@ -97,8 +112,38 @@ defmodule Phoenix.LiveView do
       liveSocket.connect()
 
 
+  After the client connects, `mount/2` will be invoked inside a spawn
+  live view process. At this point, you can use `connected?/1` to
+  conditionally perform stateful work, such as subscribing to pubsub topics,
+  sending messages, etc. For example, you can periodically update a live view
+  with a timer:
 
+      defmodule DemoWeb.ThermostatView do
+        use Phoenix.LiveView
+        ...
 
+        def mount(%{id: id, current_user_id: user_id}, socket) do
+          if connected?(socket), do: :timer.send_interval(30_000, self(), :update_reading)
+          case Thermostat.get_user_reading(user_id, id) do
+            {:ok, temperature} ->
+              {:ok, assign(socket, temperature: temperature, id: id)}
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+        end
+
+        def handle_info(:update_reading, socket) do
+          {:ok, temperature} = Thermostat.get_reading(socket.assigns.id)
+          {:noreply, assign(socket, :temperature, temperature)}
+        end
+      end
+
+  We used `connected?(socket)` on mount to send our view a message very 30s if
+  the socket is in a connected state. We receive `:update_reading` in a
+  `handle_info` just like a GenServer, and update our socket assigns. Whenever
+  a socket's assigns change, `render/1` is automatically invoked, and the
+  updates are sent to the client.
   """
 
   @behaviour Plug
