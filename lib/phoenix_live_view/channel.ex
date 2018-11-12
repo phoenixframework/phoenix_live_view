@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.Channel do
         |> assign(:view_pid, pid)
         |> assign(:view_id, id)
 
-      {:ok, %{html: encode_render(html)}, new_socket}
+      {:ok, %{__raw__: html}, new_socket}
     else
       {:error, {:noproc, _}} -> {:error, %{reason: "noproc"}}
       {:error, _reason} -> {:error, %{reason: :bad_token}}
@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(socket, content) when is_list(content) do
     push(socket, "render", %{
       id: socket.assigns.view_id,
-      html: encode_render(content)
+      __raw__: content
     })
   end
 
@@ -82,11 +82,4 @@ defmodule Phoenix.LiveView.Channel do
   defp salt(%Phoenix.Socket{endpoint: endpoint}) do
     Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
   end
-
-  # TODO optimize encoding. Avoid IOdata => binary => json.
-  # Ideally send iodta down pipe w/ channel info
-  defp encode_render(content) when is_list(content) do
-    IO.iodata_to_binary(content)
-  end
-  defp encode_render(content) when is_binary(content), do: content
 end

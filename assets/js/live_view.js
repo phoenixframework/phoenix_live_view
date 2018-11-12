@@ -3,6 +3,7 @@ import morphdom from "morphdom"
 
 const PHX_VIEW_SELECTOR = "[data-phx-view]"
 const PHX_PARENT_ID = "data-phx-parent-id"
+const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "data-phx-has-focused"
 const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "password"]
@@ -12,9 +13,43 @@ const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
 
+const Serializer = {
+  encode(msg, callback){
+    let payload = [
+      msg.join_ref, msg.ref, msg.topic, msg.event, msg.payload
+    ]
+    return callback(JSON.stringify(payload))
+  },
+
+  decode(encoded, callback){
+    let index = encoded.indexOf(";")
+    let jsonLen = parseInt(encoded.substring(0, index))
+    let jsonStr = encoded.substring(index + 1, index + 1 + jsonLen)
+    let rawPayloadStr = encoded.substring(index + 1 + jsonLen)
+
+    let [join_ref, ref, topic, event, payload] = JSON.parse(jsonStr)
+    Serializer.mergeRawPayload(payload, rawPayloadStr)
+
+    return callback({join_ref, ref, topic, event, payload})
+  },
+
+  mergeRawPayload(payload, rawPayloadStr){
+    if(rawPayloadStr === ""){ return }
+    
+    if(payload.response && payload.status){
+      payload.response.__raw__ = rawPayloadStr
+    } else {
+      payload.__raw__ = rawPayloadStr
+    }
+  }
+}
+
+
 export default class LiveSocket {
   constructor(url, opts = {}){
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
+    opts.encode = Serializer.encode
+    opts.decode = Serializer.decode
     this.url = url
     this.opts = opts
     this.views = {}
@@ -74,7 +109,7 @@ let Browser = {
 
 let DOM = {
   discardError(el){
-    let field = el.getAttribute && el.getAttribute("phx-error-field")
+    let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
     if(!field) { return }
     let input = document.getElementById(field)
 
@@ -199,7 +234,7 @@ class View {
   }
 
   bindChannel(){
-    this.channel.on("render", ({html}) => this.update(html))
+    this.channel.on("render", ({__raw__: html}) => this.update(html))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
     this.channel.on("session", ({token}) => this.joinParams.session = token)
     this.channel.onError(() => this.onError())
@@ -211,7 +246,7 @@ class View {
       .receive("error", resp => this.onJoinError(resp))
   }
 
-  onJoin({html}){
+  onJoin({__raw__: html}){
     this.hideLoader()
     this.el.classList = "phx-connected"
     DOM.patch(this, this.el, this.id, html)
