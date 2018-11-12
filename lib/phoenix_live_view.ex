@@ -210,7 +210,8 @@ defmodule Phoenix.LiveView do
   end
 
   @doc false
-  # Phoenix.LiveView acts as a view via put_view to spawn the render
+  # Phoenix.LiveView acts as a view via put_view to maintain the
+  # controller render + instrumentation stack
   def render("template.html", %{conn: conn}) do
     {root_view, opts} = conn.private.phoenix_live_view
 

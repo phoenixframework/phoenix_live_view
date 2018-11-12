@@ -346,8 +346,8 @@ class View {
     let change = this.binding("change")
     this.eachChild(`form[${change}] input`, input => {
       let phxEvent = input.form.getAttribute(change)
-      input.addEventListener("input", e => {
-      if(DOM.isTextualInput(input)){ input.setAttribute(PHX_HAS_FOCUSED, true) }
+      this.onInput(input, e => {
+        if(DOM.isTextualInput(input)){ input.setAttribute(PHX_HAS_FOCUSED, true) }
         this.pushInput(input, e, phxEvent)
       })
     })
@@ -375,5 +375,10 @@ class View {
   serializeForm(form){
    return((new URLSearchParams(new FormData(form))).toString())
  }
+
+ onInput(input, callback){
+   let event = input.type === "radio" ? "change" : "input"
+   input.addEventListener(event, callback)
+  }
 }
 
