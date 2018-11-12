@@ -255,7 +255,7 @@ defmodule Phoenix.LiveView do
 
       def render(assigns) do
       ~E/"""
-      <div id="thermostat" phx-keyup="update_temp">
+      <div id="thermostat" phx-keyup="update_temp" phx-target="document">
         Current temperature: <%= @temperature %>
       </div>
       /"""
