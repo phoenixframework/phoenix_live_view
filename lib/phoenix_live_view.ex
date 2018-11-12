@@ -144,6 +144,134 @@ defmodule Phoenix.LiveView do
   `handle_info` just like a GenServer, and update our socket assigns. Whenever
   a socket's assigns change, `render/1` is automatically invoked, and the
   updates are sent to the client.
+
+  ## Bindings
+
+  Phoenix supports DOM element bindings for client-server interaction. For
+  example, to react to a click on a button, you would render the element:
+
+      <button phx-click="inc_temperature">+</button>
+
+  Then on the server, all live view bindings are handled with the `handle_event`
+  callback, for example:
+
+      def handle_event("inc_temperature", _dom_id, _value, socket) do
+        {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
+        {:noreply, assign(socket, :temperature, new_temp)}
+      end
+
+  ### Click Events
+
+  The `phx-click` binding is used to send click events to the server. The
+  `value` passed to `handle_event` is chosen on the client with the following
+  priority:
+
+    - An optional `"phx-value"` binding on the clicked element
+    - The clicked element's `value` property
+    - An empty string
+
+
+  ### Form Events
+
+  To handle form changes and submussions, use the `phx-change` and `phx-submit`
+  events. In general, it is preferred to handle input changes at the form level,
+  where all form fields are passed to the liveview's callback given any
+  single input change. For example, to handle real-time form validation and
+  saving, your template would use both `phx_change` and `phx_submit` bindings:
+
+      <%= form_for @changeset, "#", [phx_change: :validate, phx_submit: :save], fn f -> %>
+        <%= label f, :username %>
+        <%= text_input f, :username %>
+        <%= error_tag f, :username %>
+
+        <%= label f, :email %>
+        <%= text_input f, :email %>
+        <%= error_tag f, :email %>
+
+        <%= submit "Save" %>
+      <% end %>
+
+  Next, your liveview picks up the events in `handle_event` callbacks:
+
+      def render(assigns) ...
+
+      def mount(_session, socket) do
+        {:ok, assign(socket, %{changeset: Accounts.change_user(%User{})})}
+      end
+
+      def handle_event("validate", _id, %{"user" => params}, socket) do
+        changeset =
+          %User{}
+          |> Accounts.change_user(params)
+          |> Map.put(:action, :insert)
+
+        {:noreply, assign(socket, changeset: changeset)}
+      end
+
+      def handle_event("save", _id, %{"user" => user_params}, socket) do
+        case Accounts.create_user(user_params) do
+          {:ok, user} ->
+            socket
+            |> put_flash(:info, "user created")
+            |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            {:noreply, assign(socket, changeset: changeset)}
+        end
+      end
+
+  The validate callback simply updates the changeset based on all form input
+  values, then assigns the new changeset to the socket. If the changeset
+  changes, such as generating new errors, `render/1` is invoked and
+  the form is re-rendered.
+
+  Likewise for `phx-submit` bindings, the save callback is invoked and
+  persistence is attempted. On success, `Phoenix.LiveView.redirect/2` is called,
+  otherwise the socket assigns are updated with the errored chagneset to be
+  re-rerendered for the client.
+
+  *Note*: For proper form error tag updates, the error tag must be specify which
+  input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
+  For example, your `AppWeb.ErrorHelpers` may use this function:
+
+      def error_tag(form, field) do
+        Enum.map(Keyword.get_values(form.errors, field), fn error ->
+          content_tag(:span, translate_error(error),
+            class: "help-block",
+            data: [phx_error_for: input_id(form, field)]
+          )
+        end)
+      end
+
+  ### Key Events
+
+  The onkeypress, onkeydown, and onkeyup events are supported via
+  the `phx-keypress`, `phx-keydown`, and `phx-keyup` bindings. When
+  pushed, the value sent to the server will be the event's keyCode.
+  By default, the bound element will be the event listener, but an
+  optional `phx-target` may be provided which may be `"document"`,
+  `"window"`, or the DOM id of a target element, for example:
+
+      @up_key 38
+      @down_key 40
+
+      def render(assigns) do
+      ~E/"""
+      <div id="thermostat" phx-keyup="update_temp">
+        Current temperature: <%= @temperature %>
+      </div>
+      /"""
+      end
+
+      def handle_event("update_temp", _, @up_key, socket) do
+        {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
+        {:noreply, assign(socket, :temperature, new_temp)}
+      end
+
+      def handle_event("update_temp", _, @down_key, socket) do
+        {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
+        {:noreply, assign(socket, :temperature, new_temp)}
+      end
   """
 
   @behaviour Plug
