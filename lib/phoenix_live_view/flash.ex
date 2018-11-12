@@ -61,11 +61,14 @@ defmodule Phoenix.LiveView.Flash do
   defp salt(conn, opts) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
-    opts[:signing_salt] || Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
+    salt_base = opts[:signing_salt] || Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
+    computed_salt(salt_base)
   end
+  defp computed_salt(salt_base), do: salt_base <> "flash"
 
   @doc false
-  def sign_token(endpoint_mod, salt, %{} = flash) do
+  def sign_token(endpoint_mod, salt_base, %{} = flash) do
+    salt = computed_salt(salt_base)
     Phoenix.Token.sign(endpoint_mod, salt, Phoenix.json_library().encode!(flash))
   end
 end

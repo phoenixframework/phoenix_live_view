@@ -123,7 +123,7 @@ defmodule Phoenix.LiveView do
         ...
 
         def mount(%{id: id, current_user_id: user_id}, socket) do
-          if connected?(socket), do: :timer.send_interval(30_000, self(), :update_reading)
+          if connected?(socket), do: :timer.send_interval(30000, self(), :update)
           case Thermostat.get_user_reading(user_id, id) do
             {:ok, temperature} ->
               {:ok, assign(socket, temperature: temperature, id: id)}
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView do
           end
         end
 
-        def handle_info(:update_reading, socket) do
+        def handle_info(:update, socket) do
           {:ok, temperature} = Thermostat.get_reading(socket.assigns.id)
           {:noreply, assign(socket, :temperature, temperature)}
         end
