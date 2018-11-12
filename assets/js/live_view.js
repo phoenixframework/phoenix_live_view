@@ -2,6 +2,9 @@ import {Socket} from "./phoenix"
 import morphdom from "morphdom"
 
 const PHX_VIEW_SELECTOR = "[data-phx-view]"
+const PHX_CONNECTED_CLASS = "phx-connected"
+const PHX_DISCONNECTED_CLASS = "phx-disconnected"
+const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "data-phx-has-focused"
@@ -223,7 +226,7 @@ class View {
 
   showLoader(){
     clearTimeout(this.loaderTimer)
-    this.el.classList = "phx-disconnected"
+    this.el.classList = PHX_DISCONNECTED_CLASS
     this.loader.style.display = "block"
     let middle = Math.floor(this.el.clientHeight / LOADER_ZOOM)
     this.loader.style.top = `-${middle}px`
@@ -248,31 +251,35 @@ class View {
 
   onJoin({__raw__: html}){
     this.hideLoader()
-    this.el.classList = "phx-connected"
+    this.el.classList = PHX_CONNECTED_CLASS
     DOM.patch(this, this.el, this.id, html)
     if(!this.hasBoundUI){ this.bindUI() }
     this.hasBoundUI = true
   }
 
   onJoinError(resp){
-    this.showLoader()
-    this.el.classList = "phx-disconnected phx-error"
+    this.displayError()
     console.log("Unable to join", resp)
   }
 
   onError(){
     document.activeElement.blur()
-    this.showLoader()
-    this.el.classList = "phx-disconnected phx-error"
+    this.displayError()
   }
 
-  pushClick(clickedElement, event, phxEvent){
+  displayError(){
+    this.showLoader()
+    this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
+  }
+
+  pushClick(clickedEl, event, phxEvent){
     event.preventDefault()
+    let val = clickedEl.getAttribute(this.binding("value")) || clickedEl.value || ""
     this.channel.push("event", {
       type: "click",
       event: phxEvent,
-      id: clickedElement.id,
-      value: clickedElement.getAttribute("phx-value") || clickedElement.value || ""
+      id: clickedEl.id,
+      value: val
     })
   }
 
