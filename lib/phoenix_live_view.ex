@@ -171,7 +171,7 @@ defmodule Phoenix.LiveView do
 
   ### Form Events
 
-  To handle form changes and submussions, use the `phx-change` and `phx-submit`
+  To handle form changes and submissions, use the `phx-change` and `phx-submit`
   events. In general, it is preferred to handle input changes at the form level,
   where all form fields are passed to the liveview's callback given any
   single input change. For example, to handle real-time form validation and
