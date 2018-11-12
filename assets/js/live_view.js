@@ -1,3 +1,61 @@
+/*
+================================================================================
+Phoenix LiveView Javascript Client 
+================================================================================
+
+## Usage
+
+Instantiate a single LiveSocket instances to enable LiveView
+client/server interaction, for example:
+
+    import LiveSocket from "live_view"
+
+    let liveSocket = new LiveSocket("/live")
+    liveSocket.connect()
+
+All options are passed directly to the `Phoenix.Socket` constructor,
+except for the following LiveView specific options:
+
+  * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
+
+## Events
+
+### Click Events
+
+When pushed, the value sent to the server will be chosen with the
+following priority:
+
+  - An optional `"phx-value"` binding on the clicked element
+  - The clicked element's `value` property
+  - An empty string
+
+### Key Events
+
+The onkeypress, onkeydown, and onkeyup events are supported via
+the `phx-keypress`, `phx-keydown`, and `phx-keyup` bindings. By
+default, the bound element will be the event listener, but an
+optional `phx-target` may be provided which may be `"document"`,
+`"window"`, or the DOM id of a target element.
+
+When pushed, the value sent to the server will be the event's keyCode.
+
+## Loading state and Errors
+
+By default, the following classes are applied to the liveview's parent
+container:
+
+  - `"phx-connected"` - applied when the view has connected to the server
+  - `"phx-disconnected"` - applied when the view is not connected to the server
+  - `"phx-error"` - applied when an error occurs on the server. Note, this
+    class will be applied in conjunction with `"phx-disconnected"` connection
+    to the server is lost.
+
+In addition to applied classes, an empty `"phx-loader"` exists adjacent
+to every LiveView, and its display status is toggled automatically based on
+connection and error class changes. This behavior may be disabled by overriding
+`.phx-loader` in your css to `display: none!important`.
+*/
+
 import {Socket} from "./phoenix"
 import morphdom from "morphdom"
 
@@ -11,7 +69,7 @@ const PHX_HAS_FOCUSED = "data-phx-has-focused"
 const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "password"]
 const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
-const SESSION_SELECTOR = "data-phx-session"
+const PHX_SESSION = "data-phx-session"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
@@ -209,7 +267,7 @@ class View {
   }
 
   getSession(){
-    return this.el.getAttribute(SESSION_SELECTOR)|| this.parent.getSession()
+    return this.el.getAttribute(PHX_SESSION)|| this.parent.getSession()
   }
 
   destroy(callback){
@@ -283,12 +341,12 @@ class View {
     })
   }
 
-  pushKeyup(keyElement, event, phxEvent){
+  pushKey(keyElement, kind, event, phxEvent){
     this.channel.push("event", {
-      type: "keyup",
+      type: `key${kind}`,
       event: phxEvent,
       id: event.target.id,
-      value: keyElement.value
+      value: keyElement.value || event.keyCode
     })
   }
 
@@ -324,7 +382,9 @@ class View {
   bindUI(){
     this.bindForms()
     this.eachChild(`[${this.binding("click")}]`, el => this.bindClick(el))
-    this.eachChild(`[${this.binding("keyup")}]`, el => this.bindKeyUp(el, view))
+    this.eachChild(`[${this.binding("keyup")}]`, el => this.bindKey(el, "up"))
+    this.eachChild(`[${this.binding("keydown")}]`, el => this.bindKey(el, "down"))
+    this.eachChild(`[${this.binding("keypress")}]`, el => this.bindKey(el, "press"))
   }
 
   bindClick(el){
@@ -335,10 +395,14 @@ class View {
     } 
   }
 
-  bindKeyUp(el){
-    let phxEvent = el.getAttribute(this.binding("keyup"))
+  bindKey(el, kind){
+    let event = `key${kind}`
+    let phxEvent = el.getAttribute(this.binding(event))
     if(phxEvent){
-      el.addEventListener("keyup", e => this.pushKeyup(el, e, phxEvent))
+      let phxTarget = this.target(el)
+      phxTarget.addEventListener(event, e => {
+        this.pushKey(el, kind, e, phxEvent)
+      })
     }
   }
 
@@ -374,11 +438,24 @@ class View {
 
   serializeForm(form){
    return((new URLSearchParams(new FormData(form))).toString())
- }
+  }
 
- onInput(input, callback){
-   let event = input.type === "radio" ? "change" : "input"
-   input.addEventListener(event, callback)
+  onInput(input, callback){
+    let event = input.type === "radio" ? "change" : "input"
+    input.addEventListener(event, callback)
+  }
+
+  target(el){
+    let target = el.getAttribute(this.binding("target"))
+    if(target === "window"){
+      return window
+    }else if(target === "document"){
+      return document
+    } else if(target){
+      return document.getElementById(target)
+    } else {
+      return el
+    }
   }
 }
 
