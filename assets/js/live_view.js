@@ -429,7 +429,9 @@ class View {
 
   maybeBindAddedNode(el){ if(!el.getAttribute){ return }
     this.bindClick(el)
-    this.bindKeyUp(el)
+    this.bindKey(el, "up")
+    this.bindKey(el, "down")
+    this.bindKey(el, "press")
   }
 
   binding(kind){ return `${this.bindingPrefix}${kind}` }
