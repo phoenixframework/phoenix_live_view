@@ -28,6 +28,11 @@ defmodule Phoenix.LiveView.Socket do
   @impl Phoenix.Socket
   def id(_socket), do: nil
 
+  @doc false
+  def strip(%Socket{} = socket) do
+    %Socket{socket | assigns: :unset}
+  end
+
   @doc """
   Returns the browser's DOM id for the socket's view.
   """

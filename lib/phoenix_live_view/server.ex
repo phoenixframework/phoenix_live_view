@@ -19,21 +19,22 @@ defmodule Phoenix.LiveView.Server do
       {^ref, rendered_view} -> {:ok, pid, rendered_view}
     end
   end
+
   defp start_view(endpoint, session) do
     ref = make_ref()
 
     case start_dynamic_child(from: {ref, self()}, endpoint: endpoint, session: session) do
       {:ok, pid} -> {:ok, pid, ref}
-      {:error, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+      {:error, {%_{} = exception, [_ | _] = stack}} -> reraise(exception, stack)
     end
   end
+
   defp start_dynamic_child(opts) do
     DynamicSupervisor.start_child(
       DemoWeb.DynamicSupervisor,
       Supervisor.child_spec({Phoenix.LiveView.Server, opts}, restart: :temporary)
     )
   end
-
 
   @doc """
   Starts a LiveView server.
@@ -59,7 +60,8 @@ defmodule Phoenix.LiveView.Server do
         term = encoded_term |> Base.decode64!() |> :erlang.binary_to_term()
         {:ok, term}
 
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -101,30 +103,39 @@ defmodule Phoenix.LiveView.Server do
     session = Keyword.fetch!(opts, :session)
 
     if Socket.connected?(parent) do
-      {child_id, signed_session} = sign_child_session(parent, view, session)
-      ~E"""
-      <div id="<%= child_id %>"
-           data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
-           data-phx-view="<%= inspect(view) %>"
-           data-phx-session="<%= signed_session %>">
-
-      </div>
-      <div class="phx-loader"></div>
-      """
-     else
-       {:ok, socket, prepared_assigns, signed_session} = static_mount(parent, view, session)
-
-       ~E"""
-       <div id="<%= LiveView.Socket.dom_id(socket) %>"
-            data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
-            data-phx-view="<%= inspect(view) %>"
-            data-phx-session="<%= signed_session %>">
-
-         <%= view.render(prepared_assigns) %>
-       </div>
-       <div class="phx-loader"></div>
-       """
+      connected_static_render(parent, view, session)
+    else
+      disconnected_static_render(parent, view, session)
     end
+  end
+
+  defp disconnected_static_render(parent, view, session) do
+    {:ok, socket, prepared_assigns, signed_session} = static_mount(parent, view, session)
+
+    ~E"""
+    <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
+         data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+         data-phx-view="<%= inspect(view) %>"
+         data-phx-session="<%= signed_session %>">
+
+      <%= view.render(prepared_assigns) %>
+    </div>
+    <div class="phx-loader"></div>
+    """
+  end
+
+  defp connected_static_render(parent, view, session) do
+    {child_id, signed_session} = sign_child_session(parent, view, session)
+
+    ~E"""
+    <div conn id="<%= child_id %>"
+         data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+         data-phx-view="<%= inspect(view) %>"
+         data-phx-session="<%= signed_session %>">
+
+    </div>
+    <div class="phx-loader"></div>
+    """
   end
 
   defp static_mount(%Socket{} = parent, view, session) do
@@ -132,11 +143,13 @@ defmodule Phoenix.LiveView.Server do
     |> LiveView.Socket.build_nested_socket(%{view: view})
     |> do_static_mount(view, session)
   end
+
   defp static_mount(endpoint, view, session) do
     endpoint
     |> LiveView.Socket.build_socket(%{view: view})
     |> do_static_mount(view, session)
   end
+
   defp do_static_mount(socket, view, session) do
     session
     |> view.mount(socket)
@@ -150,7 +163,7 @@ defmodule Phoenix.LiveView.Server do
   end
 
   defp prep_assigns_for_render(%Socket{assigns: assigns} = socket, session) do
-    Map.merge(assigns, %{session: session, socket: socket})
+    Map.merge(assigns, %{session: session, socket: LiveView.Socket.strip(socket)})
   end
 
   def init(opts) do
@@ -163,7 +176,7 @@ defmodule Phoenix.LiveView.Server do
       LiveView.Socket.build_socket(endpoint, %{
         connected?: true,
         id: id,
-        view: view,
+        view: view
       })
 
     with {:ok, %Socket{} = socket, user_opts} <- wrap_mount(view.mount(user_session, socket)) do
@@ -173,24 +186,31 @@ defmodule Phoenix.LiveView.Server do
       other -> mount_ok(other, view)
     end
   end
+
   defp wrap_mount({:ok, %Socket{} = socket}), do: {:ok, socket, []}
   defp wrap_mount({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
   defp wrap_mount(other), do: other
 
   defp configure_init(%Socket{} = socket, user_session, {ref, client_pid}, view, _opts) do
     _ref = Process.monitor(client_pid)
-    state = %{
-      view_module: view,
-      socket: socket,
-      channel_pid: client_pid,
-      session: user_session,
-    }
-    send(client_pid, {ref, rerender(state)})
+
+    {state, rendered} =
+      rerender(%{
+        view_module: view,
+        socket: socket,
+        channel_pid: client_pid,
+        session: user_session
+      })
+
+    send(client_pid, {ref, rendered})
 
     {:ok, state}
   end
 
-  defp mount_ok({:ok, %Socket{} = socket}, _view), do: {:ok, socket}
+  defp mount_ok({:ok, %Socket{} = socket}, _view) do
+    {:ok, LiveView.clear_changed(socket)}
+  end
+
   defp mount_ok(other, view) do
     raise ArgumentError, """
     invalid result returned from #{inspect(view)}.mount/2.
@@ -212,14 +232,21 @@ defmodule Phoenix.LiveView.Server do
     |> state.view_module.handle_event(dom_id, value, socket)
     |> handle_event_result(socket, state)
   end
+
   defp handle_event_result({:noreply, %Socket{} = unchanged}, %Socket{} = unchanged, state) do
     {:reply, :noop, state}
   end
+
   defp handle_event_result({:noreply, %Socket{} = new_socket}, %Socket{} = _before, state) do
-    new_state = %{state | socket: new_socket}
-    {:reply, {:render, rerender(new_state)}, new_state}
+    {new_state, rendered} = rerender(%{state | socket: new_socket})
+    {:reply, {:render, rendered}, new_state}
   end
-  defp handle_event_result({:stop, {:redirect, opts}, %Socket{} = socket}, %Socket{} = _original_socket, state) do
+
+  defp handle_event_result(
+         {:stop, {:redirect, opts}, %Socket{} = socket},
+         %Socket{} = _original_socket,
+         state
+       ) do
     {:stop, :normal, {:redirect, opts}, %{state | socket: socket}}
   end
 
@@ -231,16 +258,19 @@ defmodule Phoenix.LiveView.Server do
   defp noreply(state, _kind, %Socket{} = socket, {:noreply, %Socket{} = socket}) do
     {:noreply, state}
   end
+
   defp noreply(state, _kind, %Socket{} = _before, {:noreply, %Socket{} = new_socket}) do
-    new_state = %{state | socket: new_socket}
-    send_channel(state, {:render, rerender(new_state)})
+    {new_state, rendered} = rerender(%{state | socket: new_socket})
+    send_channel(new_state, {:render, rendered})
 
     {:noreply, new_state}
   end
+
   defp noreply(state, _kind, _socket, {:stop, {:redirect, opts}, %Socket{} = new_socket}) do
     send_channel(state, {:redirect, opts})
     {:stop, :normal, %{state | socket: new_socket}}
   end
+
   defp noreply(_state, kind, _original_socket, result) do
     raise ArgumentError, """
     invalid noreply from #{kind} callback.
@@ -249,12 +279,26 @@ defmodule Phoenix.LiveView.Server do
     """
   end
 
-  defp rerender(%{view_module: view, socket: socket, session: session}) do
+  defp rerender(%{view_module: view, socket: socket, session: session} = state) do
     assigns = prep_assigns_for_render(socket, session)
-    Phoenix.View.render_to_iodata(__MODULE__, "template.html", %{assigns: assigns, view: view})
-  end
-  def render("template.html", %{assigns: assigns, view: view}) do
-    view.render(assigns)
+
+    case view.render(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        new_socket = LiveView.clear_changed(socket)
+        {%{state | socket: new_socket}, rendered}
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~L, or your eex template uses the .leex extension.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
+    end
   end
 
   defp send_channel(%{channel_pid: pid}, message) do
@@ -265,18 +309,19 @@ defmodule Phoenix.LiveView.Server do
     sign_token(socket.endpoint, salt(socket), %{
       id: LiveView.Socket.dom_id(socket),
       view: LiveView.Socket.view(socket),
-      session: session,
+      session: session
     })
   end
 
   defp sign_child_session(%Socket{} = parent, child_view, session) do
     id = LiveView.Socket.child_dom_id(parent, child_view)
+
     token =
       sign_token(parent.endpoint, salt(parent), %{
         id: id,
         parent_id: LiveView.Socket.dom_id(parent),
         view: child_view,
-        session: session,
+        session: session
       })
 
     {id, token}

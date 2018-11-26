@@ -6,14 +6,14 @@ defmodule Phoenix.LiveView.Channel do
 
   def join("views:" <> id, %{"session" => session_token}, socket) do
     with {:ok, session} <- verify_session(socket, session_token),
-         {:ok, pid, html} <- LiveView.Server.spawn_render(socket.endpoint, session) do
+         {:ok, pid, rendered} <- LiveView.Server.spawn_render(socket.endpoint, session) do
 
       new_socket =
         socket
         |> assign(:view_pid, pid)
         |> assign(:view_id, id)
 
-      {:ok, %{__raw__: html}, new_socket}
+      {:ok, %{rendered: serialize(rendered)}, new_socket}
     else
       {:error, {:noproc, _}} -> {:error, %{reason: "noproc"}}
       {:error, _reason} -> {:error, %{reason: :bad_token}}
@@ -28,8 +28,8 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :normal, socket}
   end
 
-  def handle_info({:render, content}, socket) do
-    push_render(socket, content)
+  def handle_info({:render, rendered}, socket) do
+    push_render(socket, rendered)
     {:noreply, socket}
   end
 
@@ -49,7 +49,7 @@ defmodule Phoenix.LiveView.Channel do
 
     case GenServer.call(socket.assigns.view_pid, {:channel_event, event, id, val}) do
       {:redirect, opts} -> push_redirect(socket, opts)
-      {:render, content} -> push_render(socket, content)
+      {:render, rendered} -> push_render(socket, rendered)
       :noop -> :noop
     end
 
@@ -60,11 +60,8 @@ defmodule Phoenix.LiveView.Channel do
   end
   defp decode(_, value), do: value
 
-  defp push_render(socket, content) when is_list(content) do
-    push(socket, "render", %{
-      id: socket.assigns.view_id,
-      __raw__: content
-    })
+  defp push_render(socket, %Phoenix.LiveView.Rendered{} = rendered) do
+    push(socket, "render", serialize_dynamic(rendered))
   end
 
   defp push_redirect(socket, opts) do
@@ -81,5 +78,38 @@ defmodule Phoenix.LiveView.Channel do
 
   defp salt(%Phoenix.Socket{endpoint: endpoint}) do
     Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
+  end
+
+  # TODO move to serializer
+  defp serialize(%LiveView.Rendered{static: static, dynamic: dynamic}) do
+    %{
+      static: static,
+      dynamic: to_map(dynamic, &serialize(&1))
+    }
+  end
+  defp serialize(nil), do: nil
+  defp serialize(iodata) do
+    IO.iodata_to_binary(iodata)
+  end
+
+  defp serialize_dynamic(%LiveView.Rendered{dynamic: dynamic}) do
+    to_map(dynamic, &serialize_dynamic(&1))
+  end
+  defp serialize_dynamic(nil), do: nil
+  defp serialize_dynamic(iodata) do
+    IO.iodata_to_binary(iodata)
+  end
+
+  defp to_map(dynamic, serializer_func) do
+    {_, map} =
+      Enum.reduce(dynamic, {0, %{}}, fn segment, {index, acc} ->
+        if value = serializer_func.(segment) do
+          {index + 1, Map.put(acc, index, value)}
+        else
+          {index + 1, acc}
+        end
+      end)
+
+    map
   end
 end

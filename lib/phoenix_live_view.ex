@@ -254,11 +254,11 @@ defmodule Phoenix.LiveView do
       @down_key 40
 
       def render(assigns) do
-      ~E/"""
+      ~E\"""
       <div id="thermostat" phx-keyup="update_temp" phx-target="document">
         Current temperature: <%= @temperature %>
       </div>
-      /"""
+      \"""
       end
 
       def handle_event("update_temp", _, @up_key, socket) do
@@ -294,6 +294,8 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()} | {:stop, reason :: term, Socket.t()}
 
   @optional_callbacks terminate: 2, mount: 2, handle_event: 4
+
+  @changed :__changed__
 
   @doc """
   Renders a live view from an originating plug request or
@@ -384,13 +386,34 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, :name, "Elixir")
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
-  def assign(%Socket{assigns: assigns} = socket, key, value) do
-    %Socket{socket | assigns: Map.put(assigns, key, value)}
+  def assign(%Socket{} = socket, key, value) do
+    assign(socket, %{key => value})
   end
 
-  def assign(%Socket{assigns: assigns} = socket, attrs)
+  def assign(%Socket{} = socket, attrs)
       when is_map(attrs) or is_list(attrs) do
-    %Socket{socket | assigns: Enum.into(attrs, assigns)}
+    attrs
+    |> Enum.into(%{})
+    |> Enum.reduce(socket, fn {key, val}, acc ->
+      case Map.fetch(acc.assigns, key) do
+        {:ok, ^val} -> acc
+        {:ok, _old_val} -> do_assign(acc, key, val)
+        :error -> do_assign(acc, key, val)
+      end
+    end)
+  end
+
+  defp do_assign(%Socket{assigns: assigns} = acc, key, val) do
+    new_changes = Map.put(assigns[@changed] || %{}, key, true)
+    new_assigns = Map.merge(assigns, %{key => val, @changed => new_changes})
+    %Socket{acc | assigns: new_assigns}
+  end
+
+  @doc """
+  Clears the changes from the socket assigns.
+  """
+  def clear_changed(%Socket{assigns: assigns} = socket) do
+    %Socket{socket | assigns: Map.delete(assigns, @changed)}
   end
 
   @doc """
@@ -405,7 +428,10 @@ defmodule Phoenix.LiveView do
       iex> update(socket, :count, &(&1 + 1))
   """
   def update(%Socket{assigns: assigns} = socket, key, func) do
-    %Socket{socket | assigns: Map.update!(assigns, key, func)}
+    case Map.fetch(assigns, key) do
+      {:ok, val} -> assign(socket, key, func.(val))
+      :error -> raise KeyError, key: key, term: assigns
+    end
   end
 
   @doc """
@@ -464,6 +490,19 @@ defmodule Phoenix.LiveView do
       def terminate(reason, state), do: {:ok, state}
       defoverridable mount: 2, terminate: 2
     end
+  end
+
+  @doc """
+  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
+
+      iex> ~L"\""
+      ...> Hello <%= "world" %>
+      ...> "\""
+      {:safe, ["Hello ", "world", "\\n"]}
+
+  """
+  defmacro sigil_L({:<<>>, _, [expr]}, []) do
+    EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
   end
 
   @impl Plug

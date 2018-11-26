@@ -56,7 +56,7 @@ connection and error class changes. This behavior may be disabled by overriding
 `.phx-loader` in your css to `display: none!important`.
 */
 
-import {Socket} from "./phoenix"
+import {Socket} from "phoenix"
 import morphdom from "morphdom"
 
 const PHX_VIEW_SELECTOR = "[data-phx-view]"
@@ -74,43 +74,67 @@ const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
 
-const Serializer = {
-  encode(msg, callback){
-    let payload = [
-      msg.join_ref, msg.ref, msg.topic, msg.event, msg.payload
-    ]
-    return callback(JSON.stringify(payload))
-  },
+let mapObj = (obj, func) => {
+  return Object.getOwnPropertyNames(obj).map(key => func(key, obj[key]))
+}
 
-  decode(encoded, callback){
-    let index = encoded.indexOf(";")
-    let jsonLen = parseInt(encoded.substring(0, index))
-    let jsonStr = encoded.substring(index + 1, index + 1 + jsonLen)
-    let rawPayloadStr = encoded.substring(index + 1 + jsonLen)
+let isObject = (obj) => {
+  return typeof(obj) === "object" && !(obj instanceof Array)
+}
 
-    let [join_ref, ref, topic, event, payload] = JSON.parse(jsonStr)
-    Serializer.mergeRawPayload(payload, rawPayloadStr)
-
-    return callback({join_ref, ref, topic, event, payload})
-  },
-
-  mergeRawPayload(payload, rawPayloadStr){
-    if(rawPayloadStr === ""){ return }
-    
-    if(payload.response && payload.status){
-      payload.response.__raw__ = rawPayloadStr
+let deepMerge = (target, source) => {
+  mapObj(source, (key, val) => {
+    if(isObject(val)){
+      if(!target[key]){ Object.assign(target, {[key]: {}}) }
+      deepMerge(target[key], val)
     } else {
-      payload.__raw__ = rawPayloadStr
+      Object.assign(target, {[key]: val})
+    }
+  })
+  return target
+}
+
+let Rendered = {
+
+  mergeDynamicUpdate(source, compressedDynamic){
+    deepMerge(source, this.decompressDynamic(compressedDynamic))
+  },
+
+  decompressDynamic(compressed){
+    let decompressed = {dynamic: {}}
+    if(isObject(compressed)){
+      mapObj(compressed, (key, val) => {
+        decompressed.dynamic[key] = this.decompressDynamic(val)
+      })
+    } else {
+      decompressed = compressed
+    }
+    return decompressed
+  },
+
+  toString(rendered){
+    let {static: statics, dynamic: dynamic} = rendered
+    let output = []
+    for(let i = 0; i < statics.length; i ++){
+      output.push(statics[i] + this.dynamicToString(dynamic[i]))
+    }
+    return output.join("")
+  },
+
+  dynamicToString(rendered){
+    if(!rendered){
+      return ""
+    } else if(rendered.dynamic){
+      return this.toString(rendered)
+    } else {
+      return rendered
     }
   }
 }
 
-
 export default class LiveSocket {
   constructor(url, opts = {}){
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
-    opts.encode = Serializer.encode
-    opts.decode = Serializer.decode
     this.url = url
     this.opts = opts
     this.views = {}
@@ -253,6 +277,8 @@ let DOM = {
 class View {
   constructor(el, liveSocket, parentView){
     this.liveSocket = liveSocket
+    this.statics = []
+    this.dynamics = []
     this.parent = parentView
     this.el = el
     this.bindingPrefix = liveSocket.getBindingPrefix()
@@ -290,12 +316,15 @@ class View {
     this.loader.style.top = `-${middle}px`
   }
   
-  update(html){
+  update(compressedDynamic){
+    console.log("update", JSON.stringify(compressedDynamic))
+    Rendered.mergeDynamicUpdate(this.rendered, compressedDynamic)
+    let html = Rendered.toString(this.rendered)
     DOM.patch(this, this.el, this.id, html)
   }
 
   bindChannel(){
-    this.channel.on("render", ({__raw__: html}) => this.update(html))
+    this.channel.on("render", (dynamic) => this.update(dynamic))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
     this.channel.on("session", ({token}) => this.joinParams.session = token)
     this.channel.onError(() => this.onError())
@@ -307,10 +336,12 @@ class View {
       .receive("error", resp => this.onJoinError(resp))
   }
 
-  onJoin({__raw__: html}){
+  onJoin({rendered}){
+    console.log("join", JSON.stringify(rendered))
+    this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
-    DOM.patch(this, this.el, this.id, html)
+    DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     if(!this.hasBoundUI){ this.bindUI() }
     this.hasBoundUI = true
   }
