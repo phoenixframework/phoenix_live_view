@@ -101,15 +101,16 @@ let Rendered = {
   },
 
   decompressDynamic(compressed){
-    let decompressed = {dynamic: {}}
-    if(isObject(compressed)){
-      mapObj(compressed, (key, val) => {
-        decompressed.dynamic[key] = this.decompressDynamic(val)
-      })
-    } else {
-      decompressed = compressed
-    }
-    return decompressed
+    return compressed
+    // let decompressed = {dynamic: {}}
+    // if(isObject(compressed)){
+    //   mapObj(compressed, (key, val) => {
+    //     decompressed.dynamic[key] = this.decompressDynamic(val)
+    //   })
+    // } else {
+    //   decompressed = compressed
+    // }
+    // return decompressed
   },
 
   toString(rendered){
@@ -319,6 +320,7 @@ class View {
   update(compressedDynamic){
     console.log("update", JSON.stringify(compressedDynamic))
     Rendered.mergeDynamicUpdate(this.rendered, compressedDynamic)
+    console.log("merged", JSON.stringify(this.rendered))
     let html = Rendered.toString(this.rendered)
     DOM.patch(this, this.el, this.id, html)
   }

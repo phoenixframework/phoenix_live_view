@@ -3,17 +3,21 @@ defmodule Phoenix.LiveView.Channel do
   use Phoenix.Channel
 
   alias Phoenix.LiveView
+  alias Phoenix.LiveView.Diff
 
   def join("views:" <> id, %{"session" => session_token}, socket) do
     with {:ok, session} <- verify_session(socket, session_token),
          {:ok, pid, rendered} <- LiveView.Server.spawn_render(socket.endpoint, session) do
 
-      new_socket =
+      {new_socket, rendered_diff} =
         socket
         |> assign(:view_pid, pid)
         |> assign(:view_id, id)
+        |> assign(:fingerprints, nil)
+        |> render_diff(rendered)
 
-      {:ok, %{rendered: serialize(rendered)}, new_socket}
+
+      {:ok, %{rendered: rendered_diff}, new_socket}
     else
       {:error, {:noproc, _}} -> {:error, %{reason: "noproc"}}
       {:error, _reason} -> {:error, %{reason: :bad_token}}
@@ -29,8 +33,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({:render, rendered}, socket) do
-    push_render(socket, rendered)
-    {:noreply, socket}
+    {:noreply, push_render(socket, rendered)}
   end
 
   def handle_info({:redirect, opts}, socket) do
@@ -48,20 +51,20 @@ defmodule Phoenix.LiveView.Channel do
     val = decode(type, raw_val)
 
     case GenServer.call(socket.assigns.view_pid, {:channel_event, event, id, val}) do
-      {:redirect, opts} -> push_redirect(socket, opts)
-      {:render, rendered} -> push_render(socket, rendered)
-      :noop -> :noop
+      {:redirect, opts} -> {:noreply, push_redirect(socket, opts)}
+      {:render, rendered} -> {:noreply, push_render(socket, rendered)}
+      :noop -> {:noreply, socket}
     end
-
-    {:noreply, socket}
   end
   defp decode("form", url_encoded) do
     Plug.Conn.Query.decode(url_encoded)
   end
   defp decode(_, value), do: value
 
-  defp push_render(socket, %Phoenix.LiveView.Rendered{} = rendered) do
-    push(socket, "render", serialize_dynamic(rendered))
+  defp push_render(socket, %LiveView.Rendered{} = rendered) do
+    {new_socket, diff} = render_diff(socket, rendered)
+    push(new_socket, "render", diff)
+    new_socket
   end
 
   defp push_redirect(socket, opts) do
@@ -69,6 +72,7 @@ defmodule Phoenix.LiveView.Channel do
       to: Keyword.fetch!(opts, :to),
       flash: sign_flash(socket, opts[:flash])
     })
+    socket
   end
 
   defp sign_flash(_socket, nil), do: nil
@@ -80,36 +84,8 @@ defmodule Phoenix.LiveView.Channel do
     Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
   end
 
-  # TODO move to serializer
-  defp serialize(%LiveView.Rendered{static: static, dynamic: dynamic}) do
-    %{
-      static: static,
-      dynamic: to_map(dynamic, &serialize(&1))
-    }
-  end
-  defp serialize(nil), do: nil
-  defp serialize(iodata) do
-    IO.iodata_to_binary(iodata)
-  end
-
-  defp serialize_dynamic(%LiveView.Rendered{dynamic: dynamic}) do
-    to_map(dynamic, &serialize_dynamic(&1))
-  end
-  defp serialize_dynamic(nil), do: nil
-  defp serialize_dynamic(iodata) do
-    IO.iodata_to_binary(iodata)
-  end
-
-  defp to_map(dynamic, serializer_func) do
-    {_, map} =
-      Enum.reduce(dynamic, {0, %{}}, fn segment, {index, acc} ->
-        if value = serializer_func.(segment) do
-          {index + 1, Map.put(acc, index, value)}
-        else
-          {index + 1, acc}
-        end
-      end)
-
-    map
+  defp render_diff(%Phoenix.Socket{} = socket, %LiveView.Rendered{} = rendered) do
+    {diff, new_prints} = Diff.render(rendered, socket.assigns.fingerprints)
+    {assign(socket, :fingerprints, new_prints), diff}
   end
 end
