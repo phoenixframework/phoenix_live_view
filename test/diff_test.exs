@@ -25,19 +25,13 @@ defmodule Phoenix.LiveView.DiffTest do
   test "full render without fingerprints" do
     {full_render, fingerprint_tree} = Diff.render(@template)
 
-    assert full_render == %{
-             dynamic: %{
+    assert full_render ==
+             %{
+               :static => ["<h2>...", "\n<span>", "</span>\n"],
                0 => "hi",
-               1 => %{
-                 dynamic: %{
-                   0 => "abc"
-                 },
-                 static: ["", "", ""]
-               },
-               3 => %{dynamic: %{0 => "efg"}, static: ["", ""]}
-             },
-             static: ["<h2>...", "\n<span>", "</span>\n"]
-           }
+               1 => %{0 => "abc", :static => ["", "", ""]},
+               3 => %{0 => "efg", :static => ["", ""]}
+             }
 
     assert fingerprint_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
   end
@@ -46,15 +40,7 @@ defmodule Phoenix.LiveView.DiffTest do
     {diffed_render, diffed_tree} =
       Diff.render(@template, {123, %{1 => {456, %{1 => {1012, %{}}}}, 3 => {789, %{}}}})
 
-    assert diffed_render ==
-             %{
-               dynamic: %{
-                 0 => "hi",
-                 3 => %{dynamic: %{0 => "efg"}},
-                 1 => %{dynamic: %{0 => "abc"}}
-               }
-             }
-
+    assert diffed_render == %{0 => "hi", 1 => %{0 => "abc"}, 3 => %{0 => "efg"}}
     assert diffed_tree == {123, %{3 => {789, %{}}, 1 => {456, %{1 => {1012, %{}}}}}}
   end
 end
