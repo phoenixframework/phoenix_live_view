@@ -1,20 +1,30 @@
 defmodule Phoenix.LiveView.DiffTest do
   use ExUnit.Case, async: true
+  import Phoenix.LiveView, only: [sigil_L: 2]
 
-  alias Phoenix.LiveView.Diff
+  alias Phoenix.LiveView.{Diff, Rendered}
 
-  @template %Phoenix.LiveView.Rendered{
+  def basic_template(assigns) do
+    ~L"""
+    <div>
+      <h2>It's <%= @time %></h2>
+      <%= @subtitle %>
+    </div>
+    """
+  end
+
+  @nested %Rendered{
     static: ["<h2>...", "\n<span>", "</span>\n"],
     dynamic: [
       "hi",
-      %Phoenix.LiveView.Rendered{
-        static: ["", "", ""],
+      %Rendered{
+        static: ["s1", "s2", "s3"],
         dynamic: ["abc"],
         fingerprint: 456
       },
       nil,
-      %Phoenix.LiveView.Rendered{
-        static: ["", ""],
+      %Rendered{
+        static: ["s1", "s2"],
         dynamic: ["efg"],
         fingerprint: 789
       }
@@ -22,25 +32,76 @@ defmodule Phoenix.LiveView.DiffTest do
     fingerprint: 123
   }
 
-  test "full render without fingerprints" do
-    {full_render, fingerprint_tree} = Diff.render(@template)
+  describe "full renders without fingerprints" do
+    test "basic template" do
+      rendered = basic_template(%{time: "10:30", subtitle: "Sunny"})
 
-    assert full_render ==
-             %{
-               :static => ["<h2>...", "\n<span>", "</span>\n"],
-               0 => "hi",
-               1 => %{0 => "abc", :static => ["", "", ""]},
-               3 => %{0 => "efg", :static => ["", ""]}
+      {full_render, fingerprint_tree} = Diff.render(rendered)
+
+      assert full_render == %{
+               0 => "10:30",
+               1 => "Sunny",
+               :static => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>\n"]
              }
 
-    assert fingerprint_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+      assert fingerprint_tree == {rendered.fingerprint, %{}}
+    end
+
+    test "nested %Renderered{}'s" do
+      {full_render, fingerprint_tree} = Diff.render(@nested)
+
+      assert full_render ==
+               %{
+                 :static => ["<h2>...", "\n<span>", "</span>\n"],
+                 0 => "hi",
+                 1 => %{0 => "abc", :static => ["s1", "s2", "s3"]},
+                 3 => %{0 => "efg", :static => ["s1", "s2"]}
+               }
+
+      assert fingerprint_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+    end
   end
 
-  test "diffed render with fingerprints" do
-    {diffed_render, diffed_tree} =
-      Diff.render(@template, {123, %{1 => {456, %{1 => {1012, %{}}}}, 3 => {789, %{}}}})
+  describe "diffed render with fingerprints" do
+    test "basic template skips statics for known fingerprints" do
+      rendered = basic_template(%{time: "10:30", subtitle: "Sunny"})
+      {full_render, prints} = Diff.render(rendered, {rendered.fingerprint, %{}})
 
-    assert diffed_render == %{0 => "hi", 1 => %{0 => "abc"}, 3 => %{0 => "efg"}}
-    assert diffed_tree == {123, %{3 => {789, %{}}, 1 => {456, %{1 => {1012, %{}}}}}}
+      assert full_render == %{0 => "10:30", 1 => "Sunny"}
+      assert prints == {rendered.fingerprint, %{}}
+    end
+
+    test "renders nested %Renderered{}'s" do
+      tree = {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+      {diffed_render, diffed_tree} = Diff.render(@nested, tree)
+
+      assert diffed_render == %{0 => "hi", 1 => %{0 => "abc"}, 3 => %{0 => "efg"}}
+      assert diffed_tree == tree
+    end
+
+    test "detects change in nested fingerprint" do
+      old_tree = {123, %{3 => {789, %{}}, 1 => {100_001, %{}}}}
+      {diffed_render, diffed_tree} = Diff.render(@nested, old_tree)
+
+      assert diffed_render ==
+               %{0 => "hi", 3 => %{0 => "efg"}, 1 => %{0 => "abc", :static => ["s1", "s2", "s3"]}}
+
+      assert diffed_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+    end
+
+    test "detects change in root fingerprint" do
+      old_tree = {99999, %{}}
+      {diffed_render, diffed_tree} = Diff.render(@nested, old_tree)
+
+      assert diffed_render ==
+               %{
+                 0 => "hi",
+                 1 => %{0 => "abc", :static => ["s1", "s2", "s3"]},
+                 3 => %{0 => "efg", :static => ["s1", "s2"]},
+                 :static => ["<h2>...", "\n<span>", "</span>\n"]
+               }
+
+      assert diffed_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+    end
   end
 end
