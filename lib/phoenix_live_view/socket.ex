@@ -13,6 +13,8 @@ defmodule Phoenix.LiveView.Socket do
             parent_id: nil,
             view: nil,
             assigns: %{},
+            changed: %{},
+            root_fingerprint: nil,
             private: %{},
             connected?: false
 
@@ -31,6 +33,20 @@ defmodule Phoenix.LiveView.Socket do
   @doc false
   def strip(%Socket{} = socket) do
     %Socket{socket | assigns: :unset}
+  end
+
+  @doc """
+  Clears the changes from the socket assigns.
+  """
+  def clear_changed(%Socket{} = socket) do
+    %Socket{socket | changed: nil}
+  end
+
+  @doc """
+  Puts the root fingerprint.
+  """
+  def put_root(%Socket{} = socket, root_fingerprint) do
+    %Socket{socket | root_fingerprint: root_fingerprint}
   end
 
   @doc """

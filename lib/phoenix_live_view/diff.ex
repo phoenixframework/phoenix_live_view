@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.Diff do
   @moduledoc false
-  alias Phoenix.LiveView.Rendered
+
+  alias Phoenix.LiveView.{Rendered, Comprehension}
 
   # entry point
   # {thing_to_be_serialized, fingerprint_tree} = traverse(result, nil)
@@ -24,8 +25,16 @@ defmodule Phoenix.LiveView.Diff do
     {Map.put(diff, :static, static), {fingerprint, children}}
   end
 
-  defp traverse(nil, _) do
-    {nil, nil}
+  defp traverse(nil, fingerprint_tree) do
+    {nil, fingerprint_tree}
+  end
+
+  defp traverse(%Comprehension{static: static, dynamics: dynamics}, :comprehension) do
+    {%{dynamics: dynamics}, :comprehension}
+  end
+
+  defp traverse(%Comprehension{static: static, dynamics: dynamics}, nil) do
+    {%{dynamics: dynamics, static: static}, :comprehension}
   end
 
   defp traverse(iodata, _) do

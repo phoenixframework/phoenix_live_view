@@ -24,7 +24,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:phoenix, github: "phoenixframework/phoenix", override: true},
       {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
-      {:live_eex, path: "~/oss/live_eex"},
+      {:live_eex, github: "josevalim/live_eex"},
       {:jason, "~> 1.0", optional: true}
     ]
   end

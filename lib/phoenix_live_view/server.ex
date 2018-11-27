@@ -197,7 +197,7 @@ defmodule Phoenix.LiveView.Server do
     {state, rendered} =
       rerender(%{
         view_module: view,
-        socket: socket,
+        socket: LiveView.Socket.clear_changed(socket),
         channel_pid: client_pid,
         session: user_session
       })
@@ -208,7 +208,7 @@ defmodule Phoenix.LiveView.Server do
   end
 
   defp mount_ok({:ok, %Socket{} = socket}, _view) do
-    {:ok, LiveView.clear_changed(socket)}
+    {:ok, socket}
   end
 
   defp mount_ok(other, view) do
@@ -283,9 +283,8 @@ defmodule Phoenix.LiveView.Server do
     assigns = prep_assigns_for_render(socket, session)
 
     case view.render(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        new_socket = LiveView.clear_changed(socket)
-        {%{state | socket: new_socket}, rendered}
+      %Phoenix.LiveView.Rendered{fingerprint: root_print} = rendered ->
+        {reset_changed(state, root_print), rendered}
 
       other ->
         raise RuntimeError, """
@@ -299,6 +298,14 @@ defmodule Phoenix.LiveView.Server do
 
         """
     end
+  end
+  defp reset_changed(%{socket: socket} = state, root_print) do
+    new_socket =
+      socket
+      |> LiveView.Socket.clear_changed()
+      |> LiveView.Socket.put_root(root_print)
+
+    %{state | socket: new_socket}
   end
 
   defp send_channel(%{channel_pid: pid}, message) do

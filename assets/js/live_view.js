@@ -74,24 +74,19 @@ const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
 
-let mapObj = (obj, func) => {
-  return Object.getOwnPropertyNames(obj).map(key => func(key, obj[key]))
-}
-
 let isObject = (obj) => {
   return typeof(obj) === "object" && !(obj instanceof Array)
 }
 
 let recursiveMerge = (target, source) => {
-  mapObj(source, (key, val) => {
-    if(isObject(val)){
-      if(!target[key]){ Object.assign(target, {[key]: {}}) }
+  for(let key in source){
+    let val = source[key]
+    if(isObject(val) && target[key]){
       recursiveMerge(target[key], val)
     } else {
-      Object.assign(target, {[key]: val})
+      target[key] = val
     }
-  })
-  return target
+  }
 }
 
 let Rendered = {
@@ -99,21 +94,40 @@ let Rendered = {
   mergeDiff(source, diff){ recursiveMerge(source, diff) },
 
   toString(rendered){
-    let {static: statics} = rendered
-    let output = []
-    for(let i = 0; i < statics.length; i ++){
-      output.push(statics[i] + this.dynamicToString(rendered[i]))
-    }
-    return output.join("")
+    let output = {buffer: ""}
+    this.toOutputBuffer(rendered, output)
+    return output.buffer
   },
 
-  dynamicToString(rendered){
-    if(!rendered){
-      return ""
-    } else if(isObject(rendered)){
-      return this.toString(rendered)
+  toOutputBuffer(rendered, output){
+    if(rendered.dynamics){ return this.comprehensionToBuffer(rendered, output) }
+    let {static: statics} = rendered
+    
+    output.buffer += statics[0]
+    for(let i = 1; i < statics.length; i++){
+      this.dynamicToBuffer(rendered[i - 1], output)
+      output.buffer += statics[i]
+    }
+  },
+
+  comprehensionToBuffer(rendered, output){
+    let {dynamics: dynamics, static: statics} = rendered
+
+    for(let d = 0; d < dynamics.length; d++){
+      let dynamic = dynamics[d]
+      output.buffer += statics[0]
+      for(let i = 1; i < statics.length; i++){
+        this.dynamicToBuffer(dynamic[i - 1], output)
+        output.buffer += statics[i]
+      }
+    }
+  },
+
+  dynamicToBuffer(rendered, output){
+    if(isObject(rendered)){
+      this.toOutputBuffer(rendered, output)
     } else {
-      return rendered
+      output.buffer += rendered
     }
   }
 }
@@ -177,8 +191,8 @@ let Browser = {
   }
 }
 
-
 let DOM = {
+
   discardError(el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
     if(!field) { return }
@@ -196,10 +210,8 @@ let DOM = {
   patch(view, container, id, html){
     let focused = document.activeElement
     let {selectionStart, selectionEnd} = focused
-    let div = document.createElement("div")
-    div.innerHTML = html
 
-    morphdom(container, div, {
+    morphdom(container, `<div>${html}</div>`, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
@@ -302,8 +314,18 @@ class View {
     this.loader.style.top = `-${middle}px`
   }
   
+  onJoin({rendered}){
+    // console.log("join", JSON.stringify(rendered))
+    this.rendered = rendered
+    this.hideLoader()
+    this.el.classList = PHX_CONNECTED_CLASS
+    DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    if(!this.hasBoundUI){ this.bindUI() }
+    this.hasBoundUI = true
+  }
+
   update(diff){
-    console.log("update", JSON.stringify(diff))
+    // console.log("update", JSON.stringify(diff))
     Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     DOM.patch(this, this.el, this.id, html)
@@ -320,16 +342,6 @@ class View {
     this.channel.join()
       .receive("ok", data => this.onJoin(data))
       .receive("error", resp => this.onJoinError(resp))
-  }
-
-  onJoin({rendered}){
-    console.log("join", JSON.stringify(rendered))
-    this.rendered = rendered
-    this.hideLoader()
-    this.el.classList = PHX_CONNECTED_CLASS
-    DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
-    if(!this.hasBoundUI){ this.bindUI() }
-    this.hasBoundUI = true
   }
 
   onJoinError(resp){

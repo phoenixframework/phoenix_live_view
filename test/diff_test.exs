@@ -13,6 +13,26 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
+  def literal_template(assigns) do
+    ~L"""
+    <div>
+      <%= @title %>
+      <%= "<div>" %>
+    </div>
+    """
+  end
+
+  def comprehension_template(assigns) do
+    ~L"""
+    <div>
+      <h1><%= @title %></h1>
+      <%= for name <- @names do %>
+        <br/><%= name %>
+      <% end %>
+    </div>
+    """
+  end
+
   @nested %Rendered{
     static: ["<h2>...", "\n<span>", "</span>\n"],
     dynamic: [
@@ -35,7 +55,6 @@ defmodule Phoenix.LiveView.DiffTest do
   describe "full renders without fingerprints" do
     test "basic template" do
       rendered = basic_template(%{time: "10:30", subtitle: "Sunny"})
-
       {full_render, fingerprint_tree} = Diff.render(rendered)
 
       assert full_render == %{
@@ -43,6 +62,16 @@ defmodule Phoenix.LiveView.DiffTest do
                1 => "Sunny",
                :static => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>\n"]
              }
+
+      assert fingerprint_tree == {rendered.fingerprint, %{}}
+    end
+
+    test "template with literal" do
+      rendered = literal_template(%{title: "foo"})
+      {full_render, fingerprint_tree} = Diff.render(rendered)
+
+      assert full_render ==
+               %{0 => "foo", 1 => "&lt;div&gt;", :static => ["<div>\n  ", "\n  ", "\n</div>\n"]}
 
       assert fingerprint_tree == {rendered.fingerprint, %{}}
     end
@@ -59,6 +88,23 @@ defmodule Phoenix.LiveView.DiffTest do
                }
 
       assert fingerprint_tree == {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
+    end
+
+    test "comprehensions" do
+      rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
+      {full_render, fingerprint_tree} = Diff.render(rendered)
+
+      assert full_render ==
+               %{
+                 0 => "Users",
+                 :static => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>\n"],
+                 1 => %{
+                   static: ["\n    <br/>", "\n  "],
+                   dynamics: [["phoenix"], ["elixir"]]
+                 }
+               }
+
+      assert fingerprint_tree == {rendered.fingerprint, %{1 => :comprehension}}
     end
   end
 

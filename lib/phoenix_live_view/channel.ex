@@ -16,7 +16,6 @@ defmodule Phoenix.LiveView.Channel do
         |> assign(:fingerprints, nil)
         |> render_diff(rendered)
 
-
       {:ok, %{rendered: rendered_diff}, new_socket}
     else
       {:error, {:noproc, _}} -> {:error, %{reason: "noproc"}}

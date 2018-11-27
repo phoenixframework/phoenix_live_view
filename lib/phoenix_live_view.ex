@@ -295,8 +295,6 @@ defmodule Phoenix.LiveView do
 
   @optional_callbacks terminate: 2, mount: 2, handle_event: 4
 
-  @changed :__changed__
-
   @doc """
   Renders a live view from an originating plug request or
   within a parent live view.
@@ -403,17 +401,10 @@ defmodule Phoenix.LiveView do
     end)
   end
 
-  defp do_assign(%Socket{assigns: assigns} = acc, key, val) do
-    new_changes = Map.put(assigns[@changed] || %{}, key, true)
-    new_assigns = Map.merge(assigns, %{key => val, @changed => new_changes})
-    %Socket{acc | assigns: new_assigns}
-  end
-
-  @doc """
-  Clears the changes from the socket assigns.
-  """
-  def clear_changed(%Socket{assigns: assigns} = socket) do
-    %Socket{socket | assigns: Map.delete(assigns, @changed)}
+  defp do_assign(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
+    new_changed = Map.put(changed || %{}, key, true)
+    new_assigns = Map.put(assigns, key, val)
+    %Socket{acc | assigns: new_assigns, changed: new_changed}
   end
 
   @doc """
