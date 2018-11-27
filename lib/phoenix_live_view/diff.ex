@@ -16,12 +16,12 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(%Rendered{fingerprint: fingerprint, dynamic: dynamic}, {fingerprint, children}) do
     {_counter, diff, children} = traverse_dynamic(dynamic, children)
-    {%{dynamic: diff}, {fingerprint, children}}
+    {diff, {fingerprint, children}}
   end
 
   defp traverse(%Rendered{fingerprint: fingerprint, static: static, dynamic: dynamic}, _) do
     {_counter, diff, children} = traverse_dynamic(dynamic, %{})
-    {%{static: static, dynamic: diff}, {fingerprint, children}}
+    {Map.put(diff, :static, static), {fingerprint, children}}
   end
 
   defp traverse(nil, _) do

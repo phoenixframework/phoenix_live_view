@@ -82,11 +82,11 @@ let isObject = (obj) => {
   return typeof(obj) === "object" && !(obj instanceof Array)
 }
 
-let deepMerge = (target, source) => {
+let recursiveMerge = (target, source) => {
   mapObj(source, (key, val) => {
     if(isObject(val)){
       if(!target[key]){ Object.assign(target, {[key]: {}}) }
-      deepMerge(target[key], val)
+      recursiveMerge(target[key], val)
     } else {
       Object.assign(target, {[key]: val})
     }
@@ -96,28 +96,13 @@ let deepMerge = (target, source) => {
 
 let Rendered = {
 
-  mergeDynamicUpdate(source, compressedDynamic){
-    deepMerge(source, this.decompressDynamic(compressedDynamic))
-  },
-
-  decompressDynamic(compressed){
-    return compressed
-    // let decompressed = {dynamic: {}}
-    // if(isObject(compressed)){
-    //   mapObj(compressed, (key, val) => {
-    //     decompressed.dynamic[key] = this.decompressDynamic(val)
-    //   })
-    // } else {
-    //   decompressed = compressed
-    // }
-    // return decompressed
-  },
+  mergeDiff(source, diff){ recursiveMerge(source, diff) },
 
   toString(rendered){
-    let {static: statics, dynamic: dynamic} = rendered
+    let {static: statics} = rendered
     let output = []
     for(let i = 0; i < statics.length; i ++){
-      output.push(statics[i] + this.dynamicToString(dynamic[i]))
+      output.push(statics[i] + this.dynamicToString(rendered[i]))
     }
     return output.join("")
   },
@@ -125,7 +110,7 @@ let Rendered = {
   dynamicToString(rendered){
     if(!rendered){
       return ""
-    } else if(rendered.dynamic){
+    } else if(isObject(rendered)){
       return this.toString(rendered)
     } else {
       return rendered
@@ -317,16 +302,15 @@ class View {
     this.loader.style.top = `-${middle}px`
   }
   
-  update(compressedDynamic){
-    console.log("update", JSON.stringify(compressedDynamic))
-    Rendered.mergeDynamicUpdate(this.rendered, compressedDynamic)
-    console.log("merged", JSON.stringify(this.rendered))
+  update(diff){
+    console.log("update", JSON.stringify(diff))
+    Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     DOM.patch(this, this.el, this.id, html)
   }
 
   bindChannel(){
-    this.channel.on("render", (dynamic) => this.update(dynamic))
+    this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
     this.channel.on("session", ({token}) => this.joinParams.session = token)
     this.channel.onError(() => this.onError())
