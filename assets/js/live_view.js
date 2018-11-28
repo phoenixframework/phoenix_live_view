@@ -138,12 +138,13 @@ export default class LiveSocket {
     this.url = url
     this.opts = opts
     this.views = {}
+    this.activeElement = null
     this.socket = new Socket(url, opts)
   }
 
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
-      joinViewChannels()
+      this.joinViewChannels()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
         this.joinViewChannels()
@@ -174,6 +175,24 @@ export default class LiveSocket {
   }
 
   getBindingPrefix(){ return this.bindingPrefix }
+
+  setActiveElement(target){
+    if(this.activeElement === target){ return }
+    this.activeElement = target
+    let cancel = () => {
+      if(target === this.activeElement){ this.activeElement = null }
+    }
+    target.addEventListener("mouseup", cancel)
+    target.addEventListener("touchend", cancel)
+  }
+
+  getActiveElement(){
+    if(document.activeElement === document.body){
+      return this.activeElement || document.activeElement
+    } else {
+      return document.activeElement
+    }
+  }
 }
 
 let Browser = {
@@ -208,8 +227,13 @@ let DOM = {
   },
 
   patch(view, container, id, html){
-    let focused = document.activeElement
-    let {selectionStart, selectionEnd} = focused
+    let focused = view.liveSocket.getActiveElement()
+    let selectionStart = null
+    let selectionEnd = null
+    if(DOM.isTextualInput(focused)){
+      selectionStart = focused.selectionStart
+      selectionEnd = focused.selectionEnd
+    }
 
     morphdom(container, `<div>${html}</div>`, {
       childrenOnly: true,
@@ -440,7 +464,11 @@ class View {
     this.eachChild(`form[${change}] input`, input => {
       let phxEvent = input.form.getAttribute(change)
       this.onInput(input, e => {
-        if(DOM.isTextualInput(input)){ input.setAttribute(PHX_HAS_FOCUSED, true) }
+        if(DOM.isTextualInput(input)){
+          input.setAttribute(PHX_HAS_FOCUSED, true)
+        } else {
+          this.liveSocket.setActiveElement(e.target)
+        }
         this.pushInput(input, e, phxEvent)
       })
     })
