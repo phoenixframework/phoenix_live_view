@@ -22,9 +22,8 @@ defmodule Phoenix.LiveView.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:phoenix, github: "phoenixframework/phoenix", override: true},
-      {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
-      {:live_eex, github: "josevalim/live_eex"},
+      {:phoenix, "~> 1.4.1-dev", github: "phoenixframework/phoenix", branch: "v1.4"},
+      {:phoenix_html, "~> 2.13", github: "phoenixframework/phoenix_html"},
       {:jason, "~> 1.0", optional: true}
     ]
   end
