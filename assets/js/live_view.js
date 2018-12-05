@@ -271,6 +271,7 @@ let DOM = {
         DOM.discardError(toEl)
 
         if(fromEl === focused){
+          DOM.mergeInputs(fromEl, toEl)
           return false
         } else {
           return true
@@ -282,9 +283,17 @@ let DOM = {
     document.dispatchEvent(new Event("phx:update"))
   },
 
+  mergeInputs(target, source){
+    source.getAttributeNames().forEach(name => {
+      let value = source.getAttribute(name)
+      target.setAttribute(name, value)
+    })
+    target.readOnly = source.readOnly
+  },
+
   restoreFocus(focused, selectionStart, selectionEnd){
     if(!DOM.isTextualInput(focused)){ return }
-    if(focused.value === ""){ focused.blur()}
+    if(focused.value === "" || focused.readOnly){ focused.blur()}
     focused.focus()
     if(focused.setSelectionRange && focused.type === "text" || focused.type === "textarea"){
       focused.setSelectionRange(selectionStart, selectionEnd)
@@ -303,6 +312,7 @@ class View {
     this.dynamics = []
     this.parent = parentView
     this.el = el
+    this.prevKey = null
     this.bindingPrefix = liveSocket.getBindingPrefix()
     this.loader = this.el.nextElementSibling
     this.id = this.el.id
@@ -395,11 +405,13 @@ class View {
   }
 
   pushKey(keyElement, kind, event, phxEvent){
+    if(this.prevKey === event.key){ return }
+    this.prevKey = event.key
     this.channel.push("event", {
       type: `key${kind}`,
       event: phxEvent,
       id: event.target.id,
-      value: keyElement.value || event.keyCode
+      value: keyElement.value || event.key
     })
   }
 
@@ -413,11 +425,11 @@ class View {
   }
   
   pushFormSubmit(formEl, event, phxEvent){
-    event.target.disabled = true
+    if(event){ event.target.disabled = true }
     this.channel.push("event", {
       type: "form",
       event: phxEvent,
-      id: event.target.id,
+      id: event && event.target.id || null,
       value: this.serializeForm(formEl)
     })
   }
@@ -441,54 +453,80 @@ class View {
   }
 
   bindClick(el){
-    let phxEvent = el.getAttribute(this.binding("click"))
-    if(phxEvent && !el.getAttribute(PHX_BOUND) && this.ownsElement(el)){
-      el.setAttribute(PHX_BOUND, true)
+    this.bindOwnAddedNode(el, el, this.binding("click"), phxEvent => {
       el.addEventListener("click", e => this.pushClick(el, e, phxEvent))
-    } 
+    })
   }
 
   bindKey(el, kind){
     let event = `key${kind}`
-    let phxEvent = el.getAttribute(this.binding(event))
-    if(phxEvent){
+    this.bindOwnAddedNode(el, el, this.binding(event), (phxEvent) => {
       let phxTarget = this.target(el)
       phxTarget.addEventListener(event, e => {
         this.pushKey(el, kind, e, phxEvent)
       })
-    }
+    })
   }
 
   bindForms(){
     let change = this.binding("change")
     this.eachChild(`form[${change}] input`, input => {
-      let phxEvent = input.form.getAttribute(change)
-      this.onInput(input, e => {
-        if(DOM.isTextualInput(input)){
-          input.setAttribute(PHX_HAS_FOCUSED, true)
-        } else {
-          this.liveSocket.setActiveElement(e.target)
-        }
-        this.pushInput(input, e, phxEvent)
-      })
+      this.bindChange(input)
     })
 
     let submit = this.binding("submit")
     this.eachChild(`form[${submit}]`, form => {
-      let phxEvent = form.getAttribute(submit)
-      form.addEventListener("submit", e => {
-        e.preventDefault()
-        form.setAttribute(PHX_HAS_SUBMITTED, "true")
-        this.pushFormSubmit(form, e, phxEvent)
-      })
+      this.bindSubmit(form)
     })
   }
 
-  maybeBindAddedNode(el){ if(!el.getAttribute){ return }
+  bindChange(input){
+    this.onInput(input, (phxEvent, e) => {
+      if(DOM.isTextualInput(input)){
+        input.setAttribute(PHX_HAS_FOCUSED, true)
+      } else {
+        this.liveSocket.setActiveElement(e.target)
+      }
+      this.pushInput(input, e, phxEvent)
+    })
+  }
+
+  bindSubmit(form){
+    this.bindOwnAddedNode(form, form, this.binding("submit"), phxEvent => {
+      form.addEventListener("submit", e => {
+        e.preventDefault()
+        this.submitForm(form, phxEvent, e)
+      })
+      this.scheduleSubmit(form, phxEvent)
+    })
+  }
+
+  submitForm(form, phxEvent, e){
+    form.setAttribute(PHX_HAS_SUBMITTED, "true")
+    form.querySelectorAll("input").forEach(input => input.readOnly = true)
+    this.pushFormSubmit(form, e, phxEvent)
+  }
+
+  scheduleSubmit(form, phxEvent){
+    let everyMs = parseInt(form.getAttribute(this.binding("submit-every")))
+    if(everyMs && this.el.contains(form)){
+      setTimeout(() => {
+        this.submitForm(form, phxEvent)
+        this.scheduleSubmit(form, phxEvent)
+      }, everyMs)
+    }
+  }
+
+  maybeBindAddedNode(el){
+    if(el.getAttribute && !this.ownsElement(el)) { return }
+
+    this.bindSubmit(el)
+    this.bindChange(el)
     this.bindClick(el)
     this.bindKey(el, "up")
     this.bindKey(el, "down")
     this.bindKey(el, "press")
+
   }
 
   binding(kind){ return `${this.bindingPrefix}${kind}` }
@@ -499,9 +537,22 @@ class View {
    return((new URLSearchParams(new FormData(form))).toString())
   }
 
+  bindOwnAddedNode(el, targetEl, event, callback){
+    if(targetEl && !targetEl.getAttribute){ return }
+    let phxEvent = targetEl.getAttribute(event)
+
+    if(phxEvent && !el.getAttribute(PHX_BOUND) && this.ownsElement(el)){
+      el.setAttribute(PHX_BOUND, true)
+      callback(phxEvent)
+    }
+  }
+
   onInput(input, callback){
-    let event = input.type === "radio" ? "change" : "input"
-    input.addEventListener(event, callback)
+    if(!input.form){ return }
+    this.bindOwnAddedNode(input, input.form, this.binding("change"), phxEvent => {
+      let event = input.type === "radio" ? "change" : "input"
+      input.addEventListener(event, e => callback(phxEvent, e))
+    })
   }
 
   target(el){

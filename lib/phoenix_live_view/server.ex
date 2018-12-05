@@ -227,9 +227,9 @@ defmodule Phoenix.LiveView.Server do
     noreply(state, :handle_info, socket, state.view_module.handle_info(msg, socket))
   end
 
-  def handle_call({:channel_event, event, dom_id, value}, _, %{socket: socket} = state) do
+  def handle_call({:channel_event, event, _dom_id, value}, _, %{socket: socket} = state) do
     event
-    |> state.view_module.handle_event(dom_id, value, socket)
+    |> state.view_module.handle_event(value, socket)
     |> handle_event_result(socket, state)
   end
 

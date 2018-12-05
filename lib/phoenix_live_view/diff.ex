@@ -29,19 +29,19 @@ defmodule Phoenix.LiveView.Diff do
     {nil, fingerprint_tree}
   end
 
-  defp traverse(%Comprehension{static: static, dynamics: dynamics}, :comprehension) do
-    {%{dynamics: dynamics}, :comprehension}
+  defp traverse(%Comprehension{dynamics: dynamics}, :comprehension) do
+    {%{dynamics: dynamics_to_iodata(dynamics)}, :comprehension}
   end
 
   defp traverse(%Comprehension{static: static, dynamics: dynamics}, nil) do
-    {%{dynamics: dynamics, static: static}, :comprehension}
+    {%{dynamics: dynamics_to_iodata(dynamics), static: static}, :comprehension}
   end
 
   defp traverse(iodata, _) do
     {IO.iodata_to_binary(iodata), nil}
   end
 
-  defp traverse_dynamic(dynamic, children)  do
+  defp traverse_dynamic(dynamic, children) do
     Enum.reduce(dynamic, {0, %{}, children}, fn entry, {counter, diff, children} ->
       {serialized, child_fingerprint} = traverse(entry, Map.get(children, counter))
 
@@ -60,6 +60,12 @@ defmodule Phoenix.LiveView.Diff do
         end
 
       {counter + 1, diff, children}
+    end)
+  end
+
+  defp dynamics_to_iodata(dynamics) do
+    Enum.map(dynamics, fn list ->
+      Enum.map(list, fn iodata -> IO.iodata_to_binary(iodata) end)
     end)
   end
 end
