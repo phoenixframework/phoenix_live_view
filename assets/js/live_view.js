@@ -5,7 +5,7 @@ Phoenix LiveView Javascript Client
 
 ## Usage
 
-Instantiate a single LiveSocket instances to enable LiveView
+Instantiate a single LiveSocket instance to enable LiveView
 client/server interaction, for example:
 
     import LiveSocket from "live_view"
