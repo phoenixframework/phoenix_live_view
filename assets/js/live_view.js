@@ -270,7 +270,7 @@ let DOM = {
         }
         DOM.discardError(toEl)
 
-        if(fromEl === focused){
+        if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
           return false
         } else {
@@ -519,11 +519,11 @@ class View {
   }
 
   maybeBindAddedNode(el){
-    if(el.getAttribute && !this.ownsElement(el)) { return }
+    if(!el.getAttribute || !this.ownsElement(el)) { return }
 
+    this.bindClick(el)
     this.bindSubmit(el)
     this.bindChange(el)
-    this.bindClick(el)
     this.bindKey(el, "up")
     this.bindKey(el, "down")
     this.bindKey(el, "press")
