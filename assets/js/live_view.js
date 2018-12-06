@@ -5,7 +5,7 @@ Phoenix LiveView Javascript Client
 
 ## Usage
 
-Instantiate a single LiveSocket instance to enable LiveView
+Instantiate a single LiveSocket instances to enable LiveView
 client/server interaction, for example:
 
     import LiveSocket from "live_view"
@@ -139,6 +139,7 @@ export default class LiveSocket {
     this.opts = opts
     this.views = {}
     this.activeElement = null
+    this.prevActive = null
     this.socket = new Socket(url, opts)
   }
 
@@ -193,6 +194,17 @@ export default class LiveSocket {
       return document.activeElement
     }
   }
+
+  restorePreviouslyActiveFocus(){
+    if(this.prevActive && this.prevActive !== document.body){
+      this.prevActive.focus()
+    }
+  }
+
+  blurActiveElement(){
+    this.prevActive = this.getActiveElement()
+    if(this.prevActive !== document.body){ this.prevActive.blur() }
+  }
 }
 
 let Browser = {
@@ -228,6 +240,7 @@ let DOM = {
 
   patch(view, container, id, html){
     let focused = view.liveSocket.getActiveElement()
+    view.liveSocket.restorePreviouslyActiveFocus()
     let selectionStart = null
     let selectionEnd = null
     if(DOM.isTextualInput(focused)){
@@ -462,7 +475,6 @@ class View {
     let event = `key${kind}`
     this.bindOwnAddedNode(el, el, this.binding(event), (phxEvent) => {
       let phxTarget = this.target(el)
-      phxTarget.addEventListener("keyup", () => this.prevKey = null)
       phxTarget.addEventListener(event, e => {
         this.pushKey(el, kind, e, phxEvent)
       })
@@ -505,6 +517,7 @@ class View {
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
     form.querySelectorAll("input").forEach(input => input.readOnly = true)
+    this.liveSocket.blurActiveElement()
     this.pushFormSubmit(form, e, phxEvent)
   }
 
@@ -569,4 +582,3 @@ class View {
     }
   }
 }
-
