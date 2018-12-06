@@ -462,6 +462,7 @@ class View {
     let event = `key${kind}`
     this.bindOwnAddedNode(el, el, this.binding(event), (phxEvent) => {
       let phxTarget = this.target(el)
+      phxTarget.addEventListener("keyup", () => this.prevKey = null)
       phxTarget.addEventListener(event, e => {
         this.pushKey(el, kind, e, phxEvent)
       })
