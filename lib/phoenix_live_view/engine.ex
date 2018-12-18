@@ -664,11 +664,11 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   def fetch_assign!(assigns, key) do
-    case Access.fetch(assigns, key) do
-      {:ok, val} ->
+    case assigns do
+      %{^key => val} ->
         val
 
-      :error ->
+      %{} ->
         raise ArgumentError, """
         assign @#{key} not available in eex template.
 
