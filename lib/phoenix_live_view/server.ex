@@ -31,7 +31,7 @@ defmodule Phoenix.LiveView.Server do
 
   defp start_dynamic_child(opts) do
     DynamicSupervisor.start_child(
-      DemoWeb.DynamicSupervisor,
+      LiveView.DynamicSupervisor,
       Supervisor.child_spec({Phoenix.LiveView.Server, opts}, restart: :temporary)
     )
   end
