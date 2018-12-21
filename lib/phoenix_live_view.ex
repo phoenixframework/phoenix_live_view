@@ -225,7 +225,7 @@ defmodule Phoenix.LiveView do
 
   Likewise for `phx-submit` bindings, the save callback is invoked and
   persistence is attempted. On success, `Phoenix.LiveView.redirect/2` is called,
-  otherwise the socket assigns are updated with the errored chagneset to be
+  otherwise the socket assigns are updated with the errored changeset to be
   re-rerendered for the client.
 
   *Note*: For proper form error tag updates, the error tag must be specify which
