@@ -486,6 +486,9 @@ class View {
     this.eachChild(`form[${change}] input`, input => {
       this.bindChange(input)
     })
+    this.eachChild(`form[${change}] textarea`, textarea => {
+      this.bindChange(textarea)
+    })
 
     let submit = this.binding("submit")
     this.eachChild(`form[${submit}]`, form => {
