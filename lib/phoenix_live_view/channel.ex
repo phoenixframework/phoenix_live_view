@@ -8,7 +8,6 @@ defmodule Phoenix.LiveView.Channel do
   def join("views:" <> id, %{"session" => session_token}, socket) do
     with {:ok, session} <- verify_session(socket, session_token),
          {:ok, pid, rendered} <- LiveView.Server.spawn_render(socket.endpoint, session) do
-
       {new_socket, rendered_diff} =
         socket
         |> assign(:view_pid, pid)
@@ -24,7 +23,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp verify_session(socket, session_token) do
-    LiveView.Server.verify_token(socket, salt(socket), session_token, max_age: 1209600)
+    LiveView.Server.verify_token(socket, salt(socket), session_token, max_age: 1_209_600)
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, %{assigns: %{view_pid: pid}} = socket) do
@@ -55,9 +54,11 @@ defmodule Phoenix.LiveView.Channel do
       :noop -> {:noreply, socket}
     end
   end
+
   defp decode("form", url_encoded) do
     Plug.Conn.Query.decode(url_encoded)
   end
+
   defp decode(_, value), do: value
 
   defp push_render(socket, %LiveView.Rendered{} = rendered) do
@@ -71,10 +72,12 @@ defmodule Phoenix.LiveView.Channel do
       to: Keyword.fetch!(opts, :to),
       flash: sign_flash(socket, opts[:flash])
     })
+
     socket
   end
 
   defp sign_flash(_socket, nil), do: nil
+
   defp sign_flash(socket, %{} = flash) do
     LiveView.Flash.sign_token(socket.endpoint, salt(socket), flash)
   end

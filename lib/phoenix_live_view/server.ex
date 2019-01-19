@@ -299,6 +299,7 @@ defmodule Phoenix.LiveView.Server do
         """
     end
   end
+
   defp reset_changed(%{socket: socket} = state, root_print) do
     new_socket =
       socket

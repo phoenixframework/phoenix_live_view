@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.Socket do
             private: %{},
             connected?: false
 
-  channel "views:*", Phoenix.LiveView.Channel
+  channel("views:*", Phoenix.LiveView.Channel)
 
   @doc false
   @impl Phoenix.Socket
