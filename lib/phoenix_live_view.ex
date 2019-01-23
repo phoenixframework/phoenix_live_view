@@ -285,7 +285,7 @@ defmodule Phoenix.LiveView do
   @type from :: binary
 
   @callback mount(Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
-  @callback render(Socket.assigns()) :: binary | list
+  @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
   @callback terminate(
               reason :: :normal | :shutdown | {:shutdown, :left | :closed | term},
               Socket.t()
