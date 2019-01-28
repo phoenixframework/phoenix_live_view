@@ -340,7 +340,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp do_live_render(%Socket{} = parent, view, opts) do
-    LiveView.Server.nested_static_render(parent, view, opts)
+    LiveView.View.nested_static_render(parent, view, opts)
   end
 
   @doc """
@@ -514,6 +514,6 @@ defmodule Phoenix.LiveView do
 
     conn
     |> Phoenix.Controller.endpoint_module()
-    |> LiveView.Server.static_render(root_view, opts)
+    |> LiveView.View.static_render(root_view, opts)
   end
 end
