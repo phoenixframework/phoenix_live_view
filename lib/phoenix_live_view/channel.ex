@@ -8,18 +8,18 @@ defmodule Phoenix.LiveView.Channel do
 
   alias Phoenix.Socket.Message
 
-  def start_link({auth_payload, from, socket}) do
-    GenServer.start_link(__MODULE__, {auth_payload, from, socket})
+  def start_link({auth_payload, from, phx_socket}) do
+    GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket})
   end
 
-  def init({%{"session" => session_token}, from, socket}) do
-    case View.verify_session(socket.endpoint, session_token) do
+  def init({%{"session" => session_token}, from, phx_socket}) do
+    case View.verify_session(phx_socket.endpoint, session_token) do
       {:ok, %{id: id, view: view, session: user_session}} ->
-        verified_init(view, id, user_session, from, socket)
+        verified_init(view, id, user_session, from, phx_socket)
 
       {:error, reason} ->
-        log_mount(socket, fn ->
-          "Mounting #{socket.topic} failed while verifying session with: #{inspect(reason)}"
+        log_mount(phx_socket, fn ->
+          "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
         end)
 
         GenServer.reply(from, %{reason: "badsession"})
@@ -27,8 +27,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def init({%{}, from, socket}) do
-    log_mount(socket, fn -> "Mounting #{socket.topic} failed because no session was provided" end)
+  def init({%{}, from, phx_socket}) do
+    log_mount(phx_socket, fn -> "Mounting #{phx_socket.topic} failed because no session was provided" end)
     GenServer.reply(from, %{reason: "nosession"})
     :ignore
   end

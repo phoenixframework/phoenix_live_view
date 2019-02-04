@@ -305,6 +305,7 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the live view
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
+    * `:caller` - the optional pid to be notified of lifecycle events
 
   ## Examples
 
@@ -328,8 +329,8 @@ defmodule Phoenix.LiveView do
 
   """
   def live_render(conn_or_socket, view, opts \\ []) do
-    session = opts[:session] || %{}
-    do_live_render(conn_or_socket, view, session: session)
+    opts = Keyword.put_new(opts, :session, %{})
+    do_live_render(conn_or_socket, view, opts)
   end
 
   defp do_live_render(%Plug.Conn{} = conn, view, opts) do
