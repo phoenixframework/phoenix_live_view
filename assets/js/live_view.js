@@ -73,9 +73,14 @@ const PHX_SESSION = "data-phx-session"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
+const PUSH_TIMEOUT = 20000
 
 let isObject = (obj) => {
   return typeof(obj) === "object" && !(obj instanceof Array)
+}
+
+let isEmpty = (obj) => {
+  return Object.keys(obj).length === 0
 }
 
 let recursiveMerge = (target, source) => {
@@ -372,6 +377,7 @@ class View {
   }
 
   update(diff){
+    if(isEmpty(diff)){ return }
     // console.log("update", JSON.stringify(diff))
     Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
@@ -406,10 +412,15 @@ class View {
     this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
   }
 
+  pushWithReply(event, payload){
+    this.channel.push(event, payload, PUSH_TIMEOUT)
+      .receive("ok", diff => this.update(diff))
+  }
+
   pushClick(clickedEl, event, phxEvent){
     event.preventDefault()
     let val = clickedEl.getAttribute(this.binding("value")) || clickedEl.value || ""
-    this.channel.push("event", {
+    this.pushWithReply("event", {
       type: "click",
       event: phxEvent,
       id: clickedEl.id,
@@ -420,7 +431,7 @@ class View {
   pushKey(keyElement, kind, event, phxEvent){
     if(this.prevKey === event.key){ return }
     this.prevKey = event.key
-    this.channel.push("event", {
+    this.pushWithReply("event", {
       type: `key${kind}`,
       event: phxEvent,
       id: event.target.id,
@@ -429,7 +440,7 @@ class View {
   }
 
   pushInput(inputEl, event, phxEvent){
-    this.channel.push("event", {
+    this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       id: event.target.id,
@@ -439,7 +450,7 @@ class View {
   
   pushFormSubmit(formEl, event, phxEvent){
     if(event){ event.target.disabled = true }
-    this.channel.push("event", {
+    this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       id: event && event.target.id || null,

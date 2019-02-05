@@ -40,7 +40,8 @@ defmodule Phoenix.LiveView.Channel do
       Socket.build_socket(phx_socket.endpoint, %{
         connected?: true,
         view: view,
-        id: id
+        id: id,
+        caller: phx_socket.private[:phoenix_live_view_caller]
       })
 
     case wrap_mount(view.mount(user_session, lv_socket)) do
@@ -93,11 +94,15 @@ defmodule Phoenix.LiveView.Channel do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode(type, raw_val)
     result = view_module(state).handle_event(event, val, state.socket)
-    handle_result(state, :event, state.socket, result)
+    handle_result(state, {:event, msg.ref}, state.socket, result)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
-    handle_result(state, :handle_info, socket, view_module(state).handle_info(msg, socket))
+    handle_result(state, :info, socket, view_module(state).handle_info(msg, socket))
+  end
+
+  def handle_call(msg, from, %{socket: socket} = state) do
+    handle_result(state, :call, socket, view_module(state).handle_call(msg, from, socket))
   end
 
   @doc false
@@ -122,13 +127,24 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  defp handle_result(state, {:event, ref}, %Socket{} = socket, {:noreply, %Socket{} = socket}) do
+    {:noreply, ack_render(state, ref)}
+  end
+
+  defp handle_result(state, :call, %Socket{} = socket, {:reply, reply, %Socket{} = socket}) do
+    {:reply, reply, state}
+  end
   defp handle_result(state, _kind, %Socket{} = socket, {:noreply, %Socket{} = socket}) do
     {:noreply, state}
   end
 
-  defp handle_result(state, _kind, %Socket{} = _before, {:noreply, %Socket{} = new_socket}) do
+  defp handle_result(state, :call, %Socket{} = _before, {:reply, reply, %Socket{} = new_socket}) do
     {new_state, rendered} = rerender(%{state | socket: new_socket})
-    {:noreply, push_render(new_state, rendered)}
+    {:reply, reply, push_render(new_state, :call, rendered)}
+  end
+  defp handle_result(state, kind, %Socket{} = _before, {:noreply, %Socket{} = new_socket}) do
+    {new_state, rendered} = rerender(%{state | socket: new_socket})
+    {:noreply, push_render(new_state, kind, rendered)}
   end
 
   defp handle_result(state, _kind, _socket, {:stop, {:redirect, opts}, %Socket{} = new_socket}) do
@@ -151,7 +167,18 @@ defmodule Phoenix.LiveView.Channel do
 
   defp decode(_, value), do: value
 
-  defp push_render(state, %LiveView.Rendered{} = rendered) do
+  defp ack_render(state, ref) do
+    reply(state, ref, :ok, %{})
+    state
+  end
+
+  defp push_render(state, {:event, ref}, %LiveView.Rendered{} = rendered) do
+    {new_state, diff} = render_diff(state, rendered)
+    reply(state, ref, :ok, diff)
+    new_state
+  end
+
+  defp push_render(state, kind, %LiveView.Rendered{} = rendered) when kind in [:info, :call] do
     {new_state, diff} = render_diff(state, rendered)
     push(new_state, "render", diff)
     new_state

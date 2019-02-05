@@ -91,8 +91,10 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {:ok, socket, signed_session} = static_mount(endpoint, view, session)
-    send_caller(opts[:caller], {:static_mount, signed_session})
+    caller = opts[:caller]
+
+    {:ok, socket, signed_session} = static_mount(endpoint, view, session, caller)
+    send_caller(socket, {:mount_disconnected, signed_session})
 
     ~E"""
     <div id="<%= LiveView.Socket.dom_id(socket) %>"
@@ -116,18 +118,17 @@ defmodule Phoenix.LiveView.View do
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    caller = opts[:caller]
 
     if Socket.connected?(parent) do
-      connected_static_render(parent, view, session, caller)
+      connected_static_render(parent, view, session)
     else
-      disconnected_static_render(parent, view, session, caller)
+      disconnected_static_render(parent, view, session)
     end
   end
 
-  defp disconnected_static_render(parent, view, session, caller) do
+  defp disconnected_static_render(parent, view, session) do
     {:ok, socket, signed_session} = static_mount(parent, view, session)
-    send_caller(caller, {:nested_static_mount, signed_session})
+    send_caller(socket, {:nested_disconnected_mount, view, signed_session})
 
     ~E"""
     <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
@@ -141,9 +142,9 @@ defmodule Phoenix.LiveView.View do
     """
   end
 
-  defp connected_static_render(parent, view, session, caller) do
+  defp connected_static_render(parent, view, session) do
     {child_id, signed_session} = sign_child_session(parent, view, session)
-    send_caller(caller, {:nested_mount, signed_session})
+    send_caller(parent, {:nested_mount, view, signed_session})
 
     ~E"""
     <div conn id="<%= child_id %>"
@@ -162,9 +163,9 @@ defmodule Phoenix.LiveView.View do
     |> do_static_mount(view, session)
   end
 
-  defp static_mount(endpoint, view, session) do
+  defp static_mount(endpoint, view, session, caller) do
     endpoint
-    |> LiveView.Socket.build_socket(%{view: view})
+    |> LiveView.Socket.build_socket(%{view: view, caller: caller})
     |> do_static_mount(view, session)
   end
 
@@ -217,6 +218,8 @@ defmodule Phoenix.LiveView.View do
     Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
   end
 
-  defp send_caller(nil, _), do: :noop
-  defp send_caller(caller, msg) when is_pid(caller), do: send(caller, msg)
+  defp send_caller(%Socket{caller: nil}, _), do: :noop
+  defp send_caller(%Socket{caller: {ref, pid}}, msg) when is_pid(pid) do
+    send(pid, {ref, msg})
+  end
 end
