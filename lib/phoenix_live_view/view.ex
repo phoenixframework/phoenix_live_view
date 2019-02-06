@@ -150,9 +150,7 @@ defmodule Phoenix.LiveView.View do
     <div conn id="<%= child_id %>"
          data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
          data-phx-view="<%= inspect(view) %>"
-         data-phx-session="<%= signed_session %>">
-
-    </div>
+         data-phx-session="<%= signed_session %>"></div>
     <div class="phx-loader"></div>
     """
   end

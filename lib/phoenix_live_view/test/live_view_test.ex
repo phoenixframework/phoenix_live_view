@@ -67,10 +67,11 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :click, event, value)
   end
   def render_event(view, type, event, value) do
-    {:ok, html} = GenServer.call(view.proxy, {:render_event, type, event, value})
+    {:ok, html} = GenServer.call(view.proxy, {:render_event, view, type, event, value})
     html
   end
 
+  # todo kill this
   def assert_receive_mount(%View{ref: ref} = view, child_module, opts \\ []) do
     timeout = opts[:timeout] || 5000
 
@@ -84,8 +85,12 @@ defmodule Phoenix.LiveViewTest do
   end
 
 
-  def render(view) do
-    {:ok, html} = GenServer.call(view.proxy, :render)
+  def children(%View{} = parent) do
+    GenServer.call(parent.proxy, {:children, parent})
+  end
+
+  def render(%View{} = view) do
+    {:ok, html} = GenServer.call(view.proxy, {:render_tree, view})
     html
   end
 end
