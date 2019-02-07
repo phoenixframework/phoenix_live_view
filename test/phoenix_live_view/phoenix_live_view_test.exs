@@ -64,7 +64,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, assign(socket, time: "12:00")}
     end
 
-    def handle_info(:advance, socket), do: {:noreply, socket}
+    def handle_info(:snooze, socket) do
+      {:noreply, assign(socket, :time, "12:05")}
+    end
 
     def handle_call({:set, new_time}, _from, socket) do
       {:reply, :ok, assign(socket, :time, new_time)}
@@ -74,12 +76,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
   defmodule ClockControlsView do
     use Phoenix.LiveView
 
-    def render(assigns), do: ~L|<button phx-click="advance">+</button>|
+    def render(assigns), do: ~L|<button phx-click="snooze">+</button>|
 
     def mount(_session, socket), do: {:ok, socket}
 
-    def handle_event("advance", _, socket) do
-      send(Process.whereis(:clock), :advance)
+    def handle_event("snooze", _, socket) do
+      send(Process.whereis(:clock), :snooze)
       {:noreply, socket}
     end
   end
@@ -160,7 +162,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, _thermo_view, html} = mount_disconnected(ThermostatView, session: %{nest: true})
       assert html =~ "The temp is: 0"
       assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"advance\">+</button>"
+      assert html =~ "<button phx-click=\"snooze\">+</button>"
     end
 
     test "nested child render on connected mount" do
@@ -168,13 +170,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
       html = render(thermo_view)
       assert html =~ "The temp is: 1"
       assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"advance\">+</button>"
+      assert html =~ "<button phx-click=\"snooze\">+</button>"
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
       html = render(thermo_view)
       assert html =~ "The temp is: 1"
       refute html =~ "time"
-      refute html =~ "advance"
+      refute html =~ "snooze"
     end
 
     test "dynamically added children" do
@@ -182,26 +184,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(thermo_view) =~ "The temp is: 1"
       refute render(thermo_view) =~ "time"
-      refute render(thermo_view) =~ "advance"
+      refute render(thermo_view) =~ "snooze"
       GenServer.call(thermo_view.pid, {:set, :nest, true})
       assert render(thermo_view) =~ "The temp is: 1"
       assert render(thermo_view) =~ "time"
-      assert render(thermo_view) =~ "advance"
+      assert render(thermo_view) =~ "snooze"
 
       assert [clock_view] = children(thermo_view)
       assert [controls_view] = children(clock_view)
       assert clock_view.module == ClockView
       assert controls_view.module == ClockControlsView
 
-      assert render(clock_view) =~ "time: 12:00"
-      assert render(controls_view) == "<button phx-click=\"advance\">+</button>"
-      assert render(clock_view) =~ "<button phx-click=\"advance\">+</button>"
+      assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
+      assert render(clock_view) =~ "time: 12:05"
+      assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
+      assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
 
       :ok = GenServer.call(clock_view.pid, {:set, "12:01"})
 
       assert render(clock_view) =~ "time: 12:01"
       assert render(thermo_view) =~ "time: 12:01"
-      assert render(thermo_view) =~ "<button phx-click=\"advance\">+</button>"
+      assert render(thermo_view) =~ "<button phx-click=\"snooze\">+</button>"
     end
 
     test "nested children are removed and killed" do

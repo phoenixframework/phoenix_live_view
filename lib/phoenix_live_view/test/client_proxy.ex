@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def init(opts) do
-    {caller_ref, caller_pid} = caller = Keyword.fetch!(opts, :caller)
+    {_caller_ref, _caller_pid} = caller = Keyword.fetch!(opts, :caller)
     root_view = Keyword.fetch!(opts, :view)
     timeout = Keyword.fetch!(opts, :timeout)
     state = %{
@@ -24,7 +24,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case mount_view(state, root_view, timeout) do
       {:ok, pid, rendered} ->
-        send(caller_pid, {caller_ref, :mounted, pid, DOM.render(rendered)})
+        send_caller(state, {:mounted, pid, DOM.render(rendered)})
         new_state =
           state
           |> put_view(root_view, pid, rendered)
@@ -33,20 +33,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:ok, new_state}
 
       {:error, reason} ->
-        send(caller_pid, {caller_ref, reason})
+        send_caller(state, reason)
         :ignore
     end
   end
 
   defp mount_view(state, view, timeout) do
-    %{caller: {caller_ref, caller_pid} = caller} = state
     ref = make_ref()
     socket = %Phoenix.Socket{
       transport_pid: self(),
       serializer: Phoenix.LiveViewTest,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{phoenix_live_view_caller: caller, log_join: false},
+      private: %{log_join: false},
       topic: view.topic,
       join_ref: state.join_ref,
     }
@@ -55,7 +54,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, pid} ->
         receive do
           {^ref, %{rendered: rendered}} ->
-            send(caller_pid, {caller_ref, :mounted, pid, DOM.render(rendered)})
+            send_caller(state, {:mounted, pid, DOM.render(rendered)})
             {:ok, pid, rendered}
 
         after timeout ->
@@ -65,7 +64,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       :ignore ->
         receive do
           {^ref, reason} ->
-            send(caller_pid, {caller_ref, reason})
+            send_caller(state, reason)
             {:error, reason}
         end
     end
@@ -262,5 +261,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp shutdown_view(%View{pid: pid}) do
     Process.unlink(pid)
     GenServer.stop(pid, {:shutdown, :removed})
+  end
+
+  defp send_caller(%{caller: {ref, pid}}, msg) when is_pid(pid) do
+    send(pid, {ref, msg})
   end
 end

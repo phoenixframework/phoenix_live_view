@@ -305,7 +305,6 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the live view
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
-    * `:caller` - the optional pid to be notified of lifecycle events
 
   ## Examples
 

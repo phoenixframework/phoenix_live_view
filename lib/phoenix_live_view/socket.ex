@@ -16,7 +16,6 @@ defmodule Phoenix.LiveView.Socket do
             changed: %{},
             root_fingerprint: nil,
             private: %{},
-            caller: nil,
             connected?: false
 
   channel "views:*", Phoenix.LiveView.Channel
@@ -81,7 +80,6 @@ defmodule Phoenix.LiveView.Socket do
       id: Map.get_lazy(opts, :id, fn -> random_id() end),
       endpoint: endpoint,
       parent_id: opts[:parent_id],
-      caller: opts[:caller],
       view: Map.fetch!(opts, :view),
       assigns: Map.get(opts, :assigns, %{}),
       connected?: Map.get(opts, :connected?, false)
@@ -94,7 +92,6 @@ defmodule Phoenix.LiveView.Socket do
       Map.merge(opts, %{
         id: child_dom_id(parent, Map.fetch!(opts, :view)),
         parent_id: dom_id(parent),
-        caller: parent.caller,
       })
 
     build_socket(endpoint, nested_opts)

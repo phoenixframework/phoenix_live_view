@@ -46,7 +46,6 @@ defmodule Phoenix.LiveView.Channel do
         connected?: true,
         view: view,
         id: id,
-        caller: phx_socket.private[:phoenix_live_view_caller]
       })
 
     case wrap_mount(view.mount(user_session, lv_socket)) do

@@ -14,7 +14,7 @@ defmodule Phoenix.LiveViewTest.View do
 
   def build(attrs) do
     topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
-    struct(__MODULE__, Keyword.put_new(attrs, :topic, topic))
+    struct(__MODULE__, Keyword.merge(attrs, topic: topic, ref: make_ref()))
   end
 
   def build_child(%View{} = parent, attrs) do

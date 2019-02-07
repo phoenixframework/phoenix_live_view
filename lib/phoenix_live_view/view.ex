@@ -91,10 +91,7 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    caller = opts[:caller]
-
-    {:ok, socket, signed_session} = static_mount(endpoint, view, session, caller)
-    send_caller(socket, {:mount_disconnected, signed_session})
+    {:ok, socket, signed_session} = static_mount(endpoint, view, session)
 
     ~E"""
     <div id="<%= LiveView.Socket.dom_id(socket) %>"
@@ -128,7 +125,6 @@ defmodule Phoenix.LiveView.View do
 
   defp disconnected_static_render(parent, view, session) do
     {:ok, socket, signed_session} = static_mount(parent, view, session)
-    send_caller(socket, {:nested_disconnected_mount, view, signed_session})
 
     ~E"""
     <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
@@ -144,7 +140,6 @@ defmodule Phoenix.LiveView.View do
 
   defp connected_static_render(parent, view, session) do
     {child_id, signed_session} = sign_child_session(parent, view, session)
-    send_caller(parent, {:nested_mount, view, signed_session})
 
     ~E"""
     <div conn id="<%= child_id %>"
@@ -161,9 +156,9 @@ defmodule Phoenix.LiveView.View do
     |> do_static_mount(view, session)
   end
 
-  defp static_mount(endpoint, view, session, caller) do
+  defp static_mount(endpoint, view, session) do
     endpoint
-    |> LiveView.Socket.build_socket(%{view: view, caller: caller})
+    |> LiveView.Socket.build_socket(%{view: view})
     |> do_static_mount(view, session)
   end
 
@@ -214,10 +209,5 @@ defmodule Phoenix.LiveView.View do
   defp sign_token(endpoint_mod, salt, data) do
     encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
     Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
-  end
-
-  defp send_caller(%Socket{caller: nil}, _), do: :noop
-  defp send_caller(%Socket{caller: {ref, pid}}, msg) when is_pid(pid) do
-    send(pid, {ref, msg})
   end
 end
