@@ -25,11 +25,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
       """
     end
 
-    def mount(_session, socket) do
+    def mount(session, socket) do
+      nest = Map.get(session, :nest, false)
       if connected?(socket) do
-        {:ok, assign(socket, val: 1, nest: false)}
+        {:ok, assign(socket, val: 1, nest: nest)}
       else
-        {:ok, assign(socket, val: 0, nest: false)}
+        {:ok, assign(socket, val: 0, nest: nest)}
       end
     end
 
@@ -83,17 +84,17 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  setup do
-    {:ok, view, html} = mount_disconnected(ThermostatView, session: %{})
-    {:ok, view: view, html: html}
-  end
-
   test "mount with disconnected module" do
     {:ok, _view, html} = mount(ThermostatView)
     assert html =~ "The temp is: 1"
   end
 
   describe "rendering" do
+    setup do
+      {:ok, view, html} = mount_disconnected(ThermostatView, session: %{})
+      {:ok, view: view, html: html}
+    end
+
     test "live render with valid session", %{view: view, html: html} do
       assert html =~ """
              The temp is: 0
@@ -119,14 +120,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "messaging callbacks" do
 
-    test "handle_event with no change in socket", %{view: view} do
-      {:ok, view, html} = mount(view)
+    test "handle_event with no change in socket" do
+      {:ok, view, html} = mount(ThermostatView)
       assert html =~ "The temp is: 1"
       assert render_click(view, :noop) == html
     end
 
-    test "handle_info with change", %{view: view} do
-      {:ok, view, _html} = mount(view)
+    test "handle_info with change" do
+      {:ok, view, _html} = mount(ThermostatView)
 
       assert render(view) =~ "The temp is: 1"
 
@@ -155,17 +156,37 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "nested live render" do
-    test "nested render on mount" do
+    test "nested child render on disconnected mount" do
+      {:ok, _thermo_view, html} = mount_disconnected(ThermostatView, session: %{nest: true})
+      assert html =~ "The temp is: 0"
+      assert html =~ "time: 12:00"
+      assert html =~ "<button phx-click=\"advance\">+</button>"
     end
 
-    test "renders nested children" do
+    test "nested child render on connected mount" do
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+      html = render(thermo_view)
+      assert html =~ "The temp is: 1"
+      assert html =~ "time: 12:00"
+      assert html =~ "<button phx-click=\"advance\">+</button>"
+
+      GenServer.call(thermo_view.pid, {:set, :nest, false})
+      html = render(thermo_view)
+      assert html =~ "The temp is: 1"
+      refute html =~ "time"
+      refute html =~ "advance"
+    end
+
+    test "dynamically added children" do
       {:ok, thermo_view, _html} = mount(ThermostatView)
 
       assert render(thermo_view) =~ "The temp is: 1"
-      refute render(thermo_view) =~ "data-phx-session"
+      refute render(thermo_view) =~ "time"
+      refute render(thermo_view) =~ "advance"
       GenServer.call(thermo_view.pid, {:set, :nest, true})
       assert render(thermo_view) =~ "The temp is: 1"
-      assert render(thermo_view) =~ "data-phx-session"
+      assert render(thermo_view) =~ "time"
+      assert render(thermo_view) =~ "advance"
 
       assert [clock_view] = children(thermo_view)
       assert [controls_view] = children(clock_view)
@@ -187,8 +208,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button>
       """
-      {:ok, thermo_view, _html} = mount(ThermostatView)
-      GenServer.call(thermo_view.pid, {:set, :nest, true})
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
