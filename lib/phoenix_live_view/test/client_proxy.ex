@@ -180,8 +180,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> drop_view_by_session(session)
   end
 
+  defp verify_session(%View{} = view) do
+    Phoenix.LiveView.View.verify_session(view.endpoint, view.token)
+  end
+
   defp put_view(state, %View{} = view, pid, rendered) do
-    new_view = %View{view | proxy: self(), pid: pid, rendered: rendered}
+    {:ok, %{view: module}} = verify_session(view)
+    new_view = %View{view | module: module, proxy: self(), pid: pid, rendered: rendered}
 
     %{
       state

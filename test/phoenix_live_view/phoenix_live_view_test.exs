@@ -190,6 +190,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert [clock_view] = children(thermo_view)
       assert [controls_view] = children(clock_view)
+      assert clock_view.module == ClockView
+      assert controls_view.module == ClockControlsView
 
       assert render(clock_view) =~ "time: 12:00"
       assert render(controls_view) == "<button phx-click=\"advance\">+</button>"
