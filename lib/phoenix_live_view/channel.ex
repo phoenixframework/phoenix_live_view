@@ -12,6 +12,11 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket})
   end
 
+  @doc false
+  def ping(pid) do
+    GenServer.call(pid, {:phoenix_live_view, :ping})
+  end
+
   def init({%{"session" => session_token}, from, phx_socket}) do
     case View.verify_session(phx_socket.endpoint, session_token) do
       {:ok, %{id: id, view: view, session: user_session}} ->
@@ -99,6 +104,10 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(msg, %{socket: socket} = state) do
     handle_result(state, :info, socket, view_module(state).handle_info(msg, socket))
+  end
+
+  def handle_call({:phoenix_live_view, :ping}, _from, state) do
+    {:reply, :ok, state}
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
