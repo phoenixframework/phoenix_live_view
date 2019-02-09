@@ -110,10 +110,13 @@ defmodule Phoenix.LiveViewTest do
 
   defmacro assert_remove(view, reason, timeout \\ 100) do
     quote do
-      %Phoenix.LiveViewTest.View{pid: pid} = unquote(view)
-      ref = Process.monitor(pid)
-      assert_receive {:DOWN, ^ref, :process, ^pid, unquote(reason)}, unquote(timeout)
+      %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = unquote(view)
+      assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
     end
+  end
+
+  def stop(%View{} = view) do
+    GenServer.call(view.proxy, {:stop, view})
   end
 
   defp ensure_down!(pid, timeout \\ 100) do

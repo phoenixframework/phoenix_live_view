@@ -46,7 +46,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, pid} ->
         receive do
           {^ref, %{rendered: rendered}} ->
-            send_caller(state, {:mounted, pid, DOM.render(rendered)})
             {:ok, pid, rendered}
 
         after timeout ->
@@ -86,9 +85,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
     children =
-      Enum.map(view.children, fn session ->
-        {:ok, child} = fetch_view_by_session(state, session)
-        child
+      Enum.flat_map(view.children, fn session ->
+        case fetch_view_by_session(state, session) do
+          {:ok, child} -> [child]
+          :error -> []
+        end
       end)
 
     GenServer.reply(from, children)
@@ -132,14 +133,31 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_reply(new_state, ref)}
   end
 
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    case fetch_view_by_pid(state, pid) do
+      {:ok, _view} -> {:noreply, drop_downed_view(state, pid, reason)}
+      :error -> {:noreply, state}
+    end
+  end
+
   def handle_info({:socket_close, pid, reason}, state) do
     Enum.each(state.replies, fn
       {_ref, {from, ^pid}} -> GenServer.reply(from, {:error, reason})
       {_ref, {_from, _pid}} -> :ok
     end)
 
-    new_state = drop_downed_view(state, pid)
+    new_state = drop_downed_view(state, pid, reason)
     {:noreply, %{new_state | replies: %{}}}
+  end
+
+  def handle_call({:stop, %View{topic: topic}}, _from, state) do
+    case fetch_view_by_topic(state, topic) do
+      {:ok, view} ->
+        {:reply, :ok, drop_view_by_session(state, view.token, :stop)}
+
+      :error ->
+        {:reply, :ok, state}
+    end
   end
 
   def handle_call({:children, %View{topic: topic}}, from, state) do
@@ -221,6 +239,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp put_view(state, %View{} = view, pid, rendered) do
     {:ok, %{view: module}} = verify_session(view)
     new_view = %View{view | module: module, proxy: self(), pid: pid, rendered: rendered}
+    Process.monitor(pid)
 
     %{
       state
@@ -230,14 +249,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     }
   end
 
-  defp drop_downed_view(state, pid) when is_pid(pid) do
-    {:ok, topic} = Map.fetch(state.pids, pid)
-    {:ok, view} = fetch_view_by_topic(state, topic)
+  defp drop_downed_view(state, pid, reason) when is_pid(pid) do
+    {:ok, view} = fetch_view_by_pid(state, pid)
+    send_caller(state, {:removed, view.topic, reason})
 
     %{
       state
       | sessions: Map.delete(state.sessions, view.token),
-        views: Map.delete(state.views, topic),
+        views: Map.delete(state.views, view.topic),
         pids: Map.delete(state.pids, view.pid)
     }
   end
@@ -246,19 +265,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_session(state, session)
     :ok = shutdown_view(view, reason)
 
-    new_state =
-      Enum.reduce(view.children, state, fn child_session, acc ->
-        drop_child(acc, view, child_session, reason)
-      end)
-
-    {topic, new_sessions} = Map.pop(new_state.sessions, session)
-    %{new_state |
-      sessions: new_sessions,
-      views: Map.delete(new_state.views, topic),
-      pids: Map.delete(new_state.pids, view.pid)}
+    Enum.reduce(view.children, state, fn child_session, acc ->
+      drop_child(acc, view, child_session, reason)
+    end)
   end
 
   defp fetch_view_by_topic(state, topic), do: Map.fetch(state.views, topic)
+
+  defp fetch_view_by_pid(state, pid) when is_pid(pid) do
+    with {:ok, topic} <- Map.fetch(state.pids, pid) do
+      fetch_view_by_topic(state, topic)
+    end
+  end
 
   defp fetch_view_by_session(state, session) do
     with {:ok, topic} <- Map.fetch(state.sessions, session) do
@@ -329,7 +347,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp shutdown_view(%View{pid: pid}, reason) do
-    Process.unlink(pid)
     GenServer.stop(pid, {:shutdown, reason})
   end
 

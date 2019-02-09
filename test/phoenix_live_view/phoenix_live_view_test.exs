@@ -129,44 +129,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  describe "redirects" do
-    test "redirect from root view on disconnected mount" do
-      assert {:error, %{redirect: "/thermostat_disconnected"}} =
-             mount(ThermostatView, session: %{redir: {:disconnected, ThermostatView}})
-    end
-
-    test "redirect from root view on connected mount" do
-      assert {:error, %{redirect: "/thermostat_connected"}} =
-             mount(ThermostatView, session: %{redir: {:connected, ThermostatView}})
-    end
-
-    test "redirect from child view on disconnected mount" do
-      assert {:error, %{redirect: "/clock_disconnected"}} =
-             mount(ThermostatView, session: %{nest: true, redir: {:disconnected, ClockView}})
-    end
-
-    test "redirect from child view on connected mount" do
-      assert {:error, %{redirect: "/clock_connected"}} =
-             mount(ThermostatView, session: %{nest: true, redir: {:connected, ClockView}})
-    end
-
-    test "redirect after connected mount from root thru sync call" do
-      assert {:ok, view, _} = mount(ThermostatView)
-
-      assert_redirect view, "/path", fn ->
-        assert render_click(view, :redir, "/path") == {:error, :redirect}
-      end
-    end
-
-    test "redirect after connected mount from root thru async call" do
-      assert {:ok, view, _} = mount(ThermostatView)
-
-      assert_redirect view, "/async", fn ->
-        send(view.pid, {:redir, "/async"})
-      end
-    end
-  end
-
   describe "rendering" do
     setup do
       {:ok, view, html} = mount_disconnected(ThermostatView, session: %{})
@@ -303,6 +265,79 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(thermo_view) == html_without_nesting
       assert children(thermo_view) == []
+    end
+
+    test "parent exit removes children" do
+      # stop parent
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      stop(thermo_view)
+      assert_remove thermo_view, {:shutdown, :stop}
+      assert_remove clock_view, {:shutdown, :stop}
+      assert_remove controls_view, {:shutdown, :stop}
+
+      # stop nest level 1
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      stop(clock_view)
+      assert_remove clock_view, {:shutdown, :stop}
+      assert_remove controls_view, {:shutdown, :stop}
+      assert children(thermo_view) == []
+
+      # stop nest level 2
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      stop(controls_view)
+      assert_remove controls_view, {:shutdown, :stop}
+      assert children(thermo_view) == [clock_view]
+      assert children(clock_view) == []
+    end
+  end
+
+  describe "redirects" do
+    test "redirect from root view on disconnected mount" do
+      assert {:error, %{redirect: "/thermostat_disconnected"}} =
+             mount(ThermostatView, session: %{redir: {:disconnected, ThermostatView}})
+    end
+
+    test "redirect from root view on connected mount" do
+      assert {:error, %{redirect: "/thermostat_connected"}} =
+             mount(ThermostatView, session: %{redir: {:connected, ThermostatView}})
+    end
+
+    test "redirect from child view on disconnected mount" do
+      assert {:error, %{redirect: "/clock_disconnected"}} =
+             mount(ThermostatView, session: %{nest: true, redir: {:disconnected, ClockView}})
+    end
+
+    test "redirect from child view on connected mount" do
+      assert {:error, %{redirect: "/clock_connected"}} =
+             mount(ThermostatView, session: %{nest: true, redir: {:connected, ClockView}})
+    end
+
+    test "redirect after connected mount from root thru sync call" do
+      assert {:ok, view, _} = mount(ThermostatView)
+
+      assert_redirect view, "/path", fn ->
+        assert render_click(view, :redir, "/path") == {:error, :redirect}
+      end
+    end
+
+    test "redirect after connected mount from root thru async call" do
+      assert {:ok, view, _} = mount(ThermostatView)
+
+      assert_redirect view, "/async", fn ->
+        send(view.pid, {:redir, "/async"})
+      end
     end
   end
 end

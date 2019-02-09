@@ -14,11 +14,16 @@ defmodule Phoenix.LiveViewTest.View do
 
   def build(attrs) do
     topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
-    struct(__MODULE__, Keyword.merge(attrs, topic: topic, ref: make_ref()))
+    attrs_with_defaults =
+      attrs
+      |> Keyword.merge(topic: topic)
+      |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
+
+    struct(__MODULE__, attrs_with_defaults)
   end
 
   def build_child(%View{} = parent, attrs) do
-    build(Keyword.merge(attrs, proxy: parent.proxy, endpoint: parent.endpoint))
+    build(Keyword.merge(attrs, ref: parent.ref, proxy: parent.proxy, endpoint: parent.endpoint))
   end
 
   def put_child(%View{} = parent, session) do
