@@ -91,16 +91,22 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {:ok, socket, signed_session} = static_mount(endpoint, view, session)
+    case static_mount(endpoint, view, session) do
+      {:ok, socket, signed_session} ->
+        html = ~E"""
+        <div id="<%= LiveView.Socket.dom_id(socket) %>"
+            data-phx-view="<%= inspect(view) %>"
+            data-phx-session="<%= signed_session %>">
+          <%= render(socket, session) %>
+        </div>
+        <div class="phx-loader"></div>
+        """
+        {:ok, html}
 
-    ~E"""
-    <div id="<%= LiveView.Socket.dom_id(socket) %>"
-         data-phx-view="<%= inspect(view) %>"
-         data-phx-session="<%= signed_session %>">
-      <%= render(socket, session) %>
-    </div>
-    <div class="phx-loader"></div>
-    """
+      {:stop, reason} -> {:stop, reason}
+    end
+  catch
+    :throw, {:stop, reason} -> {:stop, reason}
   end
 
   @doc """
@@ -117,37 +123,44 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.fetch!(opts, :session)
 
     if Socket.connected?(parent) do
-      connected_static_render(parent, view, session)
+      connected_nested_static_render(parent, view, session)
     else
-      disconnected_static_render(parent, view, session)
+      disconnected_nested_static_render(parent, view, session)
     end
   end
 
-  defp disconnected_static_render(parent, view, session) do
-    {:ok, socket, signed_session} = static_mount(parent, view, session)
+  defp disconnected_nested_static_render(parent, view, session) do
+    case static_mount(parent, view, session) do
+      {:ok, socket, signed_session} ->
+        html = ~E"""
+        <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
+            data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+            data-phx-view="<%= inspect(view) %>"
+            data-phx-session="<%= signed_session %>">
 
-    ~E"""
-    <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
-         data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
-         data-phx-view="<%= inspect(view) %>"
-         data-phx-session="<%= signed_session %>">
+          <%= render(socket, session) %>
+        </div>
+        <div class="phx-loader"></div>
+        """
+        {:ok, html}
 
-      <%= render(socket, session) %>
-    </div>
-    <div class="phx-loader"></div>
-    """
+
+      {:stop, reason} -> {:stop, reason}
+    end
   end
 
-  defp connected_static_render(parent, view, session) do
+  defp connected_nested_static_render(parent, view, session) do
     {child_id, signed_session} = sign_child_session(parent, view, session)
 
-    ~E"""
+    html = ~E"""
     <div conn id="<%= child_id %>"
          data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
          data-phx-view="<%= inspect(view) %>"
          data-phx-session="<%= signed_session %>"></div>
     <div class="phx-loader"></div>
     """
+
+    {:ok, html}
   end
 
   defp static_mount(%Socket{} = parent, view, session) do
@@ -170,6 +183,9 @@ defmodule Phoenix.LiveView.View do
         signed_session = sign_session(socket, session)
 
         {:ok, new_socket, signed_session}
+
+      {:stop, socket} ->
+        {:stop, socket.stopped}
 
       other ->
         raise_invalid_mount(other, view)

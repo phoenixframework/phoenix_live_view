@@ -1,5 +1,6 @@
 defmodule Phoenix.LiveView.Channel do
   @moduledoc false
+  use GenServer
 
   require Logger
 
@@ -64,6 +65,11 @@ defmodule Phoenix.LiveView.Channel do
         log_mount(phx_socket, fn -> "Mounting #{inspect(view)} #{id} failed: #{inspect(err)}" end)
 
         GenServer.reply(from, reason)
+        :ignore
+
+      {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
+        log_mount(phx_socket, fn -> "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}" end)
+        GenServer.reply(from, %{redirect: to})
         :ignore
 
       other ->
@@ -155,13 +161,16 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, push_render(new_state, kind, rendered)}
   end
 
-  defp handle_result(state, _kind, _socket, {:stop, {:redirect, opts}, %Socket{} = new_socket}) do
-    {:stop, {:shutdown, :redirect}, push_redirect(%{state | socket: new_socket}, opts)}
+  defp handle_result(state, _kind, _socket, {:stop, %Socket{stopped: {:redirect, %{to: to}}} = new_socket}) do
+    new_state = push_redirect(%{state | socket: new_socket}, to, Socket.get_flash(new_socket))
+    send(state.transport_pid, {:socket_close, self(), :redirect})
+
+    {:stop, {:shutdown, :redirect}, new_state}
   end
 
-  defp handle_result(state, kind, _original_socket, result) do
+  defp handle_result(state, {:event, _}, _original_socket, result) do
     raise ArgumentError, """
-    invalid noreply from #{inspect(view_module(state))}.#{kind} callback.
+    invalid noreply from #{inspect(view_module(state))}.handle_event/3 callback.
 
     Expected {:noreply, %Socket{}} | {:stop, reason, %Socket{}}. got: #{inspect(result)}
     """
@@ -192,12 +201,8 @@ defmodule Phoenix.LiveView.Channel do
     new_state
   end
 
-  defp push_redirect(state, opts) do
-    push(state, "redirect", %{
-      to: Keyword.fetch!(opts, :to),
-      flash: View.sign_flash(state.socket, opts[:flash])
-    })
-
+  defp push_redirect(%{socket: socket} = state, to, flash) do
+    push(state, "redirect", %{to: to, flash: View.sign_flash(socket, flash)})
     state
   end
 

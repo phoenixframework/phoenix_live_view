@@ -333,14 +333,36 @@ defmodule Phoenix.LiveView do
   end
 
   defp do_live_render(%Plug.Conn{} = conn, view, opts) do
-    conn
-    |> Plug.Conn.put_private(:phoenix_live_view, {view, opts})
-    |> Phoenix.Controller.put_view(__MODULE__)
-    |> Phoenix.Controller.render("template.html")
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+    case LiveView.View.static_render(endpoint, view, opts) do
+      {:ok, content} ->
+        data = Phoenix.View.render_to_iodata(__MODULE__, "template.html", %{
+          layout: layout(conn),
+          content: content
+        })
+
+        conn
+        |> Plug.Conn.put_resp_content_type("text/html")
+        |> Plug.Conn.resp(conn.status || 200, data)
+
+      {:stop, {:redirect, opts}} ->
+        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+    end
   end
 
   defp do_live_render(%Socket{} = parent, view, opts) do
-    LiveView.View.nested_static_render(parent, view, opts)
+    case LiveView.View.nested_static_render(parent, view, opts) do
+      {:ok, content} -> content
+      {:stop, reason} -> throw({:stop, reason})
+    end
+  end
+
+  defp layout(conn) do
+    case Map.fetch(conn.assigns, :layout) do
+      {:ok, {mod, layout}} when is_atom(layout) -> {mod, "#{layout}.html"}
+      {:ok, {mod, layout}} when is_binary(layout)-> {mod, layout}
+      :error -> Phoenix.Controller.layout(conn) || false
+    end
   end
 
   @doc """
@@ -462,11 +484,14 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    {:stop, {:redirect, to: Keyword.fetch!(opts, :to), flash: flash(socket)}, socket}
+    Socket.put_redirect(socket, Keyword.fetch!(opts, :to))
   end
 
-  defp flash(%Socket{private: %{flash: flash}}), do: flash
-  defp flash(%Socket{}), do: nil
+  @doc """
+  Returns the set flash for the socket.
+  """
+  def flash(%Socket{private: %{flash: flash}}), do: flash
+  def flash(%Socket{}), do: nil
 
   defmacro __using__(_opts) do
     quote do
@@ -509,11 +534,7 @@ defmodule Phoenix.LiveView do
   @doc false
   # Phoenix.LiveView acts as a view via put_view to maintain the
   # controller render + instrumentation stack
-  def render("template.html", %{conn: conn}) do
-    {root_view, opts} = conn.private.phoenix_live_view
-
-    conn
-    |> Phoenix.Controller.endpoint_module()
-    |> LiveView.View.static_render(root_view, opts)
+  def render("template.html", %{content: content}) do
+    content
   end
 end

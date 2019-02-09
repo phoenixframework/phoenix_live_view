@@ -16,6 +16,7 @@ defmodule Phoenix.LiveView.Socket do
             changed: %{},
             root_fingerprint: nil,
             private: %{},
+            stopped: nil,
             connected?: false
 
   channel "views:*", Phoenix.LiveView.Channel
@@ -97,6 +98,13 @@ defmodule Phoenix.LiveView.Socket do
     build_socket(endpoint, nested_opts)
   end
 
+  def put_redirect(%Socket{stopped: nil} = socket, to) do
+    %Socket{socket | stopped: {:redirect, %{to: to}}}
+  end
+  def put_redirect(%Socket{stopped: reason} = _socket, _to) do
+    raise ArgumentError, "socket already prepared to stop for #{inspect(reason)}"
+  end
+
   defp normalize_opts!(opts) do
     valid_keys = Map.keys(%Socket{})
     provided_keys = Map.keys(opts)
@@ -131,6 +139,11 @@ defmodule Phoenix.LiveView.Socket do
     |> :crypto.strong_rand_bytes()
     |> Base.encode64()
     |> binary_part(0, @salt_length)
+  end
+
+  @doc false
+  def get_flash(%Socket{private: private}) do
+    private[:flash]
   end
 
   defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))

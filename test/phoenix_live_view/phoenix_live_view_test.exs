@@ -4,14 +4,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView.LiveViewTest.{ClockView, ClockControlsView}
 
-  defmacro assert_removed(view, reason, timeout \\ 100) do
-    quote do
-      %Phoenix.LiveViewTest.View{pid: pid} = unquote(view)
-      ref = Process.monitor(pid)
-      assert_receive {:DOWN, ^ref, :process, ^pid, unquote(reason)}, unquote(timeout)
-    end
-  end
-
   defmodule ThermostatView do
     use Phoenix.LiveView
 
@@ -20,18 +12,40 @@ defmodule Phoenix.LiveView.LiveViewTest do
       The temp is: <%= @val %>
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button><%= if @nest do %>
-        <%= live_render(@socket, ClockView) %>
+        <%= live_render(@socket, ClockView, session: %{redir: @redir}) %>
       <% end %>
       """
     end
 
-    def mount(session, socket) do
+    def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
+      if connected?(socket) do
+        do_mount(session, socket)
+      else
+        {:stop, redirect(socket, to: "/thermostat_disconnected")}
+      end
+    end
+
+    def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
+      if connected?(socket) do
+        {:stop, redirect(socket, to: "/thermostat_connected")}
+      else
+        do_mount(session, socket)
+      end
+    end
+
+    def mount(session, socket), do: do_mount(session, socket)
+
+    defp do_mount(session, socket) do
       nest = Map.get(session, :nest, false)
       if connected?(socket) do
-        {:ok, assign(socket, val: 1, nest: nest)}
+        {:ok, assign(socket, val: 1, nest: nest, redir: session[:redir])}
       else
-        {:ok, assign(socket, val: 0, nest: nest)}
+        {:ok, assign(socket, val: 0, nest: nest, redir: session[:redir])}
       end
+    end
+
+    def handle_event("redir", to, socket) do
+      {:stop, redirect(socket, to: to)}
     end
 
     def handle_event("noop", _, socket), do: {:noreply, socket}
@@ -41,6 +55,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
     def handle_event("dec", _, socket), do: {:noreply, update(socket, :val, &(&1 - 1))}
 
     def handle_info(:noop, socket), do: {:noreply, socket}
+
+    def handle_info({:redir, to}, socket) do
+      {:stop, redirect(socket, to: to)}
+    end
 
     def handle_call({:set, var, val}, _, socket) do
       {:reply, :ok, assign(socket, var, val)}
@@ -57,7 +75,25 @@ defmodule Phoenix.LiveView.LiveViewTest do
       """
     end
 
-    def mount(_session, socket) do
+    def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
+      if connected?(socket) do
+        do_mount(session, socket)
+      else
+        {:stop, redirect(socket, to: "/clock_disconnected")}
+      end
+    end
+
+    def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
+      if connected?(socket) do
+        {:stop, redirect(socket, to: "/clock_connected")}
+      else
+        do_mount(session, socket)
+      end
+    end
+
+    def mount(session, socket), do: do_mount(session, socket)
+
+    defp do_mount(_session, socket) do
       if connected?(socket) do
         Process.register(self(), :clock)
       end
@@ -86,9 +122,49 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  test "mount with disconnected module" do
-    {:ok, _view, html} = mount(ThermostatView)
-    assert html =~ "The temp is: 1"
+  describe "mounting" do
+    test "mount with disconnected module" do
+      {:ok, _view, html} = mount(ThermostatView)
+      assert html =~ "The temp is: 1"
+    end
+  end
+
+  describe "redirects" do
+    test "redirect from root view on disconnected mount" do
+      assert {:error, %{redirect: "/thermostat_disconnected"}} =
+             mount(ThermostatView, session: %{redir: {:disconnected, ThermostatView}})
+    end
+
+    test "redirect from root view on connected mount" do
+      assert {:error, %{redirect: "/thermostat_connected"}} =
+             mount(ThermostatView, session: %{redir: {:connected, ThermostatView}})
+    end
+
+    test "redirect from child view on disconnected mount" do
+      assert {:error, %{redirect: "/clock_disconnected"}} =
+             mount(ThermostatView, session: %{nest: true, redir: {:disconnected, ClockView}})
+    end
+
+    test "redirect from child view on connected mount" do
+      assert {:error, %{redirect: "/clock_connected"}} =
+             mount(ThermostatView, session: %{nest: true, redir: {:connected, ClockView}})
+    end
+
+    test "redirect after connected mount from root thru sync call" do
+      assert {:ok, view, _} = mount(ThermostatView)
+
+      assert_redirect view, "/path", fn ->
+        assert render_click(view, :redir, "/path") == {:error, :redirect}
+      end
+    end
+
+    test "redirect after connected mount from root thru async call" do
+      assert {:ok, view, _} = mount(ThermostatView)
+
+      assert_redirect view, "/async", fn ->
+        send(view.pid, {:redir, "/async"})
+      end
+    end
   end
 
   describe "rendering" do
@@ -222,8 +298,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
 
-      assert_removed clock_view, {:shutdown, :removed}
-      assert_removed controls_view, {:shutdown, :removed}
+      assert_remove clock_view, {:shutdown, :removed}
+      assert_remove controls_view, {:shutdown, :removed}
 
       assert render(thermo_view) == html_without_nesting
       assert children(thermo_view) == []
