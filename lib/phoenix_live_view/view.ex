@@ -195,6 +195,7 @@ defmodule Phoenix.LiveView.View do
   defp sign_session(%Socket{} = socket, session) do
     sign_token(socket.endpoint, salt(socket), %{
       id: LiveView.Socket.dom_id(socket),
+      parent_pid: nil,
       view: LiveView.Socket.view(socket),
       session: session
     })
@@ -206,7 +207,7 @@ defmodule Phoenix.LiveView.View do
     token =
       sign_token(parent.endpoint, salt(parent), %{
         id: id,
-        parent_id: LiveView.Socket.dom_id(parent),
+        parent_pid: self(),
         view: child_view,
         session: session
       })

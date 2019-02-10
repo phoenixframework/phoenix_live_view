@@ -20,8 +20,8 @@ defmodule Phoenix.LiveView.Channel do
 
   def init({%{"session" => session_token}, from, phx_socket}) do
     case View.verify_session(phx_socket.endpoint, session_token) do
-      {:ok, %{id: id, view: view, session: user_session}} ->
-        verified_init(view, id, user_session, from, phx_socket)
+      {:ok, %{id: id, view: view, parent_pid: parent, session: user_session}} ->
+        verified_init(view, id, parent, user_session, from, phx_socket)
 
       {:error, reason} ->
         log_mount(phx_socket, fn ->
@@ -39,12 +39,14 @@ defmodule Phoenix.LiveView.Channel do
     :ignore
   end
 
-  defp verified_init(view, id, user_session, from, %Phoenix.Socket{} = phx_socket) do
+  defp verified_init(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
     Process.monitor(phx_socket.transport_pid)
+    if parent, do: Process.monitor(parent)
 
     lv_socket =
       Socket.build_socket(phx_socket.endpoint, %{
         connected?: true,
+        parent_pid: parent,
         view: view,
         id: id,
       })
@@ -89,9 +91,13 @@ defmodule Phoenix.LiveView.Channel do
     }
   end
 
-  def handle_info({:DOWN, _, _, transport_pid, reason}, %{transport_pid: transport_pid} = socket) do
+  def handle_info({:DOWN, _, _, transport_pid, reason}, %{transport_pid: transport_pid} = state) do
     reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
-    {:stop, reason, socket}
+    {:stop, reason, state}
+  end
+  def handle_info({:DOWN, _, :process, parent, reason}, state) do
+    ^parent = state.socket.parent_pid
+    {:stop, reason, state}
   end
 
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do

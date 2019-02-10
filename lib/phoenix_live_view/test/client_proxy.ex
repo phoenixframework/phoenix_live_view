@@ -347,7 +347,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp shutdown_view(%View{pid: pid}, reason) do
-    GenServer.stop(pid, {:shutdown, reason})
+    Process.exit(pid, {:shutdown, reason})
+    :ok
   end
 
   defp send_caller(%{caller: {ref, pid}}, msg) when is_pid(pid) do

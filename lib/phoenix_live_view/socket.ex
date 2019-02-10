@@ -10,7 +10,7 @@ defmodule Phoenix.LiveView.Socket do
 
   defstruct id: nil,
             endpoint: nil,
-            parent_id: nil,
+            parent_pid: nil,
             view: nil,
             assigns: %{},
             changed: %{},
@@ -80,7 +80,7 @@ defmodule Phoenix.LiveView.Socket do
     %Socket{
       id: Map.get_lazy(opts, :id, fn -> random_id() end),
       endpoint: endpoint,
-      parent_id: opts[:parent_id],
+      parent_pid: opts[:parent_pid],
       view: Map.fetch!(opts, :view),
       assigns: Map.get(opts, :assigns, %{}),
       connected?: Map.get(opts, :connected?, false)
@@ -92,7 +92,7 @@ defmodule Phoenix.LiveView.Socket do
     nested_opts =
       Map.merge(opts, %{
         id: child_dom_id(parent, Map.fetch!(opts, :view)),
-        parent_id: dom_id(parent),
+        parent_pid: self(),
       })
 
     build_socket(endpoint, nested_opts)

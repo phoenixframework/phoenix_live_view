@@ -267,8 +267,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert children(thermo_view) == []
     end
 
-    test "parent exit removes children" do
-      # stop parent
+    test "parent graceful exit removes children" do
       {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
@@ -278,8 +277,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove thermo_view, {:shutdown, :stop}
       assert_remove clock_view, {:shutdown, :stop}
       assert_remove controls_view, {:shutdown, :stop}
+    end
 
-      # stop nest level 1
+    test "child level 1 graceful exit removes children" do
       {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
@@ -289,8 +289,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove clock_view, {:shutdown, :stop}
       assert_remove controls_view, {:shutdown, :stop}
       assert children(thermo_view) == []
+    end
 
-      # stop nest level 2
+    test "child level 2 graceful exit removes children" do
       {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
@@ -298,6 +299,49 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       stop(controls_view)
       assert_remove controls_view, {:shutdown, :stop}
+      assert children(thermo_view) == [clock_view]
+      assert children(clock_view) == []
+    end
+
+
+    @tag :capture_log
+    test "abnormal parent exit removes children" do
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      send(thermo_view.pid, :boom)
+
+      assert_remove thermo_view, _
+      assert_remove clock_view, _
+      assert_remove controls_view, _
+    end
+
+    @tag :capture_log
+    test "abnormal child level 1 exit removes children" do
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      send(clock_view.pid, :boom)
+
+      assert_remove clock_view, _
+      assert_remove controls_view, _
+      assert children(thermo_view) == []
+    end
+
+    @tag :capture_log
+    test "abnormal child level 2 exit removes children" do
+      {:ok, thermo_view, _html} = mount(ThermostatView, session: %{nest: true})
+
+      [clock_view] = children(thermo_view)
+      [controls_view] = children(clock_view)
+
+      send(controls_view.pid, :boom)
+
+      assert_remove controls_view, _
       assert children(thermo_view) == [clock_view]
       assert children(clock_view) == []
     end
