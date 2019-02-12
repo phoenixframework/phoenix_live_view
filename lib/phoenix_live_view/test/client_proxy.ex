@@ -49,7 +49,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:ok, pid, rendered}
 
         after timeout ->
-          exit(:timout)
+          exit(:timeout)
         end
 
       :ignore ->

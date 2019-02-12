@@ -338,6 +338,7 @@ defmodule Phoenix.LiveView do
       {:ok, content} ->
         data = Phoenix.View.render_to_iodata(__MODULE__, "template.html", %{
           layout: layout(conn),
+          conn: conn,
           content: content
         })
 
@@ -359,11 +360,17 @@ defmodule Phoenix.LiveView do
 
   defp layout(conn) do
     case Map.fetch(conn.assigns, :layout) do
-      {:ok, {mod, layout}} when is_atom(layout) -> {mod, "#{layout}.html"}
-      {:ok, {mod, layout}} when is_binary(layout)-> {mod, layout}
-      :error -> Phoenix.Controller.layout(conn) || false
+      {:ok, {mod, layout}} -> {mod, template_string(layout)}
+      :error ->
+        case Phoenix.Controller.layout(conn) do
+          {mod, layout} -> {mod, template_string(layout)}
+          false -> false
+          nil -> false
+        end
     end
   end
+  defp template_string(layout) when is_atom(layout), do: "#{layout}.html"
+  defp template_string(layout) when is_binary(layout), do: layout
 
   @doc """
   Returns true if the sockect is connected.
