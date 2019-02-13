@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView do
 
   Next, your client code connects to the server:
 
-      import LiveSocket from "live_view"
+      import LiveSocket from "phoenix_live_view"
 
       let liveSocket = new LiveSocket("/live")
       liveSocket.connect()
@@ -209,9 +209,10 @@ defmodule Phoenix.LiveView do
       def handle_event("save", _id, %{"user" => user_params}, socket) do
         case Accounts.create_user(user_params) do
           {:ok, user} ->
-            socket
-            |> put_flash(:info, "user created")
-            |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))
+            {:stop,
+             socket
+             |> put_flash(:info, "user created")
+             |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))}
 
           {:error, %Ecto.Changeset{} = changeset} ->
             {:noreply, assign(socket, changeset: changeset)}
@@ -224,7 +225,8 @@ defmodule Phoenix.LiveView do
   the form is re-rendered.
 
   Likewise for `phx-submit` bindings, the save callback is invoked and
-  persistence is attempted. On success, `Phoenix.LiveView.redirect/2` is called,
+  persistence is attempted. On success, a `:stop` tuple is returned and the
+  socket is annotated for redirect with `Phoenix.LiveView.redirect/2`,
   otherwise the socket assigns are updated with the errored changeset to be
   re-rerendered for the client.
 
@@ -284,16 +286,35 @@ defmodule Phoenix.LiveView do
   @type unsigned_params :: map
   @type from :: binary
 
-  @callback mount(Socket.session(), Socket.t()) :: {:ok, Socket.t()} | {:error, term}
+  @callback mount(Socket.session(), Socket.t()) ::
+              {:ok, Socket.t()} | {:stop, Socket.t()} | {:stop, reason :: term}
+
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
+
   @callback terminate(
               reason :: :normal | :shutdown | {:shutdown, :left | :closed | term},
               Socket.t()
             ) :: term
+
   @callback handle_event(event :: binary, from, unsigned_params, Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, reason :: term, Socket.t()}
+              {:noreply, Socket.t()} | {:stop, Socket.t()} | {:stop, reason :: term, Socket.t()}
 
   @optional_callbacks terminate: 2, mount: 2, handle_event: 4
+
+  defmacro __using__(_opts) do
+    quote do
+      import unquote(__MODULE__), except: [render: 2]
+      # TODO don't import this, users can
+      import Phoenix.HTML
+
+      @behaviour unquote(__MODULE__)
+      @impl unquote(__MODULE__)
+      def mount(_session, socket), do: {:ok, socket}
+      @impl unquote(__MODULE__)
+      def terminate(reason, state), do: {:ok, state}
+      defoverridable mount: 2, terminate: 2
+    end
+  end
 
   @doc """
   Renders a live view from an originating plug request or
@@ -478,7 +499,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Redirects the socket to a destination path.
+  Annotates the socket for redirect to a destination path.
 
   *Note*: live view redirects rely on instructing client
   to perform a `window.location` update on the provided
@@ -499,21 +520,6 @@ defmodule Phoenix.LiveView do
   """
   def flash(%Socket{private: %{flash: flash}}), do: flash
   def flash(%Socket{}), do: nil
-
-  defmacro __using__(_opts) do
-    quote do
-      import unquote(__MODULE__), except: [render: 2]
-      # TODO don't import this, users can
-      import Phoenix.HTML
-
-      @behaviour unquote(__MODULE__)
-      @impl unquote(__MODULE__)
-      def mount(_session, socket), do: {:ok, socket}
-      @impl unquote(__MODULE__)
-      def terminate(reason, state), do: {:ok, state}
-      defoverridable mount: 2, terminate: 2
-    end
-  end
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
