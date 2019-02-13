@@ -25,4 +25,3 @@ before_script:
   - nvm install 6.2 && nvm use 6.2
 script:
   - mix test
-  - cd installer && elixir -e "Version.match?(System.version, ~s(~> 1.5)) || System.halt(0)" -S mix test
