@@ -4,6 +4,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   alias Phoenix.LiveViewTest.{View, DOM}
 
+  @doc """
+  Starts a client proxy.
+
+  ## Options
+
+    * `:caller` - the required `{ref, pid}` pair identifying the caller.
+    * `:view` - the required `%Phoenix.LiveViewTest.View{}`
+    * `:timeout` - the required timeout for successful mount
+  """
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
@@ -188,6 +197,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       payload: %{"value" => raw_val, "event" => to_string(event), "type" => to_string(type)},
       ref: ref,
     })
+
     {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
   end
 

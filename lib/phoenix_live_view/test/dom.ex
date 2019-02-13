@@ -1,19 +1,12 @@
 defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
-  @doc """
-  TODO
-  """
   def render(nil), do: ""
-
   def render(%{static: statics} = rendered) do
     for {static, i} <- Enum.with_index(statics), into: "",
       do: static <> to_string(rendered[i])
   end
 
-  @doc """
-  TODO
-  """
   def render_diff(rendered) do
     rendered
     |> to_output_buffer([])
@@ -38,18 +31,12 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp dynamic_to_buffer(%{} = rendered, acc), do: to_output_buffer(rendered, []) ++ acc
   defp dynamic_to_buffer(str, acc), do: [str | acc]
 
-  @doc """
-  TODO
-  """
   def find_sessions(html) do
     ~r/data-phx-session="(.*)">/
     |> Regex.scan(html, capture: :all_but_first)
     |> Enum.map(fn [session] -> session end)
   end
 
-  @doc """
-  TODO
-  """
   def insert_session(root_html, session, child_html) do
     Regex.replace(
       ~r/data-phx-session="#{session}"><\/div>/,
@@ -58,10 +45,6 @@ defmodule Phoenix.LiveViewTest.DOM do
     )
   end
 
-
-  @doc """
-  TODO
-  """
   def deep_merge(target, source) do
     Map.merge(target, source, fn
       _, %{} = target, %{} = source -> deep_merge(target, source)
