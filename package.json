@@ -1,0 +1,16 @@
+{
+  "name": "phoenix_live_view",
+  "version": "0.0.1",
+  "description": "The Phoenix LiveView JavaScript client.",
+  "license": "MIT",
+  "main": "./priv/static/phoenix_live_view.js",
+  "repository": {},
+  "author": "Chris McCord <chris@chrismccord.com> (http://www.phoenixframework.org)",
+  "files": [
+    "README.md",
+    "LICENSE.md",
+    "package.json",
+    "priv/static/phoenix_live_view.js",
+    "assets/js/phoenix_live_view.js"
+  ]
+}

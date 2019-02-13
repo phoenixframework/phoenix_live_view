@@ -59,11 +59,12 @@ connection and error class changes. This behavior may be disabled by overriding
 import {Socket} from "phoenix"
 import morphdom from "morphdom"
 
-const PHX_VIEW_SELECTOR = "[data-phx-view]"
+const PHX_VIEW = "data-phx-view"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
+const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "data-phx-has-focused"
 const PHX_BOUND = "data-phx-bound"
@@ -150,10 +151,10 @@ export default class LiveSocket {
 
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
-      this.joinViewChannels()
+      this.joinRootView()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
-        this.joinViewChannels()
+        this.joinRootView()
       })
     }
     return this.socket.connect()
@@ -163,8 +164,9 @@ export default class LiveSocket {
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
-  joinViewChannels(){
-    document.querySelectorAll(PHX_VIEW_SELECTOR).forEach(el => this.joinView(el))
+  joinRootView(){
+    let rootEl = document.querySelector(PHX_VIEW_SELECTOR)
+    if(rootEl){ this.joinView(rootEl) }
   }
 
   joinView(el, parentView){
@@ -173,11 +175,15 @@ export default class LiveSocket {
     view.join()
   }
 
+  getViewById(id){ return this.views[id] }
+
   destroyViewById(id){
-    console.log("destroying", id)
     let view = this.views[id]
-    if(!view){ throw `cannot destroy view for id ${id} as it does not exist` }
-    view.destroy(() => delete this.views[view.id])
+    if(view){
+      delete this.views[view.id]
+      // console.log("destroying", id)
+      view.destroy()
+    }
   }
 
   getBindingPrefix(){ return this.bindingPrefix }
@@ -262,8 +268,8 @@ let DOM = {
       },
       onNodeAdded: function(el){
         // nested view handling
-        if(DOM.isPhxChild(el)){
-          setTimeout(() => view.liveSocket.joinView(el, view), 1)
+        if(DOM.isPhxChild(el) && view.ownsElement(el)){
+          view.onNewChildAdded(el)
           return true
         }
         view.maybeBindAddedNode(el)
@@ -277,7 +283,10 @@ let DOM = {
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         // nested view handling
-        if(DOM.isPhxChild(toEl)){ return false }
+        if(DOM.isPhxChild(toEl)){
+          DOM.mergeAttrs(fromEl, toEl)
+          return false
+        }
 
         // input handling
         if(fromEl.getAttribute && fromEl.getAttribute(PHX_HAS_SUBMITTED)){
@@ -301,11 +310,15 @@ let DOM = {
     document.dispatchEvent(new Event("phx:update"))
   },
 
-  mergeInputs(target, source){
+  mergeAttrs(target, source){
     source.getAttributeNames().forEach(name => {
       let value = source.getAttribute(name)
       target.setAttribute(name, value)
     })
+  },
+
+  mergeInputs(target, source){
+    DOM.mergeAttrs(target, source)
     target.readOnly = source.readOnly
   },
 
@@ -329,15 +342,18 @@ class View {
     this.statics = []
     this.dynamics = []
     this.parent = parentView
+    this.newChildrenAdded = false
+    this.gracefullyClosed = false
     this.el = el
     this.prevKey = null
     this.bindingPrefix = liveSocket.getBindingPrefix()
     this.loader = this.el.nextElementSibling
     this.id = this.el.id
-    this.view = this.el.getAttribute("data-view")
+    this.view = this.el.getAttribute(PHX_VIEW)
     this.hasBoundUI = false
-    this.joinParams = {session: this.getSession()}
-    this.channel = this.liveSocket.channel(`views:${this.id}`, () => this.joinParams)
+    this.channel = this.liveSocket.channel(`views:${this.id}`, () => {
+      return {session: this.getSession()}
+    })
     this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
     this.bindChannel()
   }
@@ -346,11 +362,15 @@ class View {
     return this.el.getAttribute(PHX_SESSION)|| this.parent.getSession()
   }
 
-  destroy(callback){
-    this.channel.leave()
-      .receive("ok", callback)
-      .receive("error", callback)
-      .receive("timeout", callback)
+  destroy(callback = function(){}){
+    if(this.hasGracefullyClosed()){
+      callback()
+    } else {
+      this.channel.leave()
+        .receive("ok", callback)
+        .receive("error", callback)
+        .receive("timeout", callback)
+    }
   }
 
   hideLoader(){
@@ -374,6 +394,17 @@ class View {
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     if(!this.hasBoundUI){ this.bindUI() }
     this.hasBoundUI = true
+    this.joinNewChildren()
+  }
+
+  joinNewChildren(){
+    let selector = `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`
+    document.querySelectorAll(selector).forEach(childEl => {
+      let child = this.liveSocket.getViewById(childEl.id)
+      if(!child){
+        this.liveSocket.joinView(childEl, this)
+      }
+    })
   }
 
   update(diff){
@@ -381,15 +412,29 @@ class View {
     // console.log("update", JSON.stringify(diff))
     Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
+    this.newChildrenAdded = false
     DOM.patch(this, this.el, this.id, html)
+    if(this.newChildrenAdded){ this.joinNewChildren() }
+  }
+
+  onNewChildAdded(el){
+    this.newChildrenAdded = true
   }
 
   bindChannel(){
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
-    this.channel.on("session", ({token}) => this.joinParams.session = token)
+    this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(() => this.onError())
+    this.channel.onClose(() => this.onGracefulClose())
   }
+
+  onGracefulClose(){
+    this.gracefullyClosed = true
+    this.liveSocket.destroyViewById(this.id)
+  }
+
+  hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(){
     this.channel.join()
@@ -403,6 +448,7 @@ class View {
   }
 
   onError(){
+    // console.log("error", this.view)
     document.activeElement.blur()
     this.displayError()
   }
@@ -465,7 +511,8 @@ class View {
   }
 
   ownsElement(element){
-    return element.closest(PHX_VIEW_SELECTOR).id === this.id
+    return element.getAttribute(PHX_PARENT_ID) === this.id ||
+           element.closest(PHX_VIEW_SELECTOR).id === this.id
   }
 
   bindUI(){
