@@ -5,15 +5,14 @@ defmodule Phoenix.LiveViewTest do
   In live view tests, we interact with views via process
   communication in substitution of a browser. Like a browser,
   our test process receives messages about the rendered updates
-  from the view, as well as assertions to test the life-cycle of
-  live views and their children.
-
+  from the view which can be asserted against to test the
+  life-cycle and behavior of live views and their children.
 
   ## LiveView Testing
 
   The life-cycle of a live view as outlined in the `Phoenix.LiveView`
-  docs shows how a view starts as a stateless HTML render in a disconnected
-  socket state. Once the browser receives the HTML, it connets the to
+  docs details how a view starts as a stateless HTML render in a disconnected
+  socket state. Once the browser receives the HTML, it connects the to
   server and a new live view process is started, remounted in a connected
   socket state, and the view continues statefully. The live view test functions
   support testing both disconnected and connected mounts separately, for example:
@@ -28,14 +27,14 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, %{redirect: "/somewhere"}} =
              mount_disconnected(MyEndpoint, MyView, session: %{})
 
-  Here, we can call `mount_disconnected/3` and assert on the stateless
+  Here, we call `mount_disconnected/3` and assert on the stateless
   rendered HTML that is received by the browser's HTTP request. Next, `mount/2`
   is called to mount the stateless view in a connected state which starts our
-  statefule LiveView process.
+  stateful LiveView process.
 
   In general, it's often more convenient to test the mounting of a view
-  in a single step, provided we don't need the result of the stateless HTTP
-  render. This is done by a single call to `mount/3`, which performs the
+  in a single step, provided you don't need the result of the stateless HTTP
+  render. This is done with a single call to `mount/3`, which performs the
   `mount_disconnected` step for us:
 
       {:ok, view, html} = mount(MyEndpoint, MyView, session: %{})
@@ -45,25 +44,25 @@ defmodule Phoenix.LiveViewTest do
 
   The browser can send a variety of events to a live view via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
-  browser, and assert on the rendered side-effect of the event, use the
+  browser and assert on the rendered side-effect of the event, use the
   `render_*` functions:
 
-    * `render_click/3` - sends a phx-click event and value to the view and
+    * `render_click/3` - sends a phx-click event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_submit/3` - sends a form phx-submit event and value to the view and
+    * `render_submit/3` - sends a form phx-submit event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_change/3` - sends a form phx-change event and value to the view and
+    * `render_change/3` - sends a form phx-change event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keypress/3` - sends a form phx-keypress event and value to the view and
+    * `render_keypress/3` - sends a form phx-keypress event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keydown/3` - sends a form phx-keydown event and value to the view and
+    * `render_keydown/3` - sends a form phx-keydown event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keyup/3` - sends a form phx-keyup event and value to the view and
+    * `render_keyup/3` - sends a form phx-keyup event and value and
       returns the rendered result of the `handle_event/3` callback.
 
   For example:
@@ -91,7 +90,6 @@ defmodule Phoenix.LiveViewTest do
 
       send(view.pid, {:set_temp: 50})
       assert render(view) =~ "The temperature is: 50℉"
-
 
   ## Testing shutdowns and stopping views
 
