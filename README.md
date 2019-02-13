@@ -1,5 +1,7 @@
 # PhoenixLiveView
 
+[![Build Status](https://api.travis-ci.com/chrismccord/phoenix_live_view.svg?branch=master)](https://travis-ci.com/chrismccord/phoenix_live_view)
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
