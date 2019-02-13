@@ -2,10 +2,6 @@ defmodule Phoenix.LiveView do
   @moduledoc """
   Live views are stateful views which update the browser on state changes.
 
-  TODO
-  - don't spawn extra process. Keep callbacks in channel
-  - kill registry for now
-
   ## Configuration
 
   A `:signing_salt` configuration is required in your endpoint's
