@@ -11,7 +11,111 @@ defmodule Phoenix.LiveViewTest do
 
   ## LiveView Testing
 
+  The life-cycle of a live view as outlined in the `Phoenix.LiveView`
+  docs shows how a view starts as a stateless HTML render in a disconnected
+  socket state. Once the browser receives the HTML, it connets the to
+  server and a new live view process is started, remounted in a connected
+  socket state, and the view continues statefully. The live view test functions
+  support testing both disconnected and connected mounts separately, for example:
 
+      {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
+
+      assert html =~ "<h1>My Disconnected View</h1>"
+
+      {:ok, view, html} = mount(view)
+      assert html =~ "<h1>My Connected View</h1>"
+
+      assert {:error, %{redirect: "/somewhere"}} =
+             mount_disconnected(MyEndpoint, MyView, session: %{})
+
+  Here, we can call `mount_disconnected/3` and assert on the stateless
+  rendered HTML that is received by the browser's HTTP request. Next, `mount/2`
+  is called to mount the stateless view in a connected state which starts our
+  statefule LiveView process.
+
+  In general, it's often more convenient to test the mounting of a view
+  in a single step, provided we don't need the result of the stateless HTTP
+  render. This is done by a single call to `mount/3`, which performs the
+  `mount_disconnected` step for us:
+
+      {:ok, view, html} = mount(MyEndpoint, MyView, session: %{})
+      assert html =~ "<h1>My Connected View</h1>"
+
+  ## Testing Events
+
+  The browser can send a variety of events to a live view via `phx-` bindings,
+  which are sent to the `handle_event/3` callback. To test events sent by the
+  browser, and assert on the rendered side-effect of the event, use the
+  `render_*` functions:
+
+    * `render_click/3` - sends a phx-click event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_submit/3` - sends a form phx-submit event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_change/3` - sends a form phx-change event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_keypress/3` - sends a form phx-keypress event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_keydown/3` - sends a form phx-keydown event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_keyup/3` - sends a form phx-keyup event and value to the view and
+      returns the rendered result of the `handle_event/3` callback.
+
+  For example:
+
+      {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+
+      assert render_click(view, :inc) =~ "The temperature is: 31℉"
+
+      assert render_click(view, :set_temp, 35) =~ "The temperature is: 35℉"
+
+      assert render_submit(view, :save, %{deg: 30}) =~ "The temperature is: 30℉"
+
+      assert render_change(view, :validate, %{deg: -30}) =~ "invalid temperature"
+
+      assert render_keypress(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
+
+      assert render_keypress(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
+
+  ## Testing regular messages
+
+  Live views are `GenServer`'s under the hood, and can send and receive messages
+  just like any other server. To test the side effects of sending or receiving
+  messages, simply message the view and use the `render` function to test the
+  result:
+
+      send(view.pid, {:set_temp: 50})
+      assert render(view) =~ "The temperature is: 50℉"
+
+
+  ## Testing shutdowns and stopping views
+
+  Like all processes, views can shutdown normally or abnormally, and this
+  can be tested with `assert_removed/3`. For example:
+
+      send(view.pid, :boom)
+      assert_remove view, {:shutdown, %RuntimeError{}}
+
+      stop(view)
+      assert_remove view, {:shutdown, :stop}
+
+  Nested views can be removed by a parent at any time based on conditional
+  rendering. In these cases, the removal of the view is detected by the
+  browser, or our test client, and the child is shutdown gracefully. This
+  can be tested in the same way as above:
+
+      assert render(parent) =~ "some content in child"
+
+      [child] = children(parent)
+      send(parent.pid, :msg_that_removes_child)
+
+      assert_remove child, _
+      refute render(parent) =~ "some content in child"
   """
 
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
@@ -209,7 +313,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the list of children of the parent live view.
+  Returns the current list of children of the parent live view.
 
   Children are return in the order they appear in the rendered HTML.
 
@@ -217,14 +321,14 @@ defmodule Phoenix.LiveViewTest do
 
       {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
       assert [clock_view] = children(view)
-      assert render(clock_view) =~ "current time:"
+      assert render_click(clock_view, :snooze) =~ "snoozing"
   """
   def children(%View{} = parent) do
     GenServer.call(parent.proxy, {:children, parent})
   end
 
   @doc """
-  TODO
+  Returns the string of HTML of the rendered view.
   """
   def render(%View{} = view) do
     {:ok, html} = GenServer.call(view.proxy, {:render_tree, view})
@@ -232,7 +336,13 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Asserts a redirect was peformed after execution of the provied function.
+
+  ## Examples
+
+      assert_redirect view, "/path", fn ->
+        assert render_click(view, :event_that_triggers_redirect)
+      end
   """
   defmacro assert_redirect(view, to, func) do
     quote do
@@ -244,7 +354,15 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Asserts a view was removed by a parent or shutdown itself.
+
+  ## Examples
+
+      [child1, child2] = children(parent_view)
+      send(parent_view.pid, :msg_that_removes_child)
+
+      assert_remove child1, _
+      assert_remove child2, {:shutdown, :removed}
   """
   defmacro assert_remove(view, reason, timeout \\ 100) do
     quote do
@@ -254,7 +372,12 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Stops a live view.
+
+  ## Examples
+
+      stop(view)
+      assert_remove view, {:shutdown, :stop}
   """
   def stop(%View{} = view) do
     GenServer.call(view.proxy, {:stop, view})
