@@ -1,0 +1,32 @@
+language: elixir
+elixir:
+  - 1.5
+  - 1.6
+  - 1.7
+  - 1.8
+otp_release:
+  - 19.3
+  - 20.3
+  - 21.0
+matrix:
+  exclude:
+    - elixir: 1.5
+      otp_release: 21.0
+    - elixir: 1.7
+      otp_release: 19.3
+    - elixir: 1.7
+      otp_release: 20.3
+    - elixir: 1.8
+      otp_release: 19.3
+    - elixir: 1.8
+      otp_release: 20.3
+sudo: false
+env:
+  global:
+    - ELIXIR_ASSERT_TIMEOUT=2000
+before_script:
+  - mix deps.get
+  - nvm install 6.2 && nvm use 6.2
+script:
+  - mix test
+  - cd installer && elixir -e "Version.match?(System.version, ~s(~> 1.5)) || System.halt(0)" -S mix test
