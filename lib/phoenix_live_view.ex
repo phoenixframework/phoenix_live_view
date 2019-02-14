@@ -512,12 +512,6 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Returns the set flash for the socket.
-  """
-  def flash(%Socket{private: %{flash: flash}}), do: flash
-  def flash(%Socket{}), do: nil
-
-  @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
 
       iex> ~L"\""
