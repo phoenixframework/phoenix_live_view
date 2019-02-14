@@ -1,6 +1,6 @@
 # PhoenixLiveView
 
-[![Build Status](https://api.travis-ci.com/chrismccord/phoenix_live_view.svg?branch=master)](https://travis-ci.com/chrismccord/phoenix_live_view)
+[![Build Status](https://travis-ci.com/chrismccord/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/chrismccord/phoenix_live_view)
 
 ## Installation
 
