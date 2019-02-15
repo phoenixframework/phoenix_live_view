@@ -97,7 +97,16 @@ let recursiveMerge = (target, source) => {
 
 let Rendered = {
 
-  mergeDiff(source, diff){ recursiveMerge(source, diff) },
+  mergeDiff(source, diff){
+    if(this.isNewFingerprint(diff)){
+      return diff
+    } else {
+      recursiveMerge(source, diff)
+      return source
+    }
+  },
+
+  isNewFingerprint(diff){ return diff.static },
 
   toString(rendered){
     let output = {buffer: ""}
@@ -339,8 +348,6 @@ let DOM = {
 class View {
   constructor(el, liveSocket, parentView){
     this.liveSocket = liveSocket
-    this.statics = []
-    this.dynamics = []
     this.parent = parentView
     this.newChildrenAdded = false
     this.gracefullyClosed = false
@@ -410,7 +417,7 @@ class View {
   update(diff){
     if(isEmpty(diff)){ return }
     // console.log("update", JSON.stringify(diff))
-    Rendered.mergeDiff(this.rendered, diff)
+    this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
     DOM.patch(this, this.el, this.id, html)

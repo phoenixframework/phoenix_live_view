@@ -283,7 +283,7 @@ defmodule Phoenix.LiveView do
   @type from :: binary
 
   @callback mount(Socket.session(), Socket.t()) ::
-              {:ok, Socket.t()} | {:stop, Socket.t()} | {:stop, reason :: term}
+              {:ok, Socket.t()} | {:stop, Socket.t()}
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -293,7 +293,7 @@ defmodule Phoenix.LiveView do
             ) :: term
 
   @callback handle_event(event :: binary, from, unsigned_params, Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()} | {:stop, reason :: term, Socket.t()}
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @optional_callbacks terminate: 2, mount: 2, handle_event: 4
 
