@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView do
   Then on the server, all live view bindings are handled with the `handle_event`
   callback, for example:
 
-      def handle_event("inc_temperature", _dom_id, _value, socket) do
+      def handle_event("inc_temperature", _value, socket) do
         {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
@@ -193,7 +193,7 @@ defmodule Phoenix.LiveView do
         {:ok, assign(socket, %{changeset: Accounts.change_user(%User{})})}
       end
 
-      def handle_event("validate", _id, %{"user" => params}, socket) do
+      def handle_event("validate", %{"user" => params}, socket) do
         changeset =
           %User{}
           |> Accounts.change_user(params)
@@ -202,7 +202,7 @@ defmodule Phoenix.LiveView do
         {:noreply, assign(socket, changeset: changeset)}
       end
 
-      def handle_event("save", _id, %{"user" => user_params}, socket) do
+      def handle_event("save", %{"user" => user_params}, socket) do
         case Accounts.create_user(user_params) do
           {:ok, user} ->
             {:stop,
@@ -259,17 +259,17 @@ defmodule Phoenix.LiveView do
       \"""
       end
 
-      def handle_event("update_temp", _, @up_key, socket) do
+      def handle_event("update_temp", @up_key, socket) do
         {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", _, @down_key, socket) do
+      def handle_event("update_temp", _key, socket) do
         {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", _, _key, socket) do
+      def handle_event("update_temp", _key, socket) do
         {:noreply, socket}
       end
   """
@@ -292,10 +292,10 @@ defmodule Phoenix.LiveView do
               Socket.t()
             ) :: term
 
-  @callback handle_event(event :: binary, from, unsigned_params, Socket.t()) ::
+  @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, mount: 2, handle_event: 4
+  @optional_callbacks terminate: 2, mount: 2, handle_event: 3
 
   defmacro __using__(_opts) do
     quote do
