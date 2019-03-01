@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.View do
     case static_mount(parent, view, session) do
       {:ok, socket, signed_session} ->
         html = ~E"""
-        <div disconn id="<%= LiveView.Socket.dom_id(socket) %>"
+        <div id="<%= LiveView.Socket.dom_id(socket) %>"
             data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
             data-phx-view="<%= inspect(view) %>"
             data-phx-session="<%= signed_session %>">
