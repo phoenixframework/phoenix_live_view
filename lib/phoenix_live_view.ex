@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView do
   with the signed session, and socket state, where mount assigns
   values for rendering. However, in the connected client case, a
   live view process is spawned on the server, pushes the result of
-  `render/1` to the client and contiues on for the duration of the
+  `render/1` to the client and continues on for the duration of the
   connection. If at any point during the stateful life-cycle a
   crash is encountered, or the client connection drops, the client
   gracefully reconnects to the server, passing its signed session
@@ -52,7 +52,7 @@ defmodule Phoenix.LiveView do
 
       def AppWeb.ThermostatView do
         def render(assigns) do
-          ~E\"""
+          ~L\"""
           Current temperature: <%= @temperature %>
           \"""
         end
@@ -252,7 +252,7 @@ defmodule Phoenix.LiveView do
       @down_key 40
 
       def render(assigns) do
-      ~E\"""
+      ~L\"""
       <div id="thermostat" phx-keyup="update_temp" phx-target="document">
         Current temperature: <%= @temperature %>
       </div>
@@ -336,7 +336,7 @@ defmodule Phoenix.LiveView do
 
       def AppWeb.ThermostatView do
         def render(assigns) do
-          ~E\"""
+          ~L\"""
           Current temperature: <%= @temperatures %>
           <%= live_render(conn, AppWeb.ClockView) %>
           \"""
