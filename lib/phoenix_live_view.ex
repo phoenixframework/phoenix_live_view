@@ -327,7 +327,7 @@ defmodule Phoenix.LiveView do
 
       def AppWeb.ThermostatController do
         def show(conn, %{"id" => thermostat_id}) do
-          live_render(conn, AppWeb.ThermostatView, session: %{
+          Phoenix.LiveView.live_render(conn, AppWeb.ThermostatView, session: %{
             thermostat_id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView do
         def render(assigns) do
           ~L\"""
           Current temperature: <%= @temperatures %>
-          <%= live_render(conn, AppWeb.ClockView) %>
+          <%= Phoenix.LiveView.live_render(conn, AppWeb.ClockView) %>
           \"""
         end
       end
