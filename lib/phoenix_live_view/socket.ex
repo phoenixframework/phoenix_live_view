@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.Socket do
 
           config :my_app, MyApp.Endpoint,
               ...,
-              live_view: [signing_salt: #{random_signing_salt()}]
+              live_view: [signing_salt: "#{random_signing_salt()}"]
 
       """
   end

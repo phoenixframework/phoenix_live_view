@@ -382,7 +382,6 @@ defmodule Phoenix.LiveView do
         case Phoenix.Controller.layout(conn) do
           {mod, layout} -> {mod, template_string(layout)}
           false -> false
-          nil -> false
         end
     end
   end
