@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/chrismccord/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/chrismccord/phoenix_live_view)
 
-Phoenix LiveView provides the building blocks to write stateful views that interact with the browser.
+Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML.
 
 ## Installation
 
