@@ -69,7 +69,7 @@ defmodule Phoenix.LiveView do
       end
 
   The `render/1` callback receives the `socket.assigns` and is responsible
-  for returning rendered content. You can use `Phoenix.HTML.sigil_E` to inline
+  for returning rendered content. You can use `Phoenix.HTML.sigil_L` to inline
   Phoenix HTML EEx templates.
 
   With a live view defined, you first define the `socket` path in your endpoint,
