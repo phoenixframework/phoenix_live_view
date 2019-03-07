@@ -53,20 +53,28 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     ref = make_ref()
     case start_supervised_channel(state, view, ref) do
       {:ok, pid} ->
+        mon_ref = Process.monitor(pid)
+
         receive do
-          {^ref, %{rendered: rendered}} ->
+          {^ref, {:ok, %{rendered: rendered}}} ->
+            Process.demonitor(mon_ref, [:flush])
             {:ok, pid, rendered}
 
-        after timeout ->
-          exit(:timeout)
-        end
-
-      :ignore ->
-        receive do
-          {^ref, reason} ->
+          {^ref, {:error, reason}} ->
+            Process.demonitor(mon_ref, [:flush])
             send_caller(state, reason)
             {:error, reason}
+
+          {:DOWN, ^mon_ref, _, _, reason} ->
+            send_caller(state, reason)
+            {:error, reason}
+        after
+          timeout -> exit(:timeout)
         end
+
+      {:error, reason} ->
+        send_caller(state, reason)
+        {:error, reason}
     end
   end
 
