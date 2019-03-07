@@ -179,10 +179,6 @@ defmodule Phoenix.LiveView.Channel do
   defp log_mount(%Phoenix.Socket{private: %{log_join: false}}, _), do: :noop
   defp log_mount(%Phoenix.Socket{private: %{log_join: level}}, func), do: Logger.log(level, func)
 
-  defp wrap_mount({:ok, %Socket{} = socket}), do: {:ok, socket, []}
-  defp wrap_mount({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
-  defp wrap_mount(other), do: other
-
   defp reply(state, ref, status, payload) do
     reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
@@ -229,8 +225,8 @@ defmodule Phoenix.LiveView.Channel do
         id: id,
       })
 
-    case wrap_mount(view.mount(user_session, lv_socket)) do
-      {:ok, %Socket{} = lv_socket, _user_opts} ->
+    case view.mount(user_session, lv_socket) do
+      {:ok, %Socket{} = lv_socket} ->
         {state, rendered} =
           lv_socket
           |> build_state(phx_socket, user_session)
@@ -240,12 +236,6 @@ defmodule Phoenix.LiveView.Channel do
 
         GenServer.reply(from, {:ok, %{rendered: rendered_diff}})
         {:noreply, new_state}
-
-      {:error, reason} = err ->
-        log_mount(phx_socket, fn -> "Mounting #{inspect(view)} #{id} failed: #{inspect(err)}" end)
-
-        GenServer.reply(from, {:error, reason})
-        {:stop, :shutdown, :no_state}
 
       {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
         log_mount(phx_socket, fn -> "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}" end)
