@@ -80,10 +80,10 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Renders a live view without spawning a liveview server.
+  Renders a Live View without spawning a Live View server.
 
   * `endpoint` - the endpoint module
-  * `view` - the live view module
+  * `view` - the Live View module
 
   ## Options
 
@@ -110,10 +110,10 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Renders a nested live view without spawning a server.
+  Renders a nested Live View without spawning a server.
 
   * `parent` - the parent `%Phoenix.LiveView.Socket{}`
-  * `view` - the child live view module
+  * `view` - the child Live View module
 
   ## Options
 

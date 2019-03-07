@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Socket do
   @moduledoc """
-  Holds the live view socket state.
+  Holds the Live View socket state.
   """
   use Phoenix.Socket
 
@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.Socket do
   end
 
   @doc """
-  Returns the socket's live view module.
+  Returns the socket's Live View module.
   """
   def view(%Socket{view: view}), do: view
 
@@ -124,7 +124,7 @@ defmodule Phoenix.LiveView.Socket do
       raise ArgumentError, """
       no signing salt found for #{inspect(endpoint)}.
 
-      Add the following live view configuration to your config/config.exs:
+      Add the following Live View configuration to your config/config.exs:
 
           config :my_app, MyApp.Endpoint,
               ...,

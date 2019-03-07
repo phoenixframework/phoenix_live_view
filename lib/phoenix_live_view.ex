@@ -16,19 +16,19 @@ defmodule Phoenix.LiveView do
 
   ## Life-cycle
 
-  A live view begins as a regular HTTP request and HTML response,
+  A Live View begins as a regular HTTP request and HTML response,
   and then upgrades to a stateful view on client connect,
   guaranteeing a regular HTML page even if JavaScript is disabled.
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a live view from the controller and providing
+  You begin by rendering a Live View from the controller and providing
   *session* data to the view, which represents request information
   necessary for the view, such as params, cookie session info, etc.
   The session is signed and stored on the client, then provided back
   to the server when the client connects, or reconnects to the stateful
   view. When a view is rendered from the controller, the `mount/2` callback
-  is invoked with the provided session data and the live view's socket.
+  is invoked with the provided session data and the Live View's socket.
   The `mount/2` callback wires up socket assigns necessary for rendering
   the view. After mounting, `render/1` is invoked and the HTML is sent
   as a regular HTML response to the client.
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView do
   via phx bindings. Just like the controller flow, `mount/2` is invoked
   with the signed session, and socket state, where mount assigns
   values for rendering. However, in the connected client case, a
-  live view process is spawned on the server, pushes the result of
+  Live View process is spawned on the server, pushes the result of
   `render/1` to the client and continues on for the duration of the
   connection. If at any point during the stateful life-cycle a
   crash is encountered, or the client connection drops, the client
@@ -48,7 +48,7 @@ defmodule Phoenix.LiveView do
 
   ## Usage
 
-  First, a live view requires two callbacks: `mount/2` and `render/1`:
+  First, a Live View requires two callbacks: `mount/2` and `render/1`:
 
       def AppWeb.ThermostatView do
         def render(assigns) do
@@ -69,10 +69,11 @@ defmodule Phoenix.LiveView do
       end
 
   The `render/1` callback receives the `socket.assigns` and is responsible
-  for returning rendered content. You can use `Phoenix.HTML.sigil_E` to inline
-  Phoenix HTML EEx templates.
+  for returning rendered content. You can use `Phoenix.LiveView.sigil_L/2`
+  to inline Live View templates. If you want to use `Phoenix.HTML` helpers,
+  remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
-  With a live view defined, you first define the `socket` path in your endpoint,
+  With a Live View defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
       defmodule AppWeb.Endpoint do
@@ -98,7 +99,7 @@ defmodule Phoenix.LiveView do
   As we saw in the life-cycle section, you pass `:session` data about the
   request to the view, such as the current user's id in the cookie session,
   and parameters from the request. A regular HTML response is sent with a
-  signed token embedded in the DOM containing your live view session data.
+  signed token embedded in the DOM containing your Live View session data.
 
   Next, your client code connects to the server:
 
@@ -108,9 +109,9 @@ defmodule Phoenix.LiveView do
       liveSocket.connect()
 
   After the client connects, `mount/2` will be invoked inside a spawn
-  live view process. At this point, you can use `connected?/1` to
+  Live View process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
-  sending messages, etc. For example, you can periodically update a live view
+  sending messages, etc. For example, you can periodically update a Live View
   with a timer:
 
       defmodule DemoWeb.ThermostatView do
@@ -147,7 +148,7 @@ defmodule Phoenix.LiveView do
 
       <button phx-click="inc_temperature">+</button>
 
-  Then on the server, all live view bindings are handled with the `handle_event`
+  Then on the server, all Live View bindings are handled with the `handle_event`
   callback, for example:
 
       def handle_event("inc_temperature", _value, socket) do
@@ -169,7 +170,7 @@ defmodule Phoenix.LiveView do
 
   To handle form changes and submissions, use the `phx-change` and `phx-submit`
   events. In general, it is preferred to handle input changes at the form level,
-  where all form fields are passed to the liveview's callback given any
+  where all form fields are passed to the Live View's callback given any
   single input change. For example, to handle real-time form validation and
   saving, your template would use both `phx_change` and `phx_submit` bindings:
 
@@ -185,7 +186,7 @@ defmodule Phoenix.LiveView do
         <%= submit "Save" %>
       <% end %>
 
-  Next, your liveview picks up the events in `handle_event` callbacks:
+  Next, your Live View picks up the events in `handle_event` callbacks:
 
       def render(assigns) ...
 
@@ -274,8 +275,6 @@ defmodule Phoenix.LiveView do
       end
   """
 
-  @behaviour Plug
-
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
@@ -300,8 +299,6 @@ defmodule Phoenix.LiveView do
   defmacro __using__(_opts) do
     quote do
       import unquote(__MODULE__), except: [render: 2]
-      # TODO don't import this, users can
-      import Phoenix.HTML
 
       @behaviour unquote(__MODULE__)
       @impl unquote(__MODULE__)
@@ -313,13 +310,13 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Renders a live view from an originating plug request or
-  within a parent live view.
+  Renders a Live View from an originating plug request or
+  within a parent Live View.
 
   ## Options
 
     * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the live view
+      to the client. When connecting from the client, the Live View
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
 
@@ -394,7 +391,7 @@ defmodule Phoenix.LiveView do
   Useful for checking the connectivity status when mounting the view.
   For example, on initial page render, the view is mounted statically,
   rendered, and the HTML is sent to the client. Once the client
-  connects to the server, a live view is then spawned and mounted
+  connects to the server, a Live View is then spawned and mounted
   statefully within a process. Use `connected?/1` to conditionally
   perform stateful work, such as subscribing to pubsub topics,
   sending messages, etc.
@@ -496,7 +493,7 @@ defmodule Phoenix.LiveView do
   @doc """
   Annotates the socket for redirect to a destination path.
 
-  *Note*: live view redirects rely on instructing client
+  *Note*: Live View redirects rely on instructing client
   to perform a `window.location` update on the provided
   redirect location.
 
@@ -521,16 +518,6 @@ defmodule Phoenix.LiveView do
   """
   defmacro sigil_L({:<<>>, _, [expr]}, []) do
     EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
-  end
-
-  @impl Plug
-  def init(opts), do: opts
-
-  @impl Plug
-  # TODO kill the plugability for now in favor of user calling
-  # in controller
-  def call(conn, view) do
-    live_render(conn, view, session: %{params: conn.path_params})
   end
 
   @doc false
