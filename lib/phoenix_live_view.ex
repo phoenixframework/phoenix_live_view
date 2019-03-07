@@ -430,14 +430,12 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    assign(socket, %{key => value})
+    assign(socket, [{key, value}])
   end
 
   def assign(%Socket{} = socket, attrs)
       when is_map(attrs) or is_list(attrs) do
-    attrs
-    |> Enum.into(%{})
-    |> Enum.reduce(socket, fn {key, val}, acc ->
+    Enum.reduce(attrs, socket, fn {key, val}, acc ->
       case Map.fetch(acc.assigns, key) do
         {:ok, ^val} -> acc
         {:ok, _old_val} -> do_assign(acc, key, val)
