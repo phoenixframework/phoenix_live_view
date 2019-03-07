@@ -17,7 +17,7 @@ def deps do
 end
 ```
 
-Once installed, update your application's endpoint module to include a signing
+Once installed, update your endpoint's configuration to include a signing
 salt. You can generate a signing salt by running `mix phx.gen.secret 32`.
 
 ```elixir
@@ -50,9 +50,7 @@ Add LiveView NPM dependencies in your package.json.
 
 ```json
 {
-  ...
   "dependencies": {
-    ...,
     "phoenix": "../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view"
