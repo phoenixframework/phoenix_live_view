@@ -84,6 +84,14 @@ let isEmpty = (obj) => {
   return Object.keys(obj).length === 0
 }
 
+let maybe = (el, key) => {
+  if(el){
+    return el[key]
+  } else {
+    return null
+  }
+}
+
 let recursiveMerge = (target, source) => {
   for(let key in source){
     let val = source[key]
@@ -186,11 +194,14 @@ export default class LiveSocket {
 
   getViewById(id){ return this.views[id] }
 
+  onViewError(view){
+    this.dropActiveElement(view)
+  }
+
   destroyViewById(id){
     let view = this.views[id]
     if(view){
       delete this.views[view.id]
-      // console.log("destroying", id)
       view.destroy()
     }
   }
@@ -215,6 +226,12 @@ export default class LiveSocket {
     }
   }
 
+  dropActiveElement(view){
+    if(this.prevActive && view.ownsElement(this.prevActive)){
+      this.prevActive = null
+    }
+  }
+  
   restorePreviouslyActiveFocus(){
     if(this.prevActive && this.prevActive !== document.body){
       this.prevActive.focus()
@@ -394,7 +411,7 @@ class View {
   }
   
   onJoin({rendered}){
-    // console.log("join", JSON.stringify(rendered))
+    console.log("join", JSON.stringify(rendered))
     this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
@@ -416,7 +433,7 @@ class View {
 
   update(diff){
     if(isEmpty(diff)){ return }
-    // console.log("update", JSON.stringify(diff))
+    console.log("update", JSON.stringify(diff))
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
@@ -456,6 +473,7 @@ class View {
 
   onError(){
     // console.log("error", this.view)
+    this.liveSocket.onViewError(this)
     document.activeElement.blur()
     this.displayError()
   }
@@ -519,7 +537,7 @@ class View {
 
   ownsElement(element){
     return element.getAttribute(PHX_PARENT_ID) === this.id ||
-           element.closest(PHX_VIEW_SELECTOR).id === this.id
+           maybe(element.closest(PHX_VIEW_SELECTOR), "id") === this.id
   }
 
   bindUI(){
