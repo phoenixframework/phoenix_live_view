@@ -1,24 +1,24 @@
-# PhoenixLiveView
+# Phoenix Live View
 
-[![Build Status](https://travis-ci.com/chrismccord/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/chrismccord/phoenix_live_view)
+[![Build Status](https://travis-ci.com/phoenixframework/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/phoenixframework/phoenix_live_view)
 
-Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML.
+Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
+
+**Note**: Currently Live View is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `phoenix_live_view` to your list of dependencies in `mix.exs`:
+Currently Live View is only avaialble from GitHub. To use it, add to your `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.1.0"}
+    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"}
   ]
 end
 ```
 
-Once installed, update your endpoint's configuration to include a signing
-salt. You can generate a signing salt by running `mix phx.gen.secret 32`.
+Once installed, update your endpoint's configuration to include a signing salt. You can generate a signing salt by running `mix phx.gen.secret 32`.
 
 ```elixir
 config :my_app, MyAppWeb.Endpoint,
@@ -32,6 +32,16 @@ Update your configuration to enable writing LiveView templates with the `.leex` 
 ```elixir
 config :phoenix,
   template_engines: [leex: Phoenix.LiveView.Engine]
+```
+
+Then add the Live View flash plug to your browser pipeline, after `:fetch_flash`:
+
+```elixir
+pipeline :browser do
+  ...
+  plug :fetch_flash
+  plug Phoenix.LiveView.Flash
+end
 ```
 
 Expose a new socket for LiveView updates in your app's endpoint module.
