@@ -1,0 +1,8 @@
+{
+  "name": "phoenix_live_view",
+  "version": "0.1.0",
+  "main": "./priv/static/phoenix_live_view.js",
+  "repository": {
+  },
+  "files": ["README.md", "LICENSE.md", "package.json", "priv/static/phoenix_live_view.js"]
+}
