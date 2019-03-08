@@ -13,6 +13,15 @@ client/server interaction, for example:
     let liveSocket = new LiveSocket("/live")
     liveSocket.connect()
 
+A LiveSocket can also be created from an existing socket:
+
+    import { Socket } from "phoenix"
+    import LiveSocket from "live_view"
+
+    let socket = new Socket("/live")
+    let liveSocket = new LiveSocket(socket)
+    liveSocket.connect()
+
 All options are passed directly to the `Phoenix.Socket` constructor,
 except for the following LiveView specific options:
 
@@ -156,15 +165,19 @@ let Rendered = {
 }
 
 export default class LiveSocket {
-  constructor(url, opts = {}){
+  constructor(urlOrSocket, opts = {}){
+    let socket = urlOrSocket;
+    if (typeof urlOrSocket === "string") {
+      socket = new Socket(urlOrSocket, opts);
+    }
+    this.socket = socket;
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
-    this.url = url
     this.opts = opts
     this.views = {}
     this.activeElement = null
     this.prevActive = null
-    this.socket = new Socket(url, opts)
   }
+
 
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
