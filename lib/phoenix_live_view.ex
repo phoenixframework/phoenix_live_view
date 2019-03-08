@@ -350,15 +350,13 @@ defmodule Phoenix.LiveView do
     endpoint = Phoenix.Controller.endpoint_module(conn)
     case LiveView.View.static_render(endpoint, view, opts) do
       {:ok, content} ->
-        data = Phoenix.View.render_to_iodata(__MODULE__, "template.html", %{
+        conn
+        |> Phoenix.Controller.put_view(__MODULE__)
+        |> Phoenix.Controller.render("template.html", %{
           layout: layout(conn),
           conn: conn,
           content: content
         })
-
-        conn
-        |> Plug.Conn.put_resp_content_type("text/html")
-        |> Plug.Conn.resp(conn.status || 200, data)
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
