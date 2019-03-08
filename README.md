@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/phoenixframework/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/phoenixframework/phoenix_live_view)
 
-Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
+Phoenix Live View enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
 
 **Note**: Currently Live View is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
 
@@ -27,7 +27,7 @@ config :my_app, MyAppWeb.Endpoint,
    ]
 ```
 
-Update your configuration to enable writing LiveView templates with the `.leex` extension.
+Update your configuration to enable writing Live View templates with the `.leex` extension.
 
 ```elixir
 config :phoenix,
@@ -62,7 +62,7 @@ def router do
 end
 ```
 
-Next, expose a new socket for LiveView updates in your app's endpoint module.
+Next, expose a new socket for Live View updates in your app's endpoint module.
 
 ```elixir
 defmodule MyAppWeb.Endpoint do
@@ -74,7 +74,7 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Add LiveView NPM dependencies in your package.json.
+Add Live View NPM dependencies in your package.json.
 
 ```json
 {
@@ -86,7 +86,7 @@ Add LiveView NPM dependencies in your package.json.
 }
 ```
 
-Enable connecting to a LiveView socket in your app.js file.
+Enable connecting to a Live View socket in your app.js file.
 
 ```javascript
 import LiveSocket from "phoenix_live_view";
