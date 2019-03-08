@@ -41,7 +41,7 @@ When pushed, the value sent to the server will be the event's keyCode.
 
 ## Loading state and Errors
 
-By default, the following classes are applied to the liveview's parent
+By default, the following classes are applied to the Live View's parent
 container:
 
   - `"phx-connected"` - applied when the view has connected to the server
