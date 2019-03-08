@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Returns the socket's Live View module.
+  Returns the socket's LiveView module.
   """
   def view(%Socket{view: view}), do: view
 
@@ -172,10 +172,10 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Renders a Live View without spawning a Live View server.
+  Renders a LiveView without spawning a LiveView server.
 
   * `endpoint` - the endpoint module
-  * `view` - the Live View module
+  * `view` - the LiveView module
 
   ## Options
 
@@ -202,10 +202,10 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Renders a nested Live View without spawning a server.
+  Renders a nested LiveView without spawning a server.
 
   * `parent` - the parent `%Phoenix.LiveView.Socket{}`
-  * `view` - the child Live View module
+  * `view` - the child LiveView module
 
   ## Options
 
@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView.View do
       raise ArgumentError, """
       no signing salt found for #{inspect(endpoint)}.
 
-      Add the following Live View configuration to your config/config.exs:
+      Add the following LiveView configuration to your config/config.exs:
 
           config :my_app, MyApp.Endpoint,
               ...,
