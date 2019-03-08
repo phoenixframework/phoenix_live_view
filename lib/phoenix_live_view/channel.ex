@@ -13,88 +13,26 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket})
   end
 
-  @doc false
   def ping(pid) do
     GenServer.call(pid, {:phoenix_live_view, :ping})
   end
 
-  def init({%{"session" => session_token}, from, phx_socket}) do
-    case View.verify_session(phx_socket.endpoint, session_token) do
-      {:ok, %{id: id, view: view, parent_pid: parent, session: user_session}} ->
-        verified_init(view, id, parent, user_session, from, phx_socket)
-
-      {:error, reason} ->
-        log_mount(phx_socket, fn ->
-          "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
-        end)
-
-        GenServer.reply(from, %{reason: "badsession"})
-        :ignore
-    end
+  @impl true
+  def init(triplet) do
+    send(self(), {:join, __MODULE__})
+    {:ok, triplet}
   end
 
-  def init({%{}, from, phx_socket}) do
-    log_mount(phx_socket, fn -> "Mounting #{phx_socket.topic} failed because no session was provided" end)
-    GenServer.reply(from, %{reason: "nosession"})
-    :ignore
-  end
-
-  defp verified_init(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
-    Process.monitor(phx_socket.transport_pid)
-    if parent, do: Process.monitor(parent)
-
-    lv_socket =
-      Socket.build_socket(phx_socket.endpoint, %{
-        connected?: true,
-        parent_pid: parent,
-        view: view,
-        id: id,
-      })
-
-    case wrap_mount(view.mount(user_session, lv_socket)) do
-      {:ok, %Socket{} = lv_socket, _user_opts} ->
-        {state, rendered} =
-          lv_socket
-          |> build_state(phx_socket, user_session)
-          |> rerender()
-
-        {new_state, rendered_diff} = render_diff(state, rendered)
-
-        GenServer.reply(from, %{rendered: rendered_diff})
-        {:ok, new_state}
-
-      {:error, reason} = err ->
-        log_mount(phx_socket, fn -> "Mounting #{inspect(view)} #{id} failed: #{inspect(err)}" end)
-
-        GenServer.reply(from, reason)
-        :ignore
-
-      {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
-        log_mount(phx_socket, fn -> "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}" end)
-        GenServer.reply(from, %{redirect: to})
-        :ignore
-
-      other ->
-        View.raise_invalid_mount(other, view)
-    end
-  end
-
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, session) do
-    %{
-      socket: lv_socket,
-      session: session,
-      fingerprints: nil,
-      serializer: phx_socket.serializer,
-      topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid,
-      join_ref: phx_socket.join_ref
-    }
+  @impl true
+  def handle_info({:join, __MODULE__}, triplet) do
+    join(triplet)
   end
 
   def handle_info({:DOWN, _, _, transport_pid, reason}, %{transport_pid: transport_pid} = state) do
     reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
     {:stop, reason, state}
   end
+
   def handle_info({:DOWN, _, :process, parent, reason}, state) do
     ^parent = state.socket.parent_pid
     send(state.transport_pid, {:socket_close, self(), reason})
@@ -119,6 +57,7 @@ defmodule Phoenix.LiveView.Channel do
     handle_result(state, :info, socket, view_module(state).handle_info(msg, socket))
   end
 
+  @impl true
   def handle_call({:phoenix_live_view, :ping}, _from, state) do
     {:reply, :ok, state}
   end
@@ -127,7 +66,7 @@ defmodule Phoenix.LiveView.Channel do
     handle_result(state, :call, socket, view_module(state).handle_call(msg, from, socket))
   end
 
-  @doc false
+  @impl true
   def terminate(reason, %{socket: socket} = state) do
     view = view_module(state)
 
@@ -138,7 +77,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  @doc false
+  def terminate(_reason, _state) do
+    :ok
+  end
+
+  @impl true
   def code_change(old, %{socket: socket} = state, extra) do
     view = view_module(state)
 
@@ -236,10 +179,6 @@ defmodule Phoenix.LiveView.Channel do
   defp log_mount(%Phoenix.Socket{private: %{log_join: false}}, _), do: :noop
   defp log_mount(%Phoenix.Socket{private: %{log_join: level}}, func), do: Logger.log(level, func)
 
-  defp wrap_mount({:ok, %Socket{} = socket}), do: {:ok, socket, []}
-  defp wrap_mount({:ok, %Socket{} = socket, opts}), do: {:ok, socket, opts}
-  defp wrap_mount(other), do: other
-
   defp reply(state, ref, status, payload) do
     reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
@@ -249,5 +188,74 @@ defmodule Phoenix.LiveView.Channel do
     message = %Message{topic: state.topic, event: event, payload: payload}
     send(state.transport_pid, state.serializer.encode!(message))
     :ok
+  end
+
+  ## Join
+
+  defp join({%{"session" => session_token}, from, phx_socket}) do
+    case View.verify_session(phx_socket.endpoint, session_token) do
+      {:ok, %{id: id, view: view, parent_pid: parent, session: user_session}} ->
+        verified_join(view, id, parent, user_session, from, phx_socket)
+
+      {:error, reason} ->
+        log_mount(phx_socket, fn ->
+          "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
+        end)
+
+        GenServer.reply(from, {:error, %{reason: "badsession"}})
+        {:stop, :shutdown, :no_state}
+    end
+  end
+
+  defp join({%{}, from, phx_socket}) do
+    log_mount(phx_socket, fn -> "Mounting #{phx_socket.topic} failed because no session was provided" end)
+    GenServer.reply(from, %{reason: "nosession"})
+    :ignore
+  end
+
+  defp verified_join(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
+    Process.monitor(phx_socket.transport_pid)
+    if parent, do: Process.monitor(parent)
+
+    lv_socket =
+      Socket.build_socket(phx_socket.endpoint, %{
+        connected?: true,
+        parent_pid: parent,
+        view: view,
+        id: id,
+      })
+
+    case view.mount(user_session, lv_socket) do
+      {:ok, %Socket{} = lv_socket} ->
+        {state, rendered} =
+          lv_socket
+          |> build_state(phx_socket, user_session)
+          |> rerender()
+
+        {new_state, rendered_diff} = render_diff(state, rendered)
+
+        GenServer.reply(from, {:ok, %{rendered: rendered_diff}})
+        {:noreply, new_state}
+
+      {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
+        log_mount(phx_socket, fn -> "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}" end)
+        GenServer.reply(from, {:error, %{redirect: to}})
+        {:stop, :shutdown, :no_state}
+
+      other ->
+        View.raise_invalid_mount(other, view)
+    end
+  end
+
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, session) do
+    %{
+      socket: lv_socket,
+      session: session,
+      fingerprints: nil,
+      serializer: phx_socket.serializer,
+      topic: phx_socket.topic,
+      transport_pid: phx_socket.transport_pid,
+      join_ref: phx_socket.join_ref
+    }
   end
 end

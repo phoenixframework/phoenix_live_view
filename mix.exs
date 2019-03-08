@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:phoenix, "~> 1.4.1"},
+      {:phoenix, "~> 1.4.2", github: "phoenixframework/phoenix", branch: "v1.4"},
       {:phoenix_html, "~> 2.13"},
       {:jason, "~> 1.0", optional: true}
     ]
