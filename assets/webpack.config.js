@@ -6,7 +6,6 @@ module.exports = {
     filename: 'phoenix_live_view.js',
     path: path.resolve(__dirname, '../priv/static'),
     library: 'phoenix_live_view',
-    libraryTarget: 'umd',
     globalObject: 'this'
   },
   module: {
