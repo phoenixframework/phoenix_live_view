@@ -10,7 +10,7 @@
     "watch": "webpack --mode development --watch"
   },
   "dependencies": {
-    "morphdom": "^2.3.3",
+    "morphdom": "^2.5.0",
     "phoenix": "file:~/oss/phoenix",
     "phoenix_html": "file:../deps/phoenix_html"
   },
