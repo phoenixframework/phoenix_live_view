@@ -166,18 +166,17 @@ let Rendered = {
 
 export default class LiveSocket {
   constructor(urlOrSocket, opts = {}){
-    let socket = urlOrSocket;
-    if (typeof urlOrSocket === "string") {
-      socket = new Socket(urlOrSocket, opts);
+    let socket = urlOrSocket
+    if(typeof urlOrSocket === "string"){
+      socket = new Socket(urlOrSocket, opts)
     }
-    this.socket = socket;
+    this.socket = socket
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
     this.activeElement = null
     this.prevActive = null
   }
-
 
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
