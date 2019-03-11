@@ -150,7 +150,7 @@ defmodule Phoenix.LiveViewTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Plug.Conn.put_private(:phoenix_endpoint, endpoint)
-      |> Phoenix.LiveView.live_render(view_module, live_opts)
+      |> Phoenix.LiveView.Controller.live_render(view_module, live_opts)
 
     case conn.status do
       200 ->

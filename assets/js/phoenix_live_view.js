@@ -183,7 +183,7 @@ export default class LiveSocket {
       this.joinRootView()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
-        this.joinRootView()
+        this.joinRootViews()
       })
     }
     return this.socket.connect()
@@ -193,9 +193,10 @@ export default class LiveSocket {
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
-  joinRootView(){
-    let rootEl = document.querySelector(PHX_VIEW_SELECTOR)
-    if(rootEl){ this.joinView(rootEl) }
+  joinRootViews(){
+    document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
+      this.joinView(rootEl)
+    })
   }
 
   joinView(el, parentView){
@@ -225,6 +226,8 @@ export default class LiveSocket {
     this.activeElement = target
     let cancel = () => {
       if(target === this.activeElement){ this.activeElement = null }
+      target.removeEventListener("mouseup", this)
+      target.removeEventListener("touchend", this)
     }
     target.addEventListener("mouseup", cancel)
     target.addEventListener("touchend", cancel)
@@ -289,7 +292,6 @@ let DOM = {
 
   patch(view, container, id, html){
     let focused = view.liveSocket.getActiveElement()
-    view.liveSocket.restorePreviouslyActiveFocus()
     let selectionStart = null
     let selectionEnd = null
     if(DOM.isTextualInput(focused)){
@@ -387,7 +389,7 @@ class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.hasBoundUI = false
-    this.channel = this.liveSocket.channel(`views:${this.id}`, () => {
+    this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {session: this.getSession()}
     })
     this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
@@ -423,7 +425,7 @@ class View {
   }
   
   onJoin({rendered}){
-    console.log("join", JSON.stringify(rendered))
+    // console.log("join", JSON.stringify(rendered))
     this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
@@ -445,7 +447,7 @@ class View {
 
   update(diff){
     if(isEmpty(diff)){ return }
-    console.log("update", JSON.stringify(diff))
+    // console.log("update", JSON.stringify(diff))
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
@@ -495,9 +497,12 @@ class View {
     this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
   }
 
-  pushWithReply(event, payload){
+  pushWithReply(event, payload, onReply = function(){ }){
     this.channel.push(event, payload, PUSH_TIMEOUT)
-      .receive("ok", diff => this.update(diff))
+      .receive("ok", diff => {
+        this.update(diff)
+        onReply()
+      })
   }
 
   pushClick(clickedEl, event, phxEvent){
@@ -531,14 +536,14 @@ class View {
     })
   }
   
-  pushFormSubmit(formEl, event, phxEvent){
+  pushFormSubmit(formEl, event, phxEvent, onReply){
     if(event){ event.target.disabled = true }
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       id: event && event.target.id || null,
       value: this.serializeForm(formEl)
-    })
+    }, onReply)
   }
 
   eachChild(selector, each){
@@ -581,6 +586,9 @@ class View {
     this.eachChild(`form[${change}] input`, input => {
       this.bindChange(input)
     })
+    this.eachChild(`form[${change}] select`, input => {
+      this.bindChange(input)
+    })
     this.eachChild(`form[${change}] textarea`, textarea => {
       this.bindChange(textarea)
     })
@@ -615,8 +623,10 @@ class View {
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
     form.querySelectorAll("input").forEach(input => input.readOnly = true)
-    this.liveSocket.blurActiveElement()
-    this.pushFormSubmit(form, e, phxEvent)
+    this.liveSocket.blurActiveElement(this)
+    this.pushFormSubmit(form, e, phxEvent, () => {
+      this.liveSocket.restorePreviouslyActiveFocus()
+    })
   }
 
   scheduleSubmit(form, phxEvent){

@@ -7,6 +7,8 @@ defmodule Phoenix.LiveView.View do
 
   @max_session_age 1_209_600
 
+  @salt_length 8
+
   @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
@@ -129,6 +131,20 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
+  def configured_signing_salt!(endpoint) when is_atom(endpoint) do
+    endpoint.config(:live_view)[:signing_salt] ||
+      raise ArgumentError, """
+      no signing salt found for #{inspect(endpoint)}.
+
+      Add the following Live View configuration to your config/config.exs:
+
+          config :my_app, MyApp.Endpoint,
+              ...,
+              live_view: [signing_salt: "#{random_signing_salt()}"]
+
+      """
+  end
+
   defp disconnected_nested_static_render(parent, view, session) do
     case static_mount(parent, view, session) do
       {:ok, socket, signed_session} ->
@@ -220,7 +236,14 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp salt(endpoint) when is_atom(endpoint) do
-    LiveView.Socket.configured_signing_salt!(endpoint)
+    configured_signing_salt!(endpoint)
+  end
+
+  defp random_signing_salt do
+    @salt_length
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode64()
+    |> binary_part(0, @salt_length)
   end
 
   defp sign_token(endpoint_mod, salt, data) do

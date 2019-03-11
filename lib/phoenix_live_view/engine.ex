@@ -80,58 +80,6 @@ defmodule Phoenix.LiveView.Engine do
   On the docs below, we will explain how it works internally.
   For user-facing documentation, see `Phoenix.LiveView`.
 
-  ## User facing docs
-
-  TODO: Move this to the Phoenix.LiveView module.
-
-  `Phoenix.LiveView`'s built-in templates use the `.leex`
-  extension, which stands for Live EEx. They are similar
-  to regular `.eex` templates except they are designed to
-  minimize the amount of data sent over the wire by tracking
-  changes.
-
-  When you first render a `.leex` template, it will send
-  all of the static and dynamic parts of the template to
-  the client. After that, any change you do on the server
-  will now send only the dyamic parts and only if those
-  parts have changed.
-
-  The tracking of changes are done via assigns. Therefore,
-  if part of your template does this:
-
-      <%= something_with_user(@user) %>
-
-  That particular section will be re-rendered only if the
-  `@user` assign changes between events. Therefore, you
-  MUST pass all of the data to your templates via assigns
-  and avoid performing direct operations on the template
-  as much as possible. For example, if you perform this
-  operation in your template:
-
-      <%= for user <- Repo.all(User) do %>
-        <%= user.name %>
-      <% end %>
-
-  Then Phoenix will never re-render the section above, even
-  if the amount of users in the database changes. Instead,
-  you need to store the users as assigns in your LiveView
-  before it renders the template:
-
-      assign(socket, :users, Repo.all(User))
-
-  Generally speaking, **data loading should never happen inside
-  the template**, regardless if you are using LiveView or not.
-  The difference is that LiveView enforces those as best
-  practices.
-
-  Another restriction of LiveView is that, in order to track
-  variables, it may make some macros incompatible with `.leex`
-  templates. However, this would only happen if those macros
-  are injecting or accessing user variables, which are not
-  recommended in the first place. Overall, `.leex` templates
-  do their best to be compatible with any Elixir code, sometimes
-  even turning off optimizations to keep compatibility.
-
   ## Phoenix.LiveView.Rendered
 
   Whenever you render a `.leex` template, it returns a

@@ -1,12 +1,7 @@
 defmodule Phoenix.LiveView.Socket do
-  @moduledoc """
-  Holds the Live View socket state.
-  """
-  use Phoenix.Socket
+  @moduledoc false
 
   alias Phoenix.LiveView.Socket
-
-  @salt_length 8
 
   defstruct id: nil,
             endpoint: nil,
@@ -19,19 +14,9 @@ defmodule Phoenix.LiveView.Socket do
             stopped: nil,
             connected?: false
 
-  channel "views:*", Phoenix.LiveView.Channel
-
-  @doc false
-  @impl Phoenix.Socket
-  def connect(_params, %Phoenix.Socket{} = socket, _connect_info) do
-    {:ok, socket}
-  end
-
-  @doc false
-  @impl Phoenix.Socket
-  def id(_socket), do: nil
-
-  @doc false
+  @doc """
+  Strips socket of redudant assign data for rendering.
+  """
   def strip(%Socket{} = socket) do
     %Socket{socket | assigns: :unset}
   end
@@ -41,6 +26,13 @@ defmodule Phoenix.LiveView.Socket do
   """
   def clear_changed(%Socket{} = socket) do
     %Socket{socket | changed: nil}
+  end
+
+  @doc """
+  Returns the socket's flash messages.
+  """
+  def get_flash(%Socket{private: private}) do
+    private[:flash]
   end
 
   @doc """
@@ -73,7 +65,6 @@ defmodule Phoenix.LiveView.Socket do
   def connected?(%Socket{connected?: true}), do: true
   def connected?(%Socket{connected?: false}), do: false
 
-  @doc false
   def build_socket(endpoint, %{} = opts) when is_atom(endpoint) do
     opts = normalize_opts!(opts)
 
@@ -87,7 +78,6 @@ defmodule Phoenix.LiveView.Socket do
     }
   end
 
-  @doc false
   def build_nested_socket(%Socket{endpoint: endpoint} = parent, opts) do
     nested_opts =
       Map.merge(opts, %{
@@ -116,34 +106,6 @@ defmodule Phoenix.LiveView.Socket do
         """)
 
     opts
-  end
-
-  @doc false
-  def configured_signing_salt!(endpoint) when is_atom(endpoint) do
-    endpoint.config(:live_view)[:signing_salt] ||
-      raise ArgumentError, """
-      no signing salt found for #{inspect(endpoint)}.
-
-      Add the following Live View configuration to your config/config.exs:
-
-          config :my_app, MyApp.Endpoint,
-              ...,
-              live_view: [signing_salt: "#{random_signing_salt()}"]
-
-      """
-  end
-
-  @doc false
-  def random_signing_salt do
-    @salt_length
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode64()
-    |> binary_part(0, @salt_length)
-  end
-
-  @doc false
-  def get_flash(%Socket{private: private}) do
-    private[:flash]
   end
 
   defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))

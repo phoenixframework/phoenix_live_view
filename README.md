@@ -34,7 +34,7 @@ config :phoenix,
   template_engines: [leex: Phoenix.LiveView.Engine]
 ```
 
-Then add the Live View flash plug to your browser pipeline, after `:fetch_flash`:
+Next, add the Live View flash plug to your browser pipeline, after `:fetch_flash`:
 
 ```elixir
 pipeline :browser do
@@ -44,13 +44,31 @@ pipeline :browser do
 end
 ```
 
-Expose a new socket for LiveView updates in your app's endpoint module.
+Then add the following imports to your web file in `lib/app_web.ex`:
+
+```elixir
+def view do
+  quote do
+    ...
+    import Phoenix.LiveView, only: [live_render: 2, live_render: 3]
+  end
+end
+
+def router do
+  quote do
+    ...
+    import Phoenix.LiveView.Router
+  end
+end
+```
+
+Next, expose a new socket for LiveView updates in your app's endpoint module.
 
 ```elixir
 defmodule MyAppWeb.Endpoint do
   use Phoenix.Endpoint
 
-  socket "/live", Phoenix.LiveView.Socket
+  socket "/live", Phoenix.LiveView.UserSocket
 
   # ...
 end
