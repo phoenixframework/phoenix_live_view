@@ -357,7 +357,7 @@ defmodule Phoenix.LiveView.Engine do
   def handle_expr(%{root: false} = state, "=", ast) do
     %{static: static, dynamic: dynamic, vars_count: vars_count} = state
     var = var(vars_count)
-    ast = quote do: unquote(var) = unquote(to_safe(ast, []))
+    ast = quote do: unquote(var) = unquote(to_safe(ast, false))
     %{state | dynamic: [ast | dynamic], static: [var | static], vars_count: vars_count + 1}
   end
 
@@ -378,26 +378,26 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Safe conversion
 
-  defp to_safe(ast, extra_clauses) do
-    to_safe(ast, line_from_expr(ast), extra_clauses)
+  defp to_safe(ast, root?) do
+    to_safe(ast, line_from_expr(ast), root?)
   end
 
   defp line_from_expr({_, meta, _}) when is_list(meta), do: Keyword.get(meta, :line)
   defp line_from_expr(_), do: nil
 
   # We can do the work at compile time
-  defp to_safe(literal, _line, _extra_clauses)
+  defp to_safe(literal, _line, _root?)
        when is_binary(literal) or is_atom(literal) or is_number(literal) do
     Phoenix.HTML.Safe.to_iodata(literal)
   end
 
   # We can do the work at runtime
-  defp to_safe(literal, line, _extra_clauses) when is_list(literal) do
+  defp to_safe(literal, line, _root?) when is_list(literal) do
     quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
   end
 
   # Emit a special data structure for comprehensions
-  defp to_safe({:for, meta, args} = expr, line, extra_clauses) do
+  defp to_safe({:for, meta, args} = expr, line, true) do
     with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       # Unpack the safe tuple back into binaries and dynamics
@@ -419,16 +419,20 @@ defmodule Phoenix.LiveView.Engine do
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe_catch_all(expr, line, extra_clauses)
+      _ -> to_safe_catch_all(expr, line, true)
     end
   end
 
   # We need to check at runtime and we do so by optimizing common cases.
-  defp to_safe(expr, line, extra_clauses) do
-    to_safe_catch_all(expr, line, extra_clauses)
+  defp to_safe(expr, line, root?) do
+    to_safe_catch_all(expr, line, root?)
   end
 
-  defp to_safe_catch_all(expr, line, extra_clauses) do
+  @root_clauses (quote do
+                    %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+                  end)
+
+  defp to_safe_catch_all(expr, line, root?) do
     # Keep stacktraces for protocol dispatch...
     fallback = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
 
@@ -440,8 +444,10 @@ defmodule Phoenix.LiveView.Engine do
         other -> unquote(fallback)
       end
 
+    clauses = if root?, do: @root_clauses ++ clauses, else: clauses
+
     quote generated: true do
-      case unquote(expr), do: unquote(extra_clauses ++ clauses)
+      case unquote(expr), do: unquote(clauses)
     end
   end
 
@@ -473,7 +479,7 @@ defmodule Phoenix.LiveView.Engine do
   # never computed (no assigns) or some times computed based on assigns.
   #
   # If any assign is used, we store it in the assigns and use it to compute
-  # if it shuold be changed or not.
+  # if it should be changed or not.
   #
   # However, operations that change the lexical scope, such as imports and
   # defining variables, taint the analysis. Because variables can be set at
@@ -497,7 +503,7 @@ defmodule Phoenix.LiveView.Engine do
   # most variables in templates as assigns anyway.
   #
   # The tainting that happens from lexical scope is called weak-tainting,
-  # because it is disable under certain special forms. There is also
+  # because it is disabled under certain special forms. There is also
   # strong-tainting, which are always computed. Strong-tainting only happens
   # if the `assigns` variable is used.
   defp analyze(expr, previous_vars) do
@@ -614,12 +620,8 @@ defmodule Phoenix.LiveView.Engine do
     end)
   end
 
-  @extra_clauses (quote do
-                    %{__struct__: Phoenix.LiveView.Rendered} = other -> other
-                  end)
-
   defp to_conditional_var(ast, :tainted, var) do
-    quote do: unquote(var) = unquote(to_safe(ast, @extra_clauses))
+    quote do: unquote(var) = unquote(to_safe(ast, true))
   end
 
   defp to_conditional_var(ast, [], var) do
@@ -627,7 +629,7 @@ defmodule Phoenix.LiveView.Engine do
       unquote(var) =
         case __changed__ do
           %{} -> nil
-          _ -> unquote(to_safe(ast, @extra_clauses))
+          _ -> unquote(to_safe(ast, true))
         end
     end
   end
@@ -636,7 +638,7 @@ defmodule Phoenix.LiveView.Engine do
     quote do
       unquote(var) =
         case unquote(changed_assigns(assigns)) do
-          true -> unquote(to_safe(ast, @extra_clauses))
+          true -> unquote(to_safe(ast, true))
           false -> nil
         end
     end
