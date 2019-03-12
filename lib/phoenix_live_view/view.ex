@@ -10,11 +10,101 @@ defmodule Phoenix.LiveView.View do
   @salt_length 8
 
   @doc """
+  Strips socket of redudant assign data for rendering.
+  """
+  def strip(%Socket{} = socket) do
+    %Socket{socket | assigns: :unset}
+  end
+
+  @doc """
+  Clears the changes from the socket assigns.
+  """
+  def clear_changed(%Socket{} = socket) do
+    %Socket{socket | changed: nil}
+  end
+
+  @doc """
+  Returns the socket's flash messages.
+  """
+  def get_flash(%Socket{private: private}) do
+    private[:flash]
+  end
+
+  @doc """
+  Puts the root fingerprint.
+  """
+  def put_root(%Socket{} = socket, root_fingerprint) do
+    %Socket{socket | root_fingerprint: root_fingerprint}
+  end
+
+  @doc """
+  Returns the browser's DOM id for the socket's view.
+  """
+  def dom_id(%Socket{id: id}), do: id
+
+  @doc """
+  Returns the browser's DOM id for the child view module of a parent socket.
+  """
+  def child_dom_id(%Socket{} = parent, child_view) do
+    dom_id(parent) <> ":#{inspect(child_view)}"
+  end
+
+  @doc """
+  Returns the socket's Live View module.
+  """
+  def view(%Socket{view: view}), do: view
+
+  @doc """
+  Returns true if the socket is connected.
+  """
+  def connected?(%Socket{connected?: true}), do: true
+  def connected?(%Socket{connected?: false}), do: false
+
+  @doc """
+  Builds a `%Phoenix.LiveViewSocket{}`.
+  """
+  def build_socket(endpoint, %{} = opts) when is_atom(endpoint) do
+    opts = normalize_opts!(opts)
+
+    %Socket{
+      id: Map.get_lazy(opts, :id, fn -> random_id() end),
+      endpoint: endpoint,
+      parent_pid: opts[:parent_pid],
+      view: Map.fetch!(opts, :view),
+      assigns: Map.get(opts, :assigns, %{}),
+      connected?: Map.get(opts, :connected?, false)
+    }
+  end
+
+  @doc """
+  Builds a nested child `%Phoenix.LiveViewSocket{}`.
+  """
+  def build_nested_socket(%Socket{endpoint: endpoint} = parent, opts) do
+    nested_opts =
+      Map.merge(opts, %{
+        id: child_dom_id(parent, Map.fetch!(opts, :view)),
+        parent_pid: self(),
+      })
+
+    build_socket(endpoint, nested_opts)
+  end
+
+  @doc """
+  Annotates the socket for redirect.
+  """
+  def put_redirect(%Socket{stopped: nil} = socket, to) do
+    %Socket{socket | stopped: {:redirect, %{to: to}}}
+  end
+  def put_redirect(%Socket{stopped: reason} = _socket, _to) do
+    raise ArgumentError, "socket already prepared to stop for #{inspect(reason)}"
+  end
+
+  @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
   def render(%Socket{} = socket, session) do
-    view = Socket.view(socket)
-    assigns = Map.merge(socket.assigns, %{session: session, socket: Socket.strip(socket)})
+    view = view(socket)
+    assigns = Map.merge(socket.assigns, %{session: session, socket: strip(socket)})
 
     case view.render(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
@@ -96,7 +186,7 @@ defmodule Phoenix.LiveView.View do
     case static_mount(endpoint, view, session) do
       {:ok, socket, signed_session} ->
         html = ~E"""
-        <div id="<%= LiveView.Socket.dom_id(socket) %>"
+        <div id="<%= dom_id(socket) %>"
             data-phx-view="<%= inspect(view) %>"
             data-phx-session="<%= signed_session %>">
           <%= render(socket, session) %>
@@ -124,7 +214,7 @@ defmodule Phoenix.LiveView.View do
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
 
-    if Socket.connected?(parent) do
+    if connected?(parent) do
       connected_nested_static_render(parent, view, session)
     else
       disconnected_nested_static_render(parent, view, session)
@@ -149,8 +239,8 @@ defmodule Phoenix.LiveView.View do
     case static_mount(parent, view, session) do
       {:ok, socket, signed_session} ->
         html = ~E"""
-        <div id="<%= LiveView.Socket.dom_id(socket) %>"
-            data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+        <div id="<%= dom_id(socket) %>"
+            data-phx-parent-id="<%= dom_id(parent) %>"
             data-phx-view="<%= inspect(view) %>"
             data-phx-session="<%= signed_session %>">
 
@@ -170,7 +260,7 @@ defmodule Phoenix.LiveView.View do
 
     html = ~E"""
     <div conn id="<%= child_id %>"
-         data-phx-parent-id="<%= LiveView.Socket.dom_id(parent) %>"
+         data-phx-parent-id="<%= dom_id(parent) %>"
          data-phx-view="<%= inspect(view) %>"
          data-phx-session="<%= signed_session %>"></div>
     <div class="phx-loader"></div>
@@ -181,13 +271,13 @@ defmodule Phoenix.LiveView.View do
 
   defp static_mount(%Socket{} = parent, view, session) do
     parent
-    |> LiveView.Socket.build_nested_socket(%{view: view})
+    |> build_nested_socket(%{view: view})
     |> do_static_mount(view, session)
   end
 
   defp static_mount(endpoint, view, session) do
     endpoint
-    |> LiveView.Socket.build_socket(%{view: view})
+    |> build_socket(%{view: view})
     |> do_static_mount(view, session)
   end
 
@@ -210,15 +300,15 @@ defmodule Phoenix.LiveView.View do
 
   defp sign_session(%Socket{} = socket, session) do
     sign_token(socket.endpoint, salt(socket), %{
-      id: LiveView.Socket.dom_id(socket),
+      id: dom_id(socket),
       parent_pid: nil,
-      view: LiveView.Socket.view(socket),
+      view: view(socket),
       session: session
     })
   end
 
   defp sign_child_session(%Socket{} = parent, child_view, session) do
-    id = LiveView.Socket.child_dom_id(parent, child_view)
+    id = child_dom_id(parent, child_view)
 
     token =
       sign_token(parent.endpoint, salt(parent), %{
@@ -246,8 +336,22 @@ defmodule Phoenix.LiveView.View do
     |> binary_part(0, @salt_length)
   end
 
+  defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
+
   defp sign_token(endpoint_mod, salt, data) do
     encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
     Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
+  end
+  defp normalize_opts!(opts) do
+    valid_keys = Map.keys(%Socket{})
+    provided_keys = Map.keys(opts)
+
+    if provided_keys -- valid_keys != [],
+      do:
+        raise(ArgumentError, """
+        invalid socket keys. Expected keys #{inspect(valid_keys)}, got #{inspect(provided_keys)}
+        """)
+
+    opts
   end
 end

@@ -68,7 +68,7 @@ Next, expose a new socket for LiveView updates in your app's endpoint module.
 defmodule MyAppWeb.Endpoint do
   use Phoenix.Endpoint
 
-  socket "/live", Phoenix.LiveView.UserSocket
+  socket "/live", Phoenix.LiveView.Socket
 
   # ...
 end

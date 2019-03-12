@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView do
       defmodule AppWeb.Endpoint do
         use Phoenix.Endpoint
 
-        socket "/live", Phoenix.LiveView.UserSocket
+        socket "/live", Phoenix.LiveView.Socket
         ...
       end
 
@@ -344,7 +344,7 @@ defmodule Phoenix.LiveView do
   @type unsigned_params :: map
   @type from :: binary
 
-  @callback mount(Socket.session(), Socket.t()) ::
+  @callback mount(session :: map, Socket.t()) ::
               {:ok, Socket.t()} | {:stop, Socket.t()}
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
@@ -448,7 +448,9 @@ defmodule Phoenix.LiveView do
         end
       end
   """
-  def connected?(%Socket{} = socket), do: LiveView.Socket.connected?(socket)
+  def connected?(%Socket{} = socket) do
+    LiveView.View.connected?(socket)
+  end
 
   @doc """
   Adds key value pairs to socket assigns.
@@ -538,7 +540,7 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    Socket.put_redirect(socket, Keyword.fetch!(opts, :to))
+    LiveView.View.put_redirect(socket, Keyword.fetch!(opts, :to))
   end
 
   @doc """
