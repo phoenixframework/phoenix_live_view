@@ -166,11 +166,12 @@ let Rendered = {
 
 export default class LiveSocket {
   constructor(urlOrSocket, opts = {}){
-    let socket = urlOrSocket
-    if(typeof urlOrSocket === "string"){
-      socket = new Socket(urlOrSocket, opts)
-    }
-    this.socket = socket
+    this.unloaded = false
+    window.addEventListener("beforeunload", e => {
+      this.unloaded = true
+    })
+    this.socket = this.buildSocket(urlOrSocket, opts)
+    this.socket.onOpen(() => this.unloaded = false)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
@@ -178,9 +179,24 @@ export default class LiveSocket {
     this.prevActive = null
   }
 
+  buildSocket(urlOrSocket, opts){
+    if(typeof urlOrSocket !== "string"){ return urlOrSocket }
+
+    if(!opts.reconnectAfterMs){
+      opts.reconnectAfterMs = (tries) => {
+        if(this.unloaded){
+          return [50, 100, 250][tries - 1] || 500
+        } else {
+          return [1000, 2000, 5000, 10000][tries - 1] || 10000
+        }
+      }
+    }
+    return new Socket(urlOrSocket, opts)
+  }
+
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
-      this.joinRootView()
+      this.joinRootViews()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
         this.joinRootViews()
