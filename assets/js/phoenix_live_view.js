@@ -417,6 +417,7 @@ class View {
   }
 
   destroy(callback = function(){}){
+    // console.log("destroy", this)
     if(this.hasGracefullyClosed()){
       callback()
     } else {
@@ -491,6 +492,7 @@ class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(){
+    if(this.parent){ this.parent.channel.onError(() => this.channel.leave())}
     this.channel.join()
       .receive("ok", data => this.onJoin(data))
       .receive("error", resp => this.onJoinError(resp))
