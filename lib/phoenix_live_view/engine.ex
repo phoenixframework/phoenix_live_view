@@ -268,14 +268,13 @@ defmodule Phoenix.LiveView.Engine do
     %{
       static: [],
       dynamic: [],
-      vars_count: 0,
-      root: true
+      vars_count: 0
     }
   end
 
   @impl true
   def handle_begin(state) do
-    %{state | static: [], dynamic: [], root: false}
+    %{state | static: [], dynamic: []}
   end
 
   @impl true
@@ -287,36 +286,12 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state) do
-    %{static: static, dynamic: dynamic} = state
-
-    binaries = reverse_static(static)
-    dynamic = Enum.reverse(dynamic)
-
-    # We compute the term to binary instead of passing all binaries
-    # because we need to take into account the positions of dynamics.
-    <<fingerprint::8*16>> =
-      binaries
-      |> :erlang.term_to_binary()
-      |> :erlang.md5()
-
-    vars =
-      for {counter, _} when is_integer(counter) <- dynamic do
-        var(counter)
-      end
-
-    {block, _} =
-      Enum.map_reduce(dynamic, %{}, fn
-        {:ast, ast}, vars ->
-          {ast, vars, _} = analyze(ast, vars)
-          {ast, vars}
-
-        {counter, ast}, vars ->
-          {ast, vars, tainted_or_keys} = analyze(ast, vars)
-          {to_conditional_var(ast, tainted_or_keys, var(counter)), vars}
-      end)
+    {fingerprint, entries} = to_rendered_struct(handle_end(state))
 
     prelude =
       quote do
+        require Phoenix.LiveView.Engine
+
         __changed__ =
           case var!(assigns) do
             %{socket: %{root_fingerprint: unquote(fingerprint), changed: changed}} -> changed
@@ -324,16 +299,7 @@ defmodule Phoenix.LiveView.Engine do
           end
       end
 
-    rendered =
-      quote do
-        %Phoenix.LiveView.Rendered{
-          static: unquote(binaries),
-          dynamic: unquote(vars),
-          fingerprint: unquote(fingerprint)
-        }
-      end
-
-    {:__block__, [], [prelude | block] ++ [rendered]}
+    {:__block__, [], [prelude | entries]}
   end
 
   @impl true
@@ -343,25 +309,14 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @impl true
-  def handle_expr(%{root: true} = state, "=", ast) do
+  def handle_expr(state, "=", ast) do
     %{static: static, dynamic: dynamic, vars_count: vars_count} = state
-    tuple = {vars_count, ast}
-    %{state | dynamic: [tuple | dynamic], static: [:dynamic | static], vars_count: vars_count + 1}
-  end
-
-  def handle_expr(%{root: true} = state, "", ast) do
-    %{dynamic: dynamic} = state
-    %{state | dynamic: [{:ast, ast} | dynamic]}
-  end
-
-  def handle_expr(%{root: false} = state, "=", ast) do
-    %{static: static, dynamic: dynamic, vars_count: vars_count} = state
-    var = var(vars_count)
-    ast = quote do: unquote(var) = unquote(to_safe(ast, false))
+    var = Macro.var(:"arg#{vars_count}", __MODULE__)
+    ast = quote do: unquote(var) = unquote(__MODULE__).to_safe(unquote(ast))
     %{state | dynamic: [ast | dynamic], static: [var | static], vars_count: vars_count + 1}
   end
 
-  def handle_expr(%{root: false} = state, "", ast) do
+  def handle_expr(state, "", ast) do
     %{dynamic: dynamic} = state
     %{state | dynamic: [ast | dynamic]}
   end
@@ -370,108 +325,122 @@ defmodule Phoenix.LiveView.Engine do
     EEx.Engine.handle_expr(state, marker, ast)
   end
 
-  ## Var handling
+  ## Emit conditional variables for dirty assigns tracking.
 
-  defp var(counter) do
-    Macro.var(:"arg#{counter}", __MODULE__)
+  defp to_conditional_var(ast, :tainted, var) do
+    quote do: unquote(var) = unquote(to_live_struct(ast))
   end
 
-  ## Safe conversion
-
-  defp to_safe(ast, root?) do
-    to_safe(ast, line_from_expr(ast), root?)
+  defp to_conditional_var(ast, [], var) do
+    quote do
+      unquote(var) =
+        case __changed__ do
+          %{} -> nil
+          _ -> unquote(to_live_struct(ast))
+        end
+    end
   end
 
-  defp line_from_expr({_, meta, _}) when is_list(meta), do: Keyword.get(meta, :line)
-  defp line_from_expr(_), do: nil
-
-  # We can do the work at compile time
-  defp to_safe(literal, _line, _root?)
-       when is_binary(literal) or is_atom(literal) or is_number(literal) do
-    Phoenix.HTML.Safe.to_iodata(literal)
+  defp to_conditional_var(ast, assigns, var) do
+    quote do
+      unquote(var) =
+        case unquote(changed_assigns(assigns)) do
+          true -> unquote(to_live_struct(ast))
+          false -> nil
+        end
+    end
   end
 
-  # We can do the work at runtime
-  defp to_safe(literal, line, _root?) when is_list(literal) do
-    quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
+  defp changed_assigns(assigns) do
+    assigns
+    |> Enum.map(fn assign ->
+      quote do: unquote(__MODULE__).changed_assign?(__changed__, unquote(assign))
+    end)
+    |> Enum.reduce(&{:or, [], [&1, &2]})
   end
 
-  # Emit a special data structure for comprehensions
-  defp to_safe({:for, meta, args} = expr, line, true) do
+  ## Optimize possible expressions into live structs (rendered / comprehensions)
+
+  @extra_clauses (quote do
+                    %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+                  end)
+
+  defp to_live_struct({:for, meta, args} = expr) do
     with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
-      # Unpack the safe tuple back into binaries and dynamics
-      {static, dynamics} =
-        Enum.reduce(iodata, {[], []}, fn
-          binary, {static, dynamic} when is_binary(binary) ->
-            {[binary | static], dynamic}
-
-          var, {static, dynamic} when is_tuple(var) ->
-            {[:dynamic | static], [var | dynamic]}
-        end)
-
-      binaries = reverse_static(static)
-      dynamics = Enum.reverse(dynamics)
-      for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [dynamics]}]]}
+      {binaries, vars} = bins_and_vars(iodata)
+      for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
 
       quote do
         for = unquote(for)
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe_catch_all(expr, line, true)
+      _ -> to_safe(expr, @extra_clauses)
     end
   end
 
-  # We need to check at runtime and we do so by optimizing common cases.
-  defp to_safe(expr, line, root?) do
-    to_safe_catch_all(expr, line, root?)
+  defp to_live_struct(expr) do
+    to_safe(expr, @extra_clauses)
   end
 
-  @root_clauses (quote do
-                    %{__struct__: Phoenix.LiveView.Rendered} = other -> other
-                  end)
+  defp to_rendered_struct(expr) do
+    with {:__block__, _, entries} <- expr,
+         {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
+      {binaries, vars} = bins_and_vars(static)
 
-  defp to_safe_catch_all(expr, line, root?) do
-    # Keep stacktraces for protocol dispatch...
-    fallback = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
+      # We compute the term to binary instead of passing all binaries
+      # because we need to take into account the positions of dynamics.
+      <<fingerprint::8*16>> =
+        binaries
+        |> :erlang.term_to_binary()
+        |> :erlang.md5()
 
-    # However ignore them for the generated clauses to avoid warnings
-    clauses =
-      quote generated: true do
-        {:safe, data} -> data
-        bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
-        other -> unquote(fallback)
-      end
+      {block, _} =
+        Enum.map_reduce(dynamic, %{}, fn
+          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]},
+          vars ->
+            {ast, vars, tainted_or_keys} = analyze(ast, vars)
+            {to_conditional_var(ast, tainted_or_keys, var), vars}
 
-    clauses = if root?, do: @root_clauses ++ clauses, else: clauses
+          ast, vars ->
+            {ast, vars, _} = analyze(ast, vars)
+            {ast, vars}
+        end)
 
-    quote generated: true do
-      case unquote(expr), do: unquote(clauses)
+      rendered =
+        quote do
+          %Phoenix.LiveView.Rendered{
+            static: unquote(binaries),
+            dynamic: unquote(vars),
+            fingerprint: unquote(fingerprint)
+          }
+        end
+
+      {fingerprint, block ++ [rendered]}
+    else
+      _ -> :error
     end
   end
 
-  ## Static traversal
+  ## Extracts binaries and variable from iodata
 
-  defp reverse_static([:dynamic | static]),
-    do: reverse_static(static, [""])
+  defp bins_and_vars(acc),
+    do: bins_and_vars(acc, [], [])
 
-  defp reverse_static(static),
-    do: reverse_static(static, [])
+  defp bins_and_vars([bin, var | acc], bins, vars) when is_binary(bin) and is_tuple(var),
+    do: bins_and_vars(acc, [bin | bins], [var | vars])
 
-  defp reverse_static([static, :dynamic | rest], acc) when is_binary(static),
-    do: reverse_static(rest, [static | acc])
+  defp bins_and_vars([var | acc], bins, vars) when is_tuple(var),
+    do: bins_and_vars(acc, ["" | bins], [var | vars])
 
-  defp reverse_static([:dynamic | rest], acc),
-    do: reverse_static(rest, ["" | acc])
+  defp bins_and_vars([bin], bins, vars) when is_binary(bin),
+    do: {Enum.reverse([bin | bins]), Enum.reverse(vars)}
 
-  defp reverse_static([static], acc) when is_binary(static),
-    do: [static | acc]
+  defp bins_and_vars([], bins, vars),
+    do: {Enum.reverse(["" | bins]), Enum.reverse(vars)}
 
-  defp reverse_static([], acc),
-    do: ["" | acc]
-
-  ## Dynamic traversal
+  ## Assigns tracking
 
   @lexical_forms [:import, :alias, :require]
 
@@ -620,36 +589,46 @@ defmodule Phoenix.LiveView.Engine do
     end)
   end
 
-  defp to_conditional_var(ast, :tainted, var) do
-    quote do: unquote(var) = unquote(to_safe(ast, true))
+  ## Callbacks
+
+  @doc false
+  defmacro to_safe(ast) do
+    to_safe(ast, [])
   end
 
-  defp to_conditional_var(ast, [], var) do
-    quote do
-      unquote(var) =
-        case __changed__ do
-          %{} -> nil
-          _ -> unquote(to_safe(ast, true))
-        end
+  defp to_safe(ast, extra_clauses) do
+    to_safe(ast, line_from_expr(ast), extra_clauses)
+  end
+
+  defp line_from_expr({_, meta, _}) when is_list(meta), do: Keyword.get(meta, :line)
+  defp line_from_expr(_), do: nil
+
+  # We can do the work at compile time
+  defp to_safe(literal, _line, _extra_clauses)
+       when is_binary(literal) or is_atom(literal) or is_number(literal) do
+    Phoenix.HTML.Safe.to_iodata(literal)
+  end
+
+  # We can do the work at runtime
+  defp to_safe(literal, line, _extra_clauses) when is_list(literal) do
+    quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
+  end
+
+  defp to_safe(expr, line, extra_clauses) do
+    # Keep stacktraces for protocol dispatch...
+    fallback = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
+
+    # However ignore them for the generated clauses to avoid warnings
+    clauses =
+      quote generated: true do
+        {:safe, data} -> data
+        bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
+        other -> unquote(fallback)
+      end
+
+    quote generated: true do
+      case unquote(expr), do: unquote(extra_clauses ++ clauses)
     end
-  end
-
-  defp to_conditional_var(ast, assigns, var) do
-    quote do
-      unquote(var) =
-        case unquote(changed_assigns(assigns)) do
-          true -> unquote(to_safe(ast, true))
-          false -> nil
-        end
-    end
-  end
-
-  defp changed_assigns(assigns) do
-    assigns
-    |> Enum.map(fn assign ->
-      quote do: unquote(__MODULE__).changed_assign?(__changed__, unquote(assign))
-    end)
-    |> Enum.reduce(&{:or, [], [&1, &2]})
   end
 
   @doc false
