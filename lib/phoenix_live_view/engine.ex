@@ -358,16 +358,15 @@ defmodule Phoenix.LiveView.Engine do
         |> :erlang.term_to_binary()
         |> :erlang.md5()
 
-      {block, _} =
-        Enum.map_reduce(dynamic, %{}, fn
-          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]},
-          vars ->
-            {ast, vars, tainted_or_keys} = analyze(ast, vars)
-            {to_conditional_var(ast, tainted_or_keys, var), vars}
+      block =
+        Enum.map(dynamic, fn
+          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]} ->
+            {ast, tainted_or_keys} = analyze(ast)
+            to_conditional_var(ast, tainted_or_keys, var)
 
-          ast, vars ->
-            {ast, vars, _} = analyze(ast, vars)
-            {ast, vars}
+          ast ->
+            {ast, _} = analyze(ast)
+            ast
         end)
 
       rendered =
@@ -418,37 +417,19 @@ defmodule Phoenix.LiveView.Engine do
   # `=` or in a clause, whenever we see a variable, we consider it as tainted,
   # regardless of its position.
   #
-  # The only exceptions are variables used inside certain special forms,
-  # which we know are not capable of leaking the scope. However, even if a
-  # variable is inside a special form, it may have been define previously
-  # in function of an assign, such as:
-  #
-  #     <% var = @foo %>
-  #     <%= for _ <- [1, 2, 3], do: var %>
-  #
-  # In this case, the second expression does depend on the `@foo` assign.
-  # Therefore we do track the relationship between vars and assigns by
-  # attaching all assigns seen in an expression to all vars seen in said
-  # expression. This is a very loose mechanism which disables the optimization
-  # in many cases variables are used, but that's OK since we want to pass
-  # most variables in templates as assigns anyway.
-  #
   # The tainting that happens from lexical scope is called weak-tainting,
   # because it is disabled under certain special forms. There is also
   # strong-tainting, which are always computed. Strong-tainting only happens
   # if the `assigns` variable is used.
-  defp analyze(expr, previous_vars) do
-    {expr, new_vars, assigns} = analyze(expr, previous_vars, %{}, %{})
-
-    {tainted_vars?, new_vars} = Map.pop(new_vars, __MODULE__, false)
+  defp analyze(expr) do
+    {expr, tainted_vars?, assigns} = analyze(expr, false, %{})
     {tainted_assigns?, assigns} = Map.pop(assigns, __MODULE__, false)
-
     tainted_or_keys = if tainted_vars? or tainted_assigns?, do: :tainted, else: Map.keys(assigns)
-    {expr, merge_vars(previous_vars, new_vars, assigns), tainted_or_keys}
+    {expr, tainted_or_keys}
   end
 
   # Non-expanded assign access
-  defp analyze({:@, meta, [{name, _, context}]}, _previous, vars, assigns)
+  defp analyze({:@, meta, [{name, _, context}]}, tainted_vars?, assigns)
        when is_atom(name) and is_atom(context) do
     assigns_var = Macro.var(:assigns, nil)
 
@@ -457,118 +438,99 @@ defmodule Phoenix.LiveView.Engine do
         unquote(__MODULE__).fetch_assign!(unquote(assigns_var), unquote(name))
       end
 
-    {expr, vars, Map.put(assigns, name, true)}
+    {expr, tainted_vars?, Map.put(assigns, name, true)}
   end
 
   # Expanded assign access. The non-expanded form is handled on root,
   # then all further traversals happen on the expanded form
   defp analyze(
          {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
-         _previous,
-         vars,
+         tainted_vars?,
          assigns
        )
        when is_atom(name) do
-    {expr, vars, Map.put(assigns, name, true)}
+    {expr, tainted_vars?, Map.put(assigns, name, true)}
   end
 
   # Assigns is a strong-taint
-  defp analyze({:assigns, _, nil} = expr, _previous, vars, assigns) do
-    {expr, vars, taint(assigns)}
+  defp analyze({:assigns, _, nil} = expr, tainted_vars?, assigns) do
+    {expr, tainted_vars?, taint(assigns)}
   end
 
-  # Our own vars are ignored. They appear from nested do/end in EEx templates
-  defp analyze({_, _, __MODULE__} = expr, _previous, vars, assigns) do
-    {expr, vars, assigns}
+  # Our own vars are ignored. They appear from nested do/end in EEx templates.
+  defp analyze({_, _, __MODULE__} = expr, tainted_vars?, assigns) do
+    {expr, tainted_vars?, assigns}
   end
 
   # Vars always taint
-  defp analyze({name, _, context} = expr, previous, vars, assigns)
+  defp analyze({name, _, context} = expr, _tainted_vars?, assigns)
        when is_atom(name) and is_atom(context) do
-    pair = {name, context}
-    vars = vars |> Map.put(pair, true) |> taint()
-
-    assigns =
-      case previous do
-        %{^pair => map} -> Map.merge(assigns, map)
-        %{} -> assigns
-      end
-
-    {expr, vars, assigns}
+    {expr, true, assigns}
   end
 
   # Lexical forms always taint
-  defp analyze({lexical_form, _, [_]} = expr, _previous, vars, assigns)
+  defp analyze({lexical_form, _, [_]} = expr, _tainted_vars?, assigns)
        when lexical_form in @lexical_forms do
-    {expr, taint(vars), assigns}
+    {expr, true, assigns}
   end
 
-  defp analyze({lexical_form, _, [_, _]} = expr, _previous, vars, assigns)
+  defp analyze({lexical_form, _, [_, _]} = expr, _tainted_vars?, assigns)
        when lexical_form in @lexical_forms do
-    {expr, taint(vars), assigns}
+    {expr, true, assigns}
   end
 
   # with/for/fn never taint regardless of arity
-  defp analyze({special_form, meta, args}, previous, vars, assigns)
+  defp analyze({special_form, meta, args}, tainted_vars?, assigns)
        when special_form in [:with, :for, :fn] do
-    {args, _vars, assigns} = analyze_list(args, previous, vars, assigns, [])
-    {{special_form, meta, args}, vars, assigns}
+    {args, _tainted_vars?, assigns} = analyze_list(args, tainted_vars?, assigns, [])
+    {{special_form, meta, args}, tainted_vars?, assigns}
   end
 
   # case/2 only taint first arg
-  defp analyze({:case, meta, [expr, blocks]}, previous, vars, assigns) do
-    {expr, vars, assigns} = analyze(expr, previous, vars, assigns)
-    {blocks, _vars, assigns} = analyze(blocks, previous, vars, assigns)
-    {{:case, meta, [expr, blocks]}, vars, assigns}
+  defp analyze({:case, meta, [expr, blocks]}, tainted_vars?, assigns) do
+    {expr, tainted_vars?, assigns} = analyze(expr, tainted_vars?, assigns)
+    {blocks, _tainted_vars?, assigns} = analyze(blocks, tainted_vars?, assigns)
+    {{:case, meta, [expr, blocks]}, tainted_vars?, assigns}
   end
 
   # try/receive/cond/&/1 never taint
-  defp analyze({special_form, meta, [blocks]}, previous, vars, assigns)
+  defp analyze({special_form, meta, [blocks]}, tainted_vars?, assigns)
        when special_form in [:try, :receive, :cond, :&] do
-    {blocks, _vars, assigns} = analyze(blocks, previous, vars, assigns)
-    {{special_form, meta, [blocks]}, vars, assigns}
+    {blocks, _tainted_vars?, assigns} = analyze(blocks, tainted_vars?, assigns)
+    {{special_form, meta, [blocks]}, tainted_vars?, assigns}
   end
 
-  defp analyze({left, meta, args}, previous, vars, assigns) do
-    {left, vars, assigns} = analyze(left, previous, vars, assigns)
-    {args, vars, assigns} = analyze_list(args, previous, vars, assigns, [])
-    {{left, meta, args}, vars, assigns}
+  defp analyze({left, meta, args}, tainted_vars?, assigns) do
+    {left, tainted_vars?, assigns} = analyze(left, tainted_vars?, assigns)
+    {args, tainted_vars?, assigns} = analyze_list(args, tainted_vars?, assigns, [])
+    {{left, meta, args}, tainted_vars?, assigns}
   end
 
-  defp analyze({left, right}, previous, vars, assigns) do
-    {left, vars, assigns} = analyze(left, previous, vars, assigns)
-    {right, vars, assigns} = analyze(right, previous, vars, assigns)
-    {{left, right}, vars, assigns}
+  defp analyze({left, right}, tainted_vars?, assigns) do
+    {left, tainted_vars?, assigns} = analyze(left, tainted_vars?, assigns)
+    {right, tainted_vars?, assigns} = analyze(right, tainted_vars?, assigns)
+    {{left, right}, tainted_vars?, assigns}
   end
 
-  defp analyze([_ | _] = list, previous, vars, assigns) do
-    analyze_list(list, previous, vars, assigns, [])
+  defp analyze([_ | _] = list, tainted_vars?, assigns) do
+    analyze_list(list, tainted_vars?, assigns, [])
   end
 
-  defp analyze(other, _previous, vars, assigns) do
-    {other, vars, assigns}
+  defp analyze(other, tainted_vars?, assigns) do
+    {other, tainted_vars?, assigns}
   end
 
-  defp analyze_list([head | tail], previous, vars, assigns, acc) do
-    {head, vars, assigns} = analyze(head, previous, vars, assigns)
-    analyze_list(tail, previous, vars, assigns, [head | acc])
+  defp analyze_list([head | tail], vars, assigns, acc) do
+    {head, tainted_vars?, assigns} = analyze(head, vars, assigns)
+    analyze_list(tail, tainted_vars?, assigns, [head | acc])
   end
 
-  defp analyze_list([], _previous, vars, assigns, acc) do
-    {Enum.reverse(acc), vars, assigns}
+  defp analyze_list([], tainted_vars?, assigns, acc) do
+    {Enum.reverse(acc), tainted_vars?, assigns}
   end
 
   defp taint(assigns) do
     Map.put(assigns, __MODULE__, true)
-  end
-
-  defp merge_vars(previous, new, assigns) do
-    Enum.reduce(new, previous, fn {var, _}, acc ->
-      case acc do
-        %{^var => map} -> %{acc | var => Map.merge(map, assigns)}
-        %{} -> Map.put(acc, var, assigns)
-      end
-    end)
   end
 
   ## Callbacks

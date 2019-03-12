@@ -217,13 +217,6 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{foo: true}) == [["a", "a", "a"]]
     end
-
-    test "does not renders dynamic if it has variables from assign" do
-      template = "<% foo = @foo %><%= cond do bar = foo -> bar end %>"
-      assert changed(template, %{foo: 123}, nil) == ["123"]
-      assert changed(template, %{foo: 123}, %{}) == [nil]
-      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
-    end
   end
 
   describe "conditionals" do
