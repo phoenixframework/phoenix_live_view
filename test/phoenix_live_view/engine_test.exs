@@ -243,7 +243,10 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123, bar: true}, %{}) ==
                [nil]
 
-      assert [%Rendered{dynamic: [nil], static: ["one", "two"]}] =
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123, bar: true}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
                changed(template, %{foo: 123, bar: true}, %{bar: true})
 
       assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
@@ -268,8 +271,17 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [nil] = changed(template, %{foo: 123, bar: true, baz: 456}, %{})
 
-      assert [%Rendered{dynamic: [nil], static: ["one", "two"], fingerprint: ^fptrue}] =
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
                changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true, baz: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{baz: true})
 
       # bar = false
       assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: fpfalse}] =
@@ -277,8 +289,17 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [nil] = changed(template, %{foo: 123, bar: false, baz: 456}, %{})
 
-      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true, bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true})
 
       assert fptrue != fpfalse
     end

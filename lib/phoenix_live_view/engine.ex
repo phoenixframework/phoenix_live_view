@@ -234,7 +234,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state) do
-    {fingerprint, entries} = to_rendered_struct(handle_end(state))
+    {fingerprint, entries} = to_rendered_struct(handle_end(state), false, %{})
 
     prelude =
       quote do
@@ -275,25 +275,25 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Emit conditional variables for dirty assigns tracking.
 
-  defp to_conditional_var(ast, :tainted, var) do
-    quote do: unquote(var) = unquote(to_live_struct(ast))
+  defp to_conditional_var(ast, :all, var, tainted_vars?, assigns) do
+    quote do: unquote(var) = unquote(to_live_struct(ast, tainted_vars?, assigns))
   end
 
-  defp to_conditional_var(ast, [], var) do
+  defp to_conditional_var(ast, [], var, tainted_vars?, assigns) do
     quote do
       unquote(var) =
         case __changed__ do
           %{} -> nil
-          _ -> unquote(to_live_struct(ast))
+          _ -> unquote(to_live_struct(ast, tainted_vars?, assigns))
         end
     end
   end
 
-  defp to_conditional_var(ast, assigns, var) do
+  defp to_conditional_var(ast, keys, var, tainted_vars?, assigns) do
     quote do
       unquote(var) =
-        case unquote(changed_assigns(assigns)) do
-          true -> unquote(to_live_struct(ast))
+        case unquote(changed_assigns(keys)) do
+          true -> unquote(to_live_struct(ast, tainted_vars?, assigns))
           false -> nil
         end
     end
@@ -313,14 +313,15 @@ defmodule Phoenix.LiveView.Engine do
                     %{__struct__: Phoenix.LiveView.Rendered} = other -> other
                   end)
 
-  defp to_live_struct({:if, meta, [condition, [do: do_block] ++ opts]}) do
-    do_block = maybe_block_to_rendered(do_block)
+  defp to_live_struct({:if, meta, [condition, [do: do_block] ++ opts]}, tainted_vars?, assigns) do
+    {condition, tainted_vars?, assigns} = analyze(condition, tainted_vars?, assigns)
+    do_block = maybe_block_to_rendered(do_block, tainted_vars?, assigns)
     # It is ok to convert else to an empty string as to_safe would do it anyway.
-    else_block = maybe_block_to_rendered(Keyword.get(opts, :else, ""))
+    else_block = maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars?, assigns)
     to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @extra_clauses)
   end
 
-  defp to_live_struct({:for, meta, args} = expr) do
+  defp to_live_struct({:for, meta, args} = expr, _tainted_vars?, _assigns) do
     with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       {binaries, vars} = bins_and_vars(iodata)
@@ -335,18 +336,18 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct(expr) do
+  defp to_live_struct(expr, _tainted_vars?, _assigns) do
     to_safe(expr, @extra_clauses)
   end
 
-  defp maybe_block_to_rendered(block) do
-    case to_rendered_struct(block) do
+  defp maybe_block_to_rendered(block, tainted_vars?, assigns) do
+    case to_rendered_struct(block, tainted_vars?, assigns) do
       {_fingerprint, rendered} -> {:__block__, [], rendered}
       :error -> block
     end
   end
 
-  defp to_rendered_struct(expr) do
+  defp to_rendered_struct(expr, tainted_vars?, assigns) do
     with {:__block__, _, entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {binaries, vars} = bins_and_vars(static)
@@ -361,11 +362,11 @@ defmodule Phoenix.LiveView.Engine do
       block =
         Enum.map(dynamic, fn
           {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]} ->
-            {ast, tainted_or_keys} = analyze(ast)
-            to_conditional_var(ast, tainted_or_keys, var)
+            {ast, keys} = analyze_and_return_tainted_keys(ast, tainted_vars?, assigns)
+            to_conditional_var(ast, keys, var, tainted_vars?, assigns)
 
           ast ->
-            {ast, _} = analyze(ast)
+            {ast, _, _} = analyze(ast, tainted_vars?, assigns)
             ast
         end)
 
@@ -421,11 +422,11 @@ defmodule Phoenix.LiveView.Engine do
   # because it is disabled under certain special forms. There is also
   # strong-tainting, which are always computed. Strong-tainting only happens
   # if the `assigns` variable is used.
-  defp analyze(expr) do
-    {expr, tainted_vars?, assigns} = analyze(expr, false, %{})
+  defp analyze_and_return_tainted_keys(ast, tainted_vars?, assigns) do
+    {ast, tainted_vars?, assigns} = analyze(ast, tainted_vars?, assigns)
     {tainted_assigns?, assigns} = Map.pop(assigns, __MODULE__, false)
-    tainted_or_keys = if tainted_vars? or tainted_assigns?, do: :tainted, else: Map.keys(assigns)
-    {expr, tainted_or_keys}
+    keys = if tainted_vars? or tainted_assigns?, do: :all, else: Map.keys(assigns)
+    {ast, keys}
   end
 
   # Non-expanded assign access
