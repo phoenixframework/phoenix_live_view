@@ -2,9 +2,10 @@ defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
   def render(nil), do: ""
+  def render(binary) when is_binary(binary), do: binary
+
   def render(%{static: statics} = rendered) do
-    for {static, i} <- Enum.with_index(statics), into: "",
-      do: static <> to_string(rendered[i])
+    for {static, i} <- Enum.with_index(statics), into: "", do: static <> render(rendered[i])
   end
 
   def render_diff(rendered) do
@@ -13,6 +14,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> Enum.reverse()
     |> Enum.join("")
   end
+
   defp to_output_buffer(%{dynamics: dynamics, static: statics}, acc) do
     Enum.reduce(dynamics, acc, fn {_dynamic, index}, acc ->
       Enum.reduce(tl(statics), [Enum.at(statics, 0) | acc], fn static, acc ->
@@ -20,14 +22,16 @@ defmodule Phoenix.LiveViewTest.DOM do
       end)
     end)
   end
+
   defp to_output_buffer(%{static: statics} = rendered, acc) do
     statics
     |> Enum.with_index()
     |> tl()
     |> Enum.reduce([Enum.at(statics, 0) | acc], fn {static, index}, acc ->
-        [static | dynamic_to_buffer(rendered[index - 1], acc)]
+      [static | dynamic_to_buffer(rendered[index - 1], acc)]
     end)
   end
+
   defp dynamic_to_buffer(%{} = rendered, acc), do: to_output_buffer(rendered, []) ++ acc
   defp dynamic_to_buffer(str, acc), do: [str | acc]
 

@@ -313,6 +313,13 @@ defmodule Phoenix.LiveView.Engine do
                     %{__struct__: Phoenix.LiveView.Rendered} = other -> other
                   end)
 
+  defp to_live_struct({:if, meta, [condition, [do: do_block] ++ opts]}) do
+    do_block = maybe_block_to_rendered(do_block)
+    # It is ok to convert else to an empty string as to_safe would do it anyway.
+    else_block = maybe_block_to_rendered(Keyword.get(opts, :else, ""))
+    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @extra_clauses)
+  end
+
   defp to_live_struct({:for, meta, args} = expr) do
     with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
@@ -330,6 +337,13 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct(expr) do
     to_safe(expr, @extra_clauses)
+  end
+
+  defp maybe_block_to_rendered(block) do
+    case to_rendered_struct(block) do
+      {_fingerprint, rendered} -> {:__block__, [], rendered}
+      :error -> block
+    end
   end
 
   defp to_rendered_struct(expr) do
@@ -433,19 +447,38 @@ defmodule Phoenix.LiveView.Engine do
     {expr, merge_vars(previous_vars, new_vars, assigns), tainted_or_keys}
   end
 
+  # Non-expanded assign access
   defp analyze({:@, meta, [{name, _, context}]}, _previous, vars, assigns)
        when is_atom(name) and is_atom(context) do
+    assigns_var = Macro.var(:assigns, nil)
+
     expr =
       quote line: meta[:line] || 0 do
-        unquote(__MODULE__).fetch_assign!(var!(assigns), unquote(name))
+        unquote(__MODULE__).fetch_assign!(unquote(assigns_var), unquote(name))
       end
 
+    {expr, vars, Map.put(assigns, name, true)}
+  end
+
+  # Expanded assign access
+  defp analyze(
+         {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
+         _previous,
+         vars,
+         assigns
+       )
+       when is_atom(name) do
     {expr, vars, Map.put(assigns, name, true)}
   end
 
   # Assigns is a strong-taint
   defp analyze({:assigns, _, nil} = expr, _previous, vars, assigns) do
     {expr, vars, taint(assigns)}
+  end
+
+  # Our own vars are ignored
+  defp analyze({_, _, __MODULE__} = expr, _previous, vars, assigns) do
+    {expr, vars, assigns}
   end
 
   # Vars always taint
