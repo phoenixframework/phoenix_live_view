@@ -313,7 +313,7 @@ defmodule Phoenix.LiveView.Engine do
                     %{__struct__: Phoenix.LiveView.Rendered} = other -> other
                   end)
 
-  defp to_live_struct({:if, meta, [condition, [do: do_block] ++ opts]}, tainted_vars?, assigns) do
+  defp to_live_struct({:if, meta, [condition, [{:do, do_block} | opts]]}, tainted_vars?, assigns) do
     {condition, tainted_vars?, assigns} = analyze(condition, tainted_vars?, assigns)
     do_block = maybe_block_to_rendered(do_block, tainted_vars?, assigns)
     # It is ok to convert else to an empty string as to_safe would do it anyway.
