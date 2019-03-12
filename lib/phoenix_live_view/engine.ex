@@ -460,7 +460,8 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, Map.put(assigns, name, true)}
   end
 
-  # Expanded assign access
+  # Expanded assign access. The non-expanded form is handled on root,
+  # then all further traversals happen on the expanded form
   defp analyze(
          {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
          _previous,
@@ -476,7 +477,7 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, taint(assigns)}
   end
 
-  # Our own vars are ignored
+  # Our own vars are ignored. They appear from nested do/end in EEx templates
   defp analyze({_, _, __MODULE__} = expr, _previous, vars, assigns) do
     {expr, vars, assigns}
   end
