@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.Flash do
   defp salt(conn, opts) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
-    salt_base = opts[:signing_salt] || Phoenix.LiveView.Socket.configured_signing_salt!(endpoint)
+    salt_base = opts[:signing_salt] || Phoenix.LiveView.View.configured_signing_salt!(endpoint)
     computed_salt(salt_base)
   end
   defp computed_salt(salt_base), do: salt_base <> "flash"

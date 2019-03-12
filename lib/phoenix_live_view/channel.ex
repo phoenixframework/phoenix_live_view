@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp handle_result(state, _kind, _socket, {:stop, %Socket{stopped: {:redirect, %{to: to}}} = new_socket}) do
-    new_state = push_redirect(%{state | socket: new_socket}, to, Socket.get_flash(new_socket))
+    new_state = push_redirect(%{state | socket: new_socket}, to, View.get_flash(new_socket))
     send(state.transport_pid, {:socket_close, self(), :redirect})
 
     {:stop, {:shutdown, :redirect}, new_state}
@@ -127,7 +127,7 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp view_module(%{socket: socket}), do: Socket.view(socket)
+  defp view_module(%{socket: socket}), do: View.view(socket)
 
   defp decode("form", url_encoded) do
     Plug.Conn.Query.decode(url_encoded)
@@ -170,8 +170,8 @@ defmodule Phoenix.LiveView.Channel do
   defp reset_changed(%{socket: socket} = state, root_print) do
     new_socket =
       socket
-      |> Socket.clear_changed()
-      |> Socket.put_root(root_print)
+      |> View.clear_changed()
+      |> View.put_root(root_print)
 
     %{state | socket: new_socket}
   end
@@ -218,7 +218,7 @@ defmodule Phoenix.LiveView.Channel do
     if parent, do: Process.monitor(parent)
 
     lv_socket =
-      Socket.build_socket(phx_socket.endpoint, %{
+      View.build_socket(phx_socket.endpoint, %{
         connected?: true,
         parent_pid: parent,
         view: view,

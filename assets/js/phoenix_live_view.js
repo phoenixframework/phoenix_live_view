@@ -166,11 +166,12 @@ let Rendered = {
 
 export default class LiveSocket {
   constructor(urlOrSocket, opts = {}){
-    let socket = urlOrSocket
-    if(typeof urlOrSocket === "string"){
-      socket = new Socket(urlOrSocket, opts)
-    }
-    this.socket = socket
+    this.unloaded = false
+    window.addEventListener("beforeunload", e => {
+      this.unloaded = true
+    })
+    this.socket = this.buildSocket(urlOrSocket, opts)
+    this.socket.onOpen(() => this.unloaded = false)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
@@ -178,12 +179,27 @@ export default class LiveSocket {
     this.prevActive = null
   }
 
+  buildSocket(urlOrSocket, opts){
+    if(typeof urlOrSocket !== "string"){ return urlOrSocket }
+
+    if(!opts.reconnectAfterMs){
+      opts.reconnectAfterMs = (tries) => {
+        if(this.unloaded){
+          return [50, 100, 250][tries - 1] || 500
+        } else {
+          return [1000, 2000, 5000, 10000][tries - 1] || 10000
+        }
+      }
+    }
+    return new Socket(urlOrSocket, opts)
+  }
+
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
-      this.joinRootView()
+      this.joinRootViews()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
-        this.joinRootView()
+        this.joinRootViews()
       })
     }
     return this.socket.connect()
@@ -193,9 +209,10 @@ export default class LiveSocket {
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
-  joinRootView(){
-    let rootEl = document.querySelector(PHX_VIEW_SELECTOR)
-    if(rootEl){ this.joinView(rootEl) }
+  joinRootViews(){
+    document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
+      this.joinView(rootEl)
+    })
   }
 
   joinView(el, parentView){
@@ -225,6 +242,8 @@ export default class LiveSocket {
     this.activeElement = target
     let cancel = () => {
       if(target === this.activeElement){ this.activeElement = null }
+      target.removeEventListener("mouseup", this)
+      target.removeEventListener("touchend", this)
     }
     target.addEventListener("mouseup", cancel)
     target.addEventListener("touchend", cancel)
@@ -289,7 +308,6 @@ let DOM = {
 
   patch(view, container, id, html){
     let focused = view.liveSocket.getActiveElement()
-    view.liveSocket.restorePreviouslyActiveFocus()
     let selectionStart = null
     let selectionEnd = null
     if(DOM.isTextualInput(focused)){
@@ -387,7 +405,7 @@ class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.hasBoundUI = false
-    this.channel = this.liveSocket.channel(`views:${this.id}`, () => {
+    this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {session: this.getSession()}
     })
     this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
@@ -399,6 +417,7 @@ class View {
   }
 
   destroy(callback = function(){}){
+    // console.log("destroy", this)
     if(this.hasGracefullyClosed()){
       callback()
     } else {
@@ -423,7 +442,7 @@ class View {
   }
   
   onJoin({rendered}){
-    console.log("join", JSON.stringify(rendered))
+    // console.log("join", JSON.stringify(rendered))
     this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
@@ -445,7 +464,7 @@ class View {
 
   update(diff){
     if(isEmpty(diff)){ return }
-    console.log("update", JSON.stringify(diff))
+    // console.log("update", JSON.stringify(diff))
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
@@ -473,6 +492,7 @@ class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(){
+    if(this.parent){ this.parent.channel.onError(() => this.channel.leave())}
     this.channel.join()
       .receive("ok", data => this.onJoin(data))
       .receive("error", resp => this.onJoinError(resp))
@@ -495,9 +515,12 @@ class View {
     this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
   }
 
-  pushWithReply(event, payload){
+  pushWithReply(event, payload, onReply = function(){ }){
     this.channel.push(event, payload, PUSH_TIMEOUT)
-      .receive("ok", diff => this.update(diff))
+      .receive("ok", diff => {
+        this.update(diff)
+        onReply()
+      })
   }
 
   pushClick(clickedEl, event, phxEvent){
@@ -531,14 +554,14 @@ class View {
     })
   }
   
-  pushFormSubmit(formEl, event, phxEvent){
+  pushFormSubmit(formEl, event, phxEvent, onReply){
     if(event){ event.target.disabled = true }
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       id: event && event.target.id || null,
       value: this.serializeForm(formEl)
-    })
+    }, onReply)
   }
 
   eachChild(selector, each){
@@ -581,6 +604,9 @@ class View {
     this.eachChild(`form[${change}] input`, input => {
       this.bindChange(input)
     })
+    this.eachChild(`form[${change}] select`, input => {
+      this.bindChange(input)
+    })
     this.eachChild(`form[${change}] textarea`, textarea => {
       this.bindChange(textarea)
     })
@@ -615,8 +641,10 @@ class View {
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
     form.querySelectorAll("input").forEach(input => input.readOnly = true)
-    this.liveSocket.blurActiveElement()
-    this.pushFormSubmit(form, e, phxEvent)
+    this.liveSocket.blurActiveElement(this)
+    this.pushFormSubmit(form, e, phxEvent, () => {
+      this.liveSocket.restorePreviouslyActiveFocus()
+    })
   }
 
   scheduleSubmit(form, phxEvent){

@@ -22,8 +22,8 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a Live View from the controller and providing
-  *session* data to the view, which represents request information
+  You begin by rendering a Live View from your router or controller
+  while providing *session* data to the view, which represents request info
   necessary for the view, such as params, cookie session info, etc.
   The session is signed and stored on the client, then provided back
   to the server when the client connects, or reconnects to the stateful
@@ -83,13 +83,26 @@ defmodule Phoenix.LiveView do
         ...
       end
 
-   Next, you can `live_render` your view from any controller:
+  Next, you can serve Live Views directly from your router:
 
-      def ThermostatController do
+      defmodule AppWeb.Router do
+        use Phoenix.Router
+        import Phoenix.LiveView.Router
+
+        scope "/", AppWeb do
+          live "/thermostat", ThermostatView
+        end
+      end
+
+  Or you can `live_render` your view from any controller:
+
+      defmodule AppWeb.ThermostatController do
         ...
 
+        alias Phoenix.LiveView
+
         def show(conn, %{"id" => id}) do
-          Phoenix.LiveView.live_render(conn, AppWeb.ThermostatView, session: %{
+          LiveView.Controller.live_render(conn, AppWeb.ThermostatView, session: %{
             id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -140,6 +153,56 @@ defmodule Phoenix.LiveView do
   `handle_info` just like a GenServer, and update our socket assigns. Whenever
   a socket's assigns change, `render/1` is automatically invoked, and the
   updates are sent to the client.
+
+  ## LiveEEx Templates
+
+  `Phoenix.LiveView`'s built-in templates provided by the `.leex`
+  extension or `~L` sigil, stands for Live EEx. They are similar
+  to regular `.eex` templates except they are designed to
+  minimize the amount of data sent over the wire by tracking
+  changes.
+
+  When you first render a `.leex` template, it will send
+  all of the static and dynamic parts of the template to
+  the client. After that, any change you do on the server
+  will now send only the dyamic parts and only if those
+  parts have changed.
+
+  The tracking of changes are done via assigns. Therefore,
+  if part of your template does this:
+
+      <%= something_with_user(@user) %>
+
+  That particular section will be re-rendered only if the
+  `@user` assign changes between events. Therefore, you
+  MUST pass all of the data to your templates via assigns
+  and avoid performing direct operations on the template
+  as much as possible. For example, if you perform this
+  operation in your template:
+
+      <%= for user <- Repo.all(User) do %>
+        <%= user.name %>
+      <% end %>
+
+  Then Phoenix will never re-render the section above, even
+  if the amount of users in the database changes. Instead,
+  you need to store the users as assigns in your LiveView
+  before it renders the template:
+
+      assign(socket, :users, Repo.all(User))
+
+  Generally speaking, **data loading should never happen inside
+  the template**, regardless if you are using LiveView or not.
+  The difference is that LiveView enforces those as best
+  practices.
+
+  Another restriction of LiveView is that, in order to track
+  variables, it may make some macros incompatible with `.leex`
+  templates. However, this would only happen if those macros
+  are injecting or accessing user variables, which are not
+  recommended in the first place. Overall, `.leex` templates
+  do their best to be compatible with any Elixir code, sometimes
+  even turning off optimizations to keep compatibility.
 
   ## Bindings
 
@@ -281,7 +344,7 @@ defmodule Phoenix.LiveView do
   @type unsigned_params :: map
   @type from :: binary
 
-  @callback mount(Socket.session(), Socket.t()) ::
+  @callback mount(session :: map, Socket.t()) ::
               {:ok, Socket.t()} | {:stop, Socket.t()}
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
@@ -301,16 +364,19 @@ defmodule Phoenix.LiveView do
       import unquote(__MODULE__), except: [render: 2]
 
       @behaviour unquote(__MODULE__)
+
       @impl unquote(__MODULE__)
       def mount(_session, socket), do: {:ok, socket}
+
       @impl unquote(__MODULE__)
       def terminate(reason, state), do: {:ok, state}
+
       defoverridable mount: 2, terminate: 2
     end
   end
 
   @doc """
-  Renders a Live View from an originating plug request or
+  Renders a Live View within an originating plug request or
   within a parent Live View.
 
   ## Options
@@ -322,23 +388,11 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def AppWeb.ThermostatController do
-        def show(conn, %{"id" => thermostat_id}) do
-          Phoenix.LiveView.live_render(conn, AppWeb.ThermostatView, session: %{
-            thermostat_id: id,
-            current_user_id: get_session(conn, :user_id),
-          })
-        end
-      end
+      # within eex template
+      <%= live_render(@conn, MyApp.ThermostatLive) %>
 
-      def AppWeb.ThermostatView do
-        def render(assigns) do
-          ~L\"""
-          Current temperature: <%= @temperatures %>
-          <%= Phoenix.LiveView.live_render(conn, AppWeb.ClockView) %>
-          \"""
-        end
-      end
+      # within leex template
+      <%= live_render(@socket, MyApp.ThermostatLive) %>
 
   """
   def live_render(conn_or_socket, view, opts \\ []) do
@@ -348,40 +402,24 @@ defmodule Phoenix.LiveView do
 
   defp do_live_render(%Plug.Conn{} = conn, view, opts) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
+
     case LiveView.View.static_render(endpoint, view, opts) do
       {:ok, content} ->
-        conn
-        |> Phoenix.Controller.put_view(__MODULE__)
-        |> Phoenix.Controller.render("template.html", %{
-          layout: layout(conn),
-          conn: conn,
-          content: content
-        })
+        content
 
-      {:stop, {:redirect, opts}} ->
-        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+      {:stop, {:redirect, _opts}} ->
+        raise RuntimeError, """
+        attempted to redirect from #{inspect(view)} while rendering Plug request.
+        Redirects from live renders inside a Plug request are not supported.
+        """
     end
   end
-
   defp do_live_render(%Socket{} = parent, view, opts) do
     case LiveView.View.nested_static_render(parent, view, opts) do
       {:ok, content} -> content
       {:stop, reason} -> throw({:stop, reason})
     end
   end
-
-  defp layout(conn) do
-    case Map.fetch(conn.assigns, :layout) do
-      {:ok, {mod, layout}} -> {mod, template_string(layout)}
-      :error ->
-        case Phoenix.Controller.layout(conn) do
-          {mod, layout} -> {mod, template_string(layout)}
-          false -> false
-        end
-    end
-  end
-  defp template_string(layout) when is_atom(layout), do: "#{layout}.html"
-  defp template_string(layout) when is_binary(layout), do: layout
 
   @doc """
   Returns true if the sockect is connected.
@@ -410,7 +448,9 @@ defmodule Phoenix.LiveView do
         end
       end
   """
-  def connected?(%Socket{} = socket), do: LiveView.Socket.connected?(socket)
+  def connected?(%Socket{} = socket) do
+    LiveView.View.connected?(socket)
+  end
 
   @doc """
   Adds key value pairs to socket assigns.
@@ -500,7 +540,7 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    Socket.put_redirect(socket, Keyword.fetch!(opts, :to))
+    LiveView.View.put_redirect(socket, Keyword.fetch!(opts, :to))
   end
 
   @doc """
@@ -514,12 +554,5 @@ defmodule Phoenix.LiveView do
   """
   defmacro sigil_L({:<<>>, _, [expr]}, []) do
     EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
-  end
-
-  @doc false
-  # Phoenix.LiveView acts as a view via put_view to maintain the
-  # controller render + instrumentation stack
-  def render("template.html", %{content: content}) do
-    content
   end
 end
