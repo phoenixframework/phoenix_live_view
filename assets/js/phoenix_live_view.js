@@ -85,6 +85,10 @@ const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 20000
 
+export let debug = (view, kind, msg, obj) => {
+  console.log(`${view.id} ${kind}: ${msg} - `, obj)
+}
+
 let isObject = (obj) => {
   return typeof(obj) === "object" && !(obj instanceof Array)
 }
@@ -164,7 +168,8 @@ let Rendered = {
   }
 }
 
-export default class LiveSocket {
+// todo document LiveSocket specific options like viewLogger
+export class LiveSocket {
   constructor(urlOrSocket, opts = {}){
     this.unloaded = false
     window.addEventListener("beforeunload", e => {
@@ -175,6 +180,7 @@ export default class LiveSocket {
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
+    this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
   }
@@ -192,6 +198,13 @@ export default class LiveSocket {
       }
     }
     return new Socket(urlOrSocket, opts)
+  }
+
+  log(view, kind, msgCallback){
+    if(this.viewLogger){
+      let [msg, obj] = msgCallback()
+      this.viewLogger(view, kind, msg, obj)
+    }
   }
 
   connect(){
@@ -417,10 +430,11 @@ class View {
   }
 
   destroy(callback = function(){}){
-    // console.log("destroy", this)
     if(this.hasGracefullyClosed()){
+      this.log("destroyed", () => ["the server view has gracefully closed"])
       callback()
     } else {
+      this.log("destroyed", () => ["the child has been removed from the parent"])
       this.channel.leave()
         .receive("ok", callback)
         .receive("error", callback)
@@ -440,9 +454,13 @@ class View {
     let middle = Math.floor(this.el.clientHeight / LOADER_ZOOM)
     this.loader.style.top = `-${middle}px`
   }
+
+  log(kind, msgCallback){
+    this.liveSocket.log(this, kind, msgCallback)
+  }
   
   onJoin({rendered}){
-    // console.log("join", JSON.stringify(rendered))
+    this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
@@ -464,7 +482,7 @@ class View {
 
   update(diff){
     if(isEmpty(diff)){ return }
-    // console.log("update", JSON.stringify(diff))
+    this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
@@ -480,7 +498,7 @@ class View {
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
-    this.channel.onError(() => this.onError())
+    this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
   }
 
@@ -500,11 +518,11 @@ class View {
 
   onJoinError(resp){
     this.displayError()
-    console.log("Unable to join", resp)
+    this.log("error", () => ["unable to join", resp])
   }
 
-  onError(){
-    // console.log("error", this.view)
+  onError(reason){
+    this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
     this.displayError()
