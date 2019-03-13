@@ -19,6 +19,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button><%= if @nest do %>
         <%= live_render(@socket, ClockView, session: %{redir: @redir}) %>
+        <%= for user <- @users do %>
+          <i><%= user.name %> <%= user.email %></i>
+        <% end %>
       <% end %>
       """
     end
@@ -43,10 +46,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     defp do_mount(session, socket) do
       nest = Map.get(session, :nest, false)
+      users = Map.get(session, :users, [])
+
       if connected?(socket) do
-        {:ok, assign(socket, val: 1, nest: nest, redir: session[:redir])}
+        {:ok, assign(socket, val: 1, nest: nest, redir: session[:redir], users: users)}
       else
-        {:ok, assign(socket, val: 0, nest: nest, redir: session[:redir])}
+        {:ok, assign(socket, val: 0, nest: nest, redir: session[:redir], users: users)}
       end
     end
 
@@ -385,6 +390,19 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove controls_view, _
       assert children(thermo_view) == [clock_view]
       assert children(clock_view) == []
+    end
+
+    test "nested for comprehensions" do
+      users = [
+        %{name: "chris", email: "chris@test"},
+        %{name: "josé", email: "jose@test"},
+      ]
+      expected_users = "<i>chris chris@test</i>\n  \n    <i>josé jose@test</i>"
+      {:ok, thermo_view, html} =
+        mount(Endpoint, ThermostatView, session: %{nest: true, users: users})
+
+      assert html =~ expected_users
+      assert render(thermo_view) =~ expected_users
     end
   end
 

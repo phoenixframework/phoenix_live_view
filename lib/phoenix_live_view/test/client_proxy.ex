@@ -39,7 +39,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           |> put_view(root_view, pid, rendered)
           |> detect_added_or_removed_children(root_view.token)
 
-        send_caller(state, {:mounted, pid, DOM.render(rendered)})
+        send_caller(state, {:mounted, pid, DOM.render_diff(rendered)})
 
         {:ok, new_state}
 
@@ -332,7 +332,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     new_state =
       view.rendered
-      |> DOM.render()
+      |> DOM.render_diff()
       |> DOM.find_sessions()
       |> Enum.reduce(pruned_state, fn session, acc ->
         case fetch_view_by_session(acc, session) do

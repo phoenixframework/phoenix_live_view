@@ -1,13 +1,6 @@
 defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
-  def render(nil), do: ""
-  def render(binary) when is_binary(binary), do: binary
-
-  def render(%{static: statics} = rendered) do
-    for {static, i} <- Enum.with_index(statics), into: "", do: static <> render(rendered[i])
-  end
-
   def render_diff(rendered) do
     rendered
     |> to_output_buffer([])
@@ -15,11 +8,13 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> Enum.join("")
   end
 
-  defp to_output_buffer(%{dynamics: dynamics, static: statics}, acc) do
-    Enum.reduce(dynamics, acc, fn {_dynamic, index}, acc ->
-      Enum.reduce(tl(statics), [Enum.at(statics, 0) | acc], fn static, acc ->
-        [static | dynamic_to_buffer(dynamics[index - 1], acc)]
-      end)
+  # for comprehension
+  defp to_output_buffer(%{dynamics: for_dynamics, static: statics}, acc) do
+    Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
+      dynamics
+      |> Enum.with_index()
+      |> Enum.into(%{static: statics}, fn {val, key} -> {key, val} end)
+      |> to_output_buffer(acc)
     end)
   end
 
@@ -33,7 +28,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp dynamic_to_buffer(%{} = rendered, acc), do: to_output_buffer(rendered, []) ++ acc
-  defp dynamic_to_buffer(str, acc), do: [str | acc]
+  defp dynamic_to_buffer(str, acc) when is_binary(str), do: [str | acc]
 
   def find_sessions(html) do
     ~r/data-phx-session="(.*)">/
