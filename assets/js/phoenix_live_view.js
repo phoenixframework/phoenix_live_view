@@ -80,6 +80,7 @@ const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "password"]
 const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
+const PHX_READONLY = "data-phx-readonly"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
@@ -304,6 +305,23 @@ let Browser = {
 }
 
 let DOM = {
+
+  setInputsReadOnly(form){
+    form.querySelectorAll("input").forEach(input => {
+      input.setAttribute(PHX_READONLY, input.readOnly)
+      input.readOnly = true
+    })
+  },
+
+  restoreReadOnlyInputs(form){
+    form.querySelectorAll("input").forEach(input => {
+      let prev = input.getAttribute(PHX_READONLY)
+      if(prev){
+        input.readOnly = prev == "true"
+        input.removeAttribute(PHX_READONLY)
+      }
+    })
+  },
 
   discardError(el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
@@ -658,9 +676,10 @@ class View {
 
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
-    form.querySelectorAll("input").forEach(input => input.readOnly = true)
+    DOM.setInputsReadOnly(form)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, e, phxEvent, () => {
+      DOM.restoreReadOnlyInputs(form)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
@@ -726,3 +745,5 @@ class View {
     }
   }
 }
+
+export default LiveSocket
