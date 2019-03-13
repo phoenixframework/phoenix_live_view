@@ -89,8 +89,8 @@ Add LiveView NPM dependencies in your package.json.
 Enable connecting to a LiveView socket in your app.js file.
 
 ```javascript
-import LiveSocket from "phoenix_live_view";
+import LiveSocket from "phoenix_live_view"
 
-let liveSocket = new LiveSocket("/live");
-liveSocket.connect();
+let liveSocket = new LiveSocket("/live")
+liveSocket.connect()
 ```
