@@ -1,6 +1,6 @@
 ---
-name: Pre-release template
-about: Pre-release template
+name: Bug report
+about: Create a report to help us improve
 title: ''
 labels: ''
 assignees: ''
