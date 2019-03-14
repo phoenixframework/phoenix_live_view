@@ -12,6 +12,7 @@ As official guides are being developed, see our existing
 comprehensive docs and examples to get up to speed:
 
   * [Phoenix.LiveView docs for general usage](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view.ex)
+  * [phoenix_live_view.js docs](https://github.com/phoenixframework/phoenix_live_view/blob/master/assets/js/phoenix_live_view.js)
   * [Phoenix.LiveViewTest for testing docs](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view/test/live_view_test.ex)
   * [LiveView example repo](https://github.com/chrismccord/phoenix_live_view_example) with a handful of examples from Weather widgets, autocomplete search, and games like Snake or Pacman
 
