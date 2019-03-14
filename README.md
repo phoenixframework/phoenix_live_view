@@ -94,3 +94,17 @@ import LiveSocket from "phoenix_live_view"
 let liveSocket = new LiveSocket("/live")
 liveSocket.connect()
 ```
+
+Finally, by convention live views are saved in a `lib/app_web/live/`
+directory. For live page reload support, add the following pattern to
+your `config/dev.exs`:
+
+```elixir
+config :demo, DemoWeb.Endpoint,
+  live_reload: [
+    patterns: [
+      ...,
+      ~r{lib/demo_web/live/.*(ex)$}
+    ]
+  ]
+```
