@@ -81,6 +81,7 @@ const FOCUSABLE_INPUTS = ["text", "textarea", "password"]
 const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_READONLY = "data-phx-readonly"
+const PHX_DISABLED = "data-phx-disabled"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
@@ -306,18 +307,29 @@ let Browser = {
 
 let DOM = {
 
-  setInputsReadOnly(form){
+  makeFormReadOnly(form){
+    form.querySelectorAll("button").forEach(button => {
+      button.setAttribute(PHX_DISABLED, button.disabled)
+      button.disabled = true
+    })
     form.querySelectorAll("input").forEach(input => {
       input.setAttribute(PHX_READONLY, input.readOnly)
       input.readOnly = true
     })
   },
 
-  restoreReadOnlyInputs(form){
+  restoreReadOnlyForm(form){
+    form.querySelectorAll("button").forEach(button => {
+      let prev = button.getAttribute(PHX_DISABLED)
+      if(prev){
+        button.disabled = prev === "true"
+        button.removeAttribute(PHX_DISABLED)
+      }
+    })
     form.querySelectorAll("input").forEach(input => {
       let prev = input.getAttribute(PHX_READONLY)
       if(prev){
-        input.readOnly = prev == "true"
+        input.readOnly = prev === "true"
         input.removeAttribute(PHX_READONLY)
       }
     })
@@ -676,10 +688,10 @@ class View {
 
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
-    DOM.setInputsReadOnly(form)
+    DOM.makeFormReadOnly(form)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, e, phxEvent, () => {
-      DOM.restoreReadOnlyInputs(form)
+      DOM.restoreReadOnlyForm(form)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
