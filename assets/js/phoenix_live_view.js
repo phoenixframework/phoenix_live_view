@@ -62,16 +62,16 @@ with disabling input editing while an event to the server is inflight.
 The `phx-submit` event is used for form submissions where major side-effects
 typically happen, such as rendering new containers, calling an external
 service, or redirecting to a new page. For these use-cases, the form inputs
-are set to `readonly` on submit, and any submit button is disabled while until
+are set to `readonly` on submit, and any submit button is disabled until
 the client gets an acknowledgement that the server has processed the
 `phx-submit` event. Following an acknowledgement, any updates are patched
-to the DOM as normal, expect the last input with focus is restored if the
+to the DOM as normal, and the last input with focus is restored if the
 user has not otherwised focused on a new input during submission.
 
-To handle latent form submissions, any HTML tag can be annoted with
+To handle latent form submissions, any HTML tag can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
 value during form submission. For example, the following code would change
-the "Save" button to "Saving...", and restore it to "save" on acknowledgement:
+the "Save" button to "Saving...", and restore it to "Save" on acknowledgement:
 
     <button type="submit" phx-disable-with="Saving...">Save</button>
 
