@@ -48,6 +48,34 @@ optional `phx-target` may be provided which may be `"document"`,
 
 When pushed, the value sent to the server will be the event's keyCode.
 
+## Forms and input handling
+
+The JavaScript client is always the source of truth for current
+input values. For any given input with focus, LiveView will never
+overwrite the input's current value, even if it deviates from
+the server's rendered updates. This works well for updates where
+major side effects are not expected, such as form validation errors,
+or additive UX around the user's input values as they fill out a form.
+For these usecases, the `phx-change` input does not concern itself
+with disabling input editing while an event to the server is inflight.
+
+The `phx-submit` event is used for form submissions where major side-effects
+typically happen, such as rendering new containers, calling an external
+service, or redirecting to a new page. For these use-cases, the form inputs
+are set to `readonly` on submit, and any submit button is disabled while until
+the client gets an acknowledgement that the server has processed the
+`phx-submit` event. Following an acknowledgement, any updates are patched
+to the DOM as normal, expect the last input with focus is restored if the
+user has not otherwised focused on a new input during submission.
+
+To handle latent form submissions, any HTML tag can be annoted with
+`phx-disable-with`, which swaps the element's `innerText` with the provided
+value during form submission. For example, the following code would change
+the "Save" button to "Saving...", and restore it to "save" on acknowledgement:
+
+    <button type="submit" phx-disable-with="Saving...">Save</button>
+
+
 ## Loading state and Errors
 
 By default, the following classes are applied to the Live View's parent
@@ -82,6 +110,7 @@ const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
+const PHX_DISABLE_WITH = "disable-with"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
@@ -307,7 +336,13 @@ let Browser = {
 
 let DOM = {
 
-  makeFormReadOnly(form){
+  disableForm(form, prefix){
+    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.querySelectorAll(`[${disableWith}]`).forEach(el => {
+      let value = el.getAttribute(disableWith)
+      el.setAttribute(`${disableWith}-restore`, el.innerText)
+      el.innerText = value
+    })
     form.querySelectorAll("button").forEach(button => {
       button.setAttribute(PHX_DISABLED, button.disabled)
       button.disabled = true
@@ -318,7 +353,15 @@ let DOM = {
     })
   },
 
-  restoreReadOnlyForm(form){
+  restoreDisabledForm(form, prefix){
+    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.querySelectorAll(`[${disableWith}]`).forEach(el => {
+      let value = el.getAttribute(`${disableWith}-restore`)
+      if(value){
+        el.innerText = value
+        el.removeAttribute(`${disableWith}-restore`)
+      }
+    })
     form.querySelectorAll("button").forEach(button => {
       let prev = button.getAttribute(PHX_DISABLED)
       if(prev){
@@ -688,10 +731,10 @@ class View {
 
   submitForm(form, phxEvent, e){
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
-    DOM.makeFormReadOnly(form)
+    DOM.disableForm(form, this.bindingPrefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, e, phxEvent, () => {
-      DOM.restoreReadOnlyForm(form)
+      DOM.restoreDisabledForm(form, this.bindingPrefix)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
