@@ -17,6 +17,9 @@ defmodule Phoenix.LiveView.Controller do
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
 
+  Before render the `@live_view_module` assign will be added to the
+  connection assigns for reference.
+
   ## Examples
 
       alias Phoenix.LiveView
@@ -37,6 +40,7 @@ defmodule Phoenix.LiveView.Controller do
     case LiveView.View.static_render(endpoint, view, opts) do
       {:ok, content} ->
         conn
+        |> Plug.Conn.assign(:live_view_module, view)
         |> Phoenix.Controller.put_view(__MODULE__)
         |> Phoenix.Controller.render("template.html", %{
           conn: conn,
@@ -72,4 +76,5 @@ defmodule Phoenix.LiveView.Controller do
   def render("template.html", %{content: content}) do
     content
   end
+  def render(_other, _assigns), do: nil
 end
