@@ -290,7 +290,7 @@ defmodule Phoenix.LiveView do
   otherwise the socket assigns are updated with the errored changeset to be
   re-rerendered for the client.
 
-  *Note*: For proper form error tag updates, the error tag must be specify which
+  *Note*: For proper form error tag updates, the error tag must specify which
   input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
   For example, your `AppWeb.ErrorHelpers` may use this function:
 
