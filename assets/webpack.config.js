@@ -7,25 +7,27 @@ module.exports = {
     path: path.resolve(__dirname, '../priv/static'),
     library: 'phoenix_live_view',
     libraryTarget: 'umd',
-    globalObject: 'this'
+    globalObject: 'this',
   },
   module: {
     rules: [
       {
         test: path.resolve(__dirname, './js/phoenix_live_view.js'),
-        use: [{
-          loader: 'expose-loader',
-          options: 'Phoenix.LiveView'
-        }]
+        use: [
+          {
+            loader: 'expose-loader',
+            options: 'Phoenix.LiveView',
+          },
+        ],
       },
       {
         test: /\.js$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader'
-        }
-      }
-    ]
+          loader: 'babel-loader',
+        },
+      },
+    ],
   },
-  plugins: []
+  plugins: [],
 }
