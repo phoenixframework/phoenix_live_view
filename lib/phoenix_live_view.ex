@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView do
 
   First, a Live View requires two callbacks: `mount/2` and `render/1`:
 
-      def AppWeb.ThermostatView do
+      defmodule AppWeb.ThermostatView do
         def render(assigns) do
           ~L\"""
           Current temperature: <%= @temperature %>
