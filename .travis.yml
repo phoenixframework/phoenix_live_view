@@ -32,4 +32,4 @@ before_script:
 
 script:
   - mix test
-  - cd ../assets && npm install && npm test
+  - cd ./assets && npm install && npm test
