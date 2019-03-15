@@ -1,6 +1,6 @@
 /*
 ================================================================================
-Phoenix LiveView Javascript Client 
+Phoenix LiveView Javascript Client
 ================================================================================
 
 ## Usage
@@ -169,7 +169,7 @@ let Rendered = {
   toOutputBuffer(rendered, output){
     if(rendered.dynamics){ return this.comprehensionToBuffer(rendered, output) }
     let {static: statics} = rendered
-    
+
     output.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
       this.dynamicToBuffer(rendered[i - 1], output)
@@ -214,6 +214,7 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.document = document;
   }
 
   buildSocket(urlOrSocket, opts){
@@ -239,10 +240,10 @@ export class LiveSocket {
   }
 
   connect(){
-    if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
+    if(["complete", "loaded","interactive"].indexOf(this.document.readyState) >= 0){
       this.joinRootViews()
     } else {
-      document.addEventListener("DOMContentLoaded", () => {
+      this.document.addEventListener("DOMContentLoaded", () => {
         this.joinRootViews()
       })
     }
@@ -254,7 +255,7 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
-    document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
+    this.document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
       this.joinView(rootEl)
     })
   }
@@ -294,10 +295,10 @@ export class LiveSocket {
   }
 
   getActiveElement(){
-    if(document.activeElement === document.body){
-      return this.activeElement || document.activeElement
+    if(this.document.activeElement === this.document.body){
+      return this.activeElement || this.document.activeElement
     } else {
-      return document.activeElement
+      return this.document.activeElement
     }
   }
 
@@ -306,26 +307,26 @@ export class LiveSocket {
       this.prevActive = null
     }
   }
-  
+
   restorePreviouslyActiveFocus(){
-    if(this.prevActive && this.prevActive !== document.body){
+    if(this.prevActive && this.prevActive !== this.document.body){
       this.prevActive.focus()
     }
   }
 
   blurActiveElement(){
     this.prevActive = this.getActiveElement()
-    if(this.prevActive !== document.body){ this.prevActive.blur() }
+    if(this.prevActive !== this.document.body){ this.prevActive.blur() }
   }
 }
 
 let Browser = {
   setCookie(name, value){
-    document.cookie = `${name}=${value}`
+    this.document.cookie = `${name}=${value}`
   },
 
   getCookie(name){
-    return document.cookie.replace(new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`), "$1")
+    return this.document.cookie.replace(new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`), "$1")
   },
 
   redirect(toURL, flash){
@@ -381,7 +382,7 @@ let DOM = {
   discardError(el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
     if(!field) { return }
-    let input = document.getElementById(field)
+    let input = this.document.getElementById(field)
 
     if(field && !(input.getAttribute(PHX_HAS_FOCUSED) || input.form.getAttribute(PHX_HAS_SUBMITTED))){
       el.style.display = "none"
@@ -449,7 +450,7 @@ let DOM = {
     })
 
     DOM.restoreFocus(focused, selectionStart, selectionEnd)
-    document.dispatchEvent(new Event("phx:update"))
+    this.document.dispatchEvent(new Event("phx:update"))
   },
 
   mergeAttrs(target, source){
@@ -478,7 +479,7 @@ let DOM = {
   }
 }
 
-class View {
+export class View {
   constructor(el, liveSocket, parentView){
     this.liveSocket = liveSocket
     this.parent = parentView
@@ -499,7 +500,7 @@ class View {
   }
 
   getSession(){
-    return this.el.getAttribute(PHX_SESSION)|| this.parent.getSession()
+    return this.el.getAttribute(PHX_SESSION) || this.parent.getSession()
   }
 
   destroy(callback = function(){}){
@@ -531,7 +532,7 @@ class View {
   log(kind, msgCallback){
     this.liveSocket.log(this, kind, msgCallback)
   }
-  
+
   onJoin({rendered}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
@@ -644,7 +645,7 @@ class View {
       value: this.serializeForm(inputEl.form)
     })
   }
-  
+
   pushFormSubmit(formEl, event, phxEvent, onReply){
     if(event){ event.target.disabled = true }
     this.pushWithReply("event", {

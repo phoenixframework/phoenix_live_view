@@ -7,7 +7,9 @@
   "repository": {},
   "scripts": {
     "build": "webpack --mode production",
-    "watch": "webpack --mode development --watch"
+    "watch": "webpack --mode development --watch",
+    "test": "jest",
+    "test-watch": "jest --watch"
   },
   "dependencies": {
     "morphdom": "2.5.0",
@@ -15,15 +17,18 @@
     "phoenix_html": "file:../deps/phoenix_html"
   },
   "devDependencies": {
-    "babel-core": "^6.26.0",
-    "babel-loader": "^7.1.3",
-    "babel-preset-env": "^1.6.1",
+    "@babel/core": "^7.3.4",
+    "@babel/polyfill": "^7.2.5",
+    "@babel/preset-env": "^7.3.4",
+    "babel-loader": "^8.0.5",
     "copy-webpack-plugin": "^4.5.0",
     "css-loader": "^0.28.10",
     "expose-loader": "^0.7.5",
     "extract-text-webpack-plugin": "^4.0.0-beta.0",
     "jasmine": "^3.3.1",
+    "jest": "^24.5.0",
     "style-loader": "^0.20.2",
+    "wait-for-expect": "^1.1.0",
     "webpack": "4.0.0",
     "webpack-cli": "^2.0.10"
   }
