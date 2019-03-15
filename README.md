@@ -18,7 +18,7 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
-Currently Live View is only avaialble from GitHub. To use it, add to your `mix.exs`:
+Currently Live View is only available from GitHub. To use it, add to your `mix.exs`:
 
 ```elixir
 def deps do
