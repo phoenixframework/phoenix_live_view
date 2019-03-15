@@ -131,13 +131,13 @@ defmodule Phoenix.LiveView.View do
 
   ## Examples
 
-      iex> verify_session(AppWeb.Endpoint, encoded_token_string)
+      iex> verify_session(MyAppWeb.Endpoint, encoded_token_string)
       {:ok, %{} = decoeded_session}
 
-      iex> verify_session(AppWeb.Endpoint, "bad token")
+      iex> verify_session(MyAppWeb.Endpoint, "bad token")
       {:error, :invalid}
 
-      iex> verify_session(AppWeb.Endpoint, "expired")
+      iex> verify_session(MyAppWeb.Endpoint, "expired")
       {:error, :expired}
   """
   def verify_session(endpoint_mod, token) do

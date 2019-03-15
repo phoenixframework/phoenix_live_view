@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView do
   A `:signing_salt` configuration is required in your endpoint's
   `:live_view` configuration, for example:
 
-      config :my_app, AppWeb.Endpoint,
+      config :my_app, MyAppWeb.Endpoint,
         ...,
         live_view: [signing_salt: ...]
 
@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView do
 
   First, a Live View requires two callbacks: `mount/2` and `render/1`:
 
-      def AppWeb.ThermostatView do
+      def MyAppWeb.ThermostatView do
         def render(assigns) do
           ~L\"""
           Current temperature: <%= @temperature %>
@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView do
   With a Live View defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
-      defmodule AppWeb.Endpoint do
+      defmodule MyAppWeb.Endpoint do
         use Phoenix.Endpoint
 
         socket "/live", Phoenix.LiveView.Socket
@@ -85,24 +85,24 @@ defmodule Phoenix.LiveView do
 
   Next, you can serve Live Views directly from your router:
 
-      defmodule AppWeb.Router do
+      defmodule MyAppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
 
-        scope "/", AppWeb do
+        scope "/", MyAppWeb do
           live "/thermostat", ThermostatView
         end
       end
 
   Or you can `live_render` your view from any controller:
 
-      defmodule AppWeb.ThermostatController do
+      defmodule MyAppWeb.ThermostatController do
         ...
 
         alias Phoenix.LiveView
 
         def show(conn, %{"id" => id}) do
-          LiveView.Controller.live_render(conn, AppWeb.ThermostatView, session: %{
+          LiveView.Controller.live_render(conn, MyAppWeb.ThermostatView, session: %{
             id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -127,7 +127,7 @@ defmodule Phoenix.LiveView do
   sending messages, etc. For example, you can periodically update a Live View
   with a timer:
 
-      defmodule DemoWeb.ThermostatView do
+      defmodule MyAppWeb.ThermostatView do
         use Phoenix.LiveView
         ...
 
@@ -272,7 +272,7 @@ defmodule Phoenix.LiveView do
             {:stop,
              socket
              |> put_flash(:info, "user created")
-             |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))}
+             |> redirect(to: Routes.user_path(MyAppWeb.Endpoint, MyAppWeb.User.ShowView, user))}
 
           {:error, %Ecto.Changeset{} = changeset} ->
             {:noreply, assign(socket, changeset: changeset)}
@@ -292,7 +292,7 @@ defmodule Phoenix.LiveView do
 
   *Note*: For proper form error tag updates, the error tag must specify which
   input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
-  For example, your `AppWeb.ErrorHelpers` may use this function:
+  For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
       def error_tag(form, field) do
         Enum.map(Keyword.get_values(form.errors, field), fn error ->
@@ -434,7 +434,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      defmodule DemoWeb.ClockView do
+      defmodule MyAppWeb.ClockView do
         use Phoenix.LiveView
         ...
         def mount(_session, socket) do
