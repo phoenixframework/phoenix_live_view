@@ -6,8 +6,8 @@
   "main": "./priv/static/_live_view.js",
   "repository": {},
   "scripts": {
-    "build": "rollup -c rollup.config.js",
-    "build-prod": "rollup -c rollup.config.js --environment BUILD:production"
+    "build": "rollup -c rollup.config.js --environment BUILD:production",
+    "build-dev": "rollup -c rollup.config.js"
   },
   "dependencies": {
     "morphdom": "^2.3.3",
