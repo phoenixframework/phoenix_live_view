@@ -1,12 +1,7 @@
 import '@babel/polyfill';
 import LiveSocket, { View } from '../js/phoenix_live_view';
-import waitForExpect from 'wait-for-expect';
 import jsdom from 'jsdom';
 const { JSDOM } = jsdom;
-
-function wait(callback = () => {}, {timeout = 4500, interval = 50} = {}) {
-  return waitForExpect(callback, timeout, interval)
-}
 
 function liveViewDOM() {
   const div = document.createElement('div')
