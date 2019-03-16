@@ -250,7 +250,7 @@ export class LiveSocket {
     return this.socket.connect()
   }
 
-  disconnect(){ return this.socket.disconnect()}
+  disconnect(){ return this.socket.disconnect() }
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
