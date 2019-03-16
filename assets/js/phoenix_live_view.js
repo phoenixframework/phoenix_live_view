@@ -322,11 +322,11 @@ export class LiveSocket {
 
 let Browser = {
   setCookie(name, value){
-    this.document.cookie = `${name}=${value}`
+    document.cookie = `${name}=${value}`
   },
 
   getCookie(name){
-    return this.document.cookie.replace(new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`), "$1")
+    return document.cookie.replace(new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`), "$1")
   },
 
   redirect(toURL, flash){
@@ -382,7 +382,7 @@ let DOM = {
   discardError(el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
     if(!field) { return }
-    let input = this.document.getElementById(field)
+    let input = document.getElementById(field)
 
     if(field && !(input.getAttribute(PHX_HAS_FOCUSED) || input.form.getAttribute(PHX_HAS_SUBMITTED))){
       el.style.display = "none"
@@ -450,7 +450,7 @@ let DOM = {
     })
 
     DOM.restoreFocus(focused, selectionStart, selectionEnd)
-    this.document.dispatchEvent(new Event("phx:update"))
+    document.dispatchEvent(new Event("phx:update"))
   },
 
   mergeAttrs(target, source){
