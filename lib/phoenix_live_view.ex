@@ -165,7 +165,7 @@ defmodule Phoenix.LiveView do
   When you first render a `.leex` template, it will send
   all of the static and dynamic parts of the template to
   the client. After that, any change you do on the server
-  will now send only the dyamic parts and only if those
+  will now send only the dynamic parts and only if those
   parts have changed.
 
   The tracking of changes are done via assigns. Therefore,
