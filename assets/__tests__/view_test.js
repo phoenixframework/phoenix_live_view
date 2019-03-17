@@ -1,4 +1,3 @@
-import '@babel/polyfill';
 import LiveSocket, { View } from '../js/phoenix_live_view';
 import waitForExpect from 'wait-for-expect';
 import jsdom from 'jsdom';
