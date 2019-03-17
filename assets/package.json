@@ -25,7 +25,6 @@
     "css-loader": "^0.28.10",
     "expose-loader": "^0.7.5",
     "extract-text-webpack-plugin": "^4.0.0-beta.0",
-    "jasmine": "^3.3.1",
     "jest": "^24.5.0",
     "style-loader": "^0.20.2",
     "wait-for-expect": "^1.1.0",
