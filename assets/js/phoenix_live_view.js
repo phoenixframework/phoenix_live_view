@@ -46,7 +46,7 @@ default, the bound element will be the event listener, but an
 optional `phx-target` may be provided which may be `"document"`,
 `"window"`, or the DOM id of a target element.
 
-When pushed, the value sent to the server will be the event's keyCode.
+When pushed, the value sent to the server will be the event's `key`.
 
 ## Forms and input handling
 
