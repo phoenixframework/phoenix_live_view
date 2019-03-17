@@ -56,6 +56,13 @@ test('binding', async () => {
   expect(view.binding('submit')).toEqual('phx-submit');
 });
 
+test('target', async () => {
+  let liveSocket = new LiveSocket('/live');
+  let el = liveViewDOM();
+  let view = new View(el, liveSocket);
+  expect(view.target(el)).toEqual(el);
+});
+
 test('getSession', async () => {
   let liveSocket = new LiveSocket('/live');
   let el = liveViewDOM();
@@ -112,4 +119,14 @@ test('update', async () => {
   expect(view.el.firstChild.tagName).toBe('H2');
   expect(view.newChildrenAdded).toBe(false);
   expect(view.rendered).toBe(updatedEl);
+});
+
+test('join', async () => {
+  let liveSocket = new LiveSocket('/live');
+  liveSocket.document = dom().window.document;
+  let el = liveViewDOM();
+  let view = new View(el, liveSocket);
+
+  view.join();
+  // still need a few tests
 });

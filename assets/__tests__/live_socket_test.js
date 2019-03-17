@@ -1,5 +1,6 @@
 import '@babel/polyfill';
 import LiveSocket, { View } from '../js/phoenix_live_view';
+import {Socket} from "phoenix"
 import jsdom from 'jsdom';
 const { JSDOM } = jsdom;
 
@@ -36,6 +37,16 @@ test('sets defaults', async () => {
   expect(liveSocket.opts.reconnectAfterMs).toBeDefined();
   expect(liveSocket.opts.viewLogger).toBe('foo');
   expect(liveSocket.viewLogger).toBe('foo');
+  expect(liveSocket.unloaded).toBe(false);
+  expect(liveSocket.bindingPrefix).toBe('phx-');
+  expect(liveSocket.activeElement).toBe(null);
+  expect(liveSocket.prevActive).toBe(null);
+});
+
+test('sets defaults with socket', async () => {
+  let liveSocket = new LiveSocket(new Socket('//example.org/chat'));
+  expect(liveSocket.socket).toBeDefined();
+  expect(liveSocket.socket.onOpen).toBeDefined();
   expect(liveSocket.unloaded).toBe(false);
   expect(liveSocket.bindingPrefix).toBe('phx-');
   expect(liveSocket.activeElement).toBe(null);
