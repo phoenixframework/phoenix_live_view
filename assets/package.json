@@ -9,7 +9,7 @@
     "build": "webpack --mode production",
     "watch": "webpack --mode development --watch",
     "test": "jest",
-    "test-watch": "jest --watch"
+    "test.watch": "jest --watch"
   },
   "dependencies": {
     "morphdom": "2.5.0",
