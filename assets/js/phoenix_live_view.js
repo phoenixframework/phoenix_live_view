@@ -320,7 +320,7 @@ export class LiveSocket {
   }
 }
 
-let Browser = {
+export let Browser = {
   setCookie(name, value){
     document.cookie = `${name}=${value}`
   },
