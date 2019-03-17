@@ -147,8 +147,7 @@ let recursiveMerge = (target, source) => {
   }
 }
 
-let Rendered = {
-
+export let Rendered = {
   mergeDiff(source, diff){
     if(this.isNewFingerprint(diff)){
       return diff
@@ -158,7 +157,7 @@ let Rendered = {
     }
   },
 
-  isNewFingerprint(diff){ return diff.static },
+  isNewFingerprint(diff = {}){ return !!diff.static },
 
   toString(rendered){
     let output = {buffer: ""}
