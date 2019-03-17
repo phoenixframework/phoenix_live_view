@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
-  "main": "./priv/static/_live_view.js",
   "repository": {},
   "scripts": {
     "build": "webpack --mode production",
