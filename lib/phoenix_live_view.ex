@@ -73,6 +73,16 @@ defmodule Phoenix.LiveView do
   to inline Live View templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
+  `render/1` can also render a .leex HTML template by calling the
+  `render/2` method from the template view module:
+
+      defmodule AppWeb.ThermostatView do
+        def render(assigns) do
+          AppWeb.PageView.render("page.html", assigns)
+        end
+      end
+
+
   With a Live View defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
