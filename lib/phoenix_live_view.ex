@@ -422,7 +422,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Returns true if the sockect is connected.
+  Returns true if the socket is connected.
 
   Useful for checking the connectivity status when mounting the view.
   For example, on initial page render, the view is mounted statically,
