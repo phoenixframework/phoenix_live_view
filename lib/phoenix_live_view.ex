@@ -341,7 +341,7 @@ defmodule Phoenix.LiveView do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
-  @type unsigned_params :: map
+  @type unsigned_params :: map | binary
   @type from :: binary
 
   @callback mount(session :: map, Socket.t()) ::
