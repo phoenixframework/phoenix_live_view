@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.StoreTest do
   alias Phoenix.LiveView.Store
 
   setup do
-    store = Store.new(__MODULE__)
+    {:ok, store} = Store.start_link(__MODULE__)
     {:ok, store: store}
   end
 
@@ -43,6 +43,57 @@ defmodule Phoenix.LiveView.StoreTest do
       assert_raise Store.NoSuchKeyError, fn ->
         Store.get!(store, :foo)
       end
+    end
+  end
+
+  describe ".subscribe/1" do
+    test "subscribes to any changes in the store", %{store: store} do
+      Store.subscribe(store)
+      Store.set(store, foo: "bar")
+      assert_received {:store_update, ^store, [foo: "bar"]}
+    end
+
+    test "unsubscribes when a process goes down", %{store: store} do
+      task =
+        Task.async(fn ->
+          Store.subscribe(store)
+        end)
+
+      Task.await(task)
+
+      assert %{} == Store.get_state(store).subscribers
+    end
+  end
+
+  describe ".subscribe/2" do
+    test "subscribes to any changes in the store for a given key", %{store: store} do
+      Store.subscribe(store, :baz)
+      Store.set(store, foo: "bar")
+      refute_received _
+      Store.set(store, baz: "quux")
+      assert_received {:store_update, ^store, [baz: "quux"]}
+    end
+  end
+
+  describe ".unsubscribe/1" do
+    test "unsubscribes from any store changes", %{store: store} do
+      Store.subscribe(store)
+      Store.set(store, foo: "bar")
+      assert_received {:store_update, ^store, [foo: "bar"]}
+      Store.unsubscribe(store)
+      Store.set(store, foo: "bar")
+      refute_received _
+    end
+  end
+
+  describe ".unsubscribe/2" do
+    test "unsubscribes from any changes in the store for a given key", %{store: store} do
+      Store.subscribe(store, :foo)
+      Store.set(store, foo: "bar")
+      assert_received {:store_update, ^store, [foo: "bar"]}
+      Store.unsubscribe(store, :foo)
+      Store.set(store, foo: "bar")
+      refute_received {:store_update, ^store, [foo: "bar"]}
     end
   end
 end
