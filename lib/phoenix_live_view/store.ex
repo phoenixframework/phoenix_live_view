@@ -148,11 +148,13 @@ defmodule Phoenix.LiveView.Store do
 
   # GenServer Callbacks
 
+  @impl true
   def init(name) do
     tid = :ets.new(name, [:public])
     {:ok, %State{tid: tid}}
   end
 
+  @impl true
   def handle_call({:set, objects}, _from, state) do
     :ets.insert(state.tid, objects)
     Enum.each(state.subscribers, &notify_subscriber(&1, objects))
@@ -206,6 +208,7 @@ defmodule Phoenix.LiveView.Store do
     {:reply, state, state}
   end
 
+  @impl true
   def handle_info({:DOWN, _ref, _, pid, _reason}, state) do
     state = update_in(state, [Access.key(:subscribers)], &Map.delete(&1, pid))
     {:noreply, state}
