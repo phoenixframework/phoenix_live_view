@@ -56,7 +56,7 @@ defmodule Phoenix.LiveView.Store do
 
   defmodule NoSuchKeyError do
     @moduledoc """
-    An error raised when an expected key is not in the LiveStore
+    An error raised when an expected key is not in the store
     """
     defexception [:message]
 
@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.Store do
   end
 
   @doc """
-  Create a new LiveStore.
+  Create a new store.
   """
   @spec new(atom) :: store
   def new(name) do
