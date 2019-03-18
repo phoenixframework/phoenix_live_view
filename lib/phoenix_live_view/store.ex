@@ -89,7 +89,7 @@ defmodule Phoenix.LiveView.Store do
   def get!(store, key) do
     case get(store, key) do
       {:ok, value} -> value
-      {:error, :not_found} -> raise KeyError, "key #{inspect key} not found in store"
+      {:error, :not_found} -> raise KeyError, "key #{inspect(key)} not found in store"
     end
   end
 
@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.Store do
   def update!(store, key, fun) do
     case GenServer.call(store, {:update!, key, fun}) do
       :ok -> :ok
-      {:error, :not_found} -> raise KeyError, "key #{inspect key} not found in store"
+      {:error, :not_found} -> raise KeyError, "key #{inspect(key)} not found in store"
     end
   end
 
@@ -216,13 +216,13 @@ defmodule Phoenix.LiveView.Store do
   end
 
   def handle_call(:unsubscribe, {from, _tag}, state) do
-    state = update_in(state, [Access.key(:subscribers)], &Map.delete(&1, from))
+    state = Map.update!(state, :subscribers, &Map.delete(&1, from))
     {:reply, :ok, state}
   end
 
   def handle_call({:unsubscribe, key}, {from, _tag}, state) do
     state =
-      update_in(state, [Access.key(:subscribers)], fn subscribers ->
+      Map.update!(state, :subscribers, fn subscribers ->
         case subscribers[from] do
           # TODO: Should we be de-monitoring processes here? Or is it okay to just wait for :DOWN?
           [^key] -> Map.delete(subscribers, from)
@@ -239,7 +239,7 @@ defmodule Phoenix.LiveView.Store do
 
   @impl true
   def handle_info({:DOWN, _ref, _, pid, _reason}, state) do
-    state = update_in(state, [Access.key(:subscribers)], &Map.delete(&1, pid))
+    state = Map.update!(state, :subscribers, &Map.delete(&1, pid))
     {:noreply, state}
   end
 
