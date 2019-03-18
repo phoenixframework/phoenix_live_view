@@ -193,13 +193,14 @@ defmodule Phoenix.LiveView.Store do
   end
 
   def handle_call({:unsubscribe, key}, {from, _tag}, state) do
-    state = update_in(state, [Access.key(:subscribers)], fn subscribers ->
-      case subscribers[from] do
-        # TODO: Should we be de-monitoring processes here? Or is it okay to just wait for :DOWN?
-        [^key] -> Map.delete(subscribers, from)
-        keys -> Map.put(subscribers, key, List.delete(keys, key))
-      end
-    end)
+    state =
+      update_in(state, [Access.key(:subscribers)], fn subscribers ->
+        case subscribers[from] do
+          # TODO: Should we be de-monitoring processes here? Or is it okay to just wait for :DOWN?
+          [^key] -> Map.delete(subscribers, from)
+          keys -> Map.put(subscribers, key, List.delete(keys, key))
+        end
+      end)
 
     {:reply, :ok, state}
   end
