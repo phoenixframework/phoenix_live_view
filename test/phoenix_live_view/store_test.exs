@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.StoreTest do
     end
 
     test "raises a NoSuchKeyError when no value is found", %{store: store} do
-      assert_raise Store.NoSuchKeyError, fn ->
+      assert_raise KeyError, fn ->
         Store.get!(store, :foo)
       end
     end
@@ -67,7 +67,7 @@ defmodule Phoenix.LiveView.StoreTest do
     end
 
     test "raises if a value is not present", %{store: store} do
-      assert_raise Store.NoSuchKeyError, fn ->
+      assert_raise KeyError, fn ->
         Store.update!(store, :key, &(&1 + 1))
       end
     end

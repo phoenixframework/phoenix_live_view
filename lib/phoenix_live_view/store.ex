@@ -52,17 +52,6 @@ defmodule Phoenix.LiveView.Store do
       end
   """
 
-  defmodule NoSuchKeyError do
-    @moduledoc """
-    An error raised when an expected key is not in the store
-    """
-    defexception [:message]
-
-    @impl true
-    def exception(key),
-      do: %__MODULE__{message: ~s(Expected key "#{key}", but no such key was found)}
-  end
-
   defmodule State do
     defstruct tid: nil, subscribers: %{}
   end
@@ -100,7 +89,7 @@ defmodule Phoenix.LiveView.Store do
   def get!(store, key) do
     case get(store, key) do
       {:ok, value} -> value
-      {:error, :not_found} -> raise NoSuchKeyError, key
+      {:error, :not_found} -> raise KeyError, "key #{inspect key} not found in store"
     end
   end
 
@@ -119,7 +108,7 @@ defmodule Phoenix.LiveView.Store do
   def update!(store, key, fun) do
     case GenServer.call(store, {:update!, key, fun}) do
       :ok -> :ok
-      {:error, :not_found} -> raise NoSuchKeyError, key
+      {:error, :not_found} -> raise KeyError, "key #{inspect key} not found in store"
     end
   end
 
