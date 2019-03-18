@@ -70,7 +70,7 @@ defmodule Phoenix.LiveView.Store do
   """
   @spec new(atom) :: store
   def new(name) do
-    :ets.new(name, [:set, :public])
+    :ets.new(name, [:public])
   end
 
   @doc """
