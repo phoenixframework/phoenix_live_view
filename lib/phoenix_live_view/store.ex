@@ -80,7 +80,7 @@ defmodule Phoenix.LiveView.Store do
   @doc """
   Set one or more key/value pairs in the store.
   """
-  @spec set(pid, Keyword.t()) :: {:ok, true}
+  @spec set(pid, Keyword.t()) :: :ok
   def set(store, objects) do
     GenServer.call(store, {:set, objects})
   end
@@ -100,6 +100,25 @@ defmodule Phoenix.LiveView.Store do
   def get!(store, key) do
     case get(store, key) do
       {:ok, value} -> value
+      {:error, :not_found} -> raise NoSuchKeyError, key
+    end
+  end
+
+  @doc """
+  Update a key in the store, setting the initial value if it is not present.
+  """
+  @spec update(pid, atom, term, (term -> term)) :: :ok
+  def update(store, key, initial, fun) do
+    GenServer.call(store, {:update, key, initial, fun})
+  end
+
+  @doc """
+  Update a key in the store, raising if no value is present
+  """
+  @spec update!(pid, atom, (term -> term)) :: :ok
+  def update!(store, key, fun) do
+    case GenServer.call(store, {:update!, key, fun}) do
+      :ok -> :ok
       {:error, :not_found} -> raise NoSuchKeyError, key
     end
   end
@@ -158,13 +177,33 @@ defmodule Phoenix.LiveView.Store do
   def handle_call({:set, objects}, _from, state) do
     :ets.insert(state.tid, objects)
     Enum.each(state.subscribers, &notify_subscriber(&1, objects))
-    {:reply, true, state}
+    {:reply, :ok, state}
   end
 
   def handle_call({:get, key}, _from, state) do
     case :ets.lookup(state.tid, key) do
       [{^key, value}] -> {:reply, {:ok, value}, state}
       [] -> {:reply, {:error, :not_found}, state}
+    end
+  end
+
+  def handle_call({:update, key, initial, fun}, _from, state) do
+    case :ets.lookup(state.tid, key) do
+      [{^key, value}] -> :ets.insert(state.tid, {key, fun.(value)})
+      [] -> :ets.insert(state.tid, {key, initial})
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:update!, key, fun}, _from, state) do
+    case :ets.lookup(state.tid, key) do
+      [{^key, value}] ->
+        :ets.insert(state.tid, {key, fun.(value)})
+        {:reply, :ok, state}
+
+      [] ->
+        {:reply, {:error, :not_found}, state}
     end
   end
 

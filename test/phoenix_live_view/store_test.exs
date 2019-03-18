@@ -11,12 +11,12 @@ defmodule Phoenix.LiveView.StoreTest do
 
   describe ".set/2" do
     test "sets a single key/value pair", %{store: store} do
-      true = Store.set(store, key: "value")
+      :ok = Store.set(store, key: "value")
       assert "value" == Store.get!(store, :key)
     end
 
     test "sets multiple key/value pairs", %{store: store} do
-      true = Store.set(store, foo: "bar", baz: "quux")
+      :ok = Store.set(store, foo: "bar", baz: "quux")
       assert "bar" == Store.get!(store, :foo)
       assert "quux" == Store.get!(store, :baz)
     end
@@ -24,7 +24,7 @@ defmodule Phoenix.LiveView.StoreTest do
 
   describe ".get/2" do
     test "returns an :ok tuple when a value is found", %{store: store} do
-      true = Store.set(store, foo: "bar")
+      :ok = Store.set(store, foo: "bar")
       assert {:ok, "bar"} == Store.get(store, :foo)
     end
 
@@ -35,13 +35,40 @@ defmodule Phoenix.LiveView.StoreTest do
 
   describe ".get!/2" do
     test "returns a value when a value is found", %{store: store} do
-      true = Store.set(store, foo: "bar")
+      :ok = Store.set(store, foo: "bar")
       assert "bar" == Store.get!(store, :foo)
     end
 
     test "raises a NoSuchKeyError when no value is found", %{store: store} do
       assert_raise Store.NoSuchKeyError, fn ->
         Store.get!(store, :foo)
+      end
+    end
+  end
+
+  describe ".update/4" do
+    test "updates an existing value", %{store: store} do
+      :ok = Store.set(store, key: 1)
+      :ok = Store.update(store, :key, 0, &(&1 + 1))
+      assert Store.get!(store, :key) == 2
+    end
+
+    test "sets an initial value if value is present", %{store: store} do
+      :ok = Store.update(store, :key, 0, &(&1 + 1))
+      assert Store.get!(store, :key) == 0
+    end
+  end
+
+  describe ".update!/3" do
+    test "updates an existing value", %{store: store} do
+      :ok = Store.set(store, key: 1)
+      :ok = Store.update!(store, :key, &(&1 + 1))
+      assert Store.get!(store, :key) == 2
+    end
+
+    test "raises if a value is not present", %{store: store} do
+      assert_raise Store.NoSuchKeyError, fn ->
+        Store.update!(store, :key, &(&1 + 1))
       end
     end
   end
