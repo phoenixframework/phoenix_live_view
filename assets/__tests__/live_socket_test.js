@@ -1,30 +1,31 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
 import {Socket} from "phoenix"
-import { JSDOM } from 'jsdom'
+import jsdom from 'jsdom';
+const { JSDOM } = jsdom;
 
 function liveViewDOM() {
   const div = document.createElement('div')
-  div.setAttribute('data-phx-view', '')
-  div.setAttribute('data-phx-session', 'abc123')
-  div.setAttribute('id', 'container')
+  div.setAttribute('data-phx-view', '');
+  div.setAttribute('data-phx-session', 'abc123');
+  div.setAttribute('id', 'container');
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
     <button phx-click="inc_temperature">Inc Temperature</button>
-  `
+  `;
   const button = div.querySelector('button')
   const input = div.querySelector('input')
   button.addEventListener('click', () => {
     setTimeout(() => {
-      input.value += 1
-    }, 200)
-  })
+      input.value += 1;
+    }, 200);
+  });
 
-  return div
+  return div;
 }
 
 function dom() {
-  return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`)
+  return new JSDOM(`<!DOCTYPE html>${liveViewDOM().outerHTML}`);
 }
 
 test('sets defaults', async () => {
