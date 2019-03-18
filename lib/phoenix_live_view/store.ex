@@ -33,7 +33,7 @@ defmodule Phoenix.LiveView.Store do
 
         def render(assigns) do
           ~L\"""
-            <%= live_render @socket, App.ChildView, session: %{store: @store} %>
+          <%= live_render @socket, App.ChildView, session: %{store: @store} %>
           \"""
         end
       end
@@ -74,7 +74,7 @@ defmodule Phoenix.LiveView.Store do
   end
 
   @doc """
-  Set one or more key/value pairs in the `store`.
+  Set one or more key/value pairs in the store.
   """
   @spec set(store, Keyword.t()) :: true
   def set(store, objects) do
@@ -93,7 +93,7 @@ defmodule Phoenix.LiveView.Store do
   end
 
   @doc """
-  Get a key from the store, but raise if it is not present.
+  Get a key from the store, but raise an error if it is not present.
   """
   @spec get!(store, atom) :: any | no_return
   def get!(store, key) do
