@@ -46,7 +46,7 @@ default, the bound element will be the event listener, but an
 optional `phx-target` may be provided which may be `"document"`,
 `"window"`, or the DOM id of a target element.
 
-When pushed, the value sent to the server will be the event's keyCode.
+When pushed, the value sent to the server will be the event's `key`.
 
 ## Forms and input handling
 
@@ -78,7 +78,7 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgement:
 
 ## Loading state and Errors
 
-By default, the following classes are applied to the Live View's parent
+By default, the following classes are applied to the live view's parent
 container:
 
   - `"phx-connected"` - applied when the view has connected to the server

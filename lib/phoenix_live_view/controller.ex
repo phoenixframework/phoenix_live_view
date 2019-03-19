@@ -8,12 +8,12 @@ defmodule Phoenix.LiveView.Controller do
   alias Phoenix.LiveView
 
   @doc """
-  Renders a Live View from a Plug request and sends an HTML response.
+  Renders a live view from a Plug request and sends an HTML response.
 
   ## Options
 
     * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the Live View
+      to the client. When connecting from the client, the live view
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
 
