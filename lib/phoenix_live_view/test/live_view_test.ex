@@ -287,7 +287,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
   def render_keyup(view, event, key_code) do
-    render_event(view, :keypress, event, key_code)
+    render_event(view, :keyup, event, key_code)
   end
 
   @doc """
