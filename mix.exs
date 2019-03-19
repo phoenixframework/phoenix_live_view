@@ -24,7 +24,8 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:phoenix, "~> 1.4.2"},
       {:phoenix_html, "~> 2.13"},
-      {:jason, "~> 1.0", optional: true}
+      {:jason, "~> 1.0", optional: true},
+      {:ex_doc, "~> 0.19.3", only: :docs},
     ]
   end
 end

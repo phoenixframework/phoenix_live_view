@@ -1,13 +1,13 @@
 defmodule Phoenix.LiveView.Flash do
   @moduledoc """
-  Fetches Phoenix Live View flash messages from cookie token.
+  Fetches Phoenix LiveView flash messages from cookie token.
 
   ## Examples
 
       plug Phoenix.LiveView.Flash
 
   By default, the signing salt for the token is pulled from
-  your endpoint's Live View config, for example:
+  your endpoint's LiveView config, for example:
 
       config :my_app, MyAppWeb.Endpoint,
         ...,
