@@ -5,62 +5,56 @@ describe('Rendered', () => {
     it('recursively merges two diffs', () => {
       expect(Rendered.mergeDiff(simpleDiff1, simpleDiff2)).toEqual(
         simpleDiffResult
-      )
-      expect(Rendered.mergeDiff(deepDiff1, deepDiff2)).toEqual(deepDiffResult)
-    })
+      );
+      expect(Rendered.mergeDiff(deepDiff1, deepDiff2)).toEqual(deepDiffResult);
+    });
     it('returns the latter diff if it contains a `static` key', () => {
-      const diff1 = { 0: ['a'], 1: ['b'] }
-      const diff2 = { 0: ['c'], static: 'c' }
-      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2)
-    })
-  })
+      const diff1 = { 0: ['a'], 1: ['b'] };
+      const diff2 = { 0: ['c'], static: 'c' };
+      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
+    });
+  });
 
   describe('isNewFingerprint', () => {
     it('returns true if `diff.static` is truthy', () => {
-      const diff = { static: ['<h2>'] }
-      expect(Rendered.isNewFingerprint(diff)).toEqual(true)
-    })
+      const diff = { static: ['<h2>'] };
+      expect(Rendered.isNewFingerprint(diff)).toEqual(true);
+    });
     it('returns false if `diff.static` is falsy', () => {
-      const diff = { static: undefined }
-      expect(Rendered.isNewFingerprint(diff)).toEqual(false)
-    })
+      const diff = { static: undefined };
+      expect(Rendered.isNewFingerprint(diff)).toEqual(false);
+    });
     it('returns false if `diff` is undefined', () => {
-      expect(Rendered.isNewFingerprint()).toEqual(false)
-    })
-  })
+      expect(Rendered.isNewFingerprint()).toEqual(false);
+    });
+  });
 
   describe('toString', () => {
     it('stringifies a diff', () => {
       expect(Rendered.toString(simpleDiffResult).trim()).toEqual(
-        `
-<div class="thermostat">
+`<div class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
-</div>
-      `.trim()
-      )
-    })
-  })
+</div>`.trim());
+    });
+  });
 
   describe('toOutputBuffer', () => {
     it('populates the output buffer', () => {
-      const output = { buffer: '' }
-      Rendered.toOutputBuffer(simpleDiffResult, output)
+      const output = { buffer: '' };
+      Rendered.toOutputBuffer(simpleDiffResult, output);
       expect(output.buffer.trim()).toEqual(
-        `
-<div class="thermostat">
+`<div class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
-</div>
-      `.trim()
-      )
-    })
-  })
-})
+</div>`.trim());
+    });
+  });
+});
 
 const simpleDiff1 = {
   '0': 'cooling',
@@ -71,12 +65,12 @@ const simpleDiff1 = {
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
     '</span>\n  </div>\n</div>\n',
-  ],
-}
+  ]
+};
 
 const simpleDiff2 = {
   '2': '07:15:04 PM',
-}
+};
 
 const simpleDiffResult = {
   '0': 'cooling',
@@ -87,8 +81,8 @@ const simpleDiffResult = {
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
     '</span>\n  </div>\n</div>\n',
-  ],
-}
+  ]
+};
 
 const deepDiff1 = {
   '0': {
@@ -121,22 +115,17 @@ const deepDiff1 = {
       '\n',
       '      </td>\n    </tr>\n',
     ],
-  },
-  '2': '<a href="/users/new">New User</a>',
-  static: [
-    '<h2>Listing Users</h2>\n\n',
-    '\n<table>\n  <thead>\n    <tr>\n      <th>Username</th>\n      <th>Email</th>\n      <th>Phone #</th>\n\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n',
-    '  </tbody>\n</table>\n\n<span>',
-    '</span>\n',
-  ],
-}
+  }
+};
+
 const deepDiff2 = {
   '0': {
     '0': {
       dynamics: [['user1058', '2']],
     },
-  },
-}
+  }
+};
+
 const deepDiffResult = {
   '0': {
     '0': {
@@ -168,12 +157,5 @@ const deepDiffResult = {
       '\n',
       '      </td>\n    </tr>\n',
     ],
-  },
-  '2': '<a href="/users/new">New User</a>',
-  static: [
-    '<h2>Listing Users</h2>\n\n',
-    '\n<table>\n  <thead>\n    <tr>\n      <th>Username</th>\n      <th>Email</th>\n      <th>Phone #</th>\n\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n',
-    '  </tbody>\n</table>\n\n<span>',
-    '</span>\n',
-  ],
-}
+  }
+};
