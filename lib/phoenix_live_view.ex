@@ -305,8 +305,8 @@ defmodule Phoenix.LiveView do
 
   ### Key Events
 
-  The onkeypress, onkeydown, and onkeyup events are supported via
-  the `phx-keypress`, `phx-keydown`, and `phx-keyup` bindings. When
+  The onkeydown, and onkeyup events are supported via
+  the `phx-keydown`, and `phx-keyup` bindings. When
   pushed, the value sent to the server will be the event's `key`.
   By default, the bound element will be the event listener, but an
   optional `phx-target` may be provided which may be `"document"`,
