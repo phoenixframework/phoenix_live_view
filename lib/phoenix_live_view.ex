@@ -328,7 +328,7 @@ defmodule Phoenix.LiveView do
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", _key, socket) do
+      def handle_event("update_temp", @down_key, socket) do
         {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end

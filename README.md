@@ -54,7 +54,7 @@ pipeline :browser do
 end
 ```
 
-Then add the following imports to your web file in `lib/app_web.ex`:
+Then add the following imports to your web file in `lib/my_app_web.ex`:
 
 ```elixir
 def view do
@@ -105,16 +105,16 @@ let liveSocket = new LiveSocket("/live")
 liveSocket.connect()
 ```
 
-Finally, by convention live views are saved in a `lib/app_web/live/`
+Finally, by convention live views are saved in a `lib/my_app_web/live/`
 directory. For live page reload support, add the following pattern to
 your `config/dev.exs`:
 
 ```elixir
-config :demo, DemoWeb.Endpoint,
+config :demo, MyAppWeb.Endpoint,
   live_reload: [
     patterns: [
       ...,
-      ~r{lib/demo_web/live/.*(ex)$}
+      ~r{lib/my_app_web/live/.*(ex)$}
     ]
   ]
 ```
