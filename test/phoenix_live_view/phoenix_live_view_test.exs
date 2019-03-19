@@ -197,6 +197,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_key|up|down", %{view: view} do
       {:ok, view, _} = mount(view)
       assert render(view) =~ "The temp is: 1"
+      assert render_keydown(view, :key, @key_i) =~ "The temp is: 2"
       assert render_keydown(view, :key, @key_d) =~ "The temp is: 1"
       assert render_keyup(view, :key, @key_d) =~ "The temp is: 0"
       assert render(view) =~ "The temp is: 0"
