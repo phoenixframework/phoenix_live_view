@@ -675,17 +675,19 @@ class View {
   }
 
   bindClick(el){
-    this.bindOwnAddedNode(el, el, this.binding("click"), phxEvent => {
-      el.addEventListener("click", e => this.pushClick(el, e, phxEvent))
+    this.bindOwnAddedNode(el, el, this.binding("click"), getEvent => {
+      el.addEventListener("click", e => {
+        getEvent(phxEvent => this.pushClick(el, e, phxEvent))
+      })
     })
   }
 
   bindKey(el, kind){
     let event = `key${kind}`
-    this.bindOwnAddedNode(el, el, this.binding(event), (phxEvent) => {
+    this.bindOwnAddedNode(el, el, this.binding(event), getEvent => {
       let phxTarget = this.target(el)
       phxTarget.addEventListener(event, e => {
-        this.pushKey(el, kind, e, phxEvent)
+        getEvent(phxEvent => this.pushKey(el, kind, e, phxEvent))
       })
     })
   }
@@ -720,12 +722,12 @@ class View {
   }
 
   bindSubmit(form){
-    this.bindOwnAddedNode(form, form, this.binding("submit"), phxEvent => {
+    this.bindOwnAddedNode(form, form, this.binding("submit"), getEvent => {
       form.addEventListener("submit", e => {
         e.preventDefault()
-        this.submitForm(form, phxEvent, e)
+        getEvent(phxEvent => this.submitForm(form, phxEvent, e))
       })
-      this.scheduleSubmit(form, phxEvent)
+      this.scheduleSubmit(form, getEvent)
     })
   }
 
@@ -739,12 +741,14 @@ class View {
     })
   }
 
-  scheduleSubmit(form, phxEvent){
+  scheduleSubmit(form, getEvent){
     let everyMs = parseInt(form.getAttribute(this.binding("submit-every")))
     if(everyMs && this.el.contains(form)){
       setTimeout(() => {
-        this.submitForm(form, phxEvent)
-        this.scheduleSubmit(form, phxEvent)
+        getEvent(phxEvent => {
+          this.submitForm(form, phxEvent)
+          this.scheduleSubmit(form, getEvent)
+        })
       }, everyMs)
     }
   }
@@ -772,18 +776,24 @@ class View {
   bindOwnAddedNode(el, targetEl, event, callback){
     if(targetEl && !targetEl.getAttribute){ return }
     let phxEvent = targetEl.getAttribute(event)
+    let getEvent = (eventCallback) => {
+      let currentEvent = targetEl.getAttribute(event)
+      if(currentEvent){ eventCallback(currentEvent) }
+    }
 
     if(phxEvent && !el.getAttribute(PHX_BOUND) && this.ownsElement(el)){
       el.setAttribute(PHX_BOUND, true)
-      callback(phxEvent)
+      callback(getEvent)
     }
   }
 
   onInput(input, callback){
     if(!input.form){ return }
-    this.bindOwnAddedNode(input, input.form, this.binding("change"), phxEvent => {
+    this.bindOwnAddedNode(input, input.form, this.binding("change"), getEvent => {
       let event = input.type === "radio" ? "change" : "input"
-      input.addEventListener(event, e => callback(phxEvent, e))
+      input.addEventListener(event, e => {
+        getEvent(phxEvent => callback(phxEvent, e))
+      })
     })
   }
 
