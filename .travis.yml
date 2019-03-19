@@ -1,5 +1,8 @@
 language: elixir
 
+node_js:
+  - "8"
+
 elixir:
   - 1.7
   - 1.8
