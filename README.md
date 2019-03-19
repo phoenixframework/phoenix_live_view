@@ -84,19 +84,19 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Add LiveView NPM dependencies in your package.json.
+Add LiveView NPM dependencies in your `package.json`.
 
 ```json
 {
   "dependencies": {
-    "phoenix": "../deps/phoenix",
+    "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view"
   }
 }
 ```
 
-Enable connecting to a LiveView socket in your app.js file.
+Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
 import LiveSocket from "phoenix_live_view"
