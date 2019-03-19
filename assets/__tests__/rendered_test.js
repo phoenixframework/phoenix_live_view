@@ -38,46 +38,39 @@ describe('Rendered', () => {
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
-  <div class="controls">
-    <span class="reading">72</span>
-    <button phx-click="dec" class="minus">-</button>
-    <button phx-click="inc" class="plus">+</button>
-    <span class="weather">
-      <div conn id="phx-dafeTrsp/m0=:DemoWeb.WeatherLive"
-     data-phx-parent-id="phx-dafeTrsp/m0="
-     data-phx-view="DemoWeb.WeatherLive"
-     data-phx-session="STUBBED"></div>
-<div class="phx-loader"></div>
-
-    </span>
-  </div>
 </div>
       `.trim()
       )
     })
   })
 
-  describe('toOutputBuffer', () => {})
-
-  describe('comprehensionToBuffer', () => {})
-
-  describe('dynamicToBuffer', () => {})
+  describe('toOutputBuffer', () => {
+    it('populates the output buffer', () => {
+      const output = { buffer: '' }
+      Rendered.toOutputBuffer(simpleDiffResult, output)
+      expect(output.buffer.trim()).toEqual(
+        `
+<div class="thermostat">
+  <div class="bar cooling">
+    <a href="#" phx-click="toggle-mode">cooling</a>
+    <span>07:15:04 PM</span>
+  </div>
+</div>
+      `.trim()
+      )
+    })
+  })
 })
 
 const simpleDiff1 = {
   '0': 'cooling',
   '1': 'cooling',
   '2': '07:15:03 PM',
-  '3': '72',
-  '4':
-    '<div conn id="phx-dafeTrsp/m0=:DemoWeb.WeatherLive"\n     data-phx-parent-id="phx-dafeTrsp/m0="\n     data-phx-view="DemoWeb.WeatherLive"\n     data-phx-session="STUBBED"></div>\n<div class="phx-loader"></div>\n',
   static: [
     '<div class="thermostat">\n  <div class="bar ',
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
-    '</span>\n  </div>\n  <div class="controls">\n    <span class="reading">',
-    '</span>\n    <button phx-click="dec" class="minus">-</button>\n    <button phx-click="inc" class="plus">+</button>\n    <span class="weather">\n      ',
-    '\n    </span>\n  </div>\n</div>\n',
+    '</span>\n  </div>\n</div>\n',
   ],
 }
 
@@ -89,16 +82,11 @@ const simpleDiffResult = {
   '0': 'cooling',
   '1': 'cooling',
   '2': '07:15:04 PM',
-  '3': '72',
-  '4':
-    '<div conn id="phx-dafeTrsp/m0=:DemoWeb.WeatherLive"\n     data-phx-parent-id="phx-dafeTrsp/m0="\n     data-phx-view="DemoWeb.WeatherLive"\n     data-phx-session="STUBBED"></div>\n<div class="phx-loader"></div>\n',
   static: [
     '<div class="thermostat">\n  <div class="bar ',
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
-    '</span>\n  </div>\n  <div class="controls">\n    <span class="reading">',
-    '</span>\n    <button phx-click="dec" class="minus">-</button>\n    <button phx-click="inc" class="plus">+</button>\n    <span class="weather">\n      ',
-    '\n    </span>\n  </div>\n</div>\n',
+    '</span>\n  </div>\n</div>\n',
   ],
 }
 
