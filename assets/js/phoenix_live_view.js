@@ -78,7 +78,7 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgement:
 
 ## Loading state and Errors
 
-By default, the following classes are applied to the Live View's parent
+By default, the following classes are applied to the live view's parent
 container:
 
   - `"phx-connected"` - applied when the view has connected to the server
