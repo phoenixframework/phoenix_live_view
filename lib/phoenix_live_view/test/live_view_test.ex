@@ -1,20 +1,20 @@
 defmodule Phoenix.LiveViewTest do
   @moduledoc """
-  Conveniences for testing Phoenix Live Views.
+  Conveniences for testing Phoenix LiveViews.
 
-  In Live View tests, we interact with views via process
+  In LiveView tests, we interact with views via process
   communication in substitution of a browser. Like a browser,
   our test process receives messages about the rendered updates
   from the view which can be asserted against to test the
-  life-cycle and behavior of Live Views and their children.
+  life-cycle and behavior of LiveViews and their children.
 
   ## LiveView Testing
 
-  The life-cycle of a Live View as outlined in the `Phoenix.LiveView`
+  The life-cycle of a LiveView as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
   socket state. Once the browser receives the HTML, it connects the to
-  server and a new Live View process is started, remounted in a connected
-  socket state, and the view continues statefully. The Live View test functions
+  server and a new LiveView process is started, remounted in a connected
+  socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
 
       {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
@@ -42,7 +42,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Testing Events
 
-  The browser can send a variety of events to a Live View via `phx-` bindings,
+  The browser can send a variety of events to a LiveView via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
   browser and assert on the rendered side-effect of the event, use the
   `render_*` functions:
@@ -119,7 +119,7 @@ defmodule Phoenix.LiveViewTest do
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
-  Mounts a static Live View without connecting to a live process.
+  Mounts a static LiveView without connecting to a live process.
 
   Useful for simulating the rendered result that is sent with
   the intial HTTP request. On successful mount, the view and
@@ -311,7 +311,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the current list of children of the parent Live View.
+  Returns the current list of children of the parent LiveView.
 
   Children are return in the order they appear in the rendered HTML.
 
@@ -370,7 +370,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Stops a Live View.
+  Stops a LiveView.
 
   ## Examples
 

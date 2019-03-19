@@ -1,10 +1,10 @@
-# Phoenix Live View
+# Phoenix LiveView
 
 [![Build Status](https://travis-ci.org/phoenixframework/phoenix_live_view.svg?branch=master)](https://travis-ci.org/phoenixframework/phoenix_live_view)
 
 Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
 
-**Note**: Currently Live View is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
+**Note**: Currently LiveView is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
 
 ## Learning
 
@@ -18,7 +18,7 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
-Currently Live View is only available from GitHub. To use it, add to your `mix.exs`:
+Currently LiveView is only available from GitHub. To use it, add to your `mix.exs`:
 
 ```elixir
 def deps do
@@ -44,7 +44,7 @@ config :phoenix,
   template_engines: [leex: Phoenix.LiveView.Engine]
 ```
 
-Next, add the Live View flash plug to your browser pipeline, after `:fetch_flash`:
+Next, add the LiveView flash plug to your browser pipeline, after `:fetch_flash`:
 
 ```elixir
 pipeline :browser do
