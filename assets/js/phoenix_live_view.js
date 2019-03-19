@@ -40,8 +40,8 @@ following priority:
 
 ### Key Events
 
-The onkeypress, onkeydown, and onkeyup events are supported via
-the `phx-keypress`, `phx-keydown`, and `phx-keyup` bindings. By
+The onkeydown, and onkeyup events are supported via
+the `phx-keydown`, and `phx-keyup` bindings. By
 default, the bound element will be the event listener, but an
 optional `phx-target` may be provided which may be `"document"`,
 `"window"`, or the DOM id of a target element.
@@ -671,7 +671,6 @@ class View {
     this.eachChild(`[${this.binding("click")}]`, el => this.bindClick(el))
     this.eachChild(`[${this.binding("keyup")}]`, el => this.bindKey(el, "up"))
     this.eachChild(`[${this.binding("keydown")}]`, el => this.bindKey(el, "down"))
-    this.eachChild(`[${this.binding("keypress")}]`, el => this.bindKey(el, "press"))
   }
 
   bindClick(el){
@@ -757,7 +756,6 @@ class View {
     this.bindChange(el)
     this.bindKey(el, "up")
     this.bindKey(el, "down")
-    this.bindKey(el, "press")
 
   }
 
