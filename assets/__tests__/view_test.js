@@ -42,11 +42,11 @@ describe('View + DOM', function() {
 
 describe('View', function() {
   beforeEach(() => {
-    global.document.body.innerHTML = liveViewDOM().outerHTML
+    global.document.body.innerHTML = liveViewDOM().outerHTML;
   });
 
   afterAll(() => {
-    global.document.body.innerHTML = ""
+    global.document.body.innerHTML = '';
   });
 
   test('sets defaults', async () => {
@@ -56,13 +56,10 @@ describe('View', function() {
     expect(view.liveSocket).toBe(liveSocket);
     expect(view.newChildrenAdded).toEqual(false);
     expect(view.gracefullyClosed).toEqual(false);
-    expect(view.hasBoundUI).toEqual(false);
-    expect(view.prevKey).toEqual(null);
     expect(view.parent).toBeUndefined();
     expect(view.el).toBe(el);
     expect(view.id).toEqual('container');
     expect(view.view).toEqual('');
-    expect(view.bindingPrefix).toEqual('phx-');
   });
 
   test('binding', async () => {
@@ -70,13 +67,6 @@ describe('View', function() {
     let el = liveViewDOM();
     let view = new View(el, liveSocket);
     expect(view.binding('submit')).toEqual('phx-submit');
-  });
-
-  test('target', async () => {
-    let liveSocket = new LiveSocket('/live');
-    let el = liveViewDOM();
-    let view = new View(el, liveSocket);
-    expect(view.target(el)).toEqual(el);
   });
 
   test('getSession', async () => {

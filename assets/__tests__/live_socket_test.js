@@ -24,11 +24,11 @@ function liveViewDOM() {
 
 describe('LiveSocket', function() {
   beforeEach(() => {
-    global.document.body.innerHTML = liveViewDOM().outerHTML
+    global.document.body.innerHTML = liveViewDOM().outerHTML;
   });
 
   afterAll(() => {
-    global.document.body.innerHTML = ""
+    global.document.body.innerHTML = '';
   });
 
   test('sets defaults', async () => {
