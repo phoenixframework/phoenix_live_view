@@ -13,13 +13,6 @@ function liveViewDOM() {
     <input id="plus" value="1" />
     <button phx-click="inc_temperature">Inc Temperature</button>
   `;
-  // innerHTML = `
-  //   <div id="container" data-phx-session="abc123" data-phx-view>
-  //     <label for="plus">Plus</label>
-  //     <input id="plus" value="1" />
-  //     <button phx-click="inc_temperature">Inc Temperature</button>
-  //   </div>
-  // `;
   const button = div.querySelector('button')
   const input = div.querySelector('input')
   button.addEventListener('click', () => {
