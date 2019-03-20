@@ -28,10 +28,10 @@ function dom() {
   return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
 }
 
+let originalDocument;
 describe('LiveSocket', function() {
-
   beforeEach(() => {
-    this.originalDocument = global.document;
+    originalDocument = global.document;
     Object.defineProperty(global, 'document', {
       value: dom().window.document
     });
@@ -39,9 +39,8 @@ describe('LiveSocket', function() {
 
   afterAll(() => {
     Object.defineProperty(global, 'document', {
-      value: this.originalDocument
+      value: originalDocument
     });
-    delete this.originalDocument;
   });
 
   test('sets defaults', async () => {

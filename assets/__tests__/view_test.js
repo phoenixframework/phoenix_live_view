@@ -1,11 +1,6 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
-import waitForExpect from 'wait-for-expect';
 import jsdom from 'jsdom';
 const { JSDOM } = jsdom;
-
-function wait(callback = () => {}, {timeout = 4500, interval = 50} = {}) {
-  return waitForExpect(callback, timeout, interval)
-}
 
 function liveViewDOM() {
   const div = document.createElement('div')
@@ -51,9 +46,11 @@ describe('View + DOM', function() {
   });
 });
 
+let originalDocument;
+
 describe('View', function() {
   beforeEach(() => {
-    this.originalDocument = global.document;
+    originalDocument = global.document;
     Object.defineProperty(global, 'document', {
       value: dom().window.document
     });
@@ -61,9 +58,8 @@ describe('View', function() {
 
   afterAll(() => {
     Object.defineProperty(global, 'document', {
-      value: this.originalDocument
+      value: originalDocument
     });
-    delete this.originalDocument;
   });
 
   test('sets defaults', async () => {
