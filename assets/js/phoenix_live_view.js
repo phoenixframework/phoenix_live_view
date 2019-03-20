@@ -781,8 +781,7 @@ class View {
       if(currentEvent){ eventCallback(currentEvent) }
     }
 
-    if(phxEvent && !el.getAttribute(PHX_BOUND) && this.ownsElement(el)){
-      el.setAttribute(PHX_BOUND, true)
+    if(phxEvent && this.ownsElement(el)){
       callback(getEvent)
     }
   }
