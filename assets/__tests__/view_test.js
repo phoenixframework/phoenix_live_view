@@ -32,6 +32,25 @@ function dom() {
   return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
 }
 
+describe('View + DOM', function() {
+  test('update', async () => {
+    let liveSocket = new LiveSocket('/live');
+    let el = liveViewDOM();
+    let updatedEl = {
+      static: ['<h2>', '</h2>'],
+      fingerprint: 123
+    };
+
+    let view = new View(el, liveSocket);
+
+    view.update(updatedEl);
+
+    expect(view.el.firstChild.tagName).toBe('H2');
+    expect(view.newChildrenAdded).toBe(false);
+    expect(view.rendered).toBe(updatedEl);
+  });
+});
+
 describe('View', function() {
   beforeEach(() => {
     this.originalDocument = global.document;
@@ -113,23 +132,6 @@ describe('View', function() {
     expect(el.classList.contains('phx-disconnected')).toBeTruthy();
     expect(el.classList.contains('phx-error')).toBeTruthy();
     expect(loader.style.display).toEqual('block');
-  });
-
-  test('update', async () => {
-    let liveSocket = new LiveSocket('/live');
-    let el = liveViewDOM();
-    let updatedEl = {
-      static: ['<h2>'],
-      fingerprint: 123
-    };
-
-    let view = new View(el, liveSocket);
-
-    view.update(updatedEl);
-
-    expect(view.el.firstChild.tagName).toBe('H2');
-    expect(view.newChildrenAdded).toBe(false);
-    expect(view.rendered).toBe(updatedEl);
   });
 
   test('join', async () => {

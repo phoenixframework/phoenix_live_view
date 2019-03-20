@@ -1,5 +1,5 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
-import {Socket} from "phoenix"
+import { Socket } from "phoenix"
 import jsdom from 'jsdom';
 const { JSDOM } = jsdom;
 
