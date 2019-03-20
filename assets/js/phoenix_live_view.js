@@ -86,6 +86,9 @@ container:
     class will be applied in conjunction with `"phx-disconnected"` connection
     to the server is lost.
 
+When a form bound with `phx-submit` is submitted, the `phx-loading` class
+is applied to the form, which is removed on update.
+
 In addition to applied classes, an empty `"phx-loader"` exists adjacent
 to every LiveView, and its display status is toggled automatically based on
 connection and error class changes. This behavior may be disabled by overriding
@@ -97,6 +100,7 @@ import morphdom from "morphdom"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_CONNECTED_CLASS = "phx-connected"
+const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
@@ -421,6 +425,7 @@ let DOM = {
 
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.classList.add(PHX_LOADING_CLASS)
     form.querySelectorAll(`[${disableWith}]`).forEach(el => {
       let value = el.getAttribute(disableWith)
       el.setAttribute(`${disableWith}-restore`, el.innerText)
@@ -438,6 +443,7 @@ let DOM = {
 
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.classList.remove(PHX_LOADING_CLASS)
     form.querySelectorAll(`[${disableWith}]`).forEach(el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
