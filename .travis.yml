@@ -26,7 +26,7 @@ env:
 
 before_script:
   - mix deps.get
-  - nvm install 10.15.3 && nvm use 10.15.3
+  - nvm install 10.13 && nvm use 10.13
 
 script:
   - mix test
