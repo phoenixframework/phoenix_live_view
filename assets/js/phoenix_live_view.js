@@ -119,6 +119,14 @@ export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
 
+let closestPhxBinding = (el, binding) => {
+  do {
+    if(el.matches(`[${binding}]`)){ return el }
+    el = el.parentElement || el.parentNode
+  } while(el !== null && el.nodeType === 1 && !el.matches(PHX_VIEW_SELECTOR))
+  return null
+}
+
 let isObject = (obj) => {
   return typeof(obj) === "object" && !(obj instanceof Array)
 }
@@ -344,22 +352,34 @@ export class LiveSocket {
       window.addEventListener(type, e => {
         if(e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => view.pushKey(el, type, e, phxEvent))
+        } else {
+          document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
+            let phxEvent = el.getAttribute(binding)
+            this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+          })
         }
-        document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
-          let phxEvent = el.getAttribute(binding)
-          this.owner(el, view => view.pushKey(el, type, e, phxEvent))
-        })
       }, true)
     }
   }
 
   bindClicks(){
     window.addEventListener("click", e => {
-      let phxEvent = e.target.getAttribute(this.binding("click"))
+      let phxEvent = this.closestClick(e)
       if(!phxEvent){ return }
       e.preventDefault()
       this.owner(e.target, view => view.pushClick(e.target, phxEvent))
     }, true)
+  }
+
+  closestClick(e){
+    let click = this.binding("click")
+    let targetEvent = e.target.getAttribute(click)
+    if(targetEvent){
+      return targetEvent
+    } else {
+      let closestTarget = closestPhxBinding(e.target, click)
+      return closestTarget && closestTarget.getAttribute(click)
+    }
   }
 
   bindForms(){
