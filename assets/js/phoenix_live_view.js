@@ -364,22 +364,13 @@ export class LiveSocket {
 
   bindClicks(){
     window.addEventListener("click", e => {
-      let phxEvent = this.closestClick(e)
+      let click = this.binding("click")
+      let target = closestPhxBinding(e.target, click)
+      let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
       e.preventDefault()
-      this.owner(e.target, view => view.pushClick(e.target, phxEvent))
+      this.owner(target, view => view.pushClick(target, phxEvent))
     }, true)
-  }
-
-  closestClick(e){
-    let click = this.binding("click")
-    let targetEvent = e.target.getAttribute(click)
-    if(targetEvent){
-      return targetEvent
-    } else {
-      let closestTarget = closestPhxBinding(e.target, click)
-      return closestTarget && closestTarget.getAttribute(click)
-    }
   }
 
   bindForms(){
