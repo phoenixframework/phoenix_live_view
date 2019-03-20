@@ -1,6 +1,4 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
-import jsdom from 'jsdom';
-const { JSDOM } = jsdom;
 
 function liveViewDOM() {
   const div = document.createElement('div')
@@ -21,10 +19,6 @@ function liveViewDOM() {
   });
 
   return div;
-}
-
-function dom() {
-  return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
 }
 
 describe('View + DOM', function() {
