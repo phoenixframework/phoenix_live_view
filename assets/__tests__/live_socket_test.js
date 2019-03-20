@@ -25,7 +25,7 @@ function liveViewDOM() {
 }
 
 function dom() {
-  return new JSDOM(`<!DOCTYPE html>${liveViewDOM().outerHTML}`);
+  return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
 }
 
 describe('LiveSocket', function() {
