@@ -213,7 +213,6 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
-    this.document = document;
   }
 
   buildSocket(urlOrSocket, opts){
@@ -239,10 +238,10 @@ export class LiveSocket {
   }
 
   connect(){
-    if(["complete", "loaded","interactive"].indexOf(this.document.readyState) >= 0){
+    if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
       this.joinRootViews()
     } else {
-      this.document.addEventListener("DOMContentLoaded", () => {
+      document.addEventListener("DOMContentLoaded", () => {
         this.joinRootViews()
       })
     }
@@ -254,7 +253,7 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
-    this.document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
+    document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
       this.joinView(rootEl)
     })
   }
@@ -294,10 +293,10 @@ export class LiveSocket {
   }
 
   getActiveElement(){
-    if(this.document.activeElement === this.document.body){
-      return this.activeElement || this.document.activeElement
+    if(document.activeElement === document.body){
+      return this.activeElement || document.activeElement
     } else {
-      return this.document.activeElement
+      return document.activeElement
     }
   }
 
@@ -308,14 +307,14 @@ export class LiveSocket {
   }
 
   restorePreviouslyActiveFocus(){
-    if(this.prevActive && this.prevActive !== this.document.body){
+    if(this.prevActive && this.prevActive !== document.body){
       this.prevActive.focus()
     }
   }
 
   blurActiveElement(){
     this.prevActive = this.getActiveElement()
-    if(this.prevActive !== this.document.body){ this.prevActive.blur() }
+    if(this.prevActive !== document.body){ this.prevActive.blur() }
   }
 }
 

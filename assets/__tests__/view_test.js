@@ -33,6 +33,20 @@ function dom() {
 }
 
 describe('View', function() {
+  beforeEach(() => {
+    this.originalDocument = global.document;
+    Object.defineProperty(global, 'document', {
+      value: dom().window.document
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(global, 'document', {
+      value: this.originalDocument
+    });
+    delete this.originalDocument;
+  });
+
   test('sets defaults', async () => {
     let liveSocket = new LiveSocket('/live');
     let el = liveViewDOM();
@@ -72,12 +86,11 @@ describe('View', function() {
 
   test('showLoader and hideLoader', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
-    let loader = liveSocket.document.createElement('span');
+    let loader = document.createElement('span');
     loader.style.display = 'none';
-    let phxView = liveSocket.document.querySelector('[data-phx-view]');
+    let phxView = document.querySelector('[data-phx-view]');
     phxView.parentNode.insertBefore(loader, phxView.nextSibling);
-    let el = liveSocket.document.querySelector('[data-phx-view]');
+    let el = document.querySelector('[data-phx-view]');
 
     let view = new View(el, liveSocket);
     view.showLoader();
@@ -90,11 +103,10 @@ describe('View', function() {
 
   test('displayError', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
-    let loader = liveSocket.document.createElement('span');
-    let phxView = liveSocket.document.querySelector('[data-phx-view]');
+    let loader = document.createElement('span');
+    let phxView = document.querySelector('[data-phx-view]');
     phxView.parentNode.insertBefore(loader, phxView.nextSibling);
-    let el = liveSocket.document.querySelector('[data-phx-view]');
+    let el = document.querySelector('[data-phx-view]');
 
     let view = new View(el, liveSocket);
     view.displayError();
@@ -105,7 +117,6 @@ describe('View', function() {
 
   test('update', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
     let el = liveViewDOM();
     let updatedEl = {
       static: ['<h2>'],
@@ -123,7 +134,6 @@ describe('View', function() {
 
   test('join', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
     let el = liveViewDOM();
     let view = new View(el, liveSocket);
 

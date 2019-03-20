@@ -29,6 +29,21 @@ function dom() {
 }
 
 describe('LiveSocket', function() {
+
+  beforeEach(() => {
+    this.originalDocument = global.document;
+    Object.defineProperty(global, 'document', {
+      value: dom().window.document
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(global, 'document', {
+      value: this.originalDocument
+    });
+    delete this.originalDocument;
+  });
+
   test('sets defaults', async () => {
     let opts = { viewLogger: 'foo' };
     let liveSocket = new LiveSocket('/live', opts);
@@ -67,7 +82,6 @@ describe('LiveSocket', function() {
 
   test('connect', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     let socket = liveSocket.connect();
 
@@ -78,7 +92,6 @@ describe('LiveSocket', function() {
 
   test('disconnect', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
     liveSocket.disconnect();
@@ -88,7 +101,6 @@ describe('LiveSocket', function() {
 
   test('channel', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
     let channel = liveSocket.channel('lv:def456', () => {
@@ -100,7 +112,6 @@ describe('LiveSocket', function() {
 
   test('getViewById', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
 
@@ -109,7 +120,6 @@ describe('LiveSocket', function() {
 
   test('destroyViewById', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
 
@@ -131,9 +141,8 @@ describe('LiveSocket', function() {
 
   test('getActiveElement default before LiveSocket activeElement is set', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
     input.focus();
 
     expect(liveSocket.getActiveElement()).toEqual(input);
@@ -141,9 +150,8 @@ describe('LiveSocket', function() {
 
   test('setActiveElement and getActiveElement', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
 
     // .activeElement
     liveSocket.setActiveElement(input);
@@ -153,9 +161,8 @@ describe('LiveSocket', function() {
 
   test('blurActiveElement', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
     input.focus();
 
     expect(liveSocket.prevActive).toBeNull();
@@ -168,9 +175,8 @@ describe('LiveSocket', function() {
 
   test('restorePreviouslyActiveFocus', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
     input.focus();
 
     liveSocket.blurActiveElement();
@@ -185,11 +191,10 @@ describe('LiveSocket', function() {
 
   test('dropActiveElement unsets prevActive', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
     liveSocket.setActiveElement(input);
     liveSocket.blurActiveElement();
     expect(liveSocket.prevActive).toEqual(input);
@@ -203,11 +208,10 @@ describe('LiveSocket', function() {
 
   test('onViewError unsets prevActive', async () => {
     let liveSocket = new LiveSocket('/live');
-    liveSocket.document = dom().window.document;
 
     liveSocket.connect();
 
-    let input = liveSocket.document.querySelector('input');
+    let input = document.querySelector('input');
     liveSocket.setActiveElement(input);
     liveSocket.blurActiveElement();
     expect(liveSocket.prevActive).toEqual(input);
