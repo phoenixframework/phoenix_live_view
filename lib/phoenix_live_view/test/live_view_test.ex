@@ -56,9 +56,6 @@ defmodule Phoenix.LiveViewTest do
     * `render_change/3` - sends a form phx-change event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keypress/3` - sends a form phx-keypress event and value and
-      returns the rendered result of the `handle_event/3` callback.
-
     * `render_keydown/3` - sends a form phx-keydown event and value and
       returns the rendered result of the `handle_event/3` callback.
 
@@ -77,9 +74,9 @@ defmodule Phoenix.LiveViewTest do
 
       assert render_change(view, :validate, %{deg: -30}) =~ "invalid temperature"
 
-      assert render_keypress(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
+      assert render_keydown(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
 
-      assert render_keypress(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
+      assert render_keydown(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
 
   ## Testing regular messages
 
@@ -262,19 +259,6 @@ defmodule Phoenix.LiveViewTest do
   def render_change(view, event, value \\ %{}) do
     encoded_form = Plug.Conn.Query.encode(value)
     render_event(view, :form, event, encoded_form)
-  end
-
-  @doc """
-  Sends a keypress event to the view and returns the rendered result.
-
-  ## Examples
-
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
-      assert html =~ "The temp is: 30℉"
-      assert render_keypress(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-  """
-  def render_keypress(view, event, key_code) do
-    render_event(view, :keypress, event, key_code)
   end
 
   @doc """
