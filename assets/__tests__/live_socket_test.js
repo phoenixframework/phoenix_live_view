@@ -31,7 +31,7 @@ function dom() {
 let originalDocument;
 describe('LiveSocket', function() {
   beforeEach(() => {
-    originalDocument = global.document;
+    if (!originalDocument) originalDocument = global.document;
     Object.defineProperty(global, 'document', {
       value: dom().window.document
     });
