@@ -13,6 +13,13 @@ function liveViewDOM() {
     <input id="plus" value="1" />
     <button phx-click="inc_temperature">Inc Temperature</button>
   `;
+  // innerHTML = `
+  //   <div id="container" data-phx-session="abc123" data-phx-view>
+  //     <label for="plus">Plus</label>
+  //     <input id="plus" value="1" />
+  //     <button phx-click="inc_temperature">Inc Temperature</button>
+  //   </div>
+  // `;
   const button = div.querySelector('button')
   const input = div.querySelector('input')
   button.addEventListener('click', () => {
@@ -28,19 +35,13 @@ function dom() {
   return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
 }
 
-let originalDocument;
 describe('LiveSocket', function() {
   beforeEach(() => {
-    if (!originalDocument) originalDocument = global.document;
-    Object.defineProperty(global, 'document', {
-      value: dom().window.document
-    });
+    global.document.body.innerHTML = liveViewDOM().outerHTML
   });
 
   afterAll(() => {
-    Object.defineProperty(global, 'document', {
-      value: originalDocument
-    });
+    global.document.body.innerHTML = ""
   });
 
   test('sets defaults', async () => {

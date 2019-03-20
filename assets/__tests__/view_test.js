@@ -46,20 +46,13 @@ describe('View + DOM', function() {
   });
 });
 
-let originalDocument;
-
 describe('View', function() {
   beforeEach(() => {
-    originalDocument = global.document;
-    Object.defineProperty(global, 'document', {
-      value: dom().window.document
-    });
+    global.document.body.innerHTML = liveViewDOM().outerHTML
   });
 
   afterAll(() => {
-    Object.defineProperty(global, 'document', {
-      value: originalDocument
-    });
+    global.document.body.innerHTML = ""
   });
 
   test('sets defaults', async () => {
