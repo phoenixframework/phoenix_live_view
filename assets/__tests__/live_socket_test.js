@@ -1,7 +1,5 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
 import { Socket } from "phoenix"
-import jsdom from 'jsdom';
-const { JSDOM } = jsdom;
 
 function liveViewDOM() {
   const div = document.createElement('div')
@@ -24,23 +22,13 @@ function liveViewDOM() {
   return div;
 }
 
-function dom() {
-  return new JSDOM(`<!DOCTYPE html><body>${liveViewDOM().outerHTML}</body>`);
-}
-
-let originalDocument;
 describe('LiveSocket', function() {
   beforeEach(() => {
-    originalDocument = global.document;
-    Object.defineProperty(global, 'document', {
-      value: dom().window.document
-    });
+    global.document.body.innerHTML = liveViewDOM().outerHTML
   });
 
   afterAll(() => {
-    Object.defineProperty(global, 'document', {
-      value: originalDocument
-    });
+    global.document.body.innerHTML = ""
   });
 
   test('sets defaults', async () => {
