@@ -1,6 +1,6 @@
 /*
 ================================================================================
-Phoenix LiveView Javascript Client 
+Phoenix LiveView JavaScript Client
 ================================================================================
 
 ## Usage
@@ -40,11 +40,10 @@ following priority:
 
 ### Key Events
 
-The onkeypress, onkeydown, and onkeyup events are supported via
-the `phx-keypress`, `phx-keydown`, and `phx-keyup` bindings. By
+The onkeydown, and onkeyup events are supported via
+the `phx-keydown`, and `phx-keyup` bindings. By
 default, the bound element will be the event listener, but an
-optional `phx-target` may be provided which may be `"document"`,
-`"window"`, or the DOM id of a target element.
+optional `phx-target` may be provided which may be `"window"`.
 
 When pushed, the value sent to the server will be the event's `key`.
 
@@ -136,6 +135,10 @@ let maybe = (el, key) => {
   }
 }
 
+let serializeForm = (form) => {
+  return((new URLSearchParams(new FormData(form))).toString())
+}
+
 let recursiveMerge = (target, source) => {
   for(let key in source){
     let val = source[key]
@@ -169,7 +172,7 @@ let Rendered = {
   toOutputBuffer(rendered, output){
     if(rendered.dynamics){ return this.comprehensionToBuffer(rendered, output) }
     let {static: statics} = rendered
-    
+
     output.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
       this.dynamicToBuffer(rendered[i - 1], output)
@@ -249,11 +252,16 @@ export class LiveSocket {
     return this.socket.connect()
   }
 
+  getBindingPrefix(){ return this.bindingPrefix }
+
+  binding(kind){ return `${this.getBindingPrefix()}${kind}` }
+
   disconnect(){ return this.socket.disconnect()}
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
+    this.bindTopLevelEvents()
     document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
       this.joinView(rootEl)
     })
@@ -263,6 +271,11 @@ export class LiveSocket {
     let view = new View(el, this, parentView)
     this.views[view.id] = view
     view.join()
+  }
+
+  owner(childEl, callback){
+    let view = this.getViewById(maybe(childEl.closest(PHX_VIEW_SELECTOR), "id"))
+    if(view){ callback(view) }
   }
 
   getViewById(id){ return this.views[id] }
@@ -278,8 +291,6 @@ export class LiveSocket {
       view.destroy()
     }
   }
-
-  getBindingPrefix(){ return this.bindingPrefix }
 
   setActiveElement(target){
     if(this.activeElement === target){ return }
@@ -306,7 +317,7 @@ export class LiveSocket {
       this.prevActive = null
     }
   }
-  
+
   restorePreviouslyActiveFocus(){
     if(this.prevActive && this.prevActive !== document.body){
       this.prevActive.focus()
@@ -316,6 +327,65 @@ export class LiveSocket {
   blurActiveElement(){
     this.prevActive = this.getActiveElement()
     if(this.prevActive !== document.body){ this.prevActive.blur() }
+  }
+
+  bindTopLevelEvents(){
+    this.bindKeys()
+    this.bindClicks()
+    this.bindForms()
+  }
+
+  // private
+
+  bindKeys(){
+    for(let type of ["keyup", "keydown"]){
+      let binding = this.binding(type)
+      let bindTarget = this.binding("target")
+      window.addEventListener(type, e => {
+        if(e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
+          this.owner(e.target, view => view.pushKey(el, type, e, phxEvent))
+        }
+        document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
+          let phxEvent = el.getAttribute(binding)
+          this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+        })
+      }, true)
+    }
+  }
+
+  bindClicks(){
+    window.addEventListener("click", e => {
+      let phxEvent = e.target.getAttribute(this.binding("click"))
+      if(!phxEvent){ return }
+      e.preventDefault()
+      this.owner(e.target, view => view.pushClick(e.target, phxEvent))
+    }, true)
+  }
+
+  bindForms(){
+    window.addEventListener("submit", e => {
+      let phxEvent = e.target.getAttribute(this.binding("submit"))
+      if(!phxEvent){ return }
+      e.preventDefault()
+      e.target.disabled = true
+      this.owner(e.target, view => view.submitForm(e.target, phxEvent))
+    }, true)
+
+    for(let type of ["change", "input"]){
+      window.addEventListener(type, e => {
+        let input = e.target
+        let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
+        if(!phxEvent){ return }
+        this.owner(input, view => {
+          if(DOM.isTextualInput(input)){
+            input.setAttribute(PHX_HAS_FOCUSED, true)
+          } else {
+            this.setActiveElement(input)
+          }
+          view.pushInput(input, phxEvent)
+        })
+      }, true)
+    }
   }
 }
 
@@ -414,7 +484,6 @@ let DOM = {
           view.onNewChildAdded(el)
           return true
         }
-        view.maybeBindAddedNode(el)
       },
       onBeforeNodeDiscarded: function(el){
         // nested view handling
@@ -485,12 +554,9 @@ class View {
     this.newChildrenAdded = false
     this.gracefullyClosed = false
     this.el = el
-    this.prevKey = null
-    this.bindingPrefix = liveSocket.getBindingPrefix()
     this.loader = this.el.nextElementSibling
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
-    this.hasBoundUI = false
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {session: this.getSession()}
     })
@@ -531,15 +597,13 @@ class View {
   log(kind, msgCallback){
     this.liveSocket.log(this, kind, msgCallback)
   }
-  
+
   onJoin({rendered}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
     this.el.classList = PHX_CONNECTED_CLASS
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
-    if(!this.hasBoundUI){ this.bindUI() }
-    this.hasBoundUI = true
     this.joinNewChildren()
   }
 
@@ -614,51 +678,37 @@ class View {
       })
   }
 
-  pushClick(clickedEl, event, phxEvent){
-    event.preventDefault()
+  pushClick(clickedEl, phxEvent){
     let val = clickedEl.getAttribute(this.binding("value")) || clickedEl.value || ""
     this.pushWithReply("event", {
       type: "click",
       event: phxEvent,
-      id: clickedEl.id,
       value: val
     })
   }
 
   pushKey(keyElement, kind, event, phxEvent){
-    if(this.prevKey === event.key){ return }
-    this.prevKey = event.key
     this.pushWithReply("event", {
-      type: `key${kind}`,
+      type: kind,
       event: phxEvent,
-      id: event.target.id,
       value: keyElement.value || event.key
     })
   }
 
-  pushInput(inputEl, event, phxEvent){
+  pushInput(inputEl, phxEvent){
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      id: event.target.id,
-      value: this.serializeForm(inputEl.form)
+      value: serializeForm(inputEl.form)
     })
-  }
-  
-  pushFormSubmit(formEl, event, phxEvent, onReply){
-    if(event){ event.target.disabled = true }
-    this.pushWithReply("event", {
-      type: "form",
-      event: phxEvent,
-      id: event && event.target.id || null,
-      value: this.serializeForm(formEl)
-    }, onReply)
   }
 
-  eachChild(selector, each){
-    return this.el.querySelectorAll(selector).forEach(child => {
-      if(this.ownsElement(child)){ each(child) }
-    })
+  pushFormSubmit(formEl, phxEvent, onReply){
+    this.pushWithReply("event", {
+      type: "form",
+      event: phxEvent,
+      value: serializeForm(formEl)
+    }, onReply)
   }
 
   ownsElement(element){
@@ -666,149 +716,18 @@ class View {
            maybe(element.closest(PHX_VIEW_SELECTOR), "id") === this.id
   }
 
-  bindUI(){
-    this.bindForms()
-    this.eachChild(`[${this.binding("click")}]`, el => this.bindClick(el))
-    this.eachChild(`[${this.binding("keyup")}]`, el => this.bindKey(el, "up"))
-    this.eachChild(`[${this.binding("keydown")}]`, el => this.bindKey(el, "down"))
-    this.eachChild(`[${this.binding("keypress")}]`, el => this.bindKey(el, "press"))
-  }
-
-  bindClick(el){
-    this.bindOwnAddedNode(el, el, this.binding("click"), getEvent => {
-      el.addEventListener("click", e => {
-        getEvent(phxEvent => this.pushClick(el, e, phxEvent))
-      })
-    })
-  }
-
-  bindKey(el, kind){
-    let event = `key${kind}`
-    this.bindOwnAddedNode(el, el, this.binding(event), getEvent => {
-      let phxTarget = this.target(el)
-      phxTarget.addEventListener(event, e => {
-        getEvent(phxEvent => this.pushKey(el, kind, e, phxEvent))
-      })
-    })
-  }
-
-  bindForms(){
-    let change = this.binding("change")
-    this.eachChild(`form[${change}] input`, input => {
-      this.bindChange(input)
-    })
-    this.eachChild(`form[${change}] select`, input => {
-      this.bindChange(input)
-    })
-    this.eachChild(`form[${change}] textarea`, textarea => {
-      this.bindChange(textarea)
-    })
-
-    let submit = this.binding("submit")
-    this.eachChild(`form[${submit}]`, form => {
-      this.bindSubmit(form)
-    })
-  }
-
-  bindChange(input){
-    this.onInput(input, (phxEvent, e) => {
-      if(DOM.isTextualInput(input)){
-        input.setAttribute(PHX_HAS_FOCUSED, true)
-      } else {
-        this.liveSocket.setActiveElement(e.target)
-      }
-      this.pushInput(input, e, phxEvent)
-    })
-  }
-
-  bindSubmit(form){
-    this.bindOwnAddedNode(form, form, this.binding("submit"), getEvent => {
-      form.addEventListener("submit", e => {
-        e.preventDefault()
-        getEvent(phxEvent => this.submitForm(form, phxEvent, e))
-      })
-      this.scheduleSubmit(form, getEvent)
-    })
-  }
-
-  submitForm(form, phxEvent, e){
+  submitForm(form, phxEvent){
+    let prefix = this.liveSocket.getBindingPrefix()
     form.setAttribute(PHX_HAS_SUBMITTED, "true")
-    DOM.disableForm(form, this.bindingPrefix)
+    DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
-    this.pushFormSubmit(form, e, phxEvent, () => {
-      DOM.restoreDisabledForm(form, this.bindingPrefix)
+    this.pushFormSubmit(form, phxEvent, () => {
+      DOM.restoreDisabledForm(form, prefix)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
 
-  scheduleSubmit(form, getEvent){
-    let everyMs = parseInt(form.getAttribute(this.binding("submit-every")))
-    if(everyMs && this.el.contains(form)){
-      setTimeout(() => {
-        getEvent(phxEvent => {
-          this.submitForm(form, phxEvent)
-          this.scheduleSubmit(form, getEvent)
-        })
-      }, everyMs)
-    }
-  }
-
-  maybeBindAddedNode(el){
-    if(!el.getAttribute || !this.ownsElement(el)) { return }
-
-    this.bindClick(el)
-    this.bindSubmit(el)
-    this.bindChange(el)
-    this.bindKey(el, "up")
-    this.bindKey(el, "down")
-    this.bindKey(el, "press")
-
-  }
-
-  binding(kind){ return `${this.bindingPrefix}${kind}` }
-
-  // private
-
-  serializeForm(form){
-   return((new URLSearchParams(new FormData(form))).toString())
-  }
-
-  bindOwnAddedNode(el, targetEl, event, callback){
-    if(targetEl && !targetEl.getAttribute){ return }
-    let phxEvent = targetEl.getAttribute(event)
-    let getEvent = (eventCallback) => {
-      let currentEvent = targetEl.getAttribute(event)
-      if(currentEvent){ eventCallback(currentEvent) }
-    }
-
-    if(phxEvent && !el.getAttribute(PHX_BOUND) && this.ownsElement(el)){
-      el.setAttribute(PHX_BOUND, true)
-      callback(getEvent)
-    }
-  }
-
-  onInput(input, callback){
-    if(!input.form){ return }
-    this.bindOwnAddedNode(input, input.form, this.binding("change"), getEvent => {
-      let event = input.type === "radio" ? "change" : "input"
-      input.addEventListener(event, e => {
-        getEvent(phxEvent => callback(phxEvent, e))
-      })
-    })
-  }
-
-  target(el){
-    let target = el.getAttribute(this.binding("target"))
-    if(target === "window"){
-      return window
-    }else if(target === "document"){
-      return document
-    } else if(target){
-      return document.getElementById(target)
-    } else {
-      return el
-    }
-  }
+  binding(kind){ return this.liveSocket.binding(kind)}
 }
 
 export default LiveSocket
