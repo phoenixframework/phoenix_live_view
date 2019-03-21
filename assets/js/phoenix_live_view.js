@@ -229,6 +229,7 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.bindTopLevelEvents()
   }
 
   buildSocket(urlOrSocket, opts){
@@ -273,13 +274,14 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
-    this.bindTopLevelEvents()
     document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
       this.joinView(rootEl)
     })
   }
 
   joinView(el, parentView){
+    if(this.getViewById(el.id)){ return }
+
     let view = new View(el, this, parentView)
     this.views[view.id] = view
     view.join()
