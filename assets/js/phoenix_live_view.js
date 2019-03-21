@@ -5,7 +5,7 @@ Phoenix LiveView JavaScript Client
 
 ## Usage
 
-Instantiate a single LiveSocket instances to enable LiveView
+Instantiate a single LiveSocket instance to enable LiveView
 client/server interaction, for example:
 
     import LiveSocket from "live_view"
@@ -40,7 +40,7 @@ following priority:
 
 ### Key Events
 
-The onkeydown, and onkeyup events are supported via
+The onkeydown and onkeyup events are supported via
 the `phx-keydown`, and `phx-keyup` bindings. By
 default, the bound element will be the event listener, but an
 optional `phx-target` may be provided which may be `"window"`.
@@ -55,22 +55,22 @@ overwrite the input's current value, even if it deviates from
 the server's rendered updates. This works well for updates where
 major side effects are not expected, such as form validation errors,
 or additive UX around the user's input values as they fill out a form.
-For these usecases, the `phx-change` input does not concern itself
+For these use cases, the `phx-change` input does not concern itself
 with disabling input editing while an event to the server is inflight.
 
 The `phx-submit` event is used for form submissions where major side-effects
 typically happen, such as rendering new containers, calling an external
 service, or redirecting to a new page. For these use-cases, the form inputs
 are set to `readonly` on submit, and any submit button is disabled until
-the client gets an acknowledgement that the server has processed the
-`phx-submit` event. Following an acknowledgement, any updates are patched
+the client gets an acknowledgment that the server has processed the
+`phx-submit` event. Following an acknowledgment, any updates are patched
 to the DOM as normal, and the last input with focus is restored if the
-user has not otherwised focused on a new input during submission.
+user has not otherwise focused on a new input during submission.
 
 To handle latent form submissions, any HTML tag can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
 value during form submission. For example, the following code would change
-the "Save" button to "Saving...", and restore it to "Save" on acknowledgement:
+the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 
     <button type="submit" phx-disable-with="Saving...">Save</button>
 
@@ -92,7 +92,7 @@ is applied to the form, which is removed on update.
 In addition to applied classes, an empty `"phx-loader"` exists adjacent
 to every LiveView, and its display status is toggled automatically based on
 connection and error class changes. This behavior may be disabled by overriding
-`.phx-loader` in your css to `display: none!important`.
+`.phx-loader` in your css to `display: none !important`.
 */
 
 import {Socket} from "phoenix"
