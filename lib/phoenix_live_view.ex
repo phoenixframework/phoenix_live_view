@@ -73,7 +73,7 @@ defmodule Phoenix.LiveView do
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
-  With a livew view defined, you first define the `socket` path in your endpoint,
+  With a live view defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
       defmodule AppWeb.Endpoint do
