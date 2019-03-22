@@ -309,7 +309,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  @extra_clauses (quote do
+  @extra_clauses (quote generated: true do
                     %{__struct__: Phoenix.LiveView.Rendered} = other -> other
                   end)
 
