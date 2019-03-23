@@ -355,7 +355,11 @@ export class LiveSocket {
       let bindTarget = this.binding("target")
       window.addEventListener(type, e => {
         if(e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => view.pushKey(el, type, e, phxEvent))
+          this.owner(e.target, view => {
+            let el = e.target
+            let phxEvent = el.getAttribute(binding)
+            view.pushKey(el, type, e, phxEvent)
+          })
         } else {
           document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
             let phxEvent = el.getAttribute(binding)
