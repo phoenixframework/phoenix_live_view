@@ -258,7 +258,7 @@ defmodule Phoenix.LiveView do
   We used `connected?(socket)` on mount to send our view a message every 30s if
   the socket is in a connected state. We receive `:update` in a
   `handle_info` just like a GenServer, and update our socket assigns. Whenever
-  a socket's assigns change, `render/1` is automatically invoked, and the
+  a socket's assigns changes, `render/1` is automatically invoked, and the
   updates are sent to the client.
 
   ## LiveEEx Templates
