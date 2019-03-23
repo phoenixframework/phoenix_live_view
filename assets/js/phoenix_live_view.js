@@ -354,18 +354,31 @@ export class LiveSocket {
       let binding = this.binding(type)
       let bindTarget = this.binding("target")
       window.addEventListener(type, e => {
-        if(e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
+        if(!e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
+          // (this branch is necessary since the window is top-level)
+          return
+        }
+
+        if(!e.target.getAttribute(bindTarget)) {
+          // we _know_ there's a handler on this element
           let el = e.target
           let phxEvent = el.getAttribute(binding)
           this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+          return
+        }
+
+        let target = e.target.getAttribute(bindTarget)
+
+        if(target === 'document' || target === 'window') {
+          document.querySelectorAll(`[${binding}][${bindTarget}=${target}]`).forEach(el => {
+            let phxEvent = el.getAttribute(binding)
+            this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+          })
         } else {
-          let target = e.target.getAttribute(bindTarget)
-          if(target === 'document' || target === 'window') {
-            document.querySelectorAll(`[${binding}][${bindTarget}=${target}]`).forEach(el => {
-              let phxEvent = el.getAttribute(binding)
-              this.owner(el, view => view.pushKey(el, type, e, phxEvent))
-            })
-          }
+          // target should be the id of some other element
+          let elAtId = document.getElementById(target)
+          let phxEvent = e.target.getAttribute(binding)
+          this.owner(elAtId, view => view.pushKey(elAtId, type, e, phxEvent))
         }
       }, true)
     }
