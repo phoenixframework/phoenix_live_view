@@ -359,10 +359,13 @@ export class LiveSocket {
           let phxEvent = el.getAttribute(binding)
           this.owner(el, view => view.pushKey(el, type, e, phxEvent))
         } else {
-          document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
-            let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => view.pushKey(el, type, e, phxEvent))
-          })
+          let target = e.target.getAttribute(bindTarget)
+          if(target === 'document' || target === 'window') {
+            document.querySelectorAll(`[${binding}][${bindTarget}=${target}]`).forEach(el => {
+              let phxEvent = el.getAttribute(binding)
+              this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+            })
+          }
         }
       }, true)
     }
