@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView do
       any UI change done after a user action is undone
       once the server sends the update for said action.
       For example, it is relatively straight-forward to
-      click a butto and enter into a loading state which
+      click a button and enter into a loading state which
       is automatically undone when the update arrives.
       This is especially important as user feedback when
       latency is involved. A complete feature set for
