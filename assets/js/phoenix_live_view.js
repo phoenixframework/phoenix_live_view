@@ -95,8 +95,8 @@ connection and error class changes. This behavior may be disabled by overriding
 `.phx-loader` in your css to `display: none !important`.
 */
 
-import {Socket} from "phoenix"
 import morphdom from "morphdom"
+import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -215,35 +215,25 @@ export let Rendered = {
 
 // todo document LiveSocket specific options like viewLogger
 export class LiveSocket {
-  constructor(urlOrSocket, opts = {}){
+  constructor(url, opts = {}){
     this.unloaded = false
+    this.socket = new Socket(url, opts)
+    this.socket.onOpen(() => this.unloaded = false)
     window.addEventListener("beforeunload", e => {
       this.unloaded = true
     })
-    this.socket = this.buildSocket(urlOrSocket, opts)
-    this.socket.onOpen(() => this.unloaded = false)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.bindTopLevelEvents()
   }
 
-  buildSocket(urlOrSocket, opts){
-    if(typeof urlOrSocket !== "string"){ return urlOrSocket }
+  isUnloaded(){ return this.unloaded }
 
-    if(!opts.reconnectAfterMs){
-      opts.reconnectAfterMs = (tries) => {
-        if(this.unloaded){
-          return [50, 100, 250][tries - 1] || 500
-        } else {
-          return [1000, 2000, 5000, 10000][tries - 1] || 10000
-        }
-      }
-    }
-    return new Socket(urlOrSocket, opts)
-  }
+  getSocket(){ return this.socket }
 
   log(view, kind, msgCallback){
     if(this.viewLogger){
@@ -267,18 +257,21 @@ export class LiveSocket {
 
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
 
-  disconnect(){ return this.socket.disconnect()}
+  disconnect(){
+    this.socket.disconnect()
+  }
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
-    this.bindTopLevelEvents()
     document.querySelectorAll(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`).forEach(rootEl => {
       this.joinView(rootEl)
     })
   }
 
   joinView(el, parentView){
+    if(this.getViewById(el.id)){ return }
+
     let view = new View(el, this, parentView)
     this.views[view.id] = view
     view.join()
@@ -353,8 +346,9 @@ export class LiveSocket {
       let binding = this.binding(type)
       let bindTarget = this.binding("target")
       window.addEventListener(type, e => {
-        if(e.target.getAttribute(binding) && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => view.pushKey(el, type, e, phxEvent))
+        let targetPhxEvent = e.target.getAttribute(binding)
+        if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
+          this.owner(e.target, view => view.pushKey(e.target, type, e, targetPhxEvent))
         } else {
           document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
             let phxEvent = el.getAttribute(binding)
@@ -583,7 +577,7 @@ export class View {
   }
 
   getSession(){
-    return this.el.getAttribute(PHX_SESSION) || this.parent.getSession()
+    return this.el.getAttribute(PHX_SESSION)
   }
 
   destroy(callback = function(){}){
@@ -665,10 +659,13 @@ export class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(){
-    if(this.parent){ this.parent.channel.onError(() => this.channel.leave())}
+    if(this.parent){
+      this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
+    }
     this.channel.join()
       .receive("ok", data => this.onJoin(data))
       .receive("error", resp => this.onJoinError(resp))
+      .receive("timeout", () => this.onJoinError("timeout"))
   }
 
   onJoinError(resp){
@@ -680,7 +677,11 @@ export class View {
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
-    this.displayError()
+    if(this.liveSocket.isUnloaded()){
+      this.showLoader()
+    } else {
+      this.displayError()
+    }
   }
 
   displayError(){

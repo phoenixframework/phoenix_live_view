@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.View do
   @moduledoc false
-  import Phoenix.HTML, only: [sigil_E: 2]
+  import Phoenix.HTML, only: [sigil_E: 2, raw: 1]
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
@@ -43,13 +43,6 @@ defmodule Phoenix.LiveView.View do
   def dom_id(%Socket{id: id}), do: id
 
   @doc """
-  Returns the browser's DOM id for the child view module of a parent socket.
-  """
-  def child_dom_id(%Socket{} = parent, child_view) do
-    dom_id(parent) <> ":#{inspect(child_view)}"
-  end
-
-  @doc """
   Returns the socket's LiveView module.
   """
   def view(%Socket{view: view}), do: view
@@ -79,13 +72,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Builds a nested child `%Phoenix.LiveViewSocket{}`.
   """
-  def build_nested_socket(%Socket{endpoint: endpoint} = parent, opts) do
-    nested_opts =
-      Map.merge(opts, %{
-        id: child_dom_id(parent, Map.fetch!(opts, :view)),
-        parent_pid: self(),
-      })
-
+  def build_nested_socket(%Socket{endpoint: endpoint}, opts) do
+    nested_opts = Map.merge(opts, %{parent_pid: self()})
     build_socket(endpoint, nested_opts)
   end
 
@@ -179,14 +167,19 @@ defmodule Phoenix.LiveView.View do
 
   ## Options
 
-    * `session` - the required map of session data
+    * `:session` - the required map of session data
+    * `:attrs` - the optional list of extra DOM attributes
+      for the LiveView container
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
+    attrs = opts[:attrs] || []
+
     case static_mount(endpoint, view, session) do
       {:ok, socket, signed_session} ->
         html = ~E"""
         <div id="<%= dom_id(socket) %>"
+            <%= attrs_to_string(attrs) %>
             data-phx-view="<%= inspect(view) %>"
             data-phx-session="<%= signed_session %>">
           <%= render(socket, session) %>
@@ -207,17 +200,16 @@ defmodule Phoenix.LiveView.View do
   * `parent` - the parent `%Phoenix.LiveView.Socket{}`
   * `view` - the child LiveView module
 
-  ## Options
-
-    * `session` - the required map of session data
+  Accepts the same options as `static_render/3`.
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
+    attrs = opts[:attrs] || []
 
     if connected?(parent) do
-      connected_nested_static_render(parent, view, session)
+      connected_nested_static_render(parent, view, session, attrs)
     else
-      disconnected_nested_static_render(parent, view, session)
+      disconnected_nested_static_render(parent, view, session, attrs)
     end
   end
 
@@ -235,11 +227,12 @@ defmodule Phoenix.LiveView.View do
       """
   end
 
-  defp disconnected_nested_static_render(parent, view, session) do
+  defp disconnected_nested_static_render(parent, view, session, attrs) do
     case static_mount(parent, view, session) do
       {:ok, socket, signed_session} ->
         html = ~E"""
         <div id="<%= dom_id(socket) %>"
+            <%= attrs_to_string(attrs) %>
             data-phx-parent-id="<%= dom_id(parent) %>"
             data-phx-view="<%= inspect(view) %>"
             data-phx-session="<%= signed_session %>">
@@ -255,11 +248,12 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp connected_nested_static_render(parent, view, session) do
+  defp connected_nested_static_render(parent, view, session, attrs) do
     {child_id, signed_session} = sign_child_session(parent, view, session)
 
     html = ~E"""
     <div conn id="<%= child_id %>"
+         <%= attrs_to_string(attrs) %>
          data-phx-parent-id="<%= dom_id(parent) %>"
          data-phx-view="<%= inspect(view) %>"
          data-phx-session="<%= signed_session %>"></div>
@@ -308,7 +302,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_child_session(%Socket{} = parent, child_view, session) do
-    id = child_dom_id(parent, child_view)
+    id = random_id()
 
     token =
       sign_token(parent.endpoint, salt(parent), %{
@@ -354,4 +348,20 @@ defmodule Phoenix.LiveView.View do
 
     opts
   end
+
+  defp attrs_to_string([]), do: []
+
+  defp attrs_to_string(attrs) do
+    for attr <- attrs do
+      case attr do
+        {key, val} -> raw([?\s, to_string(key), ?=, ?", attr_escape(val), ?"])
+        key -> raw([?\s, to_string(key)])
+      end
+    end
+  end
+
+  defp attr_escape({:safe, data}), do: data
+  defp attr_escape(nil), do: []
+  defp attr_escape(other) when is_binary(other), do: Plug.HTML.html_escape_to_iodata(other)
+  defp attr_escape(other), do: Phoenix.HTML.Safe.to_iodata(other)
 end

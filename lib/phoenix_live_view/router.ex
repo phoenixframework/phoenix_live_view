@@ -17,6 +17,8 @@ defmodule Phoenix.LiveView.Router do
 
           [:path_params, :user_id, :remember_me]
 
+    * `:attrs` - the optional list of DOM attributes to be added to
+      the LiveView container.
     * `:as` - optionally configures the named helper. Defaults to `:live`.
 
   ## Examples

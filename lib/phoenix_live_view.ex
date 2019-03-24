@@ -1,28 +1,125 @@
 defmodule Phoenix.LiveView do
   @moduledoc """
-  Live views are stateful views which update the browser on state changes.
+  LiveView provides rich, real-time user experiences with
+  server-rendered HTML.
 
-  ## Configuration
+  LiveView programming model is declarative: instead of
+  saying "once event X happens, change Y on the page",
+  events in LiveView are regular messages which may cause
+  changes to its state. Once the state changes, LiveView will
+  re-render the relevant parts of its HTML template and push it
+  to the browser, which updates itself in the most efficient
+  manner. This means developers write LiveView templates as
+  any other server-rendered HTML and LiveView does the hard
+  work of tracking changes and sending the relevant diffs to
+  the browser.
 
-  A `:signing_salt` configuration is required in your endpoint's
-  `:live_view` configuration, for example:
+  At the end of the day, a LiveView is nothing more than a
+  process, that receives events as messages and updates its
+  state. The state itself is nothing more than functional
+  and immutable Elixir data structures. The events are either
+  internal application messages (usually emitted by `Phoenix.PubSub`)
+  or sent by the client/browser.
 
-      config :my_app, AppWeb.Endpoint,
-        ...,
-        live_view: [signing_salt: ...]
+  LiveView provides many features that make it excellent
+  to build rich, real-time user experiences:
 
-  You can generate a secure, random signing salt with the
-  `mix phx.gen.secret 32` task.
+    * By building on top of Elixir processes and
+      `Phoenix.Channels`, LiveView scales well vertically
+      (from small to large instances) and horizontally
+      (by adding more instances);
+
+    * LiveView is first rendered statically as part of
+      regular HTTP requests, which provides quick times
+      for "First Meaningful Paint" and also help search
+      and indexing engines;
+
+    * LiveView performs diff tracking. If the LiveView
+      state changes, it won't re-render the whole template,
+      but only the parts affected by the changed state.
+      This reduces latency and the amount of data sent over
+      the wire;
+
+    * LiveView tracks static and dynamic contents. Any
+      server-rendered HTML is made of static parts (i.e.
+      that never change) and dynamic ones. On the first
+      render, LiveView sends the static contents and in
+      future updates only the modified dynamic contents
+      are resent;
+
+    * (Coming soon) LiveView uses the Erlang Term Format
+      to send messages to the client. This binary-based
+      format is quite efficient on the server and uses
+      less data over the wire;
+
+    * (Coming soon) LiveView includes a latency simulator,
+      which allows you to simulate how your application
+      behaves on increased latency and guides you to provide
+      meaningful feedback to users while they wait for events
+      to be processed;
+
+  Furthermore, by keeping a persistent connection between client
+  and server, LiveView applications can react faster to user events
+  as there is less work to be done and less data to be sent compared
+  to stateless requests that have to authenticate, decode, load,
+  and encode data on every request. The flipside is that LiveView
+  uses more memory on the server compared to stateless requests.
+
+  ## Use cases
+
+  There are many use cases where LiveView is an excellent
+  fit right now:
+
+    * Handling of user interaction and inputs, buttons, and
+      forms - such as input validation, dynamic forms,
+      autocomplete, etc;
+
+    * Events and updates pushed by server - such as
+      notifications, dashboards, etc;
+
+  There are other cases that have limited support but
+  will become first-class as we further develop LiveView:
+
+    * Page and data navigation - such as navigating between
+      pages, pagination, etc can be built with LiveView
+      but currently you will lose the back/forward button,
+      and the ability to link to pages as you navigate.
+      Support for `pushState` is on the roadmap;
+
+    * Cumulative and always growing data - chat
+      applications, logs, and similar can be built with
+      LiveView but currently you have to keep in the
+      server a copy of all messages shown in the client
+      as there is no append/prepend operation. Support
+      for append/prepend is on the roadmap;
+
+    * Optimistic UIs - the LiveView programming model
+      provides a good foundation for Optimistic UIs since
+      any UI change done after a user action is undone
+      once the server sends the update for said action.
+      For example, it is relatively straight-forward to
+      click a button and enter into a loading state which
+      is automatically undone when the update arrives.
+      This is especially important as user feedback when
+      latency is involved. A complete feature set for
+      modelling those states is coming in future versions;
+
+  There are also use cases which are a bad fit for LiveView:
+
+    * Animations - animations, menus, and general events
+      that do not need the server in the first place are a
+      bad fit for LiveView, as they can be achieved purely
+      with CSS and/or CSS transitions;
 
   ## Life-cycle
 
-  A live view begins as a regular HTTP request and HTML response,
+  A LiveView begins as a regular HTTP request and HTML response,
   and then upgrades to a stateful view on client connect,
   guaranteeing a regular HTML page even if JavaScript is disabled.
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a live view from your router or controller
+  You begin by rendering a LiveView from your router or controller
   while providing *session* data to the view, which represents request info
   necessary for the view, such as params, cookie session info, etc.
   The session is signed and stored on the client, then provided back
@@ -33,8 +130,8 @@ defmodule Phoenix.LiveView do
   the view. After mounting, `render/1` is invoked and the HTML is sent
   as a regular HTML response to the client.
 
-  After rendering the static page with a signed session, the live
-  views connect from the client where stateful views are spawned
+  After rendering the static page with a signed session, LiveView
+  connects from the client where stateful views are spawned
   to push rendered updates to the browser, and receive client events
   via phx bindings. Just like the controller flow, `mount/2` is invoked
   with the signed session, and socket state, where mount assigns
@@ -46,9 +143,9 @@ defmodule Phoenix.LiveView do
   gracefully reconnects to the server, passing its signed session
   back to `mount/2`.
 
-  ## Usage
+  ## Example
 
-  First, a live view requires two callbacks: `mount/2` and `render/1`:
+  First, a LiveView requires two callbacks: `mount/2` and `render/1`:
 
       defmodule AppWeb.ThermostatView do
         def render(assigns) do
@@ -73,7 +170,17 @@ defmodule Phoenix.LiveView do
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
-  With a livew view defined, you first define the `socket` path in your endpoint,
+  A separate `.leex` HTML template can also be rendered within
+  your `render/1` callback by delegating to an existing `Phoenix.View`
+  module in your application. For example:
+
+      defmodule AppWeb.ThermostatView do
+        def render(assigns) do
+          AppWeb.PageView.render("page.html", assigns)
+        end
+      end
+
+  With a LiveView defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
       defmodule AppWeb.Endpoint do
@@ -83,7 +190,16 @@ defmodule Phoenix.LiveView do
         ...
       end
 
-  Next, you can serve live views directly from your router:
+  And configure its signing salt in the endpoint:
+
+      config :my_app, AppWeb.Endpoint,
+        ...,
+        live_view: [signing_salt: ...]
+
+  You can generate a secure, random signing salt with the
+  `mix phx.gen.secret 32` task.
+
+  Next, you can serve the LiveView directly from your router:
 
       defmodule AppWeb.Router do
         use Phoenix.Router
@@ -98,11 +214,10 @@ defmodule Phoenix.LiveView do
 
       defmodule AppWeb.ThermostatController do
         ...
-
-        alias Phoenix.LiveView
+        import Phoenix.LiveView.Controller
 
         def show(conn, %{"id" => id}) do
-          LiveView.Controller.live_render(conn, AppWeb.ThermostatView, session: %{
+          live_render(conn, AppWeb.ThermostatView, session: %{
             id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -121,10 +236,10 @@ defmodule Phoenix.LiveView do
       let liveSocket = new LiveSocket("/live")
       liveSocket.connect()
 
-  After the client connects, `mount/2` will be invoked inside a spawn
+  After the client connects, `mount/2` will be invoked inside a spawned
   LiveView process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
-  sending messages, etc. For example, you can periodically update a live view
+  sending messages, etc. For example, you can periodically update a LiveView
   with a timer:
 
       defmodule DemoWeb.ThermostatView do
@@ -133,6 +248,7 @@ defmodule Phoenix.LiveView do
 
         def mount(%{id: id, current_user_id: user_id}, socket) do
           if connected?(socket), do: :timer.send_interval(30000, self(), :update)
+
           case Thermostat.get_user_reading(user_id, id) do
             {:ok, temperature} ->
               {:ok, assign(socket, temperature: temperature, id: id)}
@@ -158,51 +274,49 @@ defmodule Phoenix.LiveView do
 
   `Phoenix.LiveView`'s built-in templates provided by the `.leex`
   extension or `~L` sigil, stands for Live EEx. They are similar
-  to regular `.eex` templates except they are designed to
-  minimize the amount of data sent over the wire by tracking
-  changes.
+  to regular `.eex` templates except they are designed to minimize
+  the amount of data sent over the wire by splitting static from
+  dynamic parts and also tracking changes.
 
-  When you first render a `.leex` template, it will send
-  all of the static and dynamic parts of the template to
-  the client. After that, any change you do on the server
-  will now send only the dynamic parts and only if those
-  parts have changed.
+  When you first render a `.leex` template, it will send all of the
+  static and dynamic parts of the template to the client. After that,
+  any change you do on the server will now send only the dynamic parts,
+  and only if those parts have changed.
 
-  The tracking of changes are done via assigns. Therefore,
-  if part of your template does this:
+  The tracking of changes is done via assigns. Imagine this template:
 
-      <%= something_with_user(@user) %>
+      <div id="user_<%= @user.id %>">
+        <%= @user.name %>
+      </div>
 
-  That particular section will be re-rendered only if the
-  `@user` assign changes between events. Therefore, you
-  MUST pass all of the data to your templates via assigns
-  and avoid performing direct operations on the template
-  as much as possible. For example, if you perform this
-  operation in your template:
+  If the `@user` assign changes, then LiveView will re-render only
+  the `@user.id` and `@user.name` and sent it to the browser. That's
+  why it is important to keep most of the markup in the template itself.
+  If you write the div above to something like:
+
+      <%= username_div(@user) %>
+
+  Then if the `@user` changes, the whole div will be sent (but only
+  if the `@user` assign changes).
+
+  The assign tracking feature also implies that you MUST pass all of
+  the data to your templates explicitly and avoid performing direct
+  operations on the template as much as possible. For example, if you
+  perform this operation in your template:
 
       <%= for user <- Repo.all(User) do %>
         <%= user.name %>
       <% end %>
 
-  Then Phoenix will never re-render the section above, even
-  if the amount of users in the database changes. Instead,
-  you need to store the users as assigns in your live view
-  before it renders the template:
+  Then Phoenix will never re-render the section above, even if the amount of
+  users in the database changes. Instead, you need to store the users as
+  assigns in your LiveView before it renders the template:
 
       assign(socket, :users, Repo.all(User))
 
-  Generally speaking, **data loading should never happen inside
-  the template**, regardless if you are using LiveView or not.
-  The difference is that LiveView enforces those as best
-  practices.
-
-  Another restriction of LiveView is that, in order to track
-  variables, it may make some macros incompatible with `.leex`
-  templates. However, this would only happen if those macros
-  are injecting or accessing user variables, which are not
-  recommended in the first place. Overall, `.leex` templates
-  do their best to be compatible with any Elixir code, sometimes
-  even turning off optimizations to keep compatibility.
+  Generally speaking, **data loading should never happen inside the template**,
+  regardless if you are using LiveView or not. The difference is that LiveView
+  enforces those as best practices.
 
   ## Bindings
 
@@ -233,7 +347,7 @@ defmodule Phoenix.LiveView do
 
   To handle form changes and submissions, use the `phx-change` and `phx-submit`
   events. In general, it is preferred to handle input changes at the form level,
-  where all form fields are passed to the live view's callback given any
+  where all form fields are passed to the LiveView's callback given any
   single input change. For example, to handle real-time form validation and
   saving, your template would use both `phx_change` and `phx_submit` bindings:
 
@@ -249,7 +363,7 @@ defmodule Phoenix.LiveView do
         <%= submit "Save" %>
       <% end %>
 
-  Next, your live view picks up the events in `handle_event` callbacks:
+  Next, your LiveView picks up the events in `handle_event` callbacks:
 
       def render(assigns) ...
 
@@ -316,11 +430,11 @@ defmodule Phoenix.LiveView do
       @down_key 40
 
       def render(assigns) do
-      ~L\"""
-      <div id="thermostat" phx-keyup="update_temp" phx-target="document">
-        Current temperature: <%= @temperature %>
-      </div>
-      \"""
+        ~L\"""
+        <div id="thermostat" phx-keyup="update_temp" phx-target="document">
+          Current temperature: <%= @temperature %>
+        </div>
+        \"""
       end
 
       def handle_event("update_temp", @up_key, socket) do
@@ -336,6 +450,7 @@ defmodule Phoenix.LiveView do
       def handle_event("update_temp", _key, socket) do
         {:noreply, socket}
       end
+
   """
 
   alias Phoenix.LiveView
@@ -376,15 +491,17 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Renders a live view within an originating plug request or
-  within a parent live view.
+  Renders a LiveView within an originating plug request or
+  within a parent LiveView.
 
   ## Options
 
     * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the live view
+      to the client. When connecting from the client, the LiveView
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
+    * `:attrs` - the optional list of DOM attributes to be added to
+      the LiveView container.
 
   ## Examples
 
@@ -427,8 +544,8 @@ defmodule Phoenix.LiveView do
   Useful for checking the connectivity status when mounting the view.
   For example, on initial page render, the view is mounted statically,
   rendered, and the HTML is sent to the client. Once the client
-  connects to the server, a LiveView process is then spawned and mounted
-  statefully. Use `connected?/1` to conditionally
+  connects to the server, a LiveView is then spawned and mounted
+  statefully within a process. Use `connected?/1` to conditionally
   perform stateful work, such as subscribing to pubsub topics,
   sending messages, etc.
 

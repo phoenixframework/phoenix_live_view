@@ -8,7 +8,7 @@ Phoenix LiveView enables rich, real-time user experiences with server-rendered H
 
 ## Learning
 
-As official guides are being developed, see our existing 
+As official guides are being developed, see our existing
 comprehensive docs and examples to get up to speed:
 
   * [Phoenix.LiveView docs for general usage](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view.ex)
@@ -94,6 +94,12 @@ Add LiveView NPM dependencies in your `package.json`.
     "phoenix_live_view": "file:../deps/phoenix_live_view"
   }
 }
+```
+
+Then install the new npm dependency.
+
+```bash
+npm install --prefix assets
 ```
 
 Enable connecting to a LiveView socket in your `app.js` file.
