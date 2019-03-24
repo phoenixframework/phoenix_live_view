@@ -73,8 +73,9 @@ defmodule Phoenix.LiveView do
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
-  `render/1` can also render a .leex HTML template by calling the
-  `render/2` method from the template view module:
+  A separate `.leex` HTML template can also be rendered within
+  your `render/1` callback by delegating to an existing `Phoenix.View` 
+  module in your application. For example:
 
       defmodule AppWeb.ThermostatView do
         def render(assigns) do
