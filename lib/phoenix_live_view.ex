@@ -171,7 +171,7 @@ defmodule Phoenix.LiveView do
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
   A separate `.leex` HTML template can also be rendered within
-  your `render/1` callback by delegating to an existing `Phoenix.View` 
+  your `render/1` callback by delegating to an existing `Phoenix.View`
   module in your application. For example:
 
       defmodule AppWeb.ThermostatView do
@@ -500,6 +500,8 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the LiveView
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
+    * `:attrs` - the optional list of DOM attributes to be added to
+      the LiveView container.
 
   ## Examples
 

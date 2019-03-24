@@ -140,9 +140,7 @@ defmodule Phoenix.LiveViewTest do
              mount_disconnected(MyEndpoint, MyView, session: %{})
   """
   def mount_disconnected(endpoint, view_module, opts) do
-    live_opts = [
-      session: opts[:session] || %{}
-    ]
+    live_opts = Keyword.put_new(opts, :session, %{})
 
     conn =
       Phoenix.ConnTest.build_conn()

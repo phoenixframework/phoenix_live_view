@@ -58,9 +58,10 @@ defmodule Phoenix.LiveView.Controller do
 
   @doc false
   @impl Plug
-  def call(conn, view) do
-    session_opts = conn.private.phoenix_live_view[:session] || [:path_params]
-    live_render(conn, view, session: session(conn, session_opts))
+  def call(%Plug.Conn{private: %{phoenix_live_view: phx_opts}} = conn, view) do
+    session_opts = phx_opts[:session] || [:path_params]
+    opts = Keyword.merge(phx_opts, session: session(conn, session_opts))
+    live_render(conn, view, opts)
   end
 
   defp session(conn, session_opts) do
