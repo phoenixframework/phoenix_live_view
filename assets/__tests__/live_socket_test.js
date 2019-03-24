@@ -36,7 +36,6 @@ describe('LiveSocket', function() {
     let liveSocket = new LiveSocket('/live', opts);
     expect(liveSocket.socket).toBeDefined();
     expect(liveSocket.socket.onOpen).toBeDefined();
-    expect(liveSocket.opts.reconnectAfterMs).toBeDefined();
     expect(liveSocket.opts.viewLogger).toBe('foo');
     expect(liveSocket.viewLogger).toBe('foo');
     expect(liveSocket.unloaded).toBe(false);
