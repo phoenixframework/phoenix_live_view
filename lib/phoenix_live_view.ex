@@ -119,7 +119,6 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a live view from your router or controller
   You begin by rendering a LiveView from your router or controller
   while providing *session* data to the view, which represents request info
   necessary for the view, such as params, cookie session info, etc.
