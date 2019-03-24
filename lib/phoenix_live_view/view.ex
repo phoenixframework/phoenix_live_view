@@ -228,7 +228,7 @@ defmodule Phoenix.LiveView.View do
 
       Add the following LiveView configuration to your config/config.exs:
 
-          config :my_app, MyApp.Endpoint,
+          config :my_app, MyAppWeb.Endpoint,
               ...,
               live_view: [signing_salt: "#{random_signing_salt()}"]
 
