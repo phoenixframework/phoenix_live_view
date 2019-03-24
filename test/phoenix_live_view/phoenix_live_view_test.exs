@@ -10,6 +10,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
     def config(:secret_key_base), do: "5678567899556789656789756789856789956789"
   end
 
+  def session(view) do
+    {:ok, session} = Phoenix.LiveView.View.verify_session(view.endpoint, view.token)
+    session
+  end
+
   defmodule ThermostatView do
     use Phoenix.LiveView
 
@@ -95,7 +100,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     def render(assigns) do
       ~L"""
-      time: <%= @time %>
+      time: <%= @time %> <%= @name %>
       <%= live_render(@socket, ClockControlsView) %>
       """
     end
@@ -118,11 +123,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     def mount(session, socket), do: do_mount(session, socket)
 
-    defp do_mount(_session, socket) do
+    defp do_mount(session, socket) do
       if connected?(socket) do
-        Process.register(self(), :clock)
+        Process.register(self(), :"clock#{session[:name]}")
       end
-      {:ok, assign(socket, time: "12:00")}
+      {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
     end
 
     def handle_info(:snooze, socket) do
@@ -311,6 +316,37 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(thermo_view) == html_without_nesting
       assert children(thermo_view) == []
+    end
+
+    test "multple nested children of the same module" do
+      defmodule SameChildView do
+        use Phoenix.LiveView
+
+        def render(assigns) do
+          ~L"""
+          <%= for name <- @names do %>
+            <%= live_render(@socket, ClockView, session: %{name: name}) %>
+          <% end %>
+          """
+        end
+
+        def mount(_, socket) do
+          {:ok, assign(socket, names: ~w(Tokyo Madrid Toronto))}
+        end
+      end
+
+      {:ok, parent, _html} = mount(Endpoint, SameChildView)
+      [tokyo, madrid, toronto] = children(parent)
+
+      child_ids =
+        for sess <- [tokyo, madrid, toronto],
+            %{id: id} = session(sess),
+            do: id
+
+      assert Enum.uniq(child_ids) == child_ids
+      assert render(parent) =~ "Tokyo"
+      assert render(parent) =~ "Madrid"
+      assert render(parent) =~ "Toronto"
     end
 
     test "parent graceful exit removes children" do

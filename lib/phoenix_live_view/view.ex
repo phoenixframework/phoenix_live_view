@@ -43,13 +43,6 @@ defmodule Phoenix.LiveView.View do
   def dom_id(%Socket{id: id}), do: id
 
   @doc """
-  Returns the browser's DOM id for the child view module of a parent socket.
-  """
-  def child_dom_id(%Socket{} = parent, child_view) do
-    dom_id(parent) <> ":#{inspect(child_view)}"
-  end
-
-  @doc """
   Returns the socket's LiveView module.
   """
   def view(%Socket{view: view}), do: view
@@ -79,13 +72,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Builds a nested child `%Phoenix.LiveViewSocket{}`.
   """
-  def build_nested_socket(%Socket{endpoint: endpoint} = parent, opts) do
-    nested_opts =
-      Map.merge(opts, %{
-        id: child_dom_id(parent, Map.fetch!(opts, :view)),
-        parent_pid: self(),
-      })
-
+  def build_nested_socket(%Socket{endpoint: endpoint}, opts) do
+    nested_opts = Map.merge(opts, %{parent_pid: self()})
     build_socket(endpoint, nested_opts)
   end
 
@@ -308,7 +296,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_child_session(%Socket{} = parent, child_view, session) do
-    id = child_dom_id(parent, child_view)
+    id = random_id()
 
     token =
       sign_token(parent.endpoint, salt(parent), %{
