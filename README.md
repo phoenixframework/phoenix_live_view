@@ -96,7 +96,7 @@ Add LiveView NPM dependencies in your `package.json`.
 }
 ```
 
-Make sure you install the new dependency.
+Then install the new npm dependency.
 
 ```bash
 npm install --prefix assets
@@ -129,34 +129,4 @@ You can also optionally import the style for the default CSS classes in your `ap
 
 ```css
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
-```
-
-## Troubleshooting
-
-### Can't resolve 'phoenix_live_view'
-
-When you start up phoenix, you might see that the phoenix_live_view is not loading.
-With an error similar to
-
-```
-ERROR in ./js/app.js
-Module not found: Error: Can't resolve 'phoenix_live_view' in '/src/myapp/assets/js'
- @ ./js/app.js 3:0-43 8:21-31
- @ multi ./js/app.js
-```
-
-Even if you correctly update your NPM dependencies (e.g. `"phoenix_live_view": "file:../deps/phoenix_live_view"`), you
-may have forgotten to pull in that new dependency with `npm install`
-
-To install the new NPM Live View library you can run the following from your assets directory.
-
-```
-$ (cd assets && npm install)
-```
-
-The output should look similar to
-
-```
-/src/myapp/assets
-└── phoenix_live_view@0.1.0-dev
 ```
