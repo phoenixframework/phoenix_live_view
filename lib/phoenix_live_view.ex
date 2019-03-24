@@ -265,15 +265,15 @@ defmodule Phoenix.LiveView do
   `Phoenix.LiveView`'s built-in templates provided by the `.leex`
   extension or `~L` sigil, stands for Live EEx. They are similar
   to regular `.eex` templates except they are designed to minimize
-  the amount of data sent over the wire by splitting static and
-  dynamic parts and by also tracking changes.
+  the amount of data sent over the wire by splitting static from
+  dynamic parts and also tracking changes.
 
   When you first render a `.leex` template, it will send all of the
   static and dynamic parts of the template to the client. After that,
-  any change you do on the server will now send only the dyamic parts
+  any change you do on the server will now send only the dyamic parts,
   and only if those parts have changed.
 
-  The tracking of changes are done via assigns. Imagine this template:
+  The tracking of changes is done via assigns. Imagine this template:
 
       <div id="user_<%= @user.id %>">
         <%= @user.name %>
