@@ -95,8 +95,8 @@ connection and error class changes. This behavior may be disabled by overriding
 `.phx-loader` in your css to `display: none !important`.
 */
 
-import {Socket} from "phoenix"
 import morphdom from "morphdom"
+import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -216,13 +216,13 @@ let Rendered = {
 
 // todo document LiveSocket specific options like viewLogger
 export class LiveSocket {
-  constructor(urlOrSocket, opts = {}){
+  constructor(url, opts = {}){
     this.unloaded = false
+    this.socket = new Socket(url, opts)
+    this.socket.onOpen(() => this.unloaded = false)
     window.addEventListener("beforeunload", e => {
       this.unloaded = true
     })
-    this.socket = this.buildSocket(urlOrSocket, opts)
-    this.socket.onOpen(() => this.unloaded = false)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
@@ -232,20 +232,9 @@ export class LiveSocket {
     this.bindTopLevelEvents()
   }
 
-  buildSocket(urlOrSocket, opts){
-    if(typeof urlOrSocket !== "string"){ return urlOrSocket }
+  isUnloaded(){ return this.unloaded }
 
-    if(!opts.reconnectAfterMs){
-      opts.reconnectAfterMs = (tries) => {
-        if(this.unloaded){
-          return [50, 100, 250][tries - 1] || 500
-        } else {
-          return [1000, 2000, 5000, 10000][tries - 1] || 10000
-        }
-      }
-    }
-    return new Socket(urlOrSocket, opts)
-  }
+  getSocket(){ return this.socket }
 
   log(view, kind, msgCallback){
     if(this.viewLogger){
@@ -269,7 +258,9 @@ export class LiveSocket {
 
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
 
-  disconnect(){ return this.socket.disconnect()}
+  disconnect(){
+    this.socket.disconnect()
+  }
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
@@ -586,7 +577,7 @@ class View {
   }
 
   getSession(){
-    return this.el.getAttribute(PHX_SESSION)|| this.parent.getSession()
+    return this.el.getAttribute(PHX_SESSION)
   }
 
   destroy(callback = function(){}){
@@ -668,10 +659,13 @@ class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(){
-    if(this.parent){ this.parent.channel.onError(() => this.channel.leave())}
+    if(this.parent){
+      this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
+    }
     this.channel.join()
       .receive("ok", data => this.onJoin(data))
       .receive("error", resp => this.onJoinError(resp))
+      .receive("timeout", () => this.onJoinError("timeout"))
   }
 
   onJoinError(resp){
@@ -683,7 +677,11 @@ class View {
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
-    this.displayError()
+    if(this.liveSocket.isUnloaded()){
+      this.showLoader()
+    } else {
+      this.displayError()
+    }
   }
 
   displayError(){
