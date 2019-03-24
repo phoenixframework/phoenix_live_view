@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView do
       any UI change done after a user action is undone
       once the server sends the update for said action.
       For example, it is relatively straight-forward to
-      click a butto and enter into a loading state which
+      click a button and enter into a loading state which
       is automatically undone when the update arrives.
       This is especially important as user feedback when
       latency is involved. A complete feature set for
@@ -119,7 +119,6 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a live view from your router or controller
   You begin by rendering a LiveView from your router or controller
   while providing *session* data to the view, which represents request info
   necessary for the view, such as params, cookie session info, etc.
@@ -266,15 +265,15 @@ defmodule Phoenix.LiveView do
   `Phoenix.LiveView`'s built-in templates provided by the `.leex`
   extension or `~L` sigil, stands for Live EEx. They are similar
   to regular `.eex` templates except they are designed to minimize
-  the amount of data sent over the wire by splitting static and
-  dynamic parts and by also tracking changes.
+  the amount of data sent over the wire by splitting static from
+  dynamic parts and also tracking changes.
 
   When you first render a `.leex` template, it will send all of the
   static and dynamic parts of the template to the client. After that,
-  any change you do on the server will now send only the dynamic parts
+  any change you do on the server will now send only the dynamic parts,
   and only if those parts have changed.
 
-  The tracking of changes are done via assigns. Imagine this template:
+  The tracking of changes is done via assigns. Imagine this template:
 
       <div id="user_<%= @user.id %>">
         <%= @user.name %>
