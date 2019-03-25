@@ -285,6 +285,33 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :keydown, event, key_code)
   end
 
+  @doc """
+  Sends a blur event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      assert html =~ "The temp is: 30℉"
+      assert render_blur(view, :inactive) =~ "Tap to wake"
+  """
+  def render_blur(view, event, value \\ %{}) do
+    render_event(view, :blur, event, value)
+  end
+
+  @doc """
+  Sends a focus event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      assert html =~ "The temp is: 30℉"
+      assert render_blur(view, :inactive) =~ "Tap to wake"
+      assert render_focus(view, :active) =~ "Waking up..."
+  """
+  def render_focus(view, event, value \\ %{}) do
+    render_event(view, :focus, event, value)
+  end
+
   defp render_event(view, type, event, value) do
     case GenServer.call(view.proxy, {:render_event, view, type, event, value}) do
       {:ok, html} -> html

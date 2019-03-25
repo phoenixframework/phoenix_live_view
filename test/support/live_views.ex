@@ -5,7 +5,7 @@ defmodule Phoenix.LiveViewTest.ThermostatView do
 
   def render(assigns) do
     ~L"""
-    The temp is: <%= @val %>
+    The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
       <%= live_render(@socket, ClockView, render_opts(@nest, session: %{redir: @redir})) %>
@@ -42,7 +42,14 @@ defmodule Phoenix.LiveViewTest.ThermostatView do
     users = Map.get(session, :users, [])
     val = if connected?(socket), do: 1, else: 0
 
-    {:ok, assign(socket, val: val, nest: nest, redir: session[:redir], users: users)}
+    {:ok,
+     assign(socket,
+       val: val,
+       nest: nest,
+       redir: session[:redir],
+       users: users,
+       greeting: nil
+     )}
   end
 
   @key_i 73
@@ -61,6 +68,14 @@ defmodule Phoenix.LiveViewTest.ThermostatView do
 
   def handle_event("redir", to, socket) do
     {:stop, redirect(socket, to: to)}
+  end
+
+  def handle_event("inactive", msg, socket) do
+    {:noreply, assign(socket, :greeting, "Tap to wake – #{msg}")}
+  end
+
+  def handle_event("active", msg, socket) do
+    {:noreply, assign(socket, :greeting, "Waking up – #{msg}")}
   end
 
   def handle_event("noop", _, socket), do: {:noreply, socket}
