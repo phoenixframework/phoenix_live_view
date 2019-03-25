@@ -726,7 +726,6 @@ class View {
   }
 
   pushEvent(type, el, phxEvent){
-    console.log(el)
     let val = el.getAttribute(this.binding("value")) || el.value || ""
     this.pushWithReply("event", {
       type: type,
