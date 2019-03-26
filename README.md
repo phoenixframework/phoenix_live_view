@@ -28,6 +28,8 @@ def deps do
 end
 ```
 
+**NOTE**: If you already have Phoenix added as an explicit dependency, remove it since LiveView needs a unpublished version of Phoenix that is included as a LiveView dependency.
+
 Once installed, update your endpoint's configuration to include a signing salt. You can generate a signing salt by running `mix phx.gen.secret 32`.
 
 ```elixir
