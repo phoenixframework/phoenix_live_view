@@ -8,7 +8,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "watch": "webpack --mode development --watch",
-    "test": "jest --verbose",
+    "test": "jest",
     "test.watch": "jest --watch"
   },
   "dependencies": {
@@ -31,6 +31,6 @@
     "webpack-cli": "^2.0.10"
   },
   "jest": {
-    "testRegex": "/__tests__/.*_test\\.js$"
+    "testRegex": "/test/.*_test\\.js$"
   }
 }
