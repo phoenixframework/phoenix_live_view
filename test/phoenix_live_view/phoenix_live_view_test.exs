@@ -65,6 +65,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "The temp is: 0"
     end
 
+    test "render_blur and render_focus", %{view: view} do
+      {:ok, view, _} = mount(view)
+      assert render(view) =~ "The temp is: 1"
+      assert render_blur(view, :inactive, "Zzz") =~ "Tap to wake – Zzz"
+      assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
+    end
+
     test "custom DOM container attributes" do
       {:ok, view, static_html} =
         mount_disconnected(Endpoint, ThermostatView,

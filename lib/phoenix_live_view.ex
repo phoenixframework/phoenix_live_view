@@ -343,6 +343,25 @@ defmodule Phoenix.LiveView do
     * The clicked element's `value` property
     * An empty string
 
+  ### Focus and Blur Events
+
+  Focus and blur events may be bound to DOM elements that emit
+  such events, using the `phx-blur`, and `phx-focus` bindings, for example:
+
+      <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+
+  To detect when the page itself has receive focus or blur,
+  `phx-target` may be specified as `"window"`. Like other
+  bindings, a `phx-value` can be provided on the bound element,
+  otherwise the input's value will be used. For example:
+
+      <div class="container"
+          phx-focus="page-active"
+          phx-blur="page-inactive"
+          phx-target="window">
+        ...
+      </div>
+
   ### Form Events
 
   To handle form changes and submissions, use the `phx-change` and `phx-submit`

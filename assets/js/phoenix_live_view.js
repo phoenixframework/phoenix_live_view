@@ -47,6 +47,25 @@ optional `phx-target` may be provided which may be `"window"`.
 
 When pushed, the value sent to the server will be the event's `key`.
 
+### Focus and Blur Events
+
+Focus and blur events may be bound to DOM elements that emit
+such events, using the `phx-blur`, and `phx-focus` bindings, for example:
+
+    <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+
+To detect when the page itself has receive focus or blur,
+`phx-target` may be specified as `"window"`. Like other
+bindings, a `phx-value` can be provided on the bound element,
+otherwise the input's value will be used. For example:
+
+    <div class="container"
+        phx-focus="page-active"
+        phx-blur="page-inactive"
+        phx-target="window">
+    ...
+    </div>
+
 ## Forms and input handling
 
 The JavaScript client is always the source of truth for current
@@ -334,25 +353,33 @@ export class LiveSocket {
   }
 
   bindTopLevelEvents(){
-    this.bindKeys()
     this.bindClicks()
     this.bindForms()
+    this.bindTargetable(["keyup", "keydown"], (e, type, view, target, phxEvent, phxTarget) => {
+      view.pushKey(target, type, e, phxEvent)
+    })
+    this.bindTargetable(["blur", "focus"], (e, type, view, targetEl, phxEvent, phxTarget) => {
+      // blur and focus are triggered on document and window. Discard one to avoid dups
+      if(!(phxTarget === "window" && e.target !== window) && e.target !== document){
+        view.pushEvent(type, targetEl, phxEvent)
+      }
+    })
   }
 
   // private
 
-  bindKeys(){
-    for(let type of ["keyup", "keydown"]){
-      let binding = this.binding(type)
-      let bindTarget = this.binding("target")
-      window.addEventListener(type, e => {
-        let targetPhxEvent = e.target.getAttribute(binding)
+  bindTargetable(events, callback){
+    for(let event of events){
+      window.addEventListener(event, e => {
+        let binding = this.binding(event)
+        let bindTarget = this.binding("target")
+        let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => view.pushKey(e.target, type, e, targetPhxEvent))
+          this.owner(e.target, view => callback(e, event, view, e.target, targetPhxEvent, null))
         } else {
           document.querySelectorAll(`[${binding}][${bindTarget}=window]`).forEach(el => {
             let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => view.pushKey(el, type, e, phxEvent))
+            this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
           })
         }
       }, true)
@@ -366,7 +393,7 @@ export class LiveSocket {
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
       e.preventDefault()
-      this.owner(target, view => view.pushClick(target, phxEvent))
+      this.owner(target, view => view.pushEvent("click", target, phxEvent))
     }, true)
   }
 
@@ -697,10 +724,10 @@ export class View {
       })
   }
 
-  pushClick(clickedEl, phxEvent){
-    let val = clickedEl.getAttribute(this.binding("value")) || clickedEl.value || ""
+  pushEvent(type, el, phxEvent){
+    let val = el.getAttribute(this.binding("value")) || el.value || ""
     this.pushWithReply("event", {
-      type: "click",
+      type: type,
       event: phxEvent,
       value: val
     })
