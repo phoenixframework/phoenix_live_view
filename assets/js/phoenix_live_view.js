@@ -181,8 +181,7 @@ let recursiveMerge = (target, source) => {
   }
 }
 
-let Rendered = {
-
+export let Rendered = {
   mergeDiff(source, diff){
     if(this.isNewFingerprint(diff)){
       return diff
@@ -192,7 +191,7 @@ let Rendered = {
     }
   },
 
-  isNewFingerprint(diff){ return diff.static },
+  isNewFingerprint(diff = {}){ return !!diff.static },
 
   toString(rendered){
     let output = {buffer: ""}
@@ -238,7 +237,14 @@ export class LiveSocket {
   constructor(url, opts = {}){
     this.unloaded = false
     this.socket = new Socket(url, opts)
-    this.socket.onOpen(() => this.unloaded = false)
+    this.socket.onOpen(() => {
+      if(this.isUnloaded()){
+        this.destroyAllViews()
+        this.joinRootViews()
+      }
+
+      this.unloaded = false
+    })
     window.addEventListener("beforeunload", e => {
       this.unloaded = true
     })
@@ -306,6 +312,10 @@ export class LiveSocket {
 
   onViewError(view){
     this.dropActiveElement(view)
+  }
+
+  destroyAllViews(){
+    for(let id in this.views){ this.destroyViewById(id) }
   }
 
   destroyViewById(id){
@@ -427,7 +437,7 @@ export class LiveSocket {
   }
 }
 
-let Browser = {
+export let Browser = {
   setCookie(name, value){
     document.cookie = `${name}=${value}`
   },
@@ -587,7 +597,7 @@ let DOM = {
   }
 }
 
-class View {
+export class View {
   constructor(el, liveSocket, parentView){
     this.liveSocket = liveSocket
     this.parent = parentView
@@ -673,7 +683,7 @@ class View {
 
   bindChannel(){
     this.channel.on("render", (diff) => this.update(diff))
-    this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash) )
+    this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -688,6 +698,7 @@ class View {
 
   join(){
     if(this.parent){
+      this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
     }
     this.channel.join()
