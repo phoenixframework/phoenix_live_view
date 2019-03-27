@@ -26,7 +26,7 @@ defmodule Phoenix.LiveView.Controller do
 
       def ThermostatController do
         def show(conn, %{"id" => thermostat_id}) do
-          LiveView.Controller.live_render(conn, ThermostatView, session: %{
+          LiveView.Controller.live_render(conn, ThermostatLive, session: %{
             thermostat_id: id,
             current_user_id: get_session(conn, :user_id),
           })

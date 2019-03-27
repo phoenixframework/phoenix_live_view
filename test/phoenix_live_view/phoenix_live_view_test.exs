@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, ThermostatView, ClockView, ClockControlsView}
+  alias Phoenix.LiveViewTest.{Endpoint, ThermostatLive, ClockLive, ClockControlsLive}
 
   def session(view) do
     {:ok, session} = Phoenix.LiveView.View.verify_session(view.endpoint, view.token)
@@ -11,14 +11,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "mounting" do
     test "mount with disconnected module" do
-      {:ok, _view, html} = mount(Endpoint, ThermostatView)
+      {:ok, _view, html} = mount(Endpoint, ThermostatLive)
       assert html =~ "The temp is: 1"
     end
   end
 
   describe "rendering" do
     setup do
-      {:ok, view, html} = mount_disconnected(Endpoint, ThermostatView, session: %{})
+      {:ok, view, html} = mount_disconnected(Endpoint, ThermostatLive, session: %{})
       {:ok, view: view, html: html}
     end
 
@@ -74,30 +74,30 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "custom DOM container attributes" do
       {:ok, view, static_html} =
-        mount_disconnected(Endpoint, ThermostatView,
+        mount_disconnected(Endpoint, ThermostatLive,
           session: %{nest: [attrs: [style: "clock-flex"]]},
           attrs: [style: "thermo-flex<script>"]
         )
 
       {:ok, view, mount_html} = mount(view)
 
-      assert static_html =~ ~r/style=\"thermo-flex&lt;script&gt;\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ThermostatView/
-      assert static_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockView/
+      assert static_html =~ ~r/style=\"thermo-flex&lt;script&gt;\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive/
+      assert static_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
 
-      assert mount_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockView/
-      assert render(view) =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockView/
+      assert mount_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
+      assert render(view) =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
     end
   end
 
   describe "messaging callbacks" do
     test "handle_event with no change in socket" do
-      {:ok, view, html} = mount(Endpoint, ThermostatView)
+      {:ok, view, html} = mount(Endpoint, ThermostatLive)
       assert html =~ "The temp is: 1"
       assert render_click(view, :noop) == html
     end
 
     test "handle_info with change" do
-      {:ok, view, _html} = mount(Endpoint, ThermostatView)
+      {:ok, view, _html} = mount(Endpoint, ThermostatLive)
 
       assert render(view) =~ "The temp is: 1"
 
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "nested live render" do
     test "nested child render on disconnected mount" do
       {:ok, _thermo_view, html} =
-        mount_disconnected(Endpoint, ThermostatView, session: %{nest: true})
+        mount_disconnected(Endpoint, ThermostatLive, session: %{nest: true})
 
       assert html =~ "The temp is: 0"
       assert html =~ "time: 12:00"
@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "nested child render on connected mount" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
       html = render(thermo_view)
       assert html =~ "The temp is: 1"
       assert html =~ "time: 12:00"
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "dynamically added children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView)
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive)
 
       assert render(thermo_view) =~ "The temp is: 1"
       refute render(thermo_view) =~ "time"
@@ -162,8 +162,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert [clock_view] = children(thermo_view)
       assert [controls_view] = children(clock_view)
-      assert clock_view.module == ClockView
-      assert controls_view.module == ClockControlsView
+      assert clock_view.module == ClockLive
+      assert controls_view.module == ClockControlsLive
 
       assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "time: 12:05"
@@ -184,7 +184,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       <button phx-click="inc">+</button>
       """
 
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -201,13 +201,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "multple nested children of the same module" do
-      defmodule SameChildView do
+      defmodule SameChildLive do
         use Phoenix.LiveView
 
         def render(assigns) do
           ~L"""
           <%= for name <- @names do %>
-            <%= live_render(@socket, ClockView, session: %{name: name}) %>
+            <%= live_render(@socket, ClockLive, session: %{name: name}) %>
           <% end %>
           """
         end
@@ -217,7 +217,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         end
       end
 
-      {:ok, parent, _html} = mount(Endpoint, SameChildView)
+      {:ok, parent, _html} = mount(Endpoint, SameChildLive)
       [tokyo, madrid, toronto] = children(parent)
 
       child_ids =
@@ -232,7 +232,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "parent graceful exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -244,7 +244,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child level 1 graceful exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -256,7 +256,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child level 2 graceful exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -269,7 +269,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag :capture_log
     test "abnormal parent exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -283,7 +283,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag :capture_log
     test "abnormal child level 1 exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag :capture_log
     test "abnormal child level 2 exit removes children" do
-      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatView, session: %{nest: true})
+      {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})
 
       [clock_view] = children(thermo_view)
       [controls_view] = children(clock_view)
@@ -318,7 +318,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       expected_users = "<i>chris chris@test</i>\n  \n    <i>josé jose@test</i>"
 
       {:ok, thermo_view, html} =
-        mount(Endpoint, ThermostatView, session: %{nest: true, users: users})
+        mount(Endpoint, ThermostatLive, session: %{nest: true, users: users})
 
       assert html =~ expected_users
       assert render(thermo_view) =~ expected_users
@@ -328,30 +328,30 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "redirects" do
     test "redirect from root view on disconnected mount" do
       assert {:error, %{redirect: "/thermostat_disconnected"}} =
-               mount(Endpoint, ThermostatView, session: %{redir: {:disconnected, ThermostatView}})
+               mount(Endpoint, ThermostatLive, session: %{redir: {:disconnected, ThermostatLive}})
     end
 
     test "redirect from root view on connected mount" do
       assert {:error, %{redirect: "/thermostat_connected"}} =
-               mount(Endpoint, ThermostatView, session: %{redir: {:connected, ThermostatView}})
+               mount(Endpoint, ThermostatLive, session: %{redir: {:connected, ThermostatLive}})
     end
 
     test "redirect from child view on disconnected mount" do
       assert {:error, %{redirect: "/clock_disconnected"}} =
-               mount(Endpoint, ThermostatView,
-                 session: %{nest: true, redir: {:disconnected, ClockView}}
+               mount(Endpoint, ThermostatLive,
+                 session: %{nest: true, redir: {:disconnected, ClockLive}}
                )
     end
 
     test "redirect from child view on connected mount" do
       assert {:error, %{redirect: "/clock_connected"}} =
-               mount(Endpoint, ThermostatView,
-                 session: %{nest: true, redir: {:connected, ClockView}}
+               mount(Endpoint, ThermostatLive,
+                 session: %{nest: true, redir: {:connected, ClockLive}}
                )
     end
 
     test "redirect after connected mount from root thru sync call" do
-      assert {:ok, view, _} = mount(Endpoint, ThermostatView)
+      assert {:ok, view, _} = mount(Endpoint, ThermostatLive)
 
       assert_redirect(view, "/path", fn ->
         assert render_click(view, :redir, "/path") == {:error, :redirect}
@@ -359,7 +359,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "redirect after connected mount from root thru async call" do
-      assert {:ok, view, _} = mount(Endpoint, ThermostatView)
+      assert {:ok, view, _} = mount(Endpoint, ThermostatLive)
 
       assert_redirect(view, "/async", fn ->
         send(view.pid, {:redir, "/async"})

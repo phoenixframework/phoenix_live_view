@@ -147,7 +147,7 @@ defmodule Phoenix.LiveView do
 
   First, a LiveView requires two callbacks: `mount/2` and `render/1`:
 
-      defmodule AppWeb.ThermostatView do
+      defmodule AppWeb.ThermostatLive do
         def render(assigns) do
           ~L\"""
           Current temperature: <%= @temperature %>
@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView do
   your `render/1` callback by delegating to an existing `Phoenix.View`
   module in your application. For example:
 
-      defmodule AppWeb.ThermostatView do
+      defmodule AppWeb.ThermostatLive do
         def render(assigns) do
           AppWeb.PageView.render("page.html", assigns)
         end
@@ -206,7 +206,7 @@ defmodule Phoenix.LiveView do
         import Phoenix.LiveView.Router
 
         scope "/", AppWeb do
-          live "/thermostat", ThermostatView
+          live "/thermostat", ThermostatLive
         end
       end
 
@@ -217,7 +217,7 @@ defmodule Phoenix.LiveView do
         import Phoenix.LiveView.Controller
 
         def show(conn, %{"id" => id}) do
-          live_render(conn, AppWeb.ThermostatView, session: %{
+          live_render(conn, AppWeb.ThermostatLive, session: %{
             id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -242,7 +242,7 @@ defmodule Phoenix.LiveView do
   sending messages, etc. For example, you can periodically update a LiveView
   with a timer:
 
-      defmodule DemoWeb.ThermostatView do
+      defmodule DemoWeb.ThermostatLive do
         use Phoenix.LiveView
         ...
 
@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      defmodule DemoWeb.ClockView do
+      defmodule DemoWeb.ClockLive do
         use Phoenix.LiveView
         ...
         def mount(_session, socket) do

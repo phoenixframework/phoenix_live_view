@@ -1,6 +1,6 @@
-alias Phoenix.LiveViewTest.{ClockView, ClockControlsView}
+alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
-defmodule Phoenix.LiveViewTest.ThermostatView do
+defmodule Phoenix.LiveViewTest.ThermostatLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -8,7 +8,7 @@ defmodule Phoenix.LiveViewTest.ThermostatView do
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
-      <%= live_render(@socket, ClockView, render_opts(@nest, session: %{redir: @redir})) %>
+      <%= live_render(@socket, ClockLive, render_opts(@nest, session: %{redir: @redir})) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
@@ -95,13 +95,13 @@ defmodule Phoenix.LiveViewTest.ThermostatView do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ClockView do
+defmodule Phoenix.LiveViewTest.ClockLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~L"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsView) %>
+    <%= live_render(@socket, ClockControlsLive) %>
     """
   end
 
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveViewTest.ClockView do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ClockControlsView do
+defmodule Phoenix.LiveViewTest.ClockControlsLive do
   use Phoenix.LiveView
 
   def render(assigns), do: ~L|<button phx-click="snooze">+</button>|

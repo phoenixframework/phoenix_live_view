@@ -64,7 +64,7 @@ defmodule Phoenix.LiveViewTest do
 
   For example:
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
 
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
 
@@ -223,7 +223,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
   """
@@ -236,7 +236,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
@@ -250,7 +250,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
@@ -264,7 +264,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -277,7 +277,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -290,7 +290,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
   """
@@ -303,7 +303,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
@@ -326,7 +326,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert [clock_view] = children(view)
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
