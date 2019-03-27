@@ -6,7 +6,7 @@ describe('Browser', () => {
   });
 
   describe('setCookie', () => {
-    it('sets a cookie', () => {
+    test('sets a cookie', () => {
       Browser.setCookie('apple', 1234);
       Browser.setCookie('orange', '5678');
       expect(document.cookie).toContain('apple');
@@ -17,12 +17,12 @@ describe('Browser', () => {
   });
 
   describe('getCookie', () => {
-    it('returns the value for a cookie', () => {
+    test('returns the value for a cookie', () => {
       document.cookie = 'apple=1234';
       document.cookie = 'orange=5678';
       expect(Browser.getCookie('apple')).toEqual('1234');
     });
-    it('returns an empty string for a non-existant cookie', () => {
+    test('returns an empty string for a non-existant cookie', () => {
       document.cookie = 'apple=1234';
       document.cookie = 'orange=5678';
       expect(Browser.getCookie('plum')).toEqual('');
@@ -41,12 +41,12 @@ describe('Browser', () => {
       global.window.location = originalWindowLocation;
     });
 
-    it('redirects to a new URL', () => {
+    test('redirects to a new URL', () => {
       Browser.redirect('https://phoenixframework.com');
       expect(window.location).toEqual('https://phoenixframework.com');
     });
 
-    it('sets a flash cookie before redirecting', () => {
+    test('sets a flash cookie before redirecting', () => {
       Browser.redirect('https://phoenixframework.com', 'mango');
       expect(document.cookie).toContain('__phoenix_flash__');
       expect(document.cookie).toContain('mango');

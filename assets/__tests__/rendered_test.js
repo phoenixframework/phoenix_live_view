@@ -2,13 +2,14 @@ import { Rendered } from '../js/phoenix_live_view'
 
 describe('Rendered', () => {
   describe('mergeDiff', () => {
-    it('recursively merges two diffs', () => {
+    test('recursively merges two diffs', () => {
       expect(Rendered.mergeDiff(simpleDiff1, simpleDiff2)).toEqual(
         simpleDiffResult
       );
       expect(Rendered.mergeDiff(deepDiff1, deepDiff2)).toEqual(deepDiffResult);
     });
-    it('returns the latter diff if it contains a `static` key', () => {
+
+    test('returns the latter diff if it contains a `static` key', () => {
       const diff1 = { 0: ['a'], 1: ['b'] };
       const diff2 = { 0: ['c'], static: 'c' };
       expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
@@ -16,21 +17,23 @@ describe('Rendered', () => {
   });
 
   describe('isNewFingerprint', () => {
-    it('returns true if `diff.static` is truthy', () => {
+    test('returns true if `diff.static` is truthy', () => {
       const diff = { static: ['<h2>'] };
       expect(Rendered.isNewFingerprint(diff)).toEqual(true);
     });
-    it('returns false if `diff.static` is falsy', () => {
+
+    test('returns false if `diff.static` is falsy', () => {
       const diff = { static: undefined };
       expect(Rendered.isNewFingerprint(diff)).toEqual(false);
     });
-    it('returns false if `diff` is undefined', () => {
+
+    test('returns false if `diff` is undefined', () => {
       expect(Rendered.isNewFingerprint()).toEqual(false);
     });
   });
 
   describe('toString', () => {
-    it('stringifies a diff', () => {
+    test('stringifies a diff', () => {
       expect(Rendered.toString(simpleDiffResult).trim()).toEqual(
 `<div class="thermostat">
   <div class="bar cooling">
@@ -42,7 +45,7 @@ describe('Rendered', () => {
   });
 
   describe('toOutputBuffer', () => {
-    it('populates the output buffer', () => {
+    test('populates the output buffer', () => {
       const output = { buffer: '' };
       Rendered.toOutputBuffer(simpleDiffResult, output);
       expect(output.buffer.trim()).toEqual(
