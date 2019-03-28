@@ -521,6 +521,8 @@ defmodule Phoenix.LiveView do
       the contents before proceeding with `mount/2`.
     * `:attrs` - the optional list of DOM attributes to be added to
       the LiveView container.
+    * `:child_id` - the ID to uniquely identify a child LiveView when
+      live rendering children of the same type.
 
   ## Examples
 
