@@ -65,6 +65,7 @@ defmodule Phoenix.LiveView.Socket do
     connected?: boolean()
   }
 
+  channel "lvu:*", Phoenix.LiveView.UploadChannel
   channel "lv:*", Phoenix.LiveView.Channel
 
   @doc """

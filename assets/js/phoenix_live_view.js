@@ -125,6 +125,89 @@ let isEmpty = (obj) => {
 
 let maybe = (el, callback) => el && callback(el)
 
+let gatherFiles = (form) => {
+  const formData = new FormData(form)
+  let files = {}
+  formData.forEach((val, key) => {
+    if (val instanceof File && val.size > 0) {
+      files[key] = val
+    }
+  })
+  return files
+}
+
+let uploadFiles = (ctx, files, callback) => {
+  let numFiles = Object.keys(files).length;
+  let results = {};
+
+  // TODO: leaves channels on error and rejoins when main live view joins
+  // ctx.channel.onError(() => {
+  // uploadChannels.leave()
+  // }
+  // i
+  // onJoined(() => {
+  // uploadChannels.reJoin()
+  // }
+  for(let key in files){
+    ctx.channel.push("get_upload_ref").receive("ok", ({ ref }) => {
+
+      const uploadChannel = ctx.liveSocket.channel(`lvu:${ctx.id}-${ctx.uploadCount++}`, () => {
+        return {session: ctx.getSession(), ref}
+      });
+
+      // ctx.files.push(uploadChannel);
+
+      const chunkReaderBlock = function(_offset, length, _file, handler) {
+        var r = new window.FileReader();
+        var blob = _file.slice(_offset, length + _offset);
+        r.onload = handler;
+        r.readAsArrayBuffer(blob);
+      }
+
+      uploadChannel.join().receive("ok", (data) => {
+        let file = files[key]
+        const uploadChunk = (chunk, finished, uploaded) => {
+          if (!finished) {
+            const percentage = Math.round((uploaded / file.size) * 100);
+            ctx.pushWithReply("upload_progress", {path: key, size: file.size, uploaded, percentage})
+          }
+
+          uploadChannel.push("file", {file: chunk})
+            .receive("ok", (data) => {
+              if (finished) {
+                results[key] = Object.assign(data, { topic: uploadChannel.topic });
+                numFiles--;
+                if (numFiles === 0) {
+                  callback(results);
+                }
+              }
+            })
+        }
+
+        const fileSize   = file.size;
+        const { chunkSize } = data;
+        let offset     = 0;
+
+        const readEventHandler = function(e) {
+          if (e.target.error === null) {
+            const done = offset >= file.size;
+            offset += e.target.result.byteLength;
+            uploadChunk(e.target.result, done, offset);
+            if (!done) {
+              setTimeout(() => chunkReaderBlock(offset, chunkSize, file, readEventHandler), 100);
+            }
+          } else {
+            console.log("Read error: " + e.target.error);
+            return;
+          }
+        }
+
+        chunkReaderBlock(offset, chunkSize, file, readEventHandler);
+      })
+    })
+  }
+}
+
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
   let params = new URLSearchParams()
@@ -132,6 +215,44 @@ let serializeForm = (form, meta = {}) => {
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
   return params.toString()
+
+  // TODO: File upload (split formData and fileData)
+  // let serializeForm = (form, fileUploadData) => {
+  //   const formData = new FormData(form)
+  //   const fileData = [];
+  //   let toRemove = []
+  //   let readerCount = 0
+
+  //   formData.forEach((val, key) => {
+  //     if (val instanceof File) {
+  //       toRemove.push(key);
+  //       const fileWithMeta = {path: key};
+  //       if (val.size > 0) {
+  //         fileWithMeta.name = val.name;
+  //         fileWithMeta.type = val.type;
+  //         fileWithMeta.size = val.size;
+
+  //         if (fileUploadData) {
+  //           fileWithMeta.file_ref = fileUploadData[key]["file_ref"];
+  //           fileWithMeta.topic = fileUploadData[key]["topic"];
+  //         }
+  //         fileData.push(fileWithMeta);
+  //       }
+  //     }
+  //   })
+
+  //   toRemove.forEach((key) => {
+  //     formData.delete(key);
+  //   });
+
+  //   let params = new URLSearchParams()
+  //   for(let [key, val] of formData.entries()){ params.append(key, val) }
+
+  //   return {
+  //     formData: params.toString(),
+  //     fileData: fileData.length > 0 ? fileData : null
+  //   };
+  // }
 }
 
 export class Rendered {
@@ -335,6 +456,39 @@ export class Rendered {
   }
 }
 
+function writeBinaryString(view, string, offset) {
+  let i = 0;
+  for (i; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i))
+  }
+  return offset + i;
+}
+
+function binaryEncode(message , cb) {
+  const { join_ref, ref, topic, payload: { file } } = message
+  const headerLength = 2
+  const metaLength = 3 + join_ref.length + ref.length + topic.length
+  const fileLength = file.byteLength
+  const header = new ArrayBuffer(headerLength + metaLength)
+
+
+  const view = new DataView(header)
+  view.setUint8(0, 0)
+  view.setUint8(1, 1)
+  view.setUint8(2, join_ref.length)
+  view.setUint8(3, ref.length)
+  view.setUint8(4, topic.length)
+  let offset = writeBinaryString(view, join_ref, 5)
+  offset = writeBinaryString(view, ref, offset)
+  offset = writeBinaryString(view, topic, offset)
+
+  var combined = new Uint8Array(header.byteLength + fileLength)
+  combined.set(new Uint8Array(header), 0)
+  combined.set(new Uint8Array(file), header.byteLength)
+
+  cb(combined.buffer)
+}
+
 /** Initializes the LiveSocket
  *
  *
@@ -430,6 +584,15 @@ export class LiveSocket {
         window.location.reload()
       }
     })
+
+    const encode = this.socket.encode
+    this.socket.encode = function(message, cb) {
+      if (message.event === "file") {
+        binaryEncode(message, cb)
+      } else {
+        encode(message, cb)
+      }
+    }
   }
 
   // public
@@ -1274,6 +1437,7 @@ export let DOM = {
   }
 }
 
+// TODO: File upload (ignore file input)
 class DOMPatch {
   constructor(view, container, id, html, targetCID){
     this.view = view
@@ -2133,6 +2297,15 @@ export class View {
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }, callback)
+
+    // TODO: File upload
+    // const { fileData, formData } = serializeForm(inputEl.form);
+    // const event = { type: "form", event: phxEvent, value: formData };
+    // if (!fileData) {
+    //   this.pushWithReply("event", event);
+    //   return;
+    // }
+    // this.pushWithReply("event", Object.assign({}, event, {file_data: fileData}));
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -2159,6 +2332,30 @@ export class View {
       value: serializeForm(formEl),
       cid: this.targetComponentID(formEl, targetCtx)
     }, onReply)
+
+    // TODO: File upload
+    // this.uploadCount = 0;
+    // let files = gatherFiles(formEl)
+    // let numFiles = Object.keys(files).length;
+    // if (numFiles > 0) {
+    //   uploadFiles(this, files, (uploads) => {
+    //     const { formData, fileData} = serializeForm(formEl, uploads);
+    //         this.pushWithReply("event", {
+    //           type: "form",
+    //           file_count: numFiles,
+    //           // file_data: ...
+    //           event: phxEvent,
+    //           value: formData,
+    //           file_data: fileData
+    //         }, onReply)
+    //       })
+    // } else {
+    //   this.pushWithReply("event", {
+    //     type: "form",
+    //     event: phxEvent,
+    //     value: serializeForm(formEl)
+    //   }, onReply)
+    // }
   }
 
   pushFormRecovery(form, callback){
