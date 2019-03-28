@@ -215,6 +215,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp verified_join(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
     Process.monitor(phx_socket.transport_pid)
+    register!(view, id, parent)
     if parent, do: Process.monitor(parent)
 
     lv_socket =
@@ -257,5 +258,23 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: phx_socket.transport_pid,
       join_ref: phx_socket.join_ref
     }
+  end
+
+  defp register!(view, id, parent) do
+    case Registry.register(Phoenix.LiveView.Registry, id, %{}) do
+      {:ok, _owner} -> :ok
+      {:error, {:already_registered, pid}} ->
+        raise RuntimeError, """
+        unable to start child #{inspect(view)} under duplicate name for parent #{inspect(parent)}.
+
+        A child LiveView #{inspect(pid)} is already running under the ID #{id}. (#{inspect(pid)})
+        To render multiple LiveView children of the same module, a
+        child_id option must be provided per live_render call. For example:
+
+            <%= live_render @socket, #{inspect(view)}, child_id: 1 %>
+            <%= live_render @socket, #{inspect(view)}, child_id: 2 %>
+
+        """
+    end
   end
 end

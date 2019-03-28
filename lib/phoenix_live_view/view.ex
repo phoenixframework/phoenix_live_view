@@ -43,6 +43,16 @@ defmodule Phoenix.LiveView.View do
   def dom_id(%Socket{id: id}), do: id
 
   @doc """
+  Returns the browser's DOM id for the nested socket.
+  """
+  def child_dom_id(%Socket{id: parent_id}, child_view, nil = _child_id) do
+    parent_id <> inspect(child_view)
+  end
+  def child_dom_id(%Socket{id: parent_id}, child_view, child_id) do
+    parent_id <> inspect(child_view) <> to_string(child_id)
+  end
+
+  @doc """
   Returns the socket's LiveView module.
   """
   def view(%Socket{view: view}), do: view
@@ -72,8 +82,9 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Builds a nested child `%Phoenix.LiveViewSocket{}`.
   """
-  def build_nested_socket(%Socket{endpoint: endpoint}, opts) do
-    nested_opts = Map.merge(opts, %{parent_pid: self()})
+  def build_nested_socket(%Socket{endpoint: endpoint} = parent, child_id, %{view: view} = opts) do
+    id = child_dom_id(parent, view, child_id)
+    nested_opts = Map.merge(opts, %{id: id, parent_pid: self()})
     build_socket(endpoint, nested_opts)
   end
 
@@ -205,11 +216,12 @@ defmodule Phoenix.LiveView.View do
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
     attrs = opts[:attrs] || []
+    child_id = opts[:child_id]
 
     if connected?(parent) do
-      connected_nested_static_render(parent, view, session, attrs)
+      connected_nested_static_render(parent, view, session, attrs, child_id)
     else
-      disconnected_nested_static_render(parent, view, session, attrs)
+      disconnected_nested_static_render(parent, view, session, attrs, child_id)
     end
   end
 
@@ -227,8 +239,8 @@ defmodule Phoenix.LiveView.View do
       """
   end
 
-  defp disconnected_nested_static_render(parent, view, session, attrs) do
-    case static_mount(parent, view, session) do
+  defp disconnected_nested_static_render(parent, view, session, attrs, child_id) do
+    case static_mount(parent, view, session, child_id) do
       {:ok, socket, signed_session} ->
         html = ~E"""
         <div id="<%= dom_id(socket) %>"
@@ -248,8 +260,8 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp connected_nested_static_render(parent, view, session, attrs) do
-    {child_id, signed_session} = sign_child_session(parent, view, session)
+  defp connected_nested_static_render(parent, view, session, attrs, child_id) do
+    {child_id, signed_session} = sign_child_session(parent, view, session, child_id)
 
     html = ~E"""
     <div conn id="<%= child_id %>"
@@ -263,9 +275,9 @@ defmodule Phoenix.LiveView.View do
     {:ok, html}
   end
 
-  defp static_mount(%Socket{} = parent, view, session) do
+  defp static_mount(%Socket{} = parent, view, session, child_id) do
     parent
-    |> build_nested_socket(%{view: view})
+    |> build_nested_socket(child_id, %{view: view})
     |> do_static_mount(view, session)
   end
 
@@ -301,8 +313,8 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_child_session(%Socket{} = parent, child_view, session) do
-    id = random_id()
+  defp sign_child_session(%Socket{} = parent, child_view, session, child_id) do
+    id = child_dom_id(parent, child_view, child_id)
 
     token =
       sign_token(parent.endpoint, salt(parent), %{

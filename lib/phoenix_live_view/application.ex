@@ -4,6 +4,13 @@ defmodule Phoenix.LiveView.Application do
   use Application
 
   def start(_type, _args) do
-    DynamicSupervisor.start_link(name: Phoenix.LiveView.DynamicSupervisor, strategy: :one_for_one)
+    Supervisor.start_link(
+      [
+        {DynamicSupervisor, strategy: :one_for_one, name: Phoenix.LiveView.DynamicSupervisor},
+        {Registry, keys: :unique, name: Phoenix.LiveView.Registry}
+      ],
+      strategy: :one_for_one,
+      name: Phoenix.LiveView.Supervisor
+    )
   end
 end

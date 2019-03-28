@@ -200,24 +200,32 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert children(thermo_view) == []
     end
 
-    test "multple nested children of the same module" do
-      defmodule SameChildLive do
-        use Phoenix.LiveView
+    defmodule SameChildLive do
+      use Phoenix.LiveView
 
-        def render(assigns) do
-          ~L"""
-          <%= for name <- @names do %>
-            <%= live_render(@socket, ClockLive, session: %{name: name}) %>
-          <% end %>
-          """
-        end
-
-        def mount(_, socket) do
-          {:ok, assign(socket, names: ~w(Tokyo Madrid Toronto))}
-        end
+      def render(%{dup: true} = assigns) do
+        ~L"""
+        <%= for name <- @names do %>
+          <%= live_render(@socket, ClockLive, session: %{name: name}) %>
+        <% end %>
+        """
       end
 
-      {:ok, parent, _html} = mount(Endpoint, SameChildLive)
+      def render(%{dup: false} = assigns) do
+        ~L"""
+        <%= for name <- @names do %>
+          <%= live_render(@socket, ClockLive, session: %{name: name}, child_id: name) %>
+        <% end %>
+        """
+      end
+
+      def mount(%{dup: dup}, socket) do
+        {:ok, assign(socket, dup: dup, names: ~w(Tokyo Madrid Toronto))}
+      end
+    end
+
+    test "multiple nested children of same module" do
+      {:ok, parent, _html} = mount(Endpoint, SameChildLive, session: %{dup: false})
       [tokyo, madrid, toronto] = children(parent)
 
       child_ids =
@@ -229,6 +237,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(parent) =~ "Tokyo"
       assert render(parent) =~ "Madrid"
       assert render(parent) =~ "Toronto"
+    end
+
+    test "duplicate nested children raises" do
+      assert ExUnit.CaptureLog.capture_log(fn ->
+        pid = spawn(fn -> mount(Endpoint, SameChildLive, session: %{dup: true}) end)
+        Process.monitor(pid)
+        assert_receive {:DOWN, _ref, :process, ^pid, _}
+      end) =~ "unable to start child Phoenix.LiveViewTest.ClockLive under duplicate name"
     end
 
     test "parent graceful exit removes children" do
