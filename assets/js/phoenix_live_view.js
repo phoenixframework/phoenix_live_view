@@ -393,7 +393,7 @@ export class LiveSocket {
             this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
           })
         }
-      }, true)
+      }, false)
     }
   }
 
@@ -405,7 +405,7 @@ export class LiveSocket {
       if(!phxEvent){ return }
       e.preventDefault()
       this.owner(target, view => view.pushEvent("click", target, phxEvent))
-    }, true)
+    }, false)
   }
 
   bindForms(){
@@ -415,7 +415,7 @@ export class LiveSocket {
       e.preventDefault()
       e.target.disabled = true
       this.owner(e.target, view => view.submitForm(e.target, phxEvent))
-    }, true)
+    }, false)
 
     for(let type of ["change", "input"]){
       window.addEventListener(type, e => {
@@ -432,7 +432,7 @@ export class LiveSocket {
           }
           view.pushInput(input, phxEvent)
         })
-      }, true)
+      }, false)
     }
   }
 }
