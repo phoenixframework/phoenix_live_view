@@ -130,10 +130,3 @@ You can also optionally import the style for the default CSS classes in your `ap
 ```css
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
 ```
-
-You can also import LiveView in your `.formatter.exs` dependencies.
-
-```elixir
-  import_deps: [:ecto, :phoenix, :phoenix_live_view],
-  # ...
-```
