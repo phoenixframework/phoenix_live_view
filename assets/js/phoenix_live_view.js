@@ -420,7 +420,7 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       window.addEventListener(type, e => {
         let input = e.target
-        if(type === "input" && input.type === "radio"){ return }
+        if(type === "input" && ["checkbox", "radio", "select-one", "select-multiple"].includes(input.type)){ return }
 
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
