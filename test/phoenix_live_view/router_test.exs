@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.RouterTest do
   use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.{Endpoint, LayoutView}
 
   @endpoint Endpoint
 
@@ -21,6 +21,7 @@ defmodule Phoenix.LiveView.RouterTest do
     conn =
       build_conn()
       |> put_private(:router, Router)
+      |> Phoenix.Controller.put_layout({LayoutView, :live_layout})
       |> Plug.Test.init_test_session(config[:plug_session] || %{})
 
     {:ok, conn: conn}
