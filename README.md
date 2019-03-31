@@ -37,13 +37,6 @@ config :my_app, MyAppWeb.Endpoint,
    ]
 ```
 
-Update your configuration to enable writing LiveView templates with the `.leex` extension.
-
-```elixir
-config :phoenix,
-  template_engines: [leex: Phoenix.LiveView.Engine]
-```
-
 Next, add the LiveView flash plug to your browser pipeline, after `:fetch_flash`:
 
 ```elixir
