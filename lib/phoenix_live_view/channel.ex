@@ -178,6 +178,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp log_mount(%Phoenix.Socket{private: %{log_join: false}}, _), do: :noop
   defp log_mount(%Phoenix.Socket{private: %{log_join: level}}, func), do: Logger.log(level, func)
+  defp log_mount(%Phoenix.Socket{private: _}, _), do: :noop
 
   defp reply(state, ref, status, payload) do
     reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
