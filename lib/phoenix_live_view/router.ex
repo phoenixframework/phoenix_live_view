@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.Router do
       connection session and into the LiveView session.
       The `:path_params` keys may also be provided to copy the
       plug path params into the session. Defaults to `[:path_params]`.
-      For example, the folloing would copy the path params and
+      For example, the following would copy the path params and
       Plug session current user ID into the LiveView session:
 
           [:path_params, :user_id, :remember_me]
