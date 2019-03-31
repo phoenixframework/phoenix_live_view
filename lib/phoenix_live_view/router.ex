@@ -45,10 +45,24 @@ defmodule Phoenix.LiveView.Router do
         unquote(path),
         Phoenix.LiveView.Controller,
         Phoenix.Router.scoped_alias(__MODULE__, unquote(live_view)),
-        private: %{phoenix_live_view: unquote(opts)},
+        private: %{
+          phoenix_live_view: unquote(opts),
+          phoenix_live_view_default_layout: Phoenix.LiveView.Router.layout_from_router_module(__MODULE__)
+        },
         as: unquote(opts)[:as] || :live,
         alias: false
       )
     end
+  end
+
+  @doc false
+  def layout_from_router_module(module) do
+    module
+    |> Atom.to_string()
+    |> String.split(".")
+    |> Enum.drop(-1)
+    |> Enum.take(2)
+    |> Kernel.++(["LayoutView"])
+    |> Module.concat()
   end
 end
