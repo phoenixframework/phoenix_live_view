@@ -544,7 +544,7 @@ let DOM = {
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if (fromEl.isEqualNode(toEl)) {
-           return false // Skip this entire sub-tree
+           return false // Skip this entire sub-tree if both elems (and children) are equal
         }
 
         // nested view handling
