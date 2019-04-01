@@ -33,8 +33,7 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, reason, state}
   end
 
-  def handle_info({:DOWN, _, :process, parent, reason}, state) do
-    ^parent = state.socket.parent_pid
+  def handle_info({:DOWN, _, :process, parent, reason}, %{socket: %{parent_pid: parent}} = state) do
     send(state.transport_pid, {:socket_close, self(), reason})
 
     {:stop, reason, state}
