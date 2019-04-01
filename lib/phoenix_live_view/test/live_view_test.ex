@@ -115,16 +115,6 @@ defmodule Phoenix.LiveViewTest do
 
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
-  defmodule LayoutView do
-    @doc false
-
-    use Phoenix.View, root: ""
-
-    def render("live_layout.html", assigns) do
-      render(assigns.view_module, assigns.view_template, assigns)
-    end
-  end
-
   @doc """
   Mounts a static live view without connecting to a live process.
 
@@ -155,7 +145,6 @@ defmodule Phoenix.LiveViewTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Plug.Conn.put_private(:phoenix_endpoint, endpoint)
-      |> Phoenix.Controller.put_layout({LayoutView, :live_layout})
       |> Phoenix.LiveView.Controller.live_render(view_module, live_opts)
 
     case conn.status do

@@ -6,6 +6,12 @@ defmodule Phoenix.LiveView.Router do
   @doc """
   Defines a LiveView route.
 
+  ## Layout
+
+  When a layout isn't explicitly set, a default layout is inferred similar to
+  controller actions. For example, the layout for the router `MyAppWeb.Router`
+  would be inferred as `MyAppWeb.LayoutView` and would use the `:app` template.
+
   ## Options
 
     * `:session` - the optional list of keys to pull out of the Plug
@@ -47,7 +53,7 @@ defmodule Phoenix.LiveView.Router do
         Phoenix.Router.scoped_alias(__MODULE__, unquote(live_view)),
         private: %{
           phoenix_live_view: unquote(opts),
-          phoenix_live_view_default_layout: Phoenix.LiveView.Router.layout_from_router_module(__MODULE__)
+          phoenix_live_view_default_layout: Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
         },
         as: unquote(opts)[:as] || :live,
         alias: false
@@ -56,7 +62,7 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc false
-  def layout_from_router_module(module) do
+  def __layout_from_router_module__(module) do
     module
     |> Atom.to_string()
     |> String.split(".")

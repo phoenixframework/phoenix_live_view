@@ -36,8 +36,6 @@ defmodule Phoenix.LiveView.Controller do
 
   """
   def live_render(%Plug.Conn{} = conn, view, opts) do
-    ensure_layout_set(conn)
-
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     case LiveView.View.static_render(endpoint, view, opts) do
@@ -52,43 +50,6 @@ defmodule Phoenix.LiveView.Controller do
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
-    end
-  end
-
-  defp ensure_layout_set(%Plug.Conn{} = conn) do
-    layout_set? =
-      case conn.private do
-        %{phoenix_layout: {_, _}} ->
-          true
-
-        _ ->
-          false
-      end
-
-    unless layout_set? do
-      raise ArgumentError, """
-      no layout configured for the live view.
-
-      Ensure a layout has been set.
-
-      From the router:
-          pipeline :browser do
-            ...,
-            plug :put_layout, :live_layout
-          end
-
-          scope "/" do
-            pipeline :browser
-
-            live "/", PageLive
-          end
-
-      From a controller:
-          conn
-          |> Phoenix.Controller.put_layout(:live_layout)
-          |> #{__MODULE__}.live_render(PageLive)
-
-      """
     end
   end
 
