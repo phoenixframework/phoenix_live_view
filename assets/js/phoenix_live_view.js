@@ -254,6 +254,7 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.silenced = false
     this.bindTopLevelEvents()
   }
 
@@ -389,7 +390,7 @@ export class LiveSocket {
     for(let event in events){
       let browserEventName = events[event]
 
-      window.addEventListener(browserEventName, e => {
+      this.on(browserEventName, e => {
         let binding = this.binding(event)
         let bindTarget = this.binding("target")
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
@@ -417,7 +418,7 @@ export class LiveSocket {
   }
 
   bindForms(){
-    window.addEventListener("submit", e => {
+    this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
       if(!phxEvent){ return }
       e.preventDefault()
@@ -426,7 +427,7 @@ export class LiveSocket {
     }, false)
 
     for(let type of ["change", "input"]){
-      window.addEventListener(type, e => {
+      this.on(type, e => {
         let input = e.target
         if(type === "input" && ["checkbox", "radio", "select-one", "select-multiple"].includes(input.type)){ return }
 
@@ -442,6 +443,18 @@ export class LiveSocket {
         })
       }, false)
     }
+  }
+
+  silenceEvents(callback){
+    this.silenced = true
+    callback()
+    this.silenced = false
+  }
+
+  on(event, callback){
+    window.addEventListener(event, e => {
+      if(!this.silenced){ callback(e) }
+    })
   }
 }
 
@@ -575,7 +588,9 @@ let DOM = {
       }
     })
 
-    DOM.restoreFocus(focused, selectionStart, selectionEnd)
+    view.liveSocket.silenceEvents(() => {
+      DOM.restoreFocus(focused, selectionStart, selectionEnd)
+    })
     document.dispatchEvent(new Event("phx:update"))
   },
 
