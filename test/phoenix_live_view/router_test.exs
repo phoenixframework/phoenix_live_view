@@ -41,4 +41,9 @@ defmodule Phoenix.LiveView.RouterTest do
     conn = get(conn, "/thermo_container/123")
     assert conn.resp_body =~ ~r/<span[^>]*data-phx-view="Phoenix.LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
   end
+
+  test "default layout is inflected", %{conn: conn} do
+    conn = get(conn, "/thermo_session/123")
+    assert conn.resp_body =~ "LAYOUT"
+  end
 end
