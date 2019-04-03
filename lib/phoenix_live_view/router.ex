@@ -17,8 +17,8 @@ defmodule Phoenix.LiveView.Router do
 
           [:path_params, :user_id, :remember_me]
 
-    * `:attrs` - the optional list of DOM attributes to be added to
-      the LiveView container.
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
     * `:as` - optionally configures the named helper. Defaults to `:live`.
 
   ## Examples

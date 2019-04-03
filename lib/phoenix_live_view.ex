@@ -523,8 +523,8 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the LiveView
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
-    * `:attrs` - the optional list of DOM attributes to be added to
-      the LiveView container.
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
     * `:child_id` - the ID to uniquely identify a child LiveView when
       live rendering children of the same type.
 
