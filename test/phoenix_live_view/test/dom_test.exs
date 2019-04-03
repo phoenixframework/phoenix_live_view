@@ -35,6 +35,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
     <h1>bottom</h1>
     """
 
-    assert DOM.insert_session(@html, "not exists", "content") == @html
+    assert_raise MatchError, fn ->
+      assert DOM.insert_session(@html, "not exists", "content") == @html
+    end
   end
 end

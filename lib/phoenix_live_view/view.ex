@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.View do
   @moduledoc false
-  import Phoenix.HTML, only: [sigil_E: 2, raw: 1]
+  import Phoenix.HTML, only: [sigil_E: 2]
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
@@ -179,22 +179,24 @@ defmodule Phoenix.LiveView.View do
   ## Options
 
     * `:session` - the required map of session data
-    * `:attrs` - the optional list of extra DOM attributes
-      for the LiveView container
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def static_render(endpoint, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    attrs = opts[:attrs] || []
+    {tag, extended_attrs} = opts[:container] || {:div, []}
 
     case static_mount(endpoint, view, session) do
       {:ok, socket, signed_session} ->
+        attrs = [
+          {:id, dom_id(socket)},
+          {:data, phx_view: inspect(view), phx_session: signed_session} | extended_attrs
+        ]
+
         html = ~E"""
-        <div id="<%= dom_id(socket) %>"
-            <%= attrs_to_string(attrs) %>
-            data-phx-view="<%= inspect(view) %>"
-            data-phx-session="<%= signed_session %>">
+        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
           <%= render(socket, session) %>
-        </div>
+        <% end %>
         <div class="phx-loader"></div>
         """
         {:ok, html}
@@ -215,13 +217,13 @@ defmodule Phoenix.LiveView.View do
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    attrs = opts[:attrs] || []
+    {_tag, _attrs} = container = opts[:container] || {:div, []}
     child_id = opts[:child_id]
 
     if connected?(parent) do
-      connected_nested_static_render(parent, view, session, attrs, child_id)
+      connected_nested_static_render(parent, view, session, container, child_id)
     else
-      disconnected_nested_static_render(parent, view, session, attrs, child_id)
+      disconnected_nested_static_render(parent, view, session, container, child_id)
     end
   end
 
@@ -239,18 +241,24 @@ defmodule Phoenix.LiveView.View do
       """
   end
 
-  defp disconnected_nested_static_render(parent, view, session, attrs, child_id) do
+  defp disconnected_nested_static_render(parent, view, session, container, child_id) do
+    {tag, extended_attrs} = container
+
     case static_mount(parent, view, session, child_id) do
       {:ok, socket, signed_session} ->
-        html = ~E"""
-        <div id="<%= dom_id(socket) %>"
-            <%= attrs_to_string(attrs) %>
-            data-phx-parent-id="<%= dom_id(parent) %>"
-            data-phx-view="<%= inspect(view) %>"
-            data-phx-session="<%= signed_session %>">
+        attrs = [
+          {:id, dom_id(socket)},
+          {:data,
+            phx_parent_id: dom_id(parent),
+            phx_view: inspect(view),
+            phx_session: signed_session
+          } | extended_attrs
+        ]
 
+        html = ~E"""
+        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
           <%= render(socket, session) %>
-        </div>
+        <% end %>
         <div class="phx-loader"></div>
         """
         {:ok, html}
@@ -260,15 +268,20 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp connected_nested_static_render(parent, view, session, attrs, child_id) do
+  defp connected_nested_static_render(parent, view, session, container, child_id) do
     {child_id, signed_session} = sign_child_session(parent, view, session, child_id)
+    {tag, extended_attrs} = container
+    attrs = [
+      {:id, child_id},
+      {:data,
+        phx_parent_id: dom_id(parent),
+        phx_view: inspect(view),
+        phx_session: signed_session
+      } | extended_attrs
+    ]
 
     html = ~E"""
-    <div conn id="<%= child_id %>"
-         <%= attrs_to_string(attrs) %>
-         data-phx-parent-id="<%= dom_id(parent) %>"
-         data-phx-view="<%= inspect(view) %>"
-         data-phx-session="<%= signed_session %>"></div>
+    <%= Phoenix.HTML.Tag.content_tag(tag, "", attrs) %>
     <div class="phx-loader"></div>
     """
 
@@ -360,20 +373,4 @@ defmodule Phoenix.LiveView.View do
 
     opts
   end
-
-  defp attrs_to_string([]), do: []
-
-  defp attrs_to_string(attrs) do
-    for attr <- attrs do
-      case attr do
-        {key, val} -> raw([?\s, to_string(key), ?=, ?", attr_escape(val), ?"])
-        key -> raw([?\s, to_string(key)])
-      end
-    end
-  end
-
-  defp attr_escape({:safe, data}), do: data
-  defp attr_escape(nil), do: []
-  defp attr_escape(other) when is_binary(other), do: Plug.HTML.html_escape_to_iodata(other)
-  defp attr_escape(other), do: Phoenix.HTML.Safe.to_iodata(other)
 end

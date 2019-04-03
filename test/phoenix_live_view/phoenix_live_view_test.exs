@@ -72,20 +72,24 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
     end
 
-    test "custom DOM container attributes" do
+    test "custom DOM container and attributes" do
       {:ok, view, static_html} =
         mount_disconnected(Endpoint, ThermostatLive,
-          session: %{nest: [attrs: [style: "clock-flex"]]},
-          attrs: [style: "thermo-flex<script>"]
+          session: %{nest: [container: {:p, style: "clock-flex"}]},
+          container: {:span, style: "thermo-flex<script>"}
         )
 
       {:ok, view, mount_html} = mount(view)
 
-      assert static_html =~ ~r/style=\"thermo-flex&lt;script&gt;\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive/
-      assert static_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
+      assert static_html =~ ~r/<span[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+      assert static_html =~ ~r/<\/span>/
+      assert static_html =~ ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+      assert static_html =~ ~r/<\/p>/
 
-      assert mount_html =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
-      assert render(view) =~ ~r/style=\"clock-flex\"[^>]* data-phx-view=\"Phoenix.LiveViewTest.ClockLive/
+      assert mount_html =~ ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+      assert mount_html =~ ~r/<\/p>/
+      assert render(view) =~ ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+      assert render(view) =~ ~r/<\/p>/
     end
   end
 
