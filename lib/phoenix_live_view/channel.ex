@@ -134,12 +134,9 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp view_module(%{socket: socket}), do: View.view(socket)
+  defp view_module(%{view: view}), do: view
 
-  defp decode("form", url_encoded) do
-    Plug.Conn.Query.decode(url_encoded)
-  end
-
+  defp decode("form", url_encoded), do: Plug.Conn.Query.decode(url_encoded)
   defp decode(_, value), do: value
 
   defp reply_render(state, socket, ref) do
@@ -170,8 +167,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp render_diff(%{fingerprints: prints} = state, socket) do
-    rendered = View.render(socket)
+  defp render_diff(%{fingerprints: prints, view: view} = state, socket) do
+    rendered = View.render(socket, view)
     {diff, new_prints} = Diff.render(rendered, prints)
     new_socket = reset_changed(socket, rendered.fingerprint)
     {diff, %{state | socket: new_socket, fingerprints: new_prints}}
@@ -227,18 +224,13 @@ defmodule Phoenix.LiveView.Channel do
     if parent, do: Process.monitor(parent)
 
     lv_socket =
-      View.build_socket(phx_socket.endpoint, %{
-        connected?: true,
-        parent_pid: parent,
-        view: view,
-        id: id,
-      })
+      View.build_socket(phx_socket.endpoint, %{connected?: true, parent_pid: parent, id: id})
 
     case view.mount(user_session, lv_socket) do
       {:ok, %Socket{} = lv_socket} ->
         {diff, new_state} =
           lv_socket
-          |> build_state(phx_socket)
+          |> build_state(phx_socket, view)
           |> render_diff(lv_socket)
 
         GenServer.reply(from, {:ok, %{rendered: diff}})
@@ -254,14 +246,15 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, view) do
     %{
       socket: lv_socket,
       fingerprints: nil,
       serializer: phx_socket.serializer,
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
-      join_ref: phx_socket.join_ref
+      join_ref: phx_socket.join_ref,
+      view: view
     }
   end
 

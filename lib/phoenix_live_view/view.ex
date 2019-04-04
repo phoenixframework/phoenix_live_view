@@ -58,11 +58,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Returns the socket's LiveView module.
-  """
-  def view(%Socket{view: view}), do: view
-
-  @doc """
   Returns true if the socket is connected.
   """
   def connected?(%Socket{connected?: true}), do: true
@@ -72,25 +67,16 @@ defmodule Phoenix.LiveView.View do
   Builds a `%Phoenix.LiveViewSocket{}`.
   """
   def build_socket(endpoint, %{} = opts) when is_atom(endpoint) do
-    opts = normalize_opts!(opts)
-
-    %Socket{
-      id: Map.get_lazy(opts, :id, fn -> random_id() end),
-      endpoint: endpoint,
-      parent_pid: opts[:parent_pid],
-      view: Map.fetch!(opts, :view),
-      assigns: Map.get(opts, :assigns, %{}),
-      connected?: Map.get(opts, :connected?, false)
-    }
+    {id, opts} = Map.pop_lazy(opts, :id, fn -> random_id() end)
+    struct!(%Socket{id: id, endpoint: endpoint}, opts)
   end
 
   @doc """
   Builds a nested child `%Phoenix.LiveViewSocket{}`.
   """
-  def build_nested_socket(%Socket{endpoint: endpoint} = parent, child_id, %{view: view} = opts) do
+  def build_nested_socket(%Socket{endpoint: endpoint} = parent, child_id, view) do
     id = child_dom_id(parent, view, child_id)
-    nested_opts = Map.merge(opts, %{id: id, parent_pid: self()})
-    build_socket(endpoint, nested_opts)
+    build_socket(endpoint, %{id: id, parent_pid: self()})
   end
 
   @doc """
@@ -106,8 +92,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
-  def render(%Socket{} = socket) do
-    view = view(socket)
+  def render(%Socket{} = socket, view) do
     assigns = Map.put(socket.assigns, :socket, strip(socket))
 
     case view.render(assigns) do
@@ -200,7 +185,7 @@ defmodule Phoenix.LiveView.View do
 
         html = ~E"""
         <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket) %>
+          <%= render(socket, view) %>
         <% end %>
         <div class="phx-loader"></div>
         """
@@ -262,7 +247,7 @@ defmodule Phoenix.LiveView.View do
 
         html = ~E"""
         <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket) %>
+          <%= render(socket, view) %>
         <% end %>
         <div class="phx-loader"></div>
         """
@@ -295,13 +280,13 @@ defmodule Phoenix.LiveView.View do
 
   defp static_mount(%Socket{} = parent, view, session, child_id) do
     parent
-    |> build_nested_socket(child_id, %{view: view})
+    |> build_nested_socket(child_id, view)
     |> do_static_mount(view, session)
   end
 
   defp static_mount(endpoint, view, session) do
     endpoint
-    |> build_socket(%{view: view})
+    |> build_socket(%{})
     |> do_static_mount(view, session)
   end
 
@@ -310,8 +295,7 @@ defmodule Phoenix.LiveView.View do
     |> view.mount(socket)
     |> case do
       {:ok, %Socket{} = new_socket} ->
-        signed_session = sign_session(socket, session)
-
+        signed_session = sign_session(socket, view, session)
         {:ok, new_socket, signed_session}
 
       {:stop, socket} ->
@@ -322,11 +306,11 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp sign_session(%Socket{} = socket, session) do
+  defp sign_session(%Socket{} = socket, view, session) do
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id(socket),
       parent_pid: nil,
-      view: view(socket),
+      view: view,
       session: session
     })
   end
@@ -365,17 +349,5 @@ defmodule Phoenix.LiveView.View do
   defp sign_token(endpoint_mod, salt, data) do
     encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
     Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
-  end
-  defp normalize_opts!(opts) do
-    valid_keys = Map.keys(%Socket{})
-    provided_keys = Map.keys(opts)
-
-    if provided_keys -- valid_keys != [],
-      do:
-        raise(ArgumentError, """
-        invalid socket keys. Expected keys #{inspect(valid_keys)}, got #{inspect(provided_keys)}
-        """)
-
-    opts
   end
 end
