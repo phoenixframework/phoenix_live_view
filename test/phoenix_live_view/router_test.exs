@@ -6,6 +6,14 @@ defmodule Phoenix.LiveView.RouterTest do
 
   @endpoint Endpoint
 
+  defmodule AlternativeLayout do
+    use Phoenix.View, root: ""
+
+    def render("layout.html", assigns) do
+      ["ALTERNATE", render(assigns.view_module, assigns.view_template, assigns)]
+    end
+  end
+
   defmodule Router do
     use Phoenix.Router
     import Phoenix.LiveView.Router
@@ -14,6 +22,7 @@ defmodule Phoenix.LiveView.RouterTest do
       live "/thermo_defaults/:id", DashboardLive
       live "/thermo_session/:id", DashboardLive, session: [:path_params, :user_id]
       live "/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
+      live "/thermo_layout/:id", DashboardLive, layout: {AlternativeLayout, :layout}
     end
   end
 
@@ -45,5 +54,10 @@ defmodule Phoenix.LiveView.RouterTest do
   test "default layout is inflected", %{conn: conn} do
     conn = get(conn, "/thermo_session/123")
     assert conn.resp_body =~ "LAYOUT"
+  end
+
+  test "routing with custom layout", %{conn: conn} do
+    conn = get(conn, "/thermo_layout/123")
+    assert conn.resp_body =~ "ALTERNATE"
   end
 end

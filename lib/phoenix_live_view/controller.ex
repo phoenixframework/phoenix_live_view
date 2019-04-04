@@ -3,8 +3,6 @@ defmodule Phoenix.LiveView.Controller do
   The Controller for LiveView rendering.
   """
 
-  @behaviour Plug
-
   alias Phoenix.LiveView
 
   @doc """
@@ -50,35 +48,6 @@ defmodule Phoenix.LiveView.Controller do
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
-    end
-  end
-
-  @doc false
-  @impl Plug
-  def init(opts), do: opts
-
-  @doc false
-  @impl Plug
-  def call(%Plug.Conn{private: %{phoenix_live_view: phx_opts}} = conn, view) do
-    session_opts = phx_opts[:session] || [:path_params]
-    opts = Keyword.merge(phx_opts, session: session(conn, session_opts))
-    conn
-    |> put_new_layout_from_router()
-    |> live_render(view, opts)
-  end
-
-  defp session(conn, session_opts) do
-    Enum.reduce(session_opts, %{}, fn
-      :path_params, acc -> Map.put(acc, :path_params, conn.path_params)
-      key, acc -> Map.put(acc, key, Plug.Conn.get_session(conn, key))
-    end)
-  end
-
-  defp put_new_layout_from_router(conn) do
-    if layout_view = conn.private[:phoenix_live_view_default_layout] do
-      Phoenix.Controller.put_new_layout(conn, {layout_view, :app})
-    else
-      conn
     end
   end
 
