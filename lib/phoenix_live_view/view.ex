@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.View do
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{} = socket) do
-    %Socket{socket | changed: nil}
+    %Socket{socket | changed: %{}}
   end
 
   @doc """

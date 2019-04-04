@@ -622,7 +622,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp do_assign(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed || %{}, key, true)
+    new_changed = Map.put(changed, key, true)
     new_assigns = Map.put(assigns, key, val)
     %Socket{acc | assigns: new_assigns, changed: new_changed}
   end
