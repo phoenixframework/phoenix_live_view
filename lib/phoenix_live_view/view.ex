@@ -101,9 +101,9 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
-  def render(%Socket{} = socket, session) do
+  def render(%Socket{} = socket) do
     view = view(socket)
-    assigns = Map.merge(socket.assigns, %{session: session, socket: strip(socket)})
+    assigns = Map.put(socket.assigns, :socket, strip(socket))
 
     case view.render(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveView.View do
 
         html = ~E"""
         <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, session) %>
+          <%= render(socket) %>
         <% end %>
         <div class="phx-loader"></div>
         """
@@ -257,7 +257,7 @@ defmodule Phoenix.LiveView.View do
 
         html = ~E"""
         <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, session) %>
+          <%= render(socket) %>
         <% end %>
         <div class="phx-loader"></div>
         """

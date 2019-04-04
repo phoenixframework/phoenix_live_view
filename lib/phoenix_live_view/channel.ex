@@ -161,8 +161,8 @@ defmodule Phoenix.LiveView.Channel do
     {%{state | fingerprints: new_prints}, diff}
   end
 
-  defp rerender(%{socket: socket, session: session} = state) do
-    rendered = View.render(socket, session)
+  defp rerender(%{socket: socket} = state) do
+    rendered = View.render(socket)
     {reset_changed(state, rendered.fingerprint), rendered}
   end
 
@@ -229,7 +229,7 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, %Socket{} = lv_socket} ->
         {state, rendered} =
           lv_socket
-          |> build_state(phx_socket, user_session)
+          |> build_state(phx_socket)
           |> rerender()
 
         {new_state, rendered_diff} = render_diff(state, rendered)
@@ -247,10 +247,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, session) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
     %{
       socket: lv_socket,
-      session: session,
       fingerprints: nil,
       serializer: phx_socket.serializer,
       topic: phx_socket.topic,
