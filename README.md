@@ -131,6 +131,6 @@ config :demo, MyAppWeb.Endpoint,
 You can also optionally import the style for the default CSS classes in your `app.css` file.
 
 ```css
-// assets/css/app.css
+/* assets/css/app.css */
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
 ```
