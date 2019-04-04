@@ -24,6 +24,11 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  Checks if the socket changed.
+  """
+  def changed?(%Socket{changed: changed}), do: changed != %{}
+
+  @doc """
   Returns the socket's flash messages.
   """
   def get_flash(%Socket{private: private}) do

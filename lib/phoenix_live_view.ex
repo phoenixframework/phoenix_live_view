@@ -487,29 +487,29 @@ defmodule Phoenix.LiveView do
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback terminate(
-              reason :: :normal | :shutdown | {:shutdown, :left | :closed | term},
-              Socket.t()
-            ) :: term
+  @callback terminate(reason, Socket.t()) :: term
+            when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, mount: 2, handle_event: 3
+  @callback handle_call(msg :: term, {pid, reference}, Socket.t()) ::
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+
+  @callback handle_info(msg :: term, Socket.t()) ::
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+
+  @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
 
   defmacro __using__(_opts) do
     quote do
-      import unquote(__MODULE__), except: [render: 2]
-
+      import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
       @impl unquote(__MODULE__)
       def mount(_session, socket), do: {:ok, socket}
 
-      @impl unquote(__MODULE__)
-      def terminate(reason, state), do: {:ok, state}
-
-      defoverridable mount: 2, terminate: 2
+      defoverridable mount: 2
     end
   end
 
