@@ -130,6 +130,7 @@ const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
 const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
+const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
@@ -180,6 +181,13 @@ let recursiveMerge = (target, source) => {
     }
   }
 }
+
+let Session = {
+  get(el){ return el.getAttribute(PHX_SESSION) },
+
+  isEqual(el1, el2){ return this.get(el1) === this.get(el2) }
+}
+
 
 export let Rendered = {
   mergeDiff(source, diff){
@@ -552,7 +560,7 @@ let DOM = {
       onNodeAdded: function(el){
         // nested view handling
         if(DOM.isPhxChild(el) && view.ownsElement(el)){
-          view.onNewChildAdded(el)
+          view.onNewChildAdded()
           return true
         }
       },
@@ -566,7 +574,14 @@ let DOM = {
       onBeforeElUpdated: function(fromEl, toEl) {
         // nested view handling
         if(DOM.isPhxChild(toEl)){
+          let prevStatic = fromEl.getAttribute(PHX_STATIC)
+
+          if(!Session.isEqual(toEl, fromEl)){
+            view.liveSocket.destroyViewById(fromEl.id)
+            view.onNewChildAdded()
+          }
           DOM.mergeAttrs(fromEl, toEl)
+          fromEl.setAttribute(PHX_STATIC, prevStatic)
           return false
         }
 
@@ -631,14 +646,17 @@ export class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
-      return {session: this.getSession()}
+      return {session: this.getSession(), static: this.getStatic()}
     })
     this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
     this.bindChannel()
   }
 
-  getSession(){
-    return this.el.getAttribute(PHX_SESSION)
+  getSession(){ return Session.get(this.el) }
+
+  getStatic(){
+    let val = this.el.getAttribute(PHX_STATIC)
+    return val === "" ? null : val
   }
 
   destroy(callback = function(){}){
@@ -700,7 +718,7 @@ export class View {
     if(this.newChildrenAdded){ this.joinNewChildren() }
   }
 
-  onNewChildAdded(el){
+  onNewChildAdded(){
     this.newChildrenAdded = true
   }
 
