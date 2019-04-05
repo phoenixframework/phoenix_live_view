@@ -7,7 +7,8 @@ defmodule Phoenix.LiveView.View do
 
   @max_session_age 1_209_600
 
-  @salt_length 8
+  # Total length of 8 bytes when 64 encoded
+  @rand_bytes 6
 
   @doc """
   Strips socket of redudant assign data for rendering.
@@ -130,14 +131,7 @@ defmodule Phoenix.LiveView.View do
       {:error, :expired}
   """
   def verify_session(endpoint_mod, token) do
-    case Phoenix.Token.verify(endpoint_mod, salt(endpoint_mod), token, max_age: @max_session_age) do
-      {:ok, encoded_term} ->
-        term = encoded_term |> Base.decode64!() |> :erlang.binary_to_term()
-        {:ok, term}
-
-      {:error, _} = error ->
-        error
-    end
+    Phoenix.Token.verify(endpoint_mod, salt(endpoint_mod), token, max_age: @max_session_age)
   end
 
   @doc """
@@ -226,7 +220,7 @@ defmodule Phoenix.LiveView.View do
 
           config :my_app, MyAppWeb.Endpoint,
               ...,
-              live_view: [signing_salt: "#{random_signing_salt()}"]
+              live_view: [signing_salt: "#{random_encoded_bytes()}"]
 
       """
   end
@@ -337,17 +331,15 @@ defmodule Phoenix.LiveView.View do
     configured_signing_salt!(endpoint)
   end
 
-  defp random_signing_salt do
-    @salt_length
+  defp random_encoded_bytes do
+    @rand_bytes
     |> :crypto.strong_rand_bytes()
     |> Base.encode64()
-    |> binary_part(0, @salt_length)
   end
 
-  defp random_id, do: "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
+  defp random_id, do: "phx-" <> random_encoded_bytes()
 
   defp sign_token(endpoint_mod, salt, data) do
-    encoded_data = data |> :erlang.term_to_binary() |> Base.encode64()
-    Phoenix.Token.sign(endpoint_mod, salt, encoded_data)
+    Phoenix.Token.sign(endpoint_mod, salt, data)
   end
 end
