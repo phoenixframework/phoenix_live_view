@@ -623,15 +623,14 @@ defmodule Phoenix.LiveView do
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
     case socket do
-      %{assigns: assigns, private: %{assigned_new: {parent_assigns, keys}} = private} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        private = put_in(private.assigned_new, {parent_assigns, [key | keys]})
-        value = Map.get_lazy(parent_assigns, key, fn -> Map.get_lazy(assigns, key, func) end)
-        do_assign(%{socket | private: private}, key, value)
-
       %{assigns: %{^key => _}} ->
         socket
+
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in(private.assigned_new, {assigns, [key | keys]})
+        do_assign(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
 
       %{} ->
         do_assign(socket, key, func.())
