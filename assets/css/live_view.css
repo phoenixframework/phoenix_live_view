@@ -12,15 +12,12 @@
 
 .phx-loader{
   position: relative;
-  zoom:2;/* Increase this for a bigger symbole*/
+  zoom:2; /* Increase this for a bigger symbol */
 
-  display:none;
-
-  width:16px;
-  height:16px;
-
-  margin:20px auto;
-
+  display: none;
+  width: 16px;
+  height: 16px;
+  margin: 20px auto;
   animation: wait .80s steps(1, start) infinite;
 
   background: linear-gradient(0deg, #f4f5fa 1px, transparent 0, transparent 8px, #f4f5fa 8px),   /* 6  */

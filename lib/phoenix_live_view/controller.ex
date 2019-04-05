@@ -8,12 +8,12 @@ defmodule Phoenix.LiveView.Controller do
   alias Phoenix.LiveView
 
   @doc """
-  Renders a Live View from a Plug request and sends an HTML response.
+  Renders a live view from a Plug request and sends an HTML response.
 
   ## Options
 
     * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the Live View
+      to the client. When connecting from the client, the live view
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
 
@@ -22,11 +22,12 @@ defmodule Phoenix.LiveView.Controller do
 
   ## Examples
 
-      alias Phoenix.LiveView
+      defmodule ThermostatController do
+        ...
+        import Phoenix.LiveView.Controller
 
-      def ThermostatController do
         def show(conn, %{"id" => thermostat_id}) do
-          LiveView.Controller.live_render(conn, ThermostatView, session: %{
+          live_render(conn, ThermostatLive, session: %{
             thermostat_id: id,
             current_user_id: get_session(conn, :user_id),
           })
@@ -58,9 +59,12 @@ defmodule Phoenix.LiveView.Controller do
 
   @doc false
   @impl Plug
-  def call(conn, view) do
-    session_opts = conn.private.phoenix_live_view[:session] || [:path_params]
-    live_render(conn, view, session: session(conn, session_opts))
+  def call(%Plug.Conn{private: %{phoenix_live_view: phx_opts}} = conn, view) do
+    session_opts = phx_opts[:session] || [:path_params]
+    opts = Keyword.merge(phx_opts, session: session(conn, session_opts))
+    conn
+    |> put_new_layout_from_router()
+    |> live_render(view, opts)
   end
 
   defp session(conn, session_opts) do
@@ -68,6 +72,14 @@ defmodule Phoenix.LiveView.Controller do
       :path_params, acc -> Map.put(acc, :path_params, conn.path_params)
       key, acc -> Map.put(acc, key, Plug.Conn.get_session(conn, key))
     end)
+  end
+
+  defp put_new_layout_from_router(conn) do
+    if layout_view = conn.private[:phoenix_live_view_default_layout] do
+      Phoenix.Controller.put_new_layout(conn, {layout_view, :app})
+    else
+      conn
+    end
   end
 
   @doc false

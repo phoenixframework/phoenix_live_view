@@ -84,7 +84,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       serializer: Phoenix.LiveViewTest,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{log_join: false},
+      private: %{},
       topic: view.topic,
       join_ref: state.join_ref
     }

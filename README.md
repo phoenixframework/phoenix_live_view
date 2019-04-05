@@ -1,14 +1,14 @@
-# Phoenix Live View
+# Phoenix LiveView
 
-[![Build Status](https://travis-ci.com/phoenixframework/phoenix_live_view.svg?token=Dc4VoVYF33Y2H4Gy8pGi&branch=master)](https://travis-ci.com/phoenixframework/phoenix_live_view)
+[![Build Status](https://travis-ci.org/phoenixframework/phoenix_live_view.svg?branch=master)](https://travis-ci.org/phoenixframework/phoenix_live_view)
 
 Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
 
-**Note**: Currently Live View is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
+**Note**: Currently LiveView is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
 
 ## Learning
 
-As official guides are being developed, see our existing 
+As official guides are being developed, see our existing
 comprehensive docs and examples to get up to speed:
 
   * [Phoenix.LiveView docs for general usage](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view.ex)
@@ -18,7 +18,7 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
-Currently Live View is only available from GitHub. To use it, add to your `mix.exs`:
+Currently LiveView is only available from GitHub. To use it, add to your `mix.exs`:
 
 ```elixir
 def deps do
@@ -31,22 +31,19 @@ end
 Once installed, update your endpoint's configuration to include a signing salt. You can generate a signing salt by running `mix phx.gen.secret 32`.
 
 ```elixir
+# config/config.exs
+
 config :my_app, MyAppWeb.Endpoint,
    live_view: [
      signing_salt: "SECRET_SALT"
    ]
 ```
 
-Update your configuration to enable writing LiveView templates with the `.leex` extension.
+Next, add the LiveView flash plug to your browser pipeline, after `:fetch_flash`:
 
 ```elixir
-config :phoenix,
-  template_engines: [leex: Phoenix.LiveView.Engine]
-```
+# lib/my_app_web/router.ex
 
-Next, add the Live View flash plug to your browser pipeline, after `:fetch_flash`:
-
-```elixir
 pipeline :browser do
   ...
   plug :fetch_flash
@@ -54,9 +51,11 @@ pipeline :browser do
 end
 ```
 
-Then add the following imports to your web file in `lib/app_web.ex`:
+Then add the following imports to your web file in `lib/my_app_web.ex`:
 
 ```elixir
+# lib/my_app_web.ex
+
 def view do
   quote do
     ...
@@ -75,6 +74,8 @@ end
 Next, expose a new socket for LiveView updates in your app's endpoint module.
 
 ```elixir
+# lib/my_app_web/endpoint.ex
+
 defmodule MyAppWeb.Endpoint do
   use Phoenix.Endpoint
 
@@ -84,37 +85,52 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Add LiveView NPM dependencies in your package.json.
+Add LiveView NPM dependencies in your `assets/package.json`.
 
 ```json
 {
   "dependencies": {
-    "phoenix": "../deps/phoenix",
+    "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view"
   }
 }
 ```
 
-Enable connecting to a LiveView socket in your app.js file.
+Then install the new npm dependency.
+
+```bash
+npm install --prefix assets
+```
+
+Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
+// assets/js/app.js
 import LiveSocket from "phoenix_live_view"
 
 let liveSocket = new LiveSocket("/live")
 liveSocket.connect()
 ```
 
-Finally, by convention live views are saved in a `lib/app_web/live/`
+Finally, by convention live views are saved in a `lib/my_app_web/live/`
 directory. For live page reload support, add the following pattern to
 your `config/dev.exs`:
 
 ```elixir
-config :demo, DemoWeb.Endpoint,
+# config/dev.exs
+config :demo, MyAppWeb.Endpoint,
   live_reload: [
     patterns: [
       ...,
-      ~r{lib/demo_web/live/.*(ex)$}
+      ~r{lib/my_app_web/live/.*(ex)$}
     ]
   ]
+```
+
+You can also optionally import the style for the default CSS classes in your `app.css` file.
+
+```css
+/* assets/css/app.css */
+@import "../../deps/phoenix_live_view/assets/css/live_view.css";
 ```

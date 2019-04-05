@@ -1,20 +1,20 @@
 defmodule Phoenix.LiveViewTest do
   @moduledoc """
-  Conveniences for testing Phoenix Live Views.
+  Conveniences for testing Phoenix live views.
 
-  In Live View tests, we interact with views via process
+  In LiveView tests, we interact with views via process
   communication in substitution of a browser. Like a browser,
   our test process receives messages about the rendered updates
   from the view which can be asserted against to test the
-  life-cycle and behavior of Live Views and their children.
+  life-cycle and behavior of live views and their children.
 
   ## LiveView Testing
 
-  The life-cycle of a Live View as outlined in the `Phoenix.LiveView`
+  The life-cycle of a live view as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
   socket state. Once the browser receives the HTML, it connects the to
-  server and a new Live View process is started, remounted in a connected
-  socket state, and the view continues statefully. The Live View test functions
+  server and a new LiveView process is started, remounted in a connected
+  socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
 
       {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
@@ -42,7 +42,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Testing Events
 
-  The browser can send a variety of events to a Live View via `phx-` bindings,
+  The browser can send a variety of events to a live view via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
   browser and assert on the rendered side-effect of the event, use the
   `render_*` functions:
@@ -56,9 +56,6 @@ defmodule Phoenix.LiveViewTest do
     * `render_change/3` - sends a form phx-change event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keypress/3` - sends a form phx-keypress event and value and
-      returns the rendered result of the `handle_event/3` callback.
-
     * `render_keydown/3` - sends a form phx-keydown event and value and
       returns the rendered result of the `handle_event/3` callback.
 
@@ -67,7 +64,7 @@ defmodule Phoenix.LiveViewTest do
 
   For example:
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
 
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
 
@@ -77,9 +74,9 @@ defmodule Phoenix.LiveViewTest do
 
       assert render_change(view, :validate, %{deg: -30}) =~ "invalid temperature"
 
-      assert render_keypress(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
+      assert render_keydown(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
 
-      assert render_keypress(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
+      assert render_keydown(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
 
   ## Testing regular messages
 
@@ -119,7 +116,7 @@ defmodule Phoenix.LiveViewTest do
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
-  Mounts a static Live View without connecting to a live process.
+  Mounts a static live view without connecting to a live process.
 
   Useful for simulating the rendered result that is sent with
   the intial HTTP request. On successful mount, the view and
@@ -143,9 +140,7 @@ defmodule Phoenix.LiveViewTest do
              mount_disconnected(MyEndpoint, MyView, session: %{})
   """
   def mount_disconnected(endpoint, view_module, opts) do
-    live_opts = [
-      session: opts[:session] || %{}
-    ]
+    live_opts = Keyword.put_new(opts, :session, %{})
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -228,7 +223,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
   """
@@ -241,7 +236,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
@@ -255,7 +250,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
@@ -265,29 +260,16 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Sends a keypress event to the view and returns the rendered result.
-
-  ## Examples
-
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
-      assert html =~ "The temp is: 30℉"
-      assert render_keypress(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-  """
-  def render_keypress(view, event, key_code) do
-    render_event(view, :keypress, event, key_code)
-  end
-
-  @doc """
   Sends a keyup event to the view and returns the rendered result.
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
   def render_keyup(view, event, key_code) do
-    render_event(view, :keypress, event, key_code)
+    render_event(view, :keyup, event, key_code)
   end
 
   @doc """
@@ -295,12 +277,39 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
   def render_keydown(view, event, key_code) do
     render_event(view, :keydown, event, key_code)
+  end
+
+  @doc """
+  Sends a blur event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      assert html =~ "The temp is: 30℉"
+      assert render_blur(view, :inactive) =~ "Tap to wake"
+  """
+  def render_blur(view, event, value \\ %{}) do
+    render_event(view, :blur, event, value)
+  end
+
+  @doc """
+  Sends a focus event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      assert html =~ "The temp is: 30℉"
+      assert render_blur(view, :inactive) =~ "Tap to wake"
+      assert render_focus(view, :active) =~ "Waking up..."
+  """
+  def render_focus(view, event, value \\ %{}) do
+    render_event(view, :focus, event, value)
   end
 
   defp render_event(view, type, event, value) do
@@ -311,13 +320,13 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the current list of children of the parent Live View.
+  Returns the current list of children of the parent live view.
 
   Children are return in the order they appear in the rendered HTML.
 
   ## Examples
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatView, session: %{deg: 30})
+      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
       assert [clock_view] = children(view)
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
@@ -370,7 +379,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Stops a Live View.
+  Stops a LiveView process.
 
   ## Examples
 
