@@ -2,25 +2,25 @@ import LiveSocket, { View } from '../js/phoenix_live_view';
 
 function liveViewDOM() {
   const div = document.createElement('div')
-  div.setAttribute('data-phx-view', '');
-  div.setAttribute('data-phx-session', 'abc123');
-  div.setAttribute('id', 'container');
+  div.setAttribute('data-phx-view', '')
+  div.setAttribute('data-phx-session', 'abc123')
+  div.setAttribute('id', 'container')
   div.innerHTML = `
     <form>
       <label for="plus">Plus</label>
       <input id="plus" value="1" name="increment" />
       <button phx-click="inc_temperature">Inc Temperature</button>
     </form>
-  `;
+  `
   const button = div.querySelector('button')
   const input = div.querySelector('input')
   button.addEventListener('click', () => {
     setTimeout(() => {
-      input.value += 1;
-    }, 200);
+      input.value += 1
+    }, 200)
   });
 
-  return div;
+  return div
 }
 
 describe('View + DOM', function() {
