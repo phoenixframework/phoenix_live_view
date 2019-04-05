@@ -219,8 +219,8 @@ defmodule Phoenix.LiveView.Channel do
 
   defp mount({%{"session" => session_token} = params, from, phx_socket}) do
     case View.verify_session(phx_socket.endpoint, session_token, params["static"]) do
-      {:ok, %{id: id, view: view, parent_pid: parent, session: user_session, assigned_new: new}} ->
-        verified_mount(view, id, parent, new, user_session, from, phx_socket)
+      {:ok, %{id: id, view: view, parent_pid: parent, session: session, assigned_new: new}} ->
+        verified_mount(view, id, parent, new, session, from, phx_socket)
 
       {:error, reason} ->
         Logger.error(
@@ -238,27 +238,24 @@ defmodule Phoenix.LiveView.Channel do
     :ignore
   end
 
-  defp verified_mount(
-         view,
-         id,
-         parent,
-         assigned_new,
-         user_session,
-         from,
-         %Phoenix.Socket{} = phx_socket
-       ) do
+  defp verified_mount(view, id, parent, assigned_new, session, from, phx_socket) do
+    %Phoenix.Socket{endpoint: endpoint} = phx_socket
     Process.monitor(phx_socket.transport_pid)
+    parent_assigns = register_with_parent(parent, view, id, assigned_new)
 
     lv_socket =
-      phx_socket.endpoint
-      |> View.build_socket(%{connected?: true, parent_pid: parent, id: id}, %{})
-      |> monitor_parent(assigned_new, view)
+      View.build_socket(endpoint, %{
+        connected?: true,
+        parent_pid: parent,
+        id: id,
+        assigned_new: {parent_assigns, assigned_new}
+      })
 
-    case view.mount(user_session, lv_socket) do
+    case view.mount(session, lv_socket) do
       {:ok, %Socket{} = lv_socket} ->
         {diff, new_state} =
           lv_socket
-          |> post_mount_prune()
+          |> View.prune_assigned_new()
           |> build_state(phx_socket, view)
           |> render_diff(lv_socket)
 
@@ -289,15 +286,15 @@ defmodule Phoenix.LiveView.Channel do
     }
   end
 
-  defp monitor_parent(%Socket{parent_pid: nil} = socket, _assigned_new, _view), do: socket
+  defp register_with_parent(nil, _view, _id, _assigned_new), do: %{}
 
-  defp monitor_parent(%Socket{parent_pid: parent, id: id} = socket, assigned_new, view) do
+  defp register_with_parent(parent, view, id, assigned_new) do
     _ref = Process.monitor(parent)
 
     {:ok, values} =
       GenServer.call(parent, {@prefix, :child_mount, self(), view, id, assigned_new})
 
-    put_parent_assigns(socket, values)
+    values
   end
 
   defp put_child(%{view: parent} = state, child_pid, view, id) do
@@ -323,16 +320,5 @@ defmodule Phoenix.LiveView.Channel do
             children_ids: Map.put(state.children_ids, id, child_pid)
         }
     end
-  end
-
-  # TODO move these operations to coming internal Socket API module
-  defp post_mount_prune(%Socket{} = socket) do
-    %Socket{socket | private: Map.delete(socket.private, :assigned_new)}
-  end
-
-  # TODO move these operations to coming internal Socket API module
-  defp put_parent_assigns(socket, values) do
-    new_private = update_in(socket.private, [:assigned_new], fn {_, keys} -> {values, keys} end)
-    %Socket{socket | private: new_private}
   end
 end
