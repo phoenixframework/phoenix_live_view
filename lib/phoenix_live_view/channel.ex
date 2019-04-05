@@ -17,13 +17,13 @@ defmodule Phoenix.LiveView.Channel do
 
   @impl true
   def init(triplet) do
-    send(self(), {:join, __MODULE__})
+    send(self(), {:mount, __MODULE__})
     {:ok, triplet}
   end
 
   @impl true
-  def handle_info({:join, __MODULE__}, triplet) do
-    join(triplet)
+  def handle_info({:mount, __MODULE__}, triplet) do
+    mount(triplet)
   end
 
   def handle_info({:DOWN, _, _, transport_pid, reason}, %{transport_pid: transport_pid} = state) do
@@ -180,9 +180,6 @@ defmodule Phoenix.LiveView.Channel do
     |> View.put_root(root_print)
   end
 
-  defp log_mount(%Phoenix.Socket{private: %{log_join: false}}, _), do: :noop
-  defp log_mount(%Phoenix.Socket{private: %{log_join: level}}, func), do: Logger.log(level, func)
-
   defp reply(state, ref, status, payload) do
     reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
@@ -195,30 +192,27 @@ defmodule Phoenix.LiveView.Channel do
     state
   end
 
-  ## Join
+  ## Mount
 
-  defp join({%{"session" => session_token}, from, phx_socket}) do
+  defp mount({%{"session" => session_token}, from, phx_socket}) do
     case View.verify_session(phx_socket.endpoint, session_token) do
       {:ok, %{id: id, view: view, parent_pid: parent, session: user_session}} ->
-        verified_join(view, id, parent, user_session, from, phx_socket)
+        verified_mount(view, id, parent, user_session, from, phx_socket)
 
       {:error, reason} ->
-        log_mount(phx_socket, fn ->
-          "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
-        end)
-
+        Logger.error "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
         GenServer.reply(from, {:error, %{reason: "badsession"}})
         {:stop, :shutdown, :no_state}
     end
   end
 
-  defp join({%{}, from, phx_socket}) do
-    log_mount(phx_socket, fn -> "Mounting #{phx_socket.topic} failed because no session was provided" end)
+  defp mount({%{}, from, phx_socket}) do
+    Logger.error "Mounting #{phx_socket.topic} failed because no session was provided"
     GenServer.reply(from, %{reason: "nosession"})
     :ignore
   end
 
-  defp verified_join(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
+  defp verified_mount(view, id, parent, user_session, from, %Phoenix.Socket{} = phx_socket) do
     Process.monitor(phx_socket.transport_pid)
     register!(view, id, parent)
     if parent, do: Process.monitor(parent)
@@ -237,7 +231,7 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, new_state}
 
       {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
-        log_mount(phx_socket, fn -> "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}" end)
+        Logger.info "Redirecting #{inspect(view)} #{id} to: #{inspect(to)}"
         GenServer.reply(from, {:error, %{redirect: to}})
         {:stop, :shutdown, :no_state}
 
