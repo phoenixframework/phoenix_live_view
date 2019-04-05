@@ -9,8 +9,6 @@ defmodule Phoenix.LiveView.Diff do
   # nexttime
   # {thing_to_be_serialized, fingerprint_tree} = traverse(result, fingerprint_tree)
 
-  # todo comprehensions (no need for recursive)
-
   def render(%Rendered{} = rendered, fingerprint_tree \\ nil) do
     traverse(rendered, fingerprint_tree)
   end

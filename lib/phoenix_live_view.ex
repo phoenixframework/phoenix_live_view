@@ -487,29 +487,29 @@ defmodule Phoenix.LiveView do
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback terminate(
-              reason :: :normal | :shutdown | {:shutdown, :left | :closed | term},
-              Socket.t()
-            ) :: term
+  @callback terminate(reason, Socket.t()) :: term
+            when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, mount: 2, handle_event: 3
+  @callback handle_call(msg :: term, {pid, reference}, Socket.t()) ::
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+
+  @callback handle_info(msg :: term, Socket.t()) ::
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+
+  @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
 
   defmacro __using__(_opts) do
     quote do
-      import unquote(__MODULE__), except: [render: 2]
-
+      import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
       @impl unquote(__MODULE__)
       def mount(_session, socket), do: {:ok, socket}
 
-      @impl unquote(__MODULE__)
-      def terminate(reason, state), do: {:ok, state}
-
-      defoverridable mount: 2, terminate: 2
+      defoverridable mount: 2
     end
   end
 
@@ -523,8 +523,8 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the LiveView
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
-    * `:attrs` - the optional list of DOM attributes to be added to
-      the LiveView container.
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
     * `:child_id` - the ID to uniquely identify a child LiveView when
       live rendering children of the same type.
 
@@ -622,7 +622,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp do_assign(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed || %{}, key, true)
+    new_changed = Map.put(changed, key, true)
     new_assigns = Map.put(assigns, key, val)
     %Socket{acc | assigns: new_assigns, changed: new_changed}
   end

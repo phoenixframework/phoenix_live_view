@@ -31,17 +31,17 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp dynamic_to_buffer(str, acc) when is_binary(str), do: [str | acc]
 
   def find_sessions(html) do
-    ~r/data-phx-session="(.*)">/
+    ~r/data-phx-session="([^"]+)/
     |> Regex.scan(html, capture: :all_but_first)
     |> Enum.map(fn [session] -> session end)
   end
 
   def insert_session(root_html, session, child_html) do
-    Regex.replace(
-      ~r/data-phx-session="#{session}"><\/div>/,
-      root_html,
-      "data-phx-session=\"#{session}\">#{child_html}</div>"
-    )
+    session_attr = "data-phx-session=\"#{session}\""
+    [left, right] = :binary.split(root_html, session_attr)
+    [[tag] | _] = Regex.scan(~r/<\/([^>]+)/, right, capture: :all_but_first)
+    [middle, right] = :binary.split(right, "</#{tag}>")
+    Enum.join([left, session_attr, middle, child_html, "</#{tag}>", right], "")
   end
 
   def deep_merge(target, source) do

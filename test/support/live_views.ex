@@ -28,6 +28,9 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   end
 
   def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
+    # Skip underlying redirect log.
+    Logger.disable(self())
+
     if connected?(socket) do
       {:stop, redirect(socket, to: "/thermostat_connected")}
     else
@@ -114,6 +117,9 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   end
 
   def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
+    # Skip underlying redirect log.
+    Logger.disable(self())
+
     if connected?(socket) do
       {:stop, redirect(socket, to: "/clock_connected")}
     else
