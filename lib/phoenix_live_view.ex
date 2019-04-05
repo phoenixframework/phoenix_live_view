@@ -543,9 +543,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp do_live_render(%Plug.Conn{} = conn, view, opts) do
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    case LiveView.View.static_render(endpoint, view, opts) do
+    case LiveView.View.static_render(conn, view, opts) do
       {:ok, content} ->
         content
 
@@ -556,6 +554,7 @@ defmodule Phoenix.LiveView do
         """
     end
   end
+
   defp do_live_render(%Socket{} = parent, view, opts) do
     case LiveView.View.nested_static_render(parent, view, opts) do
       {:ok, content} -> content
@@ -592,6 +591,48 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{} = socket) do
     LiveView.View.connected?(socket)
+  end
+
+  @doc """
+  Assigns a value into the socket only if it does not exist.
+
+  Useful for lazily assigning values and referencing parent assigns.
+
+  ## Referencing parent assigns
+
+  When a LiveView is mounted in a disconnected state, the Plug.Conn assigns
+  will be available for reference via `assign_new/3`, allowing assigns to
+  be shared for the initial HTTP request. On connected mount, the `assign_new/3`
+  would be invoked, and the LiveView would use its session to rebuild the
+  originally shared assign. Likewise, nested LiveView children have access
+  to their parent's assigns on mount using `assign_new`, which allows
+  assigns to be shared down the nested LiveView tree.
+
+  ## Examples
+
+      # controller
+      conn
+      |> assign(:current_user, user)
+      |> LiveView.Controller.live_render(MyLive, sesssion: %{user_id: user.id})
+
+      # LiveView mount
+      def mount(%{user_id: user_id}, socket) do
+        {:ok, assign_new(:current_user, fn -> Accounts.get_user!(user_id) end)}
+      end
+
+  """
+  def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
+    case socket do
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in private.assigned_new, {assigns, [key | keys]}
+        do_assign(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+      %{assigns: %{^key => _}} ->
+        socket
+      %{} ->
+        do_assign(socket, key, func.())
+    end
   end
 
   @doc """
