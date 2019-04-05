@@ -608,7 +608,6 @@ defmodule Phoenix.LiveView do
   to their parent's assigns on mount using `assign_new`, which allows
   assigns to be shared down the nested LiveView tree.
 
-
   ## Examples
 
       # controller
@@ -623,26 +622,16 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
-    assigns =
-      case Map.fetch(socket.private, :assigned_new) do
-        {:ok, {assigns, _keys}} -> assigns
-        :error -> socket.assigns
-      end
-
-    case Map.fetch(assigns, key) do
-      {:ok, val} -> do_assign_new(socket, key, val)
-      :error -> do_assign(socket, key, func.())
-    end
-  end
-
-  defp do_assign_new(socket, key, val) do
-    if connected?(socket) do
-      do_assign(socket, key, val)
-    else
-      new_private =
-        update_in(socket.private, [:assigned_new], fn {assigns, keys} -> {assigns, [key | keys]} end)
-
-      do_assign(%Socket{socket | private: new_private}, key, val)
+    case socket do
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in private.assigned_new, {assigns, [key | keys]}
+        do_assign(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+      %{assigns: %{^key => _}} ->
+        socket
+      %{} ->
+        do_assign(socket, key, func.())
     end
   end
 
