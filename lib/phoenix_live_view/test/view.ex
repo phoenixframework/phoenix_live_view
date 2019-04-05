@@ -2,7 +2,8 @@ defmodule Phoenix.LiveViewTest.View do
   @moduledoc false
   alias Phoenix.LiveViewTest.View
 
-  defstruct token: nil,
+  defstruct session_token: nil,
+            static_token: nil,
             module: nil,
             endpoint: nil,
             pid: :static,
@@ -10,7 +11,9 @@ defmodule Phoenix.LiveViewTest.View do
             topic: nil,
             ref: nil,
             rendered: nil,
-            children: MapSet.new()
+            children: MapSet.new(),
+            child_statics: %{},
+            dom_id: nil
 
   def build(attrs) do
     topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))

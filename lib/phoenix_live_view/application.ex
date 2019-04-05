@@ -7,7 +7,6 @@ defmodule Phoenix.LiveView.Application do
     Supervisor.start_link(
       [
         {DynamicSupervisor, strategy: :one_for_one, name: Phoenix.LiveView.DynamicSupervisor},
-        {Registry, keys: :unique, name: Phoenix.LiveView.Registry}
       ],
       strategy: :one_for_one,
       name: Phoenix.LiveView.Supervisor

@@ -11,13 +11,6 @@ defmodule Phoenix.LiveView.View do
   @rand_bytes 6
 
   @doc """
-  Strips socket of redudant assign data for rendering.
-  """
-  def strip(%Socket{} = socket) do
-    %Socket{socket | assigns: :unset}
-  end
-
-  @doc """
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{} = socket) do
@@ -65,19 +58,19 @@ defmodule Phoenix.LiveView.View do
   def connected?(%Socket{connected?: false}), do: false
 
   @doc """
-  Builds a `%Phoenix.LiveViewSocket{}`.
+  Builds a `%Phoenix.LiveView.Socket{}`.
   """
-  def build_socket(endpoint, %{} = opts) when is_atom(endpoint) do
+  def build_socket(endpoint, %{} = opts, parent_assigns) when is_atom(endpoint) do
     {id, opts} = Map.pop_lazy(opts, :id, fn -> random_id() end)
-    struct!(%Socket{id: id, endpoint: endpoint}, opts)
+    struct!(%Socket{id: id, endpoint: endpoint, private: %{assigned_new: {parent_assigns, []}}}, opts)
   end
 
   @doc """
-  Builds a nested child `%Phoenix.LiveViewSocket{}`.
+  Builds a nested child `%Phoenix.LiveView.Socket{}`.
   """
   def build_nested_socket(%Socket{endpoint: endpoint} = parent, child_id, view) do
     id = child_dom_id(parent, view, child_id)
-    build_socket(endpoint, %{id: id, parent_pid: self()})
+    build_socket(endpoint, %{id: id, parent_pid: self()}, parent.assigns)
   end
 
   @doc """
@@ -94,7 +87,7 @@ defmodule Phoenix.LiveView.View do
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
   def render(%Socket{} = socket, view) do
-    assigns = Map.put(socket.assigns, :socket, strip(socket))
+    assigns = Map.put(socket.assigns, :socket, socket)
 
     case view.render(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
@@ -121,17 +114,29 @@ defmodule Phoenix.LiveView.View do
 
   ## Examples
 
-      iex> verify_session(AppWeb.Endpoint, encoded_token_string)
+      iex> verify_session(AppWeb.Endpoint, encoded_token, static_token)
       {:ok, %{} = decoeded_session}
 
-      iex> verify_session(AppWeb.Endpoint, "bad token")
+      iex> verify_session(AppWeb.Endpoint, "bad token", "bac static")
       {:error, :invalid}
 
-      iex> verify_session(AppWeb.Endpoint, "expired")
+      iex> verify_session(AppWeb.Endpoint, "expired", "expired static")
       {:error, :expired}
   """
-  def verify_session(endpoint_mod, token) do
-    Phoenix.Token.verify(endpoint_mod, salt(endpoint_mod), token, max_age: @max_session_age)
+  def verify_session(endpoint, session_token, static_token) do
+    with {:ok, session} <- verify_token(endpoint, session_token),
+         {:ok, static} <- verify_static_token(endpoint, static_token) do
+
+      {:ok, Map.merge(session, static)}
+    end
+  end
+  defp verify_static_token(_endpoint, nil), do: {:ok, %{assigned_new: []}}
+  defp verify_static_token(endpoint, token), do: verify_token(endpoint, token)
+  defp verify_token(endpoint, token) do
+    case Phoenix.Token.verify(endpoint, salt(endpoint), token, max_age: @max_session_age) do
+      {:ok, term} -> {:ok, term}
+      {:error, _} = error -> error
+    end
   end
 
   @doc """
@@ -157,7 +162,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders a live view without spawning a LiveView server.
 
-  * `endpoint` - the endpoint module
+  * `conn` - the Plug.Conn struct form the HTTP request
   * `view` - the LiveView module
 
   ## Options
@@ -166,15 +171,18 @@ defmodule Phoenix.LiveView.View do
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
-  def static_render(endpoint, view, opts) do
+  def static_render(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.fetch!(opts, :session)
     {tag, extended_attrs} = opts[:container] || {:div, []}
 
-    case static_mount(endpoint, view, session) do
-      {:ok, socket, signed_session} ->
+    case static_mount(conn, view, session) do
+      {:ok, socket, session_token} ->
         attrs = [
           {:id, dom_id(socket)},
-          {:data, phx_view: inspect(view), phx_session: signed_session} | extended_attrs
+          {:data,
+            phx_view: inspect(view),
+            phx_session: session_token,
+          } | extended_attrs
         ]
 
         html = ~E"""
@@ -228,18 +236,19 @@ defmodule Phoenix.LiveView.View do
   defp disconnected_nested_static_render(parent, view, session, container, child_id) do
     {tag, extended_attrs} = container
 
-    case static_mount(parent, view, session, child_id) do
-      {:ok, socket, signed_session} ->
+    case nested_static_mount(parent, view, session, child_id) do
+      {:ok, socket, static_token} ->
         attrs = [
-          {:id, dom_id(socket)},
+          {:id, socket.id},
           {:data,
-            phx_parent_id: dom_id(parent),
             phx_view: inspect(view),
-            phx_session: signed_session
+            phx_session: "",
+            phx_static: static_token,
+            phx_parent_id: parent.id
           } | extended_attrs
         ]
 
-        html = ~E"""
+       html = ~E"""
         <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
           <%= render(socket, view) %>
         <% end %>
@@ -253,14 +262,17 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp connected_nested_static_render(parent, view, session, container, child_id) do
-    {child_id, signed_session} = sign_child_session(parent, view, session, child_id)
     {tag, extended_attrs} = container
+    socket = build_nested_socket(parent, child_id, view)
+    session_token = sign_child_session(socket, view, session)
+
     attrs = [
-      {:id, child_id},
+      {:id, socket.id},
       {:data,
         phx_parent_id: dom_id(parent),
         phx_view: inspect(view),
-        phx_session: signed_session
+        phx_session: session_token,
+        phx_static: "",
       } | extended_attrs
     ]
 
@@ -272,25 +284,14 @@ defmodule Phoenix.LiveView.View do
     {:ok, html}
   end
 
-  defp static_mount(%Socket{} = parent, view, session, child_id) do
-    parent
-    |> build_nested_socket(child_id, view)
-    |> do_static_mount(view, session)
-  end
+  defp nested_static_mount(%Socket{} = parent, view, session, child_id) do
+    socket = build_nested_socket(parent, child_id, view)
 
-  defp static_mount(endpoint, view, session) do
-    endpoint
-    |> build_socket(%{})
-    |> do_static_mount(view, session)
-  end
-
-  defp do_static_mount(socket, view, session) do
     session
     |> view.mount(socket)
     |> case do
       {:ok, %Socket{} = new_socket} ->
-        signed_session = sign_session(socket, view, session)
-        {:ok, new_socket, signed_session}
+        {:ok, new_socket, sign_static_token(new_socket)}
 
       {:stop, socket} ->
         {:stop, socket.stopped}
@@ -300,27 +301,52 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp sign_session(%Socket{} = socket, view, session) do
+  defp static_mount(%Plug.Conn{} = conn, view, session) do
+    conn
+    |> Phoenix.Controller.endpoint_module()
+    |> build_socket(%{}, conn.assigns)
+    |> do_static_mount(view, session)
+  end
+
+  defp do_static_mount(socket, view, session) do
+    session
+    |> view.mount(socket)
+    |> case do
+      {:ok, %Socket{} = new_socket} ->
+        session_token = sign_root_session(socket, view, session)
+        {:ok, new_socket, session_token}
+
+      {:stop, socket} ->
+        {:stop, socket.stopped}
+
+      other ->
+        raise_invalid_mount(other, view)
+    end
+  end
+
+  defp sign_root_session(%Socket{id: dom_id} = socket, view, session) do
     sign_token(socket.endpoint, salt(socket), %{
-      id: dom_id(socket),
-      parent_pid: nil,
+      id: dom_id,
       view: view,
-      session: session
+      parent_pid: nil,
+      session: session,
     })
   end
 
-  defp sign_child_session(%Socket{} = parent, child_view, session, child_id) do
-    id = child_dom_id(parent, child_view, child_id)
+  defp sign_child_session(%Socket{id: dom_id} = socket, view, session) do
+    sign_token(socket.endpoint, salt(socket), %{
+      id: dom_id,
+      view: view,
+      parent_pid: self(),
+      session: session,
+    })
+  end
 
-    token =
-      sign_token(parent.endpoint, salt(parent), %{
-        id: id,
-        parent_pid: self(),
-        view: child_view,
-        session: session
-      })
-
-    {id, token}
+  defp sign_static_token(%Socket{id: dom_id} = socket) do
+    sign_token(socket.endpoint, salt(socket), %{
+      id: dom_id,
+      assigned_new: assigned_new_keys(socket),
+    })
   end
 
   defp salt(%Socket{endpoint: endpoint}) do
@@ -341,5 +367,10 @@ defmodule Phoenix.LiveView.View do
 
   defp sign_token(endpoint_mod, salt, data) do
     Phoenix.Token.sign(endpoint_mod, salt, data)
+  end
+
+  defp assigned_new_keys(socket) do
+    {_, keys} = socket.private.assigned_new
+    keys
   end
 end
