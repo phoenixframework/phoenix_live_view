@@ -107,7 +107,7 @@ Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
 // assets/js/app.js
-import "phoenix"; // if you dont already require it somewhere else
+import "phoenix"; // if you dont already require it somewhere else. Also import order matters and should be imported before phoenix_live_view
 import LiveSocket from "phoenix_live_view"
 
 let liveSocket = new LiveSocket("/live")
