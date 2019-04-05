@@ -30,18 +30,29 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp dynamic_to_buffer(%{} = rendered, acc), do: to_output_buffer(rendered, []) ++ acc
   defp dynamic_to_buffer(str, acc) when is_binary(str), do: [str | acc]
 
-  def find_sessions(html) do
-    ~r/data-phx-session="(.*)">/
+  def find_static_views(html) do
+    ~r/<[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)/
     |> Regex.scan(html, capture: :all_but_first)
-    |> Enum.map(fn [session] -> session end)
+    |> Enum.into(%{}, fn
+      [static, id] -> {id, static}
+    end)
   end
 
-  def insert_session(root_html, session, child_html) do
-    Regex.replace(
-      ~r/data-phx-session="#{session}"><\/div>/,
-      root_html,
-      "data-phx-session=\"#{session}\">#{child_html}</div>"
-    )
+  def find_sessions(html) do
+    ~r/<[^>]+data-phx-session="([^"]+)[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)|<[^>]+data-phx-session="([^"]+)[^>]+id="([^"]+)/
+    |> Regex.scan(html, capture: :all_but_first)
+    |> Enum.map(fn
+      ["", "", "", session, id] -> {session, nil, id}
+      [session, static, id] -> {session, static, id}
+    end)
+  end
+
+  def insert_attr(root_html, attr, value, child_html) do
+    attr_value = "#{attr}=\"#{value}\""
+    [left, right] = :binary.split(root_html, attr_value)
+    [[tag] | _] = Regex.scan(~r/<\/([^>]+)/, right, capture: :all_but_first)
+    [middle, right] = :binary.split(right, "</#{tag}>")
+    Enum.join([left, attr_value, middle, child_html, "</#{tag}>", right], "")
   end
 
   def deep_merge(target, source) do

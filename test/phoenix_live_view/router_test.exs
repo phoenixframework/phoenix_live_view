@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.RouterTest do
     scope "/", Phoenix.LiveViewTest do
       live "/thermo_defaults/:id", DashboardLive
       live "/thermo_session/:id", DashboardLive, session: [:path_params, :user_id]
-      live "/thermo_attrs/:id", DashboardLive, attrs: [style: "flex-grow"]
+      live "/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
     end
   end
 
@@ -37,8 +37,13 @@ defmodule Phoenix.LiveView.RouterTest do
     assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}, user_id: "chris"})
   end
 
-  test "routing with attrs", %{conn: conn} do
-    conn = get(conn, "/thermo_attrs/123")
-    assert conn.resp_body =~ ~r/style="flex-grow"[^>]*data-phx-view="Phoenix.LiveViewTest.DashboardLive/
+  test "routing with container", %{conn: conn} do
+    conn = get(conn, "/thermo_container/123")
+    assert conn.resp_body =~ ~r/<span[^>]*data-phx-view="Phoenix.LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
+  end
+
+  test "default layout is inflected", %{conn: conn} do
+    conn = get(conn, "/thermo_session/123")
+    assert conn.resp_body =~ "LAYOUT"
   end
 end

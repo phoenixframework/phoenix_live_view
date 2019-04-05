@@ -36,9 +36,7 @@ defmodule Phoenix.LiveView.Controller do
 
   """
   def live_render(%Plug.Conn{} = conn, view, opts) do
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    case LiveView.View.static_render(endpoint, view, opts) do
+    case LiveView.View.static_render(conn, view, opts) do
       {:ok, content} ->
         conn
         |> Plug.Conn.assign(:live_view_module, view)
@@ -62,7 +60,9 @@ defmodule Phoenix.LiveView.Controller do
   def call(%Plug.Conn{private: %{phoenix_live_view: phx_opts}} = conn, view) do
     session_opts = phx_opts[:session] || [:path_params]
     opts = Keyword.merge(phx_opts, session: session(conn, session_opts))
-    live_render(conn, view, opts)
+    conn
+    |> put_new_layout_from_router()
+    |> live_render(view, opts)
   end
 
   defp session(conn, session_opts) do
@@ -70,6 +70,14 @@ defmodule Phoenix.LiveView.Controller do
       :path_params, acc -> Map.put(acc, :path_params, conn.path_params)
       key, acc -> Map.put(acc, key, Plug.Conn.get_session(conn, key))
     end)
+  end
+
+  defp put_new_layout_from_router(conn) do
+    if layout_view = conn.private[:phoenix_live_view_default_layout] do
+      Phoenix.Controller.put_new_layout(conn, {layout_view, :app})
+    else
+      conn
+    end
   end
 
   @doc false

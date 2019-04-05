@@ -6,6 +6,12 @@ defmodule Phoenix.LiveView.Router do
   @doc """
   Defines a LiveView route.
 
+  ## Layout
+
+  When a layout isn't explicitly set, a default layout is inferred similar to
+  controller actions. For example, the layout for the router `MyAppWeb.Router`
+  would be inferred as `MyAppWeb.LayoutView` and would use the `:app` template.
+
   ## Options
 
     * `:session` - the optional list of keys to pull out of the Plug
@@ -17,8 +23,8 @@ defmodule Phoenix.LiveView.Router do
 
           [:path_params, :user_id, :remember_me]
 
-    * `:attrs` - the optional list of DOM attributes to be added to
-      the LiveView container.
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
     * `:as` - optionally configures the named helper. Defaults to `:live`.
 
   ## Examples
@@ -45,10 +51,24 @@ defmodule Phoenix.LiveView.Router do
         unquote(path),
         Phoenix.LiveView.Controller,
         Phoenix.Router.scoped_alias(__MODULE__, unquote(live_view)),
-        private: %{phoenix_live_view: unquote(opts)},
+        private: %{
+          phoenix_live_view: unquote(opts),
+          phoenix_live_view_default_layout: Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
+        },
         as: unquote(opts)[:as] || :live,
         alias: false
       )
     end
+  end
+
+  @doc false
+  def __layout_from_router_module__(module) do
+    module
+    |> Atom.to_string()
+    |> String.split(".")
+    |> Enum.drop(-1)
+    |> Enum.take(2)
+    |> Kernel.++(["LayoutView"])
+    |> Module.concat()
   end
 end
