@@ -1,4 +1,5 @@
 import LiveSocket, { View } from '../js/phoenix_live_view';
+import {Socket} from "phoenix"
 
 function liveViewDOM() {
   const div = document.createElement('div')
@@ -22,6 +23,10 @@ function liveViewDOM() {
 }
 
 describe('View + DOM', function() {
+  beforeEach(() => {
+    global.Phoenix = { Socket }
+  });
+
   test('update', async () => {
     let liveSocket = new LiveSocket('/live');
     let el = liveViewDOM();
@@ -42,6 +47,7 @@ describe('View + DOM', function() {
 
 describe('View', function() {
   beforeEach(() => {
+    global.Phoenix = { Socket }
     global.document.body.innerHTML = liveViewDOM().outerHTML;
   });
 
