@@ -7,7 +7,7 @@ import { sizeSnapshot } from "rollup-plugin-size-snapshot";
 
 
 export default {
-  // external: [] // TODO make phoenix.js a global and not bundle in this
+  external: ['phoenix'],
   input: './js/phoenix_live_view.js',
   output: {
     file: path.resolve(__dirname, '../priv/static/phoenix_live_view.js'),

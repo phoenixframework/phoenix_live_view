@@ -115,7 +115,6 @@ connection and error class changes. This behavior may be disabled by overriding
 */
 
 import morphdom from "morphdom"
-import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -236,6 +235,7 @@ export let Rendered = {
 export class LiveSocket {
   constructor(url, opts = {}){
     this.unloaded = false
+    const Socket = window.PhxSocket
     this.socket = new Socket(url, opts)
     this.socket.onOpen(() => {
       if(this.isUnloaded()){

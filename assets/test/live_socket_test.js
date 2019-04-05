@@ -26,6 +26,7 @@ let prepareLiveViewDOM = (document) => {
 
 describe('LiveSocket', () => {
   beforeEach(() => {
+    global.PhxSocket = Socket
     prepareLiveViewDOM(global.document)
   })
 

@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "morphdom": "2.5.0",
-    "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",
     "@babel/preset-env": "^7.4.1",
     "jest": "^24.5.0",
+    "phoenix": "file:../deps/phoenix",
     "rollup": "^1.6.0",
     "rollup-plugin-babel": "^4.3.2",
     "rollup-plugin-commonjs": "^9.2.1",
