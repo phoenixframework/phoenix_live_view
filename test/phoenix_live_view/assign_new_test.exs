@@ -2,7 +2,10 @@ defmodule Phoenix.LiveView.AssignNewTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView, only: [assign: 3, assign_new: 3]
+
   alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveView.View
 
   defmodule ChildLive do
     use Phoenix.LiveView
@@ -50,7 +53,34 @@ defmodule Phoenix.LiveView.AssignNewTest do
     end
   end
 
-  describe "from root" do
+  test "uses socket assigns if no parent assigns are present" do
+    socket =
+      Endpoint
+      |> View.build_socket(%{})
+      |> assign(:existing, "existing")
+      |> assign_new(:existing, fn -> "new-existing" end)
+      |> assign_new(:notexisting, fn -> "new-notexisting" end)
+
+    assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
+  end
+
+  test "uses parent assigns when present and falls back to socket assigns" do
+    socket =
+      Endpoint
+      |> View.build_socket(%{assigned_new: {%{existing: "existing-parent"}, []}})
+      |> assign(:existing2, "existing2")
+      |> assign_new(:existing, fn -> "new-existing" end)
+      |> assign_new(:existing2, fn -> "new-existing2" end)
+      |> assign_new(:notexisting, fn -> "new-notexisting" end)
+
+    assert socket.assigns == %{
+             existing: "existing-parent",
+             existing2: "existing2",
+             notexisting: "new-notexisting"
+           }
+  end
+
+  describe "mounted from root" do
     test "uses conn.assigns on static render then fetches on connected mount" do
       user = %{name: "user-from-conn", id: 123}
 
@@ -69,7 +99,7 @@ defmodule Phoenix.LiveView.AssignNewTest do
     end
   end
 
-  describe "dynamically rendered child" do
+  describe "mounted from dynamically rendered child" do
     test "invokes own assign_new" do
       user = %{name: "user-from-conn", id: 123}
 
