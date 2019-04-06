@@ -11,6 +11,17 @@ defmodule Phoenix.LiveView.View do
   @rand_bytes 6
 
   @doc """
+  Strips socket of redudant assign data for rendering.
+  """
+  def strip_for_render(%Socket{} = socket) do
+    if connected?(socket) do
+      %Socket{socket | assigns: %{}}
+    else
+      socket
+    end
+  end
+
+  @doc """
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{} = socket) do
@@ -60,9 +71,10 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Builds a `%Phoenix.LiveView.Socket{}`.
   """
-  def build_socket(endpoint, %{} = opts, parent_assigns) when is_atom(endpoint) do
+  def build_socket(endpoint, %{} = opts) when is_atom(endpoint) do
     {id, opts} = Map.pop_lazy(opts, :id, fn -> random_id() end)
-    struct!(%Socket{id: id, endpoint: endpoint, private: %{assigned_new: {parent_assigns, []}}}, opts)
+    {{%{}, _} = assigned_new, opts} = Map.pop(opts, :assigned_new, {%{}, []})
+    struct!(%Socket{id: id, endpoint: endpoint, private: %{assigned_new: assigned_new}}, opts)
   end
 
   @doc """
@@ -70,7 +82,14 @@ defmodule Phoenix.LiveView.View do
   """
   def build_nested_socket(%Socket{endpoint: endpoint} = parent, child_id, view) do
     id = child_dom_id(parent, view, child_id)
-    build_socket(endpoint, %{id: id, parent_pid: self()}, parent.assigns)
+    build_socket(endpoint, %{id: id, parent_pid: self(), assigned_new: {parent.assigns, []}})
+  end
+
+  @doc """
+  Prunes the assigned_new information from the socket.
+  """
+  def prune_assigned_new(%Socket{private: private} = socket) do
+    %Socket{socket | private: Map.delete(private, :assigned_new)}
   end
 
   @doc """
@@ -87,7 +106,7 @@ defmodule Phoenix.LiveView.View do
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
   def render(%Socket{} = socket, view) do
-    assigns = Map.put(socket.assigns, :socket, socket)
+    assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
 
     case view.render(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
@@ -304,7 +323,7 @@ defmodule Phoenix.LiveView.View do
   defp static_mount(%Plug.Conn{} = conn, view, session) do
     conn
     |> Phoenix.Controller.endpoint_module()
-    |> build_socket(%{}, conn.assigns)
+    |> build_socket(%{assigned_new: {conn.assigns, []}})
     |> do_static_mount(view, session)
   end
 
