@@ -11,6 +11,17 @@ defmodule Phoenix.LiveView.View do
   @rand_bytes 6
 
   @doc """
+  Strips socket of redudant assign data for rendering.
+  """
+  def strip_for_render(%Socket{} = socket) do
+    if connected?(socket) do
+      %Socket{socket | assigns: %{}}
+    else
+      socket
+    end
+  end
+
+  @doc """
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{} = socket) do
@@ -95,7 +106,7 @@ defmodule Phoenix.LiveView.View do
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
   def render(%Socket{} = socket, view) do
-    assigns = Map.put(socket.assigns, :socket, socket)
+    assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
 
     case view.render(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
