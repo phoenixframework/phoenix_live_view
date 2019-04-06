@@ -12,7 +12,7 @@ defmodule Phoenix.LiveViewTest do
 
   The life-cycle of a live view as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
-  socket state. Once the browser receives the HTML, it connects the to
+  socket state. Once the browser receives the HTML, it connects to the
   server and a new LiveView process is started, remounted in a connected
   socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
