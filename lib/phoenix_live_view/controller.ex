@@ -36,9 +36,7 @@ defmodule Phoenix.LiveView.Controller do
 
   """
   def live_render(%Plug.Conn{} = conn, view, opts) do
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    case LiveView.View.static_render(endpoint, view, opts) do
+    case LiveView.View.static_render(conn, view, opts) do
       {:ok, content} ->
         conn
         |> Plug.Conn.assign(:live_view_module, view)

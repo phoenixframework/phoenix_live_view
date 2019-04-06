@@ -12,7 +12,7 @@ defmodule Phoenix.LiveViewTest do
 
   The life-cycle of a live view as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
-  socket state. Once the browser receives the HTML, it connects the to
+  socket state. Once the browser receives the HTML, it connects to the
   server and a new LiveView process is started, remounted in a connected
   socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
@@ -127,6 +127,11 @@ defmodule Phoenix.LiveViewTest do
 
   For mount failures, an `{:error, reason}` returned.
 
+  ## Options
+
+    * `:session` - The optional map of session data for the LiveView
+    * `:assigns` - The optional map of `Plug.Conn` assigns
+
   ## Examples
 
       {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
@@ -141,9 +146,13 @@ defmodule Phoenix.LiveViewTest do
   """
   def mount_disconnected(endpoint, view_module, opts) do
     live_opts = Keyword.put_new(opts, :session, %{})
+    assigns = opts[:assigns] || %{}
 
     conn =
-      Phoenix.ConnTest.build_conn()
+      assigns
+      |> Enum.reduce(Phoenix.ConnTest.build_conn(), fn {key, val}, acc ->
+        Plug.Conn.assign(acc, key, val)
+      end)
       |> Plug.Conn.put_private(:phoenix_endpoint, endpoint)
       |> Phoenix.LiveView.Controller.live_render(view_module, live_opts)
 
@@ -154,9 +163,18 @@ defmodule Phoenix.LiveViewTest do
           |> Phoenix.ConnTest.html_response(200)
           |> IO.iodata_to_binary()
 
+        child_statics = DOM.find_static_views(html)
+
         case DOM.find_sessions(html) do
-          [token | _] ->
-            {:ok, View.build(token: token, module: view_module, endpoint: endpoint), html}
+          [{session_token, nil, id} | _] ->
+            {:ok,
+             View.build(
+               dom_id: id,
+               session_token: session_token,
+               module: view_module,
+               endpoint: endpoint,
+               child_statics: child_statics
+             ), html}
 
           [] ->
             {:error, :nosession}
@@ -175,6 +193,11 @@ defmodule Phoenix.LiveViewTest do
   to perform the `mount_disconnected/2` and connected mount in a single
   step.
 
+  ## Options
+
+    * `:session` - The optional map of session data for the LiveView
+    * `:assigns` - The optional map of `Plug.Conn` assigns
+
   ## Examples
 
       {:ok, view, html} = mount(MyEndpoint, MyView, session: %{val: 3})
@@ -184,11 +207,13 @@ defmodule Phoenix.LiveViewTest do
              mount(MyEndpoint, MyView, session: %{})
   """
   def mount(%View{} = view), do: mount(view, [])
+
   def mount(endpoint, view_module) when is_atom(endpoint) do
     mount(endpoint, view_module, [])
   end
+
   def mount(%View{ref: ref, topic: topic} = view, opts) when is_list(opts) do
-    if View.connected?(view), do: raise ArgumentError, "view is already connected"
+    if View.connected?(view), do: raise(ArgumentError, "view is already connected")
     timeout = opts[:timeout] || 5000
 
     case ClientProxy.start_link(caller: {ref, self()}, view: view, timeout: timeout) do
@@ -199,10 +224,10 @@ defmodule Phoenix.LiveViewTest do
               {^ref, {:redirect, _topic, to}} ->
                 ensure_down!(view_pid)
                 {:error, %{redirect: to}}
-
-            after 0 ->
-              view = %View{view | pid: view_pid, proxy: proxy_pid, topic: topic}
-              {:ok, view, html}
+            after
+              0 ->
+                view = %View{view | pid: view_pid, proxy: proxy_pid, topic: topic}
+                {:ok, view, html}
             end
         end
 
@@ -212,7 +237,9 @@ defmodule Phoenix.LiveViewTest do
         end
     end
   end
-  def mount(endpoint, view_module, opts) when is_atom(endpoint) and is_atom(view_module) and is_list(opts) do
+
+  def mount(endpoint, view_module, opts)
+      when is_atom(endpoint) and is_atom(view_module) and is_list(opts) do
     with {:ok, view, _html} <- mount_disconnected(endpoint, view_module, opts) do
       mount(view, opts)
     end
@@ -395,7 +422,8 @@ defmodule Phoenix.LiveViewTest do
 
     receive do
       {:DOWN, ^ref, :process, ^pid, reason} -> {:ok, reason}
-    after timeout -> {:error, :timeout}
+    after
+      timeout -> {:error, :timeout}
     end
   end
 
