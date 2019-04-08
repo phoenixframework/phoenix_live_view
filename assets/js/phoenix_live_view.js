@@ -262,6 +262,8 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.prevInput = null
+    this.prevValue = null
     this.silenced = false
     this.bindTopLevelEvents()
   }
@@ -437,8 +439,11 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        if(type === "input" && ["checkbox", "radio", "select-one", "select-multiple"].includes(input.type)){ return }
+        let key = input.type === "checkbox" ? "checked" : "value"
+        if(this.prevInput === input && this.prevValue === input[key]){ return }
 
+        this.prevInput = input
+        this.prevValue = input[key]
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
         this.owner(input, view => {
