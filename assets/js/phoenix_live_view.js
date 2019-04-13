@@ -184,8 +184,8 @@ let recursiveMerge = (target, source) => {
 
 let toArray = function(nodeList) {
   let array = []
-  for (let i = 0; i < nodeList.length - 1; i++) {
-    array.push(nodeList[i])
+  for (let i = 0, len = array.length = nodeList.length; i < len; i++) {
+    array[i] = nodeList[i];
   }
 
   return array
