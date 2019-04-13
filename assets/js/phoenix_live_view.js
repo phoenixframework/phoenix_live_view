@@ -781,7 +781,8 @@ export class View {
 
   displayError(){
     this.showLoader()
-    this.el.classList.add(`${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`)
+    this.el.classList.add(PHX_DISCONNECTED_CLASS)
+    this.el.classList.add(PHX_ERROR_CLASS)
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
