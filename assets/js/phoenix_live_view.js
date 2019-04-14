@@ -690,6 +690,7 @@ export class View {
     clearTimeout(this.loaderTimer)
     this.loader.style.display = "none"
     this.el.classList.remove(PHX_DISCONNECTED_CLASS)
+    this.el.classList.remove(PHX_ERROR_CLASS)
   }
 
   showLoader(){
