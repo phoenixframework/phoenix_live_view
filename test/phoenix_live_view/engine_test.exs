@@ -402,6 +402,22 @@ defmodule Phoenix.LiveView.EngineTest do
              } = Phoenix.View.render(View, "live_with_live.html", @assigns)
     end
 
+    test "renders live engine with nested live view with change tracking" do
+      rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
+      {_, prints} = Phoenix.LiveView.Diff.render(rendered, nil)
+      assigns = Map.put(@assigns, :socket, %{fingerprints: prints, changed: %{}})
+
+      assert %Rendered{
+               static: ["pre: ", "\n", "post: ", ""],
+               dynamic: [
+                 nil,
+                 %Rendered{dynamic: [nil], static: ["live: ", ""]},
+                 nil
+               ]
+             } = Phoenix.View.render(View, "live_with_live.html", assigns)
+
+    end
+
     test "renders live engine with nested dead view" do
       assert %Rendered{
                static: ["pre: ", "\n", "post: ", ""],
@@ -425,7 +441,7 @@ defmodule Phoenix.LiveView.EngineTest do
   end
 
   defp changed(string, assigns, fingerprint, changed) do
-    socket = %{root_fingerprint: fingerprint, changed: changed}
+    socket = %{fingerprints: {fingerprint, %{}}, changed: changed}
     %{dynamic: dynamic} = eval(string, Map.put(assigns, :socket, socket))
     dynamic
   end
