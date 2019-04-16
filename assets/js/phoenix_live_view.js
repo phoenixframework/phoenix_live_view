@@ -102,7 +102,7 @@ container:
   - `"phx-connected"` - applied when the view has connected to the server
   - `"phx-disconnected"` - applied when the view is not connected to the server
   - `"phx-error"` - applied when an error occurs on the server. Note, this
-    class will be applied in conjunction with `"phx-disconnected"` connection
+    class will be applied in conjunction with `"phx-disconnected"` if connection
     to the server is lost.
 
 When a form bound with `phx-submit` is submitted, the `phx-loading` class
@@ -682,9 +682,18 @@ export class View {
     this.loader.style.display = "none"
   }
 
+  setContainerClasses(...classes){
+    this.el.classList.remove(
+      PHX_CONNECTED_CLASS,
+      PHX_DISCONNECTED_CLASS,
+      PHX_ERROR_CLASS
+    )
+    this.el.classList.add(...classes)
+  }
+
   showLoader(){
     clearTimeout(this.loaderTimer)
-    this.el.classList = PHX_DISCONNECTED_CLASS
+    this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     this.loader.style.display = "block"
     let middle = Math.floor(this.el.clientHeight / LOADER_ZOOM)
     this.loader.style.top = `-${middle}px`
@@ -698,7 +707,7 @@ export class View {
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
-    this.el.classList = PHX_CONNECTED_CLASS
+    this.setContainerClasses(PHX_CONNECTED_CLASS)
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.joinNewChildren()
   }
@@ -771,7 +780,7 @@ export class View {
 
   displayError(){
     this.showLoader()
-    this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
+    this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
