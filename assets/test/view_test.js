@@ -179,7 +179,7 @@ describe('View + DOM', function() {
 
     view.submitForm(form, { target: form })
     expect(form.dataset.phxHasSubmitted).toBeTruthy()
-    expect(form.classList[0]).toBe('phx-loading')
+    expect(form.classList.contains('phx-loading').toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
   })
