@@ -417,6 +417,9 @@ defmodule Phoenix.LiveView.Engine do
   defp bins_and_vars(acc),
     do: bins_and_vars(acc, [], [])
 
+  defp bins_and_vars([bin1, bin2 | acc], bins, vars) when is_binary(bin1) and is_binary(bin2),
+    do: bins_and_vars([bin1 <> bin2 | acc], bins, vars)
+
   defp bins_and_vars([bin, var | acc], bins, vars) when is_binary(bin) and is_tuple(var),
     do: bins_and_vars(acc, [bin | bins], [var | vars])
 

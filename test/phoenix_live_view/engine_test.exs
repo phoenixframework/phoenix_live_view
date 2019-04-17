@@ -60,6 +60,24 @@ defmodule Phoenix.LiveView.EngineTest do
       assert render(template, %{foo: "<hello>"}) == "\n&lt;hello&gt;\n"
     end
 
+    test "supports mixed non-output expressions" do
+      template = """
+      prea
+      <% @foo %>
+      posta
+      <%= @foo %>
+      preb
+      <% @foo %>
+      middleb
+      <% @foo %>
+      postb
+      """
+
+      assert render(template, %{foo: "<hello>"}) ==
+               "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
+    end
+
+
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
                    ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
