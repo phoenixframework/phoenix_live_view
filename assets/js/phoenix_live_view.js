@@ -689,13 +689,11 @@ export class View {
   hideLoader(){
     clearTimeout(this.loaderTimer)
     this.loader.style.display = "none"
-    this.el.classList.remove(PHX_DISCONNECTED_CLASS)
-    this.el.classList.remove(PHX_ERROR_CLASS)
   }
 
   showLoader(){
     clearTimeout(this.loaderTimer)
-    this.el.classList.add(PHX_DISCONNECTED_CLASS)
+    this.el.classList = PHX_DISCONNECTED_CLASS
     this.loader.style.display = "block"
     let middle = Math.floor(this.el.clientHeight / LOADER_ZOOM)
     this.loader.style.top = `-${middle}px`
@@ -709,7 +707,7 @@ export class View {
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
-    this.el.classList.add(PHX_CONNECTED_CLASS)
+    this.el.classList = PHX_CONNECTED_CLASS
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.joinNewChildren()
   }
@@ -782,8 +780,7 @@ export class View {
 
   displayError(){
     this.showLoader()
-    this.el.classList.add(PHX_DISCONNECTED_CLASS)
-    this.el.classList.add(PHX_ERROR_CLASS)
+    this.el.classList = `${PHX_DISCONNECTED_CLASS} ${PHX_ERROR_CLASS}`
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
