@@ -112,6 +112,14 @@ In addition to applied classes, an empty `"phx-loader"` exists adjacent
 to every LiveView, and its display status is toggled automatically based on
 connection and error class changes. This behavior may be disabled by overriding
 `.phx-loader` in your css to `display: none !important`.
+
+
+## Interop with client controlled DOM
+
+A container can be marked with `phx-ignore`, allowing the DOM patch
+operations to avoid updating or removing portions of the LiveView. This
+is useful for client-side interop with existing libraries that do their
+own DOM operations.
 */
 
 import morphdom from "morphdom"
@@ -550,6 +558,8 @@ let DOM = {
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
     let selectionEnd = null
+    let phxIgnore = view.liveSocket.binding("ignore")
+
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
       selectionEnd = focused.selectionEnd
@@ -570,6 +580,10 @@ let DOM = {
         }
       },
       onBeforeNodeDiscarded: function(el){
+        if((el.getAttribute && el.getAttribute(phxIgnore)) ||
+           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)){
+          return false
+        }
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewById(el.id)
