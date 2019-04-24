@@ -580,7 +580,7 @@ let DOM = {
         }
       },
       onBeforeNodeDiscarded: function(el){
-        if((el.getAttribute && el.getAttribute(phxIgnore)) ||
+        if((el.getAttribute && el.getAttribute(phxIgnore) != null) ||
            (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)){
           return false
         }
