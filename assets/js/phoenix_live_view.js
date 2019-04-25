@@ -184,7 +184,7 @@ let recursiveMerge = (target, source) => {
     let val = source[key]
     let targetVal = target[key]
     if(isObject(val) && targetVal){
-      if(targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
+      if(isObject(targetVal) && targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
       recursiveMerge(targetVal, val)
     } else {
       target[key] = val
