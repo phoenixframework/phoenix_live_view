@@ -182,8 +182,10 @@ let serializeForm = (form) => {
 let recursiveMerge = (target, source) => {
   for(let key in source){
     let val = source[key]
-    if(isObject(val) && target[key]){
-      recursiveMerge(target[key], val)
+    let targetVal = target[key]
+    if(isObject(val) && targetVal){
+      if(targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
+      recursiveMerge(targetVal, val)
     } else {
       target[key] = val
     }
