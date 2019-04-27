@@ -39,6 +39,14 @@ config :my_app, MyAppWeb.Endpoint,
    ]
 ```
 
+In order to write LiveView templates in their own `.leex` template files, you'll need to register the LiveLiew template engine. This step is optional, but if you don't do it, you'll have to write all LiveView templates using the `~L` sigil.
+
+```elixir
+# config/config.exs
+config :phoenix,
+  template_engines: [leex: Phoenix.LiveView.Engine]
+```
+
 Next, add the LiveView flash plug to your browser pipeline, after `:fetch_flash`:
 
 ```elixir
