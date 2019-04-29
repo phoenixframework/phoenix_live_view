@@ -112,6 +112,14 @@ In addition to applied classes, an empty `"phx-loader"` exists adjacent
 to every LiveView, and its display status is toggled automatically based on
 connection and error class changes. This behavior may be disabled by overriding
 `.phx-loader` in your css to `display: none !important`.
+
+
+## Interop with client controlled DOM
+
+A container can be marked with `phx-ignore`, allowing the DOM patch
+operations to avoid updating or removing portions of the LiveView. This
+is useful for client-side interop with existing libraries that do their
+own DOM operations.
 */
 
 import morphdom from "morphdom"
@@ -174,8 +182,10 @@ let serializeForm = (form) => {
 let recursiveMerge = (target, source) => {
   for(let key in source){
     let val = source[key]
-    if(isObject(val) && target[key]){
-      recursiveMerge(target[key], val)
+    let targetVal = target[key]
+    if(isObject(val) && targetVal){
+      if(isObject(targetVal) && targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
+      recursiveMerge(targetVal, val)
     } else {
       target[key] = val
     }
@@ -262,6 +272,8 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
+    this.prevInput = null
+    this.prevValue = null
     this.silenced = false
     this.bindTopLevelEvents()
   }
@@ -437,8 +449,11 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        if(type === "input" && ["checkbox", "radio", "select-one", "select-multiple"].includes(input.type)){ return }
+        let key = input.type === "checkbox" ? "checked" : "value"
+        if(this.prevInput === input && this.prevValue === input[key]){ return }
 
+        this.prevInput = input
+        this.prevValue = input[key]
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
         this.owner(input, view => {
@@ -545,6 +560,8 @@ let DOM = {
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
     let selectionEnd = null
+    let phxIgnore = view.liveSocket.binding("ignore")
+
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
       selectionEnd = focused.selectionEnd
@@ -565,6 +582,10 @@ let DOM = {
         }
       },
       onBeforeNodeDiscarded: function(el){
+        if((el.getAttribute && el.getAttribute(phxIgnore) != null) ||
+           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)){
+          return false
+        }
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewById(el.id)
