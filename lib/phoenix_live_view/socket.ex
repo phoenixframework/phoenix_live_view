@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Socket do
             parent_pid: nil,
             assigns: %{},
             changed: %{},
-            root_fingerprint: nil,
+            fingerprints: {nil, %{}},
             private: %{},
             stopped: nil,
             connected?: false

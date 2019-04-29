@@ -43,8 +43,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Puts the root fingerprint.
   """
-  def put_root(%Socket{} = socket, root_fingerprint) do
-    %Socket{socket | root_fingerprint: root_fingerprint}
+  def put_prints(%Socket{} = socket, fingerprints) do
+    %Socket{socket | fingerprints: fingerprints}
   end
 
   @doc """
