@@ -626,7 +626,7 @@ defmodule Phoenix.LiveView do
 
       # LiveView mount
       def mount(%{user_id: user_id}, socket) do
-        {:ok, assign_new(:current_user, fn -> Accounts.get_user!(user_id) end)}
+        {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
   """
