@@ -93,16 +93,17 @@ defmodule Phoenix.LiveView do
       as there is no append/prepend operation. Support
       for append/prepend is on the roadmap;
 
-    * Optimistic UIs - the LiveView programming model
-      provides a good foundation for Optimistic UIs since
-      any UI change done after a user action is undone
-      once the server sends the update for said action.
-      For example, it is relatively straight-forward to
-      click a button and enter into a loading state which
-      is automatically undone when the update arrives.
-      This is especially important as user feedback when
-      latency is involved. A complete feature set for
-      modelling those states is coming in future versions;
+    * Transitions and loading states - the LiveView
+      programming model provides a good foundation for
+      transitions and loading states since any UI change
+      done after a user action is undone once the server
+      sends the update for said action. For example, it is
+      relatively straight-forward to click a button that
+      changes itself in a way that is automatically undone
+      when the update arrives. This is especially important
+      as user feedback when latency is involved. A complete
+      feature set for modelling those states is coming in
+      future versions;
 
   There are also use cases which are a bad fit for LiveView:
 
@@ -110,6 +111,14 @@ defmodule Phoenix.LiveView do
       that do not need the server in the first place are a
       bad fit for LiveView, as they can be achieved purely
       with CSS and/or CSS transitions;
+
+    * Optimistic UIs - once we add transitions and loading
+      states, many of the building blocks necessary for
+      building optimistic UIs will be part of LiveView, but
+      since optimistic UIs are about doing work on the client
+      while the server is unavailable, complete support for
+      Optimistic UIs cannot be achieved without also writing
+      JavaScript for the cases the server is not available;
 
   ## Life-cycle
 

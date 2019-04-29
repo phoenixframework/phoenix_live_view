@@ -125,8 +125,8 @@ defmodule Phoenix.LiveView.Engine do
 
   By default, a `.leex` template does not track changes.
   Change tracking can be enabled by passing a `socket`
-  with two keys `:root_fingerprint` and `:changed`. If
-  the `:root_fingerprint` matches the template fingerprint,
+  with two keys `:fingerprints` and `:changed`. If
+  the `:fingerprints` matches the template fingerprint,
   then the `:changed` map is used. The map should
   contain the name of any changed field as key and the
   boolean true as value. If a field is not listed in
@@ -203,6 +203,7 @@ defmodule Phoenix.LiveView.Engine do
   """
 
   @behaviour Phoenix.Template.Engine
+  @pdict_key {__MODULE__, :fingerprint}
 
   @impl true
   def compile(path, _name) do
@@ -234,20 +235,30 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state) do
-    {fingerprint, entries} = to_rendered_struct(handle_end(state), false, %{})
+    {fingerprint, entries} = to_rendered_struct(handle_end(state), false, true, %{})
 
-    prelude =
-      quote do
-        require Phoenix.LiveView.Engine
+    quote do
+      require Phoenix.LiveView.Engine
 
-        __changed__ =
+      {fingerprint, __prints__} =
+        Process.get(unquote(@pdict_key)) ||
           case var!(assigns) do
-            %{socket: %{root_fingerprint: unquote(fingerprint), changed: changed}} -> changed
-            _ -> nil
+            %{socket: %{fingerprints: fingerprints}} -> fingerprints
+            _ -> {nil, %{}}
           end
-      end
 
-    {:__block__, [], [prelude | entries]}
+      __changed__ =
+        case var!(assigns) do
+          %{socket: %{changed: changed}} when unquote(fingerprint) == fingerprint -> changed
+          _ -> nil
+        end
+
+      try do
+        unquote({:__block__, [], entries})
+      after
+        Process.delete(unquote(@pdict_key))
+      end
+    end
   end
 
   @impl true
@@ -275,25 +286,38 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Emit conditional variables for dirty assigns tracking.
 
-  defp to_conditional_var(ast, :all, var, tainted_vars?, assigns) do
-    quote do: unquote(var) = unquote(to_live_struct(ast, tainted_vars?, assigns))
+  defp maybe_pdict_fingerprint(ast, false, _counter), do: ast
+
+  defp maybe_pdict_fingerprint(ast, true, counter) do
+    quote do
+      case __prints__ do
+        %{unquote(counter) => print} -> Process.put(unquote(@pdict_key), print)
+        %{} -> :ok
+      end
+
+      unquote(ast)
+    end
   end
 
-  defp to_conditional_var(ast, [], var, tainted_vars?, assigns) do
+  defp to_conditional_var(:all, var, live_struct) do
+    quote do: unquote(var) = unquote(live_struct)
+  end
+
+  defp to_conditional_var([], var, live_struct) do
     quote do
       unquote(var) =
         case __changed__ do
           %{} -> nil
-          _ -> unquote(to_live_struct(ast, tainted_vars?, assigns))
+          _ -> unquote(live_struct)
         end
     end
   end
 
-  defp to_conditional_var(ast, keys, var, tainted_vars?, assigns) do
+  defp to_conditional_var(keys, var, live_struct) do
     quote do
       unquote(var) =
         case unquote(changed_assigns(keys)) do
-          true -> unquote(to_live_struct(ast, tainted_vars?, assigns))
+          true -> unquote(live_struct)
           false -> nil
         end
     end
@@ -341,13 +365,13 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, tainted_vars?, assigns) do
-    case to_rendered_struct(block, tainted_vars?, assigns) do
+    case to_rendered_struct(block, tainted_vars?, false, assigns) do
       {_fingerprint, rendered} -> {:__block__, [], rendered}
       :error -> block
     end
   end
 
-  defp to_rendered_struct(expr, tainted_vars?, assigns) do
+  defp to_rendered_struct(expr, tainted_vars?, check_prints?, assigns) do
     with {:__block__, _, entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {binaries, vars} = bins_and_vars(static)
@@ -359,15 +383,18 @@ defmodule Phoenix.LiveView.Engine do
         |> :erlang.term_to_binary()
         |> :erlang.md5()
 
-      block =
-        Enum.map(dynamic, fn
-          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]} ->
+      {block, _} =
+        Enum.map_reduce(dynamic, 0, fn
+          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]},
+          counter ->
             {ast, keys} = analyze_and_return_tainted_keys(ast, tainted_vars?, assigns)
-            to_conditional_var(ast, keys, var, tainted_vars?, assigns)
+            live_struct = to_live_struct(ast, tainted_vars?, assigns)
+            fingerprint_live_struct = maybe_pdict_fingerprint(live_struct, check_prints?, counter)
+            {to_conditional_var(keys, var, fingerprint_live_struct), counter + 1}
 
-          ast ->
+          ast, counter ->
             {ast, _, _} = analyze(ast, tainted_vars?, assigns)
-            ast
+            {ast, counter}
         end)
 
       rendered =
@@ -389,6 +416,9 @@ defmodule Phoenix.LiveView.Engine do
 
   defp bins_and_vars(acc),
     do: bins_and_vars(acc, [], [])
+
+  defp bins_and_vars([bin1, bin2 | acc], bins, vars) when is_binary(bin1) and is_binary(bin2),
+    do: bins_and_vars([bin1 <> bin2 | acc], bins, vars)
 
   defp bins_and_vars([bin, var | acc], bins, vars) when is_binary(bin) and is_tuple(var),
     do: bins_and_vars(acc, [bin | bins], [var | vars])

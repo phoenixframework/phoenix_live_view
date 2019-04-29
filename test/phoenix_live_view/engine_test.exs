@@ -60,6 +60,24 @@ defmodule Phoenix.LiveView.EngineTest do
       assert render(template, %{foo: "<hello>"}) == "\n&lt;hello&gt;\n"
     end
 
+    test "supports mixed non-output expressions" do
+      template = """
+      prea
+      <% @foo %>
+      posta
+      <%= @foo %>
+      preb
+      <% @foo %>
+      middleb
+      <% @foo %>
+      postb
+      """
+
+      assert render(template, %{foo: "<hello>"}) ==
+               "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
+    end
+
+
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
                    ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
@@ -402,6 +420,22 @@ defmodule Phoenix.LiveView.EngineTest do
              } = Phoenix.View.render(View, "live_with_live.html", @assigns)
     end
 
+    test "renders live engine with nested live view with change tracking" do
+      rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
+      {_, prints} = Phoenix.LiveView.Diff.render(rendered, nil)
+      assigns = Map.put(@assigns, :socket, %{fingerprints: prints, changed: %{}})
+
+      assert %Rendered{
+               static: ["pre: ", "\n", "post: ", ""],
+               dynamic: [
+                 nil,
+                 %Rendered{dynamic: [nil], static: ["live: ", ""]},
+                 nil
+               ]
+             } = Phoenix.View.render(View, "live_with_live.html", assigns)
+
+    end
+
     test "renders live engine with nested dead view" do
       assert %Rendered{
                static: ["pre: ", "\n", "post: ", ""],
@@ -425,7 +459,7 @@ defmodule Phoenix.LiveView.EngineTest do
   end
 
   defp changed(string, assigns, fingerprint, changed) do
-    socket = %{root_fingerprint: fingerprint, changed: changed}
+    socket = %{fingerprints: {fingerprint, %{}}, changed: changed}
     %{dynamic: dynamic} = eval(string, Map.put(assigns, :socket, socket))
     dynamic
   end
