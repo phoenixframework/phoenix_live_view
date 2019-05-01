@@ -622,7 +622,7 @@ defmodule Phoenix.LiveView do
       # controller
       conn
       |> assign(:current_user, user)
-      |> LiveView.Controller.live_render(MyLive, sesssion: %{user_id: user.id})
+      |> LiveView.Controller.live_render(MyLive, session: %{user_id: user.id})
 
       # LiveView mount
       def mount(%{user_id: user_id}, socket) do
