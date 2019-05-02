@@ -176,7 +176,13 @@ let maybe = (el, key) => {
 }
 
 let serializeForm = (form) => {
-  return((new URLSearchParams(new FormData(form))).toString())
+  // Display the key/value pairs
+  let form_data = new FormData(form);
+  let url_search_params = new URLSearchParams();
+  for(let pair of form_data.entries()) {
+     url_search_params.set(pair[0], pair[1]);
+  }
+  return url_search_params.toString();
 }
 
 let recursiveMerge = (target, source) => {
