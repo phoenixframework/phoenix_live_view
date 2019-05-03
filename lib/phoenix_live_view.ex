@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView do
 
       <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
 
-  To detect when the page itself has receive focus or blur,
+  To detect when the page itself has received focus or blur,
   `phx-target` may be specified as `"window"`. Like other
   bindings, a `phx-value` can be provided on the bound element,
   otherwise the input's value will be used. For example:
@@ -430,7 +430,7 @@ defmodule Phoenix.LiveView do
   changes, such as generating new errors, `render/1` is invoked and
   the form is re-rendered.
 
-  Likewise for `phx-submit` bindings, the save callback is invoked and
+  Likewise for `phx-submit` bindings, the same callback is invoked and
   persistence is attempted. On success, a `:stop` tuple is returned and the
   socket is annotated for redirect with `Phoenix.LiveView.redirect/2`,
   otherwise the socket assigns are updated with the errored changeset to be
