@@ -94,10 +94,10 @@ defmodule Phoenix.LiveViewTest do
   can be tested with `assert_removed/3`. For example:
 
       send(view.pid, :boom)
-      assert_remove view, {:shutdown, %RuntimeError{}}
+      assert_removed view, {:shutdown, %RuntimeError{}}
 
       stop(view)
-      assert_remove view, {:shutdown, :stop}
+      assert_removed view, {:shutdown, :stop}
 
   Nested views can be removed by a parent at any time based on conditional
   rendering. In these cases, the removal of the view is detected by the
@@ -109,7 +109,7 @@ defmodule Phoenix.LiveViewTest do
       [child] = children(parent)
       send(parent.pid, :msg_that_removes_child)
 
-      assert_remove child, _
+      assert_removed child, _
       refute render(parent) =~ "some content in child"
   """
 
@@ -395,10 +395,10 @@ defmodule Phoenix.LiveViewTest do
       [child1, child2] = children(parent_view)
       send(parent_view.pid, :msg_that_removes_child)
 
-      assert_remove child1, _
-      assert_remove child2, {:shutdown, :removed}
+      assert_removed child1, _
+      assert_removed child2, {:shutdown, :removed}
   """
-  defmacro assert_remove(view, reason, timeout \\ 100) do
+  defmacro assert_removed(view, reason, timeout \\ 100) do
     quote do
       %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = unquote(view)
       assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
@@ -411,7 +411,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       stop(view)
-      assert_remove view, {:shutdown, :stop}
+      assert_removed view, {:shutdown, :stop}
   """
   def stop(%View{} = view) do
     GenServer.call(view.proxy, {:stop, view})
