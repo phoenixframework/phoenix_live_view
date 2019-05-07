@@ -291,7 +291,7 @@ defmodule Phoenix.LiveView.Engine do
   defp maybe_pdict_fingerprint(ast, true, counter) do
     quote do
       case __prints__ do
-        %{unquote(counter) => print} -> Process.put(unquote(@pdict_key), print)
+        %{unquote(counter) => {_, _} = print} -> Process.put(unquote(@pdict_key), print)
         %{} -> :ok
       end
 
