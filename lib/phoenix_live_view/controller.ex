@@ -37,8 +37,8 @@ defmodule Phoenix.LiveView.Controller do
   """
   def live_render(%Plug.Conn{} = conn, view, opts) do
     case LiveView.View.static_render(conn, view, opts) do
-      {:ok, content} ->
-        conn
+      {:ok, {assigns, content}} ->
+        %{conn | assigns: assigns}
         |> Plug.Conn.assign(:live_view_module, view)
         |> Phoenix.Controller.put_view(__MODULE__)
         |> Phoenix.Controller.render("template.html", %{

@@ -210,7 +210,7 @@ defmodule Phoenix.LiveView.View do
         <% end %>
         <div class="phx-loader"></div>
         """
-        {:ok, html}
+        {:ok, {socket.assigns, html}}
 
       {:stop, reason} -> {:stop, reason}
     end
