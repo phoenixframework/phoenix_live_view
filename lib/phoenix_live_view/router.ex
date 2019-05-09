@@ -23,6 +23,9 @@ defmodule Phoenix.LiveView.Router do
 
           [:path_params, :user_id, :remember_me]
 
+    * `:layout` - the optional tuple for specifying a layout to render the
+      LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
+      your application's namespace.
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
     * `:as` - optionally configures the named helper. Defaults to `:live`.
@@ -38,6 +41,7 @@ defmodule Phoenix.LiveView.Router do
 
           live "/thermostat", ThermostatLive
           live "/clock", ClockLive, session: [:path_params, :user_id]
+          live "/dashbaord, DashboardLive, layout: {AlternativeView, "app.html"}
         end
       end
 
@@ -49,11 +53,15 @@ defmodule Phoenix.LiveView.Router do
     quote do
       Phoenix.Router.get(
         unquote(path),
-        Phoenix.LiveView.Controller,
+        Phoenix.LiveView.Plug,
         Phoenix.Router.scoped_alias(__MODULE__, unquote(live_view)),
         private: %{
-          phoenix_live_view: unquote(opts),
-          phoenix_live_view_default_layout: Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
+          phoenix_live_view:
+            Keyword.put_new(
+              unquote(opts),
+              :layout,
+              Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
+            )
         },
         as: unquote(opts)[:as] || :live,
         alias: false
@@ -63,12 +71,15 @@ defmodule Phoenix.LiveView.Router do
 
   @doc false
   def __layout_from_router_module__(module) do
-    module
-    |> Atom.to_string()
-    |> String.split(".")
-    |> Enum.drop(-1)
-    |> Enum.take(2)
-    |> Kernel.++(["LayoutView"])
-    |> Module.concat()
+    view =
+      module
+      |> Atom.to_string()
+      |> String.split(".")
+      |> Enum.drop(-1)
+      |> Enum.take(2)
+      |> Kernel.++(["LayoutView"])
+      |> Module.concat()
+
+    {view, :app}
   end
 end
