@@ -114,10 +114,10 @@ Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
 // assets/js/app.js
-import LiveSocket from "phoenix_live_view"
+import LiveSocket from "phoenix_live_view";
 
-let liveSocket = new LiveSocket("/live")
-liveSocket.connect()
+let liveSocket = new LiveSocket("/live");
+liveSocket.connect();
 ```
 
 Finally, by convention live views are saved in a `lib/my_app_web/live/`
