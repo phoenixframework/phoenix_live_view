@@ -212,16 +212,25 @@ defmodule Phoenix.LiveView do
   You can generate a secure, random signing salt with the
   `mix phx.gen.secret 32` task.
 
-  Next, you can serve the LiveView directly from your router:
+  Next, decide where you want to use your LiveView.
+
+  You can serve the LiveView directly from your router, passing along
+  `:session` values if needed (see `Phoenix.LiveView.Router` for more
+  options):
 
       defmodule AppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
 
         scope "/", AppWeb do
-          live "/thermostat", ThermostatLive
+          live "/thermostat", ThermostatLive, session: [:user_id]
         end
       end
+
+  You can also `live_render` from any template:
+
+      <h1>Temperature Control</h1>
+      <%= Phoenix.LiveView.live_render(@conn, AppWeb.ThermostatLive, session: %{user: @user}) %>
 
   Or you can `live_render` your view from any controller:
 
