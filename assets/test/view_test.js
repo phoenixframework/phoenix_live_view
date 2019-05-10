@@ -5,6 +5,7 @@ function liveViewDOM() {
   div.setAttribute('data-phx-view', '');
   div.setAttribute('data-phx-session', 'abc123');
   div.setAttribute('id', 'container');
+  div.setAttribute('class', 'user-implemented-class');
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
@@ -87,6 +88,8 @@ describe('View', function() {
     let view = new View(el, liveSocket);
     view.showLoader();
     expect(el.classList.contains('phx-disconnected')).toBeTruthy();
+    expect(el.classList.contains('phx-connected')).toBeFalsy();
+    expect(el.classList.contains('user-implemented-class')).toBeTruthy();
     expect(loader.style.display).toEqual('block');
 
     view.hideLoader();
@@ -104,6 +107,8 @@ describe('View', function() {
     view.displayError();
     expect(el.classList.contains('phx-disconnected')).toBeTruthy();
     expect(el.classList.contains('phx-error')).toBeTruthy();
+    expect(el.classList.contains('phx-connected')).toBeFalsy();
+    expect(el.classList.contains('user-implemented-class')).toBeTruthy();
     expect(loader.style.display).toEqual('block');
   });
 
