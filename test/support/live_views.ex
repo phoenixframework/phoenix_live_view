@@ -6,8 +6,8 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def render(assigns) do
     ~L"""
     The temp is: <%= @val %><%= @greeting %>
-    <button phx-click="dec">-</button>
-    <button phx-click="inc">+</button><%= if @nest do %>
+    <button data-phx-click="dec">-</button>
+    <button data-phx-click="inc">+</button><%= if @nest do %>
       <%= live_render(@socket, ClockLive, render_opts(@nest, session: %{redir: @redir})) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
@@ -149,7 +149,7 @@ end
 defmodule Phoenix.LiveViewTest.ClockControlsLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~L|<button phx-click="snooze">+</button>|
+  def render(assigns), do: ~L|<button data-phx-click="snooze">+</button>|
 
   def mount(_session, socket), do: {:ok, socket}
 

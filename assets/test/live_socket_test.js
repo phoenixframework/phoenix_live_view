@@ -11,7 +11,7 @@ let prepareLiveViewDOM = (document) => {
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
-    <button phx-click="inc_temperature">Inc Temperature</button>
+    <button data-phx-click="inc_temperature">Inc Temperature</button>
   `
   const button = div.querySelector('button')
   const input = div.querySelector('input')
@@ -41,7 +41,7 @@ describe('LiveSocket', () => {
     expect(liveSocket.opts.viewLogger).toBe('foo')
     expect(liveSocket.viewLogger).toBe('foo')
     expect(liveSocket.unloaded).toBe(false)
-    expect(liveSocket.bindingPrefix).toBe('phx-')
+    expect(liveSocket.bindingPrefix).toBe('data-phx-')
     expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
@@ -51,7 +51,7 @@ describe('LiveSocket', () => {
     expect(liveSocket.socket).toBeDefined()
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.unloaded).toBe(false)
-    expect(liveSocket.bindingPrefix).toBe('phx-')
+    expect(liveSocket.bindingPrefix).toBe('data-phx-')
     expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
@@ -118,13 +118,13 @@ describe('LiveSocket', () => {
   test('getBindingPrefix', async () => {
     let liveSocket = new LiveSocket('/live')
 
-    expect(liveSocket.getBindingPrefix()).toEqual('phx-')
+    expect(liveSocket.getBindingPrefix()).toEqual('data-phx-')
   })
 
   test('getBindingPrefix custom', async () => {
-    let liveSocket = new LiveSocket('/live', { bindingPrefix: 'company-' })
+    let liveSocket = new LiveSocket('/live', { bindingPrefix: 'data-company-' })
 
-    expect(liveSocket.getBindingPrefix()).toEqual('company-')
+    expect(liveSocket.getBindingPrefix()).toEqual('data-company-')
   })
 
   test('getActiveElement default before LiveSocket activeElement is set', async () => {

@@ -9,7 +9,7 @@ function liveViewDOM() {
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
-    <button phx-click="inc_temperature">Inc Temperature</button>
+    <button data-phx-click="inc_temperature">Inc Temperature</button>
   `;
   const button = div.querySelector('button')
   const input = div.querySelector('input')
@@ -67,7 +67,7 @@ describe('View', function() {
     let liveSocket = new LiveSocket('/live');
     let el = liveViewDOM();
     let view = new View(el, liveSocket);
-    expect(view.binding('submit')).toEqual('phx-submit');
+    expect(view.binding('submit')).toEqual('data-phx-submit');
   });
 
   test('getSession', async () => {

@@ -16,7 +16,7 @@ client/server interaction, for example:
 All options are passed directly to the `Phoenix.Socket` constructor,
 except for the following LiveView specific options:
 
-  * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
+  * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"data-phx-"`
 
 ## Events
 
@@ -25,35 +25,35 @@ except for the following LiveView specific options:
 When pushed, the value sent to the server will be chosen with the
 following priority:
 
-  - An optional `"phx-value"` binding on the clicked element
+  - An optional `"data-phx-value"` binding on the clicked element
   - The clicked element's `value` property
   - An empty string
 
 ### Key Events
 
 The onkeydown and onkeyup events are supported via
-the `phx-keydown`, and `phx-keyup` bindings. By
+the `data-phx-keydown`, and `data-phx-keyup` bindings. By
 default, the bound element will be the event listener, but an
-optional `phx-target` may be provided which may be `"window"`.
+optional `data-phx-target` may be provided which may be `"window"`.
 
 When pushed, the value sent to the server will be the event's `key`.
 
 ### Focus and Blur Events
 
 Focus and blur events may be bound to DOM elements that emit
-such events, using the `phx-blur`, and `phx-focus` bindings, for example:
+such events, using the `data-phx-blur`, and `data-phx-focus` bindings, for example:
 
-    <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+    <input name="email" data-phx-focus="myfocus" data-phx-blur="myblur"/>
 
 To detect when the page itself has receive focus or blur,
-`phx-target` may be specified as `"window"`. Like other
-bindings, a `phx-value` can be provided on the bound element,
+`data-phx-target` may be specified as `"window"`. Like other
+bindings, a `data-phx-value` can be provided on the bound element,
 otherwise the input's value will be used. For example:
 
     <div class="container"
-        phx-focus="page-active"
-        phx-blur="page-inactive"
-        phx-target="window">
+        data-phx-focus="page-active"
+        data-phx-blur="page-inactive"
+        data-phx-target="window">
     ...
     </div>
 
@@ -65,24 +65,24 @@ overwrite the input's current value, even if it deviates from
 the server's rendered updates. This works well for updates where
 major side effects are not expected, such as form validation errors,
 or additive UX around the user's input values as they fill out a form.
-For these use cases, the `phx-change` input does not concern itself
+For these use cases, the `data-phx-change` input does not concern itself
 with disabling input editing while an event to the server is inflight.
 
-The `phx-submit` event is used for form submissions where major side-effects
+The `data-phx-submit` event is used for form submissions where major side-effects
 typically happen, such as rendering new containers, calling an external
 service, or redirecting to a new page. For these use-cases, the form inputs
 are set to `readonly` on submit, and any submit button is disabled until
 the client gets an acknowledgment that the server has processed the
-`phx-submit` event. Following an acknowledgment, any updates are patched
+`data-phx-submit` event. Following an acknowledgment, any updates are patched
 to the DOM as normal, and the last input with focus is restored if the
 user has not otherwise focused on a new input during submission.
 
 To handle latent form submissions, any HTML tag can be annotated with
-`phx-disable-with`, which swaps the element's `innerText` with the provided
+`data-phx-disable-with`, which swaps the element's `innerText` with the provided
 value during form submission. For example, the following code would change
 the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 
-    <button type="submit" phx-disable-with="Saving...">Save</button>
+    <button type="submit" data-phx-disable-with="Saving...">Save</button>
 
 
 ## Loading state and Errors
@@ -96,7 +96,7 @@ container:
     class will be applied in conjunction with `"phx-disconnected"` if connection
     to the server is lost.
 
-When a form bound with `phx-submit` is submitted, the `phx-loading` class
+When a form bound with `data-phx-submit` is submitted, the `phx-loading` class
 is applied to the form, which is removed on update.
 
 In addition to applied classes, an empty `"phx-loader"` exists adjacent
@@ -107,7 +107,7 @@ connection and error class changes. This behavior may be disabled by overriding
 
 ## Interop with client controlled DOM
 
-A container can be marked with `phx-ignore`, allowing the DOM patch
+A container can be marked with `data-phx-ignore`, allowing the DOM patch
 operations to avoid updating or removing portions of the LiveView. This
 is useful for client-side interop with existing libraries that do their
 own DOM operations.
@@ -135,7 +135,7 @@ const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const LOADER_TIMEOUT = 100
 const LOADER_ZOOM = 2
-const BINDING_PREFIX = "phx-"
+const BINDING_PREFIX = "data-phx-"
 const PUSH_TIMEOUT = 20000
 
 export let debug = (view, kind, msg, obj) => {

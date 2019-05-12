@@ -27,8 +27,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "live render with valid session", %{view: view, html: html} do
       assert html =~ """
              The temp is: 0
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
+             <button data-phx-click="dec">-</button>
+             <button data-phx-click="inc">+</button>
              """
 
       {:ok, view, html} = mount(view)
@@ -36,8 +36,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert html =~ """
              The temp is: 1
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
+             <button data-phx-click="dec">-</button>
+             <button data-phx-click="inc">+</button>
              """
     end
 
@@ -125,20 +125,20 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render_click(view, :inc) =~ """
              The temp is: 4
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
+             <button data-phx-click="dec">-</button>
+             <button data-phx-click="inc">+</button>
              """
 
       assert render_click(view, :dec) =~ """
              The temp is: 3
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
+             <button data-phx-click="dec">-</button>
+             <button data-phx-click="inc">+</button>
              """
 
       assert render(view) == """
              The temp is: 3
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
+             <button data-phx-click="dec">-</button>
+             <button data-phx-click="inc">+</button>
              """
     end
   end
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert html =~ "The temp is: 0"
       assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"snooze\">+</button>"
+      assert html =~ "<button data-phx-click=\"snooze\">+</button>"
     end
 
     test "nested child render on connected mount" do
@@ -158,7 +158,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       html = render(thermo_view)
       assert html =~ "The temp is: 1"
       assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"snooze\">+</button>"
+      assert html =~ "<button data-phx-click=\"snooze\">+</button>"
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
       html = render(thermo_view)
@@ -183,23 +183,23 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert clock_view.module == ClockLive
       assert controls_view.module == ClockControlsLive
 
-      assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
+      assert render_click(controls_view, :snooze) == "<button data-phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "time: 12:05"
-      assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
-      assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
+      assert render(controls_view) == "<button data-phx-click=\"snooze\">+</button>"
+      assert render(clock_view) =~ "<button data-phx-click=\"snooze\">+</button>"
 
       :ok = GenServer.call(clock_view.pid, {:set, "12:01"})
 
       assert render(clock_view) =~ "time: 12:01"
       assert render(thermo_view) =~ "time: 12:01"
-      assert render(thermo_view) =~ "<button phx-click=\"snooze\">+</button>"
+      assert render(thermo_view) =~ "<button data-phx-click=\"snooze\">+</button>"
     end
 
     test "nested children are removed and killed" do
       html_without_nesting = """
       The temp is: 1
-      <button phx-click="dec">-</button>
-      <button phx-click="inc">+</button>
+      <button data-phx-click="dec">-</button>
+      <button data-phx-click="inc">+</button>
       """
 
       {:ok, thermo_view, _html} = mount(Endpoint, ThermostatLive, session: %{nest: true})

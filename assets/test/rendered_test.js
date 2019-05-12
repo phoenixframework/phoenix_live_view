@@ -37,7 +37,7 @@ describe('Rendered', () => {
       expect(Rendered.toString(simpleDiffResult).trim()).toEqual(
 `<div class="thermostat">
   <div class="bar cooling">
-    <a href="#" phx-click="toggle-mode">cooling</a>
+    <a href="#" data-phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
 </div>`.trim());
@@ -51,7 +51,7 @@ describe('Rendered', () => {
       expect(output.buffer.trim()).toEqual(
 `<div class="thermostat">
   <div class="bar cooling">
-    <a href="#" phx-click="toggle-mode">cooling</a>
+    <a href="#" data-phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
 </div>`.trim());
@@ -65,7 +65,7 @@ const simpleDiff1 = {
   '2': '07:15:03 PM',
   static: [
     '<div class="thermostat">\n  <div class="bar ',
-    '">\n    <a href="#" phx-click="toggle-mode">',
+    '">\n    <a href="#" data-phx-click="toggle-mode">',
     '</a>\n    <span>',
     '</span>\n  </div>\n</div>\n',
   ]
@@ -81,7 +81,7 @@ const simpleDiffResult = {
   '2': '07:15:04 PM',
   static: [
     '<div class="thermostat">\n  <div class="bar ',
-    '">\n    <a href="#" phx-click="toggle-mode">',
+    '">\n    <a href="#" data-phx-click="toggle-mode">',
     '</a>\n    <span>',
     '</span>\n  </div>\n</div>\n',
   ]
@@ -106,7 +106,7 @@ const deepDiff1 = {
         '123-456-7890',
         '<a href="/users/1">Show</a>',
         '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+        '<a href="#" data-phx-click="delete_user" data-phx-value="1">Delete</a>',
       ],
     ],
     static: [
@@ -148,7 +148,7 @@ const deepDiffResult = {
         '123-456-7890',
         '<a href="/users/1">Show</a>',
         '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+        '<a href="#" data-phx-click="delete_user" data-phx-value="1">Delete</a>',
       ],
     ],
     static: [

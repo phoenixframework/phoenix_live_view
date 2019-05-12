@@ -345,7 +345,7 @@ defmodule Phoenix.LiveView do
   Phoenix supports DOM element bindings for client-server interaction. For
   example, to react to a click on a button, you would render the element:
 
-      <button phx-click="inc_temperature">+</button>
+      <button data-phx-click="inc_temperature">+</button>
 
   Then on the server, all LiveView bindings are handled with the `handle_event`
   callback, for example:
@@ -357,36 +357,36 @@ defmodule Phoenix.LiveView do
 
   ### Click Events
 
-  The `phx-click` binding is used to send click events to the server. The
+  The `data-phx-click` binding is used to send click events to the server. The
   `value` passed to `handle_event` is chosen on the client with the following
   priority:
 
-    * An optional `"phx-value"` binding on the clicked element
+    * An optional `"data-phx-value"` binding on the clicked element
     * The clicked element's `value` property
     * An empty string
 
   ### Focus and Blur Events
 
   Focus and blur events may be bound to DOM elements that emit
-  such events, using the `phx-blur`, and `phx-focus` bindings, for example:
+  such events, using the `data-phx-blur`, and `data-phx-focus` bindings, for example:
 
-      <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+      <input name="email" data-phx-focus="myfocus" data-phx-blur="myblur"/>
 
   To detect when the page itself has received focus or blur,
-  `phx-target` may be specified as `"window"`. Like other
-  bindings, a `phx-value` can be provided on the bound element,
+  `data-phx-target` may be specified as `"window"`. Like other
+  bindings, a `data-phx-value` can be provided on the bound element,
   otherwise the input's value will be used. For example:
 
       <div class="container"
-          phx-focus="page-active"
-          phx-blur="page-inactive"
-          phx-target="window">
+          data-phx-focus="page-active"
+          data-phx-blur="page-inactive"
+          data-phx-target="window">
         ...
       </div>
 
   ### Form Events
 
-  To handle form changes and submissions, use the `phx-change` and `phx-submit`
+  To handle form changes and submissions, use the `data-phx-change` and `data-phx-submit`
   events. In general, it is preferred to handle input changes at the form level,
   where all form fields are passed to the LiveView's callback given any
   single input change. For example, to handle real-time form validation and
@@ -439,7 +439,7 @@ defmodule Phoenix.LiveView do
   changes, such as generating new errors, `render/1` is invoked and
   the form is re-rendered.
 
-  Likewise for `phx-submit` bindings, the same callback is invoked and
+  Likewise for `data-phx-submit` bindings, the same callback is invoked and
   persistence is attempted. On success, a `:stop` tuple is returned and the
   socket is annotated for redirect with `Phoenix.LiveView.redirect/2`,
   otherwise the socket assigns are updated with the errored changeset to be
@@ -461,10 +461,10 @@ defmodule Phoenix.LiveView do
   ### Key Events
 
   The onkeydown, and onkeyup events are supported via
-  the `phx-keydown`, and `phx-keyup` bindings. When
+  the `data-phx-keydown`, and `data-phx-keyup` bindings. When
   pushed, the value sent to the server will be the event's `key`.
   By default, the bound element will be the event listener, but an
-  optional `phx-target` may be provided which may be `"document"`,
+  optional `data-phx-target` may be provided which may be `"document"`,
   `"window"`, or the DOM id of a target element, for example:
 
       @up_key 38
@@ -472,7 +472,7 @@ defmodule Phoenix.LiveView do
 
       def render(assigns) do
         ~L\"""
-        <div id="thermostat" phx-keyup="update_temp" phx-target="document">
+        <div id="thermostat" data-phx-keyup="update_temp" data-phx-target="document">
           Current temperature: <%= @temperature %>
         </div>
         \"""
