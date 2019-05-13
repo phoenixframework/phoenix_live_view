@@ -60,8 +60,9 @@ otherwise the input's value will be used. For example:
 ### Scroll Events
 
 The scroll events are supported via the `phx-scroll` binding.
-Currently, the global scroll is not processed, the only bound
-element will be the event listener.
+By default, the bound element will be the event listener, but an
+optional `phx-target` may be provided which may be `"document"`
+to track the entire page scroll.
 
 When pushed, the value sent to the server will be scrollTop
 and scrollLeft property.
@@ -481,15 +482,31 @@ export class LiveSocket {
 
   bindScroll(){
     window.addEventListener("scroll", e => {
-      // Skip global scroll
-      if(e.target == document) { return }
-
+      let binding = this.binding("scroll")
+      let bindTarget = this.binding("target")
       let scroll = this.binding("scroll")
-      let target = closestPhxBinding(e.target, scroll)
-      let phxEvent = target && target.getAttribute(scroll)
-      if(!phxEvent){ return }
-      e.preventDefault()
-      this.owner(e.target, view => view.pushScroll(e.target, phxEvent))
+
+      if(e.target == document) {
+        // Process global scroll
+        document.querySelectorAll(`[${binding}][${bindTarget}=document]`).forEach(el => {
+          let documentEl = e.target.documentElement
+          let phxEvent = el.getAttribute(scroll)
+          this.owner(el, view => view.pushScroll(
+            e.target,
+            phxEvent,
+            documentEl.scrollTop,
+            documentEl.scrollLeft
+          ))
+        })
+      } else {
+        // Process bound element scroll
+        let target = closestPhxBinding(e.target, scroll)
+        let phxEvent = target && target.getAttribute(scroll)
+        if(!phxEvent){ return }
+        e.preventDefault()
+        let el = e.target
+        this.owner(e.target, view => view.pushScroll(e.target, phxEvent, el.scrollTop, el.scrollLeft))
+      }
     }, true)
   }
 
@@ -864,13 +881,13 @@ export class View {
     }, onReply)
   }
 
-  pushScroll(scrollElement, phxEvent){
+  pushScroll(scrollElement, phxEvent, scrollTop, scrollLeft){
     this.pushWithReply("event", {
       type: "scroll",
       event: phxEvent,
       value: {
-        scrollTop: scrollElement.scrollTop,
-        scrollLeft: scrollElement.scrollLeft
+        scrollTop: scrollTop,
+        scrollLeft: scrollLeft
       }
     })
   }
