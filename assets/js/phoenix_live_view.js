@@ -61,7 +61,7 @@ otherwise the input's value will be used. For example:
 
 The scroll events are supported via the `phx-scroll` binding.
 By default, the bound element will be the event listener, but an
-optional `phx-target` may be provided which may be `"document"`
+optional `phx-target` may be provided which may be `"window"`
 to track the entire page scroll.
 
 When pushed, the value sent to the server will be scrollTop
@@ -487,7 +487,7 @@ export class LiveSocket {
 
       // Process global scroll
       if(e.target == document) {
-        all(document, `[${bindScroll}][${bindTarget}=document]`, el => {
+        all(document, `[${bindScroll}][${bindTarget}=window]`, el => {
           let documentEl = e.target.documentElement
           let phxEvent = el.getAttribute(bindScroll)
           this.owner(el, view => view.pushScroll(documentEl, phxEvent))
@@ -500,7 +500,7 @@ export class LiveSocket {
       if(!target) { return }
 
       let phxTarget = target.getAttribute(bindTarget)
-      if(phxTarget == "document") { return }
+      if(phxTarget == "window") { return }
 
       let phxEvent = target.getAttribute(bindScroll)
       if(!phxEvent) { return }
