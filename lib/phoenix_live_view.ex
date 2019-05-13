@@ -312,7 +312,7 @@ defmodule Phoenix.LiveView do
       </div>
 
   If the `@user` assign changes, then LiveView will re-render only
-  the `@user.id` and `@user.name` and sent it to the browser. That's
+  the `@user.id` and `@user.name` and send them to the browser. That's
   why it is important to keep most of the markup in the template itself.
   If you write the div above to something like:
 
