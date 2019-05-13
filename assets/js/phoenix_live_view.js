@@ -482,31 +482,30 @@ export class LiveSocket {
 
   bindScroll(){
     window.addEventListener("scroll", e => {
-      let binding = this.binding("scroll")
       let bindTarget = this.binding("target")
-      let scroll = this.binding("scroll")
+      let bindScroll = this.binding("scroll")
 
+      // Process global scroll
       if(e.target == document) {
-        // Process global scroll
-        document.querySelectorAll(`[${binding}][${bindTarget}=document]`).forEach(el => {
+        all(document, `[${bindScroll}][${bindTarget}=document]`, el => {
           let documentEl = e.target.documentElement
-          let phxEvent = el.getAttribute(scroll)
-          this.owner(el, view => view.pushScroll(
-            e.target,
-            phxEvent,
-            documentEl.scrollTop,
-            documentEl.scrollLeft
-          ))
+          let phxEvent = el.getAttribute(bindScroll)
+          this.owner(el, view => view.pushScroll(documentEl, phxEvent))
         })
-      } else {
-        // Process bound element scroll
-        let target = closestPhxBinding(e.target, scroll)
-        let phxEvent = target && target.getAttribute(scroll)
-        if(!phxEvent){ return }
-        e.preventDefault()
-        let el = e.target
-        this.owner(e.target, view => view.pushScroll(e.target, phxEvent, el.scrollTop, el.scrollLeft))
+        return
       }
+
+      // Process bound element scroll
+      let target = closestPhxBinding(e.target, bindScroll)
+      if(!target) { return }
+
+      let phxTarget = target.getAttribute(bindTarget)
+      if(phxTarget == "document") { return }
+
+      let phxEvent = target.getAttribute(bindScroll)
+      if(!phxEvent) { return }
+
+      this.owner(e.target, view => view.pushScroll(e.target, phxEvent))
     }, true)
   }
 
@@ -881,13 +880,13 @@ export class View {
     }, onReply)
   }
 
-  pushScroll(scrollElement, phxEvent, scrollTop, scrollLeft){
+  pushScroll(scrollElement, phxEvent){
     this.pushWithReply("event", {
       type: "scroll",
       event: phxEvent,
       value: {
-        scrollTop: scrollTop,
-        scrollLeft: scrollLeft
+        scrollTop: scrollElement.scrollTop,
+        scrollLeft: scrollElement.scrollLeft
       }
     })
   }
