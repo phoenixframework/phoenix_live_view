@@ -57,6 +57,15 @@ otherwise the input's value will be used. For example:
     ...
     </div>
 
+### Scroll Events
+
+The scroll events are supported via the `phx-scroll` binding.
+Currently, the global scroll is not processed, the only bound
+element will be the event listener.
+
+When pushed, the value sent to the server will be scrollTop
+and scrollLeft property.
+
 ## Forms and input handling
 
 The JavaScript client is always the source of truth for current
@@ -388,6 +397,7 @@ export class LiveSocket {
   bindTopLevelEvents(){
     this.bindClicks()
     this.bindForms()
+    this.bindScroll()
     this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
       view.pushKey(target, type, e, phxEvent)
     })
@@ -467,6 +477,20 @@ export class LiveSocket {
         })
       }, false)
     }
+  }
+
+  bindScroll(){
+    window.addEventListener("scroll", e => {
+      // Skip global scroll
+      if(e.target == document) { return }
+
+      let scroll = this.binding("scroll")
+      let target = closestPhxBinding(e.target, scroll)
+      let phxEvent = target && target.getAttribute(scroll)
+      if(!phxEvent){ return }
+      e.preventDefault()
+      this.owner(e.target, view => view.pushScroll(e.target, phxEvent))
+    }, true)
   }
 
   silenceEvents(callback){
@@ -838,6 +862,17 @@ export class View {
       event: phxEvent,
       value: serializeForm(formEl)
     }, onReply)
+  }
+
+  pushScroll(scrollElement, phxEvent){
+    this.pushWithReply("event", {
+      type: "scroll",
+      event: phxEvent,
+      value: {
+        scrollTop: scrollElement.scrollTop,
+        scrollLeft: scrollElement.scrollLeft
+      }
+    })
   }
 
   ownsElement(element){
