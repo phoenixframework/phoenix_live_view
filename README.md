@@ -110,6 +110,13 @@ Then install the new npm dependency.
 npm install --prefix assets
 ```
 
+If you had previously installed phoenix_live_view and want to get the
+latest javascript, then force an install.
+
+```bash
+(cd assets && npm install --force phoenix_live_view)
+```
+
 Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
