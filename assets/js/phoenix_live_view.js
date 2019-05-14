@@ -186,13 +186,6 @@ let recursiveMerge = (target, source) => {
   }
 }
 
-let all = function(node, query, callback) {
-  let nodeList = node.querySelectorAll(query)
-  for (let i = 0, len = nodeList.length; i < len; i++) {
-    callback(nodeList[i])
-  }
-}
-
 let Session = {
   get(el){ return el.getAttribute(PHX_SESSION) },
 
@@ -312,7 +305,7 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
   joinRootViews(){
-    all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
+    Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       this.joinView(rootEl)
     })
   }
@@ -418,7 +411,7 @@ export class LiveSocket {
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => callback(e, event, view, e.target, targetPhxEvent, null))
         } else {
-          all(document, `[${binding}][${bindTarget}=window]`, el => {
+          Browser.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
             this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
           })
@@ -483,6 +476,21 @@ export class LiveSocket {
 }
 
 export let Browser = {
+  all(node, query, callback){
+    node.querySelectorAll(query).forEach(callback)
+  },
+
+  dispatchEvent(target, eventString){
+    let event = null
+    if(typeof(Event) === "function"){
+      event = new Event(eventString)
+    } else {
+      event = document.createEvent("Event")
+      event.initEvent(eventString, true, true)
+    }
+    target.dispatchEvent(event)
+  },
+
   setCookie(name, value){
     document.cookie = `${name}=${value}`
   },
@@ -502,16 +510,16 @@ let DOM = {
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.add(PHX_LOADING_CLASS)
-    all(form, `[${disableWith}]`, el => {
+    Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(disableWith)
       el.setAttribute(`${disableWith}-restore`, el.innerText)
       el.innerText = value
     })
-    all(form, "button", button => {
+    Browser.all(form, "button", button => {
       button.setAttribute(PHX_DISABLED, button.disabled)
       button.disabled = true
     })
-    all(form, "input", input => {
+    Browser.all(form, "input", input => {
       input.setAttribute(PHX_READONLY, input.readOnly)
       input.readOnly = true
     })
@@ -520,21 +528,21 @@ let DOM = {
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.remove(PHX_LOADING_CLASS)
-    all(form, `[${disableWith}]`, el => {
+    Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         el.innerText = value
         el.removeAttribute(`${disableWith}-restore`)
       }
     })
-    all(form, "button", button => {
+    Browser.all(form, "button", button => {
       let prev = button.getAttribute(PHX_DISABLED)
       if(prev){
         button.disabled = prev === "true"
         button.removeAttribute(PHX_DISABLED)
       }
     })
-    all(form, "input", input => {
+    Browser.all(form, "input", input => {
       let prev = input.getAttribute(PHX_READONLY)
       if(prev){
         input.readOnly = prev === "true"
@@ -628,14 +636,16 @@ let DOM = {
     view.liveSocket.silenceEvents(() => {
       DOM.restoreFocus(focused, selectionStart, selectionEnd)
     })
-    document.dispatchEvent(new Event("phx:update"))
+    Browser.dispatchEvent(document, "phx:update")
   },
 
   mergeAttrs(target, source){
-    source.getAttributeNames().forEach(name => {
+    var attrs = source.attributes
+    for (let i = 0, length = attrs.length; i < length; i++){
+      let name = attrs[i].name
       let value = source.getAttribute(name)
       target.setAttribute(name, value)
-    })
+    }
   },
 
   mergeInputs(target, source){
@@ -730,7 +740,7 @@ export class View {
   }
 
   joinNewChildren(){
-    all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
+    Browser.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewById(el.id)
       if(!child){
         this.liveSocket.joinView(el, this)

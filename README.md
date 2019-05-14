@@ -148,3 +148,23 @@ You can also optionally import the style for the default CSS classes in your `ap
 /* assets/css/app.css */
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
 ```
+
+## Browser Support
+
+All current Chrome, Safari, Firefox, and MS Edge are supported.
+IE11 support is available with the following polyfills:
+
+```console
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill
+```
+
+```javascript
+import "mdn-polyfills/NodeList.prototype.forEach"
+import "mdn-polyfills/Element.prototype.closest"
+import "mdn-polyfills/Element.prototype.matches"
+import "url-search-params-polyfill"
+import "formdata-polyfill"
+
+import {LiveSocket} from "phoenix_live_view"
+...
+```
