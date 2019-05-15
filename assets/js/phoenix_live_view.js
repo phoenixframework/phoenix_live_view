@@ -565,6 +565,11 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
+  isIgnored(el, phxIgnore){
+    return (el.getAttribute && el.getAttribute(phxIgnore) != null) ||
+           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)
+  },
+
   patch(view, container, id, html){
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
@@ -591,10 +596,7 @@ let DOM = {
         }
       },
       onBeforeNodeDiscarded: function(el){
-        if((el.getAttribute && el.getAttribute(phxIgnore) != null) ||
-           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)){
-          return false
-        }
+        if(DOM.isIgnored(el, phxIgnore)){ return false }
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewById(el.id)
@@ -602,6 +604,7 @@ let DOM = {
         }
       },
       onBeforeElUpdated: function(fromEl, toEl) {
+        if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
         // nested view handling
         if(DOM.isPhxChild(toEl)){
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
