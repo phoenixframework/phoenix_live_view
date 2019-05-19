@@ -515,7 +515,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_info(msg :: term, Socket.t()) ::
-              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
 
