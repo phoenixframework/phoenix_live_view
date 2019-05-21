@@ -495,7 +495,7 @@ defmodule Phoenix.LiveView do
   """
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Socket, View}
 
   @type unsigned_params :: map
   @type from :: binary
@@ -508,6 +508,9 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
+  @callback handle_params(unsigned_params, Socket.t()) ::
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
+
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
@@ -517,7 +520,11 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
+  @optional_callbacks terminate: 2,
+                      handle_params: 2,
+                      handle_event: 3,
+                      handle_call: 3,
+                      handle_info: 2
 
   defmacro __using__(_opts) do
     quote do
@@ -747,6 +754,13 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
+  TODO
+  """
+  def live_redirect(%Socket{} = socket, opts) do
+    LiveView.View.put_live_redirect(socket, Keyword.fetch!(opts, :to))
+  end
+
+  @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
 
       iex> ~L"\""
@@ -758,4 +772,32 @@ defmodule Phoenix.LiveView do
   defmacro sigil_L({:<<>>, _, [expr]}, []) do
     EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
   end
+
+  @doc """
+  TODO
+
+  ## Examples
+
+      <%= live_link @socket, "next", Routes.live_path(@socket, MyLive, @page + 1) %>
+
+  """
+  def live_link(%Socket{} = socket, text, opts) do
+    uri = Keyword.fetch!(opts, :to)
+
+    case View.live_link_info(socket, uri) do
+      {:internal, _} ->
+        Phoenix.HTML.Link.link(text, to: uri, data: [phx_live_link: "internal"])
+
+      :external ->
+        Phoenix.HTML.Link.link(text, to: uri, data: [phx_live_link: "external"])
+
+      :error ->
+        raise ArgumentError, """
+        the route at "#{uri}" is not compatible with live_link
+
+        live links muse use the `live` macro provided by Phoenix.LiveView.Router.
+        """
+    end
+  end
+  # TODO live_link .. do
 end

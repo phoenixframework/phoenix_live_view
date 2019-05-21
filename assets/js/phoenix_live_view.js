@@ -99,12 +99,6 @@ container:
 When a form bound with `phx-submit` is submitted, the `phx-loading` class
 is applied to the form, which is removed on update.
 
-In addition to applied classes, an empty `"phx-loader"` exists adjacent
-to every LiveView, and its display status is toggled automatically based on
-connection and error class changes. This behavior may be disabled by overriding
-`.phx-loader` in your css to `display: none !important`.
-
-
 ## Interop with client controlled DOM
 
 A container can be marked with `phx-ignore`, allowing the DOM patch
@@ -117,6 +111,7 @@ import morphdom from "morphdom"
 import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
+const PHX_LIVE_LINK = "data-phx-live-link"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -133,7 +128,7 @@ const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
-const LOADER_TIMEOUT = 100
+const LOADER_TIMEOUT = 200
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 20000
@@ -249,6 +244,17 @@ export class LiveSocket {
   constructor(url, opts = {}){
     this.unloaded = false
     this.socket = new Socket(url, opts)
+    this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
+    this.opts = opts
+    this.views = {}
+    this.params = opts.params || {}
+    this.viewLogger = opts.viewLogger
+    this.activeElement = null
+    this.prevActive = null
+    this.prevInput = null
+    this.prevValue = null
+    this.silenced = false
+    this.root = null
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
         this.destroyAllViews()
@@ -260,15 +266,6 @@ export class LiveSocket {
     window.addEventListener("beforeunload", e => {
       this.unloaded = true
     })
-    this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
-    this.opts = opts
-    this.views = {}
-    this.viewLogger = opts.viewLogger
-    this.activeElement = null
-    this.prevActive = null
-    this.prevInput = null
-    this.prevValue = null
-    this.silenced = false
     this.bindTopLevelEvents()
   }
 
@@ -306,8 +303,16 @@ export class LiveSocket {
 
   joinRootViews(){
     Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      this.joinView(rootEl)
+      let view = this.joinView(rootEl)
+      this.root = this.root || view
     })
+  }
+
+  replaceRoot(html){
+    let rootEl = this.root.el
+    this.destroyViewById(this.root.id)
+    rootEl.outerHTML = html
+    this.joinRootViews()
   }
 
   joinView(el, parentView){
@@ -316,6 +321,7 @@ export class LiveSocket {
     let view = new View(el, this, parentView)
     this.views[view.id] = view
     view.join()
+    return view
   }
 
   owner(childEl, callback){
@@ -337,6 +343,7 @@ export class LiveSocket {
     let view = this.views[id]
     if(view){
       delete this.views[view.id]
+      if(view.id === this.root.id){ this.root = null }
       view.destroy()
     }
   }
@@ -398,6 +405,10 @@ export class LiveSocket {
 
   }
 
+  unrecoverableError(){
+    throw new Error("TODO")
+  }
+
   // private
 
   bindTargetable(events, callback){
@@ -429,6 +440,25 @@ export class LiveSocket {
       e.preventDefault()
       this.owner(target, view => view.pushEvent("click", target, phxEvent))
     }, false)
+
+    if(Browser.canPushState()){
+      window.onpopstate = (event) => {
+        this.root.pushInternalLink(window.location.href)
+      }
+      window.addEventListener("click", e => {
+        let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
+        let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
+        if(!phxEvent){ return }
+        let href = target.href
+        e.preventDefault()
+        if(phxEvent === "internal"){
+          this.root.pushInternalLink(href, () => Browser.pushState(this.root.id, href)) 
+        } else {
+          console.log("push external", href)
+          this.root.pushExternalLink(href, () => Browser.pushState(this.root.id, href)) 
+        }
+      }, false)
+    }
   }
 
   bindForms(){
@@ -478,6 +508,17 @@ export class LiveSocket {
 export let Browser = {
   all(node, query, callback){
     node.querySelectorAll(query).forEach(callback)
+  },
+
+  canPushState(){ return (typeof(history.pushState) !== "undefined") },
+
+  pushState(viewId, to, callback){
+    if(this.canPushState()){
+      if(to !== window.location.href){ history.pushState({viewId: viewId}, "", to) }
+      callback && callback()
+    } else {
+      this.redirect(to)
+    }
   },
 
   dispatchEvent(target, eventString){
@@ -677,11 +718,15 @@ export class View {
     this.newChildrenAdded = false
     this.gracefullyClosed = false
     this.el = el
-    this.loader = this.el.nextElementSibling
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
-      return {session: this.getSession(), static: this.getStatic()}
+      return {
+        uri: window.location.href,
+        params: this.liveSocket.params,
+        session: this.getSession(),
+        static: this.getStatic()
+      }
     })
     this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
     this.bindChannel()
@@ -707,11 +752,6 @@ export class View {
     }
   }
 
-  hideLoader(){
-    clearTimeout(this.loaderTimer)
-    this.loader.style.display = "none"
-  }
-
   setContainerClasses(...classes){
     this.el.classList.remove(
       PHX_CONNECTED_CLASS,
@@ -724,9 +764,11 @@ export class View {
   showLoader(){
     clearTimeout(this.loaderTimer)
     this.setContainerClasses(PHX_DISCONNECTED_CLASS)
-    this.loader.style.display = "block"
-    let middle = Math.floor(this.el.clientHeight / LOADER_ZOOM)
-    this.loader.style.top = `-${middle}px`
+  }
+
+  hideLoader(){
+    clearTimeout(this.loaderTimer)
+    this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
 
   log(kind, msgCallback){
@@ -737,7 +779,6 @@ export class View {
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
-    this.setContainerClasses(PHX_CONNECTED_CLASS)
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.joinNewChildren()
   }
@@ -768,6 +809,9 @@ export class View {
   bindChannel(){
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
+    this.channel.on("live_redirect", ({to}) => {
+      Browser.pushState(this.id, to, () => this.pushLink(to))
+    })
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -814,9 +858,9 @@ export class View {
 
   pushWithReply(event, payload, onReply = function(){ }){
     this.channel.push(event, payload, PUSH_TIMEOUT)
-      .receive("ok", diff => {
-        this.update(diff)
-        onReply()
+      .receive("ok", resp => {
+        if(resp.diff){ this.update(resp.diff) }
+        onReply(resp)
       })
   }
 
@@ -851,6 +895,39 @@ export class View {
       event: phxEvent,
       value: serializeForm(formEl)
     }, onReply)
+  }
+
+  pushInternalLink(href, callback){
+    this.showLoader()
+    this.pushWithReply("link", {uri: href}, resp => {
+      if(resp.redirect){
+        this.pushExternalLink(resp.redirect, callback)
+      } else {
+        this.hideLoader()
+        callback && callback()
+      }
+    })
+  }
+
+  pushExternalLink(href, callback){
+    this.showLoader()
+    let request = new Request(href, {
+      method: "GET",
+      headers: {"content-type": "text/html", "x-liveview-link": ""},
+      cache: "no-cache",
+      credentials: "include"  
+    })
+    // TODO polyfill docs or replace with XMLHTTPRequest or expose Phoenix's Ajax
+    fetch(request).then(resp => {
+      if(resp.ok){
+        resp.text().then(html => {
+          callback && callback()
+          this.liveSocket.replaceRoot(html)
+        })
+      } else {
+        this.liveSocket.unrecoverableError()
+      }
+    })
   }
 
   ownsElement(element){

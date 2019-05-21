@@ -31,10 +31,17 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp put_new_layout_from_router(conn, opts) do
-    if layout = opts[:layout] do
-      Phoenix.Controller.put_new_layout(conn, layout)
-    else
-      conn
+    cond do
+      live_link?(conn) -> Phoenix.Controller.put_layout(conn, false)
+      layout = opts[:layout] -> Phoenix.Controller.put_new_layout(conn, layout)
+      true -> conn
+    end
+  end
+
+  defp live_link?(%Plug.Conn{} = conn) do
+    case Plug.Conn.get_req_header(conn, "x-liveview-link") do
+      [_] -> true
+      [] -> false
     end
   end
 end
