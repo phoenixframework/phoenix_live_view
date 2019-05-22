@@ -314,7 +314,7 @@ export class LiveSocket {
     })
   }
 
-  replaceRoot(href, linkRef = this.setPendingLink(href, "external")){
+  replaceRoot(href, linkRef = this.setPendingLink(href)){
     this.root.showLoader(LOADER_TIMEOUT)
     Browser.fetchPage(href, (status, html) => {
       if(!this.commitPendingLink(linkRef)){ return }
@@ -424,27 +424,24 @@ export class LiveSocket {
     throw new Error("TODO")
   }
 
-  setPendingLink(href, ctx){ 
+  setPendingLink(href){ 
     this.linkRef++
     let ref = this.linkRef
-    this.href = href
     this.pendingLink = href
-    console.log(`${ctx} pending ${href} ${ref}`)
     return this.linkRef
   }
 
   commitPendingLink(linkRef){
     if(this.linkRef !== linkRef){
-      console.log(`reject ${linkRef} !== ${this.linkRef}`)
       return false
     } else {
-      console.log(`commit ${this.pendingLink} ${linkRef}`)
+      this.href = this.pendingLink
       this.pendingLink = null
       return true
     }
   }
 
-  getURI(){ return this.href }
+  getHref(){ return this.href }
 
   hasPendingLink(){ return !!this.pendingLink }
 
@@ -778,10 +775,9 @@ export class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.pendingDiffs = []
-    this.href = this.liveSocket.getURI()
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        uri: this.href,
+        uri: this.liveSocket.getHref(),
         params: this.liveSocket.params,
         session: this.getSession(),
         static: this.getStatic()
@@ -974,13 +970,12 @@ export class View {
 
   pushInternalLink(href, callback){
     if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
-    let linkRef = this.liveSocket.setPendingLink(href, "internal")
+    let linkRef = this.liveSocket.setPendingLink(href)
     if(!this.isConnected()){ throw new Error(`NOT CONNECTED ${linkRef} ${href}`)}
     this.pushWithReply("link", {uri: href}, resp => {
       if(resp.redirect){
         this.liveSocket.replaceRoot(href, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
-        this.href = href
         this.applyPendingUpdates()
         this.hideLoader()
         callback && callback()
