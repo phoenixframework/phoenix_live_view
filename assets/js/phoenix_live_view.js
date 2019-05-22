@@ -131,7 +131,9 @@ const PHX_DISABLE_WITH = "disable-with"
 const LOADER_TIMEOUT = 200
 const LOADER_ZOOM = 2
 const BINDING_PREFIX = "phx-"
-const PUSH_TIMEOUT = 20000
+const PUSH_TIMEOUT = 2147483647 // "infinity"
+const VIEW_ALIVE = "alive"
+const VIEW_DESTROYED = "destroyed"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -301,24 +303,27 @@ export class LiveSocket {
 
   channel(topic, params){ return this.socket.channel(topic, params || {}) }
 
-  joinRootViews(){
+  joinRootViews(href = window.location.href){
     Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      let view = this.joinView(rootEl)
+      let view = this.joinView(rootEl, null, href)
       this.root = this.root || view
     })
   }
 
-  replaceRoot(html){
+  replaceRoot(href, html, ref){
+    console.log(`replaceRoot ${ref}`, href)
     let rootEl = this.root.el
+    let wasLoading = this.root.isLoading()
     this.destroyViewById(this.root.id)
     rootEl.outerHTML = html
-    this.joinRootViews()
+    this.joinRootViews(href)
+    if(wasLoading){ this.root.showLoader() }
   }
 
-  joinView(el, parentView){
+  joinView(el, parentView, href){
     if(this.getViewById(el.id)){ return }
 
-    let view = new View(el, this, parentView)
+    let view = new View(el, this, parentView, href)
     this.views[view.id] = view
     view.join()
     return view
@@ -712,7 +717,7 @@ let DOM = {
 }
 
 export class View {
-  constructor(el, liveSocket, parentView){
+  constructor(el, liveSocket, parentView, href){
     this.liveSocket = liveSocket
     this.parent = parentView
     this.newChildrenAdded = false
@@ -720,15 +725,19 @@ export class View {
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
+    this.href = href
+    this.pendingLink = null
+    this.pendingDiffs = []
+    this.linkRef = 0
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        uri: window.location.href,
+        uri: href,
         params: this.liveSocket.params,
         session: this.getSession(),
         static: this.getStatic()
       }
     })
-    this.loaderTimer = setTimeout(() => this.showLoader(), LOADER_TIMEOUT)
+    this.showLoader(LOADER_TIMEOUT)
     this.bindChannel()
   }
 
@@ -740,6 +749,7 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    this.state = VIEW_DESTROYED
     if(this.hasGracefullyClosed()){
       this.log("destroyed", () => ["the server view has gracefully closed"])
       callback()
@@ -761,9 +771,15 @@ export class View {
     this.el.classList.add(...classes)
   }
 
-  showLoader(){
+  isLoading(){ return this.el.classList.contains(PHX_DISCONNECTED_CLASS)}
+
+  showLoader(timeout){
     clearTimeout(this.loaderTimer)
-    this.setContainerClasses(PHX_DISCONNECTED_CLASS)
+    if(timeout){
+      this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
+    } else {
+      this.setContainerClasses(PHX_DISCONNECTED_CLASS)
+    }
   }
 
   hideLoader(){
@@ -787,19 +803,28 @@ export class View {
     Browser.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewById(el.id)
       if(!child){
-        this.liveSocket.joinView(el, this)
+        this.liveSocket.joinView(el, this, this.href)
       }
     })
   }
 
   update(diff){
     if(isEmpty(diff)){ return }
+    if(this.pendingLink){ return this.pendingDiffs.push(diff) }
+
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
     DOM.patch(this, this.el, this.id, html)
     if(this.newChildrenAdded){ this.joinNewChildren() }
+  }
+
+  applyPendingUpdates(){
+    console.log("applyPendingUpdates", this.pendingLink)
+    this.pendingLink = null
+    this.pendingDiffs.forEach(diff => this.update(diff))
+    this.pendingDiffs = []
   }
 
   onNewChildAdded(){
@@ -810,7 +835,7 @@ export class View {
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
     this.channel.on("live_redirect", ({to}) => {
-      Browser.pushState(this.id, to, () => this.pushLink(to))
+      this.pushInternalLink(to, () => Browser.pushState(this.id, to)) 
     })
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
@@ -897,20 +922,39 @@ export class View {
     }, onReply)
   }
 
+  setPendingHref(href, ctx){ 
+    this.linkRef++
+    console.log(`${ctx} pending ${href} ${this.linkRef}`)
+    this.href = href
+    this.pendingLink = href
+    return this.linkRef
+  }
+
+  hrefCancelled(linkRef){ return this.linkRef !== linkRef }
+
   pushInternalLink(href, callback){
-    this.showLoader()
+    if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
+    let linkRef = this.setPendingHref(href, "intern")
     this.pushWithReply("link", {uri: href}, resp => {
+      console.log("INTERN OK", linkRef)
+      if(this.hrefCancelled(linkRef)){
+        console.log(`intern ${href}: ${linkRef} !== ${this.linkRef}`)
+        return
+      }
       if(resp.redirect){
-        this.pushExternalLink(resp.redirect, callback)
+        this.pushExternalLink(href, callback, linkRef)
       } else {
+        this.applyPendingUpdates()
+
         this.hideLoader()
         callback && callback()
       }
     })
   }
 
-  pushExternalLink(href, callback){
-    this.showLoader()
+  pushExternalLink(href, callback, existingRef){
+    let linkRef = existingRef || this.setPendingHref(href, "extern")
+    if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
     let request = new Request(href, {
       method: "GET",
       headers: {"content-type": "text/html", "x-liveview-link": ""},
@@ -918,11 +962,17 @@ export class View {
       credentials: "include"  
     })
     // TODO polyfill docs or replace with XMLHTTPRequest or expose Phoenix's Ajax
+    console.log(`GET ${linkRef} ${href}`)
     fetch(request).then(resp => {
+      console.log(`OK ${linkRef} ${href}`)
       if(resp.ok){
         resp.text().then(html => {
+          if(this.hrefCancelled(linkRef)){
+            console.log(`extern ${href}: ${linkRef} !== ${this.linkRef}`)
+            return
+          }
           callback && callback()
-          this.liveSocket.replaceRoot(html)
+          this.liveSocket.replaceRoot(href, html, linkRef)
         })
       } else {
         this.liveSocket.unrecoverableError()

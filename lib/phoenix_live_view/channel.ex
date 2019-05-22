@@ -61,6 +61,8 @@ defmodule Phoenix.LiveView.Channel do
 
     case View.live_link_info(state.socket, uri) do
       {:internal, params} ->
+
+      if function_exported?(state.socket.view, :handle_params, 2) do
         case state.socket.view.handle_params(params, state.socket) do
           {:noreply, %Socket{} = new_socket} ->
             {:noreply, reply_render(state, new_socket, msg.ref)}
@@ -68,9 +70,12 @@ defmodule Phoenix.LiveView.Channel do
           result ->
             handle_result(result, {:handle_params, 2}, state)
         end
+      else
+        {:noreply, state}
+      end
 
       :external ->
-        {:noreply, reply(state, msg.ref, :ok, %{redirect: uri})}
+        {:noreply, reply(state, msg.ref, :ok, %{redirect: true})}
     end
   end
 
@@ -146,6 +151,7 @@ defmodule Phoenix.LiveView.Channel do
           view_module(state).handle_params(Map.merge(channel_params, params), state.socket)
 
         :external ->
+          # TODO resolve race. Should this be possible?
           raise inspect({uri, state.socket})
       end
     else
