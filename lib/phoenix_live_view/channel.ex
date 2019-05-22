@@ -71,7 +71,7 @@ defmodule Phoenix.LiveView.Channel do
             handle_result(result, {:handle_params, 2}, state)
         end
       else
-        {:noreply, state}
+        {:noreply, reply(state, msg.ref, :ok, %{})}
       end
 
       :external ->
