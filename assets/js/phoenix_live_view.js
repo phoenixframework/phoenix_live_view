@@ -128,12 +128,10 @@ const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
-const LOADER_TIMEOUT = 200
-const LOADER_ZOOM = 2
+const LOADER_TIMEOUT = 1
+const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 2147483647 // "infinity"
-const VIEW_ALIVE = "alive"
-const VIEW_DESTROYED = "destroyed"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -309,7 +307,7 @@ export class LiveSocket {
 
   joinRootViews(){
     Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      let view = this.joinView(rootEl, null)
+      let view = this.joinView(rootEl, null, this.getHref())
       this.root = this.root || view
     })
   }
@@ -317,25 +315,32 @@ export class LiveSocket {
   replaceRoot(href, linkRef = this.setPendingLink(href)){
     this.root.showLoader(LOADER_TIMEOUT)
     Browser.fetchPage(href, (status, html) => {
-      if(!this.commitPendingLink(linkRef)){ return }
-      if(status !== 200){ return this.unrecoverableError() }
-      Browser.pushState({}, href)
-
-      let rootEl = this.root.el
-      let wasLoading = this.root.isLoading()
-      this.destroyViewById(this.root.id)
-      rootEl.outerHTML = html
-      this.joinRootViews(href)
-      if(wasLoading){ this.root.showLoader() }
+      if(status !== 200){ return Browser.redirect(href) }
+      let div = document.createElement("div")
+      div.innerHTML = html
+      this.joinView(div.firstChild, null, href, newRoot => {
+        if(!this.commitPendingLink(linkRef)){
+          newRoot.destroy()
+          return
+        }
+        Browser.pushState({}, href)
+        let rootEl = this.root.el
+        let wasLoading = this.root.isLoading()
+        this.destroyViewById(this.root.id)
+        rootEl.replaceWith(newRoot.el)
+        console.log("replaced")
+        this.root = newRoot
+        if(wasLoading){ this.root.showLoader() }
+      })
     })
   }
 
-  joinView(el, parentView){
+  joinView(el, parentView, href, callback){
     if(this.getViewById(el.id)){ return }
 
-    let view = new View(el, this, parentView)
+    let view = new View(el, this, parentView, href)
     this.views[view.id] = view
-    view.join()
+    view.join(callback)
     return view
   }
 
@@ -358,7 +363,7 @@ export class LiveSocket {
     let view = this.views[id]
     if(view){
       delete this.views[view.id]
-      if(view.id === this.root.id){ this.root = null }
+      if(this.root && view.id === this.root.id){ this.root = null }
       view.destroy()
     }
   }
@@ -402,6 +407,7 @@ export class LiveSocket {
 
   bindTopLevelEvents(){
     this.bindClicks()
+    this.bindNav()
     this.bindForms()
     this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
       view.pushKey(target, type, e, phxEvent)
@@ -418,10 +424,6 @@ export class LiveSocket {
       }
     })
 
-  }
-
-  unrecoverableError(){
-    throw new Error("TODO")
   }
 
   setPendingLink(href){ 
@@ -474,29 +476,30 @@ export class LiveSocket {
       e.preventDefault()
       this.owner(target, view => view.pushEvent("click", target, phxEvent))
     }, false)
+  }
 
-    if(Browser.canPushState()){
-      window.onpopstate = (event) => {
-        let href = window.location.href
-        if(this.root.isConnected()){
-          this.root.pushInternalLink(href)
-        } else {
-          this.replaceRoot(href)
-        }
+  bindNav(){
+    if(!Browser.canPushState()){ return }
+    window.onpopstate = (event) => {
+      let href = window.location.href
+      if (this.root.isConnected()) {
+        this.root.pushInternalLink(href)
+      } else {
+        this.replaceRoot(href)
       }
-      window.addEventListener("click", e => {
-        let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
-        let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-        if(!phxEvent){ return }
-        let href = target.href
-        e.preventDefault()
-        if(phxEvent === "internal"){
-          this.root.pushInternalLink(href, () => Browser.pushState({}, href)) 
-        } else {
-          this.replaceRoot(href)
-        }
-      }, false)
     }
+    window.addEventListener("click", e => {
+      let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
+      let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
+      if (!phxEvent) { return }
+      let href = target.href
+      e.preventDefault()
+      if (phxEvent === "internal") {
+        this.root.pushInternalLink(href, () => Browser.pushState({}, href))
+      } else {
+        this.replaceRoot(href)
+      }
+    }, false)
   }
 
   bindForms(){
@@ -766,7 +769,7 @@ let DOM = {
 }
 
 export class View {
-  constructor(el, liveSocket, parentView){
+  constructor(el, liveSocket, parentView, href){
     this.liveSocket = liveSocket
     this.parent = parentView
     this.newChildrenAdded = false
@@ -775,9 +778,10 @@ export class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.pendingDiffs = []
+    this.href = href
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        uri: this.liveSocket.getHref(),
+        uri: this.href,
         params: this.liveSocket.params,
         session: this.getSession(),
         static: this.getStatic()
@@ -797,7 +801,6 @@ export class View {
   }
 
   destroy(callback = function(){}){
-    this.state = VIEW_DESTROYED
     if(this.hasGracefullyClosed()){
       this.log("destroyed", () => ["the server view has gracefully closed"])
       callback()
@@ -895,13 +898,18 @@ export class View {
 
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
-  join(){
+  join(callback){
+    let joinedOnce = false
     if(this.parent){
       this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
     }
     this.channel.join()
-      .receive("ok", data => this.onJoin(data))
+      .receive("ok", data => {
+        if(!joinedOnce){ callback && callback(this) }
+        joinedOnce = true
+        this.onJoin(data)
+      })
       .receive("error", resp => this.onJoinError(resp))
       .receive("timeout", () => this.onJoinError("timeout"))
   }
@@ -916,7 +924,7 @@ export class View {
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
     if(this.liveSocket.isUnloaded()){
-      this.showLoader()
+      this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT)
     } else {
       this.displayError()
     }
@@ -971,11 +979,11 @@ export class View {
   pushInternalLink(href, callback){
     if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    if(!this.isConnected()){ throw new Error(`NOT CONNECTED ${linkRef} ${href}`)}
     this.pushWithReply("link", {uri: href}, resp => {
       if(resp.redirect){
         this.liveSocket.replaceRoot(href, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
+        this.href = href
         this.applyPendingUpdates()
         this.hideLoader()
         callback && callback()

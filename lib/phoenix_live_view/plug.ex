@@ -12,15 +12,19 @@ defmodule Phoenix.LiveView.Plug do
   @impl Plug
   def call(%Conn{private: %{phoenix_live_view: opts}} = conn, view) do
     session_opts = Keyword.get(opts, :session, [:path_params])
-
     render_opts =
       opts
       |> Keyword.take([:container])
       |> Keyword.put(:session, session(conn, session_opts))
 
-    conn
-    |> put_new_layout_from_router(opts)
-    |> Controller.live_render(view, render_opts)
+    if live_link?(conn) do
+      html = Phoenix.LiveView.View.static_render_container(conn, view, render_opts)
+      Phoenix.Controller.html(conn, html)
+    else
+      conn
+      |> put_new_layout_from_router(opts)
+      |> Controller.live_render(view, render_opts)
+    end
   end
 
   defp session(conn, session_opts) do

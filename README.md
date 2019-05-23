@@ -155,13 +155,14 @@ All current Chrome, Safari, Firefox, and MS Edge are supported.
 IE11 support is available with the following polyfills:
 
 ```console
-$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill
 ```
 
 ```javascript
 import "mdn-polyfills/NodeList.prototype.forEach"
 import "mdn-polyfills/Element.prototype.closest"
 import "mdn-polyfills/Element.prototype.matches"
+import "child-replace-with-polyfill"
 import "url-search-params-polyfill"
 import "formdata-polyfill"
 

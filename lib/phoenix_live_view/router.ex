@@ -50,20 +50,20 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, opts \\ []) do
-    quote do
+    quote bind_quoted: binding() do
       Phoenix.Router.get(
-        unquote(path),
+        path,
         Phoenix.LiveView.Plug,
-        Phoenix.Router.scoped_alias(__MODULE__, unquote(live_view)),
+        Phoenix.Router.scoped_alias(__MODULE__, live_view),
         private: %{
           phoenix_live_view:
             Keyword.put_new(
-              unquote(opts),
+              opts,
               :layout,
               Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
             )
         },
-        as: unquote(opts)[:as] || :live,
+        as: opts[:as] || :live,
         alias: false
       )
     end

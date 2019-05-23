@@ -244,6 +244,32 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  Renders only the static container of the Liveview.
+
+  Accepts same options as `static_render/3`.
+  """
+  def static_render_container(%Plug.Conn{} = conn, view, opts) do
+    session = Keyword.fetch!(opts, :session)
+    {tag, extended_attrs} = opts[:container] || {:div, []}
+    router = Phoenix.Controller.router_module(conn)
+    socket =
+      conn
+      |> Phoenix.Controller.endpoint_module()
+      |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
+
+    session_token = sign_root_session(socket, view, session)
+
+    attrs = [
+      {:id, dom_id(socket)},
+      {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
+    ]
+
+    tag
+    |> Phoenix.HTML.Tag.content_tag(attrs, do: nil)
+    |> Phoenix.HTML.safe_to_string()
+  end
+
+  @doc """
   Renders a nested live view without spawning a server.
 
   * `parent` - the parent `%Phoenix.LiveView.Socket{}`
