@@ -131,7 +131,7 @@ const PHX_DISABLE_WITH = "disable-with"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
-const PUSH_TIMEOUT = 2147483647 // "infinity"
+const PUSH_TIMEOUT = 30000
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -323,7 +323,7 @@ export class LiveSocket {
           newRoot.destroy()
           return
         }
-        Browser.pushState({}, href)
+        Browser.pushState("push", {}, href)
         let rootEl = this.root.el
         let wasLoading = this.root.isLoading()
         this.destroyViewById(this.root.id)
@@ -494,11 +494,7 @@ export class LiveSocket {
       if (!phxEvent) { return }
       let href = target.href
       e.preventDefault()
-      if (phxEvent === "internal") {
-        this.root.pushInternalLink(href, () => Browser.pushState({}, href))
-      } else {
-        this.replaceRoot(href)
-      }
+      this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
     }, false)
   }
 
@@ -569,9 +565,9 @@ export let Browser = {
     })
   },
 
-  pushState(meta, to, callback){
+  pushState(kind, meta, to, callback){ 
     if(this.canPushState()){
-      if(to !== window.location.href){ history.pushState(meta, "", to) }
+      if(to !== window.location.href){ history[kind + "State"](meta, "", to) }
       callback && callback()
     } else {
       this.redirect(to)
@@ -883,8 +879,8 @@ export class View {
   bindChannel(){
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
-    this.channel.on("live_redirect", ({to}) => {
-      this.pushInternalLink(to, () => Browser.pushState({}, to)) 
+    this.channel.on("live_redirect", ({to, kind}) => {
+      this.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
     })
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
@@ -936,11 +932,12 @@ export class View {
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
-    this.channel.push(event, payload, PUSH_TIMEOUT)
-      .receive("ok", resp => {
+    return(
+      this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff) }
         onReply(resp)
       })
+    )
   }
 
   pushEvent(type, el, phxEvent){
@@ -988,7 +985,7 @@ export class View {
         this.hideLoader()
         callback && callback()
       }
-    })
+    }).receive("timeout", () => Browser.redirect(window.location.href))
   }
 
   ownsElement(element){

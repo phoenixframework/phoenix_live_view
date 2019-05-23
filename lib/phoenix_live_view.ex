@@ -495,7 +495,7 @@ defmodule Phoenix.LiveView do
   """
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.{Socket, View}
+  alias Phoenix.LiveView.Socket
 
   @type unsigned_params :: map
   @type from :: binary
@@ -754,10 +754,22 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  TODO
+  Annotates the socket for navigation without a page refresh.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, live_redirect(socket, to: "/")}
+      {:noreply, live_redirect(socket, to: "/", replace: true)}
   """
   def live_redirect(%Socket{} = socket, opts) do
-    LiveView.View.put_live_redirect(socket, Keyword.fetch!(opts, :to))
+    kind = if opts[:replace], do: :replace, else: :push
+    LiveView.View.put_live_redirect(socket, Keyword.fetch!(opts, :to), kind)
   end
 
   @doc """
@@ -774,30 +786,30 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  TODO
+  Generates a live link for HTML5 pushState based navigation without page reloads.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
 
   ## Examples
 
-      <%= live_link @socket, "next", Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_link to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
+        Sort By Price
+      <% end %>
 
   """
-  def live_link(%Socket{} = socket, text, opts) do
+  def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+  def live_link(opts, do: block) when is_list(opts) do
     uri = Keyword.fetch!(opts, :to)
-
-    case View.live_link_info(socket, uri) do
-      {:internal, _} ->
-        Phoenix.HTML.Link.link(text, to: uri, data: [phx_live_link: "internal"])
-
-      :external ->
-        Phoenix.HTML.Link.link(text, to: uri, data: [phx_live_link: "external"])
-
-      :error ->
-        raise ArgumentError, """
-        the route at "#{uri}" is not compatible with live_link
-
-        live links muse use the `live` macro provided by Phoenix.LiveView.Router.
-        """
-    end
+    replace = Keyword.get(opts, :replace, false)
+    kind = if replace, do: "replace", else: "push"
+    Phoenix.HTML.Link.link(to: uri, data: [phx_live_link: kind], do: block)
   end
-  # TODO live_link .. do
+  def live_link(text, opts) when is_list(opts) do
+    live_link(opts, do: text)
+  end
 end

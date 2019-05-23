@@ -206,10 +206,10 @@ defmodule Phoenix.LiveView.Channel do
       {:diff, {diff, new_state}} ->
         reply(new_state, ref, :ok, %{diff: diff})
 
-      {:live_redirect, to} ->
+      {:live_redirect, to, kind} ->
         state
         |> reply(ref, :ok, %{})
-        |> push_live_redirect(to)
+        |> push_live_redirect(to, kind)
 
       :noop ->
         reply(state, ref, :ok, %{})
@@ -219,7 +219,7 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(state, socket) do
     case maybe_diff(state, socket) do
       {:diff, {diff, new_state}} -> push(new_state, "render", diff)
-      {:live_redirect, to} -> push_live_redirect(state, to)
+      {:live_redirect, to, kind} -> push_live_redirect(state, to, kind)
       :noop -> state
     end
   end
@@ -228,19 +228,19 @@ defmodule Phoenix.LiveView.Channel do
     push(state, "redirect", %{to: to, flash: View.sign_flash(socket, flash)})
   end
 
-  defp push_live_redirect(%{socket: socket} = state, to) when is_binary(to) do
-    new_state = push(state, "live_redirect", %{to: to})
+  defp push_live_redirect(%{socket: socket} = state, to, kind) when is_binary(to) do
+    new_state = push(state, "live_redirect", %{to: to, kind: kind})
     %{new_state | socket: View.drop_live_redirect(socket)}
   end
 
   defp maybe_diff(state, socket) do
     # For now, we only track content changes.
     # But in the future, we may want to sync other properties.
-    live_redir_to = View.get_live_redirect(socket)
+    live_redir = View.get_live_redirect(socket)
     changed? = View.changed?(socket)
 
     cond do
-      live_redir_to && changed? ->
+      live_redir && changed? ->
         raise RuntimeError, """
         Attempted to assign to socket while issuing live redirect.
 
@@ -248,8 +248,9 @@ defmodule Phoenix.LiveView.Channel do
         Pick up the redirect in handle_params/2 and make your changes there.
         """
 
-      live_redir_to ->
-        {:live_redirect, live_redir_to}
+      live_redir ->
+        {to, kind} = live_redir
+        {:live_redirect, to, kind}
 
       changed? ->
         {:diff, render_diff(state, socket)}

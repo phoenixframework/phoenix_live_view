@@ -116,8 +116,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Annotates the socket for live redirect.
   """
-  def put_live_redirect(%Socket{} = socket, to) do
-    %Socket{socket | private: Map.put(socket.private, :live_redirect, to)}
+  def put_live_redirect(%Socket{} = socket, to, kind) when kind in [:push, :replace] do
+    %Socket{socket | private: Map.put(socket.private, :live_redirect, {to, kind})}
   end
 
   def get_live_redirect(%Socket{} = socket) do
