@@ -8,7 +8,7 @@ Phoenix LiveView JavaScript Client
 Instantiate a single LiveSocket instance to enable LiveView
 client/server interaction, for example:
 
-    import LiveSocket from "live_view"
+    import LiveSocket from "phoenix_live_view"
 
     let liveSocket = new LiveSocket("/live")
     liveSocket.connect()
