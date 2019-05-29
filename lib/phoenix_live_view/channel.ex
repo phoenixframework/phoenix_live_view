@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Channel do
   @moduledoc false
-  use GenServer
+  use GenServer, restart: :temporary
 
   require Logger
 
