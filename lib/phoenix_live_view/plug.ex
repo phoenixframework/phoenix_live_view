@@ -6,6 +6,8 @@ defmodule Phoenix.LiveView.Plug do
 
   @behaviour Plug
 
+  @link_header "x-requested-with"
+
   @impl Plug
   def init(opts), do: opts
 
@@ -19,12 +21,23 @@ defmodule Phoenix.LiveView.Plug do
 
     if live_link?(conn) do
       html = Phoenix.LiveView.View.static_render_container(conn, view, render_opts)
-      Phoenix.Controller.html(conn, html)
+
+      conn
+      |> put_cache_headers()
+      |> Plug.Conn.put_resp_header(@link_header, "live-link")
+      |> Phoenix.Controller.html(html)
     else
       conn
       |> put_new_layout_from_router(opts)
       |> Controller.live_render(view, render_opts)
     end
+  end
+
+  @doc false
+  def put_cache_headers(conn) do
+    conn
+    |> Plug.Conn.put_resp_header("vary", @link_header)
+    |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, must-revalidate, post-check=0, pre-check=0")
   end
 
   defp session(conn, session_opts) do
@@ -43,8 +56,8 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp live_link?(%Plug.Conn{} = conn) do
-    case Plug.Conn.get_req_header(conn, "x-liveview-link") do
-      [_] -> true
+    case Plug.Conn.get_req_header(conn, @link_header) do
+      ["live-link"] -> true
       [] -> false
     end
   end

@@ -12,7 +12,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
-    <% end %>
+    <% end %><%= if map_size(@params) > 0, do: Phoenix.HTML.raw(inspect(@params)) %>
     """
   end
 
@@ -42,7 +42,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   defp do_mount(session, socket) do
     nest = Map.get(session, :nest, false)
-    users = Map.get(session, :users, [])
+    users = session[:users] || []
     val = if connected?(socket), do: 1, else: 0
 
     {:ok,
@@ -53,6 +53,10 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
        users: users,
        greeting: nil
      )}
+  end
+
+  def handle_params(params, socket) do
+    {:noreply, assign(socket, :params, params)}
   end
 
   @key_i 73
@@ -170,5 +174,76 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
 
   def mount(session, socket) do
     {:ok, assign(socket, router_session: session)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.SameChildLive do
+  use Phoenix.LiveView
+
+  def render(%{dup: true} = assigns) do
+    ~L"""
+    <%= for name <- @names do %>
+      <%= live_render(@socket, ClockLive, session: %{name: name}) %>
+    <% end %>
+    """
+  end
+
+  def render(%{dup: false} = assigns) do
+    ~L"""
+    <%= for name <- @names do %>
+      <%= live_render(@socket, ClockLive, session: %{name: name}, child_id: name) %>
+    <% end %>
+    """
+  end
+
+  def mount(%{dup: dup}, socket) do
+    {:ok, assign(socket, dup: dup, names: ~w(Tokyo Madrid Toronto))}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.RootLive do
+  use Phoenix.LiveView
+  alias Phoenix.LiveViewTest.ChildLive
+
+  def render(assigns) do
+    ~L"""
+    root name: <%= @current_user.name %>
+    <%= live_render(@socket, ChildLive, session: %{child: :static, user_id: @current_user.id}) %>
+    <%= if @dynamic_child do %>
+      <%= live_render(@socket, ChildLive, session: %{child: :dynamic, user_id: @current_user.id}, child_id: :dyn) %>
+    <% end %>
+    """
+  end
+
+  def mount(%{user_id: user_id}, socket) do
+    {:ok,
+      socket
+      |> assign(:dynamic_child, false)
+      |> assign_new(:current_user, fn ->
+        %{name: "user-from-root", id: user_id}
+      end)}
+  end
+
+  def handle_call(:show_dynamic_child, _from, socket) do
+    {:reply, :ok, assign(socket, :dynamic_child, true)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.ChildLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    child <%= @child_id %> name: <%= @current_user.name %>
+    """
+  end
+
+  def mount(%{user_id: user_id, child: child_id}, socket) do
+    {:ok,
+     socket
+     |> assign(:child_id, child_id)
+     |> assign_new(:current_user, fn ->
+       %{name: "user-from-child", id: user_id}
+     end)}
   end
 end

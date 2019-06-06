@@ -114,6 +114,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  TODO raise on conflict with :redirect, swap :stopped, with :redirected
   Annotates the socket for live redirect.
   """
   def put_live_redirect(%Socket{} = socket, to, kind) when kind in [:push, :replace] do
@@ -218,7 +219,7 @@ defmodule Phoenix.LiveView.View do
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def static_render(%Plug.Conn{} = conn, view, opts) do
-    session = Keyword.fetch!(opts, :session)
+    session = opts |> Keyword.fetch!(:session) |> Map.merge(conn.private[:live_view_session] || %{})
     {tag, extended_attrs} = opts[:container] || {:div, []}
 
     case static_mount(conn, view, session) do
@@ -311,10 +312,10 @@ defmodule Phoenix.LiveView.View do
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     case Phoenix.Router.route_info(router, "GET", path, host) do
-      {%Phoenix.Router.Route{plug: Phoenix.LiveView.Plug, opts: ^view}, path_params} ->
+      %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
         {:internal, Map.merge(query_params, path_params)}
 
-      {%Phoenix.Router.Route{plug: _, opts: _external_view}, _params} ->
+      %{plug: _, plug_opts: _external_view} ->
         :external
 
       :error -> :error

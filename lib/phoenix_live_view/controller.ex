@@ -39,14 +39,15 @@ defmodule Phoenix.LiveView.Controller do
         conn
         |> Plug.Conn.assign(:live_view_module, view)
         |> Phoenix.Controller.put_view(__MODULE__)
-        |> Phoenix.Controller.render("template.html", %{
-          conn: conn,
-          content: content
-        })
+        |> LiveView.Plug.put_cache_headers()
+        |> do_render(content)
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
     end
+  end
+  defp do_render(conn, content) do
+    Phoenix.Controller.render(conn, "template.html", %{conn: conn, content: content})
   end
 
   @doc false

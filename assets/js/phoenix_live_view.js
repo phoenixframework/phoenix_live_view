@@ -8,7 +8,7 @@ Phoenix LiveView JavaScript Client
 Instantiate a single LiveSocket instance to enable LiveView
 client/server interaction, for example:
 
-    import LiveSocket from "live_view"
+    import LiveSocket from "phoenix_live_view"
 
     let liveSocket = new LiveSocket("/live")
     liveSocket.connect()
@@ -108,7 +108,7 @@ own DOM operations.
 */
 
 import morphdom from "morphdom"
-import {Socket} from "phoenix"
+import {Socket} from "./phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -132,6 +132,7 @@ const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
+const LINK_HEADER = "x-requested-with"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -316,6 +317,7 @@ export class LiveSocket {
     this.root.showLoader(LOADER_TIMEOUT)
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
+      
       let div = document.createElement("div")
       div.innerHTML = html
       this.joinView(div.firstChild, null, href, newRoot => {
@@ -328,7 +330,6 @@ export class LiveSocket {
         let wasLoading = this.root.isLoading()
         this.destroyViewById(this.root.id)
         rootEl.replaceWith(newRoot.el)
-        console.log("replaced")
         this.root = newRoot
         if(wasLoading){ this.root.showLoader() }
       })
@@ -550,19 +551,21 @@ export let Browser = {
   canPushState(){ return (typeof(history.pushState) !== "undefined") },
 
   fetchPage(href, callback){
-    let request = new Request(href, {
-      method: "GET",
-      headers: {"content-type": "text/html", "x-liveview-link": ""},
-      cache: "no-cache",
-      credentials: "include"  
-    })
-    fetch(request).then(resp => {
-      if(resp.ok){
-        resp.text().then(html => callback(200, html))
-      } else {
-        callback(resp.status)
-      }
-    })
+    let req = new XMLHttpRequest()
+    req.open("GET", href, true)
+    req.timeout = PUSH_TIMEOUT
+    req.setRequestHeader("content-type", "text/html")
+    req.setRequestHeader("cache-control", "max-age=0, no-cache, must-revalidate, post-check=0, pre-check=0")
+    req.setRequestHeader(LINK_HEADER, "live-link")
+    req.onerror = () => callback(400)
+    req.ontimeout = () => callback(504)
+    req.onreadystatechange = () => {
+      if(req.readyState !== 4){ return } 
+      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400) }
+      if(req.status !== 200){ return callback(req.status) }
+      callback(200, req.responseText)
+    }
+    req.send()
   },
 
   pushState(kind, meta, to, callback){ 
@@ -775,6 +778,7 @@ export class View {
     this.view = this.el.getAttribute(PHX_VIEW)
     this.pendingDiffs = []
     this.href = href
+    this.joinedOnce = false
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         uri: this.href,
@@ -880,7 +884,7 @@ export class View {
     this.channel.on("render", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
     this.channel.on("live_redirect", ({to, kind}) => {
-      this.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
+      this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
     })
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
@@ -895,15 +899,14 @@ export class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
-    let joinedOnce = false
     if(this.parent){
       this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
     }
     this.channel.join()
       .receive("ok", data => {
-        if(!joinedOnce){ callback && callback(this) }
-        joinedOnce = true
+        if(!this.joinedOnce){ callback && callback(this) }
+        this.joinedOnce = true
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))

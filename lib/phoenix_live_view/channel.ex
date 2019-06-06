@@ -206,6 +206,7 @@ defmodule Phoenix.LiveView.Channel do
       {:diff, {diff, new_state}} ->
         reply(new_state, ref, :ok, %{diff: diff})
 
+      # detect internal and re-invoke handle_params
       {:live_redirect, to, kind} ->
         state
         |> reply(ref, :ok, %{})
