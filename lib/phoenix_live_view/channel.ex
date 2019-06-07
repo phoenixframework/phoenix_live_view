@@ -241,7 +241,6 @@ defmodule Phoenix.LiveView.Channel do
         {:stop, {:shutdown, {:redirect, to}}, push_redirect(new_state, opts, ref)}
 
       {:live_redirect, {:internal, params}, %{to: _to, kind: _kind} = opts} ->
-        # TODO reinvoke handle_params immediately
         state
         |> drop_redirect()
         |> sync_handle_params_with_live_redirect(params, opts, ref)
