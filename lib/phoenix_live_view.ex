@@ -189,7 +189,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          AppWeb.PageView.render("page.html", assigns)
+          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
         end
       end
 
@@ -492,6 +492,31 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
+  ### Live redirects for navigation without page reload
+
+  The `live_redirect/2` function allows a page navigation using the
+  (browser's pushState API)[https://developer.mozilla.org/en-US/docs/Web/API/History_API].
+  To handle navigiation without page reload, simply replace your existing
+  `Phoenix.HTML.link/3` and `Phoenix.LiveView.redirect/2` calls with their `live`
+  counterparts.
+
+  For example, in a temlate you may write:
+
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+
+  or in a LiveView:
+
+      {:noreply, redirect(socket, to: Routes.live_path(@socket, MyLive, page + 1))}
+
+  When a live link is clicked, the following control flow occurs:
+
+    * if the route belongs to the existing root LiveView, the `handle_params/2`
+      callback is invoked
+    * if the route belongs to a different LiveView than the currently running
+      root, the existing root LiveView is shutdown, and a new root LiveView is
+      spawned, following the same static HTTP request, followed by connected
+      upgrade. However, in the case of live links, the static request happens
+      over ajax instead of traditional HTTP requests.
   """
 
   alias Phoenix.LiveView
@@ -755,6 +780,11 @@ defmodule Phoenix.LiveView do
 
   @doc """
   Annotates the socket for navigation without a page refresh.
+
+  When navigating to a path which routes to your existing LiveView,
+  the `handle_params/2` callback is immediatley invoked in your existing
+  LiveView process to handle the change of URL state. For live redirects
+  to external LiveViews, the existing LiveView is shutdown.
 
   ## Options
 

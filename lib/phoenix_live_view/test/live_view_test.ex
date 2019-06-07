@@ -17,28 +17,34 @@ defmodule Phoenix.LiveViewTest do
   socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
 
-      {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
+      use Phoenix.ConnTest
+      @endpoint MyEndpoint
 
-      assert html =~ "<h1>My Disconnected View</h1>"
+      test "disconnected and connected mount", %{conn: conn} do
+        conn = get(conn, "/my-path")
+        assert html_response(conn, 200) =~ "<h1>My Disconnected View</h1>"
 
-      {:ok, view, html} = mount(view)
-      assert html =~ "<h1>My Connected View</h1>"
+        {:ok, view, html} = live(conn)
+      end
 
-      assert {:error, %{redirect: "/somewhere"}} =
-             mount_disconnected(MyEndpoint, MyView, session: %{})
+      test "redirected mount", %{conn: conn} do
+        assert {:error, %{redirect: "/somewhere"}} = live(conn, "my-path")
+      end
 
-  Here, we call `mount_disconnected/3` and assert on the stateless
-  rendered HTML that is received by the browser's HTTP request. Next, `mount/2`
-  is called to mount the stateless view in a connected state which starts our
-  stateful LiveView process.
+  Here, we start by using the familiar `Phoenix.ConnTest` function, `get/2` to
+  test the regular HTTP get request which invokes mount with a disconnect socket.
+  Next, `live/1` is called with our sent connection to mount the view in a connected
+  state, which starts our stateful LiveView process.
 
   In general, it's often more convenient to test the mounting of a view
   in a single step, provided you don't need the result of the stateless HTTP
-  render. This is done with a single call to `mount/3`, which performs the
-  `mount_disconnected` step for us:
+  render. This is done with a single call to `live/2`, which performs the
+  `get` step for us:
 
-      {:ok, view, html} = mount(MyEndpoint, MyView, session: %{})
-      assert html =~ "<h1>My Connected View</h1>"
+      test "connected mount", %{conn: conn} do
+        {:ok, view, html} = live(conn, "/my-path")
+        assert html =~ "<h1>My Connected View</h1>"
+      end
 
   ## Testing Events
 
@@ -64,7 +70,7 @@ defmodule Phoenix.LiveViewTest do
 
   For example:
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, _html} = live(conn, "/thermo")
 
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
 
@@ -116,29 +122,27 @@ defmodule Phoenix.LiveViewTest do
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
-  TODO
-  Mounts a connected LiveView process.
+  Spawns a connected LiveView process.
 
-  Accepts either a previously rendered `%LiveViewTest.View{}` or
-  an endpoint and your LiveView module. The latter case is a conveience
-  to perform the `mount_disconnected/2` and connected mount in a single
+  Accepts either a previously rendered `%Plug.Conn{}` or
+  an unsent `%Plug.Conn{}`. The latter case is a conveience
+  to perform the `get/2` and connected mount in a single
   step.
-
-  ## Options
-
-    * `:session` - The optional map of session data for the LiveView
-    * `:assigns` - The optional map of `Plug.Conn` assigns
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, "/my-view", session: %{val: 3})
+      {:ok, view, html} = live(conn, "/path")
 
       assert view.module = MyLive
 
       assert html =~ "the count is 3"
 
-      assert {:error, %{redirect: "/somewhere"}} =
-             mount(MyEndpoint, MyView, session: %{})
+      assert {:error, %{redirect: "/somewhere"}} = live(conn, "/path")
+
+      {:ok, view, html} =
+        conn
+        |> get("/path")
+        |> live()
   """
   defmacro live(conn, path_or_opts \\ []) do
     quote bind_quoted: binding(), unquote: true, generated: true do
@@ -261,7 +265,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
   """
@@ -274,7 +278,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
@@ -288,7 +292,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
@@ -302,7 +306,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -315,7 +319,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -328,7 +332,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
   """
@@ -341,7 +345,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
@@ -358,7 +362,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Simulates a live_link click to the view and returns the rendered result.
   """
   def render_live_link(view, path) do
     case GenServer.call(view.proxy, {:render_live_link, view, path}) do
@@ -374,7 +378,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, _html} = live(conn, "/thermo")
       assert [clock_view] = children(view)
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
