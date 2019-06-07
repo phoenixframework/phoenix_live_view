@@ -46,8 +46,9 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, %{state | children_pids: new_pids, children_ids: new_ids}}
 
       :error ->
-        result = view_module(state).handle_info(msg, socket)
-        handle_result(result, {:handle_info, 2}, state)
+        msg
+        |> view_module(state).handle_info(socket)
+        |> handle_result({:handle_info, 2, nil}, state)
     end
   end
 
@@ -59,20 +60,15 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
     %{"uri" => uri} = msg.payload
 
-    case View.live_link_info(state.socket, uri) do
+    case View.live_link_info!(state.socket, uri) do
       {:internal, params} ->
-
-      if function_exported?(state.socket.view, :handle_params, 2) do
-        case state.socket.view.handle_params(params, state.socket) do
-          {:noreply, %Socket{} = new_socket} ->
-            {:noreply, reply_render(state, new_socket, msg.ref)}
-
-          result ->
-            handle_result(result, {:handle_params, 2}, state)
+        if function_exported?(state.socket.view, :handle_params, 2) do
+          params
+          |> state.socket.view.handle_params(state.socket)
+          |> handle_result({:handle_params, 2, msg.ref}, state)
+        else
+          {:noreply, state}
         end
-      else
-        {:noreply, reply(state, msg.ref, :ok, %{})}
-      end
 
       :external ->
         {:noreply, reply(state, msg.ref, :ok, %{redirect: true})}
@@ -83,18 +79,15 @@ defmodule Phoenix.LiveView.Channel do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode(type, state.socket.router, raw_val)
 
-    case view_module(state).handle_event(event, val, state.socket) do
-      {:noreply, %Socket{} = new_socket} ->
-        {:noreply, reply_render(state, new_socket, msg.ref)}
-
-      result ->
-        handle_result(result, {:handle_event, 3}, state)
-    end
+    event
+    |> view_module(state).handle_event(val, state.socket)
+    |> handle_result({:handle_event, 3, msg.ref}, state)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
-    result = view_module(state).handle_info(msg, socket)
-    handle_result(result, {:handle_info, 2}, state)
+    msg
+    |> view_module(state).handle_info(socket)
+    |> handle_result({:handle_info, 2, nil}, state)
   end
 
   @impl true
@@ -108,13 +101,16 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
-    case view_module(state).handle_call(msg, from, socket) do
-      {:reply, reply, %Socket{} = new_socket} ->
-        {:reply, reply, push_render(state, new_socket)}
+    msg
+    |> view_module(state).handle_call(from, socket)
+    |> handle_result({:handle_call, 3, nil}, state)
+  end
 
-      result ->
-        handle_result(result, {:handle_call, 3}, state)
-    end
+  @impl true
+  def handle_cast(msg, %{socket: socket} = state) do
+    msg
+    |> view_module(state).handle_cast(socket)
+    |> handle_result({:handle_cast, 2, nil}, state)
   end
 
   @impl true
@@ -145,31 +141,52 @@ defmodule Phoenix.LiveView.Channel do
 
   defp mount_handle_params(uri, channel_params, state) do
     if function_exported?(state.socket.view, :handle_params, 2) do
-      # {:internal, params} = View.live_link_info(state.socket, uri)
-      case View.live_link_info(state.socket, uri) do
+      case View.live_link_info!(state.socket, uri) do
         {:internal, params} ->
-          view_module(state).handle_params(Map.merge(channel_params, params), state.socket)
-
-        :external ->
-          # TODO resolve race. Should this be possible?
-          raise inspect({uri, state.socket})
+          channel_params
+          |> Map.merge(params)
+          |> view_module(state).handle_params(state.socket)
       end
     else
       {:noreply, state.socket}
     end
   end
 
-  defp handle_result({:noreply, %Socket{} = new_socket}, _fa, state) do
-    {:noreply, push_render(state, new_socket)}
+  defp handle_result({:reply, reply, %Socket{} = new_socket}, {:handle_call, 3, ref}, state) do
+    case handle_changed(state, new_socket, ref) do
+      {:ok, _changed, new_state} -> {:reply, reply, new_state}
+      {:stop, reason, new_state} -> {:stop, reason, reply, new_state}
+    end
   end
 
-  defp handle_result({:stop, %Socket{stopped: {:redirect, %{to: to}}} = new_socket}, _fa, state) do
-    new_state = push_redirect(%{state | socket: new_socket}, to, View.get_flash(new_socket))
-    send(state.transport_pid, {:socket_close, self(), :redirect})
-    {:stop, {:shutdown, :redirect}, new_state}
+  defp handle_result({:noreply, %Socket{} = new_socket}, {from, _, ref}, state)
+       when from in [:handle_call, :handle_info, :handle_cast, :handle_event, :handle_params] do
+    case handle_changed(state, new_socket, ref) do
+      {:ok, _changed, new_state} -> {:noreply, new_state}
+      {:stop, reason, new_state} -> {:stop, reason, new_state}
+    end
   end
 
-  defp handle_result(result, {:handle_call, 3}, state) do
+  defp handle_result({:stop, %Socket{} = new_socket}, {_, _, ref}, state) do
+    case handle_changed(state, new_socket, ref) do
+      {:ok, :live_redirect, _new_state} ->
+        raise ArgumentError, """
+        attempted to live_redirect while stopping LiveView
+
+        a LiveView cannot be stopped while issuing a live redirect to the client. Use
+        redirect/2 instead if you wish to stop and redirect.
+        """
+
+      {:ok, _changed, new_state} ->
+        send(new_state.transport_pid, {:socket_close, self(), :shutdown})
+        {:stop, :shutdown, new_state}
+
+      {:stop, reason, new_state} ->
+        {:stop, reason, new_state}
+    end
+  end
+
+  defp handle_result(result, {:handle_call, 3, _ref}, state) do
     raise ArgumentError, """
     invalid noreply from #{inspect(view_module(state))}.handle_call/3 callback.
 
@@ -183,7 +200,7 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp handle_result(result, {name, arity}, state) do
+  defp handle_result(result, {name, arity, _ref}, state) do
     raise ArgumentError, """
     invalid noreply from #{inspect(view_module(state))}.#{name}/#{arity} callback.
 
@@ -201,47 +218,110 @@ defmodule Phoenix.LiveView.Channel do
   defp decode("form", _router, url_encoded), do: Plug.Conn.Query.decode(url_encoded)
   defp decode(_, _router, value), do: value
 
-  defp reply_render(state, socket, ref) do
-    case maybe_diff(state, socket) do
-      {:diff, {diff, new_state}} ->
-        reply(new_state, ref, :ok, %{diff: diff})
+  defp handle_changed(state, %Socket{} = new_socket, ref, pending_internal_live_redirect \\ nil) do
+    new_state = %{state | socket: new_socket}
 
-      # detect internal and re-invoke handle_params
-      {:live_redirect, to, kind} ->
-        state
-        |> reply(ref, :ok, %{})
-        |> push_live_redirect(to, kind)
+    case maybe_changed(new_socket) do
+      :diff ->
+        {diff, new_state} = render_diff(new_state, new_socket)
+
+        {:ok, :diff,
+         new_state
+         |> push_internal_live_redirect(pending_internal_live_redirect, nil)
+         |> push_render(diff, ref)}
 
       :noop ->
-        reply(state, ref, :ok, %{})
+        {:ok, :noop,
+         state
+         |> push_internal_live_redirect(pending_internal_live_redirect, nil)
+         |> push_noop(ref)}
+
+      {:redirect, %{to: to} = opts} ->
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        {:stop, {:shutdown, {:redirect, to}}, push_redirect(new_state, opts, ref)}
+
+      {:live_redirect, {:internal, params}, %{to: _to, kind: _kind} = opts} ->
+        # TODO reinvoke handle_params immediately
+        state
+        |> drop_redirect()
+        |> sync_handle_params_with_live_redirect(params, opts, ref)
+
+      {:live_redirect, :external, %{to: to} = opts} ->
+        send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        opts = Map.put(opts, :flash, View.sign_flash(state.socket, View.get_flash(state.socket)))
+        {:stop, {:shutdown, {:redirect, to}}, push_external_live_redirect(state, opts, ref)}
     end
   end
 
-  defp push_render(state, socket) do
-    case maybe_diff(state, socket) do
-      {:diff, {diff, new_state}} -> push(new_state, "render", diff)
-      {:live_redirect, to, kind} -> push_live_redirect(state, to, kind)
-      :noop -> state
+  defp drop_redirect(state) do
+    %{state | socket: View.drop_redirect(state.socket)}
+  end
+
+  defp sync_handle_params_with_live_redirect(state, params, opts, ref) do
+    if function_exported?(state.socket.view, :handle_params, 2) do
+      case state.socket.view.handle_params(params, state.socket) do
+        {:noreply, %Socket{} = new_socket} ->
+          handle_changed(state, new_socket, ref, opts)
+
+        {:stop, %Socket{} = new_socket} ->
+          case handle_changed(state, new_socket, ref, opts) do
+            {:ok, _changed, new_state} -> {:stop, :shutdown, new_state}
+            {:stop, reason, new_state} -> {:stop, reason, new_state}
+          end
+      end
+    else
+      {:ok, :live_redirect, push_internal_live_redirect(state, opts, ref)}
     end
   end
 
-  defp push_redirect(%{socket: socket} = state, to, flash) do
-    push(state, "redirect", %{to: to, flash: View.sign_flash(socket, flash)})
+  defp push_internal_live_redirect(state, nil, _ref), do: state
+
+  defp push_internal_live_redirect(state, %{to: to, kind: kind}, nil = _ref) do
+    push(state, "live_redirect", %{to: to, kind: kind})
   end
 
-  defp push_live_redirect(%{socket: socket} = state, to, kind) when is_binary(to) do
-    new_state = push(state, "live_redirect", %{to: to, kind: kind})
-    %{new_state | socket: View.drop_live_redirect(socket)}
+  defp push_internal_live_redirect(state, %{to: to, kind: kind}, ref) do
+    reply(state, ref, :ok, %{live_redirect: %{to: to, kind: kind}})
   end
 
-  defp maybe_diff(state, socket) do
+  defp push_redirect(state, %{to: to}, nil = _ref) do
+    flash = View.get_flash(state.socket)
+    push(state, "redirect", %{to: to, flash: View.sign_flash(state.socket, flash)})
+  end
+
+  defp push_redirect(state, %{to: to}, ref) do
+    flash = View.get_flash(state.socket)
+    reply(state, ref, :ok, %{to: to, flash: View.sign_flash(state.socket, flash)})
+  end
+
+  defp push_noop(state, nil = _ref), do: state
+  defp push_noop(state, ref), do: reply(state, ref, :ok, %{})
+
+  defp push_render(state, diff, nil = _ref), do: push(state, "render", diff)
+  defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
+
+  defp push_external_live_redirect(state, %{to: _, kind: _} = opts, nil = _ref) do
+    push(state, "external_live_redirect", opts)
+  end
+
+  defp push_external_live_redirect(state, %{to: _, kind: _} = opts, ref) do
+    reply(state, ref, :ok, %{redirect: opts})
+  end
+
+  defp maybe_changed(%Socket{} = socket) do
     # For now, we only track content changes.
     # But in the future, we may want to sync other properties.
-    live_redir = View.get_live_redirect(socket)
+    {redir_opts, live_redir_opts} =
+      case socket.redirected do
+        {:live, opts} -> {nil, opts}
+        {:redirect, opts} -> {opts, nil}
+        nil -> {nil, nil}
+      end
+
     changed? = View.changed?(socket)
 
     cond do
-      live_redir && changed? ->
+      live_redir_opts && changed? ->
         raise RuntimeError, """
         Attempted to assign to socket while issuing live redirect.
 
@@ -249,12 +329,15 @@ defmodule Phoenix.LiveView.Channel do
         Pick up the redirect in handle_params/2 and make your changes there.
         """
 
-      live_redir ->
-        {to, kind} = live_redir
-        {:live_redirect, to, kind}
+      live_redir_opts ->
+        %{to: to} = live_redir_opts
+        {:live_redirect, View.live_link_info!(socket, to), live_redir_opts}
+
+      redir_opts ->
+        {:redirect, redir_opts}
 
       changed? ->
-        {:diff, render_diff(state, socket)}
+        :diff
 
       true ->
         :noop
@@ -332,21 +415,31 @@ defmodule Phoenix.LiveView.Channel do
       })
 
     with {:ok, %Socket{} = lv_socket} <- view.mount(session, lv_socket),
-         state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket),
-         {:noreply, %Socket{} = lv_socket} <- mount_handle_params(uri, channel_params, state) do
-      {diff, new_state} = render_diff(state, lv_socket)
+         state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket) do
 
-      GenServer.reply(from, {:ok, %{rendered: diff}})
-      {:noreply, new_state}
+      case mount_handle_params(uri, channel_params, state) do
+        {:noreply, %Socket{redirected: nil} = lv_socket} ->
+          {diff, new_state} = render_diff(state, lv_socket)
+
+          GenServer.reply(from, {:ok, %{rendered: diff}})
+          {:noreply, new_state}
+
+        {action, %Socket{redirected: {_type, %{to: to}}} = lv_socket} when action in [:noreply, :stop] ->
+          shutdown_mount_redirect(lv_socket, from, to)
+      end
     else
-      {:stop, %Socket{stopped: {:redirect, %{to: to}}}} ->
-        Logger.info("Redirecting #{inspect(view)} #{id} to: #{inspect(to)}")
-        GenServer.reply(from, {:error, %{redirect: to}})
-        {:stop, :shutdown, :no_state}
+      {:stop, %Socket{redirected: {_type, %{to: to}}} = lv_socket} ->
+        shutdown_mount_redirect(lv_socket, from, to)
 
       other ->
         View.raise_invalid_mount(other, view)
     end
+  end
+
+  defp shutdown_mount_redirect(socket, from, to) do
+    Logger.info("Redirecting #{inspect(socket.view)} #{socket.id} to: #{inspect(to)}")
+    GenServer.reply(from, {:error, %{redirect: to}})
+    {:stop, :shutdown, :no_state}
   end
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
@@ -374,6 +467,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp put_child(state, child_pid, view, id) do
     parent = view_module(state)
+
     case Map.fetch(state.children_ids, id) do
       {:ok, existing_pid} ->
         raise RuntimeError, """

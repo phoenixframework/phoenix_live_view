@@ -105,28 +105,21 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Annotates the socket for redirect.
   """
-  def put_redirect(%Socket{stopped: nil} = socket, to) do
-    %Socket{socket | stopped: {:redirect, %{to: to}}}
+  def put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
+    %Socket{socket | redirected: {:redirect, opts}}
   end
 
-  def put_redirect(%Socket{stopped: reason} = _socket, _to) do
-    raise ArgumentError, "socket already prepared to stop for #{inspect(reason)}"
+  def put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
+      when kind in [:push, :replace] do
+    %Socket{socket | redirected: {:live, opts}}
   end
 
-  @doc """
-  TODO raise on conflict with :redirect, swap :stopped, with :redirected
-  Annotates the socket for live redirect.
-  """
-  def put_live_redirect(%Socket{} = socket, to, kind) when kind in [:push, :replace] do
-    %Socket{socket | private: Map.put(socket.private, :live_redirect, {to, kind})}
+  def put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
+    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
   end
 
-  def get_live_redirect(%Socket{} = socket) do
-    socket.private[:live_redirect]
-  end
-
-  def drop_live_redirect(%Socket{} = socket) do
-    %Socket{socket | private: Map.delete(socket.private, :live_redirect)}
+  def drop_redirect(%Socket{} = socket) do
+    %Socket{socket | redirected: nil}
   end
 
   @doc """
@@ -219,7 +212,9 @@ defmodule Phoenix.LiveView.View do
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def static_render(%Plug.Conn{} = conn, view, opts) do
-    session = opts |> Keyword.fetch!(:session) |> Map.merge(conn.private[:live_view_session] || %{})
+    session =
+      opts |> Keyword.fetch!(:session) |> Map.merge(conn.private[:live_view_session] || %{})
+
     {tag, extended_attrs} = opts[:container] || {:div, []}
 
     case static_mount(conn, view, session) do
@@ -253,6 +248,7 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.fetch!(opts, :session)
     {tag, extended_attrs} = opts[:container] || {:div, []}
     router = Phoenix.Controller.router_module(conn)
+
     socket =
       conn
       |> Phoenix.Controller.endpoint_module()
@@ -307,7 +303,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
-  def live_link_info(%Socket{view: view, router: router}, uri) do
+  def live_link_info!(%Socket{view: view, router: router}, uri) do
     %URI{host: host, path: path, query: query} = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
@@ -318,7 +314,8 @@ defmodule Phoenix.LiveView.View do
       %{plug: _, plug_opts: _external_view} ->
         :external
 
-      :error -> :error
+      :error ->
+        raise ArgumentError, "attempted to live_redirect to a non-LiveView at #{uri}"
     end
   end
 
@@ -382,7 +379,7 @@ defmodule Phoenix.LiveView.View do
         {:ok, new_socket, sign_static_token(new_socket)}
 
       {:stop, socket} ->
-        {:stop, socket.stopped}
+        {:stop, socket.redirected}
 
       other ->
         raise_invalid_mount(other, view)
@@ -401,13 +398,11 @@ defmodule Phoenix.LiveView.View do
   defp do_static_mount(socket, view, session, params) do
     with {:ok, %Socket{} = mounted_socket} <- view.mount(session, socket),
          {:noreply, %Socket{} = new_socket} <- mount_handle_params(mounted_socket, view, params) do
-
-        session_token = sign_root_session(socket, view, session)
-        {:ok, new_socket, session_token}
-
+      session_token = sign_root_session(socket, view, session)
+      {:ok, new_socket, session_token}
     else
       {:stop, socket} ->
-        {:stop, socket.stopped}
+        {:stop, socket.redirected}
 
       other ->
         raise_invalid_mount(other, view)

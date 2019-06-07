@@ -882,10 +882,9 @@ export class View {
 
   bindChannel(){
     this.channel.on("render", (diff) => this.update(diff))
-    this.channel.on("redirect", ({to, flash}) => Browser.redirect(to, flash))
-    this.channel.on("live_redirect", ({to, kind}) => {
-      this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
-    })
+    this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
+    this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect(to))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -895,6 +894,15 @@ export class View {
     this.gracefullyClosed = true
     this.liveSocket.destroyViewById(this.id)
   }
+
+  onExternalLiveRedirect(href, linRef){
+    this.liveSocket.replaceRoot(href, linkRef)
+  }
+  onLiveRedirect({to, kind}){
+    this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
+  }
+
+  onRedirect({to, flash}){ Browser.redirect(to, flash) }
 
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
@@ -938,6 +946,8 @@ export class View {
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff) }
+        if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+        if(resp.redirect && event !== "link"){ this.onRedirect(resp.redirect) }
         onReply(resp)
       })
     )
@@ -981,7 +991,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {uri: href}, resp => {
       if(resp.redirect){
-        this.liveSocket.replaceRoot(href, linkRef)
+        this.onExternalLiveRedirect(href, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()

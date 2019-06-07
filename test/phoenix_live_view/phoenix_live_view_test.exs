@@ -406,10 +406,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert {:ok, view, _} = live(conn, "/thermo")
 
       assert_redirect(view, "/path", fn ->
-        assert render_click(view, :redir, "/path") == {:error, :redirect}
+        assert render_click(view, :redir, "/path") == {:error, {:redirect, "/path"}}
       end)
 
-      assert_remove view, :redirect
+      assert_remove view, {:redirect, "/path"}
     end
 
     test "redirect after connected mount from root thru async call", %{conn: conn} do

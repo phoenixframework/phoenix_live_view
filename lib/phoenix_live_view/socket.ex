@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.Socket do
             changed: %{},
             fingerprints: {nil, %{}},
             private: %{},
-            stopped: nil,
+            redirected: nil,
             connected?: false
 
   channel "lv:*", Phoenix.LiveView.Channel

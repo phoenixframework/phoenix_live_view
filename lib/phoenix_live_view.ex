@@ -750,7 +750,7 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    LiveView.View.put_redirect(socket, Keyword.fetch!(opts, :to))
+    LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
   end
 
   @doc """
@@ -769,7 +769,7 @@ defmodule Phoenix.LiveView do
   """
   def live_redirect(%Socket{} = socket, opts) do
     kind = if opts[:replace], do: :replace, else: :push
-    LiveView.View.put_live_redirect(socket, Keyword.fetch!(opts, :to), kind)
+    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
 
   @doc """

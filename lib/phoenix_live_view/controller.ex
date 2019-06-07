@@ -44,6 +44,9 @@ defmodule Phoenix.LiveView.Controller do
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+
+      {:stop, {:live, opts}} ->
+        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
     end
   end
   defp do_render(conn, content) do

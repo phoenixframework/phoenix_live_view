@@ -12,7 +12,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
-    <% end %><%= if map_size(@params) > 0, do: Phoenix.HTML.raw(inspect(@params)) %>
+    <% end %>
     """
   end
 
@@ -53,10 +53,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
        users: users,
        greeting: nil
      )}
-  end
-
-  def handle_params(params, socket) do
-    {:noreply, assign(socket, :params, params)}
   end
 
   @key_i 73
@@ -247,3 +243,60 @@ defmodule Phoenix.LiveViewTest.ChildLive do
      end)}
   end
 end
+
+defmodule Phoenix.LiveViewTest.ParamCounterLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    The value is: <%= @val %>
+    <%= if map_size(@params) > 0, do: Phoenix.HTML.raw(inspect(@params)) %>
+    """
+  end
+
+  def mount(%{test: %{external_disconnected_redirect: redir}}, socket) do
+    %{to: to} = redir
+    {:stop, live_redirect(socket, to: to)}
+  end
+
+  def mount(%{test: %{external_connected_redirect: redir}}, socket) do
+    %{to: to} = redir
+    if connected?(socket) do
+      {:stop, live_redirect(socket, to: to)}
+    else
+      {:ok, assign(socket, val: 1)}
+    end
+  end
+
+  def mount(_session, socket), do: {:ok, assign(socket, val: 1)}
+
+  def handle_params(%{"from" => "handle_params"} = params, socket) do
+    send(Process.whereis(:params_test), {:handle_params, socket.assigns, params})
+    Process.get(:on_handle_params).(socket)
+  end
+
+  def handle_params(params, socket) do
+    send(Process.whereis(:params_test), {:handle_params, socket.assigns, params})
+    {:noreply, assign(socket, :params, params)}
+  end
+
+  def handle_event("live_redirect", to, socket) do
+    {:noreply, live_redirect(socket, to: to)}
+  end
+
+  def handle_info({:set, var, val}, socket), do: {:noreply, assign(socket, var, val)}
+
+  def handle_info({:live_redirect, to}, socket) do
+    {:noreply, live_redirect(socket, to: to)}
+  end
+
+  def handle_call({:live_redirect, to, func}, _from, socket) do
+    func.(live_redirect(socket, to: to))
+  end
+
+  def handle_cast({:live_redirect, to}, socket) do
+    {:noreply, live_redirect(socket, to: to)}
+  end
+end
+
+
