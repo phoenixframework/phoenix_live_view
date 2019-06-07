@@ -516,7 +516,8 @@ defmodule Phoenix.LiveView do
       root, the existing root LiveView is shutdown, and a new root LiveView is
       spawned, following the same static HTTP request, followed by connected
       upgrade. However, in the case of live links, the static request happens
-      over ajax instead of traditional HTTP requests.
+      over Ajax instead of traditional HTTP requests which allows LiveView
+      to skip the initial static render.
   """
 
   alias Phoenix.LiveView
