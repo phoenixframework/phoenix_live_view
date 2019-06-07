@@ -781,7 +781,7 @@ export class View {
     this.joinedOnce = false
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        uri: this.href,
+        uri: this.href || this.liveSocket.root.href,
         params: this.liveSocket.params,
         session: this.getSession(),
         static: this.getStatic()
@@ -895,8 +895,12 @@ export class View {
     this.liveSocket.destroyViewById(this.id)
   }
 
-  onExternalLiveRedirect(href, linRef){
-    this.liveSocket.replaceRoot(href, linkRef)
+  onExternalLiveRedirect(href, linkRef){
+    if(linkRef){
+      this.liveSocket.replaceRoot(href, linkRef)
+    } else {
+      this.liveSocket.replaceRoot(href)
+    }
   }
   onLiveRedirect({to, kind}){
     this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
