@@ -165,7 +165,7 @@ let maybe = (el, key) => {
 let serializeForm = (form) => {
   let formData = new FormData(form)
   let params = new URLSearchParams()
-  for(let [key, val] of formData.entries()){ params.set(key, val) }
+  for(let [key, val] of formData.entries()){ params.append(key, val) }
   return params.toString()
 }
 
