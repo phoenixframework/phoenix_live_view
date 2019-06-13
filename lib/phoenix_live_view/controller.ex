@@ -45,7 +45,15 @@ defmodule Phoenix.LiveView.Controller do
         })
 
       {:stop, {:redirect, opts}} ->
-        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+        if Map.get(conn.private, :phoenix_flash) do
+          (Map.get(opts, :flash) || %{})
+          |> Enum.reduce(conn, fn {k, v}, conn ->
+            Phoenix.Controller.put_flash(conn, k, v)
+          end)
+          |> Phoenix.Controller.redirect(to: Map.fetch!(opts, :to))
+        else
+          Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+        end
     end
   end
 

@@ -335,6 +335,9 @@ defmodule Phoenix.LiveView.View do
         session_token = sign_root_session(socket, view, session)
         {:ok, new_socket, session_token}
 
+      {:stop, %Socket{stopped: {:redirect, opts}} = socket} when is_map(opts) ->
+        {:stop, {:redirect, Map.put(opts, :flash, Phoenix.LiveView.View.get_flash(socket))}}
+
       {:stop, socket} ->
         {:stop, socket.stopped}
 
