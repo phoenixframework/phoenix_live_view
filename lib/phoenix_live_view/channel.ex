@@ -142,15 +142,54 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_handle_params(uri, channel_params, state) do
+  defp call_handle_params(state, %{to: to} = redir, channel_params) do
     if function_exported?(state.socket.view, :handle_params, 2) do
-      {:internal, params} = View.live_link_info!(state.socket, uri)
+      {:internal, params} = View.live_link_info!(state.socket, to)
 
       channel_params
       |> Map.merge(params)
       |> view_module(state).handle_params(state.socket)
+      |> handle_mount_result(redir, channel_params, state)
     else
-      {:noreply, state.socket}
+      {diff, new_state} = render_diff(state, state.socket)
+      {:ok, diff, redir, new_state}
+    end
+  end
+
+  defp handle_mount_result({:noreply, %Socket{} = new_socket}, redir, channel_params, state) do
+    new_state = %{state | socket: new_socket}
+    case maybe_changed(new_socket) do
+      changed when changed in [:noop, :diff] ->
+        {diff, new_state} = render_diff(new_state, new_socket)
+        {:ok, diff, redir, new_state}
+
+      {:redirect, %{to: _to} = opts} ->
+        {:stop, {:shutdown, {:redirect, opts}}, new_state}
+
+      {:live_redirect, {:internal, params}, %{to: _to, kind: _kind} = opts} ->
+        new_state
+        |> drop_redirect()
+        |> call_handle_params({:live_redirect, opts}, Map.merge(channel_params, params))
+
+      {:live_redirect, :external, %{to: to} = opts} ->
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        opts = Map.put(opts, :flash, View.sign_flash(new_state.socket, View.get_flash(new_state.socket)))
+        {:stop, {:shutdown, {:live_redirect, :external, opts}}, new_state}
+    end
+  end
+
+  defp handle_mount_result({:stop, %Socket{} = new_socket}, _uri, _channel_params, state) do
+    new_state = %{state | socket: new_socket}
+    case maybe_changed(new_socket) do
+      {:redirect, %{to: _to} = opts} ->
+        {:stop, {:shutdown, {:redirect, opts}}, new_state}
+
+      {:live_redirect, _kind, _opts} ->
+        raise RuntimeError, """
+        attempted to live redirect while stopping.
+
+        live_redirects cannot be stopped. If you wish to stop and redirect, use redirect/2 instead.
+        """
     end
   end
 
@@ -390,34 +429,43 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, %Socket{} = lv_socket} ->
         state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket)
 
-        case mount_handle_params(uri, channel_params, state) do
-          {:noreply, %Socket{redirected: nil} = lv_socket} ->
-            {diff, new_state} = render_diff(state, lv_socket)
+        state
+        |> call_handle_params(%{to: uri}, channel_params)
+        |> reply_mount(from, uri, view)
 
-            GenServer.reply(from, {:ok, %{rendered: diff}})
-            {:noreply, new_state}
+      {:stop, %Socket{} = lv_socket} = result ->
+        state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket)
 
-          {action, %Socket{redirected: {_type, %{to: _} = opts}} = lv_socket}
-          when action in [:noreply, :stop] ->
-            shutdown_mount_redirect(lv_socket, from, opts)
-
-          other ->
-            View.raise_invalid_mount(other, view)
-        end
-
-      {:stop, %Socket{redirected: {_type, %{to: _to} = opts}} = lv_socket} ->
-        shutdown_mount_redirect(lv_socket, from, opts)
+        result
+        |> handle_mount_result(uri, channel_params, state)
+        |> reply_mount(from, uri, view)
 
       other ->
         View.raise_invalid_mount(other, view)
     end
   end
 
-  defp shutdown_mount_redirect(socket, from, %{to: to} = opts) do
-    Logger.info("Mount redirect #{inspect(socket.view)} #{socket.id} to: #{inspect(to)}")
-    GenServer.reply(from, {:error, %{redirect: opts}})
-    {:stop, :shutdown, :no_state}
+  defp reply_mount({:ok, diff, %{to: original_uri}, new_state}, from, original_uri, _view) do
+    GenServer.reply(from, {:ok, %{rendered: diff}})
+    {:noreply, new_state}
   end
+
+  defp reply_mount({:ok, diff, {:live_redirect, opts}, new_state}, from, _uri, _view) do
+    GenServer.reply(from, {:ok, %{rendered: diff, live_redirect: opts}})
+    {:noreply, new_state}
+  end
+
+  defp reply_mount({:stop, {:shutdown, {:live_redirect, :external, opts}}, new_state}, from, _uri, _view) do
+    GenServer.reply(from, {:error, %{external_live_redirect: opts}})
+    {:stop, :shutdown, new_state}
+  end
+
+  defp reply_mount({:stop, {:shutdown, {:redirect, opts}}, new_state}, from, _uri, _view) do
+    GenServer.reply(from, {:error, %{redirect: opts}})
+    {:stop, :shutdown, new_state}
+  end
+
+  defp reply_mount(other, _from, _uri, view), do: View.raise_invalid_mount(other, view)
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
     %{

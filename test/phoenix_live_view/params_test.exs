@@ -150,8 +150,16 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "from mount connected", %{conn: conn} do
       assert {:error, %{redirect: %{to: "/thermo/456"}}} =
         conn
-        |> put_session(:test, %{external_connected_redirect: %{to: "/thermo/456"}})
+        |> put_session(:test, %{external_connected_redirect: %{stop: false, to: "/thermo/456"}})
         |> live("/counter/123")
+    end
+
+    test "from mount connected raises if stopping", %{conn: conn} do
+      assert_raise RuntimeError, ~r/attempted to live redirect while stopping/, fn ->
+        conn
+        |> put_session(:test, %{external_connected_redirect: %{stop: true, to: "/thermo/456"}})
+        |> live("/counter/123")
+      end
     end
 
     test "from handle_params", %{conn: conn} do

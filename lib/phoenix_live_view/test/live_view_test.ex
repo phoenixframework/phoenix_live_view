@@ -245,6 +245,8 @@ defmodule Phoenix.LiveViewTest do
 
       :ignore ->
         receive do
+          {^ref, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+          {^ref, %{external_live_redirect: opts}} -> {:error, %{redirect: opts}}
           {^ref, reason} -> {:error, reason}
         end
     end

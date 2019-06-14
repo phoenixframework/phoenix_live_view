@@ -396,13 +396,16 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp do_static_mount(socket, view, session, params) do
-    with {:ok, %Socket{} = mounted_socket} <- view.mount(session, socket),
-         {:noreply, %Socket{} = new_socket} <- mount_handle_params(mounted_socket, view, params) do
+    with {:ok, %Socket{redirected: nil} = mounted_socket} <- view.mount(session, socket),
+         {:noreply, %Socket{redirected: nil} = new_socket} <- mount_handle_params(mounted_socket, view, params) do
       session_token = sign_root_session(socket, view, session)
       {:ok, new_socket, session_token}
     else
-      {:stop, socket} ->
-        {:stop, socket.redirected}
+      {:ok, %Socket{redirected: redirected}} ->
+        {:stop, redirected}
+
+      {:stop, %Socket{redirected: redirected}} ->
+        {:stop, redirected}
 
       other ->
         raise_invalid_mount(other, view)

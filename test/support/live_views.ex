@@ -260,15 +260,15 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
 
   defp do_mount(%{test: %{external_disconnected_redirect: redir}}, socket) do
     %{to: to} = redir
-    {:stop, live_redirect(socket, to: to)}
+    {:ok, live_redirect(socket, to: to)}
   end
 
-  defp do_mount(%{test: %{external_connected_redirect: redir}, test_pid: pid}, socket) do
-    %{to: to} = redir
-    if connected?(socket) do
-      {:stop, live_redirect(socket, to: to)}
-    else
-      {:ok, assign(socket, val: 1, test_pid: pid)}
+  defp do_mount(%{test: %{external_connected_redirect: opts}, test_pid: pid}, socket) do
+    %{to: to, stop: stop} = opts
+    cond do
+      connected?(socket) && stop -> {:stop, live_redirect(socket, to: to)}
+      connected?(socket) -> {:ok, live_redirect(socket, to: to)}
+      true -> {:ok, assign(socket, val: 1, test_pid: pid)}
     end
   end
 
