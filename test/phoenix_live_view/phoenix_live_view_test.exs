@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ThermostatLive, ClockLive, ClockControlsLive}
 
   @endpoint Endpoint
@@ -409,7 +410,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         assert render_click(view, :redir, "/path") == {:error, {:redirect, "/path"}}
       end)
 
-      assert_remove view, {:redirect, "/path"}
+      assert_remove(view, {:redirect, "/path"})
     end
 
     test "redirect after connected mount from root thru async call", %{conn: conn} do
@@ -418,6 +419,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_redirect(view, "/async", fn ->
         send(view.pid, {:redir, "/async"})
       end)
+    end
+
+    test "live_redirect from child raises", %{conn: conn} do
+      {:ok, thermo_view, _html} = live(conn, "/thermo")
+      GenServer.call(thermo_view.pid, {:set, :nest, true})
+      assert [clock_view] = children(thermo_view)
+
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.live_redirect(socket, to: "/anywhere")}
+      end})
+      assert_remove(clock_view, {%ArgumentError{message: msg}, _stack})
+      assert msg =~ "attempted to live_redirect from a nested child socket"
     end
   end
 end

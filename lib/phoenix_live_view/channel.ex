@@ -107,7 +107,7 @@ defmodule Phoenix.LiveView.Channel do
         end
 
       other ->
-        handle_result(other, {:handle_call, 3, msg.ref}, state)
+        handle_result(other, {:handle_call, 3, nil}, state)
     end
   end
 

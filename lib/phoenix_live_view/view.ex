@@ -83,7 +83,7 @@ defmodule Phoenix.LiveView.View do
 
       !connected?(socket) -> nil
 
-      socket.parent_pid -> raise RuntimeError, """
+      child?(socket) -> raise RuntimeError, """
       attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
 
       Only the root LiveView has access to connect params.
@@ -148,7 +148,15 @@ defmodule Phoenix.LiveView.View do
 
   def put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
       when kind in [:push, :replace] do
-    %Socket{socket | redirected: {:live, opts}}
+    if child?(socket) do
+      raise ArgumentError, """
+      attempted to live_redirect from a nested child socket.
+
+      Only the root parent LiveView can issue live redirects.
+      """
+    else
+      %Socket{socket | redirected: {:live, opts}}
+    end
   end
 
   def put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
@@ -513,4 +521,6 @@ defmodule Phoenix.LiveView.View do
   defp mounting?(%Socket{} = socket) do
     socket.private[:mounting]
   end
+
+  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 end

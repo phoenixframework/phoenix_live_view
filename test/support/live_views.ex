@@ -141,6 +141,10 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     {:noreply, assign(socket, :time, "12:05")}
   end
 
+  def handle_info({:run, func}, socket) do
+    func.(socket)
+  end
+
   def handle_call({:set, new_time}, _from, socket) do
     {:reply, :ok, assign(socket, :time, new_time)}
   end
