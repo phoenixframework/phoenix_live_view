@@ -79,10 +79,6 @@ describe('View', function() {
 
   test('showLoader and hideLoader', async () => {
     let liveSocket = new LiveSocket('/live');
-    let loader = document.createElement('span');
-    loader.style.display = 'none';
-    let phxView = document.querySelector('[data-phx-view]');
-    phxView.parentNode.insertBefore(loader, phxView.nextSibling);
     let el = document.querySelector('[data-phx-view]');
 
     let view = new View(el, liveSocket);
@@ -90,10 +86,10 @@ describe('View', function() {
     expect(el.classList.contains('phx-disconnected')).toBeTruthy();
     expect(el.classList.contains('phx-connected')).toBeFalsy();
     expect(el.classList.contains('user-implemented-class')).toBeTruthy();
-    expect(loader.style.display).toEqual('block');
 
     view.hideLoader();
-    expect(loader.style.display).toEqual('none');
+    expect(el.classList.contains('phx-disconnected')).toBeFalsy();
+    expect(el.classList.contains('phx-connected')).toBeTruthy();
   });
 
   test('displayError', async () => {
@@ -109,7 +105,6 @@ describe('View', function() {
     expect(el.classList.contains('phx-error')).toBeTruthy();
     expect(el.classList.contains('phx-connected')).toBeFalsy();
     expect(el.classList.contains('user-implemented-class')).toBeTruthy();
-    expect(loader.style.display).toEqual('block');
   });
 
   test('join', async () => {
@@ -117,7 +112,7 @@ describe('View', function() {
     let el = liveViewDOM();
     let view = new View(el, liveSocket);
 
-    view.join();
+    // view.join();
     // still need a few tests
   });
 });
