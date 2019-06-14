@@ -189,7 +189,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          AppWeb.PageView.render("page.html", assigns)
+          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
         end
       end
 
@@ -492,6 +492,32 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
+  ### Live redirects for navigation without page reload
+
+  The `live_redirect/2` function allows a page navigation using the
+  (browser's pushState API)[https://developer.mozilla.org/en-US/docs/Web/API/History_API].
+  To handle navigation without page reload, simply replace your existing
+  `Phoenix.HTML.link/3` and `Phoenix.LiveView.redirect/2` calls with their `live`
+  counterparts.
+
+  For example, in a template you may write:
+
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+
+  or in a LiveView:
+
+      {:noreply, redirect(socket, to: Routes.live_path(@socket, MyLive, page + 1))}
+
+  When a live link is clicked, the following control flow occurs:
+
+    * if the route belongs to the existing root LiveView, the `handle_params/3`
+      callback is invoked
+    * if the route belongs to a different LiveView than the currently running
+      root, the existing root LiveView is shutdown, and a new root LiveView is
+      spawned, following the same static HTTP request, followed by connected
+      upgrade. However, in the case of live links, the static request happens
+      over Ajax instead of traditional HTTP requests which allows LiveView
+      to skip the initial static render.
   """
 
   alias Phoenix.LiveView
@@ -508,6 +534,9 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
+  @callback handle_params(unsigned_params, uri :: String.t(), Socket.t()) ::
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
+
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
@@ -517,7 +546,11 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
+  @optional_callbacks terminate: 2,
+                      handle_params: 3,
+                      handle_event: 3,
+                      handle_call: 3,
+                      handle_info: 2
 
   defmacro __using__(_opts) do
     quote do
@@ -743,7 +776,31 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    LiveView.View.put_redirect(socket, Keyword.fetch!(opts, :to))
+    LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
+  end
+
+  @doc """
+  Annotates the socket for navigation without a page refresh.
+
+  When navigating to a path which routes to your existing LiveView,
+  the `handle_params/3` callback is immediately invoked in your existing
+  LiveView process to handle the change of URL state. For live redirects
+  to external LiveViews, the existing LiveView is shutdown.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, live_redirect(socket, to: "/")}
+      {:noreply, live_redirect(socket, to: "/", replace: true)}
+  """
+  def live_redirect(%Socket{} = socket, opts) do
+    kind = if opts[:replace], do: :replace, else: :push
+    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
 
   @doc """
@@ -757,5 +814,51 @@ defmodule Phoenix.LiveView do
   """
   defmacro sigil_L({:<<>>, _, [expr]}, []) do
     EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
+  end
+
+  @doc """
+  Generates a live link for HTML5 pushState based navigation without page reloads.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_link to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
+        Sort By Price
+      <% end %>
+
+  """
+  def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+  def live_link(opts, do: block) when is_list(opts) do
+    uri = Keyword.fetch!(opts, :to)
+    replace = Keyword.get(opts, :replace, false)
+    kind = if replace, do: "replace", else: "push"
+
+    Phoenix.HTML.Tag.content_tag(:a, [href: uri, data: [phx_live_link: kind]], do: block)
+  end
+  def live_link(text, opts) when is_list(opts) do
+    live_link(opts, do: text)
+  end
+
+  @doc """
+  Accesses the connect params sent by the client for use on connected mount.
+
+  Connect params are only sent when the client connects to the server and
+  only remain available during mount. `nil` is returned when called in a
+  disconnected state and a `RuntimeError` is raised if called after mount.
+
+  ## Examples
+
+      def mount(_session, socket) do
+        {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
+      end
+  """
+  def get_connect_params(%Socket{} = socket) do
+    LiveView.View.get_connect_params(socket)
   end
 end

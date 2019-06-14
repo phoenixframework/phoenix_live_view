@@ -17,28 +17,34 @@ defmodule Phoenix.LiveViewTest do
   socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
 
-      {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
+      use Phoenix.ConnTest
+      @endpoint MyEndpoint
 
-      assert html =~ "<h1>My Disconnected View</h1>"
+      test "disconnected and connected mount", %{conn: conn} do
+        conn = get(conn, "/my-path")
+        assert html_response(conn, 200) =~ "<h1>My Disconnected View</h1>"
 
-      {:ok, view, html} = mount(view)
-      assert html =~ "<h1>My Connected View</h1>"
+        {:ok, view, html} = live(conn)
+      end
 
-      assert {:error, %{redirect: "/somewhere"}} =
-             mount_disconnected(MyEndpoint, MyView, session: %{})
+      test "redirected mount", %{conn: conn} do
+        assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "my-path")
+      end
 
-  Here, we call `mount_disconnected/3` and assert on the stateless
-  rendered HTML that is received by the browser's HTTP request. Next, `mount/2`
-  is called to mount the stateless view in a connected state which starts our
-  stateful LiveView process.
+  Here, we start by using the familiar `Phoenix.ConnTest` function, `get/2` to
+  test the regular HTTP get request which invokes mount with a disconnect socket.
+  Next, `live/1` is called with our sent connection to mount the view in a connected
+  state, which starts our stateful LiveView process.
 
   In general, it's often more convenient to test the mounting of a view
   in a single step, provided you don't need the result of the stateless HTTP
-  render. This is done with a single call to `mount/3`, which performs the
-  `mount_disconnected` step for us:
+  render. This is done with a single call to `live/2`, which performs the
+  `get` step for us:
 
-      {:ok, view, html} = mount(MyEndpoint, MyView, session: %{})
-      assert html =~ "<h1>My Connected View</h1>"
+      test "connected mount", %{conn: conn} do
+        {:ok, view, html} = live(conn, "/my-path")
+        assert html =~ "<h1>My Connected View</h1>"
+      end
 
   ## Testing Events
 
@@ -64,7 +70,7 @@ defmodule Phoenix.LiveViewTest do
 
   For example:
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, _html} = live(conn, "/thermo")
 
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
 
@@ -116,112 +122,123 @@ defmodule Phoenix.LiveViewTest do
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
-  Mounts a static live view without connecting to a live process.
+  Spawns a connected LiveView process.
 
-  Useful for simulating the rendered result that is sent with
-  the intial HTTP request. On successful mount, the view and
-  rendered string of HTML are returned in a ok 3-tuple.
-  After disconnected mount, `mount/1` or `mount/2`
-  may be called with the view, which performs a connected mount
-  and spawns the LiveView process.
-
-  For mount failures, an `{:error, reason}` returned.
-
-  ## Options
-
-    * `:session` - The optional map of session data for the LiveView
-    * `:assigns` - The optional map of `Plug.Conn` assigns
-
-  ## Examples
-
-      {:ok, view, html} = mount_disconnected(MyEndpoint, MyView, session: %{})
-
-      assert html =~ "<h1>My Disconnected View</h1>"
-
-      {:ok, view, html} = mount(view)
-      assert html =~ "<h1>My Connected View</h1>"
-
-      assert {:error, %{redirect: "/somewhere"}} =
-             mount_disconnected(MyEndpoint, MyView, session: %{})
-  """
-  def mount_disconnected(endpoint, view_module, opts) do
-    live_opts = Keyword.put_new(opts, :session, %{})
-    assigns = opts[:assigns] || %{}
-
-    conn =
-      assigns
-      |> Enum.reduce(Phoenix.ConnTest.build_conn(), fn {key, val}, acc ->
-        Plug.Conn.assign(acc, key, val)
-      end)
-      |> Plug.Conn.put_private(:phoenix_endpoint, endpoint)
-      |> Phoenix.LiveView.Controller.live_render(view_module, live_opts)
-
-    case conn.status do
-      200 ->
-        html =
-          conn
-          |> Phoenix.ConnTest.html_response(200)
-          |> IO.iodata_to_binary()
-
-        child_statics = DOM.find_static_views(html)
-
-        case DOM.find_sessions(html) do
-          [{session_token, nil, id} | _] ->
-            {:ok,
-             View.build(
-               dom_id: id,
-               session_token: session_token,
-               module: view_module,
-               endpoint: endpoint,
-               child_statics: child_statics
-             ), html}
-
-          [] ->
-            {:error, :nosession}
-        end
-
-      302 ->
-        {:error, %{redirect: hd(Plug.Conn.get_resp_header(conn, "location"))}}
-    end
-  end
-
-  @doc """
-  Mounts a connected LiveView process.
-
-  Accepts either a previously rendered `%LiveViewTest.View{}` or
-  an endpoint and your LiveView module. The latter case is a conveience
-  to perform the `mount_disconnected/2` and connected mount in a single
+  Accepts either a previously rendered `%Plug.Conn{}` or
+  an unsent `%Plug.Conn{}`. The latter case is a conveience
+  to perform the `get/2` and connected mount in a single
   step.
 
   ## Options
 
-    * `:session` - The optional map of session data for the LiveView
-    * `:assigns` - The optional map of `Plug.Conn` assigns
+    * `:connect_parmas` - the map of params available in connected mount
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, MyView, session: %{val: 3})
+      {:ok, view, html} = live(conn, "/path")
+
+      assert view.module = MyLive
+
       assert html =~ "the count is 3"
 
-      assert {:error, %{redirect: "/somewhere"}} =
-             mount(MyEndpoint, MyView, session: %{})
-  """
-  def mount(%View{} = view), do: mount(view, [])
+      assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "/path")
 
-  def mount(endpoint, view_module) when is_atom(endpoint) do
-    mount(endpoint, view_module, [])
+      {:ok, view, html} =
+        conn
+        |> get("/path")
+        |> live()
+  """
+  defmacro live(conn, path_or_opts \\ []) do
+    quote bind_quoted: binding(), unquote: true, generated: true do
+      case path_or_opts do
+        opts when is_list(opts) ->
+          unquote(__MODULE__).__live__(conn, conn.request_path, opts, :noop)
+
+        path when is_binary(path) ->
+          unquote(__MODULE__).__live__(conn, path, [], fn conn, path -> get(conn, path) end)
+      end
+    end
   end
 
-  def mount(%View{ref: ref, topic: topic} = view, opts) when is_list(opts) do
-    if View.connected?(view), do: raise(ArgumentError, "view is already connected")
+  defmacro live(conn, path, opts) do
+    quote bind_quoted: binding(), unquote: true do
+      unquote(__MODULE__).__live__(conn, path, opts, fn conn, path -> get(conn, path) end)
+    end
+  end
+
+  @doc false
+  def __live__(%Plug.Conn{state: state, status: status} = conn, path, opts, get_func) do
+    case {state, status, get_func} do
+      {:sent, 200, _} ->
+        connect_from_static_token(conn, path, opts)
+
+      {:sent, 302, _} ->
+        {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+
+      {_, _, get} when is_function(get) ->
+        connect_from_static_token(get.(conn, path), path, opts)
+
+      {_, _, :noop} ->
+        raise ArgumentError, """
+          a request has not yet been sent.
+
+          live/1 must use a connection with a sent response. Either call get/2
+          prior to live/1, or use live/2 while providing a path to have a get
+          request issues for you. For example issuing a get yourself:
+
+              {:ok, view, _html} =
+                conn
+                |> get("#{path}")
+                |> live()
+
+          or performing the GET and live connect in a single step:
+
+              {:ok, view, _html} = live(conn, "#{path}")
+        """
+    end
+  end
+
+  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts) when redir in [301, 302] do
+    {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+  end
+  defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
+    html =
+      conn
+      |> Phoenix.ConnTest.html_response(200)
+      |> IO.iodata_to_binary()
+
+    case DOM.find_sessions(html) do
+      [{session_token, nil, id} | _] -> do_connect(conn, path, html, session_token, id, opts)
+      [] -> {:error, :nosession}
+    end
+  end
+
+  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
+    live_path = live_path(conn, path)
+
+    child_statics = DOM.find_static_views(html)
     timeout = opts[:timeout] || 5000
+
+    %View{ref: ref, topic: topic} =
+      view =
+      View.build(
+        dom_id: id,
+        mount_path: live_path,
+        connect_params: opts[:connect_params] || %{},
+        session_token: session_token,
+        module: conn.assigns.live_view_module,
+        router: Phoenix.Controller.router_module(conn),
+        endpoint: Phoenix.Controller.endpoint_module(conn),
+        child_statics: child_statics
+      )
 
     case ClientProxy.start_link(caller: {ref, self()}, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
         receive do
           {^ref, {:mounted, view_pid, html}} ->
             receive do
-              {^ref, {:redirect, _topic, to}} ->
+              {^ref, {:redirect, _topic, opts}} ->
+                %{to: to} = opts
                 ensure_down!(view_pid)
                 {:error, %{redirect: to}}
             after
@@ -233,24 +250,30 @@ defmodule Phoenix.LiveViewTest do
 
       :ignore ->
         receive do
+          {^ref, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+          {^ref, %{external_live_redirect: opts}} -> {:error, %{redirect: opts}}
           {^ref, reason} -> {:error, reason}
         end
     end
   end
 
-  def mount(endpoint, view_module, opts)
-      when is_atom(endpoint) and is_atom(view_module) and is_list(opts) do
-    with {:ok, view, _html} <- mount_disconnected(endpoint, view_module, opts) do
-      mount(view, opts)
+  defp live_path(%Plug.Conn{} = conn, path) do
+    if conn.body_params != %{} or conn.query_string != "" do
+      query_params = Plug.Conn.Query.decode(conn.query_string, conn.body_params)
+
+      path <> "?" <> Plug.Conn.Query.encode(query_params)
+    else
+      path
     end
   end
+
 
   @doc """
   Sends a click event to the view and returns the rendered result.
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
   """
@@ -263,7 +286,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
@@ -277,7 +300,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
@@ -291,7 +314,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -304,7 +327,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
   """
@@ -317,7 +340,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
   """
@@ -330,7 +353,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      {:ok, view, html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
@@ -347,13 +370,23 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Simulates a live_link click to the view and returns the rendered result.
+  """
+  def render_live_link(view, path) do
+    case GenServer.call(view.proxy, {:render_live_link, view, path}) do
+      {:ok, html} -> html
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
   Returns the current list of children of the parent live view.
 
   Children are return in the order they appear in the rendered HTML.
 
   ## Examples
 
-      {:ok, view, _html} = mount(MyEndpoint, ThermostatLive, session: %{deg: 30})
+      {:ok, view, _html} = live(conn, "/thermo")
       assert [clock_view] = children(view)
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
@@ -383,7 +416,7 @@ defmodule Phoenix.LiveViewTest do
       %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
       Process.unlink(proxy_pid)
       unquote(func).()
-      assert_receive {^ref, {:redirect, ^topic, unquote(to)}}
+      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end
   end
 

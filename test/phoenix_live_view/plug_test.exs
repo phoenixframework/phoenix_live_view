@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.PlugTest do
   setup config do
     conn =
       build_conn()
+      |> Plug.Conn.put_private(:phoenix_router, Router)
       |> Plug.Test.init_test_session(config[:plug_session] || %{})
       |> Plug.Conn.put_private(:phoenix_endpoint, Endpoint)
       |> Plug.Conn.put_private(:phoenix_live_view, [])
