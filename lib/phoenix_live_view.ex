@@ -506,7 +506,7 @@ defmodule Phoenix.LiveView do
 
   or in a LiveView:
 
-      {:noreply, redirect(socket, to: Routes.live_path(@socket, MyLive, page + 1))}
+      {:noreply, live_redirect(socket, to: Routes.live_path(@socket, MyLive, page + 1))}
 
   When a live link is clicked, the following control flow occurs:
 
