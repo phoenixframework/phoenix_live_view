@@ -29,6 +29,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/thermo-container", ThermostatLive, session: [:nest], container: {:span, style: "thermo-flex<script>"}
     live "/same-child", SameChildLive, session: [:dup]
     live "/root", RootLive, session: [:user_id]
-    live "/counter/:id", ParamCounterLive, session: [:test]
+    live "/counter/:id", ParamCounterLive, session: [:test, :test_pid]
   end
 end

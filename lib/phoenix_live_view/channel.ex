@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView.Channel do
 
       :noop ->
         {:ok, :noop,
-         state
+         new_state
          |> push_internal_live_redirect(pending_internal_live_redirect, nil)
          |> push_noop(ref)}
 
@@ -235,14 +235,14 @@ defmodule Phoenix.LiveView.Channel do
         {:stop, {:shutdown, {:redirect, to}}, push_redirect(new_state, opts, ref)}
 
       {:live_redirect, {:internal, params}, %{to: _to, kind: _kind} = opts} ->
-        state
+        new_state
         |> drop_redirect()
         |> sync_handle_params_with_live_redirect(params, opts, ref)
 
       {:live_redirect, :external, %{to: to} = opts} ->
-        send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        opts = Map.put(opts, :flash, View.sign_flash(state.socket, View.get_flash(state.socket)))
-        {:stop, {:shutdown, {:redirect, to}}, push_external_live_redirect(state, opts, ref)}
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        opts = Map.put(opts, :flash, View.sign_flash(new_state.socket, View.get_flash(new_state.socket)))
+        {:stop, {:shutdown, {:redirect, to}}, push_external_live_redirect(new_state, opts, ref)}
     end
   end
 

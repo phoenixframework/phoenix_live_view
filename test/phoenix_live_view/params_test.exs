@@ -11,8 +11,12 @@ defmodule Phoenix.LiveView.ParamsTest do
   @moduletag :capture_log
 
   setup do
-    Process.register(self(), :params_test)
-    {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Plug.Test.init_test_session(%{})
+      |> put_session(:test_pid, self())
+
+    {:ok, conn: conn}
   end
 
   describe "handle_params on mount" do
@@ -80,11 +84,11 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        Process.put(:on_handle_params, fn socket ->
+        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
           {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
         end)
 
-        {:reply, :ok, socket}
+        {:reply, :ok, new_socket}
       end
 
       :ok =
@@ -106,11 +110,11 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        Process.put(:on_handle_params, fn socket ->
+        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
           {:stop, LiveView.redirect(socket, to: "/counter/123?from=stopped_params")}
         end)
 
-        {:reply, :ok, socket}
+        {:reply, :ok, new_socket}
       end
 
       :ok =
@@ -156,11 +160,11 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        Process.put(:on_handle_params, fn socket ->
+        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
           {:noreply, LiveView.live_redirect(socket, to: "/thermo/123")}
         end)
 
-        {:reply, :ok, socket}
+        {:reply, :ok, new_socket}
       end
 
       :ok =
