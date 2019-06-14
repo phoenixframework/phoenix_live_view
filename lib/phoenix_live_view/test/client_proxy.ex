@@ -168,7 +168,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(
         %Phoenix.Socket.Message{
-          event: "render",
+          event: "diff",
           topic: topic,
           payload: diff
         },
@@ -473,6 +473,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp send_redirect(state, topic, to) do
-    send_caller(state, {:redirect, topic, to})
+    send_caller(state, {:redirect, topic, %{to: to}})
   end
 end

@@ -496,11 +496,11 @@ defmodule Phoenix.LiveView do
 
   The `live_redirect/2` function allows a page navigation using the
   (browser's pushState API)[https://developer.mozilla.org/en-US/docs/Web/API/History_API].
-  To handle navigiation without page reload, simply replace your existing
+  To handle navigation without page reload, simply replace your existing
   `Phoenix.HTML.link/3` and `Phoenix.LiveView.redirect/2` calls with their `live`
   counterparts.
 
-  For example, in a temlate you may write:
+  For example, in a template you may write:
 
       <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
 
@@ -783,7 +783,7 @@ defmodule Phoenix.LiveView do
   Annotates the socket for navigation without a page refresh.
 
   When navigating to a path which routes to your existing LiveView,
-  the `handle_params/2` callback is immediatley invoked in your existing
+  the `handle_params/2` callback is immediately invoked in your existing
   LiveView process to handle the change of URL state. For live redirects
   to external LiveViews, the existing LiveView is shutdown.
 
@@ -838,7 +838,8 @@ defmodule Phoenix.LiveView do
     uri = Keyword.fetch!(opts, :to)
     replace = Keyword.get(opts, :replace, false)
     kind = if replace, do: "replace", else: "push"
-    Phoenix.HTML.Link.link(to: uri, data: [phx_live_link: kind], do: block)
+
+    Phoenix.HTML.Tag.content_tag(:a, [href: uri, data: [phx_live_link: kind]], do: block)
   end
   def live_link(text, opts) when is_list(opts) do
     live_link(opts, do: text)

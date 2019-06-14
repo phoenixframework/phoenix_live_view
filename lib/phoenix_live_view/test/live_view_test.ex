@@ -28,7 +28,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
       test "redirected mount", %{conn: conn} do
-        assert {:error, %{redirect: "/somewhere"}} = live(conn, "my-path")
+        assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "my-path")
       end
 
   Here, we start by using the familiar `Phoenix.ConnTest` function, `get/2` to
@@ -137,7 +137,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert html =~ "the count is 3"
 
-      assert {:error, %{redirect: "/somewhere"}} = live(conn, "/path")
+      assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "/path")
 
       {:ok, view, html} =
         conn
@@ -169,7 +169,7 @@ defmodule Phoenix.LiveViewTest do
         connect_from_static_token(conn, path, opts)
 
       {:sent, 302, _} ->
-        {:error, %{redirect: hd(Plug.Conn.get_resp_header(conn, "location"))}}
+        {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
 
       {_, _, get} when is_function(get) ->
         connect_from_static_token(get.(conn, path), path, opts)
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts) when redir in [301, 302] do
-    {:error, %{redirect: hd(Plug.Conn.get_resp_header(conn, "location"))}}
+    {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
   end
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
     html =
@@ -232,7 +232,8 @@ defmodule Phoenix.LiveViewTest do
         receive do
           {^ref, {:mounted, view_pid, html}} ->
             receive do
-              {^ref, {:redirect, _topic, to}} ->
+              {^ref, {:redirect, _topic, opts}} ->
+                %{to: to} = opts
                 ensure_down!(view_pid)
                 {:error, %{redirect: to}}
             after
@@ -408,7 +409,7 @@ defmodule Phoenix.LiveViewTest do
       %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
       Process.unlink(proxy_pid)
       unquote(func).()
-      assert_receive {^ref, {:redirect, ^topic, unquote(to)}}
+      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end
   end
 

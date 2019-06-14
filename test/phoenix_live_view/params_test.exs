@@ -144,7 +144,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "from mount connected", %{conn: conn} do
-      assert {:error, %{redirect: "/thermo/456"}} =
+      assert {:error, %{redirect: %{to: "/thermo/456"}}} =
         conn
         |> put_session(:test, %{external_connected_redirect: %{to: "/thermo/456"}})
         |> live("/counter/123")

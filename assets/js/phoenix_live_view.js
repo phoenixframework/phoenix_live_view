@@ -108,7 +108,7 @@ own DOM operations.
 */
 
 import morphdom from "morphdom"
-import {Socket} from "./phoenix"
+import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -881,7 +881,7 @@ export class View {
   }
 
   bindChannel(){
-    this.channel.on("render", (diff) => this.update(diff))
+    this.channel.on("diff", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
     this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect(to))
@@ -926,6 +926,7 @@ export class View {
   }
 
   onJoinError(resp){
+    if(resp.redirect){ return this.onRedirect(resp.redirect) }
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }

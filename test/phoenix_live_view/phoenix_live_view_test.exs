@@ -384,22 +384,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "redirects" do
     @tag session: %{redir: {:disconnected, ThermostatLive}}
     test "redirect from root view on disconnected mount", %{conn: conn} do
-      assert {:error, %{redirect: "/thermostat_disconnected"}} = live(conn, "/thermo")
+      assert {:error, %{redirect: %{to: "/thermostat_disconnected"}}} = live(conn, "/thermo")
     end
 
     @tag session: %{redir: {:connected, ThermostatLive}}
     test "redirect from root view on connected mount", %{conn: conn} do
-      assert {:error, %{redirect: "/thermostat_connected"}} = live(conn, "/thermo")
+      assert {:error, %{redirect: %{to: "/thermostat_connected"}}} = live(conn, "/thermo")
     end
 
     @tag session: %{nest: true, redir: {:disconnected, ClockLive}}
     test "redirect from child view on disconnected mount", %{conn: conn} do
-      assert {:error, %{redirect: "/clock_disconnected"}} = live(conn, "/thermo")
+      assert {:error, %{redirect: %{to: "/clock_disconnected"}}} = live(conn, "/thermo")
     end
 
     @tag session: %{nest: true, redir: {:connected, ClockLive}}
     test "redirect from child view on connected mount", %{conn: conn} do
-      assert {:error, %{redirect: "/clock_connected"}} = live(conn, "/thermo")
+      assert {:error, %{redirect: %{to: "/clock_connected"}}} = live(conn, "/thermo")
     end
 
     test "redirect after connected mount from root thru sync call", %{conn: conn} do
