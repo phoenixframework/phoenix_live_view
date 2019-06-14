@@ -251,6 +251,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     ~L"""
     The value is: <%= @val %>
     <%= if map_size(@params) > 0, do: Phoenix.HTML.raw(inspect(@params)) %>
+    connect: <%= Phoenix.HTML.raw(inspect(@connect_params)) %>
     """
   end
 
@@ -268,21 +269,25 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     cond do
       connected?(socket) && stop -> {:stop, live_redirect(socket, to: to)}
       connected?(socket) -> {:ok, live_redirect(socket, to: to)}
-      true -> {:ok, assign(socket, val: 1, test_pid: pid)}
+      true -> {:ok, do_assign(assign(socket, pid: pid))}
     end
   end
 
   defp do_mount(_session, socket) do
-    {:ok, assign(socket, val: 1)}
+    {:ok, do_assign(socket)}
   end
 
-  def handle_params(%{"from" => "handle_params"} = params, socket) do
-    send(socket.assigns.test_pid, {:handle_params, socket.assigns, params})
+  defp do_assign(socket) do
+    assign(socket, val: 1, connect_params: get_connect_params(socket) || %{})
+  end
+
+  def handle_params(%{"from" => "handle_params"} = params, uri, socket) do
+    send(socket.assigns.test_pid, {:handle_params, uri, socket.assigns, params})
     socket.assigns.on_handle_params.(socket)
   end
 
-  def handle_params(params, socket) do
-    send(socket.assigns.test_pid, {:handle_params, socket.assigns, params})
+  def handle_params(params, uri, socket) do
+    send(socket.assigns.test_pid, {:handle_params, uri, socket.assigns, params})
     {:noreply, assign(socket, :params, params)}
   end
 

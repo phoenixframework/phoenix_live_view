@@ -781,7 +781,7 @@ export class View {
     this.joinedOnce = false
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        uri: this.href || this.liveSocket.root.href,
+        url: this.href || this.liveSocket.root.href,
         params: this.liveSocket.params,
         session: this.getSession(),
         static: this.getStatic()
@@ -842,12 +842,16 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({rendered}){
+  onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
     DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.joinNewChildren()
+    if(live_redirect){
+      let {kind, to} = live_redirect
+      Browser.pushState(kind, {}, to)
+    }
   }
 
   joinNewChildren(){
@@ -927,6 +931,10 @@ export class View {
 
   onJoinError(resp){
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
+    if(resp.external_live_redirect){
+      let {to} = resp.external_live_redirect
+      return this.onExternalLiveRedirect(to)
+    }
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }
@@ -994,7 +1002,7 @@ export class View {
   pushInternalLink(href, callback){
     if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    this.pushWithReply("link", {uri: href}, resp => {
+    this.pushWithReply("link", {url: href}, resp => {
       if(resp.redirect){
         this.onExternalLiveRedirect(href, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){

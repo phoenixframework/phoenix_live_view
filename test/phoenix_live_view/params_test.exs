@@ -84,9 +84,10 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
-          {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
-        end)
+        new_socket =
+          LiveView.assign(socket, :on_handle_params, fn socket ->
+            {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
+          end)
 
         {:reply, :ok, new_socket}
       end
@@ -100,8 +101,9 @@ defmodule Phoenix.LiveView.ParamsTest do
       html = render(counter_live)
       assert html =~ ~s|%{"from" => "rehandled_params", "id" => "123"}|
       assert html =~ "The value is: 1000"
-      assert_receive {:handle_params, %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
-      assert_receive {:handle_params, %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
+
+      assert_receive {:handle_params, "http://localhost:4000/counter/123?from=rehandled_params",
+                      %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
     end
 
     test "from handle_params with stop", %{conn: conn} do
@@ -110,9 +112,10 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
-          {:stop, LiveView.redirect(socket, to: "/counter/123?from=stopped_params")}
-        end)
+        new_socket =
+          LiveView.assign(socket, :on_handle_params, fn socket ->
+            {:stop, LiveView.redirect(socket, to: "/counter/123?from=stopped_params")}
+          end)
 
         {:reply, :ok, new_socket}
       end
@@ -123,7 +126,9 @@ defmodule Phoenix.LiveView.ParamsTest do
           {:live_redirect, "/counter/123?from=handle_params", next}
         )
 
-      assert_receive {:handle_params, %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
+      assert_receive {:handle_params, "http://localhost:4000/counter/123?from=handle_params",
+                      %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
+
       assert_remove(counter_live, {:redirect, "/counter/123?from=stopped_params"})
     end
   end
@@ -135,7 +140,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert render_click(counter_live, :live_redirect, "/thermo/123") ==
                {:error, {:redirect, "/thermo/123"}}
 
-      assert_remove counter_live, {:redirect, "/thermo/123"}
+      assert_remove(counter_live, {:redirect, "/thermo/123"})
     end
 
     test "from mount disconnected", %{conn: conn} do
@@ -149,9 +154,11 @@ defmodule Phoenix.LiveView.ParamsTest do
 
     test "from mount connected", %{conn: conn} do
       assert {:error, %{redirect: %{to: "/thermo/456"}}} =
-        conn
-        |> put_session(:test, %{external_connected_redirect: %{stop: false, to: "/thermo/456"}})
-        |> live("/counter/123")
+               conn
+               |> put_session(:test, %{
+                 external_connected_redirect: %{stop: false, to: "/thermo/456"}
+               })
+               |> live("/counter/123")
     end
 
     test "from mount connected raises if stopping", %{conn: conn} do
@@ -168,9 +175,10 @@ defmodule Phoenix.LiveView.ParamsTest do
       next = fn socket ->
         send(self(), {:set, :val, 1000})
 
-        new_socket = LiveView.assign(socket, :on_handle_params, fn socket ->
-          {:noreply, LiveView.live_redirect(socket, to: "/thermo/123")}
-        end)
+        new_socket =
+          LiveView.assign(socket, :on_handle_params, fn socket ->
+            {:noreply, LiveView.live_redirect(socket, to: "/thermo/123")}
+          end)
 
         {:reply, :ok, new_socket}
       end
@@ -181,8 +189,18 @@ defmodule Phoenix.LiveView.ParamsTest do
           {:live_redirect, "/counter/123?from=handle_params", next}
         )
 
-      assert_receive {:handle_params, %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
-      assert_remove counter_live, {:redirect, "/thermo/123"}
+      assert_receive {:handle_params, "http://localhost:4000/counter/123?from=handle_params",
+                      %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
+
+      assert_remove(counter_live, {:redirect, "/thermo/123"})
+    end
+  end
+
+  describe "connect_params" do
+    test "connect_params can be read on mount", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
+
+      assert render(counter_live) =~ ~s|connect: %{"connect1" => "1"}|
     end
   end
 end

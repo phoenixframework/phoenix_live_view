@@ -15,7 +15,8 @@ defmodule Phoenix.LiveViewTest.View do
             rendered: nil,
             children: MapSet.new(),
             child_statics: %{},
-            dom_id: nil
+            dom_id: nil,
+            connect_params: %{}
 
   def build(attrs) do
     topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))

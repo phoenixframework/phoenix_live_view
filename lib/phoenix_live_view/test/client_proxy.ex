@@ -95,8 +95,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     params = %{
       "session" => view.session_token,
       "static" => view.static_token,
-      "uri" => Path.join(view.endpoint.url(), view.mount_path),
-      "params" => %{}
+      "url" => Path.join(view.endpoint.url(), view.mount_path),
+      "params" => view.connect_params
     }
 
     spec =
@@ -165,7 +165,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-
   def handle_info(
         %Phoenix.Socket.Message{
           event: "diff",
@@ -179,6 +178,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(%Phoenix.Socket.Reply{} = reply, state) do
     %{ref: ref, payload: diff, topic: topic} = reply
+
     new_state =
       state
       |> merge_rendered(topic, diff)
@@ -193,7 +193,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         {:noreply, drop_reply(new_state, ref)}
 
-     :error ->
+      :error ->
         {:noreply, drop_reply(new_state, ref)}
     end
   end
@@ -265,7 +265,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       join_ref: state.join_ref,
       topic: view.topic,
       event: "link",
-      payload: %{"uri" => path},
+      payload: %{"url" => path},
       ref: ref
     })
 
@@ -278,7 +278,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         GenServer.reply(from, {:error, reason})
         drop_reply(acc, ref)
 
-      {_ref, {_from, _pid}}, acc -> acc
+      {_ref, {_from, _pid}}, acc ->
+        acc
     end)
   end
 
@@ -352,18 +353,24 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp drop_downed_view(state, pid, reason) when is_pid(pid) do
     {:ok, view} = fetch_view_by_pid(state, pid)
+
     case reason do
       {:redirect, to} -> send_redirect(state, view.topic, to)
       _ -> :noop
     end
+
     send_caller(state, {:removed, view.topic, reason})
 
-    flush_replies(%{
-      state
-      | sessions: Map.delete(state.sessions, view.session_token),
-        views: Map.delete(state.views, view.topic),
-        pids: Map.delete(state.pids, view.pid)
-    }, pid, reason)
+    flush_replies(
+      %{
+        state
+        | sessions: Map.delete(state.sessions, view.session_token),
+          views: Map.delete(state.views, view.topic),
+          pids: Map.delete(state.pids, view.pid)
+      },
+      pid,
+      reason
+    )
   end
 
   defp drop_view_by_session(state, session, reason) do
@@ -396,8 +403,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
-  defp merge_rendered(state, topic, %{} = diff) do
 
+  defp merge_rendered(state, topic, %{} = diff) do
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
         new_view = %View{view | rendered: DOM.deep_merge(view.rendered, diff)}

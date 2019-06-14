@@ -70,14 +70,44 @@ defmodule Phoenix.LiveView.View do
   def connected?(%Socket{connected?: false}), do: false
 
   @doc """
+  Returns the connect params.
+  """
+  def get_connect_params(%Socket{} = socket) do
+    cond do
+      !mounting?(socket) -> raise RuntimeError, """
+        attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
+
+        connect_params only exist while mounting. If you require access to this information
+        after mount, store the state in socket assigns.
+        """
+
+      !connected?(socket) -> nil
+
+      socket.parent_pid -> raise RuntimeError, """
+      attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
+
+      Only the root LiveView has access to connect params.
+      """
+
+      true -> socket.private.connect_params
+    end
+  end
+
+  @doc """
   Builds a `%Phoenix.LiveView.Socket{}`.
   """
   def build_socket(endpoint, router, %{} = opts) when is_atom(endpoint) do
     {id, opts} = Map.pop_lazy(opts, :id, fn -> random_id() end)
     {{%{}, _} = assigned_new, opts} = Map.pop(opts, :assigned_new, {%{}, []})
+    {connect_params, opts} = Map.pop(opts, :connect_params, %{})
 
     struct!(
-      %Socket{id: id, endpoint: endpoint, router: router, private: %{assigned_new: assigned_new}},
+      %Socket{
+        id: id,
+        endpoint: endpoint,
+        router: router,
+        private: %{mounting: true, assigned_new: assigned_new, connect_params: connect_params}
+      },
       opts
     )
   end
@@ -93,6 +123,13 @@ defmodule Phoenix.LiveView.View do
       parent_pid: self(),
       assigned_new: {parent.assigns, []}
     })
+  end
+
+  @doc """
+  Prunes any data no longer needed after mount.
+  """
+  def post_mount_prune(%Socket{} = socket) do
+    %Socket{socket | private: Map.drop(socket.private, [:mounting, :connect_params])}
   end
 
   @doc """
@@ -392,12 +429,13 @@ defmodule Phoenix.LiveView.View do
     conn
     |> Phoenix.Controller.endpoint_module()
     |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
-    |> do_static_mount(view, session, conn.params)
+    |> do_static_mount(view, session, conn.params, Plug.Conn.request_url(conn))
   end
 
-  defp do_static_mount(socket, view, session, params) do
+  defp do_static_mount(socket, view, session, params, uri) do
     with {:ok, %Socket{redirected: nil} = mounted_socket} <- view.mount(session, socket),
-         {:noreply, %Socket{redirected: nil} = new_socket} <- mount_handle_params(mounted_socket, view, params) do
+         {:noreply, %Socket{redirected: nil} = new_socket} <-
+           mount_handle_params(mounted_socket, view, params, uri) do
       session_token = sign_root_session(socket, view, session)
       {:ok, new_socket, session_token}
     else
@@ -412,9 +450,9 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp mount_handle_params(socket, view, params) do
-    if function_exported?(view, :handle_params, 2) do
-      view.handle_params(params, socket)
+  defp mount_handle_params(socket, view, params, uri) do
+    if function_exported?(view, :handle_params, 3) do
+      view.handle_params(params, uri, socket)
     else
       {:noreply, socket}
     end
@@ -470,5 +508,9 @@ defmodule Phoenix.LiveView.View do
   defp assigned_new_keys(socket) do
     {_, keys} = socket.private.assigned_new
     keys
+  end
+
+  defp mounting?(%Socket{} = socket) do
+    socket.private[:mounting]
   end
 end

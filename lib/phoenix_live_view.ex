@@ -510,7 +510,7 @@ defmodule Phoenix.LiveView do
 
   When a live link is clicked, the following control flow occurs:
 
-    * if the route belongs to the existing root LiveView, the `handle_params/2`
+    * if the route belongs to the existing root LiveView, the `handle_params/3`
       callback is invoked
     * if the route belongs to a different LiveView than the currently running
       root, the existing root LiveView is shutdown, and a new root LiveView is
@@ -534,7 +534,7 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
-  @callback handle_params(unsigned_params, Socket.t()) ::
+  @callback handle_params(unsigned_params, uri :: String.t(), Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
@@ -547,7 +547,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
   @optional_callbacks terminate: 2,
-                      handle_params: 2,
+                      handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
                       handle_info: 2
@@ -783,7 +783,7 @@ defmodule Phoenix.LiveView do
   Annotates the socket for navigation without a page refresh.
 
   When navigating to a path which routes to your existing LiveView,
-  the `handle_params/2` callback is immediately invoked in your existing
+  the `handle_params/3` callback is immediately invoked in your existing
   LiveView process to handle the change of URL state. For live redirects
   to external LiveViews, the existing LiveView is shutdown.
 
@@ -843,5 +843,22 @@ defmodule Phoenix.LiveView do
   end
   def live_link(text, opts) when is_list(opts) do
     live_link(opts, do: text)
+  end
+
+  @doc """
+  Accesses the connect params sent by the client for use on connected mount.
+
+  Connect params are only sent when the client connects to the server and
+  only remain available during mount. `nil` is returned when called in a
+  disconnected state and a `RuntimeError` is raised if called after mount.
+
+  ## Examples
+
+      def mount(_session, socket) do
+        {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
+      end
+  """
+  def get_connect_params(%Socket{} = socket) do
+    LiveView.View.get_connect_params(socket)
   end
 end

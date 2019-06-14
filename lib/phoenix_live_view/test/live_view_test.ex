@@ -129,6 +129,10 @@ defmodule Phoenix.LiveViewTest do
   to perform the `get/2` and connected mount in a single
   step.
 
+  ## Options
+
+    * `:connect_parmas` - the map of params available in connected mount
+
   ## Examples
 
       {:ok, view, html} = live(conn, "/path")
@@ -220,6 +224,7 @@ defmodule Phoenix.LiveViewTest do
       View.build(
         dom_id: id,
         mount_path: live_path,
+        connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         module: conn.assigns.live_view_module,
         router: Phoenix.Controller.router_module(conn),
