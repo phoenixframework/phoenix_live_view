@@ -495,7 +495,7 @@ defmodule Phoenix.LiveView do
   ### Live redirects for navigation without page reload
 
   The `live_redirect/2` function allows a page navigation using the
-  (browser's pushState API)[https://developer.mozilla.org/en-US/docs/Web/API/History_API].
+  [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
   To handle navigation without page reload, simply replace your existing
   `Phoenix.HTML.link/3` and `Phoenix.LiveView.redirect/2` calls with their `live`
   counterparts.
