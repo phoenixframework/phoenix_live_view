@@ -492,13 +492,14 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
-  ### Live redirects for navigation without page reload
+  ## Live navigation
 
-  The `live_redirect/2` function allows a page navigation using the
-  (browser's pushState API)[https://developer.mozilla.org/en-US/docs/Web/API/History_API].
-  To handle navigation without page reload, simply replace your existing
-  `Phoenix.HTML.link/3` and `Phoenix.LiveView.redirect/2` calls with their `live`
-  counterparts.
+  The `link_link/2` and `live_redirect/2` functions allow page navigation
+  using the [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
+  With live navigation, the page is updated without a full page reload.
+  
+  To use live navigation, simply replace your existing `Phoenix.HTML.link/3`
+  and `Phoenix.LiveView.redirect/2` calls with their `live` counterparts.
 
   For example, in a template you may write:
 
@@ -506,18 +507,94 @@ defmodule Phoenix.LiveView do
 
   or in a LiveView:
 
-      {:noreply, live_redirect(socket, to: Routes.live_path(@socket, MyLive, page + 1))}
+      {:noreply, live_redirect(socket, to: Routes.live_path(socket, MyLive, page + 1))}
 
   When a live link is clicked, the following control flow occurs:
 
-    * if the route belongs to the existing root LiveView, the `handle_params/3`
-      callback is invoked
+    * if the route belongs to the existing root LiveView and the LiveView is
+      defined in your application's router, the `c:handle_params/3` callback
+      is invoked without mounting a new LiveView. See the next section.
+
     * if the route belongs to a different LiveView than the currently running
-      root, the existing root LiveView is shutdown, and a new root LiveView is
-      spawned, following the same static HTTP request, followed by connected
-      upgrade. However, in the case of live links, the static request happens
-      over Ajax instead of traditional HTTP requests which allows LiveView
-      to skip the initial static render.
+      root, then the existing root LiveView is shutdown, and an Ajax request is
+      made to request the necessary information about the new LiveView, without
+      performing a full static render (which reduces latency and improves
+      performance). Once information is retrieved, the new LiveView is mounted.
+  
+  ### `handle_params/3`
+  
+  The `c:handle_params/3` callback is invoked after `c:mount/2`. It receives the
+  request path parameters and the query parameters as first argument, the url as
+  second, and the socket as third. As any other `handle_*` callback, changes to
+  the state inside `c:handle_params/3` will trigger a server render.
+  
+  To avoid building a new LiveView whenever a live link is clicked or whenever
+  a live redirect happens, LiveView also invokes `c:handle_params/3` on an
+  existing LiveView when performing live navigation as long as:
+  
+    1. you are navigating to the same root live view you are currently on
+    2. said LiveView is defined in your router
+  
+  For example, imagine you have a `UserTable` LiveView to show all users in
+  the system and you define it in the router as:
+  
+      live "/users", UserTable
+  
+  Now to add live sorting, you could do:
+  
+      <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+  
+  When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
+  will be invoked. Remember you should never trust received params, so we can use
+  the callback to validate the user input and change the state accordingly:
+
+      def handle_params(params, _uri, socket) do
+        case params["sort_by"] do
+          sort_by when sort_by in ~w(name company) ->
+            {:noreply, socket |> assign(:sort_by, sort) |> recompute_users()}
+          _ ->
+            {:noreply, socket}
+        end
+      end
+ 
+  ### Replace page address
+
+  LiveView also allows the current browser URL to be replaced. This is useful when you
+  want certain events to change the URL but without polluting the browser's history.
+  For example, imagine there is a form that changes some page state when submitted.
+  If those changes are not persisted in a database or similar, as soon as the user
+  refreshes the page, navigates away, or shares the URL with someone else, said changes
+  will be lost.
+  
+  To address this, users can invoke `live_redirect/2`. The idea is, once the form
+  data is received, we do not change the state, instead we perform a live redirect to
+  ourselves with the new URL. Since we are navigating to ourselves, `c:handle_params/3`
+  will be called with the new parameters, which we can then use to compute state and
+  re-render the page.
+
+  For example, let's change the "sort by" example from the previous page to perform
+  sorting through a form. In other words, instead of sorting by clicking a "Sort by
+  name" button, we will have a form with 2 radio buttons, that allows you to choose
+  between sorting by name or company.
+
+  Once the form is submitted, we can compute the new URL:
+
+      def handle_event("sorting", params, socket) do
+        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params))}
+      end
+  
+  Now with a `c:handle_params/3` implementation similar to the one in the previous
+  section, we will recompute the users based on the new `params` and perform a server
+  render if there are any changes.
+  
+  Both `live_link/2` and `live_redirect/2` support the `replace: true` option. This
+  option can be used when you want to change the current url without polluting the
+  browser's history:
+
+      def handle_event("sorting", params, socket) do
+        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
+      end
+
   """
 
   alias Phoenix.LiveView
