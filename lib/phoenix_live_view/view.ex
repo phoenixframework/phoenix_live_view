@@ -356,11 +356,8 @@ defmodule Phoenix.LiveView.View do
       %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
         {:internal, Map.merge(query_params, path_params)}
 
-      %{plug: _, plug_opts: _external_view} ->
+      _ ->
         :external
-
-      :error ->
-        raise ArgumentError, "attempted to live_redirect to a non-LiveView at #{uri}"
     end
   end
 

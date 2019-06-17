@@ -144,7 +144,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp call_handle_params(state, {_kind, %{to: to}} = redir) do
+  defp call_mount_handle_params(state, {_kind, %{to: to}} = redir) do
     if function_exported?(state.socket.view, :handle_params, 3) do
       url = to_url(state, to)
       new_state = put_uri(state, url)
@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.Channel do
       {:live_redirect, {:internal, _params}, %{to: _to, kind: _kind} = opts} ->
         new_state
         |> drop_redirect()
-        |> call_handle_params({:live_redirect, opts})
+        |> call_mount_handle_params({:live_redirect, opts})
 
       {:live_redirect, :external, %{to: to} = opts} ->
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
@@ -190,12 +190,17 @@ defmodule Phoenix.LiveView.Channel do
         {:stop, {:shutdown, {:redirect, opts}}, new_state}
 
       {:live_redirect, _kind, _opts} ->
-        raise RuntimeError, """
-        attempted to live redirect while stopping.
-
-        live_redirects cannot be stopped. If you wish to stop and redirect, use redirect/2 instead.
-        """
+        bad_stop_and_live_redirect!()
     end
+  end
+
+  defp bad_stop_and_live_redirect!() do
+    raise RuntimeError, """
+    attempted to live redirect while stopping.
+
+    a LiveView cannot be stopped while issuing a live redirect to the client. \
+    Use redirect/2 instead if you wish to stop and redirect.
+    """
   end
 
   defp handle_result({:noreply, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
@@ -208,12 +213,7 @@ defmodule Phoenix.LiveView.Channel do
   defp handle_result({:stop, %Socket{} = new_socket}, {_, _, ref}, state) do
     case handle_changed(state, new_socket, ref) do
       {:ok, :live_redirect, _new_state} ->
-        raise ArgumentError, """
-        attempted to live_redirect while stopping LiveView
-
-        a LiveView cannot be stopped while issuing a live redirect to the client. Use
-        redirect/2 instead if you wish to stop and redirect.
-        """
+        bad_stop_and_live_redirect!()
 
       {:ok, _changed, new_state} ->
         send(new_state.transport_pid, {:socket_close, self(), :shutdown})
@@ -439,7 +439,7 @@ defmodule Phoenix.LiveView.Channel do
         state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket, url)
 
         state
-        |> call_handle_params({:mount, %{to: url}})
+        |> call_mount_handle_params({:mount, %{to: url}})
         |> reply_mount(from, url, view)
 
       {:stop, %Socket{} = lv_socket} = result ->
