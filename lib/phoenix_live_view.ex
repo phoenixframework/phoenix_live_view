@@ -494,7 +494,7 @@ defmodule Phoenix.LiveView do
 
   ## Live navigation
 
-  The `link_link/2` and `live_redirect/2` functions allow page navigation
+  The `live_link/2` and `live_redirect/2` functions allow page navigation
   using the [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
   With live navigation, the page is updated without a full page reload.
   
