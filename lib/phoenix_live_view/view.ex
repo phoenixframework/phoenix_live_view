@@ -78,22 +78,23 @@ defmodule Phoenix.LiveView.View do
   """
   def get_connect_params(%Socket{} = socket) do
     cond do
-      !mounting?(socket) -> raise RuntimeError, """
+      child?(socket) ->
+        raise RuntimeError, """
+        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
+
+        Only the root LiveView has access to connect params.
+        """
+
+      connect_params = socket.private[:connect_params] ->
+        if connected?(socket), do: connect_params, else: nil
+
+      true ->
+        raise RuntimeError, """
         attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
 
         connect_params only exist while mounting. If you require access to this information
         after mount, store the state in socket assigns.
         """
-
-      !connected?(socket) -> nil
-
-      child?(socket) -> raise RuntimeError, """
-      attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
-
-      Only the root LiveView has access to connect params.
-      """
-
-      true -> socket.private.connect_params
     end
   end
 
@@ -110,7 +111,7 @@ defmodule Phoenix.LiveView.View do
         id: id,
         endpoint: endpoint,
         router: router,
-        private: %{mounting: true, assigned_new: assigned_new, connect_params: connect_params}
+        private: %{assigned_new: assigned_new, connect_params: connect_params}
       },
       opts
     )
@@ -133,7 +134,7 @@ defmodule Phoenix.LiveView.View do
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
-    %Socket{socket | private: Map.drop(socket.private, [:mounting, :connect_params])}
+    %Socket{socket | private: Map.drop(socket.private, [:connect_params])}
   end
 
   @doc """
@@ -521,10 +522,6 @@ defmodule Phoenix.LiveView.View do
   defp assigned_new_keys(socket) do
     {_, keys} = socket.private.assigned_new
     keys
-  end
-
-  defp mounting?(%Socket{} = socket) do
-    socket.private[:mounting]
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)

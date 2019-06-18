@@ -6,10 +6,21 @@ defmodule Phoenix.LiveView.SocketTest do
   alias Phoenix.LiveViewTest.{Endpoint, Router}
 
   describe "get_connect_params" do
-    test "raises when not in mounting state" do
+    test "raises when not in mounting state and connected" do
       socket =
         Endpoint
-        |> View.build_socket(Router, %{})
+        |> View.build_socket(Router, %{connected?: true})
+        |> View.post_mount_prune()
+
+      assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
+        LiveView.get_connect_params(socket)
+      end
+    end
+
+    test "raises when not in mounting state and disconnected" do
+      socket =
+        Endpoint
+        |> View.build_socket(Router, %{connected?: false})
         |> View.post_mount_prune()
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
