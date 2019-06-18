@@ -5,6 +5,10 @@ defmodule Phoenix.LiveView.View do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
+  # Token version. Should be changed whenever new data is stored.
+  @token_vsn 1
+
+  # Max session age in seconds. Equivalent to 2 weeks.
   @max_session_age 1_209_600
 
   # Total length of 8 bytes when 64 encoded
@@ -219,7 +223,8 @@ defmodule Phoenix.LiveView.View do
 
   defp verify_token(endpoint, token) do
     case Phoenix.Token.verify(endpoint, salt(endpoint), token, max_age: @max_session_age) do
-      {:ok, term} -> {:ok, term}
+      {:ok, {@token_vsn, term}} -> {:ok, term}
+      {:ok, _} -> {:error, :outdated}
       {:error, _} = error -> error
     end
   end
@@ -464,6 +469,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_root_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       view: view,
@@ -474,6 +480,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_child_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       view: view,
@@ -484,6 +491,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_static_token(%Socket{id: dom_id} = socket) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       assigned_new: assigned_new_keys(socket)
@@ -507,7 +515,7 @@ defmodule Phoenix.LiveView.View do
   defp random_id, do: "phx-" <> random_encoded_bytes()
 
   defp sign_token(endpoint_mod, salt, data) do
-    Phoenix.Token.sign(endpoint_mod, salt, data)
+    Phoenix.Token.sign(endpoint_mod, salt, {@token_vsn, data})
   end
 
   defp assigned_new_keys(socket) do
