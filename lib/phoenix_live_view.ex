@@ -230,7 +230,7 @@ defmodule Phoenix.LiveView do
   You can also `live_render` from any template:
 
       <h1>Temperature Control</h1>
-      <%= Phoenix.LiveView.live_render(@conn, AppWeb.ThermostatLive, session: %{user: @user}) %>
+      <%= Phoenix.LiveView.live_render(@conn, AppWeb.ThermostatLive, session: %{user_id: @user.id}) %>
 
   Or you can `live_render` your view from any controller:
 
