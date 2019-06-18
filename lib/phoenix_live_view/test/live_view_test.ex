@@ -18,6 +18,7 @@ defmodule Phoenix.LiveViewTest do
   support testing both disconnected and connected mounts separately, for example:
 
       use Phoenix.ConnTest
+      import Phoenix.LiveViewTest
       @endpoint MyEndpoint
 
       test "disconnected and connected mount", %{conn: conn} do
