@@ -407,7 +407,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert {:ok, view, _} = live(conn, "/thermo")
 
       assert_redirect(view, "/path", fn ->
-        assert render_click(view, :redir, "/path") == {:error, {:redirect, "/path"}}
+        assert render_click(view, :redir, "/path") == {:error, {:redirect, %{to: "/path"}}}
       end)
 
       assert_remove(view, {:redirect, "/path"})

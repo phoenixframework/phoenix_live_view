@@ -403,7 +403,8 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was peformed after execution of the provied function.
+  Asserts a redirect was peformed after execution of the provided
+  function.
 
   ## Examples
 
@@ -414,7 +415,6 @@ defmodule Phoenix.LiveViewTest do
   defmacro assert_redirect(view, to, func) do
     quote do
       %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
-      Process.unlink(proxy_pid)
       unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end
