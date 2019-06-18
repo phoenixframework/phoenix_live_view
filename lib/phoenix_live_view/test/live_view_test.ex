@@ -97,7 +97,7 @@ defmodule Phoenix.LiveViewTest do
   ## Testing shutdowns and stopping views
 
   Like all processes, views can shutdown normally or abnormally, and this
-  can be tested with `assert_removed/3`. For example:
+  can be tested with `assert_remove/3`. For example:
 
       send(view.pid, :boom)
       assert_remove view, {:shutdown, %RuntimeError{}}
