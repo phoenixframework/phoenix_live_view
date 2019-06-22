@@ -495,7 +495,7 @@ export class LiveSocket {
       if (!phxEvent) { return }
       let href = target.href
       e.preventDefault()
-      this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
+      this.owner(target, view => view.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href)))
     }, false)
   }
 
