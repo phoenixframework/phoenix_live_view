@@ -907,7 +907,7 @@ export class View {
     }
   }
   onLiveRedirect({to, kind}){
-    this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
+    this.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }
