@@ -85,7 +85,7 @@ describe('View + DOM', function() {
 
     view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
 
-    expect(view.el.firstChild.tagName).toBe('H2')
+    expect(view.el.querySelector('form')).toBeTruthy()
     expect(view.newChildrenAdded).toBe(false)
   })
 
@@ -180,7 +180,7 @@ describe('View + DOM', function() {
 
     view.submitForm(form, { target: form })
     expect(form.dataset.phxHasSubmitted).toBeTruthy()
-    expect(form.classList.contains('phx-loading').toBeTruthy()
+    expect(form.classList.contains('phx-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
   })
