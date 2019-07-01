@@ -8,6 +8,7 @@ otp_release:
   - 19.3
   - 20.3
   - 21.0
+  - 22.0.1
 
 matrix:
   exclude:
@@ -15,6 +16,8 @@ matrix:
       otp_release: 19.3
     - elixir: 1.7
       otp_release: 20.3
+    - elixir: 1.7
+      otp_release: 22.0.1
     - elixir: 1.8
       otp_release: 19.3
     - elixir: 1.8

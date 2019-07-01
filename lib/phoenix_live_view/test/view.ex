@@ -5,6 +5,8 @@ defmodule Phoenix.LiveViewTest.View do
   defstruct session_token: nil,
             static_token: nil,
             module: nil,
+            mount_path: nil,
+            router: nil,
             endpoint: nil,
             pid: :static,
             proxy: nil,
@@ -13,10 +15,12 @@ defmodule Phoenix.LiveViewTest.View do
             rendered: nil,
             children: MapSet.new(),
             child_statics: %{},
-            dom_id: nil
+            dom_id: nil,
+            connect_params: %{}
 
   def build(attrs) do
     topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
+
     attrs_with_defaults =
       attrs
       |> Keyword.merge(topic: topic)
@@ -25,8 +29,16 @@ defmodule Phoenix.LiveViewTest.View do
     struct(__MODULE__, attrs_with_defaults)
   end
 
-  def build_child(%View{} = parent, attrs) do
-    build(Keyword.merge(attrs, ref: parent.ref, proxy: parent.proxy, endpoint: parent.endpoint))
+  def build_child(%View{ref: ref, proxy: proxy} = parent, attrs) do
+    attrs
+    |> Keyword.merge(
+      ref: ref,
+      proxy: proxy,
+      router: parent.router,
+      endpoint: parent.endpoint,
+      mount_path: parent.mount_path
+    )
+    |> build()
   end
 
   def put_child(%View{} = parent, session) do

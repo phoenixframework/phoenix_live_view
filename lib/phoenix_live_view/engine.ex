@@ -291,7 +291,7 @@ defmodule Phoenix.LiveView.Engine do
   defp maybe_pdict_fingerprint(ast, true, counter) do
     quote do
       case __prints__ do
-        %{unquote(counter) => print} -> Process.put(unquote(@pdict_key), print)
+        %{unquote(counter) => {_, _} = print} -> Process.put(unquote(@pdict_key), print)
         %{} -> :ok
       end
 
@@ -590,15 +590,17 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_safe(expr, line, extra_clauses) do
-    # Keep stacktraces for protocol dispatch...
-    fallback = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
+    # Keep stacktraces for protocol dispatch and coverage
+    safe_return = quote line: line, do: data
+    bin_return = quote line: line, do: Plug.HTML.html_escape_to_iodata(bin)
+    other_return = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
 
     # However ignore them for the generated clauses to avoid warnings
     clauses =
       quote generated: true do
-        {:safe, data} -> data
-        bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
-        other -> unquote(fallback)
+        {:safe, data} -> unquote(safe_return)
+        bin when is_binary(bin) -> unquote(bin_return)
+        other -> unquote(other_return)
       end
 
     quote generated: true do

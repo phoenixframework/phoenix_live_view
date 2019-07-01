@@ -39,7 +39,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   def find_sessions(html) do
-    ~r/<[^>]+data-phx-session="([^"]+)[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)|<[^>]+data-phx-session="([^"]+)[^>]+id="([^"]+)/
+    ~r/<[^>]+data-phx-session="([^"]++)[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)|<[^>]+data-phx-session="([^"]++)[^>]+id="([^"]+)/
     |> Regex.scan(html, capture: :all_but_first)
     |> Enum.map(fn
       ["", "", "", session, id] -> {session, nil, id}
