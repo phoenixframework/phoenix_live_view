@@ -407,7 +407,8 @@ export class LiveSocket {
   }
 
   bindTopLevelEvents(){
-    this.bindClicks()
+    const clickListener = ("ontouchstart" in window) ? "touchstart" : "click"
+    this.bindClicks(clickListener)
     this.bindNav()
     this.bindForms()
     this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
@@ -424,7 +425,6 @@ export class LiveSocket {
         view.pushEvent(type, targetEl, phxEvent)
       }
     })
-
   }
 
   setPendingLink(href){ 
@@ -468,8 +468,8 @@ export class LiveSocket {
     }
   }
 
-  bindClicks(){
-    window.addEventListener("click", e => {
+  bindClicks(listener){
+    window.addEventListener(listener, e => {
       let click = this.binding("click")
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
