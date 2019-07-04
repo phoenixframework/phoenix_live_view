@@ -133,6 +133,7 @@ const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
+const TAP_START_CLASS = "tap-started"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -407,7 +408,14 @@ export class LiveSocket {
   }
 
   bindTopLevelEvents(){
-    this.bindClicks()
+    if ("ontouchstart" in window) {
+      this.bindTouchstarts()
+      this.bindTouchmoves()
+      this.bindClicks("touchend")
+    } else {
+      this.bindClicks("click")
+    }
+
     this.bindNav()
     this.bindForms()
     this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
@@ -468,10 +476,32 @@ export class LiveSocket {
     }
   }
 
-  bindClicks(){
-    window.addEventListener("click", e => {
+  bindTouchstarts(){
+    window.addEventListener("touchstart", e => {
+      e.target.classList.add(TAP_START_CLASS)
+    })
+  }
+
+  bindTouchmoves(){
+    window.addEventListener("touchmove", e => {
+      e.target.classList.remove(TAP_START_CLASS)
+    })
+  }
+
+  bindClicks(listener){
+    window.addEventListener(listener, e => {
+      const el = e.target
+
+      if (listener === "touchend") {
+        // not a tap
+        if (!el.classList.contains(TAP_START_CLASS)) return
+
+        // is a tap
+        el.classList.remove(TAP_START_CLASS)
+      }
+
       let click = this.binding("click")
-      let target = closestPhxBinding(e.target, click)
+      let target = closestPhxBinding(el, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
       e.preventDefault()
