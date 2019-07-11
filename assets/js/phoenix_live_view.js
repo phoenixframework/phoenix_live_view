@@ -555,7 +555,7 @@ export let Browser = {
     req.open("GET", href, true)
     req.timeout = PUSH_TIMEOUT
     req.setRequestHeader("content-type", "text/html")
-    req.setRequestHeader("cache-control", "max-age=0, no-cache, must-revalidate, post-check=0, pre-check=0")
+    req.setRequestHeader("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
     req.setRequestHeader(LINK_HEADER, "live-link")
     req.onerror = () => callback(400)
     req.ontimeout = () => callback(504)
