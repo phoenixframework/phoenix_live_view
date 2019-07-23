@@ -155,7 +155,7 @@ All current Chrome, Safari, Firefox, and MS Edge are supported.
 IE11 support is available with the following polyfills:
 
 ```console
-$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill
 ```
 
 ```javascript
@@ -165,6 +165,7 @@ import "mdn-polyfills/Element.prototype.matches"
 import "child-replace-with-polyfill"
 import "url-search-params-polyfill"
 import "formdata-polyfill"
+import "classlist-polyfill"
 
 import {LiveSocket} from "phoenix_live_view"
 ...
