@@ -493,10 +493,6 @@ export class LiveSocket {
       const el = e.target
 
       if (listener === "touchend") {
-        // not a tap
-        if (!el.classList.contains(TAP_START_CLASS)) return
-
-        // is a tap
         el.classList.remove(TAP_START_CLASS)
       }
 
