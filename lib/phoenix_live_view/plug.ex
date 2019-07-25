@@ -43,6 +43,7 @@ defmodule Phoenix.LiveView.Plug do
   defp session(conn, session_opts) do
     Enum.reduce(session_opts, %{}, fn
       :path_params, acc -> Map.put(acc, :path_params, conn.path_params)
+      :query_params, acc -> Map.put(acc, :query_params, conn.query_params)
       key, acc -> Map.put(acc, key, Conn.get_session(conn, key))
     end)
   end

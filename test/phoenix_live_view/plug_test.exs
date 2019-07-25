@@ -13,6 +13,7 @@ defmodule Phoenix.LiveView.PlugTest do
       |> Plug.Conn.put_private(:phoenix_endpoint, Endpoint)
       |> Plug.Conn.put_private(:phoenix_live_view, [])
       |> Map.put(:path_params, %{"id" => "123"})
+      |> Map.put(:query_params, config[:plug_query_params] || %{})
 
     {:ok, conn: conn}
   end
@@ -31,6 +32,17 @@ defmodule Phoenix.LiveView.PlugTest do
       |> LiveViewPlug.call(DashboardLive)
 
     assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}, user_id: "alex"})
+  end
+
+  @tag plug_query_params: %{"page" => "1"}
+  test "with query params", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Conn.put_private(:phoenix_live_view, session: [:path_params, :query_params])
+      |> LiveViewPlug.call(DashboardLive)
+
+    assert conn.resp_body =~
+             ~s(session: %{path_params: %{"id" => "123"}, query_params: %{"page" => "1"}})
   end
 
   test "with a container", %{conn: conn} do
