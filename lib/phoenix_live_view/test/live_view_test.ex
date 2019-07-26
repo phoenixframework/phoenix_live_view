@@ -120,19 +120,22 @@ defmodule Phoenix.LiveViewTest do
       refute render(parent) =~ "some content in child"
   """
 
+  require Phoenix.ConnTest
+
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
   Spawns a connected LiveView process.
 
   Accepts either a previously rendered `%Plug.Conn{}` or
-  an unsent `%Plug.Conn{}`. The latter case is a conveience
+  an unsent `%Plug.Conn{}`. The latter case is a convenience
   to perform the `get/2` and connected mount in a single
   step.
 
   ## Options
 
-    * `:connect_params` - the map of params available in connected mount
+    * `:connect_params` - the map of params available in the socket connected
+      mount. See `Phoenix.LiveView.get_connect_params/1` for more information.
 
   ## Examples
 
@@ -268,6 +271,37 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc """
+  Spawns a connected LiveView process mounted in isolation as the sole rendered element.
+
+  For LiveViews that are intended to be reused in multiple places, you can
+  connect a LiveView in isolation without needing a built a page that's tied to
+  a route. Testing pages that contains the LiveView to a degree is still
+  recommened.
+
+  ## Options
+
+    * `:connect_params` - the map of params available in connected mount mount.
+      See `Phoenix.LiveView.get_connect_params/1` for more information.
+
+  All other options are forwarded to the live view for rendering. Refer to
+  `Phoenix.LiveView.live_render/3` for list of supported render options.
+
+  ## Examples
+
+      {:ok, view, html} =
+        live_isolated(conn, MyAppWeb.ClockLive, MyAppWeb.Router, [:browser], session: %{timezone: "Etc/UTC"})
+  """
+  defmacro live_isolated(conn, live_view, router, pipelines, opts \\ []) do
+    quote bind_quoted: binding(), unquote: true do
+      {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
+      conn
+      |> Phoenix.ConnTest.bypass_through(router, List.wrap(pipelines))
+      |> Phoenix.ConnTest.get("/")
+      |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
+      |> Phoenix.LiveViewTest.live(mount_opts)
+    end
+  end
 
   @doc """
   Sends a click event to the view and returns the rendered result.
