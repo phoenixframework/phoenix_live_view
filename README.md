@@ -159,6 +159,7 @@ $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill fo
 ```
 
 ```javascript
+// assets/js/app.js
 import "mdn-polyfills/NodeList.prototype.forEach"
 import "mdn-polyfills/Element.prototype.closest"
 import "mdn-polyfills/Element.prototype.matches"
@@ -167,6 +168,6 @@ import "url-search-params-polyfill"
 import "formdata-polyfill"
 import "classlist-polyfill"
 
-import {LiveSocket} from "phoenix_live_view"
+import LiveSocket from "phoenix_live_view"
 ...
 ```
