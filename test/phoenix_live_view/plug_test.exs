@@ -23,10 +23,10 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}})
   end
 
-  test "with existing #{LiveViewPlug.link_header} header", %{conn: conn} do
+  test "with existing #{LiveViewPlug.link_header()} header", %{conn: conn} do
     conn =
       conn
-      |> put_req_header(LiveViewPlug.link_header, "some.site.com")
+      |> put_req_header(LiveViewPlug.link_header(), "some.site.com")
       |> LiveViewPlug.call(DashboardLive)
 
     assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}})
