@@ -7,6 +7,7 @@ defmodule Phoenix.LiveView.Plug do
   @behaviour Plug
 
   @link_header "x-requested-with"
+  def link_header, do: @link_header
 
   @impl Plug
   def init(opts), do: opts
@@ -58,6 +59,7 @@ defmodule Phoenix.LiveView.Plug do
   defp live_link?(%Plug.Conn{} = conn) do
     case Plug.Conn.get_req_header(conn, @link_header) do
       ["live-link"] -> true
+      [_] -> false
       [] -> false
     end
   end
