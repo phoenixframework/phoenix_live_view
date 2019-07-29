@@ -628,7 +628,11 @@ let DOM = {
     Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
-        el.innerText = value
+        if (el.nodeName == "INPUT") {
+            el.value = value
+        } else {
+            el.innerText = value
+        }
         el.removeAttribute(`${disableWith}-restore`)
       }
     })
