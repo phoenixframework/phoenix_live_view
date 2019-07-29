@@ -189,7 +189,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
+          Phoenix.View.render(AppWeb.PageView, "page.leex", assigns)
         end
       end
 
