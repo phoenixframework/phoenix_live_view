@@ -902,6 +902,8 @@ defmodule Phoenix.LiveView do
     * `:replace` - the flag to replace the current history or push a new state.
       Defaults `false`.
 
+  All other options are forwarded to the anchor tag.
+
   ## Examples
 
       <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
