@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.Plug do
   def put_cache_headers(conn) do
     conn
     |> Plug.Conn.put_resp_header("vary", @link_header)
-    |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, must-revalidate, post-check=0, pre-check=0")
+    |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
   end
 
   defp session(conn, session_opts) do
