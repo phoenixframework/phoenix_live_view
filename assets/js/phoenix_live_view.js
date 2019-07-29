@@ -483,7 +483,7 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       let href = window.location.href
-      if (this.root.isConnected()) {
+      if(this.root.isConnected()) {
         this.root.pushInternalLink(href)
       } else {
         this.replaceRoot(href)
@@ -492,7 +492,7 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if (!phxEvent) { return }
+      if(!phxEvent) { return }
       let href = target.href
       e.preventDefault()
       this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
@@ -628,7 +628,7 @@ let DOM = {
     Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
-        if (el.nodeName == "INPUT") {
+        if(el.nodeName === "INPUT") {
             el.value = value
         } else {
             el.innerText = value
