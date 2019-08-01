@@ -312,19 +312,17 @@ defmodule Phoenix.LiveView do
       </div>
 
   If the `@user` assign changes, then LiveView will re-render only
-  the `@user.id` and `@user.name` and send them to the browser. That's
-  why it is important to keep most of the markup in the template itself.
-  If you write the div above to something like:
+  the `@user.id` and `@user.name` and send them to the browser.
 
-      <%= username_div(@user) %>
+  The change tracking also works when rendering other templates, as
+  long as they are also `.leex` templates and as long as all assigns
+  are passed to the child/inner template:
 
-  Then if the `@user` changes, the whole div will be sent (but only
-  if the `@user` assign changes).
+      <%= render "child_template.html", assigns %>
 
-  The assign tracking feature also implies that you MUST pass all of
-  the data to your templates explicitly and avoid performing direct
-  operations on the template as much as possible. For example, if you
-  perform this operation in your template:
+  The assign tracking feature also implies that you MUST avoid performing
+  direct operations in the template. For example, if you perform a database
+  query in your template:
 
       <%= for user <- Repo.all(User) do %>
         <%= user.name %>
