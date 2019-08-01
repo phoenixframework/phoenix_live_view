@@ -5,6 +5,10 @@ defmodule Phoenix.LiveView.View do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
+  # Token version. Should be changed whenever new data is stored.
+  @token_vsn 1
+
+  # Max session age in seconds. Equivalent to 2 weeks.
   @max_session_age 1_209_600
 
   # Total length of 8 bytes when 64 encoded
@@ -74,22 +78,23 @@ defmodule Phoenix.LiveView.View do
   """
   def get_connect_params(%Socket{} = socket) do
     cond do
-      !mounting?(socket) -> raise RuntimeError, """
+      child?(socket) ->
+        raise RuntimeError, """
+        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
+
+        Only the root LiveView has access to connect params.
+        """
+
+      connect_params = socket.private[:connect_params] ->
+        if connected?(socket), do: connect_params, else: nil
+
+      true ->
+        raise RuntimeError, """
         attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
 
         connect_params only exist while mounting. If you require access to this information
         after mount, store the state in socket assigns.
         """
-
-      !connected?(socket) -> nil
-
-      child?(socket) -> raise RuntimeError, """
-      attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
-
-      Only the root LiveView has access to connect params.
-      """
-
-      true -> socket.private.connect_params
     end
   end
 
@@ -106,7 +111,7 @@ defmodule Phoenix.LiveView.View do
         id: id,
         endpoint: endpoint,
         router: router,
-        private: %{mounting: true, assigned_new: assigned_new, connect_params: connect_params}
+        private: %{assigned_new: assigned_new, connect_params: connect_params}
       },
       opts
     )
@@ -129,7 +134,7 @@ defmodule Phoenix.LiveView.View do
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
-    %Socket{socket | private: Map.drop(socket.private, [:mounting, :connect_params])}
+    %Socket{socket | private: Map.drop(socket.private, [:connect_params])}
   end
 
   @doc """
@@ -219,7 +224,8 @@ defmodule Phoenix.LiveView.View do
 
   defp verify_token(endpoint, token) do
     case Phoenix.Token.verify(endpoint, salt(endpoint), token, max_age: @max_session_age) do
-      {:ok, term} -> {:ok, term}
+      {:ok, {@token_vsn, term}} -> {:ok, term}
+      {:ok, _} -> {:error, :outdated}
       {:error, _} = error -> error
     end
   end
@@ -356,8 +362,12 @@ defmodule Phoenix.LiveView.View do
       %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
         {:internal, Map.merge(query_params, path_params)}
 
-      _ ->
+      %{} ->
         :external
+
+      :error ->
+        raise ArgumentError, "cannot live_redirect/link_link to #{inspect(uri)} because " <>
+              "it isn't defined in #{inspect(router)}"
     end
   end
 
@@ -464,6 +474,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_root_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       view: view,
@@ -474,6 +485,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_child_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       view: view,
@@ -484,6 +496,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp sign_static_token(%Socket{id: dom_id} = socket) do
+    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
       id: dom_id,
       assigned_new: assigned_new_keys(socket)
@@ -507,16 +520,12 @@ defmodule Phoenix.LiveView.View do
   defp random_id, do: "phx-" <> random_encoded_bytes()
 
   defp sign_token(endpoint_mod, salt, data) do
-    Phoenix.Token.sign(endpoint_mod, salt, data)
+    Phoenix.Token.sign(endpoint_mod, salt, {@token_vsn, data})
   end
 
   defp assigned_new_keys(socket) do
     {_, keys} = socket.private.assigned_new
     keys
-  end
-
-  defp mounting?(%Socket{} = socket) do
-    socket.private[:mounting]
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)

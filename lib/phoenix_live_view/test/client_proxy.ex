@@ -177,24 +177,27 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info(%Phoenix.Socket.Reply{} = reply, state) do
-    %{ref: ref, payload: diff, topic: topic} = reply
+    %{ref: ref, payload: payload, topic: topic} = reply
+    {:ok, {from, _pid}} = fetch_reply(state, ref)
+    state = drop_reply(state, ref)
 
-    new_state =
-      state
-      |> merge_rendered(topic, diff)
-      |> maybe_handle_ack_responses(reply)
+    case payload do
+      %{external_live_redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+        {:noreply, state}
 
-    case fetch_view_by_topic(new_state, topic) do
-      {:ok, view} ->
-        {:ok, {from, _pid}} = fetch_reply(new_state, ref)
-        html = render_tree(new_state, view)
+      %{live_redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        {:noreply, render_reply(reply, from, state)}
 
-        GenServer.reply(from, {:ok, html})
+      %{redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+        {:noreply, state}
 
-        {:noreply, drop_reply(new_state, ref)}
-
-      :error ->
-        {:noreply, drop_reply(new_state, ref)}
+      %{} ->
+        {:noreply, render_reply(reply, from, state)}
     end
   end
 
@@ -206,12 +209,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:socket_close, pid, reason}, state) do
-    new_state =
-      state
-      |> drop_downed_view(pid, reason)
-      |> flush_replies(pid, reason)
-
-    {:noreply, %{new_state | replies: %{}}}
+    {:noreply, drop_downed_view(state, pid, reason)}
   end
 
   def handle_call({:stop, %View{topic: topic}}, _from, state) do
@@ -283,15 +281,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp maybe_handle_ack_responses(state, reply) do
-    case reply.payload do
-      %{"diff" => diff} -> merge_rendered(state, reply.topic, diff)
-      %{"live_redirect" => %{"to" => to}} -> send_redirect(state, reply.topic, to)
-      %{"redirect" => %{"to" => to}} -> send_redirect(state, reply.topic, to)
-      %{} -> state
-    end
-  end
-
   defp fetch_reply(state, ref) do
     Map.fetch(state.replies, ref)
   end
@@ -353,12 +342,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp drop_downed_view(state, pid, reason) when is_pid(pid) do
     {:ok, view} = fetch_view_by_pid(state, pid)
-
-    case reason do
-      {:redirect, to} -> send_redirect(state, view.topic, to)
-      _ -> :noop
-    end
-
     send_caller(state, {:removed, view.topic, reason})
 
     flush_replies(
@@ -400,6 +383,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     Enum.reduce(state.views, state, fn {_topic, view}, acc ->
       drop_view_by_session(acc, view.session_token, reason)
     end)
+  end
+
+  defp render_reply(reply, from, state) do
+    %{payload: diff, topic: topic} = reply
+    new_state = merge_rendered(state, topic, diff)
+
+    case fetch_view_by_topic(new_state, topic) do
+      {:ok, view} ->
+        html = render_tree(new_state, view)
+        GenServer.reply(from, {:ok, html})
+        new_state
+
+      :error ->
+        new_state
+    end
   end
 
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)

@@ -18,6 +18,7 @@ defmodule Phoenix.LiveViewTest do
   support testing both disconnected and connected mounts separately, for example:
 
       use Phoenix.ConnTest
+      import Phoenix.LiveViewTest
       @endpoint MyEndpoint
 
       test "disconnected and connected mount", %{conn: conn} do
@@ -97,7 +98,7 @@ defmodule Phoenix.LiveViewTest do
   ## Testing shutdowns and stopping views
 
   Like all processes, views can shutdown normally or abnormally, and this
-  can be tested with `assert_removed/3`. For example:
+  can be tested with `assert_remove/3`. For example:
 
       send(view.pid, :boom)
       assert_remove view, {:shutdown, %RuntimeError{}}
@@ -403,7 +404,8 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was peformed after execution of the provied function.
+  Asserts a redirect was peformed after execution of the provided
+  function.
 
   ## Examples
 
@@ -414,7 +416,6 @@ defmodule Phoenix.LiveViewTest do
   defmacro assert_redirect(view, to, func) do
     quote do
       %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
-      Process.unlink(proxy_pid)
       unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end

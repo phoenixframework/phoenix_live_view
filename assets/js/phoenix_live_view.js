@@ -165,7 +165,7 @@ let maybe = (el, key) => {
 let serializeForm = (form) => {
   let formData = new FormData(form)
   let params = new URLSearchParams()
-  for(let [key, val] of formData.entries()){ params.set(key, val) }
+  for(let [key, val] of formData.entries()){ params.append(key, val) }
   return params.toString()
 }
 
@@ -483,7 +483,7 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       let href = window.location.href
-      if (this.root.isConnected()) {
+      if(this.root.isConnected()) {
         this.root.pushInternalLink(href)
       } else {
         this.replaceRoot(href)
@@ -492,7 +492,7 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if (!phxEvent) { return }
+      if(!phxEvent) { return }
       let href = target.href
       e.preventDefault()
       this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
@@ -555,7 +555,7 @@ export let Browser = {
     req.open("GET", href, true)
     req.timeout = PUSH_TIMEOUT
     req.setRequestHeader("content-type", "text/html")
-    req.setRequestHeader("cache-control", "max-age=0, no-cache, must-revalidate, post-check=0, pre-check=0")
+    req.setRequestHeader("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
     req.setRequestHeader(LINK_HEADER, "live-link")
     req.onerror = () => callback(400)
     req.ontimeout = () => callback(504)
@@ -627,7 +627,11 @@ let DOM = {
     Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
-        el.innerText = value
+        if(el.nodeName === "INPUT") {
+            el.value = value
+        } else {
+            el.innerText = value
+        }
         el.removeAttribute(`${disableWith}-restore`)
       }
     })
