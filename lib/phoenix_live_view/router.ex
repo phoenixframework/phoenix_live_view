@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.Router do
 
           live "/thermostat", ThermostatLive
           live "/clock", ClockLive, session: [:path_params, :user_id]
-          live "/dashboard, DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
+          live "/dashboard", DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
         end
       end
 

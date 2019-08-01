@@ -902,6 +902,8 @@ defmodule Phoenix.LiveView do
     * `:replace` - the flag to replace the current history or push a new state.
       Defaults `false`.
 
+  All other options are forwarded to the anchor tag.
+
   ## Examples
 
       <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
@@ -916,7 +918,11 @@ defmodule Phoenix.LiveView do
     replace = Keyword.get(opts, :replace, false)
     kind = if replace, do: "replace", else: "push"
 
-    Phoenix.HTML.Tag.content_tag(:a, [href: uri, data: [phx_live_link: kind]], do: block)
+    opts = opts
+    |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, [phx_live_link: kind]))
+    |> Keyword.put(:href, uri)
+
+    Phoenix.HTML.Tag.content_tag(:a, opts, do: block)
   end
   def live_link(text, opts) when is_list(opts) do
     live_link(opts, do: text)
