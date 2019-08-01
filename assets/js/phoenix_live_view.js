@@ -1002,7 +1002,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
-        this.liveSocket.replaceRoot(to, callback, linkRef)
+        this.liveSocket.replaceRoot(href, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
