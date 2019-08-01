@@ -747,7 +747,7 @@ let DOM = {
     var attrs = source.attributes
     for (let i = 0, length = attrs.length; i < length; i++){
       let name = attrs[i].name
-      let value = source.getAttribute(name)
+      let value = source[name]
       target.setAttribute(name, value)
     }
   },
