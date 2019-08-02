@@ -443,6 +443,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp verified_mount(view, id, parent, router, assigned_new, session, params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint} = phx_socket
+    _ = set_csrf_token(phx_socket)
     Process.monitor(phx_socket.transport_pid)
     parent_assigns = register_with_parent(parent, view, id, assigned_new)
     %{"url" => url, "params" => connect_params} = params
@@ -478,6 +479,13 @@ defmodule Phoenix.LiveView.Channel do
       other ->
         View.raise_invalid_mount(other, view)
     end
+  end
+
+  defp set_csrf_token(phx_socket) do
+    token = phx_socket.private[:csrf_token]
+    state = Plug.CSRFProtection.dump_state_from_session(token)
+    secret_key_base = phx_socket.endpoint.config(:secret_key_base)
+    Plug.CSRFProtection.load_state(secret_key_base, state)
   end
 
   defp reply_mount(result, from, original_uri, view) do

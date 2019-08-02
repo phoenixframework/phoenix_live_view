@@ -24,8 +24,20 @@ defmodule Phoenix.LiveView.Socket do
   Connects the Phoenix.Socket for a LiveView client.
   """
   @impl Phoenix.Socket
-  def connect(_params, %Phoenix.Socket{} = socket, _connect_info) do
-    {:ok, socket}
+  def connect(_params, %Phoenix.Socket{} = socket, connect_info) do
+    case connect_info do
+      %{session: nil} ->
+        # TODO: tell them to pass the CSRF token
+        {:error, :session_is_nil}
+
+      %{session: session} ->
+        token = Map.get(session, "_csrf_token")
+        {:ok, put_in(socket.private[:csrf_token], token)}
+
+      _ ->
+        # TODO: tell them to pass the CSRF token
+        {:error, :no_session_info}
+    end
   end
 
   @doc """
