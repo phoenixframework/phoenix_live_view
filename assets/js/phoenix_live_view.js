@@ -315,6 +315,10 @@ export class LiveSocket {
 
   replaceRoot(href, callback = null, linkRef = this.setPendingLink(href)){
     this.root.showLoader(LOADER_TIMEOUT)
+    let rootEl = this.root.el
+    let rootID = this.root.id
+    let wasLoading = this.root.isLoading()
+
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
 
@@ -326,9 +330,7 @@ export class LiveSocket {
           return
         }
         callback && callback()
-        let rootEl = this.root.el
-        let wasLoading = this.root.isLoading()
-        this.destroyViewById(this.root.id)
+        this.destroyViewById(rootID)
         rootEl.replaceWith(newRoot.el)
         this.root = newRoot
         if(wasLoading){ this.root.showLoader() }
