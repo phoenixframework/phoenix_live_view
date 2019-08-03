@@ -3,6 +3,9 @@ defmodule Phoenix.LiveViewTest.DOMTest do
 
   alias Phoenix.LiveViewTest.DOM
 
+  # >= 4432 characters
+  @too_big_session Enum.map(1..4432, fn _ -> "t" end) |> Enum.join()
+
   @html """
   <h1>top</h1>
   <div data-phx-view="789"
@@ -13,13 +16,17 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       data-phx-session="SESSION2"
       data-phx-static="STATIC2"
       id="phx-456"></div>
+  <div data-phx-session="#{@too_big_session}"
+    data-phx-view="789"
+    id="phx-458"></div>
   <h1>bottom</h1>
   """
 
   test "finds session given html" do
     assert DOM.find_sessions(@html) == [
              {"SESSION1", nil, "phx-123"},
-             {"SESSION2", "STATIC2", "phx-456"}
+             {"SESSION2", "STATIC2", "phx-456"},
+             {@too_big_session, nil, "phx-458"}
            ]
 
     assert DOM.find_sessions("none") == []
@@ -36,6 +43,9 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                data-phx-session="SESSION2"
                data-phx-static="STATIC2"
                id="phx-456"></div>
+           <div data-phx-session="#{@too_big_session}"
+             data-phx-view="789"
+             id="phx-458"></div>
            <h1>bottom</h1>
            """
 

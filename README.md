@@ -18,7 +18,7 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
-Currently LiveView is only available from GitHub. To use it, add to your `mix.exs`:
+Currently LiveView is only available from GitHub. To use it, add to your `mix.exs` and run `mix deps.get`:
 
 ```elixir
 def deps do
@@ -56,10 +56,17 @@ Then add the following imports to your web file in `lib/my_app_web.ex`:
 ```elixir
 # lib/my_app_web.ex
 
+def controller do
+  quote do
+    ...
+    import Phoenix.LiveView.Controller, only: [live_render: 3]
+  end
+end
+
 def view do
   quote do
     ...
-    import Phoenix.LiveView, only: [live_render: 2, live_render: 3]
+    import Phoenix.LiveView, only: [live_render: 2, live_render: 3, live_link: 1, live_link: 2]
   end
 end
 
@@ -103,6 +110,13 @@ Then install the new npm dependency.
 npm install --prefix assets
 ```
 
+If you had previously installed phoenix_live_view and want to get the
+latest javascript, then force an install.
+
+```bash
+(cd assets && npm install --force phoenix_live_view)
+```
+
 Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
@@ -133,4 +147,27 @@ You can also optionally import the style for the default CSS classes in your `ap
 ```css
 /* assets/css/app.css */
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
+```
+
+## Browser Support
+
+All current Chrome, Safari, Firefox, and MS Edge are supported.
+IE11 support is available with the following polyfills:
+
+```console
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill
+```
+
+```javascript
+// assets/js/app.js
+import "mdn-polyfills/NodeList.prototype.forEach"
+import "mdn-polyfills/Element.prototype.closest"
+import "mdn-polyfills/Element.prototype.matches"
+import "child-replace-with-polyfill"
+import "url-search-params-polyfill"
+import "formdata-polyfill"
+import "classlist-polyfill"
+
+import LiveSocket from "phoenix_live_view"
+...
 ```

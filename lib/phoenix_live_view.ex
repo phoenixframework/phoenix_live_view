@@ -189,7 +189,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          AppWeb.PageView.render("page.html", assigns)
+          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
         end
       end
 
@@ -212,16 +212,25 @@ defmodule Phoenix.LiveView do
   You can generate a secure, random signing salt with the
   `mix phx.gen.secret 32` task.
 
-  Next, you can serve the LiveView directly from your router:
+  Next, decide where you want to use your LiveView.
+
+  You can serve the LiveView directly from your router, passing along
+  `:session` values if needed (see `Phoenix.LiveView.Router` for more
+  options):
 
       defmodule AppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
 
         scope "/", AppWeb do
-          live "/thermostat", ThermostatLive
+          live "/thermostat", ThermostatLive, session: [:user_id]
         end
       end
+
+  You can also `live_render` from any template:
+
+      <h1>Temperature Control</h1>
+      <%= Phoenix.LiveView.live_render(@conn, AppWeb.ThermostatLive, session: %{user_id: @user.id}) %>
 
   Or you can `live_render` your view from any controller:
 
@@ -303,19 +312,17 @@ defmodule Phoenix.LiveView do
       </div>
 
   If the `@user` assign changes, then LiveView will re-render only
-  the `@user.id` and `@user.name` and sent it to the browser. That's
-  why it is important to keep most of the markup in the template itself.
-  If you write the div above to something like:
+  the `@user.id` and `@user.name` and send them to the browser.
 
-      <%= username_div(@user) %>
+  The change tracking also works when rendering other templates, as
+  long as they are also `.leex` templates and as long as all assigns
+  are passed to the child/inner template:
 
-  Then if the `@user` changes, the whole div will be sent (but only
-  if the `@user` assign changes).
+      <%= render "child_template.html", assigns %>
 
-  The assign tracking feature also implies that you MUST pass all of
-  the data to your templates explicitly and avoid performing direct
-  operations on the template as much as possible. For example, if you
-  perform this operation in your template:
+  The assign tracking feature also implies that you MUST avoid performing
+  direct operations in the template. For example, if you perform a database
+  query in your template:
 
       <%= for user <- Repo.all(User) do %>
         <%= user.name %>
@@ -363,7 +370,7 @@ defmodule Phoenix.LiveView do
 
       <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
 
-  To detect when the page itself has receive focus or blur,
+  To detect when the page itself has received focus or blur,
   `phx-target` may be specified as `"window"`. Like other
   bindings, a `phx-value` can be provided on the bound element,
   otherwise the input's value will be used. For example:
@@ -430,7 +437,7 @@ defmodule Phoenix.LiveView do
   changes, such as generating new errors, `render/1` is invoked and
   the form is re-rendered.
 
-  Likewise for `phx-submit` bindings, the save callback is invoked and
+  Likewise for `phx-submit` bindings, the same callback is invoked and
   persistence is attempted. On success, a `:stop` tuple is returned and the
   socket is annotated for redirect with `Phoenix.LiveView.redirect/2`,
   otherwise the socket assigns are updated with the errored changeset to be
@@ -483,6 +490,109 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
+  ## Live navigation
+
+  The `live_link/2` and `live_redirect/2` functions allow page navigation
+  using the [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
+  With live navigation, the page is updated without a full page reload.
+  
+  To use live navigation, simply replace your existing `Phoenix.HTML.link/3`
+  and `Phoenix.LiveView.redirect/2` calls with their `live` counterparts.
+
+  For example, in a template you may write:
+
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+
+  or in a LiveView:
+
+      {:noreply, live_redirect(socket, to: Routes.live_path(socket, MyLive, page + 1))}
+
+  When a live link is clicked, the following control flow occurs:
+
+    * if the route belongs to the existing root LiveView and the LiveView is
+      defined in your application's router, the `c:handle_params/3` callback
+      is invoked without mounting a new LiveView. See the next section.
+
+    * if the route belongs to a different LiveView than the currently running
+      root, then the existing root LiveView is shutdown, and an Ajax request is
+      made to request the necessary information about the new LiveView, without
+      performing a full static render (which reduces latency and improves
+      performance). Once information is retrieved, the new LiveView is mounted.
+  
+  ### `handle_params/3`
+  
+  The `c:handle_params/3` callback is invoked after `c:mount/2`. It receives the
+  request path parameters and the query parameters as first argument, the url as
+  second, and the socket as third. As any other `handle_*` callback, changes to
+  the state inside `c:handle_params/3` will trigger a server render.
+  
+  To avoid building a new LiveView whenever a live link is clicked or whenever
+  a live redirect happens, LiveView also invokes `c:handle_params/3` on an
+  existing LiveView when performing live navigation as long as:
+  
+    1. you are navigating to the same root live view you are currently on
+    2. said LiveView is defined in your router
+  
+  For example, imagine you have a `UserTable` LiveView to show all users in
+  the system and you define it in the router as:
+  
+      live "/users", UserTable
+  
+  Now to add live sorting, you could do:
+  
+      <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+  
+  When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
+  will be invoked. Remember you should never trust received params, so we can use
+  the callback to validate the user input and change the state accordingly:
+
+      def handle_params(params, _uri, socket) do
+        case params["sort_by"] do
+          sort_by when sort_by in ~w(name company) ->
+            {:noreply, socket |> assign(:sort_by, sort) |> recompute_users()}
+          _ ->
+            {:noreply, socket}
+        end
+      end
+ 
+  ### Replace page address
+
+  LiveView also allows the current browser URL to be replaced. This is useful when you
+  want certain events to change the URL but without polluting the browser's history.
+  For example, imagine there is a form that changes some page state when submitted.
+  If those changes are not persisted in a database or similar, as soon as the user
+  refreshes the page, navigates away, or shares the URL with someone else, said changes
+  will be lost.
+  
+  To address this, users can invoke `live_redirect/2`. The idea is, once the form
+  data is received, we do not change the state, instead we perform a live redirect to
+  ourselves with the new URL. Since we are navigating to ourselves, `c:handle_params/3`
+  will be called with the new parameters, which we can then use to compute state and
+  re-render the page.
+
+  For example, let's change the "sort by" example from the previous page to perform
+  sorting through a form. In other words, instead of sorting by clicking a "Sort by
+  name" button, we will have a form with 2 radio buttons, that allows you to choose
+  between sorting by name or company.
+
+  Once the form is submitted, we can compute the new URL:
+
+      def handle_event("sorting", params, socket) do
+        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params))}
+      end
+  
+  Now with a `c:handle_params/3` implementation similar to the one in the previous
+  section, we will recompute the users based on the new `params` and perform a server
+  render if there are any changes.
+  
+  Both `live_link/2` and `live_redirect/2` support the `replace: true` option. This
+  option can be used when you want to change the current url without polluting the
+  browser's history:
+
+      def handle_event("sorting", params, socket) do
+        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
+      end
+
   """
 
   alias Phoenix.LiveView
@@ -499,6 +609,9 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
+  @callback handle_params(unsigned_params, uri :: String.t(), Socket.t()) ::
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
+
   @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
@@ -508,7 +621,11 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2, handle_event: 3, handle_call: 3, handle_info: 2
+  @optional_callbacks terminate: 2,
+                      handle_params: 3,
+                      handle_event: 3,
+                      handle_call: 3,
+                      handle_info: 2
 
   defmacro __using__(_opts) do
     quote do
@@ -622,11 +739,11 @@ defmodule Phoenix.LiveView do
       # controller
       conn
       |> assign(:current_user, user)
-      |> LiveView.Controller.live_render(MyLive, sesssion: %{user_id: user.id})
+      |> LiveView.Controller.live_render(MyLive, session: %{user_id: user.id})
 
       # LiveView mount
       def mount(%{user_id: user_id}, socket) do
-        {:ok, assign_new(:current_user, fn -> Accounts.get_user!(user_id) end)}
+        {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
   """
@@ -734,7 +851,31 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    LiveView.View.put_redirect(socket, Keyword.fetch!(opts, :to))
+    LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
+  end
+
+  @doc """
+  Annotates the socket for navigation without a page refresh.
+
+  When navigating to a path which routes to your existing LiveView,
+  the `handle_params/3` callback is immediately invoked in your existing
+  LiveView process to handle the change of URL state. For live redirects
+  to external LiveViews, the existing LiveView is shutdown.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, live_redirect(socket, to: "/")}
+      {:noreply, live_redirect(socket, to: "/", replace: true)}
+  """
+  def live_redirect(%Socket{} = socket, opts) do
+    kind = if opts[:replace], do: :replace, else: :push
+    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
 
   @doc """
@@ -748,5 +889,57 @@ defmodule Phoenix.LiveView do
   """
   defmacro sigil_L({:<<>>, _, [expr]}, []) do
     EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
+  end
+
+  @doc """
+  Generates a live link for HTML5 pushState based navigation without page reloads.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  All other options are forwarded to the anchor tag.
+
+  ## Examples
+
+      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_link to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
+        Sort By Price
+      <% end %>
+
+  """
+  def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+  def live_link(opts, do: block) when is_list(opts) do
+    uri = Keyword.fetch!(opts, :to)
+    replace = Keyword.get(opts, :replace, false)
+    kind = if replace, do: "replace", else: "push"
+
+    opts = opts
+    |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, [phx_live_link: kind]))
+    |> Keyword.put(:href, uri)
+
+    Phoenix.HTML.Tag.content_tag(:a, opts, do: block)
+  end
+  def live_link(text, opts) when is_list(opts) do
+    live_link(opts, do: text)
+  end
+
+  @doc """
+  Accesses the connect params sent by the client for use on connected mount.
+
+  Connect params are only sent when the client connects to the server and
+  only remain available during mount. `nil` is returned when called in a
+  disconnected state and a `RuntimeError` is raised if called after mount.
+
+  ## Examples
+
+      def mount(_session, socket) do
+        {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
+      end
+  """
+  def get_connect_params(%Socket{} = socket) do
+    LiveView.View.get_connect_params(socket)
   end
 end

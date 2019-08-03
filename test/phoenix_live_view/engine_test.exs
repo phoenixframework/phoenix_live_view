@@ -436,6 +436,22 @@ defmodule Phoenix.LiveView.EngineTest do
 
     end
 
+    test "renders live engine with nested live view even on bad fingerprint" do
+      rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
+      {_, {root, child}} = Phoenix.LiveView.Diff.render(rendered, nil)
+      prints = {root, %{child | 1 => :bad}}
+      assigns = Map.put(@assigns, :socket, %{fingerprints: prints, changed: %{}})
+
+      assert %Rendered{
+               static: ["pre: ", "\n", "post: ", ""],
+               dynamic: [
+                 nil,
+                 %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
+                 nil
+               ]
+             } = Phoenix.View.render(View, "live_with_live.html", assigns)
+    end
+
     test "renders live engine with nested dead view" do
       assert %Rendered{
                static: ["pre: ", "\n", "post: ", ""],
