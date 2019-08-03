@@ -147,7 +147,7 @@ let closestPhxBinding = (el, binding) => {
 }
 
 let isObject = (obj) => {
-  return typeof(obj) === "object" && !(obj instanceof Array)
+  return obj !== null && typeof obj === "object" && !(obj instanceof Array)
 }
 
 let isEmpty = (obj) => {
