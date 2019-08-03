@@ -151,7 +151,8 @@ let isObject = (obj) => {
 }
 
 let isEmpty = (obj) => {
-  return Object.keys(obj).length === 0
+  for (let x in obj){ return false }
+  return true
 }
 
 let maybe = (el, key) => {
