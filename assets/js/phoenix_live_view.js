@@ -147,11 +147,12 @@ let closestPhxBinding = (el, binding) => {
 }
 
 let isObject = (obj) => {
-  return typeof(obj) === "object" && !(obj instanceof Array)
+  return obj !== null && typeof obj === "object" && !(obj instanceof Array)
 }
 
 let isEmpty = (obj) => {
-  return Object.keys(obj).length === 0
+  for (let x in obj){ return false }
+  return true
 }
 
 let maybe = (el, key) => {
