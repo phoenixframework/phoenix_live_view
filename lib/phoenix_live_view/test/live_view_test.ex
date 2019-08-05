@@ -132,7 +132,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
-    * `:connect_parmas` - the map of params available in connected mount
+    * `:connect_params` - the map of params available in connected mount
 
   ## Examples
 

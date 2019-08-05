@@ -69,7 +69,7 @@ defmodule Phoenix.LiveView.Channel do
         |> handle_result({:handle_params, 3, msg.ref}, new_state)
 
       :external ->
-        {:noreply, reply(state, msg.ref, :ok, %{redirect: true})}
+        {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
     end
   end
 
@@ -342,7 +342,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_external_live_redirect(state, %{to: _, kind: _} = opts, ref) do
-    reply(state, ref, :ok, %{redirect: opts})
+    reply(state, ref, :ok, %{external_live_redirect: opts})
   end
 
   defp maybe_changed(%Socket{} = socket) do

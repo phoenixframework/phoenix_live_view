@@ -147,11 +147,12 @@ let closestPhxBinding = (el, binding) => {
 }
 
 let isObject = (obj) => {
-  return typeof(obj) === "object" && !(obj instanceof Array)
+  return obj !== null && typeof obj === "object" && !(obj instanceof Array)
 }
 
 let isEmpty = (obj) => {
-  return Object.keys(obj).length === 0
+  for (let x in obj){ return false }
+  return true
 }
 
 let maybe = (el, key) => {
@@ -313,11 +314,15 @@ export class LiveSocket {
     })
   }
 
-  replaceRoot(href, linkRef = this.setPendingLink(href)){
+  replaceRoot(href, callback = null, linkRef = this.setPendingLink(href)){
     this.root.showLoader(LOADER_TIMEOUT)
+    let rootEl = this.root.el
+    let rootID = this.root.id
+    let wasLoading = this.root.isLoading()
+
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
-      
+
       let div = document.createElement("div")
       div.innerHTML = html
       this.joinView(div.firstChild, null, href, newRoot => {
@@ -325,10 +330,8 @@ export class LiveSocket {
           newRoot.destroy()
           return
         }
-        Browser.pushState("push", {}, href)
-        let rootEl = this.root.el
-        let wasLoading = this.root.isLoading()
-        this.destroyViewById(this.root.id)
+        callback && callback()
+        this.destroyViewById(rootID)
         rootEl.replaceWith(newRoot.el)
         this.root = newRoot
         if(wasLoading){ this.root.showLoader() }
@@ -427,7 +430,7 @@ export class LiveSocket {
 
   }
 
-  setPendingLink(href){ 
+  setPendingLink(href){
     this.linkRef++
     let ref = this.linkRef
     this.pendingLink = href
@@ -560,7 +563,7 @@ export let Browser = {
     req.onerror = () => callback(400)
     req.ontimeout = () => callback(504)
     req.onreadystatechange = () => {
-      if(req.readyState !== 4){ return } 
+      if(req.readyState !== 4){ return }
       if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400) }
       if(req.status !== 200){ return callback(req.status) }
       callback(200, req.responseText)
@@ -568,10 +571,9 @@ export let Browser = {
     req.send()
   },
 
-  pushState(kind, meta, to, callback){ 
+  pushState(kind, meta, to){
     if(this.canPushState()){
       if(to !== window.location.href){ history[kind + "State"](meta, "", to) }
-      callback && callback()
     } else {
       this.redirect(to)
     }
@@ -705,7 +707,12 @@ let DOM = {
         }
       },
       onBeforeElUpdated: function(fromEl, toEl) {
+        if (fromEl.isEqualNode(toEl)) {
+           return false // Skip this entire sub-tree if both elems (and children) are equal
+        }
+
         if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
+
         // nested view handling
         if(DOM.isPhxChild(toEl)){
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
@@ -892,7 +899,7 @@ export class View {
     this.channel.on("diff", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
-    this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect(to))
+    this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect({to, kind}))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -903,15 +910,12 @@ export class View {
     this.liveSocket.destroyViewById(this.id)
   }
 
-  onExternalLiveRedirect(href, linkRef){
-    if(linkRef){
-      this.liveSocket.replaceRoot(href, linkRef)
-    } else {
-      this.liveSocket.replaceRoot(href)
-    }
+  onExternalLiveRedirect({to, kind}){
+    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
   }
+
   onLiveRedirect({to, kind}){
-    this.liveSocket.root.pushInternalLink(to, () => Browser.pushState(kind, {}, to)) 
+    Browser.pushState(kind, {}, to)
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }
@@ -935,10 +939,7 @@ export class View {
 
   onJoinError(resp){
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
-    if(resp.external_live_redirect){
-      let {to} = resp.external_live_redirect
-      return this.onExternalLiveRedirect(to)
-    }
+    if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }
@@ -963,8 +964,9 @@ export class View {
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff) }
+        if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-        if(resp.redirect && event !== "link"){ this.onRedirect(resp.redirect) }
+        if(resp.external_live_redirect){ this.onExternalLiveRedirect(resp.external_live_redirect) }
         onReply(resp)
       })
     )
@@ -1007,8 +1009,8 @@ export class View {
     if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
-      if(resp.redirect){
-        this.onExternalLiveRedirect(href, linkRef)
+      if(resp.link_redirect){
+        this.liveSocket.replaceRoot(href, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
