@@ -707,7 +707,12 @@ let DOM = {
         }
       },
       onBeforeElUpdated: function(fromEl, toEl) {
+        if (fromEl.isEqualNode(toEl)) {
+           return false // Skip this entire sub-tree if both elems (and children) are equal
+        }
+
         if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
+
         // nested view handling
         if(DOM.isPhxChild(toEl)){
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
