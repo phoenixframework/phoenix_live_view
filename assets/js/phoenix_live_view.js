@@ -138,6 +138,8 @@ export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
 
+let clone = (obj) => { return JSON.parse(JSON.stringify(obj)) }
+
 let closestPhxBinding = (el, binding) => {
   do {
     if(el.matches(`[${binding}]`)){ return el }
@@ -260,7 +262,7 @@ export class LiveSocket {
     this.linkRef = 0
     this.href = window.location.href
     this.pendingLink = null
-    this.pathname = window.location.pathname
+    this.currentLocation = clone(window.location)
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
@@ -486,7 +488,7 @@ export class LiveSocket {
   bindNav(){
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
-      if(!this.registerNewPathName(window.location.pathname)){ return }
+      if(!this.registerNewLocation(window.location)){ return }
       let href = window.location.href
 
       if(this.root.isConnected()) {
@@ -505,11 +507,12 @@ export class LiveSocket {
     }, false)
   }
 
-  registerNewPathName(pathname){
-    if(pathname === this.pathname){
+  registerNewLocation(newLocation){
+    let {pathname, search} = this.currentLocation
+    if(pathname + search === newLocation.pathname + newLocation.search){
       return false
     } else {
-      this.pathname = pathname
+      this.currentLocation = clone(newLocation)
       return true
     }
   }
