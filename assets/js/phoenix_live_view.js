@@ -263,6 +263,7 @@ export class LiveSocket {
     this.href = window.location.href
     this.pendingLink = null
     this.currentLocation = clone(window.location)
+    this.hooks = opts.hooks || {}
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
@@ -301,6 +302,8 @@ export class LiveSocket {
   disconnect(){ this.socket.disconnect() }
 
   // private
+
+  getHook(hookName){ return this.hooks[hookName] }
 
   isUnloaded(){ return this.unloaded }
 
@@ -806,6 +809,7 @@ export class View {
     this.pendingDiffs = []
     this.href = href
     this.joinedOnce = false
+    this.viewHook = null
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href || this.liveSocket.root.href,
@@ -828,15 +832,19 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    let onFinished = () => {
+      callback()
+      this.viewHook && this.viewHook.trigger("destroyed")
+    }
     if(this.hasGracefullyClosed()){
       this.log("destroyed", () => ["the server view has gracefully closed"])
-      callback()
+      onFinished()
     } else {
       this.log("destroyed", () => ["the child has been removed from the parent"])
       this.channel.leave()
-        .receive("ok", callback)
-        .receive("error", callback)
-        .receive("timeout", callback)
+        .receive("ok", onFinished)
+        .receive("error", onFinished)
+        .receive("timeout", onFinished)
     }
   }
 
@@ -869,7 +877,7 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({rendered, live_redirect}){
+  onJoin({hook, rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
@@ -878,6 +886,12 @@ export class View {
     if(live_redirect){
       let {kind, to} = live_redirect
       Browser.pushState(kind, {}, to)
+    } else {
+      let callbacks = this.liveSocket.getHook(hook)
+      if(callbacks){
+        // this.viewHook = new ViewHook(this, callbacks)
+        // this.viewHook.trigger("mounted")
+      }
     }
   }
 
@@ -900,6 +914,7 @@ export class View {
     this.newChildrenAdded = false
     DOM.patch(this, this.el, this.id, html)
     if(this.newChildrenAdded){ this.joinNewChildren() }
+    this.viewHook && this.viewHook.trigger("updated")
   }
 
   applyPendingUpdates(){
@@ -988,6 +1003,14 @@ export class View {
     )
   }
 
+  pushHookEvent(eventName, payload){
+    this.pushWithReply("event", {
+      type: "hook",
+      event: eventName,
+      value: payload
+    })
+  }
+
   pushEvent(type, el, phxEvent){
     let val = el.getAttribute(this.binding("value")) || el.value || ""
     this.pushWithReply("event", {
@@ -1054,5 +1077,27 @@ export class View {
 
   binding(kind){ return this.liveSocket.binding(kind)}
 }
+
+
+class ViewHook {
+  constructor(view, callbacks){
+    this.view = view
+    this.channel = view.channel
+    this.callbacks = callbacks
+  }
+
+  trigger(kind){
+    this.callbacks[kind].call(this)
+  }
+
+  on(event, callback){ return this.channel.on(event, callback) }
+
+  off(event){ return this.channel.off(event) }
+
+  push(event, payload){
+    this.view.pushHookEvent(event, payload)
+  }
+}
+
 
 export default LiveSocket

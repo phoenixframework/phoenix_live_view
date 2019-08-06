@@ -458,25 +458,27 @@ defmodule Phoenix.LiveView.Channel do
   defp reply_mount(result, from, original_uri, view) do
     case result do
       {:ok, diff, {:mount, %{to: ^original_uri}}, new_state} ->
-        GenServer.reply(from, {:ok, %{rendered: diff}})
+        GenServer.reply(from, {:ok, %{hook: hook(new_state), rendered: diff}})
         {:noreply, post_mount_prune(new_state)}
 
       {:ok, diff, {:live_redirect, opts}, new_state} ->
-        GenServer.reply(from, {:ok, %{rendered: diff, live_redirect: opts}})
+        GenServer.reply(from, {:ok, %{hook: hook(new_state), rendered: diff, live_redirect: opts}})
         {:noreply, post_mount_prune(new_state)}
 
       {:stop, {:shutdown, {:live_redirect, :external, opts}}, new_state} ->
-        GenServer.reply(from, {:error, %{external_live_redirect: opts}})
+        GenServer.reply(from, {:error, %{hook: hook(new_state), external_live_redirect: opts}})
         {:stop, :shutdown, new_state}
 
       {:stop, {:shutdown, {:redirect, opts}}, new_state} ->
-        GenServer.reply(from, {:error, %{redirect: opts}})
+        GenServer.reply(from, {:error, %{hook: hook(new_state), redirect: opts}})
         {:stop, :shutdown, new_state}
 
       other ->
         View.raise_invalid_mount(other, view)
     end
   end
+
+  defp hook(state), do: inspect(state.socket.view)
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, uri_str) do
     put_uri(%{
