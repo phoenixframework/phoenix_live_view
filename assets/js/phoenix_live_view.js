@@ -260,6 +260,7 @@ export class LiveSocket {
     this.linkRef = 0
     this.href = window.location.href
     this.pendingLink = null
+    this.pathname = window.location.pathname
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
@@ -485,7 +486,9 @@ export class LiveSocket {
   bindNav(){
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
+      if(!this.registerNewPathName(window.location.pathname)){ return }
       let href = window.location.href
+
       if(this.root.isConnected()) {
         this.root.pushInternalLink(href)
       } else {
@@ -500,6 +503,15 @@ export class LiveSocket {
       e.preventDefault()
       this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
     }, false)
+  }
+
+  registerNewPathName(pathname){
+    if(pathname === this.pathname){
+      return false
+    } else {
+      this.pathname = pathname
+      return true
+    }
   }
 
   bindForms(){
