@@ -678,13 +678,14 @@ let DOM = {
     let selectionStart = null
     let selectionEnd = null
     let phxIgnore = view.liveSocket.binding("ignore")
+    let containerTagName = container.tagName.toLowerCase();
 
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
       selectionEnd = focused.selectionEnd
     }
 
-    morphdom(container, `<div>${html}</div>`, {
+    morphdom(container, `<${containerTagName}>${html}</${containerTagName}>`, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
