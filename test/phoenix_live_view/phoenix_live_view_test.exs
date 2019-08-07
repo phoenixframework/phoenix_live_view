@@ -270,6 +270,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(parent) =~ "Toronto"
     end
 
+    @tag session: %{dup: false}
+    test "multiple nested children of same module with new session", %{conn: conn} do
+      {:ok, parent, _} = live(conn, "/same-child")
+      assert render_click(parent, :inc) =~ "Toronto"
+    end
+
     @tag session: %{dup: true}
     test "duplicate nested children raises", %{conn: conn} do
       assert ExUnit.CaptureLog.capture_log(fn ->

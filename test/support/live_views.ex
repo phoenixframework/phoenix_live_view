@@ -191,13 +191,17 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: false} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name}, child_id: name) %>
+      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, child_id: name) %>
     <% end %>
     """
   end
 
   def mount(%{dup: dup}, socket) do
-    {:ok, assign(socket, dup: dup, names: ~w(Tokyo Madrid Toronto))}
+    {:ok, assign(socket, count: 0, dup: dup, names: ~w(Tokyo Madrid Toronto))}
+  end
+
+  def handle_event("inc", _, socket) do
+    {:noreply, assign(socket, :count, socket.assigns.count + 1)}
   end
 end
 

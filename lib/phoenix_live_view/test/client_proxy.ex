@@ -112,7 +112,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
     children =
-      Enum.flat_map(view.children, fn session ->
+      Enum.flat_map(view.children, fn {session, _dom_id} ->
         case fetch_view_by_session(state, session) do
           {:ok, child} -> [child]
           :error -> []
@@ -296,16 +296,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp render_tree(state, %View{} = view) do
     root_html = DOM.render_diff(view.rendered)
 
-    Enum.reduce(view.children, root_html, fn session, acc ->
+    Enum.reduce(view.children, root_html, fn {session, _dom_id}, acc ->
       {:ok, child} = fetch_view_by_session(state, session)
       child_html = render_tree(state, child)
       DOM.insert_attr(acc, "data-phx-session", session, child_html)
     end)
   end
 
-  defp put_child(state, %View{} = parent, session) do
+  defp put_child(state, %View{} = parent, session, dom_id) do
     update_in(state, [:views, parent.topic], fn %View{} = parent ->
-      View.put_child(parent, session)
+      View.put_child(parent, session, dom_id)
     end)
   end
 
@@ -313,6 +313,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     update_in(state, [:views, parent.topic], fn %View{} = parent ->
       View.prune_children(parent)
     end)
+  end
+
+  defp maybe_drop_dup_child_id(state, %View{} = parent, child_dom_id, reason) do
+    case View.fetch_child_session_by_id(parent, child_dom_id) do
+      {:ok, session} -> drop_child(state, parent, session, reason)
+      :error -> state
+    end
   end
 
   defp drop_child(state, %View{} = parent, session, reason) do
@@ -360,7 +367,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_session(state, session)
     :ok = shutdown_view(view, reason)
 
-    Enum.reduce(view.children, state, fn child_session, acc ->
+    Enum.reduce(view.children, state, fn {child_session, _dom_id}, acc ->
       drop_child(acc, view, child_session, reason)
     end)
   end
@@ -435,7 +442,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       |> Enum.reduce(pruned_state, fn {session, static, dom_id}, acc ->
         case fetch_view_by_session(acc, session) do
           {:ok, _view} ->
-            put_child(acc, view, session)
+            put_child(acc, view, session, dom_id)
 
           :error ->
             static = static || Map.get(state.root_view.child_statics, dom_id)
@@ -443,11 +450,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             child_view =
               View.build_child(view, dom_id: dom_id, session_token: session, static_token: static)
 
-            case mount_view(acc, child_view, acc.timeout) do
+            acc
+            |> maybe_drop_dup_child_id(view, dom_id, :removed)
+            |> mount_view(child_view, acc.timeout)
+            |> case do
               {:ok, pid, rendered} ->
                 acc
                 |> put_view(child_view, pid, rendered)
-                |> put_child(view, child_view.session_token)
+                |> put_child(view, child_view.session_token, dom_id)
                 |> do_detect_added_or_removed_children(child_view.session_token)
 
               {:error, %{redirect: to}} ->
@@ -463,7 +473,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     new_view
     |> View.removed_children(children_before)
-    |> Enum.reduce(new_state, fn session, acc ->
+    |> Enum.reduce(new_state, fn {session, _dom_id}, acc ->
       drop_child(acc, new_view, session, :removed)
     end)
   end

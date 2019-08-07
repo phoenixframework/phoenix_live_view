@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewTest.View do
             topic: nil,
             ref: nil,
             rendered: nil,
-            children: MapSet.new(),
+            children: %{},
             child_statics: %{},
             dom_id: nil,
             connect_params: %{}
@@ -41,20 +41,29 @@ defmodule Phoenix.LiveViewTest.View do
     |> build()
   end
 
-  def put_child(%View{} = parent, session) do
-    %View{parent | children: MapSet.put(parent.children, session)}
+  def put_child(%View{} = parent, session, dom_id) do
+    %View{parent | children: Map.put(parent.children, session, dom_id)}
+  end
+
+  def fetch_child_session_by_id(%View{} = parent, dom_id) do
+    Enum.find_value(parent.children, fn
+      {session, ^dom_id} -> {:ok, session}
+      {_session, _dom_id} -> nil
+    end) || :error
   end
 
   def drop_child(%View{} = parent, session) do
-    %View{parent | children: MapSet.delete(parent.children, session)}
+    %View{parent | children: Map.delete(parent.children, session)}
   end
 
   def prune_children(%View{} = parent) do
-    %View{parent | children: MapSet.new()}
+    %View{parent | children: %{}}
   end
 
   def removed_children(%View{} = parent, children_before) do
-    MapSet.difference(children_before, parent.children)
+    children_before
+    |> Enum.filter(fn {session, _dom_id} -> !Map.has_key?(parent.children, session) end)
+    |> Enum.into(%{})
   end
 
   def connected?(%View{pid: pid}) when is_pid(pid), do: true
