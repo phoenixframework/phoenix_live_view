@@ -82,6 +82,37 @@ defmodule Phoenix.LiveView.Channel do
     |> handle_result({:handle_event, 3, msg.ref}, state)
   end
 
+  def handle_info(%Message{topic: topic, event: event, payload: payload} = msg, %{topic: topic} = state) do
+    new_socket =
+      case view_module(state).handle_in(event, payload, state.socket) do
+        {:reply, {kind, %{} = resp}, new_socket} when kind in [:ok, :error] ->
+          reply(state, msg.ref, kind, resp)
+          new_socket
+
+        {:noreply, new_socket} -> new_socket
+
+        other ->
+          raise ArgumentError, """
+          invalid return from #{inspect(view_module(state))}.handle_in/3
+
+          Expected one of:
+
+              {:reply, {:ok, map}, %Socket{}}
+              {:reply, {:error, map}, %Socket{}}
+              {:noreply, %Socket{}}
+
+          Got:
+
+              #{inspect(other)}
+          """
+      end
+
+    case handle_changed(state, new_socket, msg.ref) do
+      {:ok, _changed, new_state} -> {:noreply, new_state}
+      {:stop, reason, new_state} -> {:stop, reason, new_state}
+    end
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_module(state).handle_info(socket)
@@ -458,27 +489,25 @@ defmodule Phoenix.LiveView.Channel do
   defp reply_mount(result, from, original_uri, view) do
     case result do
       {:ok, diff, {:mount, %{to: ^original_uri}}, new_state} ->
-        GenServer.reply(from, {:ok, %{hook: hook(new_state), rendered: diff}})
+        GenServer.reply(from, {:ok, %{rendered: diff}})
         {:noreply, post_mount_prune(new_state)}
 
       {:ok, diff, {:live_redirect, opts}, new_state} ->
-        GenServer.reply(from, {:ok, %{hook: hook(new_state), rendered: diff, live_redirect: opts}})
+        GenServer.reply(from, {:ok, %{rendered: diff, live_redirect: opts}})
         {:noreply, post_mount_prune(new_state)}
 
       {:stop, {:shutdown, {:live_redirect, :external, opts}}, new_state} ->
-        GenServer.reply(from, {:error, %{hook: hook(new_state), external_live_redirect: opts}})
+        GenServer.reply(from, {:error, %{external_live_redirect: opts}})
         {:stop, :shutdown, new_state}
 
       {:stop, {:shutdown, {:redirect, opts}}, new_state} ->
-        GenServer.reply(from, {:error, %{hook: hook(new_state), redirect: opts}})
+        GenServer.reply(from, {:error, %{redirect: opts}})
         {:stop, :shutdown, new_state}
 
       other ->
         View.raise_invalid_mount(other, view)
     end
   end
-
-  defp hook(state), do: inspect(state.socket.view)
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, uri_str) do
     put_uri(%{

@@ -128,6 +128,7 @@ const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
+const PHX_HOOK = "phx-js"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
@@ -303,7 +304,7 @@ export class LiveSocket {
 
   // private
 
-  getHook(hookName){ return this.hooks[hookName] }
+  getHookCallbacks(hookName){ return this.hooks[hookName] }
 
   isUnloaded(){ return this.unloaded }
 
@@ -692,6 +693,7 @@ let DOM = {
   },
 
   patch(view, container, id, html){
+    let changes = {added: [], updated: [], discarded: []}
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
     let selectionEnd = null
@@ -715,6 +717,8 @@ let DOM = {
         if(DOM.isPhxChild(el) && view.ownsElement(el)){
           view.onNewChildAdded()
           return true
+        } else {
+          changes.added.push(el)
         }
       },
       onBeforeNodeDiscarded: function(el){
@@ -724,10 +728,11 @@ let DOM = {
           view.liveSocket.destroyViewById(el.id)
           return true
         }
+        changes.discarded.push(el)
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if (fromEl.isEqualNode(toEl)) {
-           return false // Skip this entire sub-tree if both elems (and children) are equal
+          return false // Skip this entire sub-tree if both elems (and children) are equal
         }
 
         if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
@@ -756,8 +761,10 @@ let DOM = {
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
+          changes.updated.push({fromEl, fromEl})
           return false
         } else {
+          changes.updated.push({fromEl, toEl})
           return true
         }
       }
@@ -767,6 +774,7 @@ let DOM = {
       DOM.restoreFocus(focused, selectionStart, selectionEnd)
     })
     Browser.dispatchEvent(document, "phx:update")
+    return changes
   },
 
   mergeAttrs(target, source){
@@ -809,7 +817,8 @@ export class View {
     this.pendingDiffs = []
     this.href = href
     this.joinedOnce = false
-    this.viewHook = null
+    this.viewHooksId = 1
+    this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href || this.liveSocket.root.href,
@@ -834,7 +843,7 @@ export class View {
   destroy(callback = function(){}){
     let onFinished = () => {
       callback()
-      this.viewHook && this.viewHook.trigger("destroyed")
+      for(let id in this.viewHooks){ this.destroyHook(this.viewHooks[id]) }
     }
     if(this.hasGracefullyClosed()){
       this.log("destroyed", () => ["the server view has gracefully closed"])
@@ -860,6 +869,7 @@ export class View {
   isLoading(){ return this.el.classList.contains(PHX_DISCONNECTED_CLASS)}
 
   showLoader(timeout){
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger("disconnected") }
     clearTimeout(this.loaderTimer)
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
@@ -877,21 +887,17 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({hook, rendered, live_redirect}){
+  onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
-    DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    Browser.all(this.el, `[${PHX_HOOK}]`, hookEl => changes.added.push(hookEl))
+    this.triggerHooks(changes)
     this.joinNewChildren()
     if(live_redirect){
       let {kind, to} = live_redirect
       Browser.pushState(kind, {}, to)
-    } else {
-      let callbacks = this.liveSocket.getHook(hook)
-      if(callbacks){
-        // this.viewHook = new ViewHook(this, callbacks)
-        // this.viewHook.trigger("mounted")
-      }
     }
   }
 
@@ -912,9 +918,42 @@ export class View {
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
-    DOM.patch(this, this.el, this.id, html)
+    this.triggerHooks(DOM.patch(this, this.el, this.id, html))
     if(this.newChildrenAdded){ this.joinNewChildren() }
-    this.viewHook && this.viewHook.trigger("updated")
+  }
+
+  getHook(el){ return this.viewHooks[el.phxHookId] }
+
+  addHook(el){ if(el.phxHookId){ return }
+    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(PHX_HOOK))
+    if(callbacks && this.ownsElement(el)){
+      el.phxHookId = this.viewHooksId++
+      let hook = new ViewHook(this, el, callbacks)
+      this.viewHooks[el.phxHookId] = hook
+      hook.__trigger("mounted")
+    }
+  }
+
+  destroyHook(hook){
+    hook.__trigger("destroyed")
+    delete this.viewHooks[hook.el.phxHookId]
+  }
+
+  triggerHooks(changes){
+    changes.added.forEach(el => this.addHook(el))
+    changes.updated.forEach(({fromEl, toEl}) => {
+      let hook = this.getHook(fromEl)
+      if(hook && fromEl.getAttribute(PHX_HOOK) === toEl.getAttribute(PHX_HOOK)){
+        hook.__trigger("updated")
+      } else if(hook){
+        this.destroyHook(hook)
+        this.addHook(fromEl)
+      }
+    })
+    changes.discarded.forEach(el => {
+      let hook = this.getHook(el)
+      hook && this.destroyHook(hook)
+    })
   }
 
   applyPendingUpdates(){
@@ -1004,11 +1043,7 @@ export class View {
   }
 
   pushHookEvent(eventName, payload){
-    this.pushWithReply("event", {
-      type: "hook",
-      event: eventName,
-      value: payload
-    })
+    return this.pushWithReply(eventName, payload)
   }
 
   pushEvent(type, el, phxEvent){
@@ -1080,22 +1115,26 @@ export class View {
 
 
 class ViewHook {
-  constructor(view, callbacks){
-    this.view = view
-    this.channel = view.channel
-    this.callbacks = callbacks
+  constructor(view, el, callbacks){
+    this.__view = view
+    this.__channel = view.channel
+    this.__callbacks = callbacks
+    this.el = el
+    for(let key in this.__callbacks){
+      this[key] = this.__callbacks[key]
+    }
   }
 
-  trigger(kind){
-    this.callbacks[kind].call(this)
+  __trigger(kind){
+    this.__callbacks[kind].call(this)
   }
 
-  on(event, callback){ return this.channel.on(event, callback) }
+  on(event, callback){ return this.__channel.on(event, callback) }
 
-  off(event){ return this.channel.off(event) }
+  off(event){ return this.__channel.off(event) }
 
   push(event, payload){
-    this.view.pushHookEvent(event, payload)
+    return this.__view.pushHookEvent(event, payload)
   }
 }
 
