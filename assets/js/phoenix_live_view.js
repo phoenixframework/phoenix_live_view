@@ -526,11 +526,19 @@ export class LiveSocket {
       this.owner(e.target, view => view.submitForm(e.target, phxEvent))
     }, false)
 
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event
+    // Chrome and Firefox diverge here. On first input, "change" is fired in Chrome
+    // but not in Firefox
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        let key = input.type === "checkbox" ? "checked" : "value"
+        let inputType = input.type
+        let key = inputType === "checkbox" ? "checked" : "value"
         if(this.prevInput === input && this.prevValue === input[key]){ return }
+        // When mid input with a `,` or `.`, Chrome reports the value as "" as it doesn't pass their validation.
+        // As a result, we should not do anything mid state
+        if(inputType === "number" && (e.data === "." || e.data === ",")){ return }
 
         this.prevInput = input
         this.prevValue = input[key]
