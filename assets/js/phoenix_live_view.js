@@ -722,7 +722,6 @@ let DOM = {
         }
       },
       onBeforeNodeDiscarded: function(el){
-        if(DOM.isIgnored(el, phxIgnore)){ return false }
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewById(el.id)
@@ -735,7 +734,11 @@ let DOM = {
           return false // Skip this entire sub-tree if both elems (and children) are equal
         }
 
-        if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
+        if(DOM.isIgnored(fromEl, phxIgnore)){
+          DOM.mergeAttrs(fromEl, toEl)
+          changes.updated.push({fromEl, toEl: fromEl})
+          return false
+        }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -761,7 +764,7 @@ let DOM = {
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
-          changes.updated.push({fromEl, fromEl})
+          changes.updated.push({fromEl, toEl: fromEl})
           return false
         } else {
           changes.updated.push({fromEl, toEl})
@@ -817,7 +820,6 @@ export class View {
     this.pendingDiffs = []
     this.href = href
     this.joinedOnce = false
-    this.viewHooksId = 1
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
@@ -869,7 +871,7 @@ export class View {
   isLoading(){ return this.el.classList.contains(PHX_DISCONNECTED_CLASS)}
 
   showLoader(timeout){
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger("disconnected") }
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
     clearTimeout(this.loaderTimer)
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
@@ -892,6 +894,7 @@ export class View {
     this.rendered = rendered
     this.hideLoader()
     let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    changes.added.push(this.el)
     Browser.all(this.el, `[${PHX_HOOK}]`, hookEl => changes.added.push(hookEl))
     this.triggerHooks(changes)
     this.joinNewChildren()
@@ -922,29 +925,29 @@ export class View {
     if(this.newChildrenAdded){ this.joinNewChildren() }
   }
 
-  getHook(el){ return this.viewHooks[el.phxHookId] }
+  getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
-  addHook(el){ if(el.phxHookId){ return }
+  addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(PHX_HOOK))
     if(callbacks && this.ownsElement(el)){
-      el.phxHookId = this.viewHooksId++
       let hook = new ViewHook(this, el, callbacks)
-      this.viewHooks[el.phxHookId] = hook
-      hook.__trigger("mounted")
+      this.viewHooks[ViewHook.elementID(hook.el)] = hook
+      hook.__trigger__("mounted")
     }
   }
 
   destroyHook(hook){
-    hook.__trigger("destroyed")
-    delete this.viewHooks[hook.el.phxHookId]
+    hook.__trigger__("destroyed")
+    delete this.viewHooks[ViewHook.elementID(hook.el)]
   }
 
   triggerHooks(changes){
+    changes.updated.push({fromEl: this.el, toEl: this.el})
     changes.added.forEach(el => this.addHook(el))
     changes.updated.forEach(({fromEl, toEl}) => {
       let hook = this.getHook(fromEl)
-      if(hook && fromEl.getAttribute(PHX_HOOK) === toEl.getAttribute(PHX_HOOK)){
-        hook.__trigger("updated")
+      if(hook && toEl.getAttribute && fromEl.getAttribute(PHX_HOOK) === toEl.getAttribute(PHX_HOOK)){
+        hook.__trigger__("updated")
       } else if(hook){
         this.destroyHook(hook)
         this.addHook(fromEl)
@@ -1113,30 +1116,23 @@ export class View {
   binding(kind){ return this.liveSocket.binding(kind)}
 }
 
-
+let viewHookID = 1
 class ViewHook {
+  static makeID(){ return viewHookID++ }
+  static elementID(el){ return el.phxHookId }
+
   constructor(view, el, callbacks){
     this.__view = view
-    this.__channel = view.channel
     this.__callbacks = callbacks
     this.el = el
-    for(let key in this.__callbacks){
-      this[key] = this.__callbacks[key]
-    }
+    this.el.phxHookId = this.constructor.makeID()
+    for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
-  __trigger(kind){
-    this.__callbacks[kind].call(this)
-  }
-
-  on(event, callback){ return this.__channel.on(event, callback) }
-
-  off(event){ return this.__channel.off(event) }
-
-  push(event, payload){
-    return this.__view.pushHookEvent(event, payload)
+  __trigger__(kind){
+    let callback = this.__callbacks[kind]
+    callback && callback.call(this)
   }
 }
-
 
 export default LiveSocket

@@ -814,14 +814,6 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  def push(%Socket{} = socket, event, %{} = payload) do
-    if connected?(socket) do
-
-    else
-      raise RuntimeError, "attempted to push socket message while disconnected"
-    end
-  end
-
   @doc """
   Adds a flash message to the socket to be displayed on redirect.
 
