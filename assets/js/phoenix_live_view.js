@@ -128,7 +128,7 @@ const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
-const PHX_HOOK = "phx-js"
+const PHX_HOOK = "js"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
 const BINDING_PREFIX = "phx-"
@@ -895,7 +895,7 @@ export class View {
     this.hideLoader()
     let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     changes.added.push(this.el)
-    Browser.all(this.el, `[${PHX_HOOK}]`, hookEl => changes.added.push(hookEl))
+    Browser.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
     this.triggerHooks(changes)
     this.joinNewChildren()
     if(live_redirect){
@@ -928,7 +928,7 @@ export class View {
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
   addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(PHX_HOOK))
+    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(this.binding(PHX_HOOK)))
     if(callbacks && this.ownsElement(el)){
       let hook = new ViewHook(this, el, callbacks)
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
@@ -946,7 +946,8 @@ export class View {
     changes.added.forEach(el => this.addHook(el))
     changes.updated.forEach(({fromEl, toEl}) => {
       let hook = this.getHook(fromEl)
-      if(hook && toEl.getAttribute && fromEl.getAttribute(PHX_HOOK) === toEl.getAttribute(PHX_HOOK)){
+      let phxAttr = this.binding(PHX_HOOK)
+      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
         hook.__trigger__("updated")
       } else if(hook){
         this.destroyHook(hook)
