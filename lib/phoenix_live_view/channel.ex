@@ -82,37 +82,6 @@ defmodule Phoenix.LiveView.Channel do
     |> handle_result({:handle_event, 3, msg.ref}, state)
   end
 
-  def handle_info(%Message{topic: topic, event: event, payload: payload} = msg, %{topic: topic} = state) do
-    new_socket =
-      case view_module(state).handle_in(event, payload, state.socket) do
-        {:reply, {kind, %{} = resp}, new_socket} when kind in [:ok, :error] ->
-          reply(state, msg.ref, kind, resp)
-          new_socket
-
-        {:noreply, new_socket} -> new_socket
-
-        other ->
-          raise ArgumentError, """
-          invalid return from #{inspect(view_module(state))}.handle_in/3
-
-          Expected one of:
-
-              {:reply, {:ok, map}, %Socket{}}
-              {:reply, {:error, map}, %Socket{}}
-              {:noreply, %Socket{}}
-
-          Got:
-
-              #{inspect(other)}
-          """
-      end
-
-    case handle_changed(state, new_socket, msg.ref) do
-      {:ok, _changed, new_state} -> {:noreply, new_state}
-      {:stop, reason, new_state} -> {:stop, reason, new_state}
-    end
-  end
-
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_module(state).handle_info(socket)

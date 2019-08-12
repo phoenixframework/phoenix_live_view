@@ -1045,10 +1045,6 @@ export class View {
     )
   }
 
-  pushHookEvent(eventName, payload){
-    return this.pushWithReply(eventName, payload)
-  }
-
   pushEvent(type, el, phxEvent){
     let val = el.getAttribute(this.binding("value")) || el.value || ""
     this.pushWithReply("event", {
