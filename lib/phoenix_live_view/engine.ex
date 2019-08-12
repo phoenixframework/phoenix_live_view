@@ -333,10 +333,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  @extra_clauses (quote generated: true do
-                    %{__struct__: Phoenix.LiveView.Rendered} = other -> other
-                  end)
-
   defp to_live_struct(
          {:if, meta, [condition, [{:do, do_block} | opts]]},
          tainted_vars,
@@ -349,7 +345,7 @@ defmodule Phoenix.LiveView.Engine do
     else_block =
       maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars, vars, assigns)
 
-    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @extra_clauses)
+    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, true)
   end
 
   defp to_live_struct({:for, meta, args} = expr, _tainted_vars, _vars, _assigns) do
@@ -363,12 +359,12 @@ defmodule Phoenix.LiveView.Engine do
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe(expr, @extra_clauses)
+      _ -> to_safe(expr, true)
     end
   end
 
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, @extra_clauses)
+    to_safe(expr, true)
   end
 
   defp maybe_block_to_rendered(block, tainted_vars, vars, assigns) do
@@ -603,11 +599,22 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro to_safe(ast) do
-    to_safe(ast, [])
+    to_safe(ast, false)
   end
 
-  defp to_safe(ast, extra_clauses) do
-    to_safe(ast, line_from_expr(ast), extra_clauses)
+  defp to_safe(ast, rendered_catch_all?) do
+    line = line_from_expr(ast)
+
+    extra_clauses =
+      if rendered_catch_all? do
+        quote generated: true, line: line do
+          %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+        end
+      else
+        []
+      end
+
+    to_safe(ast, line, extra_clauses)
   end
 
   defp line_from_expr({_, meta, _}) when is_list(meta), do: Keyword.get(meta, :line)
