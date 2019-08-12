@@ -723,8 +723,10 @@ let DOM = {
         }
       },
       onBeforeElUpdated: function(fromEl, toEl) {
+        // naively check if elements are equal
         if (fromEl.isEqualNode(toEl)) {
-           return false // Skip this entire sub-tree if both elems (and children) are equal
+          // skip this entire sub-tree
+          return false 
         }
 
         if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
@@ -750,6 +752,17 @@ let DOM = {
           toEl.setAttribute(PHX_HAS_FOCUSED, true)
         }
         DOM.discardError(toEl)
+
+        // equality check with input value
+        if (fromEl.nodeName == "INPUT") {
+          const fromCopy = fromEl.cloneNode(true)
+          // input value comes from property
+          fromCopy.setAttribute("value", fromCopy.value)
+          if (fromCopy.isEqualNode(toEl)) {
+            // avoid extra attribute change, fixes Chrome decimal erase bug
+            return false
+          }
+        }
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
