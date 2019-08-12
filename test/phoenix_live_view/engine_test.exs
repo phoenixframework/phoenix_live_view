@@ -189,24 +189,30 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: '123'}, %{foo: true}) == ["Elixir.List", '123']
     end
 
-    test "does not render dynamic if it has variables from assigns" do
+    test "renders dynamic if it has variables" do
+      template = "<%= foo = 1 + 2 %><%= foo %>"
+      assert changed(template, %{}, nil) == ["3", "3"]
+      assert changed(template, %{}, %{}) == ["3", "3"]
+    end
+
+    test "renders dynamic if it has variables from assigns" do
       template = "<%= foo = @foo %><%= foo %>"
       assert changed(template, %{foo: 123}, nil) == ["123", "123"]
       assert changed(template, %{foo: 123}, %{}) == ["123", "123"]
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123", "123"]
     end
 
-    test "renders dynamic if it has variables regardless of assigns" do
-      template = "<% bar = @bar %><%= @foo + bar %>"
-      assert changed(template, %{foo: 123, bar: 456}, nil) == ["579"]
-      assert changed(template, %{foo: 123, bar: 456}, %{}) == ["579"]
-      assert changed(template, %{foo: 123, bar: 456}, %{foo: true, bar: true}) == ["579"]
-    end
-
     test "does not render dynamic if it has variables inside special form" do
       template = "<%= cond do foo = @foo -> foo end %>"
       assert changed(template, %{foo: 123}, nil) == ["123"]
       assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+    end
+
+    test "renders dynamic if it has variables from outside inside special form" do
+      template = "<% f = @foo %><%= cond do foo = f -> foo end %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == ["123"]
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
     end
 
