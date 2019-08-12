@@ -784,6 +784,10 @@ let DOM = {
     for (let i = 0, length = attrs.length; i < length; i++){
       let name = attrs[i].name
       let value = source.getAttribute(name)
+      if (target.nodeName == "INPUT" && name == "value") {
+        // set value property for input elements
+        target.value = value
+      }
       target.setAttribute(name, value)
     }
   },
