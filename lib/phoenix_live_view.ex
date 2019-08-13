@@ -338,6 +338,24 @@ defmodule Phoenix.LiveView do
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces those as best practices.
 
+  ### Temporary assigns
+
+  By default, all LiveView assigns are stateful, which enables change tracking
+  and stateful interactions. In some cases, it's useful to mark assigns as temporary,
+  meaning they will be set to nil after each update, allowing otherwise large, but
+  infrequently updated values to be discarded after the client has been patched.
+
+  *Note*: this requires refetching/recomputing the temporary assigns should they
+  need accessed in future callbacks.
+
+  To mark assigns as temporary, pass a `:temporary` option in your `mount/2` return:
+
+      def mount(_session, socket) do
+        description = fetch_large_description()
+        {:ok, assign(socket, :description, description), temporary: [:description]}
+      end
+
+
   ## Bindings
 
   Phoenix supports DOM element bindings for client-server interaction. For
