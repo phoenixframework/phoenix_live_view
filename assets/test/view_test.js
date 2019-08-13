@@ -263,3 +263,51 @@ describe('View', function() {
     // still need a few tests
   });
 });
+
+describe('View Hooks', function() {
+  beforeEach(() => {
+    global.document.body.innerHTML = liveViewDOM().outerHTML;
+  });
+
+  afterAll(() => {
+    global.document.body.innerHTML = '';
+  });
+
+  test('hooks', async () => {
+    let upcaseWasDestroyed = false
+    let Hooks = {
+      Upcase: {
+        mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
+        updated(){ this.el.innerHTML = this.el.innerHTML + ' updated' },
+        disconnected(){ this.el.innerHTML = 'disconnected' },
+        connected(){ this.el.innerHTML = 'connected' },
+        destroyed(){ upcaseWasDestroyed = true },
+      }
+    }
+    let liveSocket = new LiveSocket('/live', {hooks: Hooks})
+    let el = liveViewDOM()
+
+    let view = new View(el, liveSocket)
+
+    view.onJoin({rendered: {
+      static: ['<h2 phx-js="Upcase">test mount</h2>'],
+      fingerprint: 123
+    }})
+    expect(view.el.firstChild.innerHTML).toBe('TEST MOUNT')
+
+    view.update({
+      static: ['<h2 phx-js="Upcase">test update</h2>'],
+      fingerprint: 123
+    })
+    expect(view.el.firstChild.innerHTML).toBe('test update updated')
+
+    view.showLoader()
+    expect(view.el.firstChild.innerHTML).toBe('disconnected')
+
+    view.hideLoader()
+    expect(view.el.firstChild.innerHTML).toBe('connected')
+    
+    view.update({static: ['<div></div>'], fingerprint: 123})
+    expect(upcaseWasDestroyed).toBe(true)
+  })
+});

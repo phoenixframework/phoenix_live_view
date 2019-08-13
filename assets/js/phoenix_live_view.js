@@ -17,6 +17,11 @@ All options are passed directly to the `Phoenix.Socket` constructor,
 except for the following LiveView specific options:
 
   * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
+  * `params` - the `connect_params` to pass to the view's mount callback. May be
+    a literal object or closure returning an object. When a closure is provided,
+    the function receives the view's phx-view name.
+  * `hooks` – a reference to a user-defined hooks namespace, containing client
+    callbacks for server/client interop. See the interop section below for details.
 
 ## Events
 
@@ -99,12 +104,49 @@ container:
 When a form bound with `phx-submit` is submitted, the `phx-loading` class
 is applied to the form, which is removed on update.
 
-## Interop with client controlled DOM
+## Custom JS Interop and client controlled DOM
 
 A container can be marked with `phx-ignore`, allowing the DOM patch
 operations to avoid updating or removing portions of the LiveView. This
 is useful for client-side interop with existing libraries that do their
 own DOM operations.
+
+To handle custom client-side javascript when an element is added, updated,
+or removed by the server, a hook object may be provided with the following
+life-cycle callbacks:
+
+  * mounted - the element has been added to the DOM and its server
+    LiveView has finished mounting
+  * updated - the element has been updated in the DOM by the server
+  * destroyed - the element has been removed from the page, either 
+    by a parent update, or the parent being removed entirely
+  * disconnected - the element's parent LiveView has disconnected from the server
+  * connected - the element's parent LiveView has reconnected to the server
+
+  In addition to the callbacks, the callbacks contain an `el` property referencing
+  the bound DOM node, and a `viewName` property matching the dom node's phx-view value.
+
+  For example, a controlled input for phone-number formatting would annotate their
+  markup:
+
+      <input type="text" name="user[phone_number]" phx-js="PhoneNumber"/>
+
+  Then a hook callback object can be defined and passed to the socket:
+
+      let Hooks = {}
+      Hooks.PhoneNumber = {
+        mounted(){
+          this.el.addEventListener("input", e => {
+            let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+            if(match) {
+              this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+            }
+          })
+        }
+      }
+
+      let liveSocket = new LiveSocket("/socket", {hooks: Hooks})
+      ...
 */
 
 import morphdom from "morphdom"
@@ -138,6 +180,10 @@ const LINK_HEADER = "x-requested-with"
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
+
+
+// wraps value in closure or returns closure
+let closure = (val) => typeof val === "function" ? val : function(){ return val }
 
 let clone = (obj) => { return JSON.parse(JSON.stringify(obj)) }
 
@@ -252,7 +298,7 @@ export class LiveSocket {
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
-    this.params = opts.params || {}
+    this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
@@ -312,7 +358,7 @@ export class LiveSocket {
 
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
 
-  channel(topic, params){ return this.socket.channel(topic, params || {}) }
+  channel(topic, params){ return this.socket.channel(topic, params) }
 
   joinRootViews(){
     Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
@@ -824,7 +870,7 @@ export class View {
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href || this.liveSocket.root.href,
-        params: this.liveSocket.params,
+        params: this.liveSocket.params(this.view),
         session: this.getSession(),
         static: this.getStatic()
       }
@@ -881,6 +927,7 @@ export class View {
   }
 
   hideLoader(){
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("connected") }
     clearTimeout(this.loaderTimer)
     this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
@@ -1122,6 +1169,7 @@ class ViewHook {
     this.__view = view
     this.__callbacks = callbacks
     this.el = el
+    this.viewName = view.view
     this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
