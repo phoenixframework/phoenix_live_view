@@ -235,6 +235,15 @@ defmodule Phoenix.LiveView.EngineTest do
                changed(template, %{foo: ["1", "2", "3"]}, %{foo: true})
     end
 
+    test "does not render dynamic for nested optimized comprehensions with variables" do
+      template = "<%= for x <- @foo do %><%= for y <- @bar do %><%= x %><%= y %><% end %><% end %>"
+      assert [%{dynamics: [[[["1", "1"]]]]}] =
+        changed(template, %{foo: [1], bar: [1]}, nil)
+      assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
+      assert [%{dynamics: [[[["1", "1"]]]]}] =
+        changed(template, %{foo: [1], bar: [1]}, %{foo: true , bar: true})
+    end
+
     test "renders dynamic if it uses assigns" do
       template = "<%= for _ <- [1, 2, 3], do: assigns.foo %>"
       assert changed(template, %{foo: "a"}, nil) == [["a", "a", "a"]]
