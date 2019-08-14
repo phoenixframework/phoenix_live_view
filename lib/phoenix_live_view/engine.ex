@@ -501,7 +501,7 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze({name, _, context} = expr, tainted_vars, vars, assigns)
        when is_atom(name) and is_atom(context) do
     if tainted_vars == :restricted do
-      {expr, Map.has_key?(vars, {name, context}) or :restricted, vars, assigns}
+      {expr, Map.has_key?(vars, {name, context}) || :restricted, vars, assigns}
     else
       {expr, true, Map.put(vars, {name, context}, true), assigns}
     end
@@ -586,7 +586,7 @@ defmodule Phoenix.LiveView.Engine do
   # constructs we set the mode to restricted and stop collecting vars.
   defp analyze_with_restricted_tainted_vars(ast, tainted_vars, vars, assigns) do
     {analyzed, tainted_vars, _vars, assigns} =
-      analyze(ast, tainted_vars or :restricted, vars, assigns)
+      analyze(ast, tainted_vars || :restricted, vars, assigns)
 
     {analyzed, tainted_vars == true, vars, assigns}
   end
