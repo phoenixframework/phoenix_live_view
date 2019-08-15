@@ -536,9 +536,6 @@ export class LiveSocket {
         let inputType = input.type
         let key = inputType === "checkbox" ? "checked" : "value"
         if(this.prevInput === input && this.prevValue === input[key]){ return }
-        // When mid input with a `,` or `.`, Chrome reports the value as "" as it doesn't pass their validation.
-        // As a result, we should not do anything mid state
-        if(inputType === "number" && (e.data === "." || e.data === ",")){ return }
 
         this.prevInput = input
         this.prevValue = input[key]
@@ -779,7 +776,10 @@ let DOM = {
     for (let i = 0, length = attrs.length; i < length; i++){
       let name = attrs[i].name
       let value = source.getAttribute(name)
-      target.setAttribute(name, value)
+      // we only want to update the original's property to reflect changing state
+      // but we do not want to update the attribute
+      // e.g setAttribute for an input value resets the `input.defaultValue` property on the original DOM node
+      target[name] = value;
     }
   },
 
