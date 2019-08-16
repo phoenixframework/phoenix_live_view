@@ -533,9 +533,18 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        let inputType = input.type
-        let key = inputType === "checkbox" ? "checked" : "value"
+        let key = input.type === "checkbox" ? "checked" : "value"
         if(this.prevInput === input && this.prevValue === input[key]){ return }
+
+        // We need to treat number inputs differently. Chrome will clear values if
+        // report bad inputs
+        // eg. 1..
+        if (input.type === "number"
+          && input.validity
+          && input.validity.badInput
+        ) {
+          return
+        }
 
         this.prevInput = input
         this.prevValue = input[key]
