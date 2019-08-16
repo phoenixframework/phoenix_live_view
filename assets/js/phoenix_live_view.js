@@ -788,7 +788,7 @@ let DOM = {
       // we only want to update the original's property to reflect changing state
       // but we do not want to update the attribute
       // e.g setAttribute for an input value resets the `input.defaultValue` property on the original DOM node
-      target[name] = value;
+      target[name] = value
     }
   },
 
