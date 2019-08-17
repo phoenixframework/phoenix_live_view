@@ -536,14 +536,26 @@ export class LiveSocket {
         let key = input.type === "checkbox" ? "checked" : "value"
         if(this.prevInput === input && this.prevValue === input[key]){ return }
 
-        // We need to treat number inputs differently. Chrome will clear values if
-        // report bad inputs
-        // eg. 1..
-        if (input.type === "number"
-          && input.validity
-          && input.validity.badInput
-        ) {
-          return
+        if (input.type === "number") {
+          // We need to treat number inputs differently. Chrome will clear values if
+          // report bad inputs so we want to do nothing
+          // eg. 1..
+          if(input.validity && input.validity.badInput) {
+            return;
+          }
+
+          // Moreover, Firefox will delete the separator when going from `1.1` to `1.`
+          // Since we don't receive input events for `.` we can safely ignore, update prevValue,
+          // but dont update DOM
+          if (e.inputType === "deleteContentBackward") {
+            var wasFloat = Number(this.prevValue) && this.prevValue % 1 !== 0;
+            var isFloat = Number(input.value) && input.value % 1 !== 0;;
+            if (input.value && wasFloat && !isFloat) {
+              this.prevInput = input;
+              this.prevValue = input[key];
+              return;
+            }
+          }
         }
 
         this.prevInput = input
