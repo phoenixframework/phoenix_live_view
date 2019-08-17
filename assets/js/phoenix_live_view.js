@@ -729,10 +729,15 @@ let DOM = {
         }
 
         if (fromEl.type === "number") {
+          // We need to treat number inputs differently. Chrome will clear values if
+          // report bad inputs so we want to do nothing
+          // eg. 1..
           if (fromEl.validity && fromEl.validity.badInput) {
             return false
           }
 
+          // Moreover, Firefox will delete the separator when going from `1.1` to `1.`
+          // So we should never update the input if it is the currently active element
           if (fromEl.ownerDocument.activeElement === fromEl) {
             return false
           }
