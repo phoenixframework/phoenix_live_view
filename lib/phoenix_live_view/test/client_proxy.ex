@@ -21,6 +21,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {_caller_ref, _caller_pid} = caller = Keyword.fetch!(opts, :caller)
     root_view = Keyword.fetch!(opts, :view)
     timeout = Keyword.fetch!(opts, :timeout)
+
     state = %{
       timeout: timeout,
       join_ref: 0,
@@ -30,7 +31,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       sessions: %{},
       pids: %{},
       replies: %{},
-      root_view: root_view,
+      root_view: root_view
     }
 
     case mount_view(state, root_view, timeout) do
@@ -52,6 +53,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp mount_view(state, view, timeout) do
     ref = make_ref()
+
     case start_supervised_channel(state, view, ref) do
       {:ok, pid} ->
         mon_ref = Process.monitor(pid)
@@ -90,7 +92,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       join_ref: state.join_ref
     }
 
-    params = %{"session" => view.session_token, "static" => view.static_token}
+    params = %{
+      "session" => view.session_token,
+      "static" => view.static_token,
+      "url" => Path.join(view.endpoint.url(), view.mount_path),
+      "params" => view.connect_params
+    }
+
     spec =
       Supervisor.child_spec(
         {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}},
@@ -104,7 +112,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
     children =
-      Enum.flat_map(view.children, fn session ->
+      Enum.flat_map(view.children, fn {session, _dom_id} ->
         case fetch_view_by_session(state, session) do
           {:ok, child} -> [child]
           :error -> []
@@ -121,35 +129,76 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info(%Phoenix.Socket.Message{
-      event: "redirect",
-      topic: topic,
-      payload: %{to: to},
-    }, state) do
-
+  def handle_info(
+        %Phoenix.Socket.Message{
+          event: "redirect",
+          topic: topic,
+          payload: %{to: to}
+        },
+        state
+      ) do
     send_redirect(state, topic, to)
     {:noreply, state}
   end
 
-  def handle_info(%Phoenix.Socket.Message{
-      event: "render",
-      topic: topic,
-      payload: diff,
-    }, state) do
+  def handle_info(
+        %Phoenix.Socket.Message{
+          event: "live_redirect",
+          topic: topic,
+          payload: %{to: to}
+        },
+        state
+      ) do
+    send_redirect(state, topic, to)
+    {:noreply, state}
+  end
 
+  def handle_info(
+        %Phoenix.Socket.Message{
+          event: "external_live_redirect",
+          topic: topic,
+          payload: %{to: to}
+        },
+        state
+      ) do
+    send_redirect(state, topic, to)
+    {:noreply, state}
+  end
+
+  def handle_info(
+        %Phoenix.Socket.Message{
+          event: "diff",
+          topic: topic,
+          payload: diff
+        },
+        state
+      ) do
     {:noreply, merge_rendered(state, topic, diff)}
   end
 
   def handle_info(%Phoenix.Socket.Reply{} = reply, state) do
-    %{ref: ref, payload: diff, topic: topic} = reply
-    new_state = merge_rendered(state, topic, diff)
-    {:ok, view} = fetch_view_by_topic(new_state, topic)
-    {:ok, {from, _pid}} = fetch_reply(new_state, ref)
-    html = render_tree(state, view)
+    %{ref: ref, payload: payload, topic: topic} = reply
+    {:ok, {from, _pid}} = fetch_reply(state, ref)
+    state = drop_reply(state, ref)
 
-    GenServer.reply(from, {:ok, html})
+    case payload do
+      %{external_live_redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+        {:noreply, state}
 
-    {:noreply, drop_reply(new_state, ref)}
+      %{live_redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        {:noreply, render_reply(reply, from, state)}
+
+      %{redirect: %{to: to}} ->
+        send_redirect(state, topic, to)
+        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+        {:noreply, state}
+
+      %{} ->
+        {:noreply, render_reply(reply, from, state)}
+    end
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
@@ -160,13 +209,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:socket_close, pid, reason}, state) do
-    Enum.each(state.replies, fn
-      {_ref, {from, ^pid}} -> GenServer.reply(from, {:error, reason})
-      {_ref, {_from, _pid}} -> :ok
-    end)
-
-    new_state = drop_downed_view(state, pid, reason)
-    {:noreply, %{new_state | replies: %{}}}
+    {:noreply, drop_downed_view(state, pid, reason)}
   end
 
   def handle_call({:stop, %View{topic: topic}}, _from, state) do
@@ -200,15 +243,42 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:render_event, %View{topic: topic}, type, event, raw_val}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
     ref = to_string(state.ref + 1)
+
     send(view.pid, %Phoenix.Socket.Message{
       join_ref: state.join_ref,
       topic: view.topic,
       event: "event",
       payload: %{"value" => raw_val, "event" => to_string(event), "type" => to_string(type)},
-      ref: ref,
+      ref: ref
     })
 
     {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
+  end
+
+  def handle_call({:render_live_link, %View{topic: topic}, path}, from, state) do
+    {:ok, view} = fetch_view_by_topic(state, topic)
+    ref = to_string(state.ref + 1)
+
+    send(view.pid, %Phoenix.Socket.Message{
+      join_ref: state.join_ref,
+      topic: view.topic,
+      event: "link",
+      payload: %{"url" => path},
+      ref: ref
+    })
+
+    {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
+  end
+
+  defp flush_replies(state, pid, reason) do
+    Enum.reduce(state.replies, state, fn
+      {ref, {from, ^pid}}, acc ->
+        GenServer.reply(from, {:error, reason})
+        drop_reply(acc, ref)
+
+      {_ref, {_from, _pid}}, acc ->
+        acc
+    end)
   end
 
   defp fetch_reply(state, ref) do
@@ -225,16 +295,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp render_tree(state, %View{} = view) do
     root_html = DOM.render_diff(view.rendered)
-    Enum.reduce(view.children, root_html, fn session, acc ->
+
+    Enum.reduce(view.children, root_html, fn {session, _dom_id}, acc ->
       {:ok, child} = fetch_view_by_session(state, session)
       child_html = render_tree(state, child)
       DOM.insert_attr(acc, "data-phx-session", session, child_html)
     end)
   end
 
-  defp put_child(state, %View{} = parent, session) do
+  defp put_child(state, %View{} = parent, session, dom_id) do
     update_in(state, [:views, parent.topic], fn %View{} = parent ->
-      View.put_child(parent, session)
+      View.put_child(parent, session, dom_id)
     end)
   end
 
@@ -242,6 +313,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     update_in(state, [:views, parent.topic], fn %View{} = parent ->
       View.prune_children(parent)
     end)
+  end
+
+  defp maybe_drop_dup_child_id(state, %View{} = parent, child_dom_id, reason) do
+    case View.fetch_child_session_by_id(parent, child_dom_id) do
+      {:ok, session} -> drop_child(state, parent, session, reason)
+      :error -> state
+    end
   end
 
   defp drop_child(state, %View{} = parent, session, reason) do
@@ -273,19 +351,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_pid(state, pid)
     send_caller(state, {:removed, view.topic, reason})
 
-    %{
-      state
-      | sessions: Map.delete(state.sessions, view.session_token),
-        views: Map.delete(state.views, view.topic),
-        pids: Map.delete(state.pids, view.pid)
-    }
+    flush_replies(
+      %{
+        state
+        | sessions: Map.delete(state.sessions, view.session_token),
+          views: Map.delete(state.views, view.topic),
+          pids: Map.delete(state.pids, view.pid)
+      },
+      pid,
+      reason
+    )
   end
 
   defp drop_view_by_session(state, session, reason) do
     {:ok, view} = fetch_view_by_session(state, session)
     :ok = shutdown_view(view, reason)
 
-    Enum.reduce(view.children, state, fn child_session, acc ->
+    Enum.reduce(view.children, state, fn {child_session, _dom_id}, acc ->
       drop_child(acc, view, child_session, reason)
     end)
   end
@@ -310,13 +392,34 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp merge_rendered(state, topic, diff) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
-    new_view = %View{view | rendered: DOM.deep_merge(view.rendered, diff)}
-    new_state =
-      %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
+  defp render_reply(reply, from, state) do
+    %{payload: diff, topic: topic} = reply
+    new_state = merge_rendered(state, topic, diff)
 
-    detect_added_or_removed_children(new_state, new_view.session_token)
+    case fetch_view_by_topic(new_state, topic) do
+      {:ok, view} ->
+        html = render_tree(new_state, view)
+        GenServer.reply(from, {:ok, html})
+        new_state
+
+      :error ->
+        new_state
+    end
+  end
+
+  defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
+
+  defp merge_rendered(state, topic, %{} = diff) do
+    case fetch_view_by_topic(state, topic) do
+      {:ok, view} ->
+        new_view = %View{view | rendered: DOM.deep_merge(view.rendered, diff)}
+        new_state = %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
+
+        detect_added_or_removed_children(new_state, new_view.session_token)
+
+      :error ->
+        state
+    end
   end
 
   defp detect_added_or_removed_children(state, token) do
@@ -338,15 +441,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       |> DOM.find_sessions()
       |> Enum.reduce(pruned_state, fn {session, static, dom_id}, acc ->
         case fetch_view_by_session(acc, session) do
-          {:ok, _view} -> put_child(acc, view, session)
+          {:ok, _view} ->
+            put_child(acc, view, session, dom_id)
+
           :error ->
             static = static || Map.get(state.root_view.child_statics, dom_id)
-            child_view = View.build_child(view, dom_id: dom_id, session_token: session, static_token: static)
-            case mount_view(acc, child_view, acc.timeout) do
+
+            child_view =
+              View.build_child(view, dom_id: dom_id, session_token: session, static_token: static)
+
+            acc
+            |> maybe_drop_dup_child_id(view, dom_id, :removed)
+            |> mount_view(child_view, acc.timeout)
+            |> case do
               {:ok, pid, rendered} ->
                 acc
                 |> put_view(child_view, pid, rendered)
-                |> put_child(view, child_view.session_token)
+                |> put_child(view, child_view.session_token, dom_id)
                 |> do_detect_added_or_removed_children(child_view.session_token)
 
               {:error, %{redirect: to}} ->
@@ -362,7 +473,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     new_view
     |> View.removed_children(children_before)
-    |> Enum.reduce(new_state, fn session, acc ->
+    |> Enum.reduce(new_state, fn {session, _dom_id}, acc ->
       drop_child(acc, new_view, session, :removed)
     end)
   end
@@ -377,6 +488,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp send_redirect(state, topic, to) do
-    send_caller(state, {:redirect, topic, to})
+    send_caller(state, {:redirect, topic, %{to: to}})
   end
 end

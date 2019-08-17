@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.PlugTest do
   setup config do
     conn =
       build_conn()
+      |> Plug.Conn.put_private(:phoenix_router, Router)
       |> Plug.Test.init_test_session(config[:plug_session] || %{})
       |> Plug.Conn.put_private(:phoenix_endpoint, Endpoint)
       |> Plug.Conn.put_private(:phoenix_live_view, [])
@@ -18,6 +19,15 @@ defmodule Phoenix.LiveView.PlugTest do
 
   test "with no session opts", %{conn: conn} do
     conn = LiveViewPlug.call(conn, DashboardLive)
+
+    assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}})
+  end
+
+  test "with existing #{LiveViewPlug.link_header()} header", %{conn: conn} do
+    conn =
+      conn
+      |> put_req_header(LiveViewPlug.link_header(), "some.site.com")
+      |> LiveViewPlug.call(DashboardLive)
 
     assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}})
   end
