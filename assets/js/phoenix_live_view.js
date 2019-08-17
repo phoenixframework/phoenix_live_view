@@ -547,10 +547,10 @@ export class LiveSocket {
           // Moreover, Firefox will delete the separator when going from `1.1` to `1.`
           // Since we don't receive input events for `.` we can safely ignore, update prevValue,
           // but dont update DOM
-          if (e.inputType === "deleteContentBackward") {
+          if (input.value && e.inputType === "deleteContentBackward") {
             var wasFloat = Number(this.prevValue) && this.prevValue % 1 !== 0;
             var isFloat = Number(input.value) && input.value % 1 !== 0;;
-            if (input.value && wasFloat && !isFloat) {
+            if (wasFloat && !isFloat) {
               this.prevInput = input;
               this.prevValue = input[key];
               return;
