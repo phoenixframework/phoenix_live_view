@@ -724,7 +724,18 @@ let DOM = {
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if (fromEl.isEqualNode(toEl)) {
-           return false // Skip this entire sub-tree if both elems (and children) are equal
+           // Skip this entire sub-tree if both elems (and children) are equal
+           return false
+        }
+
+        if (fromEl.type === "number") {
+          if (fromEl.validity && fromEl.validity.badInput) {
+            return false
+          }
+
+          if (fromEl.ownerDocument.activeElement === fromEl) {
+            return false
+          }
         }
 
         if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
