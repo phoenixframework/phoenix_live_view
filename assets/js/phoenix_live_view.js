@@ -129,13 +129,16 @@ life-cycle callbacks:
   * disconnected - the element's parent LiveView has disconnected from the server
   * connected - the element's parent LiveView has reconnected to the server
 
-  In addition to the callbacks, the callbacks contain an `el` property referencing
-  the bound DOM node, and a `viewName` property matching the dom node's phx-view value.
+  In addition to the callbacks, the callbacks contain the following attributes in scope:
+  
+    * el - attribute referencing the bound DOM node,
+    * viewName - attribute matching the dom node's phx-view value
+    * pushEvent(event, payload) - method to push an event from the client to the LiveView server
 
   For example, a controlled input for phone-number formatting would annotate their
   markup:
 
-      <input type="text" name="user[phone_number]" phx-js="PhoneNumber"/>
+      <input type="text" name="user[phone_number]" phx-hook="PhoneNumber"/>
 
   Then a hook callback object can be defined and passed to the socket:
 
