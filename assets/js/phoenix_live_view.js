@@ -808,7 +808,7 @@ let DOM = {
         if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate)){
           changes.updated.push({fromEl, toEl: fromEl})
           return false
-        } 
+        }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -1200,6 +1200,9 @@ class ViewHook {
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
+  pushEvent(event, payload){
+    this.__view.pushWithReply("event", {type: "hook", event: event, value: payload})
+  }
   __trigger__(kind){
     let callback = this.__callbacks[kind]
     callback && callback.call(this)

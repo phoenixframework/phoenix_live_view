@@ -159,7 +159,7 @@ describe('View + DOM', function() {
   })
 
   test('submitForm', function() {
-    expect.assertions(7);
+    expect.assertions(7)
 
     let liveSocket = new LiveSocket('/live')
     let el = liveViewDOM()
@@ -179,7 +179,7 @@ describe('View + DOM', function() {
     view.channel = channelStub
 
     view.submitForm(form, { target: form })
-    expect(form.dataset.phxHasSubmitted).toBeTruthy()
+    expect(form['phx-has-submitted']).toBeTruthy()
     expect(form.classList.contains('phx-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
@@ -290,13 +290,13 @@ describe('View Hooks', function() {
     let view = new View(el, liveSocket)
 
     view.onJoin({rendered: {
-      static: ['<h2 phx-js="Upcase">test mount</h2>'],
+      static: ['<h2 phx-hook="Upcase">test mount</h2>'],
       fingerprint: 123
     }})
     expect(view.el.firstChild.innerHTML).toBe('TEST MOUNT')
 
     view.update({
-      static: ['<h2 phx-js="Upcase">test update</h2>'],
+      static: ['<h2 phx-hook="Upcase">test update</h2>'],
       fingerprint: 123
     })
     expect(view.el.firstChild.innerHTML).toBe('test update updated')
