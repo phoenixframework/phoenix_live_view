@@ -127,7 +127,7 @@ life-cycle callbacks:
   * destroyed - the element has been removed from the page, either 
     by a parent update, or the parent being removed entirely
   * disconnected - the element's parent LiveView has disconnected from the server
-  * connected - the element's parent LiveView has reconnected to the server
+  * reconnected - the element's parent LiveView has reconnected to the server
 
   In addition to the callbacks, the callbacks contain the following attributes in scope:
   
@@ -957,7 +957,7 @@ export class View {
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("connected") }
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
 
