@@ -106,10 +106,16 @@ is applied to the form, which is removed on update.
 
 ## Custom JS Interop and client controlled DOM
 
-A container can be marked with `phx-ignore`, allowing the DOM patch
-operations to avoid updating or removing portions of the LiveView. This
+A container can be marked with `phx-update`, allowing the DOM patch
+operations to avoid updating or removing portions of the LiveView, or to append
+or prepend the updates rather than replacing the existing contents. This
 is useful for client-side interop with existing libraries that do their
-own DOM operations.
+own DOM operations. The following `phx-update` values are supported:
+
+  * replace - the default operation. Replaces the element with the contents
+  * ignore - ignores updates the DOM regardless of new content changes
+  * append - append the new DOM contents instead of replacing
+  * prepend - prepend the new DOM contents instead of replacing
 
 To handle custom client-side javascript when an element is added, updated,
 or removed by the server, a hook object may be provided with the following
@@ -161,18 +167,19 @@ const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_ERROR_FOR = "data-phx-error-for"
-const PHX_HAS_FOCUSED = "data-phx-has-focused"
+const PHX_HAS_FOCUSED = "phx-has-focused"
 const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
-const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
+const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
-const PHX_HOOK = "js"
+const PHX_HOOK = "hook"
+const PHX_UPDATE = "update"
 const LOADER_TIMEOUT = 1
-const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
+const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
@@ -317,7 +324,6 @@ export class LiveSocket {
         this.destroyAllViews()
         this.joinRootViews()
       }
-
       this.unloaded = false
     })
     window.addEventListener("beforeunload", e => {
@@ -539,6 +545,7 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       if(!this.registerNewLocation(window.location)){ return }
+
       let href = window.location.href
 
       if(this.root.isConnected()) {
@@ -550,10 +557,13 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent) { return }
+      if(!phxEvent){ return }
       let href = target.href
       e.preventDefault()
-      this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
+      this.root.pushInternalLink(href, () => {
+        Browser.pushState(phxEvent, {}, href)
+        this.registerNewLocation(window.location)
+      })
     }, false)
   }
 
@@ -588,7 +598,7 @@ export class LiveSocket {
         if(!phxEvent){ return }
         this.owner(input, view => {
           if(DOM.isTextualInput(input)){
-            input.setAttribute(PHX_HAS_FOCUSED, true)
+            input[PHX_HAS_FOCUSED] = true
           } else {
             this.setActiveElement(input)
           }
@@ -692,13 +702,14 @@ let DOM = {
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.remove(PHX_LOADING_CLASS)
+
     Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         if(el.nodeName === "INPUT") {
-            el.value = value
+          el.value = value
         } else {
-            el.innerText = value
+          el.innerText = value
         }
         el.removeAttribute(`${disableWith}-restore`)
       }
@@ -724,7 +735,7 @@ let DOM = {
     if(!field) { return }
     let input = document.getElementById(field)
 
-    if(field && !(input.getAttribute(PHX_HAS_FOCUSED) || input.form.getAttribute(PHX_HAS_SUBMITTED))){
+    if(field && !(input[PHX_HAS_FOCUSED] || input.form[PHX_HAS_SUBMITTED])){
       el.style.display = "none"
     }
   },
@@ -733,9 +744,25 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  isIgnored(el, phxIgnore){
-    return (el.getAttribute && el.getAttribute(phxIgnore) != null) ||
-           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)
+  applyPhxUpdate(fromEl, toEl, phxUpdate){
+    let type = toEl.getAttribute && toEl.getAttribute(phxUpdate)
+    if(!type || type === "replace"){
+      return false
+    } else {
+      DOM.mergeAttrs(fromEl, toEl)
+    }
+
+    switch(type){
+      case "ignore": break
+      case "append":
+        fromEl.innerHTML += toEl.innerHTML
+        break
+      case "prepend":
+        fromEl.innerHTML = toEl.innerHTML + fromEl.innerHTML
+        break
+      default: throw new Error(`unsupported phx-update "${type}"`)
+    }
+    return true
   },
 
   patch(view, container, id, html){
@@ -743,8 +770,8 @@ let DOM = {
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
     let selectionEnd = null
-    let phxIgnore = view.liveSocket.binding("ignore")
-    let containerTagName = container.tagName.toLowerCase();
+    let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let containerTagName = container.tagName.toLowerCase()
 
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
@@ -776,15 +803,12 @@ let DOM = {
         changes.discarded.push(el)
       },
       onBeforeElUpdated: function(fromEl, toEl) {
-        if (fromEl.isEqualNode(toEl)) {
-          return false // Skip this entire sub-tree if both elems (and children) are equal
-        }
+        if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
 
-        if(DOM.isIgnored(fromEl, phxIgnore)){
-          DOM.mergeAttrs(fromEl, toEl)
+        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate)){
           changes.updated.push({fromEl, toEl: fromEl})
           return false
-        }
+        } 
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -800,11 +824,11 @@ let DOM = {
         }
 
         // input handling
-        if(fromEl.getAttribute && fromEl.getAttribute(PHX_HAS_SUBMITTED)){
-          toEl.setAttribute(PHX_HAS_SUBMITTED, true)
+        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){
+          toEl[PHX_HAS_SUBMITTED] = true
         }
-        if(fromEl.getAttribute && fromEl.getAttribute(PHX_HAS_FOCUSED)){
-          toEl.setAttribute(PHX_HAS_FOCUSED, true)
+        if(fromEl[PHX_HAS_FOCUSED]){
+          toEl[PHX_HAS_FOCUSED] = true
         }
         DOM.discardError(toEl)
 
@@ -863,6 +887,7 @@ export class View {
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
+    this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
     this.joinedOnce = false
@@ -889,6 +914,7 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    clearTimeout(this.loaderTimer)
     let onFinished = () => {
       callback()
       for(let id in this.viewHooks){ this.destroyHook(this.viewHooks[id]) }
@@ -917,18 +943,18 @@ export class View {
   isLoading(){ return this.el.classList.contains(PHX_DISCONNECTED_CLASS)}
 
   showLoader(timeout){
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
     clearTimeout(this.loaderTimer)
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
+      for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
       this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     }
   }
 
   hideLoader(){
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("connected") }
     clearTimeout(this.loaderTimer)
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("connected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
 
@@ -1148,7 +1174,7 @@ export class View {
 
   submitForm(form, phxEvent){
     let prefix = this.liveSocket.getBindingPrefix()
-    form.setAttribute(PHX_HAS_SUBMITTED, "true")
+    form[PHX_HAS_SUBMITTED] = "true"
     DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, phxEvent, () => {
