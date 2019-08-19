@@ -280,7 +280,7 @@ describe('View Hooks', function() {
         mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
         updated(){ this.el.innerHTML = this.el.innerHTML + ' updated' },
         disconnected(){ this.el.innerHTML = 'disconnected' },
-        connected(){ this.el.innerHTML = 'connected' },
+        reconnected(){ this.el.innerHTML = 'connected' },
         destroyed(){ upcaseWasDestroyed = true },
       }
     }
