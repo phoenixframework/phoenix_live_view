@@ -14,6 +14,7 @@ defmodule Phoenix.LiveView.Socket do
             temporary: %{},
             fingerprints: {nil, %{}},
             private: %{},
+            mounted: false,
             redirected: nil,
             connected?: false
 

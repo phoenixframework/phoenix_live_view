@@ -15,6 +15,18 @@ defmodule Phoenix.LiveView.View do
   @rand_bytes 6
 
   @doc """
+  Annotates the temporary assign keys in the socket for mount.
+  """
+  def configure_temporary_assigns(%Socket{} = socket, keys) when is_list(keys) do
+    if mounted?(socket) do
+      raise RuntimeError, "attempted to configure temporary assigns outside of mount/2"
+    end
+
+    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
+  end
+
+  @doc """
   Strips socket of redudant assign data for rendering.
   """
   def strip_for_render(%Socket{} = socket) do
@@ -135,11 +147,6 @@ defmodule Phoenix.LiveView.View do
   """
   def post_mount_prune(%Socket{} = socket) do
     clear_changed(%Socket{socket | private: Map.drop(socket.private, [:connect_params])})
-  end
-
-  def put_temporary(%Socket{assigns: assigns} = socket, keys) when is_list(keys) do
-    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
-    %Socket{socket | assigns: Map.merge(temp_assigns, assigns), temporary: temp_assigns}
   end
 
   @doc """
@@ -477,10 +484,7 @@ defmodule Phoenix.LiveView.View do
   def call_mount(view, session, %Socket{} = socket) do
     case view.mount(session, socket) do
       {:ok, %Socket{} = socket} ->
-        {:ok, socket}
-
-      {:ok, %Socket{} = socket, [_ | _] = opts} ->
-        {:ok, put_temporary(socket, opts[:temporary] || [])}
+        {:ok, %Socket{socket | mounted: true}}
 
       other ->
         other
@@ -551,4 +555,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+
+  defp mounted?(%Socket{mounted: mounted}), do: mounted
 end
