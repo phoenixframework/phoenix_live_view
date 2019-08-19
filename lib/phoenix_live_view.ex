@@ -338,6 +338,27 @@ defmodule Phoenix.LiveView do
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces those as best practices.
 
+  ### Temporary assigns
+
+  By default, all LiveView assigns are stateful, which enables change tracking
+  and stateful interactions. In some cases, it's useful to mark assigns as temporary,
+  meaning they will be set to nil after each update, allowing otherwise large, but
+  infrequently updated values to be discarded after the client has been patched.
+
+  *Note*: this requires refetching/recomputing the temporary assigns should they
+  need accessed in future callbacks.
+
+  To mark assigns as temporary, use `configure_temporary_assigns/2`:
+
+      def mount(_session, socket) do
+        description = fetch_large_description()
+        {:ok,
+          socket
+          |> assign(description: description)
+          |> configure_temporary_assigns([:description])}
+      end
+
+
   ## Bindings
 
   Phoenix supports DOM element bindings for client-server interaction. For
@@ -495,7 +516,7 @@ defmodule Phoenix.LiveView do
   The `live_link/2` and `live_redirect/2` functions allow page navigation
   using the [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
   With live navigation, the page is updated without a full page reload.
-  
+
   To use live navigation, simply replace your existing `Phoenix.HTML.link/3`
   and `Phoenix.LiveView.redirect/2` calls with their `live` counterparts.
 
@@ -518,30 +539,30 @@ defmodule Phoenix.LiveView do
       made to request the necessary information about the new LiveView, without
       performing a full static render (which reduces latency and improves
       performance). Once information is retrieved, the new LiveView is mounted.
-  
+
   ### `handle_params/3`
-  
+
   The `c:handle_params/3` callback is invoked after `c:mount/2`. It receives the
   request path parameters and the query parameters as first argument, the url as
   second, and the socket as third. As any other `handle_*` callback, changes to
   the state inside `c:handle_params/3` will trigger a server render.
-  
+
   To avoid building a new LiveView whenever a live link is clicked or whenever
   a live redirect happens, LiveView also invokes `c:handle_params/3` on an
   existing LiveView when performing live navigation as long as:
-  
+
     1. you are navigating to the same root live view you are currently on
     2. said LiveView is defined in your router
-  
+
   For example, imagine you have a `UserTable` LiveView to show all users in
   the system and you define it in the router as:
-  
+
       live "/users", UserTable
-  
+
   Now to add live sorting, you could do:
-  
+
       <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
-  
+
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
   will be invoked. Remember you should never trust received params, so we can use
   the callback to validate the user input and change the state accordingly:
@@ -554,7 +575,7 @@ defmodule Phoenix.LiveView do
             {:noreply, socket}
         end
       end
- 
+
   ### Replace page address
 
   LiveView also allows the current browser URL to be replaced. This is useful when you
@@ -563,7 +584,7 @@ defmodule Phoenix.LiveView do
   If those changes are not persisted in a database or similar, as soon as the user
   refreshes the page, navigates away, or shares the URL with someone else, said changes
   will be lost.
-  
+
   To address this, users can invoke `live_redirect/2`. The idea is, once the form
   data is received, we do not change the state, instead we perform a live redirect to
   ourselves with the new URL. Since we are navigating to ourselves, `c:handle_params/3`
@@ -580,11 +601,11 @@ defmodule Phoenix.LiveView do
       def handle_event("sorting", params, socket) do
         {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params))}
       end
-  
+
   Now with a `c:handle_params/3` implementation similar to the one in the previous
   section, we will recompute the users based on the new `params` and perform a server
   render if there are any changes.
-  
+
   Both `live_link/2` and `live_redirect/2` support the `replace: true` option. This
   option can be used when you want to change the current url without polluting the
   browser's history:
@@ -717,6 +738,27 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{} = socket) do
     LiveView.View.connected?(socket)
+  end
+
+  @doc """
+  Configures the temporary assigns keys in the socket on mount.
+
+  Temporary assigns are not kept after they are rendered.
+  This saves server memory, but requires future access to
+  refetch necessary data on-demand.
+
+  ## Examples
+
+      def mount(_session, socket) do
+        description = fetch_large_description()
+        {:ok,
+          socket
+          |> assign(description: description)
+          |> configure_temporary_assigns([:description])}
+      end
+  """
+  def configure_temporary_assigns(%Socket{} = socket, assigns) when is_list(assigns) do
+    LiveView.View.configure_temporary_assigns(socket, assigns)
   end
 
   @doc """

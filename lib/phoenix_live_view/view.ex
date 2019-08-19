@@ -15,6 +15,18 @@ defmodule Phoenix.LiveView.View do
   @rand_bytes 6
 
   @doc """
+  Annotates the temporary assign keys in the socket for mount.
+  """
+  def configure_temporary_assigns(%Socket{} = socket, keys) when is_list(keys) do
+    if mounted?(socket) do
+      raise RuntimeError, "attempted to configure temporary assigns outside of mount/2"
+    end
+
+    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
+  end
+
+  @doc """
   Strips socket of redudant assign data for rendering.
   """
   def strip_for_render(%Socket{} = socket) do
@@ -29,7 +41,7 @@ defmodule Phoenix.LiveView.View do
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{} = socket) do
-    %Socket{socket | changed: %{}}
+    %Socket{socket | changed: %{}, assigns: Map.merge(socket.assigns, socket.temporary)}
   end
 
   @doc """
@@ -134,7 +146,7 @@ defmodule Phoenix.LiveView.View do
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
-    %Socket{socket | private: Map.drop(socket.private, [:connect_params])}
+    clear_changed(%Socket{socket | private: Map.drop(socket.private, [:connect_params])})
   end
 
   @doc """
@@ -246,7 +258,7 @@ defmodule Phoenix.LiveView.View do
     raise ArgumentError, """
     invalid result returned from #{inspect(view)}.mount/2.
 
-    Expected {:ok, socket}, got: #{inspect(other)}
+    Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
     """
   end
 
@@ -366,8 +378,9 @@ defmodule Phoenix.LiveView.View do
         :external
 
       :error ->
-        raise ArgumentError, "cannot live_redirect/link_link to #{inspect(uri)} because " <>
-              "it isn't defined in #{inspect(router)}"
+        raise ArgumentError,
+              "cannot live_redirect/link_link to #{inspect(uri)} because " <>
+                "it isn't defined in #{inspect(router)}"
     end
   end
 
@@ -424,8 +437,8 @@ defmodule Phoenix.LiveView.View do
   defp nested_static_mount(%Socket{} = parent, view, session, child_id) do
     socket = build_nested_socket(parent, child_id, view)
 
-    session
-    |> view.mount(socket)
+    view
+    |> call_mount(session, socket)
     |> case do
       {:ok, %Socket{} = new_socket} ->
         {:ok, new_socket, sign_static_token(new_socket)}
@@ -448,7 +461,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp do_static_mount(socket, view, session, params, uri) do
-    with {:ok, %Socket{redirected: nil} = mounted_socket} <- view.mount(session, socket),
+    with {:ok, %Socket{redirected: nil} = mounted_socket} <- call_mount(view, session, socket),
          {:noreply, %Socket{redirected: nil} = new_socket} <-
            mount_handle_params(mounted_socket, view, params, uri) do
       session_token = sign_root_session(socket, view, session)
@@ -462,6 +475,19 @@ defmodule Phoenix.LiveView.View do
 
       other ->
         raise_invalid_mount(other, view)
+    end
+  end
+
+  @doc """
+  Calls the view's `mount/2` callback while handling possible options.
+  """
+  def call_mount(view, session, %Socket{} = socket) do
+    case view.mount(session, socket) do
+      {:ok, %Socket{} = socket} ->
+        {:ok, %Socket{socket | mounted: true}}
+
+      other ->
+        other
     end
   end
 
@@ -529,4 +555,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+
+  defp mounted?(%Socket{mounted: mounted}), do: mounted
 end

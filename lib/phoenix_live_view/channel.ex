@@ -435,9 +435,12 @@ defmodule Phoenix.LiveView.Channel do
         assigned_new: {parent_assigns, assigned_new}
       })
 
-    case view.mount(session, lv_socket) do
+    case View.call_mount(view, session, lv_socket) do
       {:ok, %Socket{} = lv_socket} ->
-        state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket, url)
+        state =
+          lv_socket
+          |> View.prune_assigned_new()
+          |> build_state(phx_socket, url)
 
         state
         |> call_mount_handle_params({:mount, %{to: url}})
