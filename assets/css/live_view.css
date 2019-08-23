@@ -65,3 +65,6 @@
   background: #ffe6f0!important;
 }
 
+[phx-click] {
+  cursor: pointer;
+}
