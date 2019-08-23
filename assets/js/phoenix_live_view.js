@@ -248,6 +248,16 @@ let Session = {
   isEqual(el1, el2){ return this.get(el1) === this.get(el2) }
 }
 
+let setIosClickables = () => {
+  const isiOS = !!navigator.platform &&
+    /iPad|iPhone|iPod/.test(navigator.platform);
+
+  if (isiOS) {
+    document.querySelectorAll('[phx-click]').forEach((el) => {
+      el.setAttribute("onclick", "")
+    })
+  }
+}
 
 export let Rendered = {
   mergeDiff(source, diff){
@@ -974,6 +984,7 @@ export class View {
     Browser.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
     this.triggerHooks(changes)
     this.joinNewChildren()
+    setIosClickables()
     if(live_redirect){
       let {kind, to} = live_redirect
       Browser.pushState(kind, {}, to)
@@ -999,6 +1010,7 @@ export class View {
     this.newChildrenAdded = false
     this.triggerHooks(DOM.patch(this, this.el, this.id, html))
     if(this.newChildrenAdded){ this.joinNewChildren() }
+    setIosClickables()
   }
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
