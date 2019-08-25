@@ -26,8 +26,7 @@ defmodule Phoenix.LiveView.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:phoenix, "~> 1.4.3"},
-      {:phoenix, "~> 1.4.8"},
+      {:phoenix, "~> 1.4.9"},
       {:phoenix_html, "~> 2.13.2"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.20.1", only: :docs},

@@ -65,7 +65,12 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, update(socket, :val, &(&1 - 1))}
   end
 
-  def handle_event("save", %{"temp" => new_temp}, socket) do
+
+  def handle_event("save", %{"temp" => new_temp} = params, socket) do
+    {:noreply, assign(socket, val: new_temp, greeting: inspect(params["_target"]))}
+  end
+
+  def handle_event("save", new_temp, socket) do
     {:noreply, assign(socket, :val, new_temp)}
   end
 

@@ -258,6 +258,8 @@ defmodule Phoenix.LiveView do
       let liveSocket = new LiveSocket("/live")
       liveSocket.connect()
 
+  *Note*: Comprehensive JavaScript client usage is covered in detail below.
+
   After the client connects, `mount/2` will be invoked inside a spawned
   LiveView process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
@@ -376,13 +378,26 @@ defmodule Phoenix.LiveView do
 
   ### Click Events
 
-  The `phx-click` binding is used to send click events to the server. The
-  `value` passed to `handle_event` is chosen on the client with the following
-  priority:
+  The `phx-click` binding is used to send click events to the server.
+  When any client event, such as a `phx-click` click is pushed, the value sent to
+  the server will be chosen with the following priority:
 
-    * An optional `"phx-value"` binding on the clicked element
-    * The clicked element's `value` property
-    * An empty string
+    * An optional `"phx-value"` binding on the clicked element which is sent
+      as is and handled as a string on the server
+    * Any number of optional `phx-value-` prefixed attributes, such as:
+
+          <div phx-click="inc" phx-value-myvar1="val1" phx-value-mvar2="val2">
+
+      will send the following map of params to the server:
+
+          def handle_event("inc", %{"myvar1" => "val1", "myvar2" => "val2"}, socket) do
+
+      If the `phx-value-` prefixed is used, the server payload will also contain a `"value"`
+      if the element's value attribute exists.
+    * When receiving a map on the server, the payload will also contain metadata of the
+      client event, containing all literal keys of the event object, such as a click event's
+      `clientX`, a keydown event's `keyCode`, etc.
+
 
   ### Focus and Blur Events
 
@@ -411,7 +426,7 @@ defmodule Phoenix.LiveView do
   single input change. For example, to handle real-time form validation and
   saving, your template would use both `phx_change` and `phx_submit` bindings:
 
-      <%= form_for @changeset, "#", [phx_change: :validate, phx_submit: :save], fn f -> %>
+      <%= f = form_for @changeset, "#", [phx_change: :validate, phx_submit: :save] %>
         <%= label f, :username %>
         <%= text_input f, :username %>
         <%= error_tag f, :username %>
@@ -421,7 +436,7 @@ defmodule Phoenix.LiveView do
         <%= error_tag f, :email %>
 
         <%= submit "Save" %>
-      <% end %>
+      </form>
 
   Next, your LiveView picks up the events in `handle_event` callbacks:
 
@@ -481,7 +496,8 @@ defmodule Phoenix.LiveView do
 
   The onkeydown, and onkeyup events are supported via
   the `phx-keydown`, and `phx-keyup` bindings. When
-  pushed, the value sent to the server will be the event's `key`.
+  pushed, the value sent to the server will contain all the client event
+  object's literal metadata, such as `keyCode`, `which`, etc.
   By default, the bound element will be the event listener, but an
   optional `phx-target` may be provided which may be `"document"`,
   `"window"`, or the DOM id of a target element, for example:
@@ -614,6 +630,130 @@ defmodule Phoenix.LiveView do
         {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
       end
 
+
+  ## JavaScript Client Specific
+
+  As seen earlier, you start by instantiating a single LiveSocket instance to
+  enable LiveView client/server interaction, for example:
+
+      import LiveSocket from "phoenix_live_view"
+
+      let liveSocket = new LiveSocket("/live")
+      liveSocket.connect()
+
+  All options are passed directly to the `Phoenix.Socket` constructor,
+  except for the following LiveView specific options:
+
+    * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
+    * `params` - the `connect_params` to pass to the view's mount callback. May be
+      a literal object or closure returning an object. When a closure is provided,
+      the function receives the view's phx-view name.
+    * `hooks` – a reference to a user-defined hooks namespace, containing client
+      callbacks for server/client interop. See the interop section below for details.
+
+  ### Forms and input handling
+
+  The JavaScript client is always the source of truth for current
+  input values. For any given input with focus, LiveView will never
+  overwrite the input's current value, even if it deviates from
+  the server's rendered updates. This works well for updates where
+  major side effects are not expected, such as form validation errors,
+  or additive UX around the user's input values as they fill out a form.
+  For these use cases, the `phx-change` input does not concern itself
+  with disabling input editing while an event to the server is inflight.
+  When a `phx-change` event is sent to the server, a `"_target"` param
+  will be in the root payload containing the keyspace of the input name
+  which triggered the change event. For example, if the following input
+  triggered a change event:
+
+      <input name="user[username]"/>
+
+  The server's `handle_event/3` would receive a payload:
+
+      %{"_target" => ["user", "username"], "user" => %{"name" => "Name"}}
+
+  The `phx-submit` event is used for form submissions where major side-effects
+  typically happen, such as rendering new containers, calling an external
+  service, or redirecting to a new page. For these use-cases, the form inputs
+  are set to `readonly` on submit, and any submit button is disabled until
+  the client gets an acknowledgment that the server has processed the
+  `phx-submit` event. Following an acknowledgment, any updates are patched
+  to the DOM as normal, and the last input with focus is restored if the
+  user has not otherwise focused on a new input during submission.
+
+  To handle latent form submissions, any HTML tag can be annotated with
+  `phx-disable-with`, which swaps the element's `innerText` with the provided
+  value during form submission. For example, the following code would change
+  the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
+
+      <button type="submit" phx-disable-with="Saving...">Save</button>
+
+  ## Loading state and Errors
+
+  By default, the following classes are applied to the live view's parent
+  container:
+
+    - `"phx-connected"` - applied when the view has connected to the server
+    - `"phx-disconnected"` - applied when the view is not connected to the server
+    - `"phx-error"` - applied when an error occurs on the server. Note, this
+      class will be applied in conjunction with `"phx-disconnected"` if connection
+      to the server is lost.
+
+  When a form bound with `phx-submit` is submitted, the `phx-loading` class
+  is applied to the form, which is removed on update.
+
+  ## Custom JS Interop and client controlled DOM
+
+  A container can be marked with `phx-update`, allowing the DOM patch
+  operations to avoid updating or removing portions of the LiveView, or to append
+  or prepend the updates rather than replacing the existing contents. This
+  is useful for client-side interop with existing libraries that do their
+  own DOM operations. The following `phx-update` values are supported:
+
+    * replace - the default operation. Replaces the element with the contents
+    * ignore - ignores updates the DOM regardless of new content changes
+    * append - append the new DOM contents instead of replacing
+    * prepend - prepend the new DOM contents instead of replacing
+
+  To handle custom client-side javascript when an element is added, updated,
+  or removed by the server, a hook object may be provided with the following
+  life-cycle callbacks:
+
+    * mounted - the element has been added to the DOM and its server
+      LiveView has finished mounting
+    * updated - the element has been updated in the DOM by the server
+    * destroyed - the element has been removed from the page, either
+      by a parent update, or the parent being removed entirely
+    * disconnected - the element's parent LiveView has disconnected from the server
+    * reconnected - the element's parent LiveView has reconnected to the server
+
+    In addition to the callbacks, the callbacks contain the following attributes in scope:
+
+      * el - attribute referencing the bound DOM node,
+      * viewName - attribute matching the dom node's phx-view value
+      * pushEvent(event, payload) - method to push an event from the client to the LiveView server
+
+    For example, a controlled input for phone-number formatting would annotate their
+    markup:
+
+        <input type="text" name="user[phone_number]" phx-hook="PhoneNumber"/>
+
+    Then a hook callback object can be defined and passed to the socket:
+
+        let Hooks = {}
+        Hooks.PhoneNumber = {
+          mounted(){
+            this.el.addEventListener("input", e => {
+              let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+              if(match) {
+                this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+              }
+            })
+          }
+        }
+
+        let liveSocket = new LiveSocket("/socket", {hooks: Hooks})
+        ...
   """
 
   alias Phoenix.LiveView

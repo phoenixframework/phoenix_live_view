@@ -77,6 +77,16 @@ defmodule Phoenix.LiveView.LiveViewTest do
              end) =~ "failed while verifying session"
     end
 
+    test "render_click with string value", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_click(view, :save, "22") =~ "The temp is: 22"
+    end
+
+    test "render_click with map value", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_click(view, :save, %{temp: 20}) =~ "The temp is: 20"
+    end
+
     test "render_submit", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_submit(view, :save, %{temp: 20}) =~ "The temp is: 20"
@@ -85,6 +95,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_change", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_change(view, :save, %{temp: 21}) =~ "The temp is: 21"
+    end
+
+    test "render_change with _target", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_change(view, :save, %{_target: "", temp: 21}) =~ "The temp is: 21[]"
+      assert render_change(view, :save, %{_target: ["user"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;]"
+      assert render_change(view, :save, %{_target: ["user", "name"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;, &quot;name&quot;]"
+      assert render_change(view, :save, %{_target: ["another", "field"], temp: 21}) =~ "The temp is: 21[&quot;another&quot;, &quot;field&quot;]"
     end
 
     @key_i 73

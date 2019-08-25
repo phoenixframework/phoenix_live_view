@@ -199,9 +199,11 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts) when redir in [301, 302] do
+  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
+       when redir in [301, 302] do
     {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
   end
+
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
     html =
       conn
@@ -251,7 +253,7 @@ defmodule Phoenix.LiveViewTest do
 
       :ignore ->
         receive do
-          {^ref, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+          {^ref, {%_{} = exception, [_ | _] = stack}} -> reraise(exception, stack)
           {^ref, %{external_live_redirect: opts}} -> {:error, %{redirect: opts}}
           {^ref, reason} -> {:error, reason}
         end
@@ -267,7 +269,6 @@ defmodule Phoenix.LiveViewTest do
       path
     end
   end
-
 
   @doc """
   Sends a click event to the view and returns the rendered result.
@@ -364,7 +365,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(view, type, event, value) do
-    case GenServer.call(view.proxy, {:render_event, view, type, event, value}) do
+    case GenServer.call(view.proxy, {:render_event, view, type, event, stringify(value)}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
@@ -463,4 +464,16 @@ defmodule Phoenix.LiveViewTest do
 
   @doc false
   def encode!(msg), do: msg
+
+  defp stringify(%{__struct__: _} = struct),
+    do: struct
+
+  defp stringify(%{} = params),
+    do: Enum.into(params, %{}, &stringify_kv/1)
+
+  defp stringify(other),
+    do: other
+
+  defp stringify_kv({k, v}),
+    do: {to_string(k), stringify(v)}
 end
