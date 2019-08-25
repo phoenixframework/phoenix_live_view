@@ -8,7 +8,13 @@ defmodule Phoenix.LiveView.MixProject do
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env),
-      deps: deps()
+      package: package(),
+      deps: deps(),
+      source_url: "https://github.com/phoenixframework/phoenix_live_view",
+      homepage_url: "http://www.phoenixframework.org",
+      description: """
+      Rich, real-time user experiences with server-rendered HTML
+      """
     ]
   end
 
@@ -30,6 +36,18 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_html, "~> 2.13.2"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.20.1", only: :docs},
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: [
+        "Chris McCord", "José Valim", "Gary Rennie", "Alex Garibay", "Scott Newcomer"
+      ],
+      licenses: ["MIT"],
+      links: %{github: "https://github.com/phoenixframework/phoenix_live_view"},
+      files: ~w(assets lib priv) ++
+        ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
     ]
   end
 end
