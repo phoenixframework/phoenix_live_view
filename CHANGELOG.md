@@ -1,3 +1,8 @@
+## 0.1.1-dev
+
+### Enhancements
+  - Use optimized insertAdjacentHTML for faster append/prepend and proper css animation handling 
+
 ## 0.1.0 (2019-08-25)
 
 ### Enhancements
