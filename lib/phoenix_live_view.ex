@@ -360,7 +360,6 @@ defmodule Phoenix.LiveView do
           |> configure_temporary_assigns([:description])}
       end
 
-
   ## Bindings
 
   Phoenix supports DOM element bindings for client-server interaction. For
@@ -379,11 +378,9 @@ defmodule Phoenix.LiveView do
   ### Click Events
 
   The `phx-click` binding is used to send click events to the server.
-  When any client event, such as a `phx-click` click is pushed, the value sent to
-  the server will be chosen with the following priority:
+  When any client event, such as a `phx-click` click is pushed, the value
+  sent to the server will be chosen with the following priority:
 
-    * An optional `"phx-value"` binding on the clicked element which is sent
-      as is and handled as a string on the server
     * Any number of optional `phx-value-` prefixed attributes, such as:
 
           <div phx-click="inc" phx-value-myvar1="val1" phx-value-mvar2="val2">
@@ -392,12 +389,12 @@ defmodule Phoenix.LiveView do
 
           def handle_event("inc", %{"myvar1" => "val1", "myvar2" => "val2"}, socket) do
 
-      If the `phx-value-` prefixed is used, the server payload will also contain a `"value"`
+      If the `phx-value-` prefix is used, the server payload will also contain a `"value"`
       if the element's value attribute exists.
+
     * When receiving a map on the server, the payload will also contain metadata of the
       client event, containing all literal keys of the event object, such as a click event's
       `clientX`, a keydown event's `keyCode`, etc.
-
 
   ### Focus and Blur Events
 
@@ -475,9 +472,9 @@ defmodule Phoenix.LiveView do
 
   Likewise for `phx-submit` bindings, the same callback is invoked and
   persistence is attempted. On success, a `:stop` tuple is returned and the
-  socket is annotated for redirect with `Phoenix.LiveView.redirect/2`,
-  otherwise the socket assigns are updated with the errored changeset to be
-  re-rerendered for the client.
+  socket is annotated for redirect with `Phoenix.LiveView.redirect/2` to
+  the new user page, otherwise the socket assigns are updated with the errored
+  changeset to be re-rendered for the client.
 
   *Note*: For proper form error tag updates, the error tag must specify which
   input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
@@ -630,7 +627,6 @@ defmodule Phoenix.LiveView do
         {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
       end
 
-
   ## JavaScript Client Specific
 
   As seen earlier, you start by instantiating a single LiveSocket instance to
@@ -688,9 +684,9 @@ defmodule Phoenix.LiveView do
 
       <button type="submit" phx-disable-with="Saving...">Save</button>
 
-  ## Loading state and Errors
+  ### Loading state and errors
 
-  By default, the following classes are applied to the live view's parent
+  By default, the following classes are applied to the LiveView's parent
   container:
 
     - `"phx-connected"` - applied when the view has connected to the server
@@ -699,10 +695,10 @@ defmodule Phoenix.LiveView do
       class will be applied in conjunction with `"phx-disconnected"` if connection
       to the server is lost.
 
-  When a form bound with `phx-submit` is submitted, the `phx-loading` class
+  When a form bound with `phx-submit` is submitted, the `"phx-loading"` class
   is applied to the form, which is removed on update.
 
-  ## Custom JS Interop and client controlled DOM
+  ### Custom DOM patching
 
   A container can be marked with `phx-update`, allowing the DOM patch
   operations to avoid updating or removing portions of the LiveView, or to append
@@ -715,7 +711,9 @@ defmodule Phoenix.LiveView do
     * append - append the new DOM contents instead of replacing
     * prepend - prepend the new DOM contents instead of replacing
 
-  To handle custom client-side javascript when an element is added, updated,
+  ### JS Interop and client controlled DOM
+
+  To handle custom client-side JavaScript when an element is added, updated,
   or removed by the server, a hook object may be provided with the following
   life-cycle callbacks:
 
@@ -727,33 +725,33 @@ defmodule Phoenix.LiveView do
     * disconnected - the element's parent LiveView has disconnected from the server
     * reconnected - the element's parent LiveView has reconnected to the server
 
-    In addition to the callbacks, the callbacks contain the following attributes in scope:
+  In addition to the callbacks, the callbacks contain the following attributes in scope:
 
-      * el - attribute referencing the bound DOM node,
-      * viewName - attribute matching the dom node's phx-view value
-      * pushEvent(event, payload) - method to push an event from the client to the LiveView server
+    * el - attribute referencing the bound DOM node,
+    * viewName - attribute matching the dom node's phx-view value
+    * pushEvent(event, payload) - method to push an event from the client to the LiveView server
 
-    For example, a controlled input for phone-number formatting would annotate their
-    markup:
+  For example, a controlled input for phone-number formatting would annotate their
+  markup:
 
-        <input type="text" name="user[phone_number]" phx-hook="PhoneNumber"/>
+      <input type="text" name="user[phone_number]" phx-hook="PhoneNumber"/>
 
-    Then a hook callback object can be defined and passed to the socket:
+  Then a hook callback object can be defined and passed to the socket:
 
-        let Hooks = {}
-        Hooks.PhoneNumber = {
-          mounted(){
-            this.el.addEventListener("input", e => {
-              let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-              if(match) {
-                this.el.value = `${match[1]}-${match[2]}-${match[3]}`
-              }
-            })
-          }
+      let Hooks = {}
+      Hooks.PhoneNumber = {
+        mounted(){
+          this.el.addEventListener("input", e => {
+            let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+            if(match) {
+              this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+            }
+          })
         }
+      }
 
-        let liveSocket = new LiveSocket("/socket", {hooks: Hooks})
-        ...
+      let liveSocket = new LiveSocket("/socket", {hooks: Hooks})
+      ...
   """
 
   alias Phoenix.LiveView
