@@ -638,10 +638,10 @@ let DOM = {
     switch(type){
       case "ignore": break
       case "append":
-        fromEl.innerHTML += toEl.innerHTML
+        fromEl.insertAdjacentHTML("beforeend", toEl.innerHTML)
         break
       case "prepend":
-        fromEl.innerHTML = toEl.innerHTML + fromEl.innerHTML
+        fromEl.insertAdjacentHTML("afterbegin", toEl.innerHTML)
         break
       default: throw new Error(`unsupported phx-update "${type}"`)
     }
@@ -1097,7 +1097,7 @@ class ViewHook {
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
-  pushEvent(event, payload){
+  pushEvent(event, payload = {}){
     this.__view.pushWithReply("event", {type: "hook", event: event, value: payload})
   }
   __trigger__(kind){
