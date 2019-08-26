@@ -1003,15 +1003,12 @@ export class View {
   }
 
   pushEvent(type, el, phxEvent, meta){
-    let value = el.getAttribute(this.binding("value"))
-    if(value === null){
-      value = meta
-      let prefix = this.binding("value-")
-      for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
-        value[key.replace(prefix, "")] = el.getAttribute(key)
-      }
-      if(el.value !== undefined){ value.value = el.value }
+    value = meta
+    let prefix = this.binding("value-")
+    for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
+      value[key.replace(prefix, "")] = el.getAttribute(key)
     }
+    if(el.value !== undefined){ value.value = el.value }
     
     this.pushWithReply("event", {
       type: type,
