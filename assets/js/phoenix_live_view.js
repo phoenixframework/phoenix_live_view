@@ -35,6 +35,7 @@ const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
+const PHX_PREV_APPEND = "phxPrevAppend"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -627,7 +628,7 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  applyPhxUpdate(fromEl, toEl, phxUpdate){
+  applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes){
     let type = toEl.getAttribute && toEl.getAttribute(phxUpdate)
     if(!type || type === "replace"){
       return false
@@ -638,13 +639,26 @@ let DOM = {
     switch(type){
       case "ignore": break
       case "append":
-        fromEl.insertAdjacentHTML("beforeend", toEl.innerHTML)
-        break
       case "prepend":
-        fromEl.insertAdjacentHTML("afterbegin", toEl.innerHTML)
+        let newHTML = toEl.innerHTML
+        if(fromEl[PHX_PREV_APPEND] === newHTML){ break }
+
+        fromEl[PHX_PREV_APPEND] = newHTML
+        toEl.querySelectorAll("[id]").forEach(el => {
+          let existing = fromEl.querySelector(`[id="${el.id}"]`)
+          if(existing){
+            changes.discarded.push(existing)
+            el.remove()
+            existing.replaceWith(el)
+          }
+        })
+        let operation = type === "append" ? "beforeend" : "afterbegin"
+        fromEl.insertAdjacentHTML(operation, toEl.innerHTML)
+        fromEl.querySelectorAll(`[${phxHook}]`).forEach(el => changes.added.push(el))
         break
       default: throw new Error(`unsupported phx-update "${type}"`)
     }
+    changes.updated.push({fromEl, toEl: fromEl})
     return true
   },
 
@@ -654,14 +668,16 @@ let DOM = {
     let selectionStart = null
     let selectionEnd = null
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
-    let containerTagName = container.tagName.toLowerCase()
+    let phxHook = view.liveSocket.binding(PHX_HOOK)
+    let diffContainer = container.cloneNode()
+    diffContainer.innerHTML = html
 
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
       selectionEnd = focused.selectionEnd
     }
 
-    morphdom(container, `<${containerTagName}>${html}</${containerTagName}>`, {
+    morphdom(container, diffContainer, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
@@ -688,8 +704,7 @@ let DOM = {
       onBeforeElUpdated: function(fromEl, toEl) {
         if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
 
-        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate)){
-          changes.updated.push({fromEl, toEl: fromEl})
+        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes)){
           return false
         }
 

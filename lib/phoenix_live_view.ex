@@ -711,9 +711,18 @@ defmodule Phoenix.LiveView do
     * append - append the new DOM contents instead of replacing
     * prepend - prepend the new DOM contents instead of replacing
 
+  When appending or prepending elements containing an ID already present
+  in the container, LiveView will replace the existing element with the
+  new content instead appending or prepending a new element.
+
+  *Limitations*: LiveView will not apprend or prepend duplicate content that
+  was just added. If your goal is to append exactly duplicate rows for things
+  such as a placeholder inputs, apply a unique ID to the newly appeneded rows
+  to mark the content as unique.
+
   ### JS Interop and client controlled DOM
 
-  To handle custom client-side JavaScript when an element is added, updated,
+  To handle custom client-side javascript when an element is added, updated,
   or removed by the server, a hook object may be provided with the following
   life-cycle callbacks:
 
