@@ -1,7 +1,12 @@
-## 0.1.1-dev
+## 0.1.0 (2019-08-27)
 
 ### Enhancements
   - Use optimized insertAdjacentHTML for faster append/prepend and proper css animation handling 
+  - Allow for replacing previously appended/prepended elements by replacing duplicate IDs during append/prepend instead of adding new DOM nodes
+
+### Bug Fixes
+  - Fix duplicate append/prepend updates when parent content is updated
+  - Fix JS hooks not being applied for appending and prepended content
 
 ## 0.1.0 (2019-08-25)
 
