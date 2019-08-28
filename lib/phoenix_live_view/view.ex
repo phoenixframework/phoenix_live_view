@@ -379,7 +379,7 @@ defmodule Phoenix.LiveView.View do
 
       :error ->
         raise ArgumentError,
-              "cannot live_redirect/link_link to #{inspect(uri)} because " <>
+              "cannot live_redirect/live_link to #{inspect(uri)} because " <>
                 "it isn't defined in #{inspect(router)}"
     end
   end
