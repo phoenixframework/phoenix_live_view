@@ -1018,33 +1018,26 @@ export class View {
   }
 
   pushEvent(type, el, phxEvent, meta){
-    let value = el.getAttribute(this.binding("value"))
-    if(value === null){
-      value = meta
-      let prefix = this.binding("value-")
-      for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
-        value[key.replace(prefix, "")] = el.getAttribute(key)
-      }
-      if(el.value !== undefined){ value.value = el.value }
+    let prefix = this.binding("value-")
+    for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
+      meta[key.replace(prefix, "")] = el.getAttribute(key)
     }
+    if(el.value !== undefined){ meta.value = el.value }
     
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
-      value: value
+      value: meta
     })
   }
 
   pushKey(keyElement, kind, phxEvent, meta){
-    let value = keyElement.getAttribute(this.binding("value"))
-    if(value === null){
-      value = meta
-      if(keyElement.value !== undefined){ value.value = keyElement.value }
-    }
+    if(keyElement.value !== undefined){ meta.value = keyElement.value }
+
     this.pushWithReply("event", {
       type: kind,
       event: phxEvent,
-      value: value
+      value: meta
     })
   }
 

@@ -405,12 +405,13 @@ defmodule Phoenix.LiveView do
 
   To detect when the page itself has received focus or blur,
   `phx-target` may be specified as `"window"`. Like other
-  bindings, a `phx-value` can be provided on the bound element,
-  otherwise the input's value will be used. For example:
+  bindings, `phx-value-*` can be provided on the bound element,
+  and those values will be sent as part of the payload. For example:
 
       <div class="container"
           phx-focus="page-active"
           phx-blur="page-inactive"
+          phx-value-page="123"
           phx-target="window">
         ...
       </div>
