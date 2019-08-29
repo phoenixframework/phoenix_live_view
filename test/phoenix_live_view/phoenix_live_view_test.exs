@@ -461,6 +461,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(clock_view, {%ArgumentError{message: msg}, _stack})
       assert msg =~ "attempted to live_redirect from a nested child socket"
     end
+
+    test "live_redirect from a non-router live view raises", %{conn: conn} do
+      conn = get(conn, "clock_controller")
+      {:ok, clock_view, _html} = live(conn)
+
+      send(
+        clock_view.pid,
+        {:run,
+        fn socket ->
+          {:noreply, LiveView.live_redirect(socket, to: "/thermo")}
+        end}
+        )
+
+      assert_remove(clock_view, {%ArgumentError{message: msg}, _stack})
+      assert msg =~ "cannot live_redirect because this LiveView isn't defined in the Router"
+    end
   end
 
   describe "live_link" do

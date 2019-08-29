@@ -17,6 +17,9 @@ defmodule Phoenix.LiveViewTest.Router do
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
+    # controller test
+    get "/clock_controller", ClockController, :index
+
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
     live "/router/thermo_session/:id", DashboardLive, session: [:path_params, :user_id]
