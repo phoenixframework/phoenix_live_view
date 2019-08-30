@@ -16,7 +16,8 @@ defmodule Phoenix.LiveView.Socket do
             private: %{},
             mounted: false,
             redirected: nil,
-            connected?: false
+            connected?: false,
+            plug: nil
 
   channel "lv:*", Phoenix.LiveView.Channel
 

@@ -454,7 +454,8 @@ defmodule Phoenix.LiveView.Channel do
         parent_pid: parent,
         id: id,
         connect_params: connect_params,
-        assigned_new: {parent_assigns, assigned_new}
+        assigned_new: {parent_assigns, assigned_new},
+        plug: fetch_plug(url, router)
       })
 
     case View.call_mount(view, session, lv_socket) do
@@ -478,6 +479,14 @@ defmodule Phoenix.LiveView.Channel do
       other ->
         View.raise_invalid_mount(other, view)
     end
+  end
+
+  defp fetch_plug(url, router) do
+    %URI{host: host, path: path} = URI.parse(url)
+
+    router
+    |> Phoenix.Router.route_info("GET", path, host)
+    |> Map.get(:plug)
   end
 
   defp reply_mount(result, from, original_uri, view) do

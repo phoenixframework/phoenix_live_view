@@ -1055,7 +1055,13 @@ defmodule Phoenix.LiveView do
   """
   def live_redirect(%Socket{} = socket, opts) do
     kind = if opts[:replace], do: :replace, else: :push
-    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
+
+    case socket do
+      %{plug: Phoenix.LiveView.Plug} ->
+        LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
+      %{} ->
+        raise ArgumentError, "cannot live_redirect because this LiveView isn't defined in the Router"
+    end
   end
 
   @doc """

@@ -269,11 +269,14 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 
   def mount(%{test_pid: pid} = session, socket) do
-    do_mount(session, assign(socket, :test_pid, pid))
+     do_mount(session, assign(socket, :test_pid, pid))
   end
 
   defp do_mount(%{test: %{external_disconnected_redirect: redir}}, socket) do
     %{to: to} = redir
+
+    socket = Map.put(socket, :plug, Phoenix.LiveView.Plug)
+
     {:ok, live_redirect(socket, to: to)}
   end
 
