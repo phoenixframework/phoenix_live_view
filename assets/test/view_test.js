@@ -101,7 +101,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('keyup')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('1')
+        expect(payload.value).toEqual({"value": "1"})
         return {
           receive() {}
         }
@@ -109,7 +109,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('keyup', input, { target: input })
+    view.pushEvent('keyup', input, "click", {})
   })
 
   test('pushKey', function() {
@@ -124,7 +124,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('keydown')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('1')
+        expect(payload.value).toEqual({"key": "A", "value": "1"})
         return {
           receive() {}
         }
@@ -132,7 +132,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushKey(input, 'keydown', { target: input }, () => {})
+    view.pushKey(input, 'keydown', 'move', {key: "A"})
   })
 
   test('pushInput', function() {
@@ -147,7 +147,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('form')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('increment=1')
+        expect(payload.value).toBe('increment=1&_target=increment')
         return {
           receive() {}
         }
@@ -155,7 +155,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushInput(input, { target: input })
+    view.pushInput(input, 'validate', { target: input })
   })
 
   test('submitForm', function() {
