@@ -339,10 +339,6 @@ defmodule Phoenix.LiveView.Channel do
     push(state, "live_redirect", %{to: to, kind: kind})
   end
 
-  defp push_internal_live_redirect(state, %{to: to, kind: kind}, ref) do
-    reply(state, ref, :ok, %{live_redirect: %{to: to, kind: kind}})
-  end
-
   defp push_redirect(state, %{to: to}, nil = _ref) do
     flash = View.get_flash(state.socket)
     push(state, "redirect", %{to: to, flash: View.sign_flash(state.socket, flash)})
