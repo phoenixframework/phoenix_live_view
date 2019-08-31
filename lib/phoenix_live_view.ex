@@ -718,7 +718,7 @@ defmodule Phoenix.LiveView do
 
   *Limitations*: LiveView will not apprend or prepend duplicate content that
   was just added. If your goal is to append exactly duplicate rows for things
-  such as a placeholder inputs, apply a unique ID to the newly appeneded rows
+  such as a placeholder inputs, apply a unique ID to the newly appended rows
   to mark the content as unique.
 
   ### JS Interop and client controlled DOM
