@@ -406,6 +406,9 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
+
+      // This is the source of the error
+      // https://github.com/phoenixframework/phoenix_live_view/issues/298
       e.preventDefault()
      
       let meta = {
