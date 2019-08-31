@@ -407,10 +407,8 @@ export class LiveSocket {
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
 
-      // This is the source of the error
-      // https://github.com/phoenixframework/phoenix_live_view/issues/298
-      e.preventDefault()
-     
+      e.stopPropagation()
+
       let meta = {
         altKey: e.altKey, 
         shiftKey: e.shiftKey,
