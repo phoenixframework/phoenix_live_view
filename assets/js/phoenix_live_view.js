@@ -406,7 +406,6 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-
       e.stopPropagation()
 
       let meta = {
