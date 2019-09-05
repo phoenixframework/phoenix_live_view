@@ -18,6 +18,8 @@ defmodule Phoenix.LiveView.Socket do
             redirected: nil,
             connected?: false
 
+  @type t :: %__MODULE__{}
+
   channel "lv:*", Phoenix.LiveView.Channel
 
   @doc """
