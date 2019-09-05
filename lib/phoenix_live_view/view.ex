@@ -1,7 +1,6 @@
 defmodule Phoenix.LiveView.View do
   @moduledoc false
 
-
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
@@ -274,13 +273,14 @@ defmodule Phoenix.LiveView.View do
     case static_mount(conn, view, session) do
       {:ok, socket, session_token} ->
         attrs = [
-          {:id, dom_id(socket)},
-          {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
+          {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
+          | extended_attrs
         ]
 
-        html = Phoenix.HTML.Tag.content_tag(tag, attrs) do
-          render(socket, view)
-        end
+        html =
+          Phoenix.HTML.Tag.content_tag tag, attrs do
+            render(socket, view)
+          end
 
         {:ok, html}
 
@@ -310,8 +310,8 @@ defmodule Phoenix.LiveView.View do
     session_token = sign_root_session(socket, view, session)
 
     attrs = [
-      {:id, dom_id(socket)},
-      {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
+      {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
+      | extended_attrs
     ]
 
     tag
@@ -381,8 +381,8 @@ defmodule Phoenix.LiveView.View do
     case nested_static_mount(parent, view, session, child_id) do
       {:ok, socket, static_token} ->
         attrs = [
-          {:id, socket.id},
           {:data,
+           phx_id: socket.id,
            phx_view: inspect(view),
            phx_session: "",
            phx_static: static_token,
@@ -390,9 +390,10 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = Phoenix.HTML.Tag.content_tag(tag, attrs) do
-          render(socket, view)
-        end
+        html =
+          Phoenix.HTML.Tag.content_tag tag, attrs do
+            render(socket, view)
+          end
 
         {:ok, html}
 
@@ -407,8 +408,8 @@ defmodule Phoenix.LiveView.View do
     session_token = sign_child_session(socket, view, session)
 
     attrs = [
-      {:id, socket.id},
       {:data,
+       phx_id: socket.id,
        phx_parent_id: dom_id(parent),
        phx_view: inspect(view),
        phx_session: session_token,
@@ -566,6 +567,7 @@ defmodule Phoenix.LiveView.View do
     if mounted?(socket) do
       raise RuntimeError, "attempted to configure :#{key} outside of mount/2"
     end
+
     do_put_opt(socket, key, val)
   end
 
