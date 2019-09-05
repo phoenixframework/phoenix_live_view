@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.View do
   @moduledoc false
-  import Phoenix.HTML, only: [sigil_E: 2]
+
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
@@ -287,11 +287,9 @@ defmodule Phoenix.LiveView.View do
           {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
         ]
 
-        html = ~E"""
-        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, view) %>
-        <% end %>
-        """
+        html = Phoenix.HTML.Tag.content_tag(tag, attrs) do
+          render(socket, view)
+        end
 
         {:ok, html}
 
@@ -399,11 +397,9 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = ~E"""
-        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, view) %>
-        <% end %>
-        """
+        html = Phoenix.HTML.Tag.content_tag(tag, attrs) do
+          render(socket, view)
+        end
 
         {:ok, html}
 
@@ -427,10 +423,7 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    html = ~E"""
-    <%= Phoenix.HTML.Tag.content_tag(tag, "", attrs) %>
-    """
-
+    html = Phoenix.HTML.Tag.content_tag(tag, "", attrs)
     {:ok, html}
   end
 
