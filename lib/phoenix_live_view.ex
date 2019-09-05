@@ -294,7 +294,13 @@ defmodule Phoenix.LiveView do
   a socket's assigns change, `render/1` is automatically invoked, and the
   updates are sent to the client.
 
-  ## LiveEEx Templates
+  ## Assigns and LiveEEx Templates
+
+  All of the data in a LiveView is stored in the socket as assigns.
+  The `assign/2` and `assign/3` functions help store those values.
+  Those values can be accessed in the LiveView as `socket.assigns.name`
+  but they are most commonly accessed inside LiveView templates as
+  `@name`.
 
   `Phoenix.LiveView`'s built-in templates provided by the `.leex`
   extension or `~L` sigil, stands for Live EEx. They are similar
@@ -359,6 +365,23 @@ defmodule Phoenix.LiveView do
           |> assign(description: description)
           |> configure_temporary_assigns([:description])}
       end
+
+  ## Containers
+
+  When a `LiveView` is rendered, its contents are wrapped in a container.
+  By default, said container is a `div` tag with a handful of `LiveView`
+  specific attributes.
+
+  The container can be customized in different ways:
+
+    * You can change the `container_tag` on `use Phoenix.LiveView`:
+
+          use Phoenix.LiveView, container_tag: :tr
+
+    * You can change the container tag and attributes when calling
+      `live_render` (as well as on your `live` call in your router):
+
+          live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
   ## Bindings
 
@@ -796,13 +819,19 @@ defmodule Phoenix.LiveView do
                       handle_call: 3,
                       handle_info: 2
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
+      opts = unquote(opts)
+      @__live__ Map.merge(%{container_tag: :div}, Map.new(opts))
+
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
       @impl unquote(__MODULE__)
       def mount(_session, socket), do: {:ok, socket}
+
+      @doc false
+      def __live__, do: @__live__
 
       defoverridable mount: 2
     end
@@ -819,7 +848,7 @@ defmodule Phoenix.LiveView do
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
     * `:child_id` - the ID to uniquely identify a child LiveView when
       live rendering children of the same type.
 

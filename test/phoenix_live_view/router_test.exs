@@ -23,6 +23,11 @@ defmodule Phoenix.LiveView.RouterTest do
     assert conn.resp_body =~ ~s(session: %{user_id: "chris"})
   end
 
+  test "routing with module container", %{conn: conn} do
+    conn = get(conn, "/thermo")
+    assert conn.resp_body =~ ~r/<article[^>]*data-phx-view="Phoenix.LiveViewTest.ThermostatLive"[^>]*>/
+  end
+
   test "routing with container", %{conn: conn} do
     conn = get(conn, "/router/thermo_container/123")
     assert conn.resp_body =~ ~r/<span[^>]*data-phx-view="Phoenix.LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
