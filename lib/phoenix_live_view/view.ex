@@ -136,14 +136,16 @@ defmodule Phoenix.LiveView.View do
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
-    clear_changed(%Socket{socket | private: Map.drop(socket.private, [:connect_params])})
+    socket
+    |> clear_changed()
+    |> drop_private([:connect_params])
   end
 
   @doc """
   Prunes the assigned_new information from the socket.
   """
-  def prune_assigned_new(%Socket{private: private} = socket) do
-    %Socket{socket | private: Map.delete(private, :assigned_new)}
+  def prune_assigned_new(%Socket{} = socket) do
+    drop_private(socket, :assigned_new)
   end
 
   @doc """
@@ -579,5 +581,9 @@ defmodule Phoenix.LiveView.View do
   defp do_put_opt(socket, :temporary_assigns, keys) when is_list(keys) do
     temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
     %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
+  end
+
+  defp drop_private(%Socket{private: private} = socket, key_or_keys) do
+    %Socket{socket | private: Map.drop(private, List.wrap(key_or_keys))}
   end
 end
