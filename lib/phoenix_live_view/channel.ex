@@ -253,8 +253,30 @@ defmodule Phoenix.LiveView.Channel do
 
   defp view_module(%{socket: %Socket{view: view}}), do: view
 
-  defp decode("form", _router, url_encoded), do: Plug.Conn.Query.decode(url_encoded)
+  defp decode("form", _router, url_encoded) do
+    url_encoded
+    |> Plug.Conn.Query.decode()
+    |> decode_merge_target()
+  end
+
   defp decode(_, _router, value), do: value
+
+  defp decode_merge_target(%{"_target" => target} = params) when is_list(target), do: params
+  defp decode_merge_target(%{"_target" => target} = params) when is_binary(target) do
+    keyspace = target |> Plug.Conn.Query.decode() |> gather_keys([])
+    Map.put(params, "_target", Enum.reverse(keyspace))
+  end
+
+  defp decode_merge_target(%{} = params), do: params
+
+  defp gather_keys(%{} = map, acc) do
+    case Enum.at(map, 0) do
+      {key, val} -> gather_keys(val, [key | acc])
+      nil -> acc
+    end
+  end
+
+  defp gather_keys(nil, acc), do: acc
 
   defp handle_changed(state, %Socket{} = new_socket, ref, pending_internal_live_redirect \\ nil) do
     new_state = %{state | socket: new_socket}
@@ -435,9 +457,12 @@ defmodule Phoenix.LiveView.Channel do
         assigned_new: {parent_assigns, assigned_new}
       })
 
-    case view.mount(session, lv_socket) do
+    case View.call_mount(view, session, lv_socket) do
       {:ok, %Socket{} = lv_socket} ->
-        state = lv_socket |> View.prune_assigned_new() |> build_state(phx_socket, url)
+        state =
+          lv_socket
+          |> View.prune_assigned_new()
+          |> build_state(phx_socket, url)
 
         state
         |> call_mount_handle_params({:mount, %{to: url}})
@@ -479,16 +504,19 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, uri_str) do
-    put_uri(%{
-      socket: lv_socket,
-      serializer: phx_socket.serializer,
-      topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid,
-      join_ref: phx_socket.join_ref,
-      children_pids: %{},
-      children_ids: %{},
-      uri: nil,
-    }, uri_str)
+    put_uri(
+      %{
+        socket: lv_socket,
+        serializer: phx_socket.serializer,
+        topic: phx_socket.topic,
+        transport_pid: phx_socket.transport_pid,
+        join_ref: phx_socket.join_ref,
+        children_pids: %{},
+        children_ids: %{},
+        uri: nil
+      },
+      uri_str
+    )
   end
 
   defp register_with_parent(nil, _view, _id, _assigned_new), do: %{}
@@ -540,6 +568,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp to_url(%{} = _state, "http://" <> _ = url), do: url
   defp to_url(%{} = _state, "https://" <> _ = url), do: url
+
   defp to_url(%{uri: %URI{host: host, port: port, scheme: scheme}}, to) do
     to_string(%URI{host: host, port: port, scheme: scheme, path: to})
   end

@@ -3,108 +3,8 @@
 Phoenix LiveView JavaScript Client
 ================================================================================
 
-## Usage
+See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
-Instantiate a single LiveSocket instance to enable LiveView
-client/server interaction, for example:
-
-    import LiveSocket from "phoenix_live_view"
-
-    let liveSocket = new LiveSocket("/live")
-    liveSocket.connect()
-
-All options are passed directly to the `Phoenix.Socket` constructor,
-except for the following LiveView specific options:
-
-  * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
-
-## Events
-
-### Click Events
-
-When pushed, the value sent to the server will be chosen with the
-following priority:
-
-  - An optional `"phx-value"` binding on the clicked element
-  - The clicked element's `value` property
-  - An empty string
-
-### Key Events
-
-The onkeydown and onkeyup events are supported via
-the `phx-keydown`, and `phx-keyup` bindings. By
-default, the bound element will be the event listener, but an
-optional `phx-target` may be provided which may be `"window"`.
-
-When pushed, the value sent to the server will be the event's `key`.
-
-### Focus and Blur Events
-
-Focus and blur events may be bound to DOM elements that emit
-such events, using the `phx-blur`, and `phx-focus` bindings, for example:
-
-    <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
-
-To detect when the page itself has receive focus or blur,
-`phx-target` may be specified as `"window"`. Like other
-bindings, a `phx-value` can be provided on the bound element,
-otherwise the input's value will be used. For example:
-
-    <div class="container"
-        phx-focus="page-active"
-        phx-blur="page-inactive"
-        phx-target="window">
-    ...
-    </div>
-
-## Forms and input handling
-
-The JavaScript client is always the source of truth for current
-input values. For any given input with focus, LiveView will never
-overwrite the input's current value, even if it deviates from
-the server's rendered updates. This works well for updates where
-major side effects are not expected, such as form validation errors,
-or additive UX around the user's input values as they fill out a form.
-For these use cases, the `phx-change` input does not concern itself
-with disabling input editing while an event to the server is inflight.
-
-The `phx-submit` event is used for form submissions where major side-effects
-typically happen, such as rendering new containers, calling an external
-service, or redirecting to a new page. For these use-cases, the form inputs
-are set to `readonly` on submit, and any submit button is disabled until
-the client gets an acknowledgment that the server has processed the
-`phx-submit` event. Following an acknowledgment, any updates are patched
-to the DOM as normal, and the last input with focus is restored if the
-user has not otherwise focused on a new input during submission.
-
-To handle latent form submissions, any HTML tag can be annotated with
-`phx-disable-with`, which swaps the element's `innerText` with the provided
-value during form submission. For example, the following code would change
-the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
-
-    <button type="submit" phx-disable-with="Saving...">Save</button>
-
-
-## Loading state and Errors
-
-By default, the following classes are applied to the live view's parent
-container:
-
-  - `"phx-connected"` - applied when the view has connected to the server
-  - `"phx-disconnected"` - applied when the view is not connected to the server
-  - `"phx-error"` - applied when an error occurs on the server. Note, this
-    class will be applied in conjunction with `"phx-disconnected"` if connection
-    to the server is lost.
-
-When a form bound with `phx-submit` is submitted, the `phx-loading` class
-is applied to the form, which is removed on update.
-
-## Interop with client controlled DOM
-
-A container can be marked with `phx-ignore`, allowing the DOM patch
-operations to avoid updating or removing portions of the LiveView. This
-is useful for client-side interop with existing libraries that do their
-own DOM operations.
 */
 
 import morphdom from "morphdom"
@@ -119,24 +19,31 @@ const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_ERROR_FOR = "data-phx-error-for"
-const PHX_HAS_FOCUSED = "data-phx-has-focused"
+const PHX_HAS_FOCUSED = "phx-has-focused"
 const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
-const PHX_HAS_SUBMITTED = "data-phx-has-submitted"
+const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
+const PHX_HOOK = "hook"
+const PHX_UPDATE = "update"
 const LOADER_TIMEOUT = 1
-const BEFORE_UNLOAD_LOADER_TIMEOUT = 500
+const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
+const PHX_PREV_APPEND = "phxPrevAppend"
 
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
+
+
+// wraps value in closure or returns closure
+let closure = (val) => typeof val === "function" ? val : function(){ return val }
 
 let clone = (obj) => { return JSON.parse(JSON.stringify(obj)) }
 
@@ -165,10 +72,12 @@ let maybe = (el, key) => {
   }
 }
 
-let serializeForm = (form) => {
+let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
   let params = new URLSearchParams()
   for(let [key, val] of formData.entries()){ params.append(key, val) }
+  for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
+
   return params.toString()
 }
 
@@ -176,8 +85,8 @@ let recursiveMerge = (target, source) => {
   for(let key in source){
     let val = source[key]
     let targetVal = target[key]
-    if(isObject(val) && targetVal){
-      if(isObject(targetVal) && targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
+    if(isObject(val) && isObject(targetVal)){
+      if(targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
       recursiveMerge(targetVal, val)
     } else {
       target[key] = val
@@ -251,7 +160,7 @@ export class LiveSocket {
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
-    this.params = opts.params || {}
+    this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
@@ -263,13 +172,13 @@ export class LiveSocket {
     this.href = window.location.href
     this.pendingLink = null
     this.currentLocation = clone(window.location)
+    this.hooks = opts.hooks || {}
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
         this.destroyAllViews()
         this.joinRootViews()
       }
-
       this.unloaded = false
     })
     window.addEventListener("beforeunload", e => {
@@ -302,13 +211,15 @@ export class LiveSocket {
 
   // private
 
+  getHookCallbacks(hookName){ return this.hooks[hookName] }
+
   isUnloaded(){ return this.unloaded }
 
   getBindingPrefix(){ return this.bindingPrefix }
 
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
 
-  channel(topic, params){ return this.socket.channel(topic, params || {}) }
+  channel(topic, params){ return this.socket.channel(topic, params) }
 
   joinRootViews(){
     Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
@@ -417,17 +328,32 @@ export class LiveSocket {
     this.bindNav()
     this.bindForms()
     this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
-      view.pushKey(target, type, e, phxEvent)
+      view.pushKey(target, type, phxEvent, {
+        altGraphKey: e.altGraphKey,
+        altKey: e.altKey,
+        charCode: e.charCode,
+        code: e.code,
+        ctrlKey: e.ctrlKey,
+        key: e.key,
+        keyCode: e.keyCode,
+        keyIdentifier: e.keyIdentifier,
+        keyLocation: e.keyLocation,
+        location: e.location,
+        metaKey: e.metaKey,
+        repeat: e.repeat,
+        shiftKey: e.shiftKey,
+        which: e.which
+      })
     })
     this.bindTargetable({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       if(!phxTarget){
-        view.pushEvent(type, targetEl, phxEvent)
+        view.pushEvent(type, targetEl, phxEvent, {type: "focus"})
       }
     })
     this.bindTargetable({blur: "blur", focus: "focus"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget && !phxTarget !== "window"){
-        view.pushEvent(type, targetEl, phxEvent)
+        view.pushEvent(type, targetEl, phxEvent, {type: e.type})
       }
     })
 
@@ -480,8 +406,22 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.preventDefault()
-      this.owner(target, view => view.pushEvent("click", target, phxEvent))
+      e.stopPropagation()
+
+      let meta = {
+        altKey: e.altKey, 
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        x: e.x || e.clientX,
+        y: e.y || e.clientY,
+        pageX: e.pageX,
+        pageY: e.pageY,
+        screenX: e.screenX,
+        screenY: e.screenY,
+      }
+
+      this.owner(target, view => view.pushEvent("click", target, phxEvent, meta))
     }, false)
   }
 
@@ -489,6 +429,7 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       if(!this.registerNewLocation(window.location)){ return }
+
       let href = window.location.href
 
       if(this.root.isConnected()) {
@@ -500,10 +441,13 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent) { return }
+      if(!phxEvent){ return }
       let href = target.href
       e.preventDefault()
-      this.root.pushInternalLink(href, () => Browser.pushState(phxEvent, {}, href))
+      this.root.pushInternalLink(href, () => {
+        Browser.pushState(phxEvent, {}, href)
+        this.registerNewLocation(window.location)
+      })
     }, false)
   }
 
@@ -564,11 +508,11 @@ export class LiveSocket {
         if(!phxEvent){ return }
         this.owner(input, view => {
           if(DOM.isTextualInput(input)){
-            input.setAttribute(PHX_HAS_FOCUSED, true)
+            input[PHX_HAS_FOCUSED] = true
           } else {
             this.setActiveElement(input)
           }
-          view.pushInput(input, phxEvent)
+          view.pushInput(input, phxEvent, e)
         })
       }, false)
     }
@@ -668,13 +612,14 @@ let DOM = {
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.remove(PHX_LOADING_CLASS)
+
     Browser.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         if(el.nodeName === "INPUT") {
-            el.value = value
+          el.value = value
         } else {
-            el.innerText = value
+          el.innerText = value
         }
         el.removeAttribute(`${disableWith}-restore`)
       }
@@ -700,7 +645,7 @@ let DOM = {
     if(!field) { return }
     let input = document.getElementById(field)
 
-    if(field && !(input.getAttribute(PHX_HAS_FOCUSED) || input.form.getAttribute(PHX_HAS_SUBMITTED))){
+    if(field && !(input[PHX_HAS_FOCUSED] || input.form[PHX_HAS_SUBMITTED])){
       el.style.display = "none"
     }
   },
@@ -709,24 +654,56 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  isIgnored(el, phxIgnore){
-    return (el.getAttribute && el.getAttribute(phxIgnore) != null) ||
-           (el.parentNode && el.parentNode.getAttribute(phxIgnore) != null)
+  applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes){
+    let type = toEl.getAttribute && toEl.getAttribute(phxUpdate)
+    if(!type || type === "replace"){
+      return false
+    } else {
+      DOM.mergeAttrs(fromEl, toEl)
+    }
+
+    switch(type){
+      case "ignore": break
+      case "append":
+      case "prepend":
+        let newHTML = toEl.innerHTML
+        if(fromEl[PHX_PREV_APPEND] === newHTML){ break }
+
+        fromEl[PHX_PREV_APPEND] = newHTML
+        toEl.querySelectorAll("[id]").forEach(el => {
+          let existing = fromEl.querySelector(`[id="${el.id}"]`)
+          if(existing){
+            changes.discarded.push(existing)
+            el.remove()
+            existing.replaceWith(el)
+          }
+        })
+        let operation = type === "append" ? "beforeend" : "afterbegin"
+        fromEl.insertAdjacentHTML(operation, toEl.innerHTML)
+        fromEl.querySelectorAll(`[${phxHook}]`).forEach(el => changes.added.push(el))
+        break
+      default: throw new Error(`unsupported phx-update "${type}"`)
+    }
+    changes.updated.push({fromEl, toEl: fromEl})
+    return true
   },
 
   patch(view, container, id, html){
+    let changes = {added: [], updated: [], discarded: []}
     let focused = view.liveSocket.getActiveElement()
     let selectionStart = null
     let selectionEnd = null
-    let phxIgnore = view.liveSocket.binding("ignore")
-    let containerTagName = container.tagName.toLowerCase();
+    let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let phxHook = view.liveSocket.binding(PHX_HOOK)
+    let diffContainer = container.cloneNode()
+    diffContainer.innerHTML = html
 
     if(DOM.isTextualInput(focused)){
       selectionStart = focused.selectionStart
       selectionEnd = focused.selectionEnd
     }
 
-    morphdom(container, `<${containerTagName}>${html}</${containerTagName}>`, {
+    morphdom(container, diffContainer, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
@@ -738,22 +715,24 @@ let DOM = {
         if(DOM.isPhxChild(el) && view.ownsElement(el)){
           view.onNewChildAdded()
           return true
+        } else {
+          changes.added.push(el)
         }
       },
       onBeforeNodeDiscarded: function(el){
-        if(DOM.isIgnored(el, phxIgnore)){ return false }
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewById(el.id)
           return true
         }
+        changes.discarded.push(el)
       },
       onBeforeElUpdated: function(fromEl, toEl) {
-        if (fromEl.isEqualNode(toEl)) {
-           return false // Skip this entire sub-tree if both elems (and children) are equal
-        }
+        if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
 
-        if(DOM.isIgnored(fromEl, phxIgnore)){ return false }
+        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes)){
+          return false
+        }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -769,18 +748,20 @@ let DOM = {
         }
 
         // input handling
-        if(fromEl.getAttribute && fromEl.getAttribute(PHX_HAS_SUBMITTED)){
-          toEl.setAttribute(PHX_HAS_SUBMITTED, true)
+        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){
+          toEl[PHX_HAS_SUBMITTED] = true
         }
-        if(fromEl.getAttribute && fromEl.getAttribute(PHX_HAS_FOCUSED)){
-          toEl.setAttribute(PHX_HAS_FOCUSED, true)
+        if(fromEl[PHX_HAS_FOCUSED]){
+          toEl[PHX_HAS_FOCUSED] = true
         }
         DOM.discardError(toEl)
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
+          changes.updated.push({fromEl, toEl: fromEl})
           return false
         } else {
+          changes.updated.push({fromEl, toEl})
           return true
         }
       }
@@ -790,6 +771,7 @@ let DOM = {
       DOM.restoreFocus(focused, selectionStart, selectionEnd)
     })
     Browser.dispatchEvent(document, "phx:update")
+    return changes
   },
 
   mergeAttrs(target, source){
@@ -832,13 +814,15 @@ export class View {
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
+    this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
     this.joinedOnce = false
+    this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href || this.liveSocket.root.href,
-        params: this.liveSocket.params,
+        params: this.liveSocket.params(this.view),
         session: this.getSession(),
         static: this.getStatic()
       }
@@ -857,15 +841,20 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    clearTimeout(this.loaderTimer)
+    let onFinished = () => {
+      callback()
+      for(let id in this.viewHooks){ this.destroyHook(this.viewHooks[id]) }
+    }
     if(this.hasGracefullyClosed()){
       this.log("destroyed", () => ["the server view has gracefully closed"])
-      callback()
+      onFinished()
     } else {
       this.log("destroyed", () => ["the child has been removed from the parent"])
       this.channel.leave()
-        .receive("ok", callback)
-        .receive("error", callback)
-        .receive("timeout", callback)
+        .receive("ok", onFinished)
+        .receive("error", onFinished)
+        .receive("timeout", onFinished)
     }
   }
 
@@ -885,12 +874,14 @@ export class View {
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
+      for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
       this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     }
   }
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
 
@@ -902,7 +893,10 @@ export class View {
     this.log("join", () => ["", JSON.stringify(rendered)])
     this.rendered = rendered
     this.hideLoader()
-    DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
+    changes.added.push(this.el)
+    Browser.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
+    this.triggerHooks(changes)
     this.joinNewChildren()
     if(live_redirect){
       let {kind, to} = live_redirect
@@ -927,8 +921,43 @@ export class View {
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
     this.newChildrenAdded = false
-    DOM.patch(this, this.el, this.id, html)
+    this.triggerHooks(DOM.patch(this, this.el, this.id, html))
     if(this.newChildrenAdded){ this.joinNewChildren() }
+  }
+
+  getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
+
+  addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
+    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(this.binding(PHX_HOOK)))
+    if(callbacks && this.ownsElement(el)){
+      let hook = new ViewHook(this, el, callbacks)
+      this.viewHooks[ViewHook.elementID(hook.el)] = hook
+      hook.__trigger__("mounted")
+    }
+  }
+
+  destroyHook(hook){
+    hook.__trigger__("destroyed")
+    delete this.viewHooks[ViewHook.elementID(hook.el)]
+  }
+
+  triggerHooks(changes){
+    changes.updated.push({fromEl: this.el, toEl: this.el})
+    changes.added.forEach(el => this.addHook(el))
+    changes.updated.forEach(({fromEl, toEl}) => {
+      let hook = this.getHook(fromEl)
+      let phxAttr = this.binding(PHX_HOOK)
+      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
+        hook.__trigger__("updated")
+      } else if(hook){
+        this.destroyHook(hook)
+        this.addHook(fromEl)
+      }
+    })
+    changes.discarded.forEach(el => {
+      let hook = this.getHook(el)
+      hook && this.destroyHook(hook)
+    })
   }
 
   applyPendingUpdates(){
@@ -1017,28 +1046,35 @@ export class View {
     )
   }
 
-  pushEvent(type, el, phxEvent){
-    let val = el.getAttribute(this.binding("value")) || el.value || ""
+  pushEvent(type, el, phxEvent, meta){
+    let prefix = this.binding("value-")
+    for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
+      meta[key.replace(prefix, "")] = el.getAttribute(key)
+    }
+    if(el.value !== undefined){ meta.value = el.value }
+    
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
-      value: val
+      value: meta
     })
   }
 
-  pushKey(keyElement, kind, event, phxEvent){
+  pushKey(keyElement, kind, phxEvent, meta){
+    if(keyElement.value !== undefined){ meta.value = keyElement.value }
+
     this.pushWithReply("event", {
       type: kind,
       event: phxEvent,
-      value: keyElement.value || event.key
+      value: meta
     })
   }
 
-  pushInput(inputEl, phxEvent){
+  pushInput(inputEl, phxEvent, e){
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form)
+      value: serializeForm(inputEl.form, {_target: e.target.name})
     })
   }
 
@@ -1072,7 +1108,7 @@ export class View {
 
   submitForm(form, phxEvent){
     let prefix = this.liveSocket.getBindingPrefix()
-    form.setAttribute(PHX_HAS_SUBMITTED, "true")
+    form[PHX_HAS_SUBMITTED] = "true"
     DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, phxEvent, () => {
@@ -1082,6 +1118,29 @@ export class View {
   }
 
   binding(kind){ return this.liveSocket.binding(kind)}
+}
+
+let viewHookID = 1
+class ViewHook {
+  static makeID(){ return viewHookID++ }
+  static elementID(el){ return el.phxHookId }
+
+  constructor(view, el, callbacks){
+    this.__view = view
+    this.__callbacks = callbacks
+    this.el = el
+    this.viewName = view.view
+    this.el.phxHookId = this.constructor.makeID()
+    for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
+  }
+
+  pushEvent(event, payload = {}){
+    this.__view.pushWithReply("event", {type: "hook", event: event, value: payload})
+  }
+  __trigger__(kind){
+    let callback = this.__callbacks[kind]
+    callback && callback.call(this)
+  }
 }
 
 export default LiveSocket

@@ -65,7 +65,12 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, update(socket, :val, &(&1 - 1))}
   end
 
-  def handle_event("save", %{"temp" => new_temp}, socket) do
+
+  def handle_event("save", %{"temp" => new_temp} = params, socket) do
+    {:noreply, assign(socket, val: new_temp, greeting: inspect(params["_target"]))}
+  end
+
+  def handle_event("save", new_temp, socket) do
     {:noreply, assign(socket, :val, new_temp)}
   end
 
@@ -221,11 +226,11 @@ defmodule Phoenix.LiveViewTest.RootLive do
 
   def mount(%{user_id: user_id}, socket) do
     {:ok,
-      socket
-      |> assign(:dynamic_child, false)
-      |> assign_new(:current_user, fn ->
-        %{name: "user-from-root", id: user_id}
-      end)}
+     socket
+     |> assign(:dynamic_child, false)
+     |> assign_new(:current_user, fn ->
+       %{name: "user-from-root", id: user_id}
+     end)}
   end
 
   def handle_call(:show_dynamic_child, _from, socket) do
@@ -274,6 +279,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
 
   defp do_mount(%{test: %{external_connected_redirect: opts}, test_pid: pid}, socket) do
     %{to: to, stop: stop} = opts
+
     cond do
       connected?(socket) && stop -> {:stop, live_redirect(socket, to: to)}
       connected?(socket) -> {:ok, live_redirect(socket, to: to)}
@@ -318,4 +324,19 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 end
 
+defmodule Phoenix.LiveViewTest.ConfigureLive do
+  use Phoenix.LiveView
 
+  def render(assigns), do: ~L|<%= @description %>|
+
+  def mount(_session, socket) do
+    {:ok,
+     socket
+     |> assign(description: "long description")
+     |> configure_temporary_assigns([:description])}
+  end
+
+  def handle_call({:exec, func}, _from, socket) do
+    func.(socket)
+  end
+end

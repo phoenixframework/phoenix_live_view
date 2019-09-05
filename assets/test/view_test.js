@@ -101,7 +101,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('keyup')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('1')
+        expect(payload.value).toEqual({"value": "1"})
         return {
           receive() {}
         }
@@ -109,7 +109,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('keyup', input, { target: input })
+    view.pushEvent('keyup', input, "click", {})
   })
 
   test('pushKey', function() {
@@ -124,7 +124,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('keydown')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('1')
+        expect(payload.value).toEqual({"key": "A", "value": "1"})
         return {
           receive() {}
         }
@@ -132,7 +132,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushKey(input, 'keydown', { target: input }, () => {})
+    view.pushKey(input, 'keydown', 'move', {key: "A"})
   })
 
   test('pushInput', function() {
@@ -147,7 +147,7 @@ describe('View + DOM', function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe('form')
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe('increment=1')
+        expect(payload.value).toBe('increment=1&_target=increment')
         return {
           receive() {}
         }
@@ -155,11 +155,11 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushInput(input, { target: input })
+    view.pushInput(input, 'validate', { target: input })
   })
 
   test('submitForm', function() {
-    expect.assertions(7);
+    expect.assertions(7)
 
     let liveSocket = new LiveSocket('/live')
     let el = liveViewDOM()
@@ -179,7 +179,7 @@ describe('View + DOM', function() {
     view.channel = channelStub
 
     view.submitForm(form, { target: form })
-    expect(form.dataset.phxHasSubmitted).toBeTruthy()
+    expect(form['phx-has-submitted']).toBeTruthy()
     expect(form.classList.contains('phx-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
@@ -262,4 +262,52 @@ describe('View', function() {
     // view.join();
     // still need a few tests
   });
+});
+
+describe('View Hooks', function() {
+  beforeEach(() => {
+    global.document.body.innerHTML = liveViewDOM().outerHTML;
+  });
+
+  afterAll(() => {
+    global.document.body.innerHTML = '';
+  });
+
+  test('hooks', async () => {
+    let upcaseWasDestroyed = false
+    let Hooks = {
+      Upcase: {
+        mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
+        updated(){ this.el.innerHTML = this.el.innerHTML + ' updated' },
+        disconnected(){ this.el.innerHTML = 'disconnected' },
+        reconnected(){ this.el.innerHTML = 'connected' },
+        destroyed(){ upcaseWasDestroyed = true },
+      }
+    }
+    let liveSocket = new LiveSocket('/live', {hooks: Hooks})
+    let el = liveViewDOM()
+
+    let view = new View(el, liveSocket)
+
+    view.onJoin({rendered: {
+      static: ['<h2 phx-hook="Upcase">test mount</h2>'],
+      fingerprint: 123
+    }})
+    expect(view.el.firstChild.innerHTML).toBe('TEST MOUNT')
+
+    view.update({
+      static: ['<h2 phx-hook="Upcase">test update</h2>'],
+      fingerprint: 123
+    })
+    expect(view.el.firstChild.innerHTML).toBe('test update updated')
+
+    view.showLoader()
+    expect(view.el.firstChild.innerHTML).toBe('disconnected')
+
+    view.hideLoader()
+    expect(view.el.firstChild.innerHTML).toBe('connected')
+    
+    view.update({static: ['<div></div>'], fingerprint: 123})
+    expect(upcaseWasDestroyed).toBe(true)
+  })
 });

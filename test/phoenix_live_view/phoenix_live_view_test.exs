@@ -77,6 +77,16 @@ defmodule Phoenix.LiveView.LiveViewTest do
              end) =~ "failed while verifying session"
     end
 
+    test "render_click with string value", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_click(view, :save, "22") =~ "The temp is: 22"
+    end
+
+    test "render_click with map value", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_click(view, :save, %{temp: 20}) =~ "The temp is: 20"
+    end
+
     test "render_submit", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_submit(view, :save, %{temp: 20}) =~ "The temp is: 20"
@@ -85,6 +95,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_change", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_change(view, :save, %{temp: 21}) =~ "The temp is: 21"
+    end
+
+    test "render_change with _target", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_change(view, :save, %{_target: "", temp: 21}) =~ "The temp is: 21[]"
+      assert render_change(view, :save, %{_target: ["user"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;]"
+      assert render_change(view, :save, %{_target: ["user", "name"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;, &quot;name&quot;]"
+      assert render_change(view, :save, %{_target: ["another", "field"], temp: 21}) =~ "The temp is: 21[&quot;another&quot;, &quot;field&quot;]"
     end
 
     @key_i 73
@@ -432,9 +450,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(thermo_view.pid, {:set, :nest, true})
       assert [clock_view] = children(thermo_view)
 
-      send(clock_view.pid, {:run, fn socket ->
-        {:noreply, LiveView.live_redirect(socket, to: "/anywhere")}
-      end})
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.live_redirect(socket, to: "/anywhere")}
+         end}
+      )
+
       assert_remove(clock_view, {%ArgumentError{message: msg}, _stack})
       assert msg =~ "attempted to live_redirect from a nested child socket"
     end
@@ -445,6 +468,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       dom =
         LiveView.live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
         |> Phoenix.HTML.safe_to_string()
+
       assert dom =~ ~s|class="btn btn-large"|
       assert dom =~ ~s|data-page-number="2"|
     end
@@ -453,10 +477,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
       dom =
         LiveView.live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
         |> Phoenix.HTML.safe_to_string()
+
       assert dom =~ ~s|href="page-1"|
       refute dom =~ ~s|href="page-2"|
       assert dom =~ ~s|data-phx-live-link="push"|
       refute dom =~ ~s|data-phx-live-link="other"|
+    end
+  end
+
+  describe "temporary assigns" do
+    test "can only be configured on mount", %{conn: conn} do
+      {:ok, conf_live, html} = live(conn, "/configure")
+
+      assert html == "long description"
+      assert render(conf_live) == "long description"
+      socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
+
+      assert socket.assigns.description == nil
+
+      assert_raise RuntimeError, ~r/attempted to configure/, fn ->
+        LiveView.configure_temporary_assigns(socket, [:name])
+      end
     end
   end
 end
