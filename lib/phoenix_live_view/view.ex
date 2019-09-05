@@ -277,7 +277,7 @@ defmodule Phoenix.LiveView.View do
   def static_render(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.fetch!(opts, :session)
     config = load_live!(view)
-    {tag, extended_attrs} = opts[:container] || {config.container_tag, []}
+    {tag, extended_attrs} = container(config, opts)
 
     case static_mount(conn, view, session) do
       {:ok, socket, session_token} ->
@@ -307,7 +307,7 @@ defmodule Phoenix.LiveView.View do
   def static_render_container(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.fetch!(opts, :session)
     config = load_live!(view)
-    {tag, extended_attrs} = opts[:container] || {config.container_tag, []}
+    {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
 
     socket =
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.View do
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
     config = load_live!(view)
-    {_tag, _attrs} = container = opts[:container] || {config.container_tag, []}
+    container = container(config, opts)
     child_id = opts[:child_id]
 
     if connected?(parent) do
@@ -554,5 +554,12 @@ defmodule Phoenix.LiveView.View do
 
   defp load_live!(view) do
     view.__live__
+  end
+
+  defp container(%{container: {tag, attrs}}, opts) do
+    case opts[:container] do
+      {tag, extra} -> {tag, Keyword.merge(attrs, extra)}
+      nil -> {tag, attrs}
+    end
   end
 end

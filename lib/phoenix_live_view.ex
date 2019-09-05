@@ -374,12 +374,12 @@ defmodule Phoenix.LiveView do
 
   The container can be customized in different ways:
 
-    * You can change the `container_tag` on `use Phoenix.LiveView`:
+    * You can change the default `container` on `use Phoenix.LiveView`:
 
-          use Phoenix.LiveView, container_tag: :tr
+          use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
 
-    * You can change the container tag and attributes when calling
-      `live_render` (as well as on your `live` call in your router):
+    * You can override the container tag and pass extra attributes when
+      calling `live_render` (as well as on your `live` call in your router):
 
           live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
@@ -822,7 +822,7 @@ defmodule Phoenix.LiveView do
   defmacro __using__(opts) do
     quote do
       opts = unquote(opts)
-      @__live__ Map.merge(%{container_tag: :div}, Map.new(opts))
+      @__live__ Map.merge(%{container: {:div, []}}, Map.new(opts))
 
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
