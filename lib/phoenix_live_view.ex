@@ -356,14 +356,11 @@ defmodule Phoenix.LiveView do
   *Note*: this requires refetching/recomputing the temporary assigns should they
   need accessed in future callbacks.
 
-  To mark assigns as temporary, use `configure_temporary_assigns/2`:
+  To mark assigns as temporary, pass the `:temporary_assigns` option in mount:
 
       def mount(_session, socket) do
-        description = fetch_large_description()
-        {:ok,
-          socket
-          |> assign(description: description)
-          |> configure_temporary_assigns([:description])}
+        desc = fetch_large_description()
+        {:ok, assign(socket, description: desc), temporary_assigns: [:description]}
       end
 
   ## Containers
@@ -915,27 +912,6 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{} = socket) do
     LiveView.View.connected?(socket)
-  end
-
-  @doc """
-  Configures the temporary assigns keys in the socket on mount.
-
-  Temporary assigns are not kept after they are rendered.
-  This saves server memory, but requires future access to
-  refetch necessary data on-demand.
-
-  ## Examples
-
-      def mount(_session, socket) do
-        description = fetch_large_description()
-        {:ok,
-          socket
-          |> assign(description: description)
-          |> configure_temporary_assigns([:description])}
-      end
-  """
-  def configure_temporary_assigns(%Socket{} = socket, assigns) when is_list(assigns) do
-    LiveView.View.configure_temporary_assigns(socket, assigns)
   end
 
   @doc """

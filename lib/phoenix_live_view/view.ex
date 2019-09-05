@@ -14,17 +14,7 @@ defmodule Phoenix.LiveView.View do
   # Total length of 8 bytes when 64 encoded
   @rand_bytes 6
 
-  @doc """
-  Annotates the temporary assign keys in the socket for mount.
-  """
-  def configure_temporary_assigns(%Socket{} = socket, keys) when is_list(keys) do
-    if mounted?(socket) do
-      raise RuntimeError, "attempted to configure temporary assigns outside of mount/2"
-    end
-
-    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
-    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
-  end
+  @mount_opts [:temporary_assigns]
 
   @doc """
   Strips socket of redundant assign data for rendering.
@@ -477,13 +467,20 @@ defmodule Phoenix.LiveView.View do
   """
   def call_mount(view, session, %Socket{} = socket) do
     case view.mount(session, socket) do
+      {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+        opts
+        |> Enum.reduce(socket, fn {key, val}, acc -> put_opt(acc, key, val) end)
+        |> do_ok_mount()
+
       {:ok, %Socket{} = socket} ->
-        {:ok, %Socket{socket | mounted: true}}
+        do_ok_mount(socket)
 
       other ->
         other
     end
   end
+
+  defp do_ok_mount(socket), do: {:ok, %Socket{socket | mounted: true}}
 
   defp mount_handle_params(socket, view, params, uri) do
     if function_exported?(view, :handle_params, 3) do
@@ -553,7 +550,7 @@ defmodule Phoenix.LiveView.View do
   defp mounted?(%Socket{mounted: mounted}), do: mounted
 
   defp load_live!(view) do
-    view.__live__
+    view.__live__()
   end
 
   defp container(%{container: {tag, attrs}}, opts) do
@@ -561,5 +558,26 @@ defmodule Phoenix.LiveView.View do
       {tag, extra} -> {tag, Keyword.merge(attrs, extra)}
       nil -> {tag, attrs}
     end
+  end
+
+  defp put_opt(%Socket{} = socket, key, val) when key in @mount_opts do
+    if mounted?(socket) do
+      raise RuntimeError, "attempted to configure :#{key} outside of mount/2"
+    end
+    do_put_opt(socket, key, val)
+  end
+
+  defp put_opt(%Socket{view: view}, key, val) do
+    raise ArgumentError, """
+    invalid option returned from #{inspect(view)}.mount/2.
+
+    Expected keys to be one of #{inspect(@mount_opts)}
+    got: #{inspect(key)}: #{inspect(val)}
+    """
+  end
+
+  defp do_put_opt(socket, :temporary_assigns, keys) when is_list(keys) do
+    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
   end
 end

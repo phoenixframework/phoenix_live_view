@@ -515,17 +515,25 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "temporary assigns" do
-    test "can only be configured on mount", %{conn: conn} do
-      {:ok, conf_live, html} = live(conn, "/configure")
+    test "can be configured with mount options", %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, [temporary_assigns: [:description]])
+        |> live("/opts")
 
-      assert html == "long description"
-      assert render(conf_live) == "long description"
+      assert html == "long description. canary"
+      assert render(conf_live) == "long description. canary"
       socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
 
       assert socket.assigns.description == nil
+      assert socket.assigns.canary == "canary"
+    end
 
-      assert_raise RuntimeError, ~r/attempted to configure/, fn ->
-        LiveView.configure_temporary_assigns(socket, [:name])
+    test "raises with invalid options", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/2/, fn ->
+        conn
+        |> put_session(:opts, [temporary_assignswhoops: [:description]])
+        |> live("/opts")
       end
     end
   end

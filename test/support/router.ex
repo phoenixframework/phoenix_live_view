@@ -30,6 +30,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/same-child", SameChildLive, session: [:dup]
     live "/root", RootLive, session: [:user_id]
     live "/counter/:id", ParamCounterLive, session: [:test, :test_pid]
-    live "/configure", ConfigureLive
+    live "/opts", OptsLive, session: [:opts]
   end
 end
