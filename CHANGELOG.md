@@ -2,6 +2,7 @@
 
 ### Backwards incompatible changes
   - `phx-value` has no effect, use `phx-value-*` instead
+  - The `:path_params` key in session has no effect (use `handle_params` in `LiveView` instead)
 
 ## 0.1.1 (2019-08-27)
 
