@@ -275,10 +275,9 @@ defmodule Phoenix.LiveView.View do
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def static_render(%Plug.Conn{} = conn, view, opts) do
-    session =
-      opts |> Keyword.fetch!(:session) |> Map.merge(conn.private[:live_view_session] || %{})
-
-    {tag, extended_attrs} = opts[:container] || {:div, []}
+    session = Keyword.fetch!(opts, :session)
+    config = load_live!(view)
+    {tag, extended_attrs} = opts[:container] || {config.container_tag, []}
 
     case static_mount(conn, view, session) do
       {:ok, socket, session_token} ->
@@ -307,7 +306,8 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render_container(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {tag, extended_attrs} = opts[:container] || {:div, []}
+    config = load_live!(view)
+    {tag, extended_attrs} = opts[:container] || {config.container_tag, []}
     router = Phoenix.Controller.router_module(conn)
 
     socket =
@@ -337,7 +337,8 @@ defmodule Phoenix.LiveView.View do
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {_tag, _attrs} = container = opts[:container] || {:div, []}
+    config = load_live!(view)
+    {_tag, _attrs} = container = opts[:container] || {config.container_tag, []}
     child_id = opts[:child_id]
 
     if connected?(parent) do
@@ -550,4 +551,8 @@ defmodule Phoenix.LiveView.View do
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp mounted?(%Socket{mounted: mounted}), do: mounted
+
+  defp load_live!(view) do
+    view.__live__
+  end
 end

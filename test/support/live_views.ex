@@ -1,7 +1,7 @@
 alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
 defmodule Phoenix.LiveViewTest.ThermostatLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container_tag: :article
 
   def render(assigns) do
     ~L"""
@@ -104,7 +104,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container_tag: :section
 
   def render(assigns) do
     ~L"""

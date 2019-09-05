@@ -123,6 +123,36 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
     end
 
+    test "module DOM container_tag", %{conn: conn} do
+      conn =
+        conn
+        |> Plug.Test.init_test_session(%{nest: []})
+        |> get("/thermo")
+
+      static_html = html_response(conn, 200)
+      {:ok, view, connected_html} = live(conn)
+
+      assert static_html =~
+               ~r/<article[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*>/
+
+      assert static_html =~ ~r/<\/article>/
+
+      assert static_html =~
+               ~r/<section[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert static_html =~ ~r/<\/section>/
+
+      assert connected_html =~
+               ~r/<section[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert connected_html =~ ~r/<\/section>/
+
+      assert render(view) =~
+               ~r/<section[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert render(view) =~ ~r/<\/section>/
+    end
+
     test "custom DOM container and attributes", %{conn: conn} do
       conn =
         conn
@@ -130,7 +160,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
         |> get("/thermo-container")
 
       static_html = html_response(conn, 200)
-
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~

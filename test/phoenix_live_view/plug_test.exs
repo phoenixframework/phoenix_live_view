@@ -3,13 +3,13 @@ defmodule Phoenix.LiveView.PlugTest do
   use Phoenix.ConnTest
 
   alias Phoenix.LiveView.Plug, as: LiveViewPlug
-  alias Phoenix.LiveViewTest.{DashboardLive, Endpoint}
+  alias Phoenix.LiveViewTest.{ThermostatLive, DashboardLive, Endpoint}
 
   setup config do
     conn =
       build_conn()
-      |> Plug.Conn.put_private(:phoenix_router, Router)
       |> Plug.Test.init_test_session(config[:plug_session] || %{})
+      |> Plug.Conn.put_private(:phoenix_router, Router)
       |> Plug.Conn.put_private(:phoenix_endpoint, Endpoint)
       |> Plug.Conn.put_private(:phoenix_live_view, [])
 
@@ -41,7 +41,14 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{user_id: "alex"})
   end
 
-  test "with a container", %{conn: conn} do
+  test "with a module container", %{conn: conn} do
+    conn = LiveViewPlug.call(conn, ThermostatLive)
+
+    assert conn.resp_body =~
+             ~r/<article[^>]*data-phx-view="Phoenix.LiveViewTest.ThermostatLive"[^>]*>/
+  end
+
+  test "with container options", %{conn: conn} do
     conn =
       conn
       |> Plug.Conn.put_private(:phoenix_live_view, container: {:span, style: "phx-flex"})
