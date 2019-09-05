@@ -473,11 +473,32 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        let key = input.type === "checkbox" ? "checked" : "value"
-        if(this.prevInput === input && this.prevValue === input[key]){ return }
+
+        let value
+        if (input.type === "checkbox") {
+          value = input["checked"]
+        }
+        else if (input.type === "select-multiple") {
+          let selectedOptions = input["selectedOptions"]
+          const lastItemIndex = selectedOptions.length - 1;
+          // Convert to a string for easier array comparison
+          value = "["
+          for (let i = 0; i < selectedOptions.length; i++) {
+            value += selectedOptions.item(i).value
+            if (i != lastItemIndex) {
+              value += ","
+            }
+          }
+          value += "]"
+        }
+        else {
+          value = input["value"]
+        }
+
+        if(this.prevInput === input && this.prevValue === value){ return }
 
         this.prevInput = input
-        this.prevValue = input[key]
+        this.prevValue = value
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
         this.owner(input, view => {
