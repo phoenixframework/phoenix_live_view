@@ -406,7 +406,8 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.preventDefault()
+
+      e.stopPropagation()
 
       let meta = {
         altKey: e.altKey,

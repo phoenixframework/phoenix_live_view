@@ -27,7 +27,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Strips socket of redudant assign data for rendering.
+  Strips socket of redundant assign data for rendering.
   """
   def strip_for_render(%Socket{} = socket) do
     if connected?(socket) do
@@ -216,7 +216,7 @@ defmodule Phoenix.LiveView.View do
   ## Examples
 
       iex> verify_session(AppWeb.Endpoint, encoded_token, static_token)
-      {:ok, %{} = decoeded_session}
+      {:ok, %{} = decoded_session}
 
       iex> verify_session(AppWeb.Endpoint, "bad token", "bac static")
       {:error, :invalid}

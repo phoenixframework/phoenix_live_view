@@ -716,9 +716,9 @@ defmodule Phoenix.LiveView do
   in the container, LiveView will replace the existing element with the
   new content instead appending or prepending a new element.
 
-  *Limitations*: LiveView will not apprend or prepend duplicate content that
+  *Limitations*: LiveView will not append or prepend duplicate content that
   was just added. If your goal is to append exactly duplicate rows for things
-  such as a placeholder inputs, apply a unique ID to the newly appeneded rows
+  such as a placeholder inputs, apply a unique ID to the newly appended rows
   to mark the content as unique.
 
   ### JS Interop and client controlled DOM
