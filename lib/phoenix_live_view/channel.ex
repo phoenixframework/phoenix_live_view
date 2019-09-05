@@ -262,6 +262,7 @@ defmodule Phoenix.LiveView.Channel do
   defp decode(_, _router, value), do: value
 
   defp decode_merge_target(%{"_target" => target} = params) when is_list(target), do: params
+
   defp decode_merge_target(%{"_target" => target} = params) when is_binary(target) do
     keyspace = target |> Plug.Conn.Query.decode() |> gather_keys([])
     Map.put(params, "_target", Enum.reverse(keyspace))
@@ -275,6 +276,8 @@ defmodule Phoenix.LiveView.Channel do
       nil -> acc
     end
   end
+
+  defp gather_keys([], acc), do: acc
 
   defp gather_keys(nil, acc), do: acc
 
