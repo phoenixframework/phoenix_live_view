@@ -473,34 +473,14 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
+        let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
+        if(!phxEvent){ return }
 
-        let value
-        if (input.type === "checkbox") {
-          value = input["checked"]
-        }
-        else if (input.type === "select-multiple") {
-          let selectedOptions = input["selectedOptions"]
-          const lastItemIndex = selectedOptions.length - 1;
-          // Convert to a string for easier array comparison
-          value = "["
-          for (let i = 0; i < selectedOptions.length; i++) {
-            value += selectedOptions.item(i).value
-            if (i != lastItemIndex) {
-              value += ","
-            }
-          }
-          value += "]"
-        }
-        else {
-          value = input["value"]
-        }
-
+        let value = JSON.stringify((new FormData(input.form)).getAll(input.name))
         if(this.prevInput === input && this.prevValue === value){ return }
 
         this.prevInput = input
         this.prevValue = value
-        let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
-        if(!phxEvent){ return }
         this.owner(input, view => {
           if(DOM.isTextualInput(input)){
             input[PHX_HAS_FOCUSED] = true
