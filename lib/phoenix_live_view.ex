@@ -808,7 +808,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_info(msg :: term, Socket.t()) ::
-              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @optional_callbacks terminate: 2,
                       handle_params: 3,
