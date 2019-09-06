@@ -10,6 +10,7 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 import morphdom from "morphdom"
 import {Socket} from "phoenix"
 
+const PHX_ID = "data-phx-id"
 const PHX_VIEW = "data-phx-view"
 const PHX_LIVE_LINK = "data-phx-live-link"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -64,13 +65,7 @@ let isEmpty = (obj) => {
   return true
 }
 
-let maybe = (el, key) => {
-  if(el){
-    return el[key]
-  } else {
-    return null
-  }
-}
+let maybe = (el, callback) => el && callback(el)
 
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
@@ -254,7 +249,7 @@ export class LiveSocket {
   }
 
   joinView(el, parentView, href, callback){
-    if(this.getViewById(el.id)){ return }
+    if(this.getViewByEl(el)){ return }
 
     let view = new View(el, this, parentView, href)
     this.views[view.id] = view
@@ -263,11 +258,11 @@ export class LiveSocket {
   }
 
   owner(childEl, callback){
-    let view = this.getViewById(maybe(childEl.closest(PHX_VIEW_SELECTOR), "id"))
+    let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el))
     if(view){ callback(view) }
   }
 
-  getViewById(id){ return this.views[id] }
+  getViewByEl(el){ return this.views[el.getAttribute(PHX_ID)] }
 
   onViewError(view){
     this.dropActiveElement(view)
@@ -276,6 +271,8 @@ export class LiveSocket {
   destroyAllViews(){
     for(let id in this.views){ this.destroyViewById(id) }
   }
+
+  destroyViewByEl(el){ return this.destroyViewById(el.getAttribute(PHX_ID)) }
 
   destroyViewById(id){
     let view = this.views[id]
@@ -474,13 +471,14 @@ export class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         let input = e.target
-        let key = input.type === "checkbox" ? "checked" : "value"
-        if(this.prevInput === input && this.prevValue === input[key]){ return }
-
-        this.prevInput = input
-        this.prevValue = input[key]
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
+
+        let value = JSON.stringify((new FormData(input.form)).getAll(input.name))
+        if(this.prevInput === input && this.prevValue === value){ return }
+
+        this.prevInput = input
+        this.prevValue = value
         this.owner(input, view => {
           if(DOM.isTextualInput(input)){
             input[PHX_HAS_FOCUSED] = true
@@ -565,7 +563,6 @@ export let Browser = {
 }
 
 let DOM = {
-
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.add(PHX_LOADING_CLASS)
@@ -697,7 +694,7 @@ let DOM = {
       onBeforeNodeDiscarded: function(el){
         // nested view handling
         if(DOM.isPhxChild(el)){
-          view.liveSocket.destroyViewById(el.id)
+          view.liveSocket.destroyViewByEl(el)
           return true
         }
         changes.discarded.push(el)
@@ -730,7 +727,7 @@ let DOM = {
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
 
           if(!Session.isEqual(toEl, fromEl)){
-            view.liveSocket.destroyViewById(fromEl.id)
+            view.liveSocket.destroyViewByEl(fromEl)
             view.onNewChildAdded()
           }
           DOM.mergeAttrs(fromEl, toEl)
@@ -800,7 +797,7 @@ export class View {
     this.newChildrenAdded = false
     this.gracefullyClosed = false
     this.el = el
-    this.id = this.el.id
+    this.id = this.el.getAttribute(PHX_ID)
     this.view = this.el.getAttribute(PHX_VIEW)
     this.loaderTimer = null
     this.pendingDiffs = []
@@ -894,7 +891,7 @@ export class View {
 
   joinNewChildren(){
     Browser.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
-      let child = this.liveSocket.getViewById(el.id)
+      let child = this.liveSocket.getViewByEl(el)
       if(!child){
         this.liveSocket.joinView(el, this)
       }
@@ -1089,9 +1086,9 @@ export class View {
     }).receive("timeout", () => Browser.redirect(window.location.href))
   }
 
-  ownsElement(element){
-    return element.getAttribute(PHX_PARENT_ID) === this.id ||
-           maybe(element.closest(PHX_VIEW_SELECTOR), "id") === this.id
+  ownsElement(el){
+    return el.getAttribute(PHX_PARENT_ID) === this.id ||
+           maybe(el.closest(PHX_VIEW_SELECTOR), e => e.getAttribute(PHX_ID)) === this.id
   }
 
   submitForm(form, phxEvent){

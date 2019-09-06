@@ -1,7 +1,20 @@
+## 0.1-dev
+
+### Enhancements
+  - Add new `:container` option to `use Phoenix.LiveView` 
+
+### Backwards incompatible changes
+  - Replace `configure_temporary_assigns/2` with 3-tuple mount return, supporting a `:temporary_assigns` key
+
+### Bug Fixes
+  - Fix multi-select decoding causing server error
+  - Fix multi-select change tracking failing to submit an event when a value is deselected
+
 ## 0.1.2
 
 ### Backwards incompatible changes
   - `phx-value` has no effect, use `phx-value-*` instead
+  - The `:path_params` key in session has no effect (use `handle_params` in `LiveView` instead)
 
 ## 0.1.1 (2019-08-27)
 

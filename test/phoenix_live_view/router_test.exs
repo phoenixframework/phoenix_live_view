@@ -12,15 +12,20 @@ defmodule Phoenix.LiveView.RouterTest do
     {:ok, conn: conn}
   end
 
-  test "routing with defaults", %{conn: conn} do
+  test "routing with empty session", %{conn: conn} do
     conn = get(conn, "/router/thermo_defaults/123")
-    assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}})
+    assert conn.resp_body =~ ~s(session: %{})
   end
 
   @tag plug_session: %{user_id: "chris"}
   test "routing with custom session", %{conn: conn} do
     conn = get(conn, "/router/thermo_session/123")
-    assert conn.resp_body =~ ~s(session: %{path_params: %{"id" => "123"}, user_id: "chris"})
+    assert conn.resp_body =~ ~s(session: %{user_id: "chris"})
+  end
+
+  test "routing with module container", %{conn: conn} do
+    conn = get(conn, "/thermo")
+    assert conn.resp_body =~ ~r/<article[^>]*data-phx-view="Phoenix.LiveViewTest.ThermostatLive"[^>]*>/
   end
 
   test "routing with container", %{conn: conn} do

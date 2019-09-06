@@ -123,33 +123,62 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
     end
 
-    test "custom DOM container and attributes", %{conn: conn} do
+    test "module DOM container", %{conn: conn} do
       conn =
         conn
-        |> Plug.Test.init_test_session(%{nest: [container: {:p, style: "clock-flex"}]})
-        |> get("/thermo-container")
+        |> Plug.Test.init_test_session(%{nest: []})
+        |> get("/thermo")
 
       static_html = html_response(conn, 200)
-
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<span[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+               ~r/<article class="thermo"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*>/
+
+      assert static_html =~ ~r/<\/article>/
+
+      assert static_html =~
+               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert static_html =~ ~r/<\/section>/
+
+      assert connected_html =~
+               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert connected_html =~ ~r/<\/section>/
+
+      assert render(view) =~
+               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+
+      assert render(view) =~ ~r/<\/section>/
+    end
+
+    test "custom DOM container and attributes", %{conn: conn} do
+      conn =
+        conn
+        |> Plug.Test.init_test_session(%{nest: [container: {:p, class: "clock-flex"}]})
+        |> get("/thermo-container")
+
+      static_html = html_response(conn, 200)
+      {:ok, view, connected_html} = live(conn)
+
+      assert static_html =~
+               ~r/<span class="thermo"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
 
       assert static_html =~ ~r/<\/span>/
 
       assert static_html =~
-               ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
 
       assert static_html =~ ~r/<\/p>/
 
       assert connected_html =~
-               ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
 
       assert connected_html =~ ~r/<\/p>/
 
       assert render(view) =~
-               ~r/<p[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*style=\"clock-flex">/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
     end
@@ -486,17 +515,25 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "temporary assigns" do
-    test "can only be configured on mount", %{conn: conn} do
-      {:ok, conf_live, html} = live(conn, "/configure")
+    test "can be configured with mount options", %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, [temporary_assigns: [:description]])
+        |> live("/opts")
 
-      assert html == "long description"
-      assert render(conf_live) == "long description"
+      assert html == "long description. canary"
+      assert render(conf_live) == "long description. canary"
       socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
 
       assert socket.assigns.description == nil
+      assert socket.assigns.canary == "canary"
+    end
 
-      assert_raise RuntimeError, ~r/attempted to configure/, fn ->
-        LiveView.configure_temporary_assigns(socket, [:name])
+    test "raises with invalid options", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/2/, fn ->
+        conn
+        |> put_session(:opts, [temporary_assignswhoops: [:description]])
+        |> live("/opts")
       end
     end
   end

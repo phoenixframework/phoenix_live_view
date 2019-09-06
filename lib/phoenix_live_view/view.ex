@@ -1,6 +1,5 @@
 defmodule Phoenix.LiveView.View do
   @moduledoc false
-  import Phoenix.HTML, only: [sigil_E: 2]
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
@@ -14,17 +13,7 @@ defmodule Phoenix.LiveView.View do
   # Total length of 8 bytes when 64 encoded
   @rand_bytes 6
 
-  @doc """
-  Annotates the temporary assign keys in the socket for mount.
-  """
-  def configure_temporary_assigns(%Socket{} = socket, keys) when is_list(keys) do
-    if mounted?(socket) do
-      raise RuntimeError, "attempted to configure temporary assigns outside of mount/2"
-    end
-
-    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
-    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
-  end
+  @mount_opts [:temporary_assigns]
 
   @doc """
   Strips socket of redundant assign data for rendering.
@@ -146,14 +135,16 @@ defmodule Phoenix.LiveView.View do
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
-    clear_changed(%Socket{socket | private: Map.drop(socket.private, [:connect_params])})
+    socket
+    |> clear_changed()
+    |> drop_private([:connect_params])
   end
 
   @doc """
   Prunes the assigned_new information from the socket.
   """
-  def prune_assigned_new(%Socket{private: private} = socket) do
-    %Socket{socket | private: Map.delete(private, :assigned_new)}
+  def prune_assigned_new(%Socket{} = socket) do
+    drop_private(socket, :assigned_new)
   end
 
   @doc """
@@ -275,23 +266,21 @@ defmodule Phoenix.LiveView.View do
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def static_render(%Plug.Conn{} = conn, view, opts) do
-    session =
-      opts |> Keyword.fetch!(:session) |> Map.merge(conn.private[:live_view_session] || %{})
-
-    {tag, extended_attrs} = opts[:container] || {:div, []}
+    session = Keyword.fetch!(opts, :session)
+    config = load_live!(view)
+    {tag, extended_attrs} = container(config, opts)
 
     case static_mount(conn, view, session) do
       {:ok, socket, session_token} ->
         attrs = [
-          {:id, dom_id(socket)},
-          {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
+          {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
+          | extended_attrs
         ]
 
-        html = ~E"""
-        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, view) %>
-        <% end %>
-        """
+        html =
+          Phoenix.HTML.Tag.content_tag tag, attrs do
+            render(socket, view)
+          end
 
         {:ok, html}
 
@@ -309,7 +298,8 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render_container(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {tag, extended_attrs} = opts[:container] || {:div, []}
+    config = load_live!(view)
+    {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
 
     socket =
@@ -320,8 +310,8 @@ defmodule Phoenix.LiveView.View do
     session_token = sign_root_session(socket, view, session)
 
     attrs = [
-      {:id, dom_id(socket)},
-      {:data, phx_view: inspect(view), phx_session: session_token} | extended_attrs
+      {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
+      | extended_attrs
     ]
 
     tag
@@ -339,7 +329,8 @@ defmodule Phoenix.LiveView.View do
   """
   def nested_static_render(%Socket{} = parent, view, opts) do
     session = Keyword.fetch!(opts, :session)
-    {_tag, _attrs} = container = opts[:container] || {:div, []}
+    config = load_live!(view)
+    container = container(config, opts)
     child_id = opts[:child_id]
 
     if connected?(parent) do
@@ -390,8 +381,8 @@ defmodule Phoenix.LiveView.View do
     case nested_static_mount(parent, view, session, child_id) do
       {:ok, socket, static_token} ->
         attrs = [
-          {:id, socket.id},
           {:data,
+           phx_id: socket.id,
            phx_view: inspect(view),
            phx_session: "",
            phx_static: static_token,
@@ -399,11 +390,10 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = ~E"""
-        <%= Phoenix.HTML.Tag.content_tag(tag, attrs) do %>
-          <%= render(socket, view) %>
-        <% end %>
-        """
+        html =
+          Phoenix.HTML.Tag.content_tag tag, attrs do
+            render(socket, view)
+          end
 
         {:ok, html}
 
@@ -418,8 +408,8 @@ defmodule Phoenix.LiveView.View do
     session_token = sign_child_session(socket, view, session)
 
     attrs = [
-      {:id, socket.id},
       {:data,
+       phx_id: socket.id,
        phx_parent_id: dom_id(parent),
        phx_view: inspect(view),
        phx_session: session_token,
@@ -427,10 +417,7 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    html = ~E"""
-    <%= Phoenix.HTML.Tag.content_tag(tag, "", attrs) %>
-    """
-
+    html = Phoenix.HTML.Tag.content_tag(tag, "", attrs)
     {:ok, html}
   end
 
@@ -483,13 +470,20 @@ defmodule Phoenix.LiveView.View do
   """
   def call_mount(view, session, %Socket{} = socket) do
     case view.mount(session, socket) do
+      {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+        opts
+        |> Enum.reduce(socket, fn {key, val}, acc -> put_opt(acc, key, val) end)
+        |> do_ok_mount()
+
       {:ok, %Socket{} = socket} ->
-        {:ok, %Socket{socket | mounted: true}}
+        do_ok_mount(socket)
 
       other ->
         other
     end
   end
+
+  defp do_ok_mount(socket), do: {:ok, %Socket{socket | mounted: true}}
 
   defp mount_handle_params(socket, view, params, uri) do
     if function_exported?(view, :handle_params, 3) do
@@ -557,4 +551,41 @@ defmodule Phoenix.LiveView.View do
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp mounted?(%Socket{mounted: mounted}), do: mounted
+
+  defp load_live!(view) do
+    view.__live__()
+  end
+
+  defp container(%{container: {tag, attrs}}, opts) do
+    case opts[:container] do
+      {tag, extra} -> {tag, Keyword.merge(attrs, extra)}
+      nil -> {tag, attrs}
+    end
+  end
+
+  defp put_opt(%Socket{} = socket, key, val) when key in @mount_opts do
+    if mounted?(socket) do
+      raise RuntimeError, "attempted to configure :#{key} outside of mount/2"
+    end
+
+    do_put_opt(socket, key, val)
+  end
+
+  defp put_opt(%Socket{view: view}, key, val) do
+    raise ArgumentError, """
+    invalid option returned from #{inspect(view)}.mount/2.
+
+    Expected keys to be one of #{inspect(@mount_opts)}
+    got: #{inspect(key)}: #{inspect(val)}
+    """
+  end
+
+  defp do_put_opt(socket, :temporary_assigns, keys) when is_list(keys) do
+    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
+  end
+
+  defp drop_private(%Socket{private: private} = socket, key_or_keys) do
+    %Socket{socket | private: Map.drop(private, List.wrap(key_or_keys))}
+  end
 end

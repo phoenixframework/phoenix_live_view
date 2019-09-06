@@ -1,7 +1,7 @@
 alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
 defmodule Phoenix.LiveViewTest.ThermostatLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container: {:article, class: "thermo"}
 
   def render(assigns) do
     ~L"""
@@ -65,7 +65,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, update(socket, :val, &(&1 - 1))}
   end
 
-
   def handle_event("save", %{"temp" => new_temp} = params, socket) do
     {:noreply, assign(socket, val: new_temp, greeting: inspect(params["_target"]))}
   end
@@ -104,7 +103,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container: {:section, class: "clock"}
 
   def render(assigns) do
     ~L"""
@@ -324,16 +323,13 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ConfigureLive do
+defmodule Phoenix.LiveViewTest.OptsLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~L|<%= @description %>|
+  def render(assigns), do: ~L|<%= @description %>. <%= @canary %>|
 
-  def mount(_session, socket) do
-    {:ok,
-     socket
-     |> assign(description: "long description")
-     |> configure_temporary_assigns([:description])}
+  def mount(%{opts: opts}, socket) do
+    {:ok, assign(socket, description: "long description", canary: "canary"), opts}
   end
 
   def handle_call({:exec, func}, _from, socket) do
