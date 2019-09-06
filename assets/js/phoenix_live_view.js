@@ -713,7 +713,7 @@ let DOM = {
           // Moreover, Firefox will delete the separator when going from `1.1` to `1.`
           // So we should never update the input if it is the currently active element
           // This is the "safe" route and approaches other communities like React have taken
-          if (fromEl.ownerDocument.activeElement === fromEl) {
+          if (fromEl[PHX_HAS_FOCUSED]) {
             return false
           }
         }

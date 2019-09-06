@@ -510,6 +510,11 @@ defmodule Phoenix.LiveView do
         end)
       end
 
+  *Note*: Number inputs are a special case that we need to handle. Chrome will clear
+  bad inputs and Firefox will delete the number separate with a backspace.  As a result
+  we decided that your number inputs will send a value to the server; however, we won't
+  update the input client side until the value is valid and not focused.
+
   ### Key Events
 
   The onkeydown, and onkeyup events are supported via
