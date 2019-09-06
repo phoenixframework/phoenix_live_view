@@ -471,19 +471,15 @@ defmodule Phoenix.LiveView.View do
   def call_mount(view, session, %Socket{} = socket) do
     case view.mount(session, socket) do
       {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-        opts
-        |> Enum.reduce(socket, fn {key, val}, acc -> put_opt(acc, key, val) end)
-        |> do_ok_mount()
+        {:ok, Enum.reduce(opts, socket, fn {key, val}, acc -> put_opt(acc, key, val) end)}
 
       {:ok, %Socket{} = socket} ->
-        do_ok_mount(socket)
+        {:ok, socket}
 
       other ->
         other
     end
   end
-
-  defp do_ok_mount(socket), do: {:ok, %Socket{socket | mounted: true}}
 
   defp mount_handle_params(socket, view, params, uri) do
     if function_exported?(view, :handle_params, 3) do
@@ -550,8 +546,6 @@ defmodule Phoenix.LiveView.View do
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
-  defp mounted?(%Socket{mounted: mounted}), do: mounted
-
   defp load_live!(view) do
     view.__live__()
   end
@@ -564,10 +558,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp put_opt(%Socket{} = socket, key, val) when key in @mount_opts do
-    if mounted?(socket) do
-      raise RuntimeError, "attempted to configure :#{key} outside of mount/2"
-    end
-
     do_put_opt(socket, key, val)
   end
 
