@@ -126,7 +126,7 @@ defmodule Phoenix.LiveViewTest do
   Spawns a connected LiveView process.
 
   Accepts either a previously rendered `%Plug.Conn{}` or
-  an unsent `%Plug.Conn{}`. The latter case is a conveience
+  an unsent `%Plug.Conn{}`. The latter case is a convenience
   to perform the `get/2` and connected mount in a single
   step.
 
