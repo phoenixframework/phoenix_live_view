@@ -11,6 +11,7 @@ import morphdom from "morphdom"
 import {Socket} from "phoenix"
 
 const PHX_ID = "data-phx-id"
+const PHX_CID = "data-phx-component-id"
 const PHX_VIEW = "data-phx-view"
 const PHX_LIVE_LINK = "data-phx-live-link"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -910,6 +911,7 @@ export class View {
   }
 
   triggerHooks(changes){
+    let destroyedCIDs = []
     changes.updated.push({fromEl: this.el, toEl: this.el})
     changes.added.forEach(el => this.addHook(el))
     changes.updated.forEach(({fromEl, toEl}) => {
@@ -923,9 +925,12 @@ export class View {
       }
     })
     changes.discarded.forEach(el => {
+      let cid = this.componentID(el)
+      if(cid){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
+    if(destroyedCIDs.length > 0){ this.pushComponentsDestroyed(destroyedCIDs) }
   }
 
   applyPendingUpdates(){
@@ -1014,6 +1019,12 @@ export class View {
     )
   }
 
+  componentID(el){ return el.getAttribute && el.getAttribute(PHX_CID) }
+
+  targetComponentID(target){
+    return maybe(target.closest(`[${PHX_CID}]`), el => this.ownsElement(el) && this.componentID(el))
+  }
+
   pushEvent(type, el, phxEvent, meta){
     let prefix = this.binding("value-")
     for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
@@ -1024,7 +1035,8 @@ export class View {
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
-      value: meta
+      value: meta,
+      cid: this.targetComponentID(el) || undefined
     })
   }
 
@@ -1034,7 +1046,8 @@ export class View {
     this.pushWithReply("event", {
       type: kind,
       event: phxEvent,
-      value: meta
+      value: meta,
+      cid: this.targetComponentID(keyElement) || undefined
     })
   }
 
@@ -1042,7 +1055,8 @@ export class View {
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form, {_target: e.target.name})
+      value: serializeForm(inputEl.form, {_target: e.target.name}),
+      cid: this.targetComponentID(inputEl) || undefined
     })
   }
 
@@ -1050,7 +1064,8 @@ export class View {
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(formEl)
+      value: serializeForm(formEl),
+      cid: this.targetComponentID(formEl) || undefined
     }, onReply)
   }
 
@@ -1067,6 +1082,10 @@ export class View {
         callback && callback()
       }
     }).receive("timeout", () => Browser.redirect(window.location.href))
+  }
+
+  pushComponentsDestroyed(cids){
+    this.pushWithReply("cids_destroyed", {cids: cids})
   }
 
   ownsElement(el){
