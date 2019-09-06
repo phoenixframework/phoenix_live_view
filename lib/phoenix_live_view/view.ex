@@ -144,7 +144,7 @@ defmodule Phoenix.LiveView.View do
   Prunes the assigned_new information from the socket.
   """
   def prune_assigned_new(%Socket{} = socket) do
-    drop_private(socket, :assigned_new)
+    drop_private(socket, [:assigned_new])
   end
 
   @doc """
@@ -471,7 +471,7 @@ defmodule Phoenix.LiveView.View do
   def call_mount(view, session, %Socket{} = socket) do
     case view.mount(session, socket) do
       {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-        {:ok, Enum.reduce(opts, socket, fn {key, val}, acc -> put_opt(acc, key, val) end)}
+        {:ok, Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)}
 
       {:ok, %Socket{} = socket} ->
         {:ok, socket}
@@ -557,11 +557,11 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp put_opt(%Socket{} = socket, key, val) when key in @mount_opts do
-    do_put_opt(socket, key, val)
+  defp mount_opt(%Socket{} = socket, key, val) when key in @mount_opts do
+    do_mount_opt(socket, key, val)
   end
 
-  defp put_opt(%Socket{view: view}, key, val) do
+  defp mount_opt(%Socket{view: view}, key, val) do
     raise ArgumentError, """
     invalid option returned from #{inspect(view)}.mount/2.
 
@@ -570,12 +570,12 @@ defmodule Phoenix.LiveView.View do
     """
   end
 
-  defp do_put_opt(socket, :temporary_assigns, keys) when is_list(keys) do
+  defp do_mount_opt(socket, :temporary_assigns, keys) when is_list(keys) do
     temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
     %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
   end
 
-  defp drop_private(%Socket{private: private} = socket, key_or_keys) do
-    %Socket{socket | private: Map.drop(private, List.wrap(key_or_keys))}
+  defp drop_private(%Socket{private: private} = socket, keys) do
+    %Socket{socket | private: Map.drop(private, keys)}
   end
 end
