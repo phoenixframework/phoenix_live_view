@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ThermostatLive, ClockLive, ClockControlsLive}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -436,27 +436,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "redirects" do
-    @tag session: %{redir: {:disconnected, ThermostatLive}}
-    test "redirect from root view on disconnected mount", %{conn: conn} do
-      assert {:error, %{redirect: %{to: "/thermostat_disconnected"}}} = live(conn, "/thermo")
-    end
-
-    @tag session: %{redir: {:connected, ThermostatLive}}
-    test "redirect from root view on connected mount", %{conn: conn} do
-      assert {:error, %{redirect: %{to: "/thermostat_connected"}}} = live(conn, "/thermo")
-    end
-
-    @tag session: %{nest: true, redir: {:disconnected, ClockLive}}
-    test "redirect from child view on disconnected mount", %{conn: conn} do
-      assert {:error, %{redirect: %{to: "/clock_disconnected"}}} = live(conn, "/thermo")
-    end
-
-    @tag session: %{nest: true, redir: {:connected, ClockLive}}
-    test "redirect from child view on connected mount", %{conn: conn} do
-      assert {:error, %{redirect: %{to: "/clock_connected"}}} = live(conn, "/thermo")
-    end
-
-    test "redirect after connected mount from root thru sync call", %{conn: conn} do
+    test "redirect from root thru sync call", %{conn: conn} do
       assert {:ok, view, _} = live(conn, "/thermo")
 
       assert_redirect(view, "/path", fn ->
@@ -466,7 +446,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(view, {:redirect, "/path"})
     end
 
-    test "redirect after connected mount from root thru async call", %{conn: conn} do
+    test "redirect from root thru async call", %{conn: conn} do
       assert {:ok, view, _} = live(conn, "/thermo")
 
       assert_redirect(view, "/async", fn ->
@@ -474,7 +454,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       end)
     end
 
-    test "live_redirect from child raises", %{conn: conn} do
+    test "raises from child", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
       GenServer.call(thermo_view.pid, {:set, :nest, true})
       assert [clock_view] = children(thermo_view)

@@ -1,10 +1,11 @@
-## 0.1-dev
+## 0.2.0-dev
 
 ### Enhancements
   - Add new `:container` option to `use Phoenix.LiveView` 
 
 ### Backwards incompatible changes
   - Replace `configure_temporary_assigns/2` with 3-tuple mount return, supporting a `:temporary_assigns` key
+  - Do not allow `redirect`/`live_redirect` on mount nor in child live views
 
 ### Bug Fixes
   - Fix multi-select decoding causing server error

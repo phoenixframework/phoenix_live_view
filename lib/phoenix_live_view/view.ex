@@ -13,6 +13,7 @@ defmodule Phoenix.LiveView.View do
   # Total length of 8 bytes when 64 encoded
   @rand_bytes 6
 
+  # All available mount options
   @mount_opts [:temporary_assigns]
 
   @doc """
@@ -53,18 +54,13 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Returns the browser's DOM id for the socket's view.
-  """
-  def dom_id(%Socket{id: id}), do: id
-
-  @doc """
   Returns the browser's DOM id for the nested socket.
   """
-  def child_dom_id(%Socket{id: parent_id}, child_view, nil = _child_id) do
+  def child_id(%Socket{id: parent_id}, child_view, nil = _child_id) do
     parent_id <> inspect(child_view)
   end
 
-  def child_dom_id(%Socket{id: parent_id}, child_view, child_id) do
+  def child_id(%Socket{id: parent_id}, child_view, child_id) do
     parent_id <> inspect(child_view) <> to_string(child_id)
   end
 
@@ -116,19 +112,6 @@ defmodule Phoenix.LiveView.View do
       },
       opts
     )
-  end
-
-  @doc """
-  Builds a nested child `%Phoenix.LiveView.Socket{}`.
-  """
-  def build_nested_socket(%Socket{endpoint: endpoint, router: router} = parent, child_id, view) do
-    id = child_dom_id(parent, view, child_id)
-
-    build_socket(endpoint, router, %{
-      id: id,
-      parent_pid: self(),
-      assigned_new: {parent.assigns, []}
-    })
   end
 
   @doc """
@@ -243,103 +226,8 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Raises error message for invalid view mount.
+  Returns the configured signing salt for the endpoint.
   """
-  def raise_invalid_mount(other, view) do
-    raise ArgumentError, """
-    invalid result returned from #{inspect(view)}.mount/2.
-
-    Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-    """
-  end
-
-  @doc """
-  Renders a live view without spawning a LiveView server.
-
-  * `conn` - the Plug.Conn struct form the HTTP request
-  * `view` - the LiveView module
-
-  ## Options
-
-    * `:session` - the required map of session data
-    * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
-  """
-  def static_render(%Plug.Conn{} = conn, view, opts) do
-    session = Keyword.fetch!(opts, :session)
-    config = load_live!(view)
-    {tag, extended_attrs} = container(config, opts)
-
-    case static_mount(conn, view, session) do
-      {:ok, socket, session_token} ->
-        attrs = [
-          {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
-          | extended_attrs
-        ]
-
-        html =
-          Phoenix.HTML.Tag.content_tag tag, attrs do
-            render(socket, view)
-          end
-
-        {:ok, html}
-
-      {:stop, reason} ->
-        {:stop, reason}
-    end
-  catch
-    :throw, {:stop, reason} -> {:stop, reason}
-  end
-
-  @doc """
-  Renders only the static container of the Liveview.
-
-  Accepts same options as `static_render/3`.
-  """
-  def static_render_container(%Plug.Conn{} = conn, view, opts) do
-    session = Keyword.fetch!(opts, :session)
-    config = load_live!(view)
-    {tag, extended_attrs} = container(config, opts)
-    router = Phoenix.Controller.router_module(conn)
-
-    socket =
-      conn
-      |> Phoenix.Controller.endpoint_module()
-      |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
-
-    session_token = sign_root_session(socket, view, session)
-
-    attrs = [
-      {:data, phx_id: dom_id(socket), phx_view: inspect(view), phx_session: session_token}
-      | extended_attrs
-    ]
-
-    tag
-    |> Phoenix.HTML.Tag.content_tag(attrs, do: nil)
-    |> Phoenix.HTML.safe_to_string()
-  end
-
-  @doc """
-  Renders a nested live view without spawning a server.
-
-  * `parent` - the parent `%Phoenix.LiveView.Socket{}`
-  * `view` - the child LiveView module
-
-  Accepts the same options as `static_render/3`.
-  """
-  def nested_static_render(%Socket{} = parent, view, opts) do
-    session = Keyword.fetch!(opts, :session)
-    config = load_live!(view)
-    container = container(config, opts)
-    child_id = opts[:child_id]
-
-    if connected?(parent) do
-      connected_nested_static_render(parent, view, session, container, child_id)
-    else
-      disconnected_nested_static_render(parent, view, session, container, child_id)
-    end
-  end
-
   def configured_signing_salt!(endpoint) when is_atom(endpoint) do
     endpoint.config(:live_view)[:signing_salt] ||
       raise ArgumentError, """
@@ -375,26 +263,57 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp disconnected_nested_static_render(parent, view, session, container, child_id) do
-    {tag, extended_attrs} = container
+  @doc """
+  Raises error message for invalid view mount.
+  """
+  def raise_invalid_mount(other, view) do
+    raise ArgumentError, """
+    invalid result returned from #{inspect(view)}.mount/2.
 
-    case nested_static_mount(parent, view, session, child_id) do
-      {:ok, socket, static_token} ->
+    Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
+    """
+  end
+
+  @doc """
+  Raises error message for bad live redirect.
+  """
+  def raise_bad_stop_and_live_redirect!() do
+    raise RuntimeError, """
+    attempted to live redirect while stopping.
+
+    a LiveView cannot be stopped while issuing a live redirect to the client. \
+    Use redirect/2 instead if you wish to stop and redirect.
+    """
+  end
+
+  @doc """
+  Renders a live view without spawning a LiveView server.
+
+  * `conn` - the Plug.Conn struct form the HTTP request
+  * `view` - the LiveView module
+
+  ## Options
+
+    * `:session` - the required map of session data
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
+  """
+  def static_render(%Plug.Conn{} = conn, view, opts) do
+    session = Keyword.get(opts, :session, %{})
+    config = load_live!(view)
+    {tag, extended_attrs} = container(config, opts)
+
+    case static_mount(conn, view, session) do
+      {:ok, socket, session_token} ->
         attrs = [
           {:data,
            phx_id: socket.id,
            phx_view: inspect(view),
-           phx_session: "",
-           phx_static: static_token,
-           phx_parent_id: parent.id}
+           phx_session: session_token}
           | extended_attrs
         ]
 
-        html =
-          Phoenix.HTML.Tag.content_tag tag, attrs do
-            render(socket, view)
-          end
-
+        html = Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
         {:ok, html}
 
       {:stop, reason} ->
@@ -402,15 +321,95 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp connected_nested_static_render(parent, view, session, container, child_id) do
-    {tag, extended_attrs} = container
-    socket = build_nested_socket(parent, child_id, view)
-    session_token = sign_child_session(socket, view, session)
+  @doc """
+  Renders only the static container of the Liveview.
+
+  Accepts same options as `static_render/3`.
+
+  This is called by external live links.
+  """
+  def static_render_container(%Plug.Conn{} = conn, view, opts) do
+    session = Keyword.get(opts, :session, %{})
+    config = load_live!(view)
+    {tag, extended_attrs} = container(config, opts)
+    router = Phoenix.Controller.router_module(conn)
+
+    socket =
+      conn
+      |> Phoenix.Controller.endpoint_module()
+      |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
+
+    session_token = sign_root_session(socket, view, session)
 
     attrs = [
       {:data,
        phx_id: socket.id,
-       phx_parent_id: dom_id(parent),
+       phx_view: inspect(view),
+       phx_session: session_token}
+      | extended_attrs
+    ]
+
+    tag
+    |> Phoenix.HTML.Tag.content_tag(attrs, do: nil)
+    |> Phoenix.HTML.safe_to_string()
+  end
+
+  @doc """
+  Renders a nested live view without spawning a server.
+
+  * `parent` - the parent `%Phoenix.LiveView.Socket{}`
+  * `view` - the child LiveView module
+
+  Accepts the same options as `static_render/3`.
+  """
+  def nested_static_render(%Socket{endpoint: endpoint, router: router} = parent, view, opts) do
+    session = Keyword.get(opts, :session, %{})
+    config = load_live!(view)
+    container = container(config, opts)
+    child_id = opts[:child_id]
+
+    socket =
+      build_socket(endpoint, router, %{
+        id: child_id(parent, view, child_id),
+        parent_pid: self(),
+        assigned_new: {parent.assigns, []}
+      })
+
+    if connected?(parent) do
+      connected_nested_static_render(parent, socket, view, session, container)
+    else
+      disconnected_nested_static_render(parent, socket, view, session, container)
+    end
+  end
+
+  defp disconnected_nested_static_render(parent, socket, view, session, container) do
+    {tag, extended_attrs} = container
+    socket = call_mount!(view, session, socket)
+    static_token = sign_static_token(socket)
+
+    attrs = [
+      {:data,
+       phx_id: socket.id,
+       phx_view: inspect(view),
+       phx_session: "",
+       phx_static: static_token,
+       phx_parent_id: parent.id}
+      | extended_attrs
+    ]
+
+    # TODO: We are rendering without calling handle_params!
+    html = Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
+    {:ok, html}
+  end
+
+  defp connected_nested_static_render(parent, socket, view, session, container) do
+    {tag, extended_attrs} = container
+    session_token = sign_nested_session(socket, view, session)
+
+    attrs = [
+      {:data,
+       phx_id: socket.id,
+       phx_parent_id: parent.id,
        phx_view: inspect(view),
        phx_session: session_token,
        phx_static: ""}
@@ -419,23 +418,6 @@ defmodule Phoenix.LiveView.View do
 
     html = Phoenix.HTML.Tag.content_tag(tag, "", attrs)
     {:ok, html}
-  end
-
-  defp nested_static_mount(%Socket{} = parent, view, session, child_id) do
-    socket = build_nested_socket(parent, child_id, view)
-
-    view
-    |> call_mount(session, socket)
-    |> case do
-      {:ok, %Socket{} = new_socket} ->
-        {:ok, new_socket, sign_static_token(new_socket)}
-
-      {:stop, socket} ->
-        {:stop, socket.redirected}
-
-      other ->
-        raise_invalid_mount(other, view)
-    end
   end
 
   defp static_mount(%Plug.Conn{} = conn, view, session) do
@@ -448,36 +430,20 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp do_static_mount(socket, view, session, params, uri) do
-    with {:ok, %Socket{redirected: nil} = mounted_socket} <- call_mount(view, session, socket),
-         {:noreply, %Socket{redirected: nil} = new_socket} <-
-           mount_handle_params(mounted_socket, view, params, uri) do
-      session_token = sign_root_session(socket, view, session)
-      {:ok, new_socket, session_token}
-    else
-      {:ok, %Socket{redirected: redirected}} ->
-        {:stop, redirected}
+    mounted_socket = call_mount!(view, session, socket)
+
+    # TODO: Should we allow call_mount! to return stop? Or is it better to force a raise?
+    # TODO: What if we noreply and redirect?
+    # TODO: What if we stop and live redirect?
+    # TODO: What if we stop and no redirects?
+    # TODO: What if URI is not available? (connected_live_redirect)
+    case mount_handle_params(mounted_socket, view, params, uri) do
+      {:noreply, %Socket{redirected: nil} = new_socket} ->
+        session_token = sign_root_session(socket, view, session)
+        {:ok, new_socket, session_token}
 
       {:stop, %Socket{redirected: redirected}} ->
         {:stop, redirected}
-
-      other ->
-        raise_invalid_mount(other, view)
-    end
-  end
-
-  @doc """
-  Calls the view's `mount/2` callback while handling possible options.
-  """
-  def call_mount(view, session, %Socket{} = socket) do
-    case view.mount(session, socket) do
-      {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-        {:ok, Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)}
-
-      {:ok, %Socket{} = socket} ->
-        {:ok, socket}
-
-      other ->
-        other
     end
   end
 
@@ -489,10 +455,33 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp sign_root_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+  @doc """
+  Calls the view's `mount/2` callback while handling possible options.
+  """
+  def call_mount!(view, session, %Socket{} = socket) do
+    socket =
+      case view.mount(session, socket) do
+        {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+          Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)
+
+        {:ok, %Socket{} = socket} ->
+          socket
+
+        other ->
+          raise_invalid_mount(other, view)
+      end
+
+    if socket.redirected do
+      raise "cannot redirect socket on mount/2"
+    end
+
+    socket
+  end
+
+  defp sign_root_session(%Socket{id: id, router: router} = socket, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
-      id: dom_id,
+      id: id,
       view: view,
       router: router,
       parent_pid: nil,
@@ -500,10 +489,10 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_child_session(%Socket{id: dom_id, router: router} = socket, view, session) do
+  defp sign_nested_session(%Socket{id: id, router: router} = socket, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
-      id: dom_id,
+      id: id,
       view: view,
       router: router,
       parent_pid: self(),
@@ -511,10 +500,10 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_static_token(%Socket{id: dom_id} = socket) do
+  defp sign_static_token(%Socket{id: id} = socket) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, salt(socket), %{
-      id: dom_id,
+      id: id,
       assigned_new: assigned_new_keys(socket)
     })
   end

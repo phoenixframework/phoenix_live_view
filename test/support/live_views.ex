@@ -19,28 +19,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   defp render_opts(list, opts) when is_list(list), do: Keyword.merge(opts, list)
   defp render_opts(_, opts), do: opts
 
-  def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
-    if connected?(socket) do
-      do_mount(session, socket)
-    else
-      {:stop, redirect(socket, to: "/thermostat_disconnected")}
-    end
-  end
-
-  def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
-    # Skip underlying redirect log.
-    Logger.disable(self())
-
-    if connected?(socket) do
-      {:stop, redirect(socket, to: "/thermostat_connected")}
-    else
-      do_mount(session, socket)
-    end
-  end
-
-  def mount(session, socket), do: do_mount(session, socket)
-
-  defp do_mount(session, socket) do
+  def mount(session, socket) do
     nest = Map.get(session, :nest, false)
     users = session[:users] || []
     val = if connected?(socket), do: 1, else: 0
@@ -112,32 +91,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     """
   end
 
-  def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
-    if connected?(socket) do
-      do_mount(session, socket)
-    else
-      {:stop, redirect(socket, to: "/clock_disconnected")}
-    end
-  end
-
-  def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
-    # Skip underlying redirect log.
-    Logger.disable(self())
-
-    if connected?(socket) do
-      {:stop, redirect(socket, to: "/clock_connected")}
-    else
-      do_mount(session, socket)
-    end
-  end
-
-  def mount(session, socket), do: do_mount(session, socket)
-
-  defp do_mount(session, socket) do
-    if connected?(socket) do
-      Process.register(self(), :"clock#{session[:name]}")
-    end
-
+  def mount(session, socket) do
     {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
   end
 
@@ -162,7 +116,7 @@ defmodule Phoenix.LiveViewTest.ClockControlsLive do
   def mount(_session, socket), do: {:ok, socket}
 
   def handle_event("snooze", _, socket) do
-    send(Process.whereis(:clock), :snooze)
+    send(socket.parent_pid, :snooze)
     {:noreply, socket}
   end
 end
@@ -268,30 +222,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 
   def mount(%{test_pid: pid} = session, socket) do
-    do_mount(session, assign(socket, :test_pid, pid))
-  end
-
-  defp do_mount(%{test: %{external_disconnected_redirect: redir}}, socket) do
-    %{to: to} = redir
-    {:ok, live_redirect(socket, to: to)}
-  end
-
-  defp do_mount(%{test: %{external_connected_redirect: opts}, test_pid: pid}, socket) do
-    %{to: to, stop: stop} = opts
-
-    cond do
-      connected?(socket) && stop -> {:stop, live_redirect(socket, to: to)}
-      connected?(socket) -> {:ok, live_redirect(socket, to: to)}
-      true -> {:ok, do_assign(assign(socket, pid: pid))}
-    end
-  end
-
-  defp do_mount(_session, socket) do
-    {:ok, do_assign(socket)}
-  end
-
-  defp do_assign(socket) do
-    assign(socket, val: 1, connect_params: get_connect_params(socket) || %{})
+    {:ok, assign(socket, val: 1, connect_params: get_connect_params(socket) || %{}, test_pid: pid)}
   end
 
   def handle_params(%{"from" => "handle_params"} = params, uri, socket) do
@@ -314,8 +245,8 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, live_redirect(socket, to: to)}
   end
 
-  def handle_call({:live_redirect, to, func}, _from, socket) do
-    func.(live_redirect(socket, to: to))
+  def handle_call({:live_redirect, func}, _from, socket) do
+    func.(socket)
   end
 
   def handle_cast({:live_redirect, to}, socket) do

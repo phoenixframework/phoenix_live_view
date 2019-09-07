@@ -772,7 +772,7 @@ defmodule Phoenix.LiveView do
       Hooks.PhoneNumber = {
         mounted(){
           this.el.addEventListener("input", e => {
-            let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+            let match = this.el.value.replace(/\\D/g, "").match(/^(\\d{3})(\\d{3})(\\d{4})$/)
             if(match) {
               this.el.value = `${match[1]}-${match[2]}-${match[3]}`
             }
@@ -791,7 +791,7 @@ defmodule Phoenix.LiveView do
   @type from :: binary
 
   @callback mount(session :: map, Socket.t()) ::
-              {:ok, Socket.t()} | {:stop, Socket.t()}
+              {:ok, Socket.t()}
 
   @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -847,7 +847,8 @@ defmodule Phoenix.LiveView do
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
     * `:child_id` - the ID to uniquely identify a child LiveView when
-      live rendering children of the same type.
+      live rendering children of the same type. This is not the DOM "id"
+      but rather an ID used internally by LiveView.
 
   ## Examples
 
@@ -858,28 +859,22 @@ defmodule Phoenix.LiveView do
       <%= live_render(@socket, MyApp.ThermostatLive) %>
 
   """
-  def live_render(conn_or_socket, view, opts \\ []) do
-    opts = Keyword.put_new(opts, :session, %{})
-    do_live_render(conn_or_socket, view, opts)
-  end
+  def live_render(conn_or_socket, view, opts \\ [])
 
-  defp do_live_render(%Plug.Conn{} = conn, view, opts) do
+  def live_render(%Plug.Conn{} = conn, view, opts) do
     case LiveView.View.static_render(conn, view, opts) do
       {:ok, content} ->
         content
 
-      {:stop, {:redirect, _opts}} ->
-        raise RuntimeError, """
-        attempted to redirect from #{inspect(view)} while rendering Plug request.
-        Redirects from live renders inside a Plug request are not supported.
-        """
+      {:stop, _} ->
+        raise RuntimeError, "cannot redirect from a child LiveView"
     end
   end
 
-  defp do_live_render(%Socket{} = parent, view, opts) do
+  def live_render(%Socket{} = parent, view, opts) do
     case LiveView.View.nested_static_render(parent, view, opts) do
       {:ok, content} -> content
-      {:stop, reason} -> throw({:stop, reason})
+      {:stop, _} -> raise RuntimeError, "cannot redirect from a child LiveView"
     end
   end
 
@@ -1039,12 +1034,11 @@ defmodule Phoenix.LiveView do
   to perform a `window.location` update on the provided
   redirect location.
 
-  TODO support `:external` and validation `:to` is a local path
-
   ## Options
 
     * `:to` - the path to redirect to
   """
+  # TODO support `:external` and validation `:to` is a local path
   def redirect(%Socket{} = socket, opts) do
     LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
   end
