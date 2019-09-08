@@ -57,9 +57,6 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp live_link?(%Plug.Conn{} = conn) do
-    case Plug.Conn.get_req_header(conn, @link_header) do
-      ["live-link"] -> true
-      _ -> false
-    end
+    Plug.Conn.get_req_header(conn, @link_header) == ["live-link"]
   end
 end
