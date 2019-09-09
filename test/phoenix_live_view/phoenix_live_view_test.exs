@@ -231,7 +231,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 0"
       assert html =~ "time: 12:00"
       assert html =~ "<button phx-click=\"snooze\">+</button>"
-      assert html =~ "Clock handle params called: true"
     end
 
     @tag session: %{nest: []}
@@ -242,7 +241,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 1"
       assert html =~ "time: 12:00"
       assert html =~ "<button phx-click=\"snooze\">+</button>"
-      assert html =~ "Clock handle params called: true"
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
       html = render(thermo_view)
@@ -270,7 +268,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "time: 12:05"
       assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
-      assert render(clock_view) =~ "Clock handle params called: true"
       assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
 
       :ok = GenServer.call(clock_view.pid, {:set, "12:01"})

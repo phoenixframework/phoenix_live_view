@@ -148,22 +148,27 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_call_mount_handle_params(state, router_view, url) do
-    if function_exported?(state.socket.view, :handle_params, 3) do
-      case View.live_link_info!(state.socket.router, router_view, url) do
-        {:internal, params} ->
-          params
-          |> view_module(state).handle_params(url, state.socket)
-          |> mount_handle_params_result(state, router_view, :mount)
+  defp maybe_call_mount_handle_params(%{socket: socket} = state, router_view, url) do
+    cond do
+      not function_exported?(socket.view, :handle_params, 3) ->
+        {diff, new_state} = render_diff(state, socket)
+        {:ok, diff, :mount, new_state}
 
-        :external ->
-          raise "cannot invoke handle_params/3 for #{inspect state.socket.view} " <>
-                  "because #{inspect router_view} was not declared in the router with " <>
-                  "the live/3 macro under #{inspect url}"
-      end
-    else
-      {diff, new_state} = render_diff(state, state.socket)
-      {:ok, diff, :mount, new_state}
+      socket.parent_pid ->
+        raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
+
+      true ->
+        case View.live_link_info!(socket.router, router_view, url) do
+          {:internal, params} ->
+            params
+            |> view_module(state).handle_params(url, socket)
+            |> mount_handle_params_result(state, router_view, :mount)
+
+          :external ->
+            raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
+                    "because #{inspect router_view} was not declared in the router with " <>
+                    "the live/3 macro under #{inspect url}"
+        end
     end
   end
 

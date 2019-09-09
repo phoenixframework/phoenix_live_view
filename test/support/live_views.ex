@@ -85,16 +85,11 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     ~L"""
     time: <%= @time %> <%= @name %>
     <%= live_render(@socket, ClockControlsLive, child_id: :controls) %>
-    Clock handle params called: <%= @handle_params_called %>
     """
   end
 
   def mount(session, socket) do
     {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
-  end
-
-  def handle_params(_params, _uri, socket) do
-    {:noreply, assign(socket, :handle_params_called, true)}
   end
 
   def handle_info(:snooze, socket) do

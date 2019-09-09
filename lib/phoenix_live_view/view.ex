@@ -297,6 +297,7 @@ defmodule Phoenix.LiveView.View do
     {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
     endpoint = Phoenix.Controller.endpoint_module(conn)
+    request_url = Plug.Conn.request_url(conn)
 
     socket =
       configure_socket(
@@ -305,13 +306,10 @@ defmodule Phoenix.LiveView.View do
           router: router,
           view: view,
         },
-        %{
-          assigned_new: {conn.assigns, []},
-          phoenix_live_disconnected: {conn.params, Plug.Conn.request_url(conn)}
-        }
+        %{assigned_new: {conn.assigns, []}}
       )
 
-    case call_mount_and_handle_params!(socket, view, session) do
+    case call_mount_and_handle_params!(socket, view, session, conn.params, request_url) do
       {:ok, socket} ->
         attrs = [
           {:data,
@@ -388,12 +386,15 @@ defmodule Phoenix.LiveView.View do
                 "must uniquely identify a children. Note the :child_is id NOT the DOM id."
 
     socket =
-      %Socket{
-        id: child_id(parent, view, child_id),
-        endpoint: endpoint,
-        router: router,
-        parent_pid: self()
-      }
+      configure_socket(
+        %Socket{
+          id: child_id(parent, view, child_id),
+          endpoint: endpoint,
+          router: router,
+          parent_pid: self()
+        },
+        %{assigned_new: {parent.assigns, []}}
+      )
 
     if connected?(parent) do
       connected_nested_static_render(parent, socket, view, session, container)
@@ -404,15 +405,11 @@ defmodule Phoenix.LiveView.View do
 
   defp disconnected_nested_static_render(parent, socket, view, session, container) do
     {tag, extended_attrs} = container
+    socket = call_mount!(socket, view, session)
 
-    socket =
-      configure_socket(socket, %{
-        assigned_new: {parent.assigns, []},
-        phoenix_live_disconnected: parent.private.phoenix_live_disconnected
-      })
-
-    # We don't have to worry about redirects because we cannot redirect from child.
-    {:ok, socket} = call_mount_and_handle_params!(socket, view, session)
+    if exports_handle_params?(view) do
+      raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
+    end
 
     attrs = [
       {:data,
@@ -428,7 +425,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp connected_nested_static_render(parent, socket, view, session, container) do
-    socket = configure_socket(socket, %{assigned_new: {parent.assigns, []}})
     {tag, extended_attrs} = container
     session_token = sign_nested_session(socket, view, session)
 
@@ -445,9 +441,7 @@ defmodule Phoenix.LiveView.View do
     Phoenix.HTML.Tag.content_tag(tag, "", attrs)
   end
 
-  defp call_mount_and_handle_params!(socket, view, session) do
-    %{private: %{phoenix_live_disconnected: {params, uri}}} = socket
-
+  defp call_mount_and_handle_params!(socket, view, session, params, uri) do
     socket
     |> call_mount!(view, session)
     |> mount_handle_params(view, params, uri)
@@ -467,12 +461,14 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp mount_handle_params(socket, view, params, uri) do
-    if function_exported?(view, :handle_params, 3) do
+    if exports_handle_params?(view) do
       view.handle_params(params, uri, socket)
     else
       {:noreply, socket}
     end
   end
+
+  defp exports_handle_params?(view), do: function_exported?(view, :handle_params, 3)
 
   @doc """
   Calls the view's `mount/2` callback while handling possible options.
