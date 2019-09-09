@@ -307,8 +307,8 @@ defmodule Phoenix.LiveView.View do
     case call_mount_and_handle_params!(socket, view, session, conn.params, request_url) do
       {:ok, socket} ->
         attrs = [
+          {:id, socket.id},
           {:data,
-           phx_id: socket.id,
            phx_view: config.name,
            phx_session: sign_root_session(socket, view, session)}
           | extended_attrs
@@ -349,8 +349,8 @@ defmodule Phoenix.LiveView.View do
     session_token = sign_root_session(socket, view, session)
 
     attrs = [
+      {:id, socket.id},
       {:data,
-       phx_id: socket.id,
        phx_view: config.name,
        phx_session: session_token}
       | extended_attrs
@@ -386,6 +386,7 @@ defmodule Phoenix.LiveView.View do
           id: child_id(parent, view, child_id),
           endpoint: endpoint,
           router: router,
+          root_pid: parent.root_pid,
           parent_pid: self()
         },
         %{assigned_new: {parent.assigns, []}}
@@ -407,8 +408,8 @@ defmodule Phoenix.LiveView.View do
     end
 
     attrs = [
+      {:id, socket.id},
       {:data,
-       phx_id: socket.id,
        phx_view: config.name,
        phx_session: "",
        phx_static: sign_static_token(socket),
@@ -421,11 +422,11 @@ defmodule Phoenix.LiveView.View do
 
   defp connected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
-    session_token = sign_nested_session(socket, view, session)
+    session_token = sign_nested_session(parent, socket, view, session)
 
     attrs = [
+      {:id, socket.id},
       {:data,
-       phx_id: socket.id,
        phx_parent_id: parent.id,
        phx_view: config.name,
        phx_session: session_token,
@@ -499,17 +500,19 @@ defmodule Phoenix.LiveView.View do
       view: view,
       router: router,
       parent_pid: nil,
+      root_pid: nil,
       session: session
     })
   end
 
-  defp sign_nested_session(%Socket{id: id, router: router, endpoint: endpoint}, view, session) do
+  defp sign_nested_session(%Socket{router: router, endpoint: endpoint} = parent, %Socket{} = child, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(endpoint, salt!(endpoint), %{
-      id: id,
+      id: child.id,
       view: view,
       router: router,
       parent_pid: self(),
+      root_pid: parent.root_pid,
       session: session
     })
   end

@@ -31,19 +31,19 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp dynamic_to_buffer(str, acc) when is_binary(str), do: [str | acc]
 
   def find_static_views(html) do
-    ~r/<[^>]+data-phx-id="([^"]+)[^>]+data-phx-static="([^"]+)/
+    ~r/<[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)/
     |> Regex.scan(html, capture: :all_but_first)
     |> Enum.into(%{}, fn
-      [id, static] -> {id, static}
+      [static, id] -> {id, static}
     end)
   end
 
   def find_sessions(html) do
-    ~r/<[^>]+data-phx-id="([^"]+)[^>]+data-phx-session="([^"]++)[^>]+data-phx-static="([^"]+)[^>]|<[^>]+data-phx-id="([^"]+)[^>]+data-phx-session="([^"]++)/
+    ~r/<[^>]+data-phx-session="([^"]++)[^>]+data-phx-static="([^"]+)[^>]+id="([^"]+)|<[^>]+data-phx-session="([^"]++)[^>]+id="([^"]+)/
     |> Regex.scan(html, capture: :all_but_first)
     |> Enum.map(fn
-      ["", "", "", id, session] -> {session, nil, id}
-      [id, session, static] -> {session, static, id}
+      ["", "", "", session, id] -> {session, nil, id}
+      [session, static, id] -> {session, static, id}
     end)
   end
 

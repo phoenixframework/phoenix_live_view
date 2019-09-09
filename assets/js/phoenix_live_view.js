@@ -10,9 +10,8 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 import morphdom from "morphdom"
 import {Socket} from "phoenix"
 
-const PHX_ID = "data-phx-id"
-const PHX_CID = "data-phx-component-id"
 const PHX_VIEW = "data-phx-view"
+const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-live-link"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
@@ -263,7 +262,7 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  getViewByEl(el){ return this.views[el.getAttribute(PHX_ID)] }
+  getViewByEl(el){ return this.views[el.id] }
 
   onViewError(view){
     this.dropActiveElement(view)
@@ -273,7 +272,7 @@ export class LiveSocket {
     for(let id in this.views){ this.destroyViewById(id) }
   }
 
-  destroyViewByEl(el){ return this.destroyViewById(el.getAttribute(PHX_ID)) }
+  destroyViewByEl(el){ return this.destroyViewById(el.id) }
 
   destroyViewById(id){
     let view = this.views[id]
@@ -781,7 +780,7 @@ export class View {
     this.newChildrenAdded = false
     this.gracefullyClosed = false
     this.el = el
-    this.id = this.el.getAttribute(PHX_ID)
+    this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.loaderTimer = null
     this.pendingDiffs = []
@@ -1019,10 +1018,10 @@ export class View {
     )
   }
 
-  componentID(el){ return el.getAttribute && el.getAttribute(PHX_CID) }
+  componentID(el){ return el.getAttribute && el.getAttribute(PHX_COMPONENT) && el.id }
 
   targetComponentID(target){
-    return maybe(target.closest(`[${PHX_CID}]`), el => this.ownsElement(el) && this.componentID(el))
+    return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
   }
 
   pushEvent(type, el, phxEvent, meta){
@@ -1090,7 +1089,7 @@ export class View {
 
   ownsElement(el){
     return el.getAttribute(PHX_PARENT_ID) === this.id ||
-           maybe(el.closest(PHX_VIEW_SELECTOR), e => e.getAttribute(PHX_ID)) === this.id
+           maybe(el.closest(PHX_VIEW_SELECTOR), node => node.id) === this.id
   }
 
   submitForm(form, phxEvent){

@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Socket do
             view: nil,
             router: nil,
             parent_pid: nil,
+            root_pid: nil,
             assigns: %{},
             changed: %{},
             temporary: %{},

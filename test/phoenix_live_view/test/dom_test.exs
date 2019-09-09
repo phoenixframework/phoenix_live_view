@@ -8,17 +8,17 @@ defmodule Phoenix.LiveViewTest.DOMTest do
 
   @html """
   <h1>top</h1>
-  <div data-phx-id="phx-123"
-    data-phx-view="789"
-    data-phx-session="SESSION1"></div>
-  <div data-phx-id="phx-456"
-      data-phx-parent-id="456"
+  <div data-phx-view="789"
+    data-phx-session="SESSION1"
+    id="phx-123"></div>
+  <div data-phx-parent-id="456"
       data-phx-view="789"
       data-phx-session="SESSION2"
-      data-phx-static="STATIC2"></div>
-  <div data-phx-id="phx-458"
-    data-phx-session="#{@too_big_session}"
-    data-phx-view="789"></div>
+      data-phx-static="STATIC2"
+      id="phx-456"></div>
+  <div data-phx-session="#{@too_big_session}"
+    data-phx-view="789"
+    id="phx-458"></div>
   <h1>bottom</h1>
   """
 
@@ -35,17 +35,17 @@ defmodule Phoenix.LiveViewTest.DOMTest do
   test "inserts session within html" do
     assert DOM.insert_attr(@html, "data-phx-session", "SESSION1", "<span>session1</span>") == """
            <h1>top</h1>
-           <div data-phx-id="phx-123"
-             data-phx-view="789"
-             data-phx-session="SESSION1"><span>session1</span></div>
-           <div data-phx-id="phx-456"
-               data-phx-parent-id="456"
+           <div data-phx-view="789"
+             data-phx-session="SESSION1"
+             id="phx-123"><span>session1</span></div>
+           <div data-phx-parent-id="456"
                data-phx-view="789"
                data-phx-session="SESSION2"
-               data-phx-static="STATIC2"></div>
-           <div data-phx-id="phx-458"
-             data-phx-session="#{@too_big_session}"
-             data-phx-view="789"></div>
+               data-phx-static="STATIC2"
+               id="phx-456"></div>
+           <div data-phx-session="#{@too_big_session}"
+             data-phx-view="789"
+             id="phx-458"></div>
            <h1>bottom</h1>
            """
 

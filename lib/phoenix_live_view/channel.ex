@@ -430,11 +430,12 @@ defmodule Phoenix.LiveView.Channel do
          id: id,
          view: view,
          parent_pid: parent,
+         root_pid: root,
          router: router,
          session: session,
          assigned_new: new
        }} ->
-        verified_mount(view, id, parent, router, new, session, params, from, phx_socket)
+        verified_mount(view, id, parent, root, router, new, session, params, from, phx_socket)
 
       {:error, reason} ->
         Logger.error(
@@ -452,7 +453,7 @@ defmodule Phoenix.LiveView.Channel do
     :ignore
   end
 
-  defp verified_mount(view, id, parent, router, assigned_new, session, params, from, phx_socket) do
+  defp verified_mount(view, id, parent, root, router, assigned_new, session, params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint} = phx_socket
     Process.monitor(phx_socket.transport_pid)
     {router_view, parent_assigns} = register_with_parent(parent, view, id, assigned_new)
@@ -464,6 +465,7 @@ defmodule Phoenix.LiveView.Channel do
       view: view,
       connected?: true,
       parent_pid: parent,
+      root_pid: root || self(),
       id: id
     }
     |> View.configure_socket(%{
