@@ -56,10 +56,6 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns the browser's DOM id for the nested socket.
   """
-  def child_id(%Socket{id: parent_id}, child_view, nil = _child_id) do
-    parent_id <> inspect(child_view)
-  end
-
   def child_id(%Socket{id: parent_id}, child_view, child_id) do
     parent_id <> inspect(child_view) <> to_string(child_id)
   end
@@ -384,7 +380,12 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view)
     container = container(config, opts)
-    child_id = opts[:child_id]
+
+    child_id =
+      opts[:child_id] ||
+        raise ArgumentError,
+              "a :child_id is required when rendering child LiveView. The :child_id " <>
+                "must uniquely identify a children. Note the :child_is id NOT the DOM id."
 
     socket =
       %Socket{

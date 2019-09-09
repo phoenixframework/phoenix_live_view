@@ -8,7 +8,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
-      <%= live_render(@socket, ClockLive, @nest) %>
+      <%= live_render(@socket, ClockLive, [child_id: :clock] ++ @nest) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
@@ -84,7 +84,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def render(assigns) do
     ~L"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive) %>
+    <%= live_render(@socket, ClockControlsLive, child_id: :controls) %>
     Clock handle params called: <%= @handle_params_called %>
     """
   end
@@ -143,7 +143,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: true} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name}) %>
+      <%= live_render(@socket, ClockLive, child_id: :dup, session: %{name: name}) %>
     <% end %>
     """
   end
@@ -172,9 +172,9 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def render(assigns) do
     ~L"""
     root name: <%= @current_user.name %>
-    <%= live_render(@socket, ChildLive, session: %{child: :static, user_id: @current_user.id}) %>
+    <%= live_render(@socket, ChildLive, child_id: :static, session: %{child: :static, user_id: @current_user.id}) %>
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, session: %{child: :dynamic, user_id: @current_user.id}, child_id: :dyn) %>
+      <%= live_render(@socket, ChildLive, child_id: :dynamic, session: %{child: :dynamic, user_id: @current_user.id}, child_id: :dyn) %>
     <% end %>
     """
   end

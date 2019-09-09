@@ -15,7 +15,7 @@ defmodule Phoenix.LiveViewTest.View do
             rendered: nil,
             children: %{},
             child_statics: %{},
-            dom_id: nil,
+            id: nil,
             connect_params: %{}
 
   def build(attrs) do
@@ -41,14 +41,14 @@ defmodule Phoenix.LiveViewTest.View do
     |> build()
   end
 
-  def put_child(%View{} = parent, session, dom_id) do
-    %View{parent | children: Map.put(parent.children, session, dom_id)}
+  def put_child(%View{} = parent, session, id) do
+    %View{parent | children: Map.put(parent.children, session, id)}
   end
 
-  def fetch_child_session_by_id(%View{} = parent, dom_id) do
+  def fetch_child_session_by_id(%View{} = parent, id) do
     Enum.find_value(parent.children, fn
-      {session, ^dom_id} -> {:ok, session}
-      {_session, _dom_id} -> nil
+      {session, ^id} -> {:ok, session}
+      {_session, _id} -> nil
     end) || :error
   end
 
@@ -62,7 +62,7 @@ defmodule Phoenix.LiveViewTest.View do
 
   def removed_children(%View{} = parent, children_before) do
     children_before
-    |> Enum.filter(fn {session, _dom_id} -> !Map.has_key?(parent.children, session) end)
+    |> Enum.filter(fn {session, _id} -> !Map.has_key?(parent.children, session) end)
     |> Enum.into(%{})
   end
 

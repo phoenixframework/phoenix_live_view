@@ -225,7 +225,7 @@ defmodule Phoenix.LiveViewTest do
     %View{ref: ref, topic: topic} =
       view =
       View.build(
-        dom_id: id,
+        id: id,
         mount_path: live_path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
