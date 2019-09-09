@@ -287,13 +287,13 @@ defmodule Phoenix.LiveView.Channel do
 
         {:ok, :diff,
          new_state
-         |> push_internal_live_redirect(pending_internal_live_redirect, nil)
+         |> push_internal_live_redirect(pending_internal_live_redirect)
          |> push_render(diff, ref)}
 
       :noop ->
         {:ok, :noop,
          new_state
-         |> push_internal_live_redirect(pending_internal_live_redirect, nil)
+         |> push_internal_live_redirect(pending_internal_live_redirect)
          |> push_noop(ref)}
 
       {:redirect, %{to: to} = opts} ->
@@ -333,9 +333,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp push_internal_live_redirect(state, nil, _ref), do: state
+  defp push_internal_live_redirect(state, nil), do: state
 
-  defp push_internal_live_redirect(state, %{to: to, kind: kind}, nil = _ref) do
+  defp push_internal_live_redirect(state, %{to: to, kind: kind}) do
     push(state, "live_redirect", %{to: to, kind: kind})
   end
 
