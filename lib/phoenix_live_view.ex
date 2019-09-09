@@ -816,10 +816,23 @@ defmodule Phoenix.LiveView do
                       handle_call: 3,
                       handle_info: 2
 
+  @doc """
+  Uses LiveView in the current module to mark it a LiveView.
+
+      use Phoenix.LiveView,
+        namespace: MyAppWeb,
+        container: {:tr, class: "colorized"}
+
+  ## Options
+
+    * `:namespace` - configures the namespace the `LiveView` is in
+    * `:container` - configures the container the `LiveView` will be wrapped in
+
+  """
   defmacro __using__(opts) do
     quote do
       opts = unquote(opts)
-      @__live__ Map.merge(%{container: {:div, []}}, Map.new(opts))
+      @__live__ Phoenix.LiveView.View.live_definition(__MODULE__, opts)
 
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)

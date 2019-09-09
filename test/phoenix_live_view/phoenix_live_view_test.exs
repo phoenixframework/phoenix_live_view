@@ -133,22 +133,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*>/
+               ~r/<article class="thermo"[^>]*data-phx-view=\"ThermostatLive\"[^>]*>/
 
       assert static_html =~ ~r/<\/article>/
 
       assert static_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert static_html =~ ~r/<\/section>/
 
       assert connected_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert connected_html =~ ~r/<\/section>/
 
       assert render(view) =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert render(view) =~ ~r/<\/section>/
     end
@@ -163,22 +163,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<span class="thermo"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+               ~r/<span class="thermo"[^>]*data-phx-view=\"ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
 
       assert static_html =~ ~r/<\/span>/
 
       assert static_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert static_html =~ ~r/<\/p>/
 
       assert connected_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert connected_html =~ ~r/<\/p>/
 
       assert render(view) =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"Phoenix.LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
     end

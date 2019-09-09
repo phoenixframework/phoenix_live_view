@@ -17,14 +17,13 @@ defmodule Phoenix.LiveView.View do
   @mount_opts [:temporary_assigns]
 
   @doc """
-  Strips socket of redundant assign data for rendering.
+  Defines the value for the `__live__` callback.
   """
-  def strip_for_render(%Socket{} = socket) do
-    if connected?(socket) do
-      %Socket{socket | assigns: %{}}
-    else
-      socket
-    end
+  def live_definition(module, opts) do
+    container = opts[:container] || {:div, []}
+    namespace = opts[:namespace] || module |> Module.split |> Enum.take(1) |> Module.concat()
+    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+    %{container: container, name: name}
   end
 
   @doc """
@@ -63,8 +62,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns true if the socket is connected.
   """
-  def connected?(%Socket{connected?: true}), do: true
-  def connected?(%Socket{connected?: false}), do: false
+  def connected?(%Socket{connected?: connected?}), do: connected?
 
   @doc """
   Returns the connect params.
@@ -175,6 +173,14 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
+  defp strip_for_render(%Socket{} = socket) do
+    if connected?(socket) do
+      %Socket{socket | assigns: %{}}
+    else
+      socket
+    end
+  end
+
   @doc """
   Verifies the session token.
 
@@ -257,17 +263,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Raises error message for invalid view mount.
-  """
-  def raise_invalid_mount(other, view) do
-    raise ArgumentError, """
-    invalid result returned from #{inspect(view)}.mount/2.
-
-    Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-    """
-  end
-
-  @doc """
   Raises error message for bad live redirect.
   """
   def raise_bad_stop_and_live_redirect!() do
@@ -314,7 +309,7 @@ defmodule Phoenix.LiveView.View do
         attrs = [
           {:data,
            phx_id: socket.id,
-           phx_view: inspect(view),
+           phx_view: config.name,
            phx_session: sign_root_session(socket, view, session)}
           | extended_attrs
         ]
@@ -356,7 +351,7 @@ defmodule Phoenix.LiveView.View do
     attrs = [
       {:data,
        phx_id: socket.id,
-       phx_view: inspect(view),
+       phx_view: config.name,
        phx_session: session_token}
       | extended_attrs
     ]
@@ -397,13 +392,13 @@ defmodule Phoenix.LiveView.View do
       )
 
     if connected?(parent) do
-      connected_nested_static_render(parent, socket, view, session, container)
+      connected_nested_static_render(parent, config, socket, view, session, container)
     else
-      disconnected_nested_static_render(parent, socket, view, session, container)
+      disconnected_nested_static_render(parent, config, socket, view, session, container)
     end
   end
 
-  defp disconnected_nested_static_render(parent, socket, view, session, container) do
+  defp disconnected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
     socket = call_mount!(socket, view, session)
 
@@ -414,7 +409,7 @@ defmodule Phoenix.LiveView.View do
     attrs = [
       {:data,
        phx_id: socket.id,
-       phx_view: inspect(view),
+       phx_view: config.name,
        phx_session: "",
        phx_static: sign_static_token(socket),
        phx_parent_id: parent.id}
@@ -424,7 +419,7 @@ defmodule Phoenix.LiveView.View do
     Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
   end
 
-  defp connected_nested_static_render(parent, socket, view, session, container) do
+  defp connected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
     session_token = sign_nested_session(socket, view, session)
 
@@ -432,7 +427,7 @@ defmodule Phoenix.LiveView.View do
       {:data,
        phx_id: socket.id,
        phx_parent_id: parent.id,
-       phx_view: inspect(view),
+       phx_view: config.name,
        phx_session: session_token,
        phx_static: ""}
       | extended_attrs
@@ -483,7 +478,11 @@ defmodule Phoenix.LiveView.View do
           socket
 
         other ->
-          raise_invalid_mount(other, view)
+          raise ArgumentError, """
+          invalid result returned from #{inspect(view)}.mount/2.
+
+          Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
+          """
       end
 
     if socket.redirected do

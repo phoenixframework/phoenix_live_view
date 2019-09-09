@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.PlugTest do
     conn = LiveViewPlug.call(conn, ThermostatLive)
 
     assert conn.resp_body =~
-             ~r/<article[^>]*data-phx-view="Phoenix.LiveViewTest.ThermostatLive"[^>]*>/
+             ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
   end
 
   test "with container options", %{conn: conn} do
@@ -55,6 +55,6 @@ defmodule Phoenix.LiveView.PlugTest do
       |> LiveViewPlug.call(DashboardLive)
 
     assert conn.resp_body =~
-             ~r/<span[^>]*data-phx-view="Phoenix.LiveViewTest.DashboardLive"[^>]*style="phx-flex">/
+             ~r/<span[^>]*data-phx-view="LiveViewTest.DashboardLive"[^>]*style="phx-flex">/
   end
 end
