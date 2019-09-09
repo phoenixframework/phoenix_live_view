@@ -19,14 +19,45 @@ defmodule Phoenix.LiveView.ParamsTest do
     {:ok, conn: conn}
   end
 
-  describe "handle_params on mount" do
-    test "is called on disconnected mount with named and query string params", %{conn: conn} do
+  defp put_serialized_session(conn, key, value) do
+    put_session(conn, key, :erlang.term_to_binary(value))
+  end
+
+  describe "handle_params on disconnected mount" do
+    test "is called with named and query string params", %{conn: conn} do
       conn = get(conn, "/counter/123", query1: "query1", query2: "query2")
 
       assert html_response(conn, 200) =~
                ~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|
     end
 
+    test "hard redirects", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(:on_handle_params, &{:stop, LiveView.redirect(&1, to: "/")})
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to() == "/"
+    end
+
+    test "internal live redirects", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(:on_handle_params, fn socket ->
+               {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
+             end)
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to() == "/counter/123?from=rehandled_params"
+    end
+
+    test "external live redirects", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(:on_handle_params, fn socket ->
+               {:noreply, LiveView.live_redirect(socket, to: "/thermo/456")}
+             end)
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to() == "/thermo/456"
+    end
+  end
+
+  describe "handle_params on connected mount" do
     test "is called on connected mount with named and query string params", %{conn: conn} do
       {:ok, _, html} =
         conn
@@ -34,6 +65,50 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> live()
 
       assert html =~ ~s|%{"id" => "123", "q1" => "1", "q2" => "2"}|
+    end
+
+    test "hard redirects", %{conn: conn} do
+      {:error, %{redirect: %{to: "/thermo/456"}}} =
+        conn
+        |> put_serialized_session(:on_handle_params, fn socket ->
+          if LiveView.connected?(socket) do
+            {:noreply, LiveView.redirect(socket, to: "/thermo/456")}
+          else
+            {:noreply, socket}
+          end
+        end)
+        |> get("/counter/123?from=handle_params")
+        |> live()
+    end
+
+    test "internal live redirects", %{conn: conn} do
+      {:ok, counter_live, _html} =
+        conn
+        |> put_serialized_session(:on_handle_params, fn socket ->
+          if LiveView.connected?(socket) do
+            {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
+          else
+            {:noreply, socket}
+          end
+        end)
+        |> get("/counter/123?from=handle_params")
+        |> live()
+
+      assert render(counter_live) =~ ~s|%{"from" => "rehandled_params", "id" => "123"}|
+    end
+
+    test "external live redirects", %{conn: conn} do
+      {:error, %{redirect: %{to: "/thermo/456"}}} =
+        conn
+        |> put_serialized_session(:on_handle_params, fn socket ->
+          if LiveView.connected?(socket) do
+            {:noreply, LiveView.live_redirect(socket, to: "/thermo/456")}
+          else
+            {:noreply, socket}
+          end
+        end)
+        |> get("/counter/123?from=handle_params")
+        |> live()
     end
   end
 

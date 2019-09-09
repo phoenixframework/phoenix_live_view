@@ -224,16 +224,17 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "nested child render on disconnected mount", %{conn: conn} do
       conn =
         conn
-        |> Plug.Test.init_test_session(%{nest: true})
+        |> Plug.Test.init_test_session(%{nest: []})
         |> get("/thermo")
 
       html = html_response(conn, 200)
       assert html =~ "The temp is: 0"
       assert html =~ "time: 12:00"
       assert html =~ "<button phx-click=\"snooze\">+</button>"
+      assert html =~ "Clock handle params called: true"
     end
 
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "nested child render on connected mount", %{conn: conn} do
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
@@ -241,6 +242,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 1"
       assert html =~ "time: 12:00"
       assert html =~ "<button phx-click=\"snooze\">+</button>"
+      assert html =~ "Clock handle params called: true"
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
       html = render(thermo_view)
@@ -255,7 +257,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(thermo_view) =~ "The temp is: 1"
       refute render(thermo_view) =~ "time"
       refute render(thermo_view) =~ "snooze"
-      GenServer.call(thermo_view.pid, {:set, :nest, true})
+      GenServer.call(thermo_view.pid, {:set, :nest, []})
       assert render(thermo_view) =~ "The temp is: 1"
       assert render(thermo_view) =~ "time"
       assert render(thermo_view) =~ "snooze"
@@ -267,8 +269,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "time: 12:05"
-      assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
+      assert render(clock_view) =~ "Clock handle params called: true"
+      assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
 
       :ok = GenServer.call(clock_view.pid, {:set, "12:01"})
 
@@ -277,7 +280,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(thermo_view) =~ "<button phx-click=\"snooze\">+</button>"
     end
 
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
       html_without_nesting = """
       The temp is: 1
@@ -332,7 +335,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
              end) =~ "unable to start child Phoenix.LiveViewTest.ClockLive under duplicate name"
     end
 
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "parent graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
@@ -345,7 +348,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(controls_view, {:shutdown, :stop})
     end
 
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "child level 1 graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
@@ -358,7 +361,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert children(thermo_view) == []
     end
 
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "child level 2 graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
@@ -372,7 +375,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag :capture_log
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "abnormal parent exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
@@ -387,7 +390,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag :capture_log
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "abnormal child level 1 exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
@@ -402,7 +405,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag :capture_log
-    @tag session: %{nest: true}
+    @tag session: %{nest: []}
     test "abnormal child level 2 exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
@@ -426,7 +429,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, thermo_view, html} =
         conn
-        |> put_session(:nest, true)
+        |> put_session(:nest, [])
         |> put_session(:users, users)
         |> live("/thermo")
 
@@ -456,7 +459,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "raises from child", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
-      GenServer.call(thermo_view.pid, {:set, :nest, true})
+      GenServer.call(thermo_view.pid, {:set, :nest, []})
       assert [clock_view] = children(thermo_view)
 
       send(
@@ -468,7 +471,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       )
 
       assert_remove(clock_view, {%ArgumentError{message: msg}, _stack})
-      assert msg =~ "attempted to live_redirect from a nested child socket"
+      assert msg =~ "cannot invoke live_redirect/2 from a child LiveView"
     end
   end
 

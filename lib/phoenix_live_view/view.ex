@@ -96,22 +96,19 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Builds a `%Phoenix.LiveView.Socket{}`.
+  Configures the socket for use.
   """
-  def build_socket(endpoint, router, %{} = opts) when is_atom(endpoint) do
-    {id, opts} = Map.pop_lazy(opts, :id, fn -> random_id() end)
-    {{%{}, _} = assigned_new, opts} = Map.pop(opts, :assigned_new, {%{}, []})
-    {connect_params, opts} = Map.pop(opts, :connect_params, %{})
+  def configure_socket(%{id: nil} = socket, private) do
+    configure_socket(%{socket | id: random_id()}, private)
+  end
 
-    struct!(
-      %Socket{
-        id: id,
-        endpoint: endpoint,
-        router: router,
-        private: %{assigned_new: assigned_new, connect_params: connect_params}
-      },
-      opts
-    )
+  def configure_socket(socket, private) do
+    private =
+      private
+      |> Map.put_new(:assigned_new, {%{}, []})
+      |> Map.put_new(:connect_params, %{})
+
+    %{socket | private: private}
   end
 
   @doc """
@@ -209,7 +206,7 @@ defmodule Phoenix.LiveView.View do
   defp verify_static_token(endpoint, token), do: verify_token(endpoint, token)
 
   defp verify_token(endpoint, token) do
-    case Phoenix.Token.verify(endpoint, salt(endpoint), token, max_age: @max_session_age) do
+    case Phoenix.Token.verify(endpoint, salt!(endpoint), token, max_age: @max_session_age) do
       {:ok, {@token_vsn, term}} -> {:ok, term}
       {:ok, _} -> {:error, :outdated}
       {:error, _} = error -> error
@@ -222,13 +219,13 @@ defmodule Phoenix.LiveView.View do
   def sign_flash(%Socket{}, nil), do: nil
 
   def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do
-    LiveView.Flash.sign_token(endpoint, salt(endpoint), flash)
+    LiveView.Flash.sign_token(endpoint, salt!(endpoint), flash)
   end
 
   @doc """
   Returns the configured signing salt for the endpoint.
   """
-  def configured_signing_salt!(endpoint) when is_atom(endpoint) do
+  def salt!(endpoint) when is_atom(endpoint) do
     endpoint.config(:live_view)[:signing_salt] ||
       raise ArgumentError, """
       no signing salt found for #{inspect(endpoint)}.
@@ -245,7 +242,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
-  def live_link_info!(%Socket{view: view, router: router}, uri) do
+  def live_link_info!(router, view, uri) do
     %URI{host: host, path: path, query: query} = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
@@ -258,8 +255,8 @@ defmodule Phoenix.LiveView.View do
 
       :error ->
         raise ArgumentError,
-              "cannot live_redirect/live_link to #{inspect(uri)} because " <>
-                "it isn't defined in #{inspect(router)}"
+              "cannot invoke handle_params nor live_redirect/live_link to #{inspect(uri)} " <>
+                "because it isn't defined in #{inspect(router)}"
     end
   end
 
@@ -302,14 +299,29 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view)
     {tag, extended_attrs} = container(config, opts)
+    router = Phoenix.Controller.router_module(conn)
+    endpoint = Phoenix.Controller.endpoint_module(conn)
 
-    case static_mount(conn, view, session) do
-      {:ok, socket, session_token} ->
+    socket =
+      configure_socket(
+        %Socket{
+          endpoint: endpoint,
+          router: router,
+          view: view,
+        },
+        %{
+          assigned_new: {conn.assigns, []},
+          phoenix_live_disconnected: {conn.params, Plug.Conn.request_url(conn)}
+        }
+      )
+
+    case call_mount_and_handle_params!(socket, view, session) do
+      {:ok, socket} ->
         attrs = [
           {:data,
            phx_id: socket.id,
            phx_view: inspect(view),
-           phx_session: session_token}
+           phx_session: sign_root_session(socket, view, session)}
           | extended_attrs
         ]
 
@@ -333,11 +345,17 @@ defmodule Phoenix.LiveView.View do
     config = load_live!(view)
     {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
+    endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
-      conn
-      |> Phoenix.Controller.endpoint_module()
-      |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
+      configure_socket(
+        %Socket{
+          endpoint: endpoint,
+          router: router,
+          view: view
+        },
+        %{assigned_new: {conn.assigns, []}}
+      )
 
     session_token = sign_root_session(socket, view, session)
 
@@ -369,11 +387,12 @@ defmodule Phoenix.LiveView.View do
     child_id = opts[:child_id]
 
     socket =
-      build_socket(endpoint, router, %{
+      %Socket{
         id: child_id(parent, view, child_id),
-        parent_pid: self(),
-        assigned_new: {parent.assigns, []}
-      })
+        endpoint: endpoint,
+        router: router,
+        parent_pid: self()
+      }
 
     if connected?(parent) do
       connected_nested_static_render(parent, socket, view, session, container)
@@ -384,25 +403,31 @@ defmodule Phoenix.LiveView.View do
 
   defp disconnected_nested_static_render(parent, socket, view, session, container) do
     {tag, extended_attrs} = container
-    socket = call_mount!(view, session, socket)
-    static_token = sign_static_token(socket)
+
+    socket =
+      configure_socket(socket, %{
+        assigned_new: {parent.assigns, []},
+        phoenix_live_disconnected: parent.private.phoenix_live_disconnected
+      })
+
+    # We don't have to worry about redirects because we cannot redirect from child.
+    {:ok, socket} = call_mount_and_handle_params!(socket, view, session)
 
     attrs = [
       {:data,
        phx_id: socket.id,
        phx_view: inspect(view),
        phx_session: "",
-       phx_static: static_token,
+       phx_static: sign_static_token(socket),
        phx_parent_id: parent.id}
       | extended_attrs
     ]
 
-    # TODO: We are rendering without calling handle_params!
-    html = Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
-    {:ok, html}
+    Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
   end
 
   defp connected_nested_static_render(parent, socket, view, session, container) do
+    socket = configure_socket(socket, %{assigned_new: {parent.assigns, []}})
     {tag, extended_attrs} = container
     session_token = sign_nested_session(socket, view, session)
 
@@ -416,31 +441,24 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    html = Phoenix.HTML.Tag.content_tag(tag, "", attrs)
-    {:ok, html}
+    Phoenix.HTML.Tag.content_tag(tag, "", attrs)
   end
 
-  defp static_mount(%Plug.Conn{} = conn, view, session) do
-    router = Phoenix.Controller.router_module(conn)
+  defp call_mount_and_handle_params!(socket, view, session) do
+    %{private: %{phoenix_live_disconnected: {params, uri}}} = socket
 
-    conn
-    |> Phoenix.Controller.endpoint_module()
-    |> build_socket(router, %{view: view, assigned_new: {conn.assigns, []}})
-    |> do_static_mount(view, session, conn.params, Plug.Conn.request_url(conn))
-  end
-
-  defp do_static_mount(socket, view, session, params, uri) do
-    mounted_socket = call_mount!(view, session, socket)
-
-    # TODO: Should we allow call_mount! to return stop? Or is it better to force a raise?
-    # TODO: What if we noreply and redirect?
-    # TODO: What if we stop and live redirect?
-    # TODO: What if we stop and no redirects?
-    # TODO: What if URI is not available? (connected_live_redirect)
-    case mount_handle_params(mounted_socket, view, params, uri) do
+    socket
+    |> call_mount!(view, session)
+    |> mount_handle_params(view, params, uri)
+    |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
-        session_token = sign_root_session(socket, view, session)
-        {:ok, new_socket, session_token}
+        {:ok, new_socket}
+
+      {:noreply, %Socket{redirected: redirected}} ->
+        {:stop, redirected}
+
+      {:stop, %Socket{redirected: {:live, _}}} ->
+        raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{redirected: redirected}} ->
         {:stop, redirected}
@@ -458,7 +476,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Calls the view's `mount/2` callback while handling possible options.
   """
-  def call_mount!(view, session, %Socket{} = socket) do
+  def call_mount!(%Socket{} = socket, view, session) do
     socket =
       case view.mount(session, socket) do
         {:ok, %Socket{} = socket, opts} when is_list(opts) ->
@@ -478,9 +496,9 @@ defmodule Phoenix.LiveView.View do
     socket
   end
 
-  defp sign_root_session(%Socket{id: id, router: router} = socket, view, session) do
+  defp sign_root_session(%Socket{id: id, router: router, endpoint: endpoint}, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
-    sign_token(socket.endpoint, salt(socket), %{
+    sign_token(endpoint, salt!(endpoint), %{
       id: id,
       view: view,
       router: router,
@@ -489,9 +507,9 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_nested_session(%Socket{id: id, router: router} = socket, view, session) do
+  defp sign_nested_session(%Socket{id: id, router: router, endpoint: endpoint}, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
-    sign_token(socket.endpoint, salt(socket), %{
+    sign_token(endpoint, salt!(endpoint), %{
       id: id,
       view: view,
       router: router,
@@ -500,20 +518,12 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_static_token(%Socket{id: id} = socket) do
+  defp sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
-    sign_token(socket.endpoint, salt(socket), %{
+    sign_token(endpoint, salt!(endpoint), %{
       id: id,
       assigned_new: assigned_new_keys(socket)
     })
-  end
-
-  defp salt(%Socket{endpoint: endpoint}) do
-    salt(endpoint)
-  end
-
-  defp salt(endpoint) when is_atom(endpoint) do
-    configured_signing_salt!(endpoint)
   end
 
   defp random_encoded_bytes do

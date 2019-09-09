@@ -8,16 +8,13 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
-      <%= live_render(@socket, ClockLive, render_opts(@nest, session: %{redir: @redir})) %>
+      <%= live_render(@socket, ClockLive, @nest) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
     <% end %>
     """
   end
-
-  defp render_opts(list, opts) when is_list(list), do: Keyword.merge(opts, list)
-  defp render_opts(_, opts), do: opts
 
   def mount(session, socket) do
     nest = Map.get(session, :nest, false)
@@ -88,11 +85,16 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     ~L"""
     time: <%= @time %> <%= @name %>
     <%= live_render(@socket, ClockControlsLive) %>
+    Clock handle params called: <%= @handle_params_called %>
     """
   end
 
   def mount(session, socket) do
     {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, assign(socket, :handle_params_called, true)}
   end
 
   def handle_info(:snooze, socket) do
@@ -221,13 +223,22 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     """
   end
 
-  def mount(%{test_pid: pid} = session, socket) do
-    {:ok, assign(socket, val: 1, connect_params: get_connect_params(socket) || %{}, test_pid: pid)}
+  def mount(session, socket) do
+    on_handle_params = session[:on_handle_params]
+
+    {:ok,
+     assign(
+       socket,
+       val: 1,
+       connect_params: get_connect_params(socket) || %{},
+       test_pid: session[:test_pid],
+       on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
+     )}
   end
 
   def handle_params(%{"from" => "handle_params"} = params, uri, socket) do
     send(socket.assigns.test_pid, {:handle_params, uri, socket.assigns, params})
-    socket.assigns.on_handle_params.(socket)
+    socket.assigns.on_handle_params.(assign(socket, :params, params))
   end
 
   def handle_params(params, uri, socket) do

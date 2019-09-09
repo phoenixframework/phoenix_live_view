@@ -872,10 +872,7 @@ defmodule Phoenix.LiveView do
   end
 
   def live_render(%Socket{} = parent, view, opts) do
-    case LiveView.View.nested_static_render(parent, view, opts) do
-      {:ok, content} -> content
-      {:stop, _} -> raise RuntimeError, "cannot redirect from a child LiveView"
-    end
+    LiveView.View.nested_static_render(parent, view, opts)
   end
 
   @doc """
@@ -1040,6 +1037,7 @@ defmodule Phoenix.LiveView do
   """
   # TODO support `:external` and validation `:to` is a local path
   def redirect(%Socket{} = socket, opts) do
+    assert_root_live_view!(socket, "redirect/2")
     LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
   end
 
@@ -1063,6 +1061,7 @@ defmodule Phoenix.LiveView do
       {:noreply, live_redirect(socket, to: "/", replace: true)}
   """
   def live_redirect(%Socket{} = socket, opts) do
+    assert_root_live_view!(socket, "live_redirect/2")
     kind = if opts[:replace], do: :replace, else: :push
     LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
@@ -1131,4 +1130,10 @@ defmodule Phoenix.LiveView do
   def get_connect_params(%Socket{} = socket) do
     LiveView.View.get_connect_params(socket)
   end
+
+  defp assert_root_live_view!(%{parent_pid: nil}, _context),
+    do: :ok
+
+  defp assert_root_live_view!(_, context),
+    do: raise ArgumentError, "cannot invoke #{context} from a child LiveView"
 end
