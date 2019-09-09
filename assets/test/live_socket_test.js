@@ -1,13 +1,13 @@
 import LiveSocket, {View} from '../js/phoenix_live_view'
 import {Socket} from "phoenix"
 
-let container = (num) => global.document.querySelector(`[data-phx-id=container${num}]`)
+let container = (num) => global.document.getElementById(`container${num}`)
 
 let prepareLiveViewDOM = (document) => {
   const div = document.createElement('div')
   div.setAttribute('data-phx-view', '')
   div.setAttribute('data-phx-session', 'abc123')
-  div.setAttribute('data-phx-id', 'container1')
+  div.setAttribute('id', 'container1')
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
@@ -108,7 +108,7 @@ describe('LiveSocket', () => {
     const secondLiveView = document.createElement('div')
     secondLiveView.setAttribute('data-phx-view', '')
     secondLiveView.setAttribute('data-phx-session', 'def456')
-    secondLiveView.setAttribute('data-phx-id', 'container2')
+    secondLiveView.setAttribute('id', 'container2')
     secondLiveView.innerHTML = `
       <label for="plus">Plus</label>
       <input id="plus" value="1" />

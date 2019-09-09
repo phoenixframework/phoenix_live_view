@@ -4,7 +4,7 @@ function liveViewDOM() {
   const div = document.createElement('div')
   div.setAttribute('data-phx-view', '');
   div.setAttribute('data-phx-session', 'abc123');
-  div.setAttribute('data-phx-id', 'container');
+  div.setAttribute('id', 'container');
   div.setAttribute('class', 'user-implemented-class');
   div.innerHTML = `
     <form>
