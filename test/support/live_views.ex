@@ -8,7 +8,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
-      <%= live_render(@socket, ClockLive, [child_id: :clock] ++ @nest) %>
+      <%= live_render(@socket, ClockLive, [id: :clock] ++ @nest) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
@@ -84,7 +84,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def render(assigns) do
     ~L"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive, child_id: :controls) %>
+    <%= live_render(@socket, ClockControlsLive, id: :controls) %>
     """
   end
 
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: true} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, child_id: :dup, session: %{name: name}) %>
+      <%= live_render(@socket, ClockLive, id: :dup, session: %{name: name}) %>
     <% end %>
     """
   end
@@ -146,7 +146,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: false} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, child_id: name) %>
+      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, id: name) %>
     <% end %>
     """
   end
@@ -167,9 +167,9 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def render(assigns) do
     ~L"""
     root name: <%= @current_user.name %>
-    <%= live_render(@socket, ChildLive, child_id: :static, session: %{child: :static, user_id: @current_user.id}) %>
+    <%= live_render(@socket, ChildLive, id: :static, session: %{child: :static, user_id: @current_user.id}) %>
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, child_id: :dynamic, session: %{child: :dynamic, user_id: @current_user.id}, child_id: :dyn) %>
+      <%= live_render(@socket, ChildLive, id: :dynamic, session: %{child: :dynamic, user_id: @current_user.id}, id: :dyn) %>
     <% end %>
     """
   end
@@ -193,14 +193,14 @@ defmodule Phoenix.LiveViewTest.ChildLive do
 
   def render(assigns) do
     ~L"""
-    child <%= @child_id %> name: <%= @current_user.name %>
+    child <%= @id %> name: <%= @current_user.name %>
     """
   end
 
-  def mount(%{user_id: user_id, child: child_id}, socket) do
+  def mount(%{user_id: user_id, child: id}, socket) do
     {:ok,
      socket
-     |> assign(:child_id, child_id)
+     |> assign(:id, id)
      |> assign_new(:current_user, fn ->
        %{name: "user-from-child", id: user_id}
      end)}

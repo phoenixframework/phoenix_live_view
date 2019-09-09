@@ -21,7 +21,7 @@ defmodule Phoenix.LiveView.View do
   """
   def live_definition(module, opts) do
     container = opts[:container] || {:div, []}
-    namespace = opts[:namespace] || module |> Module.split |> Enum.take(1) |> Module.concat()
+    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
     %{container: container, name: name}
   end
@@ -50,13 +50,6 @@ defmodule Phoenix.LiveView.View do
   """
   def put_prints(%Socket{} = socket, fingerprints) do
     %Socket{socket | fingerprints: fingerprints}
-  end
-
-  @doc """
-  Returns the browser's DOM id for the nested socket.
-  """
-  def child_id(%Socket{id: parent_id}, child_view, child_id) do
-    parent_id <> inspect(child_view) <> to_string(child_id)
   end
 
   @doc """
@@ -299,7 +292,7 @@ defmodule Phoenix.LiveView.View do
         %Socket{
           endpoint: endpoint,
           router: router,
-          view: view,
+          view: view
         },
         %{assigned_new: {conn.assigns, []}}
       )
@@ -308,9 +301,7 @@ defmodule Phoenix.LiveView.View do
       {:ok, socket} ->
         attrs = [
           {:id, socket.id},
-          {:data,
-           phx_view: config.name,
-           phx_session: sign_root_session(socket, view, session)}
+          {:data, phx_view: config.name, phx_session: sign_root_session(socket, view, session)}
           | extended_attrs
         ]
 
@@ -350,9 +341,7 @@ defmodule Phoenix.LiveView.View do
 
     attrs = [
       {:id, socket.id},
-      {:data,
-       phx_view: config.name,
-       phx_session: session_token}
+      {:data, phx_view: config.name, phx_session: session_token}
       | extended_attrs
     ]
 
@@ -375,15 +364,15 @@ defmodule Phoenix.LiveView.View do
     container = container(config, opts)
 
     child_id =
-      opts[:child_id] ||
+      opts[:id] ||
         raise ArgumentError,
-              "a :child_id is required when rendering child LiveView. The :child_id " <>
-                "must uniquely identify a children. Note the :child_is id NOT the DOM id."
+              "a :id is required when rendering child LiveView. The :id " <>
+                "must uniquely identify a children."
 
     socket =
       configure_socket(
         %Socket{
-          id: child_id(parent, view, child_id),
+          id: child_id,
           endpoint: endpoint,
           router: router,
           root_pid: parent.root_pid,
@@ -427,10 +416,7 @@ defmodule Phoenix.LiveView.View do
     attrs = [
       {:id, socket.id},
       {:data,
-       phx_parent_id: parent.id,
-       phx_view: config.name,
-       phx_session: session_token,
-       phx_static: ""}
+       phx_parent_id: parent.id, phx_view: config.name, phx_session: session_token, phx_static: ""}
       | extended_attrs
     ]
 
@@ -505,12 +491,12 @@ defmodule Phoenix.LiveView.View do
     })
   end
 
-  defp sign_nested_session(%Socket{router: router, endpoint: endpoint} = parent, %Socket{} = child, view, session) do
+  defp sign_nested_session(%Socket{} = parent, %Socket{} = child, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
-    sign_token(endpoint, salt!(endpoint), %{
+    sign_token(parent.endpoint, salt!(parent.endpoint), %{
       id: child.id,
       view: view,
-      router: router,
+      router: parent.router,
       parent_pid: self(),
       root_pid: parent.root_pid,
       session: session

@@ -859,9 +859,8 @@ defmodule Phoenix.LiveView do
       the contents before proceeding with `mount/2`.
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
-    * `:child_id` - the ID to uniquely identify a child LiveView when
-      live rendering children of the same type. This is not the DOM "id"
-      but rather an ID used internally by LiveView.
+    * `:id` - both the DOM ID and the ID to uniquely identify a child LiveView when
+      live rendering children of the same type.
 
   ## Examples
 
