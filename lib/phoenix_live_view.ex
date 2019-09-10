@@ -253,9 +253,10 @@ defmodule Phoenix.LiveView do
 
   Next, your client code connects to the server:
 
+      import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"
 
-      let liveSocket = new LiveSocket("/live")
+      let liveSocket = new LiveSocket("/live", Socket)
       liveSocket.connect()
 
   *Note*: Comprehensive JavaScript client usage is covered in detail below.
@@ -659,9 +660,10 @@ defmodule Phoenix.LiveView do
   As seen earlier, you start by instantiating a single LiveSocket instance to
   enable LiveView client/server interaction, for example:
 
+      import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"
 
-      let liveSocket = new LiveSocket("/live")
+      let liveSocket = new LiveSocket("/live", Socket)
       liveSocket.connect()
 
   All options are passed directly to the `Phoenix.Socket` constructor,

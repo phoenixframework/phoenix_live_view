@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "morphdom": "2.5.5",
-    "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html"
   },
   "devDependencies": {
@@ -26,6 +25,7 @@
     "expose-loader": "^0.7.5",
     "extract-text-webpack-plugin": "^4.0.0-beta.0",
     "jest": "^24.5.0",
+    "phoenix": "file:../deps/phoenix",
     "style-loader": "^0.20.2",
     "wait-for-expect": "^1.1.0",
     "webpack": "4.0.0",

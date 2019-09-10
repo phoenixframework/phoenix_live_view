@@ -1,3 +1,4 @@
+
 /*
 ================================================================================
 Phoenix LiveView JavaScript Client
@@ -8,7 +9,6 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 */
 
 import morphdom from "morphdom"
-import {Socket} from "phoenix"
 
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
@@ -41,7 +41,6 @@ const PHX_PREV_APPEND = "phxPrevAppend"
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
-
 
 // wraps value in closure or returns closure
 let closure = (val) => typeof val === "function" ? val : function(){ return val }
@@ -147,11 +146,44 @@ export let Rendered = {
   }
 }
 
-// todo document LiveSocket specific options like viewLogger
+/** Initializes the LiveSocket
+ *
+ *
+ * @param {string} endPoint - The string WebSocket endpoint, ie, `"wss://example.com/live"`,
+ *                                               `"/live"` (inherited host & protocol)
+ * @param {Phoenix.Socket} socket - the required Phoenix Socket class imported from "phoenix". For example:
+ *
+ *     import {Socket} from "phoenix"
+ *     import {LiveSocket} from "phoenix_live_view"
+ *     let liveSocket = new LiveSocket("/live", Socket, {...})
+ *
+ * @param {Object} [opts] - Optional configuration. Outside of keys listed below, all
+ * configuration is passed directly to the Phoenix Socket constructor.
+ * @param {Function} [opts.params] - The optional function for passing connect params.
+ * The function receives the viewName associated with a given LiveView. For example:
+ *
+ *     (viewName) => {view: viewName, token: window.myToken}
+ *
+ * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
+ * Defaults to "phx-".
+ * @param {string} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+ * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
+ *
+ *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
+*/
 export class LiveSocket {
-  constructor(url, opts = {}){
+  constructor(url, phxSocket, opts = {}){
     this.unloaded = false
-    this.socket = new Socket(url, opts)
+    if(!phxSocket || phxSocket.constructor.name === "Object"){
+      throw new Error(`
+      a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
+
+          import {Socket} from "phoenix"
+          import {LiveSocket} from "phoenix_live_view"
+          let liveSocket = new LiveSocket("/live", Socket, {...})
+      `)
+    }
+    this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
     this.views = {}
@@ -1133,4 +1165,5 @@ class ViewHook {
 }
 
 export default LiveSocket
+
 
