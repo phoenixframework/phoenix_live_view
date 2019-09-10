@@ -42,8 +42,8 @@ defmodule Phoenix.LiveView.Plug do
     |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
   end
 
-  defp session(conn, session_opts) do
-    for key <- session_opts, into: %{} do
+  defp session(conn, session_keys) do
+    for key <- session_keys, into: %{} do
       {key, Conn.get_session(conn, key)}
     end
   end
