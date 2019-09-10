@@ -406,7 +406,7 @@ export class LiveSocket {
       e.stopPropagation()
 
       let meta = {
-        altKey: e.altKey, 
+        altKey: e.altKey,
         shiftKey: e.shiftKey,
         ctrlKey: e.ctrlKey,
         metaKey: e.metaKey,
@@ -505,7 +505,11 @@ export class LiveSocket {
 
 export let Browser = {
   all(node, query, callback){
-    node.querySelectorAll(query).forEach(callback)
+    let array = []
+    let nodes = node.querySelectorAll(query)
+    for (let i = 0, len = array.length = nodes.length; i < len; i++){ array[i] = nodes[i] }
+
+    return array.forEach(callback)
   },
 
   canPushState(){ return (typeof(history.pushState) !== "undefined") },
@@ -641,7 +645,7 @@ let DOM = {
         if(fromEl[PHX_PREV_APPEND] === newHTML){ break }
 
         fromEl[PHX_PREV_APPEND] = newHTML
-        toEl.querySelectorAll("[id]").forEach(el => {
+        Browser.all(toEl, "[id]", el => {
           let existing = fromEl.querySelector(`[id="${el.id}"]`)
           if(existing){
             changes.discarded.push(existing)
@@ -651,7 +655,7 @@ let DOM = {
         })
         let operation = type === "append" ? "beforeend" : "afterbegin"
         fromEl.insertAdjacentHTML(operation, toEl.innerHTML)
-        fromEl.querySelectorAll(`[${phxHook}]`).forEach(el => changes.added.push(el))
+        Browser.all(fromEl, `[${phxHook}]`, el => changes.added.push(el))
         break
       default: throw new Error(`unsupported phx-update "${type}"`)
     }
@@ -1030,7 +1034,7 @@ export class View {
       meta[key.replace(prefix, "")] = el.getAttribute(key)
     }
     if(el.value !== undefined){ meta.value = el.value }
-    
+
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
