@@ -1,7 +1,7 @@
 ## 0.2.0-dev
 
 ### Enhancements
-  - Add new `:container` option to `use Phoenix.LiveView` 
+  - Add new `:container` option to `use Phoenix.LiveView`
 
 ## Bug Fixes
   - Fix number input handling causing some browsers to reset form fields on invalid inputs
@@ -9,6 +9,14 @@
 ### Backwards incompatible changes
   - Replace `configure_temporary_assigns/2` with 3-tuple mount return, supporting a `:temporary_assigns` key
   - Do not allow `redirect`/`live_redirect` on mount nor in child live views
+  - `LiveSocket` JavaScript constructor now requires explicit dependency injection of Phoenix Socket constructor. For example:
+
+        ```javascript
+        import {Socket} from "phoenix"
+        import LiveSocket from "phoenix_live_view"
+
+        let liveSocket = new LiveSocket("/live", Socket, {...})
+        ````
 
 ### Bug Fixes
   - Fix multi-select decoding causing server error
@@ -23,7 +31,7 @@
 ## 0.1.1 (2019-08-27)
 
 ### Enhancements
-  - Use optimized `insertAdjacentHTML` for faster append/prepend and proper css animation handling 
+  - Use optimized `insertAdjacentHTML` for faster append/prepend and proper css animation handling
   - Allow for replacing previously appended/prepended elements by replacing duplicate IDs during append/prepend instead of adding new DOM nodes
 
 ### Bug Fixes
