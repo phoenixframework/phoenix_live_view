@@ -510,6 +510,12 @@ defmodule Phoenix.LiveView do
         end)
       end
 
+  *Note*: Number inputs are a special case in LiveView forms. On programatic updates,
+  Some browsers will clear invalid inputs so LiveView will not send change events
+  from the client when an input is invalid, instead allowing the browser's native
+  validation UI to drive user interaction. Once the input becomes valid, change and
+  submit events will be sent as normal.
+
   ### Key Events
 
   The onkeydown, and onkeyup events are supported via

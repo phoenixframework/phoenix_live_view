@@ -475,6 +475,7 @@ export class LiveSocket {
 
         let value = JSON.stringify((new FormData(input.form)).getAll(input.name))
         if(this.prevInput === input && this.prevValue === value){ return }
+        if(input.type === "number" && input.validity && input.validity.badInput){ return }
 
         this.prevInput = input
         this.prevValue = value
@@ -704,10 +705,8 @@ let DOM = {
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
-
-        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes)){
-          return false
-        }
+        if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes)){ return false }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -1134,3 +1133,4 @@ class ViewHook {
 }
 
 export default LiveSocket
+
