@@ -780,17 +780,16 @@ let DOM = {
     return changes
   },
 
-  mergeAttrs(target, source){
+  mergeAttrs(target, source, exclude = []){
     var attrs = source.attributes
     for (let i = 0, length = attrs.length; i < length; i++){
       let name = attrs[i].name
-      let value = source.getAttribute(name)
-      target.setAttribute(name, value)
+      if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
     }
   },
 
   mergeInputs(target, source){
-    DOM.mergeAttrs(target, source)
+    DOM.mergeAttrs(target, source, ["value"])
     target.readOnly = source.readOnly
   },
 
