@@ -21,6 +21,7 @@
 ### Bug Fixes
   - Fix multi-select decoding causing server error
   - Fix multi-select change tracking failing to submit an event when a value is deselected
+  - Fix live redirect loop triggered under certain scenarios
 
 ## 0.1.2
 
