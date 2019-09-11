@@ -22,6 +22,7 @@
   - Fix multi-select decoding causing server error
   - Fix multi-select change tracking failing to submit an event when a value is deselected
   - Fix live redirect loop triggered under certain scenarios
+  - Fix params failing to update on re-mounts after live_redirect
 
 ## 0.1.2
 
