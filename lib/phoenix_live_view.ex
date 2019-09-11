@@ -521,11 +521,24 @@ defmodule Phoenix.LiveView do
         end)
       end
 
-  *Note*: Number inputs are a special case in LiveView forms. On programatic updates,
+  ### Number inputs
+
+  Number inputs are a special case in LiveView forms. On programatic updates,
   Some browsers will clear invalid inputs so LiveView will not send change events
   from the client when an input is invalid, instead allowing the browser's native
   validation UI to drive user interaction. Once the input becomes valid, change and
   submit events will be sent as normal.
+
+  ### Password inputs
+
+  Password inputs are also special cased in `Phoenix.HTML`. For security reasons,
+  password field values are not reused when rendering a password input tag. This
+  requires explicitly setting the `:value` in your markup, for example:
+
+      <%= password_input f, :password, value: input_value(f, :password) %>
+      <%= password_input f, :password_confirmation, value: input_value(f, :password_confirmation) %>
+      <%= error_tag f, :password %>
+      <%= error_tag f, :password_confirmation %>
 
   ### Key Events
 
