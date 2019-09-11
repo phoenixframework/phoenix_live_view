@@ -1018,6 +1018,7 @@ export class View {
   }
 
   onJoinError(resp){
+    if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
     this.displayError()
