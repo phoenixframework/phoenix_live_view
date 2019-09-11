@@ -1,7 +1,8 @@
 ## 0.2.0-dev
 
 ### Enhancements
-  - Add new `:container` option to `use Phoenix.LiveView`
+  - [LiveView] Add new `:container` option to `use Phoenix.LiveView`
+  - [LiveViewTest] Add `live_isolated` test helper for testing LiveViews which are not routable
 
 ## Bug Fixes
   - Fix number input handling causing some browsers to reset form fields on invalid inputs
@@ -23,6 +24,7 @@
   - Fix multi-select change tracking failing to submit an event when a value is deselected
   - Fix live redirect loop triggered under certain scenarios
   - Fix params failing to update on re-mounts after live_redirect
+  - Fix blur event metadata being sent with type of "focus"
 
 ## 0.1.2
 
