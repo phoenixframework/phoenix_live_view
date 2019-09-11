@@ -983,6 +983,7 @@ export class View {
   }
 
   onLiveRedirect({to, kind}){
+    this.href = to
     Browser.pushState(kind, {}, to)
   }
 
