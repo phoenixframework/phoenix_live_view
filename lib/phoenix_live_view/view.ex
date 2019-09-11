@@ -366,7 +366,7 @@ defmodule Phoenix.LiveView.View do
     child_id =
       opts[:id] ||
         raise ArgumentError,
-              "a :id is required when rendering child LiveView. The :id " <>
+              "an :id is required when rendering child LiveView. The :id " <>
                 "must uniquely identify a children."
 
     socket =
