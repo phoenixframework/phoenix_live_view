@@ -11,19 +11,18 @@ Phoenix LiveView enables rich, real-time user experiences with server-rendered H
 As official guides are being developed, see our existing
 comprehensive docs and examples to get up to speed:
 
-  * [Phoenix.LiveView docs for general usage](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view.ex)
-  * [phoenix_live_view.js docs](https://github.com/phoenixframework/phoenix_live_view/blob/master/assets/js/phoenix_live_view.js)
+  * [Phoenix.LiveView docs for Elixir and JavaScript usage](https://hexdocs.pm/phoenix_live_view)
   * [Phoenix.LiveViewTest for testing docs](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view/test/live_view_test.ex)
   * [LiveView example repo](https://github.com/chrismccord/phoenix_live_view_example) with a handful of examples from Weather widgets, autocomplete search, and games like Snake or Pacman
 
 ## Installation
 
-Currently LiveView is only available from GitHub. To use it, add to your `mix.exs` and run `mix deps.get`:
+To use LiveView, add to your `mix.exs` and run `mix deps.get`:
 
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"}
+    {:phoenix_live_view, "~> 0.1.0"}
   ]
 end
 ```
@@ -121,9 +120,10 @@ Enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
 // assets/js/app.js
+import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 
-let liveSocket = new LiveSocket("/live")
+let liveSocket = new LiveSocket("/live", Socket)
 liveSocket.connect()
 ```
 
@@ -168,6 +168,7 @@ import "url-search-params-polyfill"
 import "formdata-polyfill"
 import "classlist-polyfill"
 
+import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 ...
 ```

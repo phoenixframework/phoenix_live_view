@@ -6,20 +6,19 @@ defmodule Phoenix.LiveView.AssignNewTest do
 
   alias Phoenix.LiveViewTest.{Endpoint, Router}
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.View
+  alias Phoenix.LiveView.{View, Socket}
 
   @endpoint Endpoint
   @moduletag :capture_log
+  @socket View.configure_socket(%Socket{endpoint: Endpoint, router: Router}, %{})
 
   setup do
-    {:ok,
-     conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
+    {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
   test "uses socket assigns if no parent assigns are present" do
     socket =
-      Endpoint
-      |> View.build_socket(Router, %{})
+      @socket
       |> LiveView.assign(:existing, "existing")
       |> LiveView.assign_new(:existing, fn -> "new-existing" end)
       |> LiveView.assign_new(:notexisting, fn -> "new-notexisting" end)
@@ -29,8 +28,7 @@ defmodule Phoenix.LiveView.AssignNewTest do
 
   test "uses parent assigns when present and falls back to socket assigns" do
     socket =
-      Endpoint
-      |> View.build_socket(Router, %{assigned_new: {%{existing: "existing-parent"}, []}})
+      put_in(@socket.private.assigned_new, {%{existing: "existing-parent"}, []})
       |> LiveView.assign(:existing2, "existing2")
       |> LiveView.assign_new(:existing, fn -> "new-existing" end)
       |> LiveView.assign_new(:existing2, fn -> "new-existing2" end)

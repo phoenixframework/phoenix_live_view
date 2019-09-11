@@ -19,7 +19,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
-    live "/router/thermo_session/:id", DashboardLive, session: [:path_params, :user_id]
+    live "/router/thermo_session/:id", DashboardLive, session: [:user_id]
     live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
     live "/router/thermo_layout/:id", DashboardLive, layout: {Phoenix.LiveViewTest.AlternativeLayout , :layout}
 
@@ -29,6 +29,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/thermo-container", ThermostatLive, session: [:nest], container: {:span, style: "thermo-flex<script>"}
     live "/same-child", SameChildLive, session: [:dup]
     live "/root", RootLive, session: [:user_id]
-    live "/counter/:id", ParamCounterLive, session: [:test, :test_pid]
+    live "/counter/:id", ParamCounterLive, session: [:test, :test_pid, :on_handle_params]
+    live "/opts", OptsLive, session: [:opts]
   end
 end

@@ -202,9 +202,11 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts) when redir in [301, 302] do
+  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
+       when redir in [301, 302] do
     {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
   end
+
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
     html =
       conn
@@ -226,7 +228,7 @@ defmodule Phoenix.LiveViewTest do
     %View{ref: ref, topic: topic} =
       view =
       View.build(
-        dom_id: id,
+        id: id,
         mount_path: live_path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
@@ -254,7 +256,7 @@ defmodule Phoenix.LiveViewTest do
 
       :ignore ->
         receive do
-          {^ref, {%_{} = exception, [_|_] = stack}} -> reraise(exception, stack)
+          {^ref, {%_{} = exception, [_ | _] = stack}} -> reraise(exception, stack)
           {^ref, %{external_live_redirect: opts}} -> {:error, %{redirect: opts}}
           {^ref, reason} -> {:error, reason}
         end
@@ -274,10 +276,10 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Spawns a connected LiveView process mounted in isolation as the sole rendered element.
 
-  For LiveViews that are intended to be reused in multiple places, you can
-  connect a LiveView in isolation without needing a built a page that's tied to
-  a route. Testing pages that contains the LiveView to a degree is still
-  recommened.
+  Usefule for testing LiveViews that are not directly routable, such as those
+  built as small compontents to be re-used in multiple parents. Testing routable 
+  LiveViews is still recommended whenever possible since features such as
+  live navigation require routable LiveViews.
 
   ## Options
 
@@ -290,7 +292,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} =
-        live_isolated(conn, MyAppWeb.ClockLive, MyAppWeb.Router, [:browser], session: %{timezone: "Etc/UTC"})
+        live_isolated(conn, AppWeb.ClockLive, AppWeb.Router, [:browser], session: %{tz: "EST"})
   """
   defmacro live_isolated(conn, live_view, router, pipelines, opts \\ []) do
     quote bind_quoted: binding(), unquote: true do
@@ -398,7 +400,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(view, type, event, value) do
-    case GenServer.call(view.proxy, {:render_event, view, type, event, value}) do
+    case GenServer.call(view.proxy, {:render_event, view, type, event, stringify(value)}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
@@ -497,4 +499,16 @@ defmodule Phoenix.LiveViewTest do
 
   @doc false
   def encode!(msg), do: msg
+
+  defp stringify(%{__struct__: _} = struct),
+    do: struct
+
+  defp stringify(%{} = params),
+    do: Enum.into(params, %{}, &stringify_kv/1)
+
+  defp stringify(other),
+    do: other
+
+  defp stringify_kv({k, v}),
+    do: {to_string(k), stringify(v)}
 end

@@ -14,6 +14,18 @@ describe('Rendered', () => {
       const diff2 = { 0: ['c'], static: 'c' };
       expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
     });
+
+    test('replaces a string when a map is returned', () => {
+      const diff1 = { 0: { 0: '<button>Press Me</button>', static: '' } }
+      const diff2 = { 0: { 0: { 0: 'val', static: '' }, static: '' } }
+      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
+    });
+
+    test('replaces a map when a string is returned', () => {
+      const diff1 = { 0: { 0: { 0: 'val', static: '' }, static: '' } }
+      const diff2 = { 0: { 0: '<button>Press Me</button>', static: '' } }
+      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
+    });
   });
 
   describe('isNewFingerprint', () => {

@@ -16,12 +16,10 @@ defmodule Phoenix.LiveView.Router do
 
     * `:session` - the optional list of keys to pull out of the Plug
       connection session and into the LiveView session.
-      The `:path_params` keys may also be provided to copy the
-      plug path params into the session. Defaults to `[:path_params]`.
-      For example, the following would copy the path params and
-      Plug session current user ID into the LiveView session:
+      For example, the following would copy Plug's session current
+      user ID and the `remember_me` value into the LiveView session:
 
-          [:path_params, :user_id, :remember_me]
+          [:user_id, :remember_me]
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
@@ -40,7 +38,7 @@ defmodule Phoenix.LiveView.Router do
           pipe_through [:browser]
 
           live "/thermostat", ThermostatLive
-          live "/clock", ClockLive, session: [:path_params, :user_id]
+          live "/clock", ClockLive, session: [:user_id]
           live "/dashboard", DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
         end
       end
@@ -75,7 +73,6 @@ defmodule Phoenix.LiveView.Router do
       module
       |> Atom.to_string()
       |> String.split(".")
-      |> Enum.drop(-1)
       |> Enum.take(2)
       |> Kernel.++(["LayoutView"])
       |> Module.concat()

@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.Controller do
         |> Plug.Conn.assign(:live_view_module, view)
         |> Phoenix.Controller.put_view(__MODULE__)
         |> LiveView.Plug.put_cache_headers()
-        |> do_render(content)
+        |> Phoenix.Controller.render("template.html", %{content: content})
 
       {:stop, {:redirect, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
@@ -48,9 +48,6 @@ defmodule Phoenix.LiveView.Controller do
       {:stop, {:live, opts}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
     end
-  end
-  defp do_render(conn, content) do
-    Phoenix.Controller.render(conn, "template.html", %{conn: conn, content: content})
   end
 
   @doc false
