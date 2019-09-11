@@ -369,7 +369,7 @@ export class LiveSocket {
     })
     this.bindTargetable({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       if(!phxTarget){
-        view.pushEvent(type, targetEl, phxEvent, {type: "focus"})
+        view.pushEvent(type, targetEl, phxEvent, {type: type})
       }
     })
     this.bindTargetable({blur: "blur", focus: "focus"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
