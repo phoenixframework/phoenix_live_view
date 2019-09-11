@@ -120,6 +120,8 @@ defmodule Phoenix.LiveViewTest do
       refute render(parent) =~ "some content in child"
   """
 
+  require Phoenix.ConnTest
+
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
@@ -132,7 +134,8 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
-    * `:connect_params` - the map of params available in connected mount
+    * `:connect_params` - the map of params available in the socket connected
+      mount. See `Phoenix.LiveView.get_connect_params/1` for more information.
 
   ## Examples
 
@@ -267,6 +270,38 @@ defmodule Phoenix.LiveViewTest do
       path <> "?" <> Plug.Conn.Query.encode(query_params)
     else
       path
+    end
+  end
+
+  @doc """
+  Spawns a connected LiveView process mounted in isolation as the sole rendered element.
+
+  Usefule for testing LiveViews that are not directly routable, such as those
+  built as small compontents to be re-used in multiple parents. Testing routable 
+  LiveViews is still recommended whenever possible since features such as
+  live navigation require routable LiveViews.
+
+  ## Options
+
+    * `:connect_params` - the map of params available in connected mount mount.
+      See `Phoenix.LiveView.get_connect_params/1` for more information.
+
+  All other options are forwarded to the live view for rendering. Refer to
+  `Phoenix.LiveView.live_render/3` for list of supported render options.
+
+  ## Examples
+
+      {:ok, view, html} =
+        live_isolated(conn, AppWeb.ClockLive, AppWeb.Router, [:browser], session: %{tz: "EST"})
+  """
+  defmacro live_isolated(conn, live_view, router, pipelines, opts \\ []) do
+    quote bind_quoted: binding(), unquote: true do
+      {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
+      conn
+      |> Phoenix.ConnTest.bypass_through(router, List.wrap(pipelines))
+      |> Phoenix.ConnTest.get("/")
+      |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
+      |> Phoenix.LiveViewTest.live(mount_opts)
     end
   end
 
