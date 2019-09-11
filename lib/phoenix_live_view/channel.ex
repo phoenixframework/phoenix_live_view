@@ -445,8 +445,8 @@ defmodule Phoenix.LiveView.Channel do
 
   defp mount({%{}, from, phx_socket}) do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
-    GenServer.reply(from, %{reason: "nosession"})
-    :ignore
+    GenServer.reply(from, {:error, %{reason: "nosession"}})
+    {:stop, :shutdown, :no_session}
   end
 
   defp verified_mount(view, id, parent, root, router, assigned_new, session, params, from, phx_socket) do
