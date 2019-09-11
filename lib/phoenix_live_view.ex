@@ -381,6 +381,16 @@ defmodule Phoenix.LiveView do
 
           live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
+  ## Nested LiveViews
+
+  LiveViews can be nested inside a parent LiveView by calling `live_render/3`.
+  When rendering a child LiveView, the `:id` option is required to uniquely
+  identify the child. A child will only ever be rendered and mounted a single
+  time, provided its ID remains unchanged. Updates to a child session will be
+  merged on the client, but not passed back up until either a crash and re-mount or
+  a connetion drop and recovery. To force a child to re-mount with new session
+  data, a new ID must be provided.
+
   ## Bindings
 
   Phoenix supports DOM element bindings for client-server interaction. For

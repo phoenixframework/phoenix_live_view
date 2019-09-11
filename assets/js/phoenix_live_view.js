@@ -88,13 +88,6 @@ let recursiveMerge = (target, source) => {
   }
 }
 
-let Session = {
-  get(el){ return el.getAttribute(PHX_SESSION) },
-
-  isEqual(el1, el2){ return this.get(el1) === this.get(el2) }
-}
-
-
 export let Rendered = {
   mergeDiff(source, diff){
     if(this.isNewFingerprint(diff)){
@@ -743,11 +736,6 @@ let DOM = {
         // nested view handling
         if(DOM.isPhxChild(toEl)){
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
-
-          if(!Session.isEqual(toEl, fromEl)){
-            view.liveSocket.destroyViewByEl(fromEl)
-            view.onNewChildAdded()
-          }
           DOM.mergeAttrs(fromEl, toEl)
           fromEl.setAttribute(PHX_STATIC, prevStatic)
           return false
@@ -835,7 +823,7 @@ export class View {
 
   isConnected(){ return this.channel.canPush() }
 
-  getSession(){ return Session.get(this.el) }
+  getSession(){ return this.el.getAttribute(PHX_SESSION) }
 
   getStatic(){
     let val = this.el.getAttribute(PHX_STATIC)
