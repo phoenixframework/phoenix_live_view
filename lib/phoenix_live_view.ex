@@ -832,7 +832,7 @@ defmodule Phoenix.LiveView do
   @callback handle_params(unsigned_params, uri :: String.t(), Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
+  @callback handle_event(event :: binary, unsigned_params | binary, Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, Socket.t()) ::
