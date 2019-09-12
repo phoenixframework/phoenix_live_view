@@ -39,7 +39,6 @@ describe('View + DOM', function() {
     view.update(updatedEl)
 
     expect(view.el.firstChild.tagName).toBe('H2')
-    expect(view.newChildrenAdded).toBe(false)
     expect(view.rendered).toBe(updatedEl)
   })
 
@@ -87,7 +86,6 @@ describe('View + DOM', function() {
     view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
 
     expect(view.el.querySelector('form')).toBeTruthy()
-    expect(view.newChildrenAdded).toBe(false)
   })
 
   test('pushEvent', function() {
@@ -202,7 +200,6 @@ describe('View', function() {
     let el = liveViewDOM()
     let view = new View(el, liveSocket)
     expect(view.liveSocket).toBe(liveSocket)
-    expect(view.newChildrenAdded).toEqual(false)
     expect(view.gracefullyClosed).toEqual(false)
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
