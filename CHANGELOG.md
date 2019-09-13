@@ -4,10 +4,6 @@
   - [LiveView] Add new `:container` option to `use Phoenix.LiveView`
   - [LiveViewTest] Add `live_isolated` test helper for testing LiveViews which are not routable
 
-## Bug Fixes
-  - Fix phx-update=append/prepend failing to join new nested live views or wire up new phx-hooks
-  - Fix number input handling causing some browsers to reset form fields on invalid inputs
-
 ### Backwards incompatible changes
   - Replace `configure_temporary_assigns/2` with 3-tuple mount return, supporting a `:temporary_assigns` key
   - Do not allow `redirect`/`live_redirect` on mount nor in child live views
@@ -22,6 +18,8 @@
         ````
 
 ### Bug Fixes
+  - Fix phx-update=append/prepend failing to join new nested live views or wire up new phx-hooks
+  - Fix number input handling causing some browsers to reset form fields on invalid inputs
   - Fix multi-select decoding causing server error
   - Fix multi-select change tracking failing to submit an event when a value is deselected
   - Fix live redirect loop triggered under certain scenarios
