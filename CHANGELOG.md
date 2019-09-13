@@ -5,11 +5,13 @@
   - [LiveViewTest] Add `live_isolated` test helper for testing LiveViews which are not routable
 
 ## Bug Fixes
+  - Fix phx-update=append/prepend failing to join new nested live views or wire up new phx-hooks
   - Fix number input handling causing some browsers to reset form fields on invalid inputs
 
 ### Backwards incompatible changes
   - Replace `configure_temporary_assigns/2` with 3-tuple mount return, supporting a `:temporary_assigns` key
   - Do not allow `redirect`/`live_redirect` on mount nor in child live views
+  - All `phx-update` containers now require a unique ID
   - `LiveSocket` JavaScript constructor now requires explicit dependency injection of Phoenix Socket constructor. For example:
 
         ```javascript
