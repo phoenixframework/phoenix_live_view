@@ -1,4 +1,4 @@
-## 0.2.0-dev
+## 0.2.0 (2019-09-12)
 
 ### Enhancements
   - [LiveView] Add new `:container` option to `use Phoenix.LiveView`
