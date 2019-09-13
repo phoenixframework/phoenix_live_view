@@ -414,7 +414,7 @@ defmodule Phoenix.LiveView do
 
     * Any number of optional `phx-value-` prefixed attributes, such as:
 
-          <div phx-click="inc" phx-value-myvar1="val1" phx-value-mvar2="val2">
+          <div phx-click="inc" phx-value-myvar1="val1" phx-value-myvar2="val2">
 
       will send the following map of params to the server:
 
