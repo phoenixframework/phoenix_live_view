@@ -86,13 +86,6 @@ defmodule Phoenix.LiveView do
       and the ability to link to pages as you navigate.
       Support for `pushState` is on the roadmap;
 
-    * Cumulative and always growing data - chat
-      applications, logs, and similar can be built with
-      LiveView but currently you have to keep in the
-      server a copy of all messages shown in the client
-      as there is no append/prepend operation. Support
-      for append/prepend is on the roadmap;
-
     * Transitions and loading states - the LiveView
       programming model provides a good foundation for
       transitions and loading states since any UI change
@@ -767,10 +760,7 @@ defmodule Phoenix.LiveView do
   in the container, LiveView will replace the existing element with the
   new content instead appending or prepending a new element.
 
-  *Limitations*: LiveView will not append or prepend duplicate content that
-  was just added. If your goal is to append exactly duplicate rows for things
-  such as a placeholder inputs, apply a unique ID to the newly appended rows
-  to mark the content as unique.
+  *Note*: when using `phx-update`, a unique DOM ID must always be set.
 
   ### JS Interop and client controlled DOM
 

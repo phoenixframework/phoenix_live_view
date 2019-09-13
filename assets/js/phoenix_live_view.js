@@ -38,6 +38,8 @@ const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
 const PHX_PREV_APPEND = "phxPrevAppend"
 
+let logError = (msg, obj) => console.error && console.error(msg, obj)
+
 export let debug = (view, kind, msg, obj) => {
   console.log(`${view.id} ${kind}: ${msg} - `, obj)
 }
@@ -242,7 +244,7 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params) }
 
   joinRootViews(){
-    Browser.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
+    DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       let view = this.joinView(rootEl, null, this.getHref())
       this.root = this.root || view
     })
@@ -413,7 +415,7 @@ export class LiveSocket {
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => callback(e, event, view, e.target, targetPhxEvent, null))
         } else {
-          Browser.all(document, `[${binding}][${bindTarget}=window]`, el => {
+          DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
             this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
           })
@@ -530,14 +532,6 @@ export class LiveSocket {
 }
 
 export let Browser = {
-  all(node, query, callback){
-    let array = []
-    let nodes = node.querySelectorAll(query)
-    for (let i = 0, len = array.length = nodes.length; i < len; i++){ array[i] = nodes[i] }
-
-    return array.forEach(callback)
-  },
-
   canPushState(){ return (typeof(history.pushState) !== "undefined") },
 
   fetchPage(href, callback){
@@ -592,19 +586,23 @@ export let Browser = {
 }
 
 let DOM = {
+  all(node, query, callback){
+    return Array.from(node.querySelectorAll(query)).forEach(callback)
+  },
+
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.add(PHX_LOADING_CLASS)
-    Browser.all(form, `[${disableWith}]`, el => {
+    DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(disableWith)
       el.setAttribute(`${disableWith}-restore`, el.innerText)
       el.innerText = value
     })
-    Browser.all(form, "button", button => {
+    DOM.all(form, "button", button => {
       button.setAttribute(PHX_DISABLED, button.disabled)
       button.disabled = true
     })
-    Browser.all(form, "input", input => {
+    DOM.all(form, "input", input => {
       input.setAttribute(PHX_READONLY, input.readOnly)
       input.readOnly = true
     })
@@ -614,7 +612,7 @@ let DOM = {
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
     form.classList.remove(PHX_LOADING_CLASS)
 
-    Browser.all(form, `[${disableWith}]`, el => {
+    DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         if(el.nodeName === "INPUT") {
@@ -625,14 +623,14 @@ let DOM = {
         el.removeAttribute(`${disableWith}-restore`)
       }
     })
-    Browser.all(form, "button", button => {
+    DOM.all(form, "button", button => {
       let prev = button.getAttribute(PHX_DISABLED)
       if(prev){
         button.disabled = prev === "true"
         button.removeAttribute(PHX_DISABLED)
       }
     })
-    Browser.all(form, "input", input => {
+    DOM.all(form, "input", input => {
       let prev = input.getAttribute(PHX_READONLY)
       if(prev){
         input.readOnly = prev === "true"
@@ -641,10 +639,10 @@ let DOM = {
     })
   },
 
-  discardError(el){
+  discardError(container, el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
     if(!field) { return }
-    let input = document.getElementById(field)
+    let input = container.querySelector(`#${field}`)
 
     if(field && !(input[PHX_HAS_FOCUSED] || input.form[PHX_HAS_SUBMITTED])){
       el.style.display = "none"
@@ -655,70 +653,26 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes){
-    let type = toEl.getAttribute && toEl.getAttribute(phxUpdate)
-    if(!type || type === "replace"){
-      return false
-    } else {
-      DOM.mergeAttrs(fromEl, toEl)
-    }
-
-    switch(type){
-      case "ignore": break
-      case "append":
-      case "prepend":
-        let newHTML = toEl.innerHTML
-        if(fromEl[PHX_PREV_APPEND] === newHTML){ break }
-
-        fromEl[PHX_PREV_APPEND] = newHTML
-        Browser.all(toEl, "[id]", el => {
-          let existing = fromEl.querySelector(`[id="${el.id}"]`)
-          if(existing){
-            changes.discarded.push(existing)
-            el.remove()
-            existing.replaceWith(el)
-          }
-        })
-        let operation = type === "append" ? "beforeend" : "afterbegin"
-        fromEl.insertAdjacentHTML(operation, toEl.innerHTML)
-        Browser.all(fromEl, `[${phxHook}]`, el => changes.added.push(el))
-        break
-      default: throw new Error(`unsupported phx-update "${type}"`)
-    }
-    changes.updated.push({fromEl, toEl: fromEl})
-    return true
-  },
-
   patch(view, container, id, html){
-    let changes = {added: [], updated: [], discarded: []}
+    let changes = {added: [], updated: [], discarded: [], phxChildrenAdded: []}
     let focused = view.liveSocket.getActiveElement()
-    let selectionStart = null
-    let selectionEnd = null
+    let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
-    let phxHook = view.liveSocket.binding(PHX_HOOK)
-    let diffContainer = container.cloneNode()
-    diffContainer.innerHTML = html
+    let diffContainer = this.buildDiffContainer(container, html, phxUpdate)
 
-    if(DOM.isTextualInput(focused)){
-      selectionStart = focused.selectionStart
-      selectionEnd = focused.selectionEnd
-    }
-
-    morphdom(container, diffContainer, {
+    morphdom(container, diffContainer.outerHTML, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
-        DOM.discardError(el)
+        DOM.discardError(container, el)
         return el
       },
       onNodeAdded: function(el){
         // nested view handling
         if(DOM.isPhxChild(el) && view.ownsElement(el)){
-          view.onNewChildAdded()
-          return true
-        } else {
-          changes.added.push(el)
+          changes.phxChildrenAdded.push(el)
         }
+        changes.added.push(el)
       },
       onBeforeNodeDiscarded: function(el){
         // nested view handling
@@ -730,8 +684,8 @@ let DOM = {
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
+        if(fromEl.getAttribute(phxUpdate) === "ignore"){ return false }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-        if(DOM.applyPhxUpdate(fromEl, toEl, phxUpdate, phxHook, changes)){ return false }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -742,13 +696,9 @@ let DOM = {
         }
 
         // input handling
-        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){
-          toEl[PHX_HAS_SUBMITTED] = true
-        }
-        if(fromEl[PHX_HAS_FOCUSED]){
-          toEl[PHX_HAS_FOCUSED] = true
-        }
-        DOM.discardError(toEl)
+        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){ toEl[PHX_HAS_SUBMITTED] = true }
+        if(fromEl[PHX_HAS_FOCUSED]){ toEl[PHX_HAS_FOCUSED] = true }
+        DOM.discardError(container, toEl)
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
@@ -761,11 +711,47 @@ let DOM = {
       }
     })
 
-    view.liveSocket.silenceEvents(() => {
-      DOM.restoreFocus(focused, selectionStart, selectionEnd)
-    })
+    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     Browser.dispatchEvent(document, "phx:update")
     return changes
+  },
+
+  cloneNode(node, html){
+    let cloned = node.cloneNode()
+    cloned.innerHTML = html || node.innerHTML
+    return cloned
+  },
+
+  // builds container for morphdom patch
+  // - precomputes append/prepend content in diff node to make it appear as if
+  //   the contents had been appended/prepended on full child node list
+  // - precomputes updates on existing child ids within a prepend/append child list
+  //   to allow existing nodes to be updated in place rather than reordered
+  buildDiffContainer(container, html, phxUpdate){
+    let diffContainer = this.cloneNode(container, html)
+    let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
+    let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
+
+    DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
+      let id = el.id || logError("append/prepend requires an ID, got: ", el)
+      let existingInContainer = container.querySelector(`#${id}`)
+      if(!existingInContainer){ return }
+      let existing = this.cloneNode(existingInContainer)
+      let updateType = el.getAttribute(phxUpdate)
+      let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
+      let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
+
+      if(newIds.toString() !== existingIds.toString()){
+        let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
+        dupIds.forEach(id => {
+          let updatedEl = el.querySelector(`#${id}`)
+          existing.querySelector(`#${id}`).replaceWith(updatedEl)
+        })
+        el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
+      }
+    })
+
+    return diffContainer
   },
 
   mergeAttrs(target, source, exclude = []){
@@ -799,7 +785,6 @@ export class View {
   constructor(el, liveSocket, parentView, href){
     this.liveSocket = liveSocket
     this.parent = parentView
-    this.newChildrenAdded = false
     this.gracefullyClosed = false
     this.el = el
     this.id = this.el.id
@@ -885,7 +870,7 @@ export class View {
     this.hideLoader()
     let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
     changes.added.push(this.el)
-    Browser.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
+    DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
     this.triggerHooks(changes)
     this.joinNewChildren()
     if(live_redirect){
@@ -895,7 +880,7 @@ export class View {
   }
 
   joinNewChildren(){
-    Browser.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
+    DOM.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewByEl(el)
       if(!child){
         this.liveSocket.joinView(el, this)
@@ -910,9 +895,11 @@ export class View {
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = Rendered.toString(this.rendered)
-    this.newChildrenAdded = false
-    this.triggerHooks(DOM.patch(this, this.el, this.id, html))
-    if(this.newChildrenAdded){ this.joinNewChildren() }
+    let changes = DOM.patch(this, this.el, this.id, html)
+    if(changes.phxChildrenAdded.length > 0){
+      this.joinNewChildren()
+    }
+    this.triggerHooks(changes)
   }
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
@@ -957,10 +944,6 @@ export class View {
   applyPendingUpdates(){
     this.pendingDiffs.forEach(diff => this.update(diff))
     this.pendingDiffs = []
-  }
-
-  onNewChildAdded(){
-    this.newChildrenAdded = true
   }
 
   bindChannel(){
@@ -1154,5 +1137,3 @@ class ViewHook {
 }
 
 export default LiveSocket
-
-
