@@ -809,26 +809,26 @@ defmodule Phoenix.LiveView do
   alias Phoenix.LiveView.Socket
 
   @type unsigned_params :: map
-  @type from :: binary
+  @type from :: {pid, reference}
 
-  @callback mount(session :: map, Socket.t()) ::
+  @callback mount(session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()}
 
-  @callback render(Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
+  @callback render(socket :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback terminate(reason, Socket.t()) :: term
+  @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
-  @callback handle_params(unsigned_params, uri :: String.t(), Socket.t()) ::
+  @callback handle_params(unsigned_params, uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_event(event :: binary, unsigned_params, Socket.t()) ::
+  @callback handle_event(event :: binary, unsigned_params, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_call(msg :: term, {pid, reference}, Socket.t()) ::
+  @callback handle_call(msg :: term, from, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_info(msg :: term, Socket.t()) ::
+  @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
   @optional_callbacks terminate: 2,
