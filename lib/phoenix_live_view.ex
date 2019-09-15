@@ -814,7 +814,7 @@ defmodule Phoenix.LiveView do
   @callback mount(session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()}
 
-  @callback render(socket :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
+  @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
