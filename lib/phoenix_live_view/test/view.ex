@@ -13,17 +13,15 @@ defmodule Phoenix.LiveViewTest.View do
             topic: nil,
             ref: nil,
             rendered: nil,
-            children: %{},
+            children: [],
             child_statics: %{},
             id: nil,
             connect_params: %{}
 
   def build(attrs) do
-    topic = "phx-" <> Base.encode64(:crypto.strong_rand_bytes(8))
-
     attrs_with_defaults =
       attrs
-      |> Keyword.merge(topic: topic)
+      |> Keyword.merge(topic: Phoenix.LiveView.View.random_id())
       |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
 
     struct(__MODULE__, attrs_with_defaults)
@@ -41,29 +39,23 @@ defmodule Phoenix.LiveViewTest.View do
     |> build()
   end
 
-  def put_child(%View{} = parent, session, id) do
-    %View{parent | children: Map.put(parent.children, session, id)}
+  def put_child(%View{} = parent, id, session) do
+    %View{parent | children: [{id, session} | parent.children]}
   end
 
   def fetch_child_session_by_id(%View{} = parent, id) do
     Enum.find_value(parent.children, fn
-      {session, ^id} -> {:ok, session}
-      {_session, _id} -> nil
+      {^id, session} -> {:ok, session}
+      {_id, _session} -> false
     end) || :error
   end
 
-  def drop_child(%View{} = parent, session) do
-    %View{parent | children: Map.delete(parent.children, session)}
+  def drop_child(%View{children: children} = parent, id) do
+    %View{parent | children: Enum.reject(children, fn {cid, _session} -> id == cid end)}
   end
 
   def prune_children(%View{} = parent) do
-    %View{parent | children: %{}}
-  end
-
-  def removed_children(%View{} = parent, children_before) do
-    children_before
-    |> Enum.filter(fn {session, _id} -> !Map.has_key?(parent.children, session) end)
-    |> Enum.into(%{})
+    %View{parent | children: []}
   end
 
   def connected?(%View{pid: pid}) when is_pid(pid), do: true

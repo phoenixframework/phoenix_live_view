@@ -77,6 +77,13 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  def handle_info(%Message{topic: topic, event: "cids_destroyed"} = msg, %{topic: topic} = state) do
+    %{"cids" => _cids} = msg.payload
+    # TODO
+    {:noreply, state}
+  end
+
+
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode(type, state.socket.router, raw_val)

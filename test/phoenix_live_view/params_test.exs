@@ -27,8 +27,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "is called with named and query string params", %{conn: conn} do
       conn = get(conn, "/counter/123", query1: "query1", query2: "query2")
 
-      assert html_response(conn, 200) =~
-               ~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|
+      assert html_response(conn, 200) =~ escape(~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
     end
 
     test "hard redirects", %{conn: conn} do
@@ -64,7 +63,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?q1=1", q2: "2")
         |> live()
 
-      assert html =~ ~s|%{"id" => "123", "q1" => "1", "q2" => "2"}|
+      assert html =~ escape(~s|%{"id" => "123", "q1" => "1", "q2" => "2"}|)
     end
 
     test "hard redirects", %{conn: conn} do
@@ -94,7 +93,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
         |> live()
 
-      assert render(counter_live) =~ ~s|%{"from" => "rehandled_params", "id" => "123"}|
+      assert render(counter_live) =~ escape(~s|%{"from" => "rehandled_params", "id" => "123"}|)
     end
 
     test "external live redirects", %{conn: conn} do
@@ -117,7 +116,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       assert render_live_link(counter_live, "/counter/123?filter=true") =~
-               ~s|%{"filter" => "true", "id" => "123"}|
+               escape(~s|%{"filter" => "true", "id" => "123"}|)
     end
   end
 
@@ -127,7 +126,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert_redirect(counter_live, "/counter/123?from=event_ack", fn ->
         assert render_click(counter_live, :live_redirect, "/counter/123?from=event_ack") =~
-                 ~s|%{"from" => "event_ack", "id" => "123"}|
+                 escape(~s|%{"from" => "event_ack", "id" => "123"}|)
       end)
     end
 
@@ -147,14 +146,14 @@ defmodule Phoenix.LiveView.ParamsTest do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       send(counter_live.pid, {:live_redirect, "/counter/123?from=handle_info"})
-      assert render(counter_live) =~ ~s|%{"from" => "handle_info", "id" => "123"}|
+      assert render(counter_live) =~ escape(~s|%{"from" => "handle_info", "id" => "123"}|)
     end
 
     test "from handle_cast", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       :ok = GenServer.cast(counter_live.pid, {:live_redirect, "/counter/123?from=handle_cast"})
-      assert render(counter_live) =~ ~s|%{"from" => "handle_cast", "id" => "123"}|
+      assert render(counter_live) =~ escape(~s|%{"from" => "handle_cast", "id" => "123"}|)
     end
 
     test "from handle_call", %{conn: conn} do
@@ -165,7 +164,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       end
 
       :ok = GenServer.call(counter_live.pid, {:live_redirect, next})
-      assert render(counter_live) =~ ~s|%{"from" => "handle_call", "id" => "123"}|
+      assert render(counter_live) =~ escape(~s|%{"from" => "handle_call", "id" => "123"}|)
     end
 
     test "from handle_params", %{conn: conn} do
@@ -185,7 +184,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       :ok = GenServer.call(counter_live.pid, {:live_redirect, next})
 
       html = render(counter_live)
-      assert html =~ ~s|%{"from" => "rehandled_params", "id" => "123"}|
+      assert html =~ escape(~s|%{"from" => "rehandled_params", "id" => "123"}|)
       assert html =~ "The value is: 1000"
 
       assert_receive {:handle_params, "http://localhost:4000/counter/123?from=rehandled_params",
@@ -280,7 +279,13 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "connect_params can be read on mount", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
 
-      assert render(counter_live) =~ ~s|connect: %{"connect1" => "1"}|
+      assert render(counter_live) =~ escape(~s|connect: %{"connect1" => "1"}|)
     end
+  end
+
+  defp escape(str) do
+    str
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
   end
 end

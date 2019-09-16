@@ -213,17 +213,19 @@ defmodule Phoenix.LiveViewTest do
       |> Phoenix.ConnTest.html_response(200)
       |> IO.iodata_to_binary()
 
-    case DOM.find_sessions(html) do
-      [{session_token, nil, id} | _] -> do_connect(conn, path, html, session_token, id, opts)
+    case DOM.find_views(html) do
+      [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
       [] -> {:error, :nosession}
     end
   end
 
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
+  defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
     live_path = live_path(conn, path)
 
-    child_statics = DOM.find_static_views(html)
+    # TODO move to floki lookup
+    child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
+    html = Floki.raw_html(Floki.parse(raw_html)) # normalize
 
     %View{ref: ref, topic: topic} =
       view =
@@ -238,7 +240,7 @@ defmodule Phoenix.LiveViewTest do
         child_statics: child_statics
       )
 
-    case ClientProxy.start_link(caller: {ref, self()}, view: view, timeout: timeout) do
+    case ClientProxy.start_link(caller: {ref, self()}, html: html, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
         receive do
           {^ref, {:mounted, view_pid, html}} ->
@@ -277,7 +279,7 @@ defmodule Phoenix.LiveViewTest do
   Spawns a connected LiveView process mounted in isolation as the sole rendered element.
 
   Usefule for testing LiveViews that are not directly routable, such as those
-  built as small compontents to be re-used in multiple parents. Testing routable 
+  built as small compontents to be re-used in multiple parents. Testing routable
   LiveViews is still recommended whenever possible since features such as
   live navigation require routable LiveViews.
 
@@ -474,6 +476,20 @@ defmodule Phoenix.LiveViewTest do
       assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
     end
   end
+
+  @doc """
+  Asserts a compontent with given ID was removed by a parent.
+
+  ## Examples
+      assert_remove view, "component-123"
+  """
+  defmacro assert_remove_component(view, id, timeout \\ 100) do
+    quote bind_quoted: binding() do
+      %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = view
+      assert_receive {^ref, {:removed_component, ^topic, ^id}}, timeout
+    end
+  end
+
 
   @doc """
   Stops a LiveView process.

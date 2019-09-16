@@ -388,6 +388,13 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
+  @doc "Returns a random ID with valid DOM tokens"
+  def random_id do
+    "phx-"
+    |> Kernel.<>(random_encoded_bytes())
+    |> String.replace(["/", "+"], "-")
+  end
+
   defp disconnected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
     socket = call_mount!(socket, view, session)
@@ -516,8 +523,6 @@ defmodule Phoenix.LiveView.View do
     |> :crypto.strong_rand_bytes()
     |> Base.encode64()
   end
-
-  defp random_id, do: "phx-" <> random_encoded_bytes()
 
   defp sign_token(endpoint_mod, salt, data) do
     Phoenix.Token.sign(endpoint_mod, salt, {@token_vsn, data})

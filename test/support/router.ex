@@ -31,5 +31,8 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/root", RootLive, session: [:user_id]
     live "/counter/:id", ParamCounterLive, session: [:test, :test_pid, :on_handle_params]
     live "/opts", OptsLive, session: [:opts]
-  end
+    live "/time-zones", AppendLive, session: [:time_zones]
+    live "/shuffle", ShuffleLive, session: [:time_zones]
+    live "/components", ComponentLive, session: [:data]
+end
 end

@@ -23,7 +23,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_bad_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{session_token, nil, _id} | _] = DOM.find_sessions(html)
+    [{_id, session_token, nil} | _] = DOM.find_views(html)
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
@@ -61,12 +61,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
+      [{_tag, _attrs, children}] = Floki.find(html, "##{view.id}")
 
-      assert html =~ """
-             The temp is: 1
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
-             """
+      assert children == [
+               "The temp is: 1\n",
+               {"button", [{"phx-click", "dec"}], ["-"]},
+               {"button", [{"phx-click", "inc"}], ["+"]}
+             ]
     end
 
     test "live render with bad session", %{conn: conn} do
@@ -100,9 +101,15 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_change with _target", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_change(view, :save, %{_target: "", temp: 21}) =~ "The temp is: 21[]"
-      assert render_change(view, :save, %{_target: ["user"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;]"
-      assert render_change(view, :save, %{_target: ["user", "name"], temp: 21}) =~ "The temp is: 21[&quot;user&quot;, &quot;name&quot;]"
-      assert render_change(view, :save, %{_target: ["another", "field"], temp: 21}) =~ "The temp is: 21[&quot;another&quot;, &quot;field&quot;]"
+
+      assert render_change(view, :save, %{_target: ["user"], temp: 21}) =~
+               "The temp is: 21[&quot;user&quot;]"
+
+      assert render_change(view, :save, %{_target: ["user", "name"], temp: 21}) =~
+               "The temp is: 21[&quot;user&quot;, &quot;name&quot;]"
+
+      assert render_change(view, :save, %{_target: ["another", "field"], temp: 21}) =~
+               "The temp is: 21[&quot;another&quot;, &quot;field&quot;]"
     end
 
     @key_i 73
@@ -118,7 +125,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "render_blur and render_focus", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
-      assert render(view) =~ "The temp is: 1"
+      assert render(view) =~ "The temp is: 1", view.id
       assert render_blur(view, :inactive, "Zzz") =~ "Tap to wake – Zzz"
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
     end
@@ -188,7 +195,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "handle_event with no change in socket", %{conn: conn} do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 1"
-      assert render_click(view, :noop) == html
+      assert render_click(view, :noop) =~ "The temp is: 1"
     end
 
     test "handle_info with change", %{conn: conn} do
@@ -199,24 +206,23 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(view.pid, {:set, :val, 1})
       GenServer.call(view.pid, {:set, :val, 2})
       GenServer.call(view.pid, {:set, :val, 3})
-
-      assert render_click(view, :inc) =~ """
+      assert Floki.parse(render_click(view, :inc)) == Floki.parse("""
              The temp is: 4
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
-             """
+             """)
 
-      assert render_click(view, :dec) =~ """
+      assert  Floki.parse(render_click(view, :dec)) == Floki.parse("""
              The temp is: 3
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
-             """
+             """)
 
-      assert render(view) == """
+      assert Floki.parse(render(view)) == Floki.parse("""
              The temp is: 3
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
-             """
+             """)
     end
   end
 
@@ -274,12 +280,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(clock_view) =~ "time: 12:01"
       assert render(thermo_view) =~ "time: 12:01"
+
       assert render(thermo_view) =~ "<button phx-click=\"snooze\">+</button>"
     end
 
     @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
-      html_without_nesting = """
+      html_without_nesting = Floki.parse """
       The temp is: 1
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button>
@@ -297,7 +304,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(clock_view, {:shutdown, :removed})
       assert_remove(controls_view, {:shutdown, :removed})
 
-      assert render(thermo_view) == html_without_nesting
+      assert Floki.parse(render(thermo_view)) == html_without_nesting
       assert children(thermo_view) == []
     end
 
@@ -321,15 +328,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "multiple nested children of same module with new session", %{conn: conn} do
       {:ok, parent, _} = live(conn, "/same-child")
       assert render_click(parent, :inc) =~ "Toronto"
-    end
-
-    @tag session: %{dup: true}
-    test "duplicate nested children raises", %{conn: conn} do
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               pid = spawn(fn -> live(conn, "/same-child") end)
-               Process.monitor(pid)
-               assert_receive {:DOWN, _ref, :process, ^pid, _}
-             end) =~ "unable to start child Phoenix.LiveViewTest.ClockLive under duplicate name"
     end
 
     @tag session: %{nest: []}
@@ -422,7 +420,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         %{name: "josé", email: "jose@test"}
       ]
 
-      expected_users = "<i>chris chris@test</i>\n  \n    <i>josé jose@test</i>"
+      expected_users = "<i>chris chris@test</i><i>josé jose@test</i>"
 
       {:ok, thermo_view, html} =
         conn
@@ -498,11 +496,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "can be configured with mount options", %{conn: conn} do
       {:ok, conf_live, html} =
         conn
-        |> put_session(:opts, [temporary_assigns: [:description]])
+        |> put_session(:opts, temporary_assigns: [:description])
         |> live("/opts")
 
-      assert html == "long description. canary"
-      assert render(conf_live) == "long description. canary"
+      assert html =~ "long description. canary"
+      assert render(conf_live) =~ "long description. canary"
       socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
 
       assert socket.assigns.description == nil
@@ -510,11 +508,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "raises with invalid options", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/2/, fn ->
-        conn
-        |> put_session(:opts, [temporary_assignswhoops: [:description]])
-        |> live("/opts")
-      end
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/2/,
+                   fn ->
+                     conn
+                     |> put_session(:opts, temporary_assignswhoops: [:description])
+                     |> live("/opts")
+                   end
     end
   end
 end
