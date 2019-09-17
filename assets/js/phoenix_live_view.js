@@ -29,6 +29,7 @@ const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
+const PHX_DEBOUNCE = "debounce"
 const PHX_UPDATE = "update"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
@@ -412,11 +413,13 @@ export class LiveSocket {
         let bindTarget = this.binding("target")
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => callback(e, event, view, e.target, targetPhxEvent, null))
+          this.owner(e.target, view => {
+            DOM.debounce(e.target, view, () => callback(e, event, view, e.target, targetPhxEvent, null))
+          })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
+            this.owner(el, view => DOM.debounce(el, view, () => callback(e, event, view, el, phxEvent, "window")))
           })
         }
       })
@@ -444,7 +447,7 @@ export class LiveSocket {
         screenY: e.screenY,
       }
 
-      this.owner(target, view => view.pushEvent("click", target, phxEvent, meta))
+      this.owner(target, view => DOM.debounce(target, view, () => view.pushEvent("click", target, phxEvent, meta)))
     }, false)
   }
 
@@ -506,12 +509,14 @@ export class LiveSocket {
         this.prevInput = input
         this.prevValue = value
         this.owner(input, view => {
-          if(DOM.isTextualInput(input)){
-            input[PHX_HAS_FOCUSED] = true
-          } else {
-            this.setActiveElement(input)
-          }
-          view.pushInput(input, phxEvent, e)
+          DOM.debounce(input, view, () => {
+            if(DOM.isTextualInput(input)){
+              input[PHX_HAS_FOCUSED] = true
+            } else {
+              this.setActiveElement(input)
+            }
+            view.pushInput(input, phxEvent, e)
+          })
         })
       }, false)
     }
@@ -587,6 +592,35 @@ export let Browser = {
 let DOM = {
   all(node, query, callback){
     return Array.from(node.querySelectorAll(query)).forEach(callback)
+  },
+
+  private(el, key){ return (el.phxPrivate && el.phxPrivate[key]) || null },
+
+  putPrivate(el, key, value){
+    if(!el.phxPrivate){ el.phxPrivate = {} }
+    el.phxPrivate[key] = value
+  },
+
+  debounce(el, view, callback){
+    let debounce = el.getAttribute(view.binding(PHX_DEBOUNCE))
+    switch(debounce){
+      case "blur":
+        if(DOM.private(el, "debounce-blur")){ break }
+        el.addEventListener("blur", () => callback())
+        this.putPrivate(el, "debounce-blur", debounce)
+        break
+
+      case "":
+      case null:
+        callback()
+        break
+      default: logError(`invalid debounce value: ${debounce}`)
+    }
+    // if(debounce){
+    //   console.log("debounce", debounce)
+    // } else {
+    //   callback()
+    // }
   },
 
   disableForm(form, prefix){
