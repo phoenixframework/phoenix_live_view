@@ -801,7 +801,7 @@ defmodule Phoenix.LiveView do
         }
       }
 
-      let liveSocket = new LiveSocket("/socket", {hooks: Hooks})
+      let liveSocket = new LiveSocket("/socket", Socket, {hooks: Hooks})
       ...
   """
 
