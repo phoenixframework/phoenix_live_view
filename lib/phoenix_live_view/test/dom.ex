@@ -116,6 +116,11 @@ defmodule Phoenix.LiveViewTest.DOM do
     {new_html, deleted_cids}
   end
 
+  def inner_html(html, id) do
+    {_container, _attrs, children} = by_id(html, id)
+    to_html(children)
+  end
+
   defp find_component_ids(id, html) do
     html
     |> by_id(id)

@@ -128,7 +128,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info({:sync_render, topic, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, {:ok, inner_html(state, view.id)})
+    GenServer.reply(from, {:ok, DOM.inner_html(state.html, view.id)})
     {:noreply, state}
   end
 
@@ -323,11 +323,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     )
   end
 
-  def inner_html(state, id) do
-    {_container, _attrs, children} = DOM.by_id(state.html, id)
-    DOM.to_html(children)
-  end
-
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
       {new_html, [_ | _] = deleted_cids} ->
@@ -390,7 +385,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case fetch_view_by_topic(new_state, topic) do
       {:ok, view} ->
-        GenServer.reply(from, {:ok, inner_html(new_state, view.id)})
+        GenServer.reply(from, {:ok, DOM.inner_html(new_state.html, view.id)})
         new_state
 
       :error ->
@@ -427,8 +422,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_id(state, id)
 
     new_state =
-      state
-      |> inner_html(view.id)
+      state.html
+      |> DOM.inner_html(view.id)
       |> DOM.find_views()
       |> Enum.reduce(state, fn {id, session, static}, acc ->
         case fetch_view_by_id(acc, id) do
