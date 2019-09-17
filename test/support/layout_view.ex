@@ -1,4 +1,4 @@
-defmodule Phoenix.LayoutView do
+defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
 
   def render("app.html", assigns) do
