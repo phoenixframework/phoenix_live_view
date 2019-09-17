@@ -1,4 +1,4 @@
-## 0.2.1-dev
+## 0.2.1 (2019-09-17)
 
 ### Bug Fixes
   - [LiveView.Router] Fix module concat failing to build correct layout module when using custom namespace
