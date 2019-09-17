@@ -484,7 +484,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-
   @doc """
   Stops a LiveView process.
 
