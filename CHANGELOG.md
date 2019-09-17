@@ -1,8 +1,9 @@
 ## 0.2.1-dev
 
 ### Bug Fixes
-  - [LiveViewTest] fix phx-update append/prepend containers not building proper DOM content
-  - [LiveViewTest] fix phx-update append/prepend containers not updating existing child containers with matching IDs
+  - [LiveView.Router] Fix module concat failing to build correct layout module when using custom namespace
+  - [LiveViewTest] Fix phx-update append/prepend containers not building proper DOM content
+  - [LiveViewTest] Fix phx-update append/prepend containers not updating existing child containers with matching IDs
 
 ## 0.2.0 (2019-09-12)
 
