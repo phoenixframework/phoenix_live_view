@@ -1,3 +1,9 @@
+## 0.2.1-dev
+
+### Bug Fixes
+  - [LiveViewTest] fix phx-update append/prepend containers not building proper DOM content
+  - [LiveViewTest] fix phx-update append/prepend containers not updating existing child containers with matching IDs
+
 ## 0.2.0 (2019-09-12)
 
 ### Enhancements
