@@ -73,7 +73,7 @@ defmodule Phoenix.LiveView.Router do
       module
       |> Atom.to_string()
       |> String.split(".")
-      |> Enum.take(2)
+      |> Enum.drop(-1)
       |> Kernel.++(["LayoutView"])
       |> Module.concat()
 
