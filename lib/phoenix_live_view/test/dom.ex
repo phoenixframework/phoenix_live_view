@@ -98,7 +98,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     cids_before = find_component_ids(id, html)
 
     phx_update_tree =
-      walk(inner_html, fn node -> phx_update(attrs(node, "phx-update"), html, node) end)
+      walk(inner_html, fn node -> apply_phx_update(attrs(node, "phx-update"), html, node) end)
 
     new_html =
       html
@@ -128,21 +128,16 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> all_attributes("id")
   end
 
-  defp phx_update(type, html, {tag, attrs, appended_children} = node)
+  defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
        when type in ["append", "prepend"] do
-    children_before =
-      case by_id(html, attrs(node, "id")) do
-        {_, _, children_before} -> children_before
-        nil -> raise ArgumentError, "phx-update append/prepend containers require an ID"
-      end
-
+    children_before = phx_update_children(html, attrs(node, "id"))
     existing_ids = all_attributes(children_before, "id")
     new_ids = all_attributes(appended_children, "id")
     content_changed? = new_ids !== existing_ids
 
     dup_ids =
       if content_changed? do
-        Enum.filter(new_ids, fn id -> id in existing_ids end)
+        Enum.filter((content_changed? && new_ids) || [], fn id -> id in existing_ids end)
       else
         []
       end
@@ -152,18 +147,12 @@ defmodule Phoenix.LiveViewTest.DOM do
         patched_before =
           walk(before, fn {tag, attrs, _} = node ->
             cond do
-              attrs(node, "id") == dup_id ->
-                {_, _, inner_html} = by_id(appended, dup_id)
-                {tag, attrs, inner_html}
-
-              true ->
-                node
+              attrs(node, "id") == dup_id -> {tag, attrs, inner_html(appended, dup_id)}
+              true -> node
             end
           end)
 
-        patched_appended = filter_out(appended, "##{dup_id}")
-
-        {patched_before, patched_appended}
+        {patched_before, filter_out(appended, "##{dup_id}")}
       end)
 
     cond do
@@ -178,15 +167,23 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  defp phx_update(type, _state, {tag, attrs, children}) when type in [nil, "replace"] do
+  defp apply_phx_update(type, _state, {tag, attrs, children})
+       when type in [nil, "replace", "ignore"] do
     {tag, attrs, children}
   end
 
-  defp phx_update(other, _state, {_tag, _attrs, _children}) do
+  defp apply_phx_update(other, _state, {_tag, _attrs, _children}) do
     raise ArgumentError, """
     invalid phx-update value #{inspect(other)}.
 
     Expected one of "replace", "append", "prepend", "ignore"
     """
+  end
+
+  def phx_update_children(html, id) do
+    case by_id(html, id) do
+      {_, _, children_before} -> children_before
+      nil -> raise ArgumentError, "phx-update append/prepend containers require an ID"
+    end
   end
 end

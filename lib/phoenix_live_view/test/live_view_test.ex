@@ -476,12 +476,7 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  @doc """
-  Asserts a compontent with given ID was removed by a parent.
-
-  ## Examples
-      assert_remove view, "component-123"
-  """
+  @doc false
   defmacro assert_remove_component(view, id, timeout \\ 100) do
     quote bind_quoted: binding() do
       %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = view
