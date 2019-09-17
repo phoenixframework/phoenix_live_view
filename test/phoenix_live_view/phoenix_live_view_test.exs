@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      [{_tag, _attrs, children}] = Floki.find(html, "##{view.id}")
+      {_tag, _attrs, children} = DOM.by_id(html, view.id)
 
       assert children == [
                "The temp is: 1\n",
@@ -206,19 +206,19 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(view.pid, {:set, :val, 1})
       GenServer.call(view.pid, {:set, :val, 2})
       GenServer.call(view.pid, {:set, :val, 3})
-      assert Floki.parse(render_click(view, :inc)) == Floki.parse("""
+      assert DOM.parse(render_click(view, :inc)) == DOM.parse("""
              The temp is: 4
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
              """)
 
-      assert  Floki.parse(render_click(view, :dec)) == Floki.parse("""
+      assert  DOM.parse(render_click(view, :dec)) == DOM.parse("""
              The temp is: 3
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
              """)
 
-      assert Floki.parse(render(view)) == Floki.parse("""
+      assert DOM.parse(render(view)) == DOM.parse("""
              The temp is: 3
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
-      html_without_nesting = Floki.parse """
+      html_without_nesting = DOM.parse """
       The temp is: 1
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button>
@@ -304,7 +304,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(clock_view, {:shutdown, :removed})
       assert_remove(controls_view, {:shutdown, :removed})
 
-      assert Floki.parse(render(thermo_view)) == html_without_nesting
+      assert DOM.parse(render(thermo_view)) == html_without_nesting
       assert children(thermo_view) == []
     end
 

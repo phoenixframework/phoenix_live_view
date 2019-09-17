@@ -222,10 +222,9 @@ defmodule Phoenix.LiveViewTest do
   defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
     live_path = live_path(conn, path)
 
-    # TODO move to floki lookup
     child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
-    html = Floki.raw_html(Floki.parse(raw_html)) # normalize
+    html = DOM.to_html(DOM.parse(raw_html)) # normalize
 
     %View{ref: ref, topic: topic} =
       view =
