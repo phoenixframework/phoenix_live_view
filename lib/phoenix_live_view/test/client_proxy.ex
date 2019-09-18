@@ -11,7 +11,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     * `:caller` - the required `{ref, pid}` pair identifying the caller.
     * `:view` - the required `%Phoenix.LiveViewTest.View{}`
-    * `:html` - the required strng of HTML for the document.
+    * `:html` - the required string of HTML for the document.
     * `:timeout` - the required timeout for successful mount
   """
   def start_link(opts) do
