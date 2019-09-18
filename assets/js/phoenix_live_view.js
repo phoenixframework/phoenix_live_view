@@ -1095,9 +1095,6 @@ export class View {
       let name = el.attributes[i].name
       if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
-    // for(let attr of el.attributes){ if(!attr.name.startsWith(prefix)){ continue }
-    //   meta[attr.name.replace(prefix, "")] = el.getAttribute(attr.name)
-    // }
     if(el.value !== undefined){ meta.value = el.value }
 
     this.pushWithReply("event", {
