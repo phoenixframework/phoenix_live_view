@@ -29,6 +29,7 @@ const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
+const PHX_THROTTLE = "throttle"
 const PHX_CHANGE = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
@@ -600,31 +601,34 @@ export let DOM = {
 
   debounce(el, view, callback){
     let debounce = el.getAttribute(view.binding(PHX_DEBOUNCE))
-    switch(debounce){
+    let throttle = el.getAttribute(view.binding(PHX_THROTTLE))
+    let value = debounce || throttle
+    switch(value){
       case null: return callback()
 
       case "blur":
         if(this.private(el, DEBOUNCE_BLUR)){ return }
         el.addEventListener("blur", () => callback())
-        this.putPrivate(el, DEBOUNCE_BLUR, debounce)
+        this.putPrivate(el, DEBOUNCE_BLUR, value)
         return
 
       default:
-        let timeout = parseInt(debounce)
-        if(isNaN(timeout)){ return logError(`invalid debounce value: ${debounce}`) }
+        let timeout = parseInt(value)
+        if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
         let clearTimer = () => {
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
+        if(throttle){ callback() }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
           if(el.form){
             el.form.removeEventListener(PHX_CHANGE, clearTimer)
             el.form.removeEventListener("submit", clearTimer)
           }
           this.deletePrivate(el, DEBOUNCE_TIMER)
-          callback()
+          if(!throttle){ callback() }
         }, timeout))
         if(el.form){
           el.form.addEventListener(PHX_CHANGE, clearTimer)
