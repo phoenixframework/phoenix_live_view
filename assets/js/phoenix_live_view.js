@@ -578,7 +578,7 @@ export let Browser = {
   }
 }
 
-let DOM = {
+export let DOM = {
   all(node, query, callback){
     return Array.from(node.querySelectorAll(query)).forEach(callback)
   },

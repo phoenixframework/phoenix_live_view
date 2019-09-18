@@ -1,5 +1,5 @@
 import {Socket} from "phoenix"
-import LiveSocket, { View } from '../js/phoenix_live_view'
+import LiveSocket, {View, DOM} from '../js/phoenix_live_view'
 
 function liveViewDOM() {
   const div = document.createElement('div')
@@ -178,7 +178,7 @@ describe('View + DOM', function() {
     view.channel = channelStub
 
     view.submitForm(form, { target: form })
-    expect(form['phx-has-submitted']).toBeTruthy()
+    expect(DOM.private(form, 'phx-has-submitted')).toBeTruthy()
     expect(form.classList.contains('phx-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
