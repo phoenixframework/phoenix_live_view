@@ -20,7 +20,6 @@ const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
-const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
@@ -30,13 +29,16 @@ const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
+const PHX_CHANGE = "phx-change"
 const PHX_UPDATE = "update"
+const PHX_PRIVATE = "phxPrivate"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
-const PHX_PREV_APPEND = "phxPrevAppend"
+const DEBOUNCE_BLUR = "debounce-blur"
+const DEBOUNCE_TIMER = "debounce-timer"
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -509,14 +511,12 @@ export class LiveSocket {
         this.prevInput = input
         this.prevValue = value
         this.owner(input, view => {
-          DOM.debounce(input, view, () => {
-            if(DOM.isTextualInput(input)){
-              input[PHX_HAS_FOCUSED] = true
-            } else {
-              this.setActiveElement(input)
-            }
-            view.pushInput(input, phxEvent, e)
-          })
+          if(DOM.isTextualInput(input)){
+            DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
+          } else {
+            this.setActiveElement(input)
+          }
+          DOM.debounce(input, view, () => view.pushInput(input, phxEvent, e))
         })
       }, false)
     }
@@ -564,17 +564,6 @@ export let Browser = {
     }
   },
 
-  dispatchEvent(target, eventString){
-    let event = null
-    if(typeof(Event) === "function"){
-      event = new Event(eventString)
-    } else {
-      event = document.createEvent("Event")
-      event.initEvent(eventString, true, true)
-    }
-    target.dispatchEvent(event)
-  },
-
   setCookie(name, value){
     document.cookie = `${name}=${value}`
   },
@@ -594,33 +583,54 @@ let DOM = {
     return Array.from(node.querySelectorAll(query)).forEach(callback)
   },
 
-  private(el, key){ return (el.phxPrivate && el.phxPrivate[key]) || null },
+  private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
+
+  deletePrivate(el, key){ el[PHX_PRIVATE] && delete(el[PHX_PRIVATE][key]) },
 
   putPrivate(el, key, value){
-    if(!el.phxPrivate){ el.phxPrivate = {} }
-    el.phxPrivate[key] = value
+    if(!el[PHX_PRIVATE]){ el[PHX_PRIVATE] = {} }
+    el[PHX_PRIVATE][key] = value
+  },
+
+  copyPrivates(target, source){
+    if(source[PHX_PRIVATE]){
+      target[PHX_PRIVATE] = clone(source[PHX_PRIVATE])
+    }
   },
 
   debounce(el, view, callback){
     let debounce = el.getAttribute(view.binding(PHX_DEBOUNCE))
     switch(debounce){
-      case "blur":
-        if(DOM.private(el, "debounce-blur")){ break }
-        el.addEventListener("blur", () => callback())
-        this.putPrivate(el, "debounce-blur", debounce)
-        break
+      case null: return callback()
 
-      case "":
-      case null:
-        callback()
-        break
-      default: logError(`invalid debounce value: ${debounce}`)
+      case "blur":
+        if(this.private(el, DEBOUNCE_BLUR)){ return }
+        el.addEventListener("blur", () => callback())
+        this.putPrivate(el, DEBOUNCE_BLUR, debounce)
+        return
+
+      default:
+        let timeout = parseInt(debounce)
+        if(isNaN(timeout)){ return logError(`invalid debounce value: ${debounce}`) }
+        if(this.private(el, DEBOUNCE_TIMER)){ return }
+
+        let clearTimer = () => {
+          clearTimeout(this.private(el, DEBOUNCE_TIMER))
+          this.deletePrivate(el, DEBOUNCE_TIMER)
+        }
+        this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
+          if(el.form){
+            el.form.removeEventListener(PHX_CHANGE, clearTimer)
+            el.form.removeEventListener("submit", clearTimer)
+          }
+          this.deletePrivate(el, DEBOUNCE_TIMER)
+          callback()
+        }, timeout))
+        if(el.form){
+          el.form.addEventListener(PHX_CHANGE, clearTimer)
+          el.form.addEventListener("submit", clearTimer)
+        }
     }
-    // if(debounce){
-    //   console.log("debounce", debounce)
-    // } else {
-    //   callback()
-    // }
   },
 
   disableForm(form, prefix){
@@ -677,7 +687,7 @@ let DOM = {
     if(!field) { return }
     let input = container.querySelector(`#${field}`)
 
-    if(field && !(input[PHX_HAS_FOCUSED] || input.form[PHX_HAS_SUBMITTED])){
+    if(field && !(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
       el.style.display = "none"
     }
   },
@@ -729,8 +739,7 @@ let DOM = {
         }
 
         // input handling
-        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){ toEl[PHX_HAS_SUBMITTED] = true }
-        if(fromEl[PHX_HAS_FOCUSED]){ toEl[PHX_HAS_FOCUSED] = true }
+        DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(container, toEl)
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
@@ -745,8 +754,19 @@ let DOM = {
     })
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
-    Browser.dispatchEvent(document, "phx:update")
+    DOM.dispatchEvent(document, "phx:update")
     return changes
+  },
+
+  dispatchEvent(target, eventString){
+    let event = null
+    if(typeof(Event) === "function"){
+      event = new Event(eventString)
+    } else {
+      event = document.createEvent("Event")
+      event.initEvent(eventString, true, true)
+    }
+    target.dispatchEvent(event)
   },
 
   cloneNode(node, html){
@@ -1091,6 +1111,7 @@ export class View {
   }
 
   pushInput(inputEl, phxEvent, e){
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE)
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
@@ -1134,7 +1155,7 @@ export class View {
 
   submitForm(form, phxEvent){
     let prefix = this.liveSocket.getBindingPrefix()
-    form[PHX_HAS_SUBMITTED] = "true"
+    DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, phxEvent, () => {
