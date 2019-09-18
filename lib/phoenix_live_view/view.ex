@@ -268,6 +268,17 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  Raises error message for bad stop with no redirect.
+  """
+  def raise_bad_stop_and_no_redirect!() do
+    raise RuntimeError, """
+    attempted to stop socket without redirecting.
+
+    you must always redirect when stopping a socket, see redirect/2.
+    """
+  end
+
+  @doc """
   Renders a live view without spawning a LiveView server.
 
   * `conn` - the Plug.Conn struct form the HTTP request
@@ -440,6 +451,9 @@ defmodule Phoenix.LiveView.View do
 
       {:noreply, %Socket{redirected: redirected}} ->
         {:stop, redirected}
+
+      {:stop, %Socket{redirected: nil}} ->
+        raise_bad_stop_and_no_redirect!()
 
       {:stop, %Socket{redirected: {:live, _}}} ->
         raise_bad_stop_and_live_redirect!()

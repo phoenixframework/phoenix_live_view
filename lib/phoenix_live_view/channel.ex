@@ -203,14 +203,15 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _router_view, _redir) do
-    new_state = %{state | socket: new_socket}
-
-    case maybe_changed(new_socket) do
-      {:redirect, %{to: _to} = opts} ->
-        {:redirect, opts, new_state}
-
-      {:live_redirect, _kind, _opts} ->
+    case new_socket.redirected do
+      {:live, _} ->
         View.raise_bad_stop_and_live_redirect!()
+
+      {:redirect, opts} ->
+        {:redirect, opts, %{state | socket: new_socket}}
+
+      nil ->
+        View.raise_bad_stop_and_no_redirect!()
     end
   end
 
@@ -219,6 +220,10 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, _changed, new_state} -> {:noreply, new_state}
       {:stop, reason, new_state} -> {:stop, reason, new_state}
     end
+  end
+
+  defp handle_result({:stop, %Socket{redirected: nil}}, {_, _, _}, _) do
+    View.raise_bad_stop_and_no_redirect!()
   end
 
   defp handle_result({:stop, %Socket{redirected: {:live, _}}}, {_, _, _}, _) do

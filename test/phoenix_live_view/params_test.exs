@@ -54,6 +54,14 @@ defmodule Phoenix.LiveView.ParamsTest do
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/thermo/456"
     end
+
+    test "raises on stop without redirect", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r"attempted to stop socket without redirecting", fn ->
+        conn
+        |> put_serialized_session(:on_handle_params, &{:stop, &1})
+        |> get("/counter/123?from=handle_params")
+      end
+    end
   end
 
   describe "handle_params on connected mount" do
@@ -109,6 +117,21 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
         |> live()
     end
+
+    test "raises on stop without redirect", %{conn: conn} do
+      assert_raise RuntimeError, ~r"attempted to stop socket without redirecting", fn ->
+        conn
+        |> put_serialized_session(:on_handle_params, fn socket ->
+          if LiveView.connected?(socket) do
+            {:stop, socket}
+          else
+            {:noreply, socket}
+          end
+        end)
+        |> get("/counter/123?from=handle_params")
+        |> live()
+      end
+    end
   end
 
   describe "handle_params on live_link" do
@@ -140,6 +163,15 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
              end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+    end
+
+    test "raises on stop without redirect", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+      next = fn socket -> {:stop, socket} end
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
+             end) =~ "attempted to stop socket without redirecting"
     end
 
     test "from handle_info", %{conn: conn} do
