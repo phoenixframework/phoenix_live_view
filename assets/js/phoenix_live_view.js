@@ -417,12 +417,12 @@ export class LiveSocket {
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => {
-            DOM.debounce(e.target, view, () => callback(e, event, view, e.target, targetPhxEvent, null))
+            DOM.debounce(e.target, (val) => view.binding(val), () => callback(e, event, view, e.target, targetPhxEvent, null))
           })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => DOM.debounce(el, view, () => callback(e, event, view, el, phxEvent, "window")))
+            this.owner(el, view => DOM.debounce(el, (val) => view.binding(val), () => callback(e, event, view, el, phxEvent, "window")))
           })
         }
       })
@@ -450,7 +450,7 @@ export class LiveSocket {
         screenY: e.screenY,
       }
 
-      this.owner(target, view => DOM.debounce(target, view, () => view.pushEvent("click", target, phxEvent, meta)))
+      this.owner(target, view => DOM.debounce(target, (val) => view.binding(val), () => view.pushEvent("click", target, phxEvent, meta)))
     }, false)
   }
 
@@ -517,7 +517,7 @@ export class LiveSocket {
           } else {
             this.setActiveElement(input)
           }
-          DOM.debounce(input, view, () => view.pushInput(input, phxEvent, e))
+          DOM.debounce(input, (val) => view.binding(val), () => view.pushInput(input, phxEvent, e))
         })
       }, false)
     }
@@ -599,9 +599,9 @@ export let DOM = {
     }
   },
 
-  debounce(el, view, callback){
-    let debounce = el.getAttribute(view.binding(PHX_DEBOUNCE))
-    let throttle = el.getAttribute(view.binding(PHX_THROTTLE))
+  debounce(el, binding, callback){
+    let debounce = el.getAttribute(binding(PHX_DEBOUNCE))
+    let throttle = el.getAttribute(binding(PHX_THROTTLE))
     let value = debounce || throttle
     switch(value){
       case null: return callback()
@@ -621,7 +621,6 @@ export let DOM = {
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
-        if(throttle){ callback() }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
           if(el.form){
             el.form.removeEventListener(PHX_CHANGE, clearTimer)
@@ -634,6 +633,7 @@ export let DOM = {
           el.form.addEventListener(PHX_CHANGE, clearTimer)
           el.form.addEventListener("submit", clearTimer)
         }
+        if(throttle){ callback() }
     }
   },
 
