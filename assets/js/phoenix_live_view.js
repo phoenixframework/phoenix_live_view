@@ -527,7 +527,9 @@ export class LiveSocket {
     }
   }
 
-  debounce(el, callback){ DOM.debounce(el, (name) => this.binding(name), callback) }
+  debounce(el, callback){
+    DOM.debounce(el, this.binding(PHX_DEBOUNCE), this.binding(PHX_THROTTLE), callback)
+  }
 
   silenceEvents(callback){
     this.silenced = true
@@ -605,9 +607,9 @@ export let DOM = {
     }
   },
 
-  debounce(el, binding, callback){
-    let debounce = el.getAttribute(binding(PHX_DEBOUNCE))
-    let throttle = el.getAttribute(binding(PHX_THROTTLE))
+  debounce(el, phxDebounce, phxThrottle, callback){
+    let debounce = el.getAttribute(phxDebounce)
+    let throttle = el.getAttribute(phxThrottle)
     let value = debounce || throttle
     switch(value){
       case null: return callback()
