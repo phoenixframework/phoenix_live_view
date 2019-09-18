@@ -142,6 +142,7 @@ describe("throttle", function() {
   test("cancels trigger on phx-change", done => {
     let calls = 0
     let el = container().querySelector("input[name=throttle-100]")
+    let otherInput = el.form.querySelector("input[name=debounce-100]")
 
     el.addEventListener("input", () => {
       DOM.debounce(el, (name) => `phx-${name}`, () => calls++)
@@ -151,7 +152,7 @@ describe("throttle", function() {
     })
     simulateInput(el, "changed")
     simulateInput(el, "changed2")
-    DOM.dispatchEvent(el.form, "phx-change")
+    DOM.dispatchEvent(el.form, "phx-change", {triggeredBy: otherInput})
     expect(calls).toBe(1)
     expect(el.value).toBe("phx-changed")
     simulateInput(el, "changed3")

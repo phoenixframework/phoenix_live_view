@@ -160,6 +160,8 @@ $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill fo
 
 ```javascript
 // assets/js/app.js
+import "mdn-polyfills/CustomEvent"
+import "mdn-polyfills/String.prototype.startsWith"
 import "mdn-polyfills/Array.from"
 import "mdn-polyfills/NodeList.prototype.forEach"
 import "mdn-polyfills/Element.prototype.closest"

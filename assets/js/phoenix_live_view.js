@@ -417,12 +417,14 @@ export class LiveSocket {
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => {
-            DOM.debounce(e.target, (val) => view.binding(val), () => callback(e, event, view, e.target, targetPhxEvent, null))
+            this.debounce(e.target, () => callback(e, event, view, e.target, targetPhxEvent, null))
           })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => DOM.debounce(el, (val) => view.binding(val), () => callback(e, event, view, el, phxEvent, "window")))
+            this.owner(el, view => {
+              this.debounce(el, () => callback(e, event, view, el, phxEvent, "window"))
+            })
           })
         }
       })
@@ -450,7 +452,9 @@ export class LiveSocket {
         screenY: e.screenY,
       }
 
-      this.owner(target, view => DOM.debounce(target, (val) => view.binding(val), () => view.pushEvent("click", target, phxEvent, meta)))
+      this.owner(target, view => {
+        this.debounce(target, () => view.pushEvent("click", target, phxEvent, meta))
+      })
     }, false)
   }
 
@@ -517,11 +521,13 @@ export class LiveSocket {
           } else {
             this.setActiveElement(input)
           }
-          DOM.debounce(input, (val) => view.binding(val), () => view.pushInput(input, phxEvent, e))
+          this.debounce(input, () => view.pushInput(input, phxEvent, e))
         })
       }, false)
     }
   }
+
+  debounce(el, callback){ DOM.debounce(el, (name) => this.binding(name), callback) }
 
   silenceEvents(callback){
     this.silenced = true
@@ -617,7 +623,8 @@ export let DOM = {
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
-        let clearTimer = () => {
+        let clearTimer = (e) => {
+          if(throttle && e.type === PHX_CHANGE && e.detail.triggeredBy.name === el.name){ return }
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
@@ -762,14 +769,8 @@ export let DOM = {
     return changes
   },
 
-  dispatchEvent(target, eventString){
-    let event = null
-    if(typeof(Event) === "function"){
-      event = new Event(eventString)
-    } else {
-      event = document.createEvent("Event")
-      event.initEvent(eventString, true, true)
-    }
+  dispatchEvent(target, eventString, detail = {}){
+    let event = new CustomEvent(eventString, {bubbles: true, cancelable: true, detail: detail})
     target.dispatchEvent(event)
   },
 
@@ -1090,9 +1091,13 @@ export class View {
 
   pushEvent(type, el, phxEvent, meta){
     let prefix = this.binding("value-")
-    for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
-      meta[key.replace(prefix, "")] = el.getAttribute(key)
+    for (let i = 0; i < el.attributes.length; i++){
+      let name = el.attributes[i].name
+      if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
+    // for(let attr of el.attributes){ if(!attr.name.startsWith(prefix)){ continue }
+    //   meta[attr.name.replace(prefix, "")] = el.getAttribute(attr.name)
+    // }
     if(el.value !== undefined){ meta.value = el.value }
 
     this.pushWithReply("event", {
@@ -1115,7 +1120,7 @@ export class View {
   }
 
   pushInput(inputEl, phxEvent, e){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE)
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
