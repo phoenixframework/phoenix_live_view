@@ -593,15 +593,15 @@ defmodule Phoenix.LiveView do
 
     <button phx-click="search" phx-throttle="1000">Search</button>
 
-  Likewise, you may throttle held-down keypresses:
+  Likewise, you may throttle held-down keydown:
 
-    <div phx-keypress="keypress" phx-target="window" phx-throttle="500">
+    <div phx-keydown="keydown" phx-target="window" phx-throttle="500">
       ...
     </div>
 
   Unless held-down keys are required, a better approach is generally to use
   `phx-keyup` bindings which only trigger on key up, thereby being self-limiting.
-  However, `phx-keypress` is useful for games and other usecases where a constant
+  However, `phx-keydown` is useful for games and other usecases where a constant
   press on a key is desired. In such cases, throttle should always be used.
 
   *Note*: When a `phx-submit`, or a `phx-change` for a different
