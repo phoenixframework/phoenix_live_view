@@ -27,12 +27,16 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "is called with named and query string params", %{conn: conn} do
       conn = get(conn, "/counter/123", query1: "query1", query2: "query2")
 
-      assert html_response(conn, 200) =~ escape(~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
+      assert html_response(conn, 200) =~
+               escape(~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
     end
 
     test "hard redirects", %{conn: conn} do
       assert conn
-             |> put_serialized_session(:on_handle_params, &{:stop, LiveView.redirect(&1, to: "/")})
+             |> put_serialized_session(
+               :on_handle_params,
+               &{:stop, LiveView.redirect(&1, to: "/")}
+             )
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/"
     end
@@ -40,7 +44,8 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "internal live redirects", %{conn: conn} do
       assert conn
              |> put_serialized_session(:on_handle_params, fn socket ->
-               {:noreply, LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
+               {:noreply,
+                LiveView.live_redirect(socket, to: "/counter/123?from=rehandled_params")}
              end)
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/counter/123?from=rehandled_params"
@@ -119,18 +124,23 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "raises on stop without redirect", %{conn: conn} do
-      assert_raise RuntimeError, ~r"attempted to stop socket without redirecting", fn ->
-        conn
-        |> put_serialized_session(:on_handle_params, fn socket ->
-          if LiveView.connected?(socket) do
-            {:stop, socket}
-          else
-            {:noreply, socket}
-          end
+      assert ExUnit.CaptureLog.capture_log(fn ->
+        pid = spawn(fn ->
+          conn
+          |> put_serialized_session(:on_handle_params, fn socket ->
+            if LiveView.connected?(socket) do
+              {:stop, socket}
+            else
+              {:noreply, socket}
+            end
+          end)
+          |> get("/counter/123?from=handle_params")
+          |> live()
         end)
-        |> get("/counter/123?from=handle_params")
-        |> live()
-      end
+        ref = Process.monitor(pid)
+
+        assert_receive {:DOWN, ^ref, :process, _, _}
+      end) =~ ~r"attempted to stop socket without redirecting"
     end
   end
 
@@ -309,7 +319,8 @@ defmodule Phoenix.LiveView.ParamsTest do
 
   describe "connect_params" do
     test "connect_params can be read on mount", %{conn: conn} do
-      {:ok, counter_live, _html} = live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
+      {:ok, counter_live, _html} =
+        live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
 
       assert render(counter_live) =~ escape(~s|connect: %{"connect1" => "1"}|)
     end
