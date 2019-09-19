@@ -1,3 +1,14 @@
+## 0.3.0-dev
+
+### Enhancements
+  - Add `phx-debounce` and `phx-throttle` bindings to rate limit events
+
+### Bug Fixes
+  - Fix IE11 support caused by unsupported `getAttributeNames` lookup
+
+### Backwards incompatible changes
+  - IE11 support now requires two additional polyfills, `mdn-polyfills/CustomEvent` and `mdn-polyfills/String.prototype.startsWith`
+
 ## 0.2.1 (2019-09-17)
 
 ### Bug Fixes
