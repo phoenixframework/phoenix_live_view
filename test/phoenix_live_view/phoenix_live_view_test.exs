@@ -41,6 +41,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 1"
     end
 
+    test "live mount sets caller", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/thermo")
+      {:dictionary, dictionary}=Process.info(view.pid, :dictionary)
+      assert dictionary[:"$callers"] == [self()]
+    end
+
     test "live mount without issuing request", %{conn: conn} do
       assert_raise ArgumentError, ~r/a request has not yet been sent/, fn ->
         live(conn)

@@ -239,7 +239,7 @@ defmodule Phoenix.LiveViewTest do
         child_statics: child_statics
       )
 
-    case ClientProxy.start_link(caller: {ref, self()}, html: html, view: view, timeout: timeout) do
+    case ClientProxy.start_link(caller: {self(), ref}, html: html, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
         receive do
           {^ref, {:mounted, view_pid, html}} ->
@@ -505,9 +505,6 @@ defmodule Phoenix.LiveViewTest do
       timeout -> {:error, :timeout}
     end
   end
-
-  @doc false
-  def encode!(msg), do: msg
 
   defp stringify(%{__struct__: _} = struct),
     do: struct

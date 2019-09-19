@@ -5,6 +5,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   alias Phoenix.LiveViewTest.{View, DOM}
 
   @doc """
+  Encoding used by the Channel serializer.
+  """
+  def encode!(msg), do: msg
+
+  @doc """
   Starts a client proxy.
 
   ## Options
@@ -19,7 +24,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def init(opts) do
-    {_caller_ref, _caller_pid} = caller = Keyword.fetch!(opts, :caller)
+    {_caller_pid, _caller_ref} = caller = Keyword.fetch!(opts, :caller)
     root_html = Keyword.fetch!(opts, :html)
     root_view = Keyword.fetch!(opts, :view)
     timeout = Keyword.fetch!(opts, :timeout)
@@ -87,7 +92,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp start_supervised_channel(state, view, ref) do
     socket = %Phoenix.Socket{
       transport_pid: self(),
-      serializer: Phoenix.LiveViewTest,
+      serializer: __MODULE__,
       channel: view.module,
       endpoint: view.endpoint,
       private: %{},
@@ -99,15 +104,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "session" => view.session_token,
       "static" => view.static_token,
       "url" => Path.join(view.endpoint.url(), view.mount_path),
-      "params" => view.connect_params
+      "params" => view.connect_params,
+      "caller" => state.caller
     }
 
-    spec =
-      Supervisor.child_spec(
-        {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}},
-        restart: :temporary
-      )
-
+    spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
     DynamicSupervisor.start_child(Phoenix.LiveView.DynamicSupervisor, spec)
   end
 
@@ -474,7 +475,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     :ok
   end
 
-  defp send_caller(%{caller: {ref, pid}}, msg) when is_pid(pid) do
+  defp send_caller(%{caller: {pid, ref}}, msg) when is_pid(pid) do
     send(pid, {ref, msg})
   end
 

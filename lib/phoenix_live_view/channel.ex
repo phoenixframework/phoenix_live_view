@@ -466,6 +466,10 @@ defmodule Phoenix.LiveView.Channel do
     {router_view, parent_assigns} = register_with_parent(parent, view, id, assigned_new)
     %{"url" => url, "params" => connect_params} = params
 
+    with %{"caller" => {pid, _}} when is_pid(pid) <- params do
+      Process.put(:"$callers", [pid])
+    end
+
     %Socket{
       endpoint: endpoint,
       router: router,
