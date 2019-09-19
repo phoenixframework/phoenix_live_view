@@ -278,7 +278,7 @@ defmodule Phoenix.LiveViewTest do
   Spawns a connected LiveView process mounted in isolation as the sole rendered element.
 
   Usefule for testing LiveViews that are not directly routable, such as those
-  built as small compontents to be re-used in multiple parents. Testing routable
+  built as small components to be re-used in multiple parents. Testing routable
   LiveViews is still recommended whenever possible since features such as
   live navigation require routable LiveViews.
 

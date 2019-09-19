@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
-  @phx_compontent "data-phx-compontent"
+  @phx_component "data-phx-component"
 
   def render_diff(rendered) do
     rendered
@@ -124,7 +124,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp find_component_ids(id, html) do
     html
     |> by_id(id)
-    |> all("[#{@phx_compontent}]")
+    |> all("[#{@phx_component}]")
     |> all_attributes("id")
   end
 

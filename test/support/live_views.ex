@@ -325,7 +325,7 @@ defmodule Phoenix.LiveViewTest.ComponentLive do
   def render(assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <div id="<%= name %>" data-phx-compontent="<%= name %>">
+      <div id="<%= name %>" data-phx-component="<%= name %>">
         <%= name %>
       </div>
     <% end %>
