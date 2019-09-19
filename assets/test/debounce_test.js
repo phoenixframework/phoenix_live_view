@@ -26,7 +26,7 @@ describe("debounce", function() {
     let calls = 0
     let el = container().querySelector("input[name=blur]")
 
-    DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    DOM.debounce(el, {}, "phx-debounce", "phx-throttle", () => calls++)
     DOM.dispatchEvent(el, "blur")
     expect(calls).toBe(1)
 
@@ -40,8 +40,8 @@ describe("debounce", function() {
     let calls = 0
     let el = container().querySelector("input[name=debounce-100]")
 
-    el.addEventListener("input", () => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
     })
     simulateInput(el, "one")
     simulateInput(el, "two")
@@ -64,8 +64,8 @@ describe("debounce", function() {
     let calls = 0
     let el = container().querySelector("input[name=debounce-100]")
 
-    el.addEventListener("input", () => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
     })
     el.form.addEventListener("phx-change", () => {
       el.value = "phx-changed"
@@ -88,8 +88,8 @@ describe("debounce", function() {
     let calls = 0
     let el = container().querySelector("input[name=debounce-100]")
 
-    el.addEventListener("input", () => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
     })
     el.form.addEventListener("submit", () => {
       el.value = "submitted"
@@ -115,7 +115,7 @@ describe("throttle", function() {
     let el = container().querySelector("#throttle-100")
 
     el.addEventListener("click", e => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => {
         calls++
         el.innerText = `now:${calls}`
       })
@@ -144,8 +144,8 @@ describe("throttle", function() {
     let el = container().querySelector("input[name=throttle-100]")
     let otherInput = el.form.querySelector("input[name=debounce-100]")
 
-    el.addEventListener("input", () => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
     })
     el.form.addEventListener("phx-change", () => {
       el.value = "phx-changed"
@@ -167,8 +167,8 @@ describe("throttle", function() {
     let calls = 0
     let el = container().querySelector("input[name=throttle-100]")
 
-    el.addEventListener("input", () => {
-      DOM.debounce(el, "phx-debounce", "phx-throttle", () => calls++)
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
     })
     el.form.addEventListener("submit", () => {
       el.value = "submitted"

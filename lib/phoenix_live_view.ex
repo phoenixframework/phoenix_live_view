@@ -604,9 +604,15 @@ defmodule Phoenix.LiveView do
   However, `phx-keydown` is useful for games and other usecases where a constant
   press on a key is desired. In such cases, throttle should always be used.
 
-  *Note*: When a `phx-submit`, or a `phx-change` for a different
-  input is triggered, any current debounce or throttle timers are reset for
-  existing inputs.
+  ### Debounce and Throttle special behavior
+
+  The following specialized behavior is performed for forms and keydown bindings:
+
+    * When a `phx-submit`, or a `phx-change` for a different
+      input is triggered, any current debounce or throttle timers are reset for
+      existing inputs.
+    * A `phx-keydown` binding is only throttled for key repeats. Unique keypresses
+      back-to-back with dispatch the pressed key events.
 
   ## Live navigation
 

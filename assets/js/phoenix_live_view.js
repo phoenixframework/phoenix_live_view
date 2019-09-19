@@ -40,6 +40,7 @@ const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
 const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
+const DEBOUNCE_PREV_KEY = "debounce-prev-key"
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -417,13 +418,13 @@ export class LiveSocket {
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
           this.owner(e.target, view => {
-            this.debounce(e.target, () => callback(e, event, view, e.target, targetPhxEvent, null))
+            this.debounce(e.target, e, () => callback(e, event, view, e.target, targetPhxEvent, null))
           })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
             this.owner(el, view => {
-              this.debounce(el, () => callback(e, event, view, el, phxEvent, "window"))
+              this.debounce(el, e, () => callback(e, event, view, el, phxEvent, "window"))
             })
           })
         }
@@ -453,7 +454,7 @@ export class LiveSocket {
       }
 
       this.owner(target, view => {
-        this.debounce(target, () => view.pushEvent("click", target, phxEvent, meta))
+        this.debounce(target, e, () => view.pushEvent("click", target, phxEvent, meta))
       })
     }, false)
   }
@@ -521,14 +522,14 @@ export class LiveSocket {
           } else {
             this.setActiveElement(input)
           }
-          this.debounce(input, () => view.pushInput(input, phxEvent, e))
+          this.debounce(input, e, () => view.pushInput(input, phxEvent, e))
         })
       }, false)
     }
   }
 
-  debounce(el, callback){
-    DOM.debounce(el, this.binding(PHX_DEBOUNCE), this.binding(PHX_THROTTLE), callback)
+  debounce(el, event, callback){
+    DOM.debounce(el, event, this.binding(PHX_DEBOUNCE), this.binding(PHX_THROTTLE), callback)
   }
 
   silenceEvents(callback){
@@ -607,7 +608,7 @@ export let DOM = {
     }
   },
 
-  debounce(el, phxDebounce, phxThrottle, callback){
+  debounce(el, event, phxDebounce, phxThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
     let value = debounce || throttle
@@ -623,6 +624,11 @@ export let DOM = {
       default:
         let timeout = parseInt(value)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
+        if(throttle && event.type === "keydown"){
+          let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
+          this.putPrivate(el, DEBOUNCE_PREV_KEY, event.which)
+          if(prevKey !== event.which){ return callback() }
+        }
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
         let clearTimer = (e) => {
