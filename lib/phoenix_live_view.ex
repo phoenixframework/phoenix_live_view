@@ -568,6 +568,46 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
+  ## Rate limiting events with debounce and throttle
+
+  All events can be rate-limited on the client by using the
+  `phx-debounce` and `phx-throttle` bindings, with the following behavior:
+
+    * `phx-debounce` - Accepts either a string integer timeout value, or `"blur"`.
+      When an int is provided, delays emitting the event by provided milliseconds.
+      When `"blur"` is provided, delays emitting an input's change event until the
+      field is blurred by the user.
+    * `phx-throttle` - Accepts an interger timeout value to throttle the event in milliseconds.
+      Unlike debounce, throttle will immediately emit the event, then rate limit the
+      event at one event per provided timeout.
+
+  For example, to avoid validating an email until the field is blurred, while validating
+  the username at most every 2 seconds after a user changes the field:
+
+      <form phx-change="validate" phx-submit="save">
+        <input type="text" name="user[email]" phx-debounce="blur"/>
+        <input type="text" name="user[username]" phx-debounce="2000"/>
+      </form>
+
+  And to rate limit a button click to once every second:
+
+    <button phx-click="search" phx-throttle="1000">Search</button>
+
+  Likewise, you may throttle held-down keydown:
+
+    <div phx-keydown="keydown" phx-target="window" phx-throttle="500">
+      ...
+    </div>
+
+  Unless held-down keys are required, a better approach is generally to use
+  `phx-keyup` bindings which only trigger on key up, thereby being self-limiting.
+  However, `phx-keydown` is useful for games and other usecases where a constant
+  press on a key is desired. In such cases, throttle should always be used.
+
+  *Note*: When a `phx-submit`, or a `phx-change` for a different
+  input is triggered, any current debounce or throttle timers are reset for
+  existing inputs.
+
   ## Live navigation
 
   The `live_link/2` and `live_redirect/2` functions allow page navigation

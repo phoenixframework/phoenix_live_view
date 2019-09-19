@@ -20,7 +20,6 @@ const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
-const PHX_BOUND = "data-phx-bound"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
@@ -29,13 +28,18 @@ const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
+const PHX_DEBOUNCE = "debounce"
+const PHX_THROTTLE = "throttle"
+const PHX_CHANGE = "phx-change"
 const PHX_UPDATE = "update"
+const PHX_PRIVATE = "phxPrivate"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
-const PHX_PREV_APPEND = "phxPrevAppend"
+const DEBOUNCE_BLUR = "debounce-blur"
+const DEBOUNCE_TIMER = "debounce-timer"
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -412,11 +416,15 @@ export class LiveSocket {
         let bindTarget = this.binding("target")
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => callback(e, event, view, e.target, targetPhxEvent, null))
+          this.owner(e.target, view => {
+            this.debounce(e.target, () => callback(e, event, view, e.target, targetPhxEvent, null))
+          })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => callback(e, event, view, el, phxEvent, "window"))
+            this.owner(el, view => {
+              this.debounce(el, () => callback(e, event, view, el, phxEvent, "window"))
+            })
           })
         }
       })
@@ -444,7 +452,9 @@ export class LiveSocket {
         screenY: e.screenY,
       }
 
-      this.owner(target, view => view.pushEvent("click", target, phxEvent, meta))
+      this.owner(target, view => {
+        this.debounce(target, () => view.pushEvent("click", target, phxEvent, meta))
+      })
     }, false)
   }
 
@@ -507,14 +517,18 @@ export class LiveSocket {
         this.prevValue = value
         this.owner(input, view => {
           if(DOM.isTextualInput(input)){
-            input[PHX_HAS_FOCUSED] = true
+            DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
           } else {
             this.setActiveElement(input)
           }
-          view.pushInput(input, phxEvent, e)
+          this.debounce(input, () => view.pushInput(input, phxEvent, e))
         })
       }, false)
     }
+  }
+
+  debounce(el, callback){
+    DOM.debounce(el, this.binding(PHX_DEBOUNCE), this.binding(PHX_THROTTLE), callback)
   }
 
   silenceEvents(callback){
@@ -559,17 +573,6 @@ export let Browser = {
     }
   },
 
-  dispatchEvent(target, eventString){
-    let event = null
-    if(typeof(Event) === "function"){
-      event = new Event(eventString)
-    } else {
-      event = document.createEvent("Event")
-      event.initEvent(eventString, true, true)
-    }
-    target.dispatchEvent(event)
-  },
-
   setCookie(name, value){
     document.cookie = `${name}=${value}`
   },
@@ -584,9 +587,63 @@ export let Browser = {
   }
 }
 
-let DOM = {
+export let DOM = {
   all(node, query, callback){
     return Array.from(node.querySelectorAll(query)).forEach(callback)
+  },
+
+  private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
+
+  deletePrivate(el, key){ el[PHX_PRIVATE] && delete(el[PHX_PRIVATE][key]) },
+
+  putPrivate(el, key, value){
+    if(!el[PHX_PRIVATE]){ el[PHX_PRIVATE] = {} }
+    el[PHX_PRIVATE][key] = value
+  },
+
+  copyPrivates(target, source){
+    if(source[PHX_PRIVATE]){
+      target[PHX_PRIVATE] = clone(source[PHX_PRIVATE])
+    }
+  },
+
+  debounce(el, phxDebounce, phxThrottle, callback){
+    let debounce = el.getAttribute(phxDebounce)
+    let throttle = el.getAttribute(phxThrottle)
+    let value = debounce || throttle
+    switch(value){
+      case null: return callback()
+
+      case "blur":
+        if(this.private(el, DEBOUNCE_BLUR)){ return }
+        el.addEventListener("blur", () => callback())
+        this.putPrivate(el, DEBOUNCE_BLUR, value)
+        return
+
+      default:
+        let timeout = parseInt(value)
+        if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
+        if(this.private(el, DEBOUNCE_TIMER)){ return }
+
+        let clearTimer = (e) => {
+          if(throttle && e.type === PHX_CHANGE && e.detail.triggeredBy.name === el.name){ return }
+          clearTimeout(this.private(el, DEBOUNCE_TIMER))
+          this.deletePrivate(el, DEBOUNCE_TIMER)
+        }
+        this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
+          if(el.form){
+            el.form.removeEventListener(PHX_CHANGE, clearTimer)
+            el.form.removeEventListener("submit", clearTimer)
+          }
+          this.deletePrivate(el, DEBOUNCE_TIMER)
+          if(!throttle){ callback() }
+        }, timeout))
+        if(el.form){
+          el.form.addEventListener(PHX_CHANGE, clearTimer)
+          el.form.addEventListener("submit", clearTimer)
+        }
+        if(throttle){ callback() }
+    }
   },
 
   disableForm(form, prefix){
@@ -643,7 +700,7 @@ let DOM = {
     if(!field) { return }
     let input = container.querySelector(`#${field}`)
 
-    if(field && !(input[PHX_HAS_FOCUSED] || input.form[PHX_HAS_SUBMITTED])){
+    if(field && !(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
       el.style.display = "none"
     }
   },
@@ -695,8 +752,7 @@ let DOM = {
         }
 
         // input handling
-        if(fromEl.getAttribute && fromEl[PHX_HAS_SUBMITTED]){ toEl[PHX_HAS_SUBMITTED] = true }
-        if(fromEl[PHX_HAS_FOCUSED]){ toEl[PHX_HAS_FOCUSED] = true }
+        DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(container, toEl)
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
@@ -711,8 +767,13 @@ let DOM = {
     })
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
-    Browser.dispatchEvent(document, "phx:update")
+    DOM.dispatchEvent(document, "phx:update")
     return changes
+  },
+
+  dispatchEvent(target, eventString, detail = {}){
+    let event = new CustomEvent(eventString, {bubbles: true, cancelable: true, detail: detail})
+    target.dispatchEvent(event)
   },
 
   cloneNode(node, html){
@@ -1032,8 +1093,9 @@ export class View {
 
   pushEvent(type, el, phxEvent, meta){
     let prefix = this.binding("value-")
-    for(let key of el.getAttributeNames()){ if(!key.startsWith(prefix)){ continue }
-      meta[key.replace(prefix, "")] = el.getAttribute(key)
+    for (let i = 0; i < el.attributes.length; i++){
+      let name = el.attributes[i].name
+      if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
     if(el.value !== undefined){ meta.value = el.value }
 
@@ -1057,6 +1119,7 @@ export class View {
   }
 
   pushInput(inputEl, phxEvent, e){
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
@@ -1100,7 +1163,7 @@ export class View {
 
   submitForm(form, phxEvent){
     let prefix = this.liveSocket.getBindingPrefix()
-    form[PHX_HAS_SUBMITTED] = "true"
+    DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, phxEvent, () => {
