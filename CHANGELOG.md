@@ -1,3 +1,8 @@
+## 0.3.1-dev
+
+### Bug Fixes
+  - [LiveViewTest] Fix function clause errors caused by HTML comments
+
 ## 0.3.0 (2019-09-19)
 
 ### Enhancements
