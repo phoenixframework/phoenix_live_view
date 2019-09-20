@@ -2,7 +2,26 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
-  alias Phoenix.LiveViewTest.{View, DOM}
+  alias Phoenix.LiveViewTest.DOM
+
+  defmodule View do
+    @moduledoc false
+    defstruct session_token: nil,
+              static_token: nil,
+              module: nil,
+              mount_path: nil,
+              router: nil,
+              endpoint: nil,
+              pid: nil,
+              proxy: nil,
+              topic: nil,
+              ref: nil,
+              rendered: nil,
+              children: [],
+              child_statics: %{},
+              id: nil,
+              connect_params: %{}
+  end
 
   @doc """
   Encoding used by the Channel serializer.
@@ -216,7 +235,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_downed_view(state, pid, reason)}
   end
 
-  def handle_call({:stop, %View{topic: topic}}, _from, state) do
+  def handle_call({:stop, topic}, _from, state) do
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
         {:reply, :ok, drop_view_by_id(state, view.id, :stop)}
@@ -226,7 +245,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  def handle_call({:children, %View{topic: topic}}, from, state) do
+  def handle_call({:children, topic}, from, state) do
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
         :ok = Phoenix.LiveView.Channel.ping(view.pid)
@@ -238,20 +257,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  def handle_call({:render_tree, view}, from, state) do
+  def handle_call({:render_tree, topic}, from, state) do
+    {:ok, view} = fetch_view_by_topic(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(view.pid)
-    send(self(), {:sync_render, view.topic, from})
+    send(self(), {:sync_render, topic, from})
     {:noreply, state}
   end
 
-  def handle_call({:render_event, %View{topic: topic}, type, event, raw_val}, from, state) do
+  def handle_call({:render_event, topic, type, event, raw_val}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
     payload = %{"value" => raw_val, "event" => to_string(event), "type" => to_string(type)}
 
     {:noreply, push_with_reply(state, from, view, "event", payload)}
   end
 
-  def handle_call({:render_live_link, %View{topic: topic}, path}, from, state) do
+  def handle_call({:render_live_link, topic, path}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
     ref = to_string(state.ref + 1)
 
@@ -291,14 +311,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp put_child(state, %View{} = parent, id, session) do
     update_in(state, [:views, parent.topic], fn %View{} = parent ->
-      View.put_child(parent, id, session)
+      %View{parent | children: [{id, session} | parent.children]}
     end)
   end
 
   defp drop_child(state, %View{} = parent, id, reason) do
     state
     |> update_in([:views, parent.topic], fn %View{} = parent ->
-      View.drop_child(parent, id)
+      %View{parent | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)}
     end)
     |> drop_view_by_id(id, reason)
   end
@@ -436,7 +456,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             static = static || Map.get(state.root_view.child_statics, id)
 
             child_view =
-              View.build_child(view, id: id, session_token: session, static_token: static)
+              build_child_view(view, id: id, session_token: session, static_token: static)
 
             acc
             |> mount_view(child_view, acc.timeout)
@@ -503,5 +523,26 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     state
     |> push(view, event, payload)
     |> put_reply(ref, from, view.pid)
+  end
+
+  def build_view(attrs) do
+    attrs_with_defaults =
+      attrs
+      |> Keyword.merge(topic: Phoenix.LiveView.View.random_id())
+      |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
+
+    struct(View, attrs_with_defaults)
+  end
+
+  def build_child_view(%View{ref: ref, proxy: proxy} = parent, attrs) do
+    attrs
+    |> Keyword.merge(
+      ref: ref,
+      proxy: proxy,
+      router: parent.router,
+      endpoint: parent.endpoint,
+      mount_path: parent.mount_path
+    )
+    |> build_view()
   end
 end

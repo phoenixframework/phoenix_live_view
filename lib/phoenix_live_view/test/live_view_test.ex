@@ -224,11 +224,12 @@ defmodule Phoenix.LiveViewTest do
 
     child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
-    html = DOM.to_html(DOM.parse(raw_html)) # normalize
+    # normalize
+    html = DOM.to_html(DOM.parse(raw_html))
 
-    %View{ref: ref, topic: topic} =
+    %ClientProxy.View{ref: ref} =
       view =
-      View.build(
+      ClientProxy.build_view(
         id: id,
         mount_path: live_path,
         connect_params: opts[:connect_params] || %{},
@@ -250,8 +251,7 @@ defmodule Phoenix.LiveViewTest do
                 {:error, %{redirect: to}}
             after
               0 ->
-                view = %View{view | pid: view_pid, proxy: proxy_pid, topic: topic}
-                {:ok, view, html}
+                {:ok, build_test_view(view, view_pid, proxy_pid), html}
             end
         end
 
@@ -262,6 +262,10 @@ defmodule Phoenix.LiveViewTest do
           {^ref, reason} -> {:error, reason}
         end
     end
+  end
+
+  defp build_test_view(%ClientProxy.View{id: id, ref: ref} = view, view_pid, proxy_pid) do
+    %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
   end
 
   defp live_path(%Plug.Conn{} = conn, path) do
@@ -298,6 +302,7 @@ defmodule Phoenix.LiveViewTest do
   defmacro live_isolated(conn, live_view, router, pipelines, opts \\ []) do
     quote bind_quoted: binding(), unquote: true do
       {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
+
       conn
       |> Phoenix.ConnTest.bypass_through(router, List.wrap(pipelines))
       |> Phoenix.ConnTest.get("/")
@@ -401,7 +406,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(view, type, event, value) do
-    case GenServer.call(view.proxy, {:render_event, view, type, event, stringify(value)}) do
+    case GenServer.call(proxy_pid(view), {:render_event, proxy_topic(view), type, event, stringify(value)}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
@@ -411,7 +416,7 @@ defmodule Phoenix.LiveViewTest do
   Simulates a live_link click to the view and returns the rendered result.
   """
   def render_live_link(view, path) do
-    case GenServer.call(view.proxy, {:render_live_link, view, path}) do
+    case GenServer.call(proxy_pid(view), {:render_live_link, proxy_topic(view), path}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
@@ -429,14 +434,19 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
   def children(%View{} = parent) do
-    GenServer.call(parent.proxy, {:children, parent})
+    parent
+    |> proxy_pid()
+    |> GenServer.call({:children, proxy_topic(parent)})
+    |> Enum.map(fn %ClientProxy.View{} = proxy_view ->
+      build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
+    end)
   end
 
   @doc """
   Returns the string of HTML of the rendered view.
   """
   def render(%View{} = view) do
-    {:ok, html} = GenServer.call(view.proxy, {:render_tree, view})
+    {:ok, html} = GenServer.call(proxy_pid(view), {:render_tree, proxy_topic(view)})
     html
   end
 
@@ -452,7 +462,7 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro assert_redirect(view, to, func) do
     quote do
-      %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end
@@ -471,7 +481,7 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro assert_remove(view, reason, timeout \\ 100) do
     quote do
-      %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = unquote(view)
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
     end
   end
@@ -479,7 +489,7 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   defmacro assert_remove_component(view, id, timeout \\ 100) do
     quote bind_quoted: binding() do
-      %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = view
+      %View{proxy: {ref, topic, _proxy_pid}} = view
       assert_receive {^ref, {:removed_component, ^topic, ^id}}, timeout
     end
   end
@@ -493,7 +503,7 @@ defmodule Phoenix.LiveViewTest do
       assert_remove view, {:shutdown, :stop}
   """
   def stop(%View{} = view) do
-    GenServer.call(view.proxy, {:stop, view})
+    GenServer.call(proxy_pid(view), {:stop, proxy_topic(view)})
   end
 
   defp ensure_down!(pid, timeout \\ 100) do
@@ -517,4 +527,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp stringify_kv({k, v}),
     do: {to_string(k), stringify(v)}
+
+  defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
+  defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
 end

@@ -14,13 +14,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
      conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
   end
 
-  defp session(view) do
-    {:ok, session} =
-      Phoenix.LiveView.View.verify_session(view.endpoint, view.session_token, view.static_token)
-
-    session
-  end
-
   defp simulate_bad_token_on_page(conn) do
     html = html_response(conn, 200)
     [{_id, session_token, nil} | _] = DOM.find_views(html)
@@ -318,11 +311,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "multiple nested children of same module", %{conn: conn} do
       {:ok, parent, _} = live(conn, "/same-child")
       [tokyo, madrid, toronto] = children(parent)
-
-      child_ids =
-        for sess <- [tokyo, madrid, toronto],
-            %{id: id} = session(sess),
-            do: id
+      child_ids = for view <- [tokyo, madrid, toronto], do: view.id
 
       assert Enum.uniq(child_ids) == child_ids
       assert render(parent) =~ "Tokyo"
