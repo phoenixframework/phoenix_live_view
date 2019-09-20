@@ -29,8 +29,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Clears the changes from the socket assigns.
   """
-  def clear_changed(%Socket{} = socket) do
-    %Socket{socket | changed: %{}, assigns: Map.merge(socket.assigns, socket.temporary)}
+  def clear_changed(%Socket{private: %{temporary_assigns: temporary}, assigns: assigns} = socket) do
+    %Socket{socket | changed: %{}, assigns: Map.merge(assigns, temporary)}
   end
 
   @doc """
@@ -92,6 +92,7 @@ defmodule Phoenix.LiveView.View do
   def configure_socket(socket, private) do
     private =
       private
+      |> Map.put(:temporary_assigns, %{})
       |> Map.put_new(:assigned_new, {%{}, []})
       |> Map.put_new(:connect_params, %{})
 
@@ -575,7 +576,8 @@ defmodule Phoenix.LiveView.View do
 
   defp do_mount_opt(socket, :temporary_assigns, keys) when is_list(keys) do
     temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
-    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns), temporary: temp_assigns}
+    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns),
+                     private: Map.put(socket.private, :temporary_assigns, temp_assigns)}
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do

@@ -12,7 +12,6 @@ defmodule Phoenix.LiveView.Socket do
             root_pid: nil,
             assigns: %{},
             changed: %{},
-            temporary: %{},
             fingerprints: {nil, %{}},
             private: %{},
             redirected: nil,
