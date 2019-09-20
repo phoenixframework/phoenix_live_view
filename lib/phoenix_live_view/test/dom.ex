@@ -85,7 +85,12 @@ defmodule Phoenix.LiveViewTest.DOM do
   def walk(html, func) when is_binary(html) and is_function(func, 1) do
     html
     |> parse()
-    |> Floki.traverse_and_update(fn node -> func.(node) end)
+    |> Floki.traverse_and_update(fn
+      {:pi, _, _} = xml -> xml
+      {:comment, _chlidren} = comment -> comment
+      {:doctype, _, _, _} = doctype -> doctype
+      {_tag, _attrs, _children} = node -> func.(node)
+    end)
   end
 
   def walk(html_tree, func) when is_function(func, 1) do
