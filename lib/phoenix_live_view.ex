@@ -577,7 +577,7 @@ defmodule Phoenix.LiveView do
       When an int is provided, delays emitting the event by provided milliseconds.
       When `"blur"` is provided, delays emitting an input's change event until the
       field is blurred by the user.
-    * `phx-throttle` - Accepts an interger timeout value to throttle the event in milliseconds.
+    * `phx-throttle` - Accepts an integer timeout value to throttle the event in milliseconds.
       Unlike debounce, throttle will immediately emit the event, then rate limit the
       event at one event per provided timeout.
 
@@ -591,13 +591,13 @@ defmodule Phoenix.LiveView do
 
   And to rate limit a button click to once every second:
 
-    <button phx-click="search" phx-throttle="1000">Search</button>
+      <button phx-click="search" phx-throttle="1000">Search</button>
 
   Likewise, you may throttle held-down keydown:
 
-    <div phx-keydown="keydown" phx-target="window" phx-throttle="500">
-      ...
-    </div>
+      <div phx-keydown="keydown" phx-target="window" phx-throttle="500">
+        ...
+      </div>
 
   Unless held-down keys are required, a better approach is generally to use
   `phx-keyup` bindings which only trigger on key up, thereby being self-limiting.

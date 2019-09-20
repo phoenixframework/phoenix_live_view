@@ -240,6 +240,15 @@ defmodule Phoenix.LiveViewTest do
         child_statics: child_statics
       )
 
+    unless Code.ensure_loaded?(Floki) do
+      raise """
+      Phoenix LiveView requires Floki as a test dependency.
+      Please add to your mix.exs:
+
+          {:floki, ">= 0.0.0", only: :test}
+      """
+    end
+
     case ClientProxy.start_link(caller: {self(), ref}, html: html, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
         receive do
