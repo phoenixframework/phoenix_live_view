@@ -399,6 +399,17 @@ defmodule Phoenix.LiveView do
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
+  | Binding                | Attributes |
+  |------------------------|------------|
+  | [Params](#module-click-events) | `phx-value-*` |
+  | [Click Events](#module-click-events) | `phx-click` |
+  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-target` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `data-phx-error-for`, `phx-disable-with` |
+  | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
+  | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
+  | [Custom DOM Patching](#module-custom-dom-patching) | `phx-update` |
+  | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
+
   ### Click Events
 
   The `phx-click` binding is used to send click events to the server.
