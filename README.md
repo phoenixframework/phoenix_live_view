@@ -22,7 +22,7 @@ To use LiveView, add to your `mix.exs` and run `mix deps.get`:
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.2.0"}
+    {:phoenix_live_view, "~> 0.3.0"}
   ]
 end
 ```
