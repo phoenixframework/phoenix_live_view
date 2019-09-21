@@ -3,13 +3,11 @@ defmodule Phoenix.LiveView.Diff do
 
   alias Phoenix.LiveView.{Rendered, Comprehension}
 
-  # entry point
-  # {thing_to_be_serialized, fingerprint_tree} = traverse(result, nil)
+  def new_fingerprints do
+    {nil, %{}}
+  end
 
-  # nexttime
-  # {thing_to_be_serialized, fingerprint_tree} = traverse(result, fingerprint_tree)
-
-  def render(%Rendered{} = rendered, fingerprint_tree \\ nil) do
+  def render(%Rendered{} = rendered, fingerprint_tree) do
     traverse(rendered, fingerprint_tree)
   end
 

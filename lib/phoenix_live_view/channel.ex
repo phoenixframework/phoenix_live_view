@@ -390,11 +390,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp render_diff(%{components: components, fingerprints: prints} = state, socket) do
-    {components, rendered} = View.dynamic_render(socket, view_module(state), components)
+  defp render_diff(state, %{fingerprints: prints} = socket) do
+    rendered = View.dynamic_render(socket, view_module(state))
     {diff, new_prints} = Diff.render(rendered, prints)
-    socket = View.clear_changed(socket)
-    {diff, %{state | socket: socket, components: components, fingerprints: new_prints}}
+    socket = View.clear_changed(%{socket | fingerprints: new_prints})
+    {diff, %{state | socket: socket}}
   end
 
   defp reply(state, ref, status, payload) do
@@ -497,9 +497,7 @@ defmodule Phoenix.LiveView.Channel do
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
       join_ref: phx_socket.join_ref,
-      uri: parse_uri(url),
-      components: View.new_components_state(),
-      fingerprints: {nil, %{}}
+      uri: parse_uri(url)
     }
   end
 

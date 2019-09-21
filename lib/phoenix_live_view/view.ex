@@ -13,8 +13,6 @@ defmodule Phoenix.LiveView.View do
   # Total length of 8 bytes when 64 encoded
   @rand_bytes 6
 
-  @components_state __MODULE__
-
   # All available mount options
   @mount_opts [:temporary_assigns]
 
@@ -139,36 +137,12 @@ defmodule Phoenix.LiveView.View do
     %Socket{socket | redirected: nil}
   end
 
-  @doc """
-  Return new components state.
-  """
-  def new_components_state do
-    {_id_to_component = %{}, _uid_to_id = %{}, _uid_counter = 0}
-  end
-
-  @doc """
-  Execute the given function with components state on pdict.
-  """
-  def with_components_state(components_state, fun) do
-    if Process.get(@components_state) do
-      raise "invalid nesting of child state"
-    end
-
-    try do
-      Process.put(@components_state, components_state)
-      result = fun.()
-      {Process.get(@components_state), result}
-    after
-      Process.delete(@components_state)
-    end
-  end
-
   defp load_child_id!(opts) do
     child_id =
       opts[:id] ||
         raise ArgumentError,
-              "an :id is required when rendering child LiveView. The :id " <>
-                "must uniquely identify a child."
+              "an :id is required when rendering child LiveView/LiveComponent. " <>
+                "The :id must uniquely identify the child."
 
     to_string(child_id)
   end
@@ -176,8 +150,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
-  def dynamic_render(%Socket{} = socket, view, components_state) do
-    with_components_state(components_state, fn -> to_rendered(socket, view) end)
+  def dynamic_render(%Socket{} = socket, view) do
+    to_rendered(socket, view)
   end
 
   defp strip_for_render(%Socket{} = socket) do
@@ -330,10 +304,7 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        {_, rendered} =
-          with_components_state(new_components_state(), fn -> to_rendered(socket, view) end)
-
-        html = Phoenix.HTML.Tag.content_tag(tag, rendered, attrs)
+        html = Phoenix.HTML.Tag.content_tag(tag, to_rendered(socket, view), attrs)
         {:ok, html}
 
       {:stop, reason} ->

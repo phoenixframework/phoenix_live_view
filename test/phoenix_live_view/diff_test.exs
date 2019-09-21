@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.DiffTest do
   describe "full renders without fingerprints" do
     test "basic template" do
       rendered = basic_template(%{time: "10:30", subtitle: "Sunny"})
-      {full_render, fingerprint_tree} = Diff.render(rendered)
+      {full_render, fingerprint_tree} = Diff.render(rendered, Diff.new_fingerprints())
 
       assert full_render == %{
                0 => "10:30",
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "template with literal" do
       rendered = literal_template(%{title: "foo"})
-      {full_render, fingerprint_tree} = Diff.render(rendered)
+      {full_render, fingerprint_tree} = Diff.render(rendered, Diff.new_fingerprints())
 
       assert full_render ==
                %{0 => "foo", 1 => "&lt;div&gt;", :static => ["<div>\n  ", "\n  ", "\n</div>\n"]}
@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "nested %Renderered{}'s" do
-      {full_render, fingerprint_tree} = Diff.render(@nested)
+      {full_render, fingerprint_tree} = Diff.render(@nested, Diff.new_fingerprints())
 
       assert full_render ==
                %{
@@ -92,7 +92,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "comprehensions" do
       rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
-      {full_render, fingerprint_tree} = Diff.render(rendered)
+      {full_render, fingerprint_tree} = Diff.render(rendered, Diff.new_fingerprints())
 
       assert full_render ==
                %{
