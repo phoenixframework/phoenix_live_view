@@ -128,21 +128,6 @@ let liveSocket = new LiveSocket("/live", Socket)
 liveSocket.connect()
 ```
 
-Finally, by convention live views are saved in a `lib/my_app_web/live/`
-directory. For live page reload support, add the following pattern to
-your `config/dev.exs`:
-
-```elixir
-# config/dev.exs
-config :demo, MyAppWeb.Endpoint,
-  live_reload: [
-    patterns: [
-      ...,
-      ~r{lib/my_app_web/live/.*(ex)$}
-    ]
-  ]
-```
-
 You can also optionally import the style for the default CSS classes in your `app.css` file.
 
 ```css
