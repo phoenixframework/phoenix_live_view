@@ -87,7 +87,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> parse()
     |> Floki.traverse_and_update(fn
       {:pi, _, _} = xml -> xml
-      {:comment, _chlidren} = comment -> comment
+      {:comment, _children} = comment -> comment
       {:doctype, _, _, _} = doctype -> doctype
       {_tag, _attrs, _children} = node -> func.(node)
     end)
