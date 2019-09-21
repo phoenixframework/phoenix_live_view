@@ -59,7 +59,7 @@ Then add the following imports to your web file in `lib/my_app_web.ex`:
 def controller do
   quote do
     ...
-    import Phoenix.LiveView.Controller, only: [live_render: 3]
+    import Phoenix.LiveView.Controller
   end
 end
 

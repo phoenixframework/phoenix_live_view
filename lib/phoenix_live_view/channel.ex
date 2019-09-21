@@ -405,7 +405,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(%{} = state, %{fingerprints: prints} = socket) do
-    rendered = View.render(socket, view_module(state))
+    rendered = View.dynamic_render(socket, view_module(state))
     {diff, new_prints} = Diff.render(rendered, prints)
     {diff, %{state | socket: reset_changed(socket, new_prints)}}
   end

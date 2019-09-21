@@ -144,9 +144,18 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  Acts as a view via put_view to maintain the
+  controller render + instrumentation stack.
+  """
+  def render("template.html", %{content: content}) do
+    content
+  end
+  def render(_other, _assigns), do: nil
+
+  @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
-  def render(%Socket{} = socket, view) do
+  def dynamic_render(%Socket{} = socket, view) do
     assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
 
     case view.render(assigns) do
@@ -317,7 +326,7 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
+        html = Phoenix.HTML.Tag.content_tag(tag, dynamic_render(socket, view), attrs)
         {:ok, html}
 
       {:stop, reason} ->
@@ -425,7 +434,7 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, render(socket, view), attrs)
+    Phoenix.HTML.Tag.content_tag(tag, dynamic_render(socket, view), attrs)
   end
 
   defp connected_nested_static_render(parent, config, socket, view, session, container) do

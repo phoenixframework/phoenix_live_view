@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.Controller do
       {:ok, content} ->
         conn
         |> Plug.Conn.assign(:live_view_module, view)
-        |> Phoenix.Controller.put_view(__MODULE__)
+        |> Phoenix.Controller.put_view(LiveView.View)
         |> LiveView.Plug.put_cache_headers()
         |> Phoenix.Controller.render("template.html", %{content: content})
 
@@ -49,12 +49,4 @@ defmodule Phoenix.LiveView.Controller do
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
     end
   end
-
-  @doc false
-  # acts as a view via put_view to maintain the
-  # controller render + instrumentation stack
-  def render("template.html", %{content: content}) do
-    content
-  end
-  def render(_other, _assigns), do: nil
 end
