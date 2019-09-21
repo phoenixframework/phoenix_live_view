@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.Plug do
       |> Keyword.put(:session, session(conn, session_keys))
 
     if live_link?(conn) do
-      html = Phoenix.LiveView.View.static_render_container(conn, view, render_opts)
+      html = Phoenix.LiveView.View.static_container_render(conn, view, render_opts)
 
       conn
       |> put_cache_headers()

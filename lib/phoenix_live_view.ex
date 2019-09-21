@@ -910,7 +910,7 @@ defmodule Phoenix.LiveView do
   defmacro __using__(opts) do
     quote do
       opts = unquote(opts)
-      @__live__ Phoenix.LiveView.View.live_definition(__MODULE__, opts)
+      @__live__ Phoenix.LiveView.View.live_definition(__MODULE__, :view, opts)
 
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
@@ -946,7 +946,7 @@ defmodule Phoenix.LiveView do
       <%= live_render(@conn, MyApp.ThermostatLive) %>
 
       # within leex template
-      <%= live_render(@socket, MyApp.ThermostatLive) %>
+      <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
 
   """
   def live_render(conn_or_socket, view, opts \\ [])

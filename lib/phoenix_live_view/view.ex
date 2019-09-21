@@ -13,17 +13,28 @@ defmodule Phoenix.LiveView.View do
   # Total length of 8 bytes when 64 encoded
   @rand_bytes 6
 
+  @components_state __MODULE__
+
   # All available mount options
   @mount_opts [:temporary_assigns]
 
   @doc """
+  Acts as a view via put_view to maintain the
+  controller render + instrumentation stack.
+  """
+  def render("template.html", %{content: content}) do
+    content
+  end
+  def render(_other, _assigns), do: nil
+
+  @doc """
   Defines the value for the `__live__` callback.
   """
-  def live_definition(module, opts) do
+  def live_definition(module, kind, opts) do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name}
+    %{container: container, name: name, kind: kind}
   end
 
   @doc """
@@ -43,13 +54,6 @@ defmodule Phoenix.LiveView.View do
   """
   def get_flash(%Socket{private: private}) do
     private[:flash]
-  end
-
-  @doc """
-  Puts the root fingerprint.
-  """
-  def put_prints(%Socket{} = socket, fingerprints) do
-    %Socket{socket | fingerprints: fingerprints}
   end
 
   @doc """
@@ -93,7 +97,6 @@ defmodule Phoenix.LiveView.View do
     private =
       private
       |> Map.put(:temporary_assigns, %{})
-      |> Map.put_new(:assigned_new, {%{}, []})
       |> Map.put_new(:connect_params, %{})
 
     %{socket | private: private}
@@ -105,14 +108,7 @@ defmodule Phoenix.LiveView.View do
   def post_mount_prune(%Socket{} = socket) do
     socket
     |> clear_changed()
-    |> drop_private([:connect_params])
-  end
-
-  @doc """
-  Prunes the assigned_new information from the socket.
-  """
-  def prune_assigned_new(%Socket{} = socket) do
-    drop_private(socket, [:assigned_new])
+    |> drop_private([:connect_params, :assigned_new])
   end
 
   @doc """
@@ -144,36 +140,44 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Acts as a view via put_view to maintain the
-  controller render + instrumentation stack.
+  Return new components state.
   """
-  def render("template.html", %{content: content}) do
-    content
+  def new_components_state do
+    {_id_to_component = %{}, _uid_to_id = %{}, _uid_counter = 0}
   end
-  def render(_other, _assigns), do: nil
+
+  @doc """
+  Execute the given function with components state on pdict.
+  """
+  def with_components_state(components_state, fun) do
+    if Process.get(@components_state) do
+      raise "invalid nesting of child state"
+    end
+
+    try do
+      Process.put(@components_state, components_state)
+      result = fun.()
+      {Process.get(@components_state), result}
+    after
+      Process.delete(@components_state)
+    end
+  end
+
+  defp load_child_id!(opts) do
+    child_id =
+      opts[:id] ||
+        raise ArgumentError,
+              "an :id is required when rendering child LiveView. The :id " <>
+                "must uniquely identify a child."
+
+    to_string(child_id)
+  end
 
   @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
-  def dynamic_render(%Socket{} = socket, view) do
-    assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
-
-    case view.render(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        rendered
-
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
-
-        Ensure your render function uses ~L, or your eex template uses the .leex extension.
-
-        Got:
-
-            #{inspect(other)}
-
-        """
-    end
+  def dynamic_render(%Socket{} = socket, view, components_state) do
+    with_components_state(components_state, fn -> to_rendered(socket, view) end)
   end
 
   defp strip_for_render(%Socket{} = socket) do
@@ -291,8 +295,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders a live view without spawning a LiveView server.
 
-  * `conn` - the Plug.Conn struct form the HTTP request
-  * `view` - the LiveView module
+    * `conn` - the Plug.Conn struct form the HTTP request
+    * `view` - the LiveView module
 
   ## Options
 
@@ -302,7 +306,7 @@ defmodule Phoenix.LiveView.View do
   """
   def static_render(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.get(opts, :session, %{})
-    config = load_live!(view)
+    config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
     endpoint = Phoenix.Controller.endpoint_module(conn)
@@ -326,7 +330,10 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = Phoenix.HTML.Tag.content_tag(tag, dynamic_render(socket, view), attrs)
+        {_, rendered} =
+          with_components_state(new_components_state(), fn -> to_rendered(socket, view) end)
+
+        html = Phoenix.HTML.Tag.content_tag(tag, rendered, attrs)
         {:ok, html}
 
       {:stop, reason} ->
@@ -341,9 +348,9 @@ defmodule Phoenix.LiveView.View do
 
   This is called by external live links.
   """
-  def static_render_container(%Plug.Conn{} = conn, view, opts) do
+  def static_container_render(%Plug.Conn{} = conn, view, opts) do
     session = Keyword.get(opts, :session, %{})
-    config = load_live!(view)
+    config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Phoenix.Controller.router_module(conn)
     endpoint = Phoenix.Controller.endpoint_module(conn)
@@ -374,21 +381,16 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Renders a nested live view without spawning a server.
 
-  * `parent` - the parent `%Phoenix.LiveView.Socket{}`
-  * `view` - the child LiveView module
+    * `parent` - the parent `%Phoenix.LiveView.Socket{}`
+    * `view` - the child LiveView module
 
   Accepts the same options as `static_render/3`.
   """
   def nested_static_render(%Socket{endpoint: endpoint, router: router} = parent, view, opts) do
     session = Keyword.get(opts, :session, %{})
-    config = load_live!(view)
+    config = load_live!(view, :view)
     container = container(config, opts)
-
-    child_id =
-      opts[:id] ||
-        raise ArgumentError,
-              "an :id is required when rendering child LiveView. The :id " <>
-                "must uniquely identify a child."
+    child_id = load_child_id!(opts)
 
     socket =
       configure_socket(
@@ -434,7 +436,7 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, dynamic_render(socket, view), attrs)
+    Phoenix.HTML.Tag.content_tag(tag, to_rendered(socket, view), attrs)
   end
 
   defp connected_nested_static_render(parent, config, socket, view, session, container) do
@@ -559,8 +561,14 @@ defmodule Phoenix.LiveView.View do
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
-  defp load_live!(view) do
-    view.__live__()
+  defp load_live!(view, kind) do
+    case view.__live__() do
+      %{kind: ^kind} = config ->
+        config
+
+      %{kind: kind} ->
+        raise "Expected #{inspect view} to be a #{kind}, but it is a #{kind}"
+    end
   end
 
   defp container(%{container: {tag, attrs}}, opts) do
@@ -591,5 +599,26 @@ defmodule Phoenix.LiveView.View do
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
+  end
+
+  defp to_rendered(socket ,view) do
+    assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
+
+    case view.render(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        rendered
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~L, or your eex template uses the .leex extension.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
+    end
   end
 end

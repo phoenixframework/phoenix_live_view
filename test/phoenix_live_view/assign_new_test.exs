@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.AssignNewTest do
 
   test "uses parent assigns when present and falls back to socket assigns" do
     socket =
-      put_in(@socket.private.assigned_new, {%{existing: "existing-parent"}, []})
+      put_in(@socket.private[:assigned_new], {%{existing: "existing-parent"}, []})
       |> LiveView.assign(:existing2, "existing2")
       |> LiveView.assign_new(:existing, fn -> "new-existing" end)
       |> LiveView.assign_new(:existing2, fn -> "new-existing2" end)
@@ -71,8 +71,9 @@ defmodule Phoenix.LiveView.AssignNewTest do
         |> live("/root")
 
       assert render(view) =~ "child static name: user-from-root"
+      refute render(view) =~ "child dynamic name"
 
-      :ok = GenServer.call(view.pid, :show_dynamic_child)
+      :ok = GenServer.call(view.pid, {:dynamic_child, :dynamic})
 
       html = render(view)
       assert html =~ "child static name: user-from-root"

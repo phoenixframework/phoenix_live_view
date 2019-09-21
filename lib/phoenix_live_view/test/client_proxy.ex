@@ -66,7 +66,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         new_state =
           state
           |> put_view(root_view, pid, rendered)
-          |> detect_added_or_removed_children(root_view.id, root_html)
+          |> detect_added_or_removed_children(root_view, root_html)
 
         send_caller(new_state, {:mounted, pid, new_state.html})
 
@@ -424,68 +424,76 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
         |> patch_view(new_view, DOM.render_diff(rendered))
-        |> detect_added_or_removed_children(new_view.id, html_before)
+        |> detect_added_or_removed_children(new_view, html_before)
 
       :error ->
         state
     end
   end
 
-  defp detect_added_or_removed_children(state, id, html_before) do
-    do_detect_added_or_removed_children(state, id, html_before)
-  catch
-    :throw, {:stop, {:redirect, view, to}, new_state} ->
-      send_redirect(new_state, view.topic, to)
-      drop_all_views(new_state, :redirected)
+  defp detect_added_or_removed_children(state, view, html_before) do
+    try do
+      recursive_detect_added_or_removed_children(state, view, html_before)
+    catch
+      :throw, {:stop, {:redirect, view, to}, new_state} ->
+        send_redirect(new_state, view.topic, to)
+        drop_all_views(new_state, :redirected)
+    else
+      new_state ->
+        {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
+        ids_after = new_state.html |> DOM.all("[data-phx-view]") |> DOM.all_attributes("id")
+
+        ids_after
+        |> Enum.reduce(%{}, fn id, seen ->
+          if Map.has_key?(seen, id) do
+            raise "duplicate LiveView id: #{inspect(id)}"
+          end
+
+          Map.put(seen, id, true)
+        end)
+
+        new_view.children
+        |> Enum.reduce(new_state, fn {id, _session}, acc ->
+          if id not in ids_after do
+            drop_child(acc, new_view, id, :removed)
+          else
+            acc
+          end
+        end)
+    end
   end
 
-  defp do_detect_added_or_removed_children(state, id, html_before) do
-    {:ok, view} = fetch_view_by_id(state, id)
+  defp recursive_detect_added_or_removed_children(state, view, html_before) do
+    state.html
+    |> DOM.inner_html(view.id)
+    |> DOM.find_views()
+    |> Enum.reduce(state, fn {id, session, static}, acc ->
+      case fetch_view_by_id(acc, id) do
+        {:ok, view} ->
+          {_, _, inner_html} = DOM.by_id(html_before, view.id)
+          patch_view(acc, view, inner_html)
 
-    new_state =
-      state.html
-      |> DOM.inner_html(view.id)
-      |> DOM.find_views()
-      |> Enum.reduce(state, fn {id, session, static}, acc ->
-        case fetch_view_by_id(acc, id) do
-          {:ok, view} ->
-            {_, _, inner_html} = DOM.by_id(html_before, view.id)
-            patch_view(acc, view, inner_html)
+        :error ->
+          static = static || Map.get(state.root_view.child_statics, id)
 
-          :error ->
-            static = static || Map.get(state.root_view.child_statics, id)
+          child_view =
+            build_child_view(view, id: id, session_token: session, static_token: static)
 
-            child_view =
-              build_child_view(view, id: id, session_token: session, static_token: static)
+          acc
+          |> mount_view(child_view, acc.timeout)
+          |> case do
+            {:ok, pid, rendered} ->
+              acc
+              |> put_view(child_view, pid, rendered)
+              |> put_child(view, id, child_view.session_token)
+              |> recursive_detect_added_or_removed_children(child_view, acc.html)
 
-            acc
-            |> mount_view(child_view, acc.timeout)
-            |> case do
-              {:ok, pid, rendered} ->
-                acc
-                |> put_view(child_view, pid, rendered)
-                |> put_child(view, id, child_view.session_token)
-                |> do_detect_added_or_removed_children(child_view.id, acc.html)
+            {:error, %{redirect: to}} ->
+              throw({:stop, {:redirect, child_view, to}, acc})
 
-              {:error, %{redirect: to}} ->
-                throw({:stop, {:redirect, child_view, to}, acc})
-
-              {:error, reason} ->
-                raise RuntimeError, "failed to mount view: #{inspect(reason)}"
-            end
-        end
-      end)
-
-    {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
-
-    ids_after = new_state.html |> DOM.all("[data-phx-view]") |> DOM.all_attributes("id")
-
-    new_view.children
-    |> Enum.reduce(new_state, fn {id, _session}, acc ->
-      if id not in ids_after do
-        drop_child(acc, new_view, id, :removed)
-      else
-        acc
+            {:error, reason} ->
+              raise "failed to mount view: #{inspect(reason)}"
+          end
       end
     end)
   end

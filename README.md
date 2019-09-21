@@ -66,7 +66,8 @@ end
 def view do
   quote do
     ...
-    import Phoenix.LiveView, only: [live_render: 2, live_render: 3, live_link: 1, live_link: 2]
+    import Phoenix.LiveView,
+      only: [live_render: 2, live_render: 3, live_link: 1, live_link: 2]
   end
 end
 

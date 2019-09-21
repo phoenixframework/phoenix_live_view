@@ -169,7 +169,7 @@ defmodule Phoenix.LiveViewTest.RootLive do
     root name: <%= @current_user.name %>
     <%= live_render(@socket, ChildLive, id: :static, session: %{child: :static, user_id: @current_user.id}) %>
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, id: :dynamic, session: %{child: :dynamic, user_id: @current_user.id}, id: :dyn) %>
+      <%= live_render(@socket, ChildLive, id: @dynamic_child, session: %{child: :dynamic, user_id: @current_user.id}) %>
     <% end %>
     """
   end
@@ -177,14 +177,14 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def mount(%{user_id: user_id}, socket) do
     {:ok,
      socket
-     |> assign(:dynamic_child, false)
+     |> assign(:dynamic_child, nil)
      |> assign_new(:current_user, fn ->
        %{name: "user-from-root", id: user_id}
      end)}
   end
 
-  def handle_call(:show_dynamic_child, _from, socket) do
-    {:reply, :ok, assign(socket, :dynamic_child, true)}
+  def handle_call({:dynamic_child, child}, _from, socket) do
+    {:reply, :ok, assign(socket, dynamic_child: child)}
   end
 end
 

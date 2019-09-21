@@ -41,20 +41,6 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, reason, state}
   end
 
-  def handle_info({:DOWN, ref, _, _, _} = msg, %{socket: socket} = state) do
-    case state.children_refs do
-      %{^ref => id} ->
-        new_refs = Map.delete(state.children_refs, ref)
-        new_ids = Map.delete(state.children_ids, id)
-        {:noreply, %{state | children_refs: new_refs, children_ids: new_ids}}
-
-      _ ->
-        msg
-        |> view_module(state).handle_info(socket)
-        |> handle_result({:handle_info, 2, nil}, state)
-    end
-  end
-
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
     reply(state, msg.ref, :ok, %{})
     {:stop, {:shutdown, :left}, state}
@@ -103,9 +89,9 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, :ok, state}
   end
 
-  def handle_call({@prefix, :child_mount, child_pid, view, id, assigned_new}, _from, state) do
+  def handle_call({@prefix, :child_mount, _child_pid, assigned_new}, _from, state) do
     assigns = Map.take(state.socket.assigns, assigned_new)
-    {:reply, {state.socket.view, assigns}, put_child(state, child_pid, view, id)}
+    {:reply, {state.socket.view, assigns}, state}
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
@@ -404,16 +390,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp render_diff(%{} = state, %{fingerprints: prints} = socket) do
-    rendered = View.dynamic_render(socket, view_module(state))
+  defp render_diff(%{components: components, fingerprints: prints} = state, socket) do
+    {components, rendered} = View.dynamic_render(socket, view_module(state), components)
     {diff, new_prints} = Diff.render(rendered, prints)
-    {diff, %{state | socket: reset_changed(socket, new_prints)}}
-  end
-
-  defp reset_changed(socket, prints) do
-    socket
-    |> View.clear_changed()
-    |> View.put_prints(prints)
+    socket = View.clear_changed(socket)
+    {diff, %{state | socket: socket, components: components, fingerprints: new_prints}}
   end
 
   defp reply(state, ref, status, payload) do
@@ -463,7 +444,7 @@ defmodule Phoenix.LiveView.Channel do
   defp verified_mount(view, id, parent, root, router, assigned_new, session, params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint} = phx_socket
     Process.monitor(phx_socket.transport_pid)
-    {router_view, parent_assigns} = register_with_parent(parent, view, id, assigned_new)
+    {router_view, parent_assigns} = sync_with_parent(parent, view, assigned_new)
     %{"url" => url, "params" => connect_params} = params
 
     with %{"caller" => {pid, _}} when is_pid(pid) <- params do
@@ -484,7 +465,6 @@ defmodule Phoenix.LiveView.Channel do
       assigned_new: {parent_assigns, assigned_new}
     })
     |> View.call_mount!(view, session)
-    |> View.prune_assigned_new()
     |> build_state(phx_socket, url)
     |> maybe_call_mount_handle_params(router_view, url)
     |> reply_mount(from)
@@ -517,38 +497,17 @@ defmodule Phoenix.LiveView.Channel do
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
       join_ref: phx_socket.join_ref,
-      children_refs: %{},
-      children_ids: %{},
-      uri: parse_uri(url)
+      uri: parse_uri(url),
+      components: View.new_components_state(),
+      fingerprints: {nil, %{}}
     }
   end
 
-  defp register_with_parent(nil, view, _id, _assigned_new), do: {view, %{}}
+  defp sync_with_parent(nil, view, _assigned_new), do: {view, %{}}
 
-  defp register_with_parent(parent, view, id, assigned_new) do
+  defp sync_with_parent(parent, _view, assigned_new) do
     _ref = Process.monitor(parent)
-    GenServer.call(parent, {@prefix, :child_mount, self(), view, id, assigned_new})
-  end
-
-  defp put_child(state, child_pid, view, id) do
-    parent = view_module(state)
-
-    case state.children_ids do
-      %{^id => existing_pid} ->
-        raise RuntimeError, """
-        unable to start child #{inspect(view)} under duplicate name for parent #{inspect(parent)}.
-        A child LiveView #{inspect(existing_pid)} is already running under the ID #{id}
-        """
-
-      %{} ->
-        ref = Process.monitor(child_pid)
-
-        %{
-          state
-          | children_refs: Map.put(state.children_refs, ref, id),
-            children_ids: Map.put(state.children_ids, id, child_pid)
-        }
-    end
+    GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
   end
 
   defp put_flash(%{socket: socket}, opts) do
