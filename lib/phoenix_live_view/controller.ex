@@ -33,7 +33,7 @@ defmodule Phoenix.LiveView.Controller do
       end
 
   """
-  def live_render(%Plug.Conn{} = conn, view, opts) do
+  def live_render(%Plug.Conn{} = conn, view, opts \\ []) do
     case LiveView.View.static_render(conn, view, opts) do
       {:ok, content} ->
         conn

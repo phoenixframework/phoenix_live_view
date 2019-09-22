@@ -1,8 +1,15 @@
-defmodule Phoenix.LiveViewTest.AlternativeLayout do
-  use Phoenix.View, root: ""
+defmodule Phoenix.LiveViewTest.Controller do
+  use Phoenix.Controller
+  import Phoenix.LiveView.Controller
 
-  def render("layout.html", assigns) do
-    ["ALTERNATE", render(assigns.view_module, assigns.view_template, assigns)]
+  plug :put_layout, false  
+
+  def incoming(conn, %{"type" => "live-render-2"}) do
+    live_render(conn, Phoenix.LiveViewTest.DashboardLive)
+  end
+
+  def incoming(conn, %{"type" => "live-render-3"}) do
+    live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{custom: :session})
   end
 end
 
@@ -16,6 +23,9 @@ defmodule Phoenix.LiveViewTest.Router do
 
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
+
+    # controller test
+    get "/controller/:type", Controller, :incoming
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive

@@ -40,6 +40,6 @@ defmodule Phoenix.LiveView.RouterTest do
 
   test "routing with custom layout", %{conn: conn} do
     conn = get(conn, "/router/thermo_layout/123")
-    assert conn.resp_body =~ "ALTERNATE"
+    assert conn.resp_body =~ "ALTERNATIVE"
   end
 end

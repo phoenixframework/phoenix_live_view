@@ -23,6 +23,14 @@ defmodule Phoenix.LiveView.ParamsTest do
     put_session(conn, key, :erlang.term_to_binary(value))
   end
 
+  test "renders static container", %{conn: conn} do
+    assert conn
+           |> put_req_header("x-requested-with", "live-link")
+           |> get("/counter/123", query1: "query1", query2: "query2")
+           |> html_response(200) =~
+             ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
+  end
+
   describe "handle_params on disconnected mount" do
     test "is called with named and query string params", %{conn: conn} do
       conn = get(conn, "/counter/123", query1: "query1", query2: "query2")
