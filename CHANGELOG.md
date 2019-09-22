@@ -1,5 +1,9 @@
 ## 0.3.1-dev
 
+### Backwards incompatible changes
+  - `live_isolated` in tests no longer requires a router and a pipeline (it now expects only 3 arguments)
+  - Raise if `handle_params` is used on a non-router LiveView
+
 ### Bug Fixes
   - [LiveViewTest] Fix function clause errors caused by HTML comments
 
