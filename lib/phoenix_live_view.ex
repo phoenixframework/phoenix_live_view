@@ -863,7 +863,7 @@ defmodule Phoenix.LiveView do
         }
       }
 
-      let liveSocket = new LiveSocket("/socket", Socket, {hooks: Hooks})
+      let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
       ...
   """
 
