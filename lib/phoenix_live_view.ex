@@ -842,13 +842,13 @@ defmodule Phoenix.LiveView do
   For example, a controlled input for phone-number formatting would annotate their
   markup:
 
-      <input type="text" name="user[phone_number]" phx-hook="PhoneNumber"/>
+      <input type="text" name="user[phone_number]" phx-hook="PhoneNumber" />
 
   Then a hook callback object can be defined and passed to the socket:
 
       let Hooks = {}
       Hooks.PhoneNumber = {
-        mounted(){
+        mounted() {
           this.el.addEventListener("input", e => {
             let match = this.el.value.replace(/\\D/g, "").match(/^(\\d{3})(\\d{3})(\\d{4})$/)
             if(match) {
