@@ -808,10 +808,10 @@ defmodule Phoenix.LiveView do
   is useful for client-side interop with existing libraries that do their
   own DOM operations. The following `phx-update` values are supported:
 
-    * replace - the default operation. Replaces the element with the contents
-    * ignore - ignores updates the DOM regardless of new content changes
-    * append - append the new DOM contents instead of replacing
-    * prepend - prepend the new DOM contents instead of replacing
+    * `replace` - the default operation. Replaces the element with the contents
+    * `ignore` - ignores updates the DOM regardless of new content changes
+    * `append` - append the new DOM contents instead of replacing
+    * `prepend` - prepend the new DOM contents instead of replacing
 
   When appending or prepending elements containing an ID already present
   in the container, LiveView will replace the existing element with the
@@ -825,19 +825,19 @@ defmodule Phoenix.LiveView do
   or removed by the server, a hook object may be provided with the following
   life-cycle callbacks:
 
-    * mounted - the element has been added to the DOM and its server
+    * `mounted` - the element has been added to the DOM and its server
       LiveView has finished mounting
-    * updated - the element has been updated in the DOM by the server
-    * destroyed - the element has been removed from the page, either
+    * `updated` - the element has been updated in the DOM by the server
+    * `destroyed` - the element has been removed from the page, either
       by a parent update, or the parent being removed entirely
-    * disconnected - the element's parent LiveView has disconnected from the server
-    * reconnected - the element's parent LiveView has reconnected to the server
+    * `disconnected` - the element's parent LiveView has disconnected from the server
+    * `reconnected` - the element's parent LiveView has reconnected to the server
 
   In addition to the callbacks, the callbacks contain the following attributes in scope:
 
-    * el - attribute referencing the bound DOM node,
-    * viewName - attribute matching the dom node's phx-view value
-    * pushEvent(event, payload) - method to push an event from the client to the LiveView server
+    * `el` - attribute referencing the bound DOM node,
+    * `viewName` - attribute matching the dom node's phx-view value
+    * `pushEvent(event, payload)` - method to push an event from the client to the LiveView server
 
   For example, a controlled input for phone-number formatting would annotate their
   markup:
