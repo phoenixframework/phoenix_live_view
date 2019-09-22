@@ -549,13 +549,18 @@ defmodule Phoenix.LiveView do
   The onkeydown, and onkeyup events are supported via
   the `phx-keydown`, and `phx-keyup` bindings. When
   pushed, the value sent to the server will contain all the client event
-  object's literal metadata, such as `keyCode`, `which`, etc.
+  object's metadata. For example, pressing the Escape key looks like this:
+
+      %{
+        "altKey" => false, "charCode" => 0, "code" => "Escape",
+        "ctrlKey" => false, "key" => "Escape", "keyCode" => 27,
+        "location" => 0, "metaKey" => false, "repeat" => false,
+        "shiftKey" => false, "which" => 27
+      }
+
   By default, the bound element will be the event listener, but an
   optional `phx-target` may be provided which may be `"document"`,
   `"window"`, or the DOM id of a target element, for example:
-
-      @up_key 38
-      @down_key 40
 
       def render(assigns) do
         ~L\"""
@@ -565,12 +570,12 @@ defmodule Phoenix.LiveView do
         \"""
       end
 
-      def handle_event("update_temp", @up_key, socket) do
+      def handle_event("update_temp", %{"code" => "ArrowUp"}, socket) do
         {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", @down_key, socket) do
+      def handle_event("update_temp", %{"code" => "ArrowDown"}, socket) do
         {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
