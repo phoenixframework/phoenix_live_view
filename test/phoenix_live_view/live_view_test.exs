@@ -56,9 +56,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "raises if handle_params is implemented", %{conn: conn} do
-      assert_raise ArgumentError, ~r/it is not connected to a router/, fn ->
-        live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive)
-      end
+      assert_raise ArgumentError,
+                   ~r/it is not mounted nor accessed through the router live\/3 macro/,
+                   fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
     end
   end
 

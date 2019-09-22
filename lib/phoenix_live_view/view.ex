@@ -228,7 +228,7 @@ defmodule Phoenix.LiveView.View do
   def live_link_info!(nil, view, _uri) do
     raise ArgumentError,
           "cannot invoke handle_params/3 on #{inspect(view)} " <>
-            "because it is not connected to a router or it is a child LiveView"
+            "because it is not mounted nor accessed through the router live/3 macro"
   end
 
   def live_link_info!(router, view, uri) do
@@ -289,7 +289,7 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = conn.private[:phoenix_router]
+    router = Keyword.get(opts, :router)
     endpoint = Phoenix.Controller.endpoint_module(conn)
     request_url = Plug.Conn.request_url(conn)
 
@@ -328,7 +328,7 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = conn.private[:phoenix_router]
+    router = Keyword.get(opts, :router)
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
