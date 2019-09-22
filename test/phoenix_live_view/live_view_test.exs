@@ -54,6 +54,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
+
+    test "raises if handle_params is implemented", %{conn: conn} do
+      assert_raise ArgumentError, ~r/it is not connected to a router/, fn ->
+        live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive)
+      end
+    end
   end
 
   describe "rendering" do

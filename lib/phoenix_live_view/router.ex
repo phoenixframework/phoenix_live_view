@@ -64,9 +64,7 @@ defmodule Phoenix.LiveView.Router do
 
   @doc false
   def __live_options__(router, opts) do
-    opts
-    |> Keyword.put(:router, router)
-    |> Keyword.put_new_lazy(:layout, fn ->
+    Keyword.put_new_lazy(opts, :layout, fn ->
       view =
         router
         |> Atom.to_string()

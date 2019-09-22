@@ -491,13 +491,14 @@ defmodule Phoenix.LiveView.Channel do
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, router, url) do
     %{
-      socket: lv_socket,
-      serializer: phx_socket.serializer,
-      topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid,
+      # There is no need to keep the uri if we don't have a router
+      uri: router && parse_uri(url),
+      router: router,
       join_ref: phx_socket.join_ref,
-      uri: parse_uri(url),
-      router: router
+      serializer: phx_socket.serializer,
+      socket: lv_socket,
+      topic: phx_socket.topic,
+      transport_pid: phx_socket.transport_pid
     }
   end
 

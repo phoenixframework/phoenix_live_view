@@ -225,10 +225,9 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
-  def live_link_info!(nil, view, uri) do
+  def live_link_info!(nil, view, _uri) do
     raise ArgumentError,
-          "cannot live_redirect/live_link to #{inspect(uri)} at #{inspect(view)} " <>
-            "because it was not mounted at the router with the live/3 macro"
+          "cannot invoke handle_params/3 on #{inspect(view)} because it is not connected to a router"
   end
 
   def live_link_info!(router, view, uri) do
@@ -289,7 +288,7 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = Keyword.get(opts, :router)
+    router = conn.private[:phoenix_router]
     endpoint = Phoenix.Controller.endpoint_module(conn)
     request_url = Plug.Conn.request_url(conn)
 
@@ -299,7 +298,7 @@ defmodule Phoenix.LiveView.View do
         %{assigned_new: {conn.assigns, []}}
       )
 
-    case call_mount_and_handle_params!(socket, view, session, conn.params, request_url) do
+    case call_mount_and_handle_params!(socket, router, view, session, conn.params, request_url) do
       {:ok, socket} ->
         attrs = [
           {:id, socket.id},
@@ -328,7 +327,7 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = Keyword.get(opts, :router)
+    router = conn.private[:phoenix_router]
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
@@ -424,10 +423,10 @@ defmodule Phoenix.LiveView.View do
     Phoenix.HTML.Tag.content_tag(tag, "", attrs)
   end
 
-  defp call_mount_and_handle_params!(socket, view, session, params, uri) do
+  defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
     socket
     |> call_mount!(view, session)
-    |> mount_handle_params(view, params, uri)
+    |> mount_handle_params(router, view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
@@ -446,11 +445,16 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  defp mount_handle_params(socket, view, params, uri) do
-    if exports_handle_params?(view) do
-      view.handle_params(params, uri, socket)
-    else
-      {:noreply, socket}
+  defp mount_handle_params(socket, router, view, params, uri) do
+    cond do
+      not exports_handle_params?(view) ->
+        {:noreply, socket}
+
+      router == nil ->
+        live_link_info!(router, view, uri)
+
+      true ->
+        view.handle_params(params, uri, socket)
     end
   end
 
