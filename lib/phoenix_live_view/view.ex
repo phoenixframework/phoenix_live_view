@@ -225,6 +225,12 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
+  def live_link_info!(nil, view, uri) do
+    raise ArgumentError,
+          "cannot live_redirect/live_link to #{inspect(uri)} at #{inspect(view)} " <>
+            "because it was not mounted at the router with the live/3 macro"
+  end
+
   def live_link_info!(router, view, uri) do
     %URI{host: host, path: path, query: query} = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
@@ -274,6 +280,7 @@ defmodule Phoenix.LiveView.View do
 
   ## Options
 
+    * `:router` - the router the live view was built at
     * `:session` - the required map of session data
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
@@ -282,17 +289,13 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = Phoenix.Controller.router_module(conn)
+    router = Keyword.get(opts, :router)
     endpoint = Phoenix.Controller.endpoint_module(conn)
     request_url = Plug.Conn.request_url(conn)
 
     socket =
       configure_socket(
-        %Socket{
-          endpoint: endpoint,
-          router: router,
-          view: view
-        },
+        %Socket{endpoint: endpoint, view: view},
         %{assigned_new: {conn.assigns, []}}
       )
 
@@ -300,7 +303,9 @@ defmodule Phoenix.LiveView.View do
       {:ok, socket} ->
         attrs = [
           {:id, socket.id},
-          {:data, phx_view: config.name, phx_session: sign_root_session(socket, view, session)}
+          {:data,
+           phx_view: config.name,
+           phx_session: sign_root_session(socket, router, view, session)}
           | extended_attrs
         ]
 
@@ -323,20 +328,16 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
-    router = Phoenix.Controller.router_module(conn)
+    router = Keyword.get(opts, :router)
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
       configure_socket(
-        %Socket{
-          endpoint: endpoint,
-          router: router,
-          view: view
-        },
+        %Socket{endpoint: endpoint, view: view},
         %{assigned_new: {conn.assigns, []}}
       )
 
-    session_token = sign_root_session(socket, view, session)
+    session_token = sign_root_session(socket, router, view, session)
 
     attrs = [
       {:id, socket.id},
@@ -357,7 +358,7 @@ defmodule Phoenix.LiveView.View do
 
   Accepts the same options as `static_render/3`.
   """
-  def nested_static_render(%Socket{endpoint: endpoint, router: router} = parent, view, opts) do
+  def nested_static_render(%Socket{endpoint: endpoint} = parent, view, opts) do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     container = container(config, opts)
@@ -368,7 +369,6 @@ defmodule Phoenix.LiveView.View do
         %Socket{
           id: child_id,
           endpoint: endpoint,
-          router: router,
           root_pid: parent.root_pid,
           parent_pid: self()
         },
@@ -483,7 +483,7 @@ defmodule Phoenix.LiveView.View do
     socket
   end
 
-  defp sign_root_session(%Socket{id: id, router: router, endpoint: endpoint}, view, session) do
+  defp sign_root_session(%Socket{id: id, endpoint: endpoint}, router, view, session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(endpoint, salt!(endpoint), %{
       id: id,
@@ -500,7 +500,6 @@ defmodule Phoenix.LiveView.View do
     sign_token(parent.endpoint, salt!(parent.endpoint), %{
       id: child.id,
       view: view,
-      router: parent.router,
       parent_pid: self(),
       root_pid: parent.root_pid,
       session: session

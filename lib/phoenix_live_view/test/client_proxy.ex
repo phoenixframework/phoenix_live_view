@@ -10,7 +10,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               static_token: nil,
               module: nil,
               mount_path: nil,
-              router: nil,
               endpoint: nil,
               pid: nil,
               proxy: nil,
@@ -547,7 +546,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> Keyword.merge(
       ref: ref,
       proxy: proxy,
-      router: parent.router,
       endpoint: parent.endpoint,
       mount_path: parent.mount_path
     )

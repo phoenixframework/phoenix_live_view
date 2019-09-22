@@ -5,13 +5,12 @@ defmodule Phoenix.LiveView.Socket do
   use Phoenix.Socket
 
   if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect, only: [:id, :endpoint, :view, :router, :parent_pid, :root_id, :assigns, :changed]}
+    @derive {Inspect, only: [:id, :endpoint, :view, :parent_pid, :root_id, :assigns, :changed]}
   end
 
   defstruct id: nil,
             endpoint: nil,
             view: nil,
-            router: nil,
             parent_pid: nil,
             root_pid: nil,
             assigns: %{},

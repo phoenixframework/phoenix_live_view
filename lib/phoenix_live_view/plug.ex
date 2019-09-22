@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.Plug do
 
     render_opts =
       opts
-      |> Keyword.take([:container])
+      |> Keyword.take([:container, :router])
       |> Keyword.put(:session, session(conn, session_keys))
 
     if live_link?(conn) do

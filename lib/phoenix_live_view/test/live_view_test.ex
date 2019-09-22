@@ -164,10 +164,48 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc "See `live/2`."
   defmacro live(conn, path, opts) do
     quote bind_quoted: binding(), unquote: true do
       unquote(__MODULE__).__live__(conn, path, opts, fn conn, path -> get(conn, path) end)
     end
+  end
+
+  @doc """
+  Spawns a connected LiveView process mounted in isolation as the sole rendered element.
+
+  Useful for testing LiveViews that are not directly routable, such as those
+  built as small components to be re-used in multiple parents. Testing routable
+  LiveViews is still recommended whenever possible since features such as
+  live navigation require routable LiveViews.
+
+  ## Options
+
+    * `:connect_params` - the map of params available in connected mount.
+      See `Phoenix.LiveView.get_connect_params/1` for more information.
+    * `:session` - the session to be given to the LiveView
+
+  All other options are forwarded to the live view for rendering. Refer to
+  `Phoenix.LiveView.live_render/3` for list of supported render options.
+
+  ## Examples
+
+      {:ok, view, html} =
+        live_isolated(conn, AppWeb.ClockLive, session: %{tz: "EST"})
+  """
+  defmacro live_isolated(conn, live_view, opts \\ []) do
+    quote bind_quoted: binding(), unquote: true do
+      unquote(__MODULE__).__isolated__(conn, @endpoint, live_view, opts)
+    end
+  end
+
+  @doc false
+  def __isolated__(conn, endpoint, live_view, opts) do
+    {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
+
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise "no @endpoint set in test case")
+    |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
+    |> __live__(conn.request_path, mount_opts, :noop)
   end
 
   @doc false
@@ -184,20 +222,20 @@ defmodule Phoenix.LiveViewTest do
 
       {_, _, :noop} ->
         raise ArgumentError, """
-          a request has not yet been sent.
+        a request has not yet been sent.
 
-          live/1 must use a connection with a sent response. Either call get/2
-          prior to live/1, or use live/2 while providing a path to have a get
-          request issues for you. For example issuing a get yourself:
+        live/1 must use a connection with a sent response. Either call get/2
+        prior to live/1, or use live/2 while providing a path to have a get
+        request issues for you. For example issuing a get yourself:
 
-              {:ok, view, _html} =
-                conn
-                |> get("#{path}")
-                |> live()
+            {:ok, view, _html} =
+              conn
+              |> get("#{path}")
+              |> live()
 
-          or performing the GET and live connect in a single step:
+        or performing the GET and live connect in a single step:
 
-              {:ok, view, _html} = live(conn, "#{path}")
+            {:ok, view, _html} = live(conn, "#{path}")
         """
     end
   end
@@ -235,7 +273,6 @@ defmodule Phoenix.LiveViewTest do
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         module: conn.assigns.live_view_module,
-        router: Phoenix.Controller.router_module(conn),
         endpoint: Phoenix.Controller.endpoint_module(conn),
         child_statics: child_statics
       )
@@ -278,47 +315,18 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp live_path(%Plug.Conn{} = conn, path) do
-    if conn.body_params != %{} or conn.query_string != "" do
-      query_params = Plug.Conn.Query.decode(conn.query_string, conn.body_params)
+    body_params = fetch(conn.body_params)
 
+    if body_params != %{} or conn.query_string != "" do
+      query_params = Plug.Conn.Query.decode(conn.query_string, body_params)
       path <> "?" <> Plug.Conn.Query.encode(query_params)
     else
       path
     end
   end
 
-  @doc """
-  Spawns a connected LiveView process mounted in isolation as the sole rendered element.
-
-  Usefule for testing LiveViews that are not directly routable, such as those
-  built as small components to be re-used in multiple parents. Testing routable
-  LiveViews is still recommended whenever possible since features such as
-  live navigation require routable LiveViews.
-
-  ## Options
-
-    * `:connect_params` - the map of params available in connected mount mount.
-      See `Phoenix.LiveView.get_connect_params/1` for more information.
-
-  All other options are forwarded to the live view for rendering. Refer to
-  `Phoenix.LiveView.live_render/3` for list of supported render options.
-
-  ## Examples
-
-      {:ok, view, html} =
-        live_isolated(conn, AppWeb.ClockLive, AppWeb.Router, [:browser], session: %{tz: "EST"})
-  """
-  defmacro live_isolated(conn, live_view, router, pipelines, opts \\ []) do
-    quote bind_quoted: binding(), unquote: true do
-      {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
-
-      conn
-      |> Phoenix.ConnTest.bypass_through(router, List.wrap(pipelines))
-      |> Phoenix.ConnTest.get("/")
-      |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
-      |> Phoenix.LiveViewTest.live(mount_opts)
-    end
-  end
+  defp fetch(%Plug.Conn.Unfetched{}), do: %{}
+  defp fetch(other), do: other
 
   @doc """
   Sends a click event to the view and returns the rendered result.

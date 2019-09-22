@@ -47,8 +47,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
+    %{router: router, socket: %{view: view}} = state
     %{"url" => url} = msg.payload
-    %{router: router, view: view} = state.socket
 
     case View.live_link_info!(router, view, url) do
       {:internal, params} ->
@@ -71,7 +71,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
-    val = decode(type, state.socket.router, raw_val)
+    val = decode(type, state.router, raw_val)
 
     event
     |> view_module(state).handle_event(val, state.socket)
@@ -91,7 +91,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_call({@prefix, :child_mount, _child_pid, assigned_new}, _from, state) do
     assigns = Map.take(state.socket.assigns, assigned_new)
-    {:reply, {state.socket.view, assigns}, state}
+    {:reply, assigns, state}
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_call_mount_handle_params(%{socket: socket} = state, router_view, url) do
+  defp maybe_call_mount_handle_params(%{socket: socket} = state, url) do
     cond do
       not function_exported?(socket.view, :handle_params, 3) ->
         {diff, new_state} = render_diff(state, socket)
@@ -150,24 +150,24 @@ defmodule Phoenix.LiveView.Channel do
         raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
 
       true ->
-        case View.live_link_info!(socket.router, router_view, url) do
+        case View.live_link_info!(state.router, socket.view, url) do
           {:internal, params} ->
             params
             |> view_module(state).handle_params(url, socket)
-            |> mount_handle_params_result(state, router_view, :mount)
+            |> mount_handle_params_result(state, :mount)
 
           :external ->
             raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
-                    "because #{inspect router_view} was not declared in the router with " <>
+                    "because #{inspect socket.view} was not declared in the router with " <>
                     "the live/3 macro under #{inspect url}"
         end
     end
   end
 
-  defp mount_handle_params_result({:noreply, %Socket{} = new_socket}, state, router_view, redir) do
+  defp mount_handle_params_result({:noreply, %Socket{} = new_socket}, state, redir) do
     new_state = %{state | socket: new_socket}
 
-    case maybe_changed(new_socket) do
+    case maybe_changed(new_state) do
       changed when changed in [:noop, :diff] ->
         {diff, new_state} = render_diff(new_state, new_socket)
         {:ok, diff, redir, new_state}
@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.Channel do
 
         params
         |> view_module(new_state).handle_params(url, new_state.socket)
-        |> mount_handle_params_result(new_state, router_view, {:live_redirect, opts})
+        |> mount_handle_params_result(new_state, {:live_redirect, opts})
 
       {:live_redirect, :external, %{to: to} = opts} ->
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _router_view, _redir) do
+  defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _redir) do
     case new_socket.redirected do
       {:live, _} ->
         View.raise_bad_stop_and_live_redirect!()
@@ -287,7 +287,7 @@ defmodule Phoenix.LiveView.Channel do
   defp handle_changed(state, %Socket{} = new_socket, ref, pending_internal_live_redirect \\ nil) do
     new_state = %{state | socket: new_socket}
 
-    case maybe_changed(new_socket) do
+    case maybe_changed(new_state) do
       :diff ->
         {diff, new_state} = render_diff(new_state, new_socket)
 
@@ -371,12 +371,12 @@ defmodule Phoenix.LiveView.Channel do
     reply(state, ref, :ok, %{external_live_redirect: opts})
   end
 
-  defp maybe_changed(%Socket{router: router, view: view} = socket) do
+  defp maybe_changed(%{socket: socket} = state) do
     # For now, we only track content changes.
     # But in the future, we may want to sync other properties.
     case socket.redirected do
       {:live, %{to: to} = opts} ->
-        {:live_redirect, View.live_link_info!(router, view, to), opts}
+        {:live_redirect, View.live_link_info!(state.router, socket.view, to), opts}
 
       {:redirect, opts} ->
         {:redirect, opts}
@@ -413,17 +413,8 @@ defmodule Phoenix.LiveView.Channel do
 
   defp mount({%{"session" => session_token} = params, from, phx_socket}) do
     case View.verify_session(phx_socket.endpoint, session_token, params["static"]) do
-      {:ok,
-       %{
-         id: id,
-         view: view,
-         parent_pid: parent,
-         root_pid: root,
-         router: router,
-         session: session,
-         assigned_new: new
-       }} ->
-        verified_mount(view, id, parent, root, router, new, session, params, from, phx_socket)
+      {:ok, verified} ->
+        verified_mount(verified, params, from, phx_socket)
 
       {:error, reason} ->
         Logger.error(
@@ -441,10 +432,19 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verified_mount(view, id, parent, root, router, assigned_new, session, params, from, phx_socket) do
+  defp verified_mount(verified, params, from, phx_socket) do
+    %{
+       id: id,
+       view: view,
+       parent_pid: parent,
+       root_pid: root,
+       session: session,
+       assigned_new: assigned_new
+    } = verified
+
     %Phoenix.Socket{endpoint: endpoint} = phx_socket
     Process.monitor(phx_socket.transport_pid)
-    {router_view, parent_assigns} = sync_with_parent(parent, view, assigned_new)
+    parent_assigns = sync_with_parent(parent, assigned_new)
     %{"url" => url, "params" => connect_params} = params
 
     with %{"caller" => {pid, _}} when is_pid(pid) <- params do
@@ -453,7 +453,6 @@ defmodule Phoenix.LiveView.Channel do
 
     %Socket{
       endpoint: endpoint,
-      router: router,
       view: view,
       connected?: true,
       parent_pid: parent,
@@ -465,8 +464,8 @@ defmodule Phoenix.LiveView.Channel do
       assigned_new: {parent_assigns, assigned_new}
     })
     |> View.call_mount!(view, session)
-    |> build_state(phx_socket, url)
-    |> maybe_call_mount_handle_params(router_view, url)
+    |> build_state(phx_socket, verified[:router], url)
+    |> maybe_call_mount_handle_params(url)
     |> reply_mount(from)
   end
 
@@ -490,20 +489,21 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, url) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, router, url) do
     %{
       socket: lv_socket,
       serializer: phx_socket.serializer,
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
       join_ref: phx_socket.join_ref,
-      uri: parse_uri(url)
+      uri: parse_uri(url),
+      router: router
     }
   end
 
-  defp sync_with_parent(nil, view, _assigned_new), do: {view, %{}}
+  defp sync_with_parent(nil, _assigned_new), do: %{}
 
-  defp sync_with_parent(parent, _view, assigned_new) do
+  defp sync_with_parent(parent, assigned_new) do
     _ref = Process.monitor(parent)
     GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
   end

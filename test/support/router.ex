@@ -34,5 +34,5 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive, session: [:time_zones]
     live "/shuffle", ShuffleLive, session: [:time_zones]
     live "/components", ComponentLive, session: [:data]
-end
+  end
 end

@@ -4,13 +4,13 @@ defmodule Phoenix.LiveView.AssignNewTest do
 
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.{Endpoint, Router}
+  alias Phoenix.LiveViewTest.Endpoint
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{View, Socket}
 
   @endpoint Endpoint
   @moduletag :capture_log
-  @socket View.configure_socket(%Socket{endpoint: Endpoint, router: Router}, %{})
+  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{})
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}

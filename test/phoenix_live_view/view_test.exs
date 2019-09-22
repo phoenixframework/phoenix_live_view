@@ -2,9 +2,9 @@ defmodule Phoenix.LiveView.ViewTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.{View, Socket}
-  alias Phoenix.LiveViewTest.{Endpoint, Router}
+  alias Phoenix.LiveViewTest.Endpoint
 
-  @socket View.configure_socket(%Socket{endpoint: Endpoint, router: Router}, %{})
+  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{})
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do

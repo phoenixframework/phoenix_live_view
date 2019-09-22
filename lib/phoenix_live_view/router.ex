@@ -54,12 +54,7 @@ defmodule Phoenix.LiveView.Router do
         Phoenix.LiveView.Plug,
         Phoenix.Router.scoped_alias(__MODULE__, live_view),
         private: %{
-          phoenix_live_view:
-            Keyword.put_new(
-              opts,
-              :layout,
-              Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
-            )
+          phoenix_live_view: Phoenix.LiveView.Router.__live_options__(__MODULE__, opts)
         },
         as: opts[:as] || :live,
         alias: false
@@ -68,15 +63,19 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc false
-  def __layout_from_router_module__(module) do
-    view =
-      module
-      |> Atom.to_string()
-      |> String.split(".")
-      |> Enum.drop(-1)
-      |> Kernel.++(["LayoutView"])
-      |> Module.concat()
+  def __live_options__(router, opts) do
+    opts
+    |> Keyword.put(:router, router)
+    |> Keyword.put_new_lazy(:layout, fn ->
+      view =
+        router
+        |> Atom.to_string()
+        |> String.split(".")
+        |> Enum.drop(-1)
+        |> Kernel.++(["LayoutView"])
+        |> Module.concat()
 
-    {view, :app}
+      {view, :app}
+    end)
   end
 end
