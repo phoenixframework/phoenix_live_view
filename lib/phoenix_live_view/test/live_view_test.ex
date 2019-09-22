@@ -265,9 +265,9 @@ defmodule Phoenix.LiveViewTest do
     # normalize
     html = DOM.to_html(DOM.parse(raw_html))
 
-    %ClientProxy.View{ref: ref} =
+    %ClientProxy{ref: ref} =
       view =
-      ClientProxy.build_view(
+      ClientProxy.build(
         id: id,
         mount_path: live_path,
         connect_params: opts[:connect_params] || %{},
@@ -310,7 +310,7 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp build_test_view(%ClientProxy.View{id: id, ref: ref} = view, view_pid, proxy_pid) do
+  defp build_test_view(%ClientProxy{id: id, ref: ref} = view, view_pid, proxy_pid) do
     %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
   end
 
@@ -454,7 +454,7 @@ defmodule Phoenix.LiveViewTest do
     parent
     |> proxy_pid()
     |> GenServer.call({:children, proxy_topic(parent)})
-    |> Enum.map(fn %ClientProxy.View{} = proxy_view ->
+    |> Enum.map(fn %ClientProxy{} = proxy_view ->
       build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
     end)
   end

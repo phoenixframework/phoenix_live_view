@@ -2,25 +2,22 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
-  alias Phoenix.LiveViewTest.DOM
+  defstruct session_token: nil,
+            static_token: nil,
+            module: nil,
+            mount_path: nil,
+            endpoint: nil,
+            pid: nil,
+            proxy: nil,
+            topic: nil,
+            ref: nil,
+            rendered: nil,
+            children: [],
+            child_statics: %{},
+            id: nil,
+            connect_params: %{}
 
-  defmodule View do
-    @moduledoc false
-    defstruct session_token: nil,
-              static_token: nil,
-              module: nil,
-              mount_path: nil,
-              endpoint: nil,
-              pid: nil,
-              proxy: nil,
-              topic: nil,
-              ref: nil,
-              rendered: nil,
-              children: [],
-              child_statics: %{},
-              id: nil,
-              connect_params: %{}
-  end
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM}
 
   @doc """
   Encoding used by the Channel serializer.
@@ -308,27 +305,27 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     %{state | replies: Map.delete(state.replies, ref)}
   end
 
-  defp put_child(state, %View{} = parent, id, session) do
-    update_in(state, [:views, parent.topic], fn %View{} = parent ->
-      %View{parent | children: [{id, session} | parent.children]}
+  defp put_child(state, %ClientProxy{} = parent, id, session) do
+    update_in(state, [:views, parent.topic], fn %ClientProxy{} = parent ->
+      %ClientProxy{parent | children: [{id, session} | parent.children]}
     end)
   end
 
-  defp drop_child(state, %View{} = parent, id, reason) do
+  defp drop_child(state, %ClientProxy{} = parent, id, reason) do
     state
-    |> update_in([:views, parent.topic], fn %View{} = parent ->
-      %View{parent | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)}
+    |> update_in([:views, parent.topic], fn %ClientProxy{} = parent ->
+      %ClientProxy{parent | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)}
     end)
     |> drop_view_by_id(id, reason)
   end
 
-  defp verify_session(%View{} = view) do
+  defp verify_session(%ClientProxy{} = view) do
     Phoenix.LiveView.View.verify_session(view.endpoint, view.session_token, view.static_token)
   end
 
-  defp put_view(state, %View{} = view, pid, rendered) do
+  defp put_view(state, %ClientProxy{} = view, pid, rendered) do
     {:ok, %{view: module}} = verify_session(view)
-    new_view = %View{view | module: module, proxy: self(), pid: pid, rendered: rendered}
+    new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
     patch_view(
@@ -419,7 +416,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
         rendered = DOM.deep_merge(view.rendered, diff)
-        new_view = %View{view | rendered: rendered}
+        new_view = %ClientProxy{view | rendered: rendered}
 
         %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
         |> patch_view(new_view, DOM.render_diff(rendered))
@@ -476,7 +473,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           static = static || Map.get(state.root_view.child_statics, id)
 
           child_view =
-            build_child_view(view, id: id, session_token: session, static_token: static)
+            build_child(view, id: id, session_token: session, static_token: static)
 
           acc
           |> mount_view(child_view, acc.timeout)
@@ -497,7 +494,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp shutdown_view(%View{pid: pid}, reason) do
+  defp shutdown_view(%ClientProxy{pid: pid}, reason) do
     Process.exit(pid, {:shutdown, reason})
     :ok
   end
@@ -532,16 +529,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> put_reply(ref, from, view.pid)
   end
 
-  def build_view(attrs) do
+  def build(attrs) do
     attrs_with_defaults =
       attrs
       |> Keyword.merge(topic: Phoenix.LiveView.View.random_id())
       |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
 
-    struct(View, attrs_with_defaults)
+    struct(__MODULE__, attrs_with_defaults)
   end
 
-  def build_child_view(%View{ref: ref, proxy: proxy} = parent, attrs) do
+  def build_child(%ClientProxy{ref: ref, proxy: proxy} = parent, attrs) do
     attrs
     |> Keyword.merge(
       ref: ref,
@@ -549,6 +546,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       endpoint: parent.endpoint,
       mount_path: parent.mount_path
     )
-    |> build_view()
+    |> build()
   end
 end
