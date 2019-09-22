@@ -141,26 +141,21 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, url) do
-    cond do
-      not function_exported?(socket.view, :handle_params, 3) ->
-        {diff, new_state} = render_diff(state, socket)
-        {:ok, diff, :mount, new_state}
+    if function_exported?(socket.view, :handle_params, 3) do
+      case View.live_link_info!(state.router, socket.view, url) do
+        {:internal, params} ->
+          params
+          |> view_module(state).handle_params(url, socket)
+          |> mount_handle_params_result(state, :mount)
 
-      socket.parent_pid ->
-        raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
-
-      true ->
-        case View.live_link_info!(state.router, socket.view, url) do
-          {:internal, params} ->
-            params
-            |> view_module(state).handle_params(url, socket)
-            |> mount_handle_params_result(state, :mount)
-
-          :external ->
-            raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
-                    "because #{inspect socket.view} was not declared in the router with " <>
-                    "the live/3 macro under #{inspect url}"
-        end
+        :external ->
+          raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
+                  "because #{inspect socket.view} was not declared in the router with " <>
+                  "the live/3 macro under #{inspect url}"
+      end
+    else
+      {diff, new_state} = render_diff(state, socket)
+      {:ok, diff, :mount, new_state}
     end
   end
 

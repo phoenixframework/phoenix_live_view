@@ -227,7 +227,8 @@ defmodule Phoenix.LiveView.View do
   """
   def live_link_info!(nil, view, _uri) do
     raise ArgumentError,
-          "cannot invoke handle_params/3 on #{inspect(view)} because it is not connected to a router"
+          "cannot invoke handle_params/3 on #{inspect(view)} " <>
+            "because it is not connected to a router or it is a child LiveView"
   end
 
   def live_link_info!(router, view, uri) do
