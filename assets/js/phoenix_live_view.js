@@ -555,8 +555,8 @@ export let Browser = {
     req.setRequestHeader("content-type", "text/html")
     req.setRequestHeader("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
     req.setRequestHeader(LINK_HEADER, "live-link")
-    req.onerror = () => callback(400, '400 Not Found')
-    req.ontimeout = () => callback(504, '504 Timeout')
+    req.onerror = () => callback(400)
+    req.ontimeout = () => callback(504)
     return new Promise((resolve, reject) => {
       req.onreadystatechange = () => {
         if(req.readyState !== 4){ return }
@@ -569,7 +569,7 @@ export let Browser = {
           reject({ status: req.staus, reason: req.statusText })
         }
 
-        callback(200, req.responseText)
+        callback(200)
         resolve(req)
       }
       req.send()
