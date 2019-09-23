@@ -893,7 +893,8 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2,
+  @optional_callbacks mount: 2,
+                      terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
@@ -915,19 +916,21 @@ defmodule Phoenix.LiveView do
   defmacro __using__(opts) do
     quote do
       opts = unquote(opts)
-      @__live__ Phoenix.LiveView.View.live_definition(__MODULE__, :view, opts)
-
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
-      @impl unquote(__MODULE__)
-      def mount(_session, socket), do: {:ok, socket}
-
       @doc false
+      @__live__ unquote(__MODULE__).__live__(__MODULE__, opts)
       def __live__, do: @__live__
-
-      defoverridable mount: 2
     end
+  end
+
+  @doc false
+  def __live__(module, opts) do
+    container = opts[:container] || {:div, []}
+    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
+    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+    %{container: container, name: name, kind: :view}
   end
 
   @doc """
@@ -994,11 +997,12 @@ defmodule Phoenix.LiveView do
   """
   def live_component(%Socket{} = socket, component, assigns \\ [])
       when is_atom(component) and is_list(assigns) do
+    _ = LiveView.View.load_live!(component, :component)
     assigns = Map.new(assigns)
     id = assigns[:id]
 
-    if Code.ensure_loaded?(component) and function_exported?(component, :handle_event, 3) and
-         is_nil(id) do
+
+    if function_exported?(component, :handle_event, 3) and is_nil(id) do
       raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
     end
 

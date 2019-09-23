@@ -64,14 +64,9 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  @doc """
-  Defines the value for the `__live__` callback.
-  """
-  def live_definition(module, kind, opts) do
-    container = opts[:container] || {:div, []}
-    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
-    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name, kind: kind}
+  defp assigned_new_keys(socket) do
+    {_, keys} = socket.private.assigned_new
+    keys
   end
 
   @doc """
@@ -172,14 +167,17 @@ defmodule Phoenix.LiveView.View do
     %Socket{socket | redirected: nil}
   end
 
-  defp load_child_id!(opts) do
-    child_id =
-      opts[:id] ||
-        raise ArgumentError,
-              "an :id is required when rendering child LiveView/LiveComponent. " <>
-                "The :id must uniquely identify the child."
+  @doc """
+  Loads the `view_or_component`, asserting its `kind`.
+  """
+  def load_live!(view_or_component, kind) do
+    case view_or_component.__live__() do
+      %{kind: ^kind} = config ->
+        config
 
-    to_string(child_id)
+      %{kind: kind} ->
+        raise "expected #{inspect(view_or_component)} to be a #{kind}, but it is a #{kind}"
+    end
   end
 
   @doc """
@@ -412,12 +410,17 @@ defmodule Phoenix.LiveView.View do
     session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     container = container(config, opts)
-    child_id = load_child_id!(opts)
+
+    child_id =
+      opts[:id] ||
+        raise ArgumentError,
+              "an :id is required when rendering child LiveView. " <>
+                "The :id must uniquely identify the child."
 
     socket =
       configure_socket(
         %Socket{
-          id: child_id,
+          id: to_string(child_id),
           endpoint: endpoint,
           root_pid: parent.root_pid,
           parent_pid: self()
@@ -441,7 +444,7 @@ defmodule Phoenix.LiveView.View do
 
   defp disconnected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
-    socket = call_mount!(view, [session, socket])
+    socket = maybe_call_mount!(socket, view, [session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
@@ -475,8 +478,8 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
-    view
-    |> call_mount!([session, socket])
+    socket
+    |> maybe_call_mount!(view, [session, socket])
     |> mount_handle_params(router, view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
@@ -512,34 +515,38 @@ defmodule Phoenix.LiveView.View do
   defp exports_handle_params?(view), do: function_exported?(view, :handle_params, 3)
 
   @doc """
-  Calls the view's `mount/2` callback while handling possible options.
+  Calls the optional `mount/N` callback, otherwise returns the socket as is.
   """
-  def call_mount!(view, args) do
-    socket =
-      case apply(view, :mount, args) do
-        {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-          Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)
+  def maybe_call_mount!(socket, view, args) do
+    if function_exported?(view, :mount, length(args)) do
+      socket =
+        case apply(view, :mount, args) do
+          {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+            Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)
 
-        {:ok, %Socket{} = socket} ->
-          socket
+          {:ok, %Socket{} = socket} ->
+            socket
 
-        other ->
-          raise ArgumentError, """
-          invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+          other ->
+            raise ArgumentError, """
+            invalid result returned from #{inspect(view)}.mount/#{length(args)}.
 
-          Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-          """
+            Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
+            """
+        end
+
+      if socket.redirected do
+        raise "cannot redirect socket on mount/#{length(args)}"
       end
 
-    if socket.redirected do
-      raise "cannot redirect socket on mount/#{length(args)}"
+      socket
+    else
+      socket
     end
-
-    socket
   end
 
   @doc """
-  Maaybe call the component update, otherwise update the socket directly.
+  Calls the optional `update/2` callback, otherwise update the socket directly.
   """
   def maybe_call_update!(socket, component, assigns) do
     if function_exported?(component, :update, 2) do
@@ -607,22 +614,7 @@ defmodule Phoenix.LiveView.View do
     Phoenix.Token.sign(endpoint_mod, salt, {@token_vsn, data})
   end
 
-  defp assigned_new_keys(socket) do
-    {_, keys} = socket.private.assigned_new
-    keys
-  end
-
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
-
-  defp load_live!(view, kind) do
-    case view.__live__() do
-      %{kind: ^kind} = config ->
-        config
-
-      %{kind: kind} ->
-        raise "Expected #{inspect(view)} to be a #{kind}, but it is a #{kind}"
-    end
-  end
 
   defp container(%{container: {tag, attrs}}, opts) do
     case opts[:container] do

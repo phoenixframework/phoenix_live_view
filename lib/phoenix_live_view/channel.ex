@@ -461,8 +461,8 @@ defmodule Phoenix.LiveView.Channel do
         }
       )
 
-    view
-    |> View.call_mount!([session, socket])
+    socket
+    |> View.maybe_call_mount!(view, [session, socket])
     |> build_state(phx_socket, verified[:router], url)
     |> maybe_call_mount_handle_params(url)
     |> reply_mount(from)

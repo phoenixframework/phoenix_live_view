@@ -263,13 +263,9 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component) do
-    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
-
-    if function_exported?(component, :mount, 1) do
-      View.call_mount!(component, [socket])
-    else
-      socket
-    end
+    socket
+    |> configure_socket_for_component(%{}, %{}, new_fingerprints())
+    |> View.maybe_call_mount!(component, [socket])
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
@@ -277,7 +273,7 @@ defmodule Phoenix.LiveView.Diff do
       socket
       | assigns: assigns,
         private: private,
-        fingerprints: prints,
+        fingerprints: prints
     }
   end
 
