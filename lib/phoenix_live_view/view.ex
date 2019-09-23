@@ -136,18 +136,6 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Configures the socket for further uses in a component.
-  """
-  def configure_component_socket(socket, assigns, private, prints) do
-    %{
-      socket
-      | assigns: assigns,
-        private: private,
-        fingerprints: prints,
-    }
-  end
-
-  @doc """
   Prunes any data no longer needed after mount.
   """
   def post_mount_prune(%Socket{} = socket) do
@@ -551,7 +539,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Maybe calls the component update, otherwise update the socket directly.
+  Maaybe call the component update, otherwise update the socket directly.
   """
   def maybe_call_update!(socket, component, assigns) do
     if function_exported?(component, :update, 2) do

@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.Diff do
         {^cid, component, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
         socket
-        |> View.configure_component_socket(assigns, private, fingerprints)
+        |> configure_socket_for_component(assigns, private, fingerprints)
         |> fun.(component)
         |> render_component(component, id, cid, false, component_diffs, components)
 
@@ -77,6 +77,16 @@ defmodule Phoenix.LiveView.Diff do
   def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
     {id, cid_to_ids} = Map.pop(cid_to_ids, cid)
     {Map.delete(id_to_components, id), cid_to_ids, uuids}
+  end
+
+  @doc """
+  Converts a component to a rendered struct.
+  """
+  def component_to_rendered(socket, component, assigns) do
+    socket
+    |> mount_component(component)
+    |> View.maybe_call_update!(component, assigns)
+    |> View.to_rendered(component)
   end
 
   ## Traversal
@@ -114,12 +124,7 @@ defmodule Phoenix.LiveView.Diff do
          component_diffs,
          components
        ) do
-    rendered =
-      socket
-      |> mount_component(component)
-      |> View.maybe_call_update!(component, assigns)
-      |> View.to_rendered(component)
-
+    rendered = component_to_rendered(socket, component, assigns)
     traverse(socket, rendered, fingerprints_tree, component_diffs, components)
   end
 
@@ -239,7 +244,7 @@ defmodule Phoenix.LiveView.Diff do
   defp ensure_component(socket, id, component, {id_to_components, cid_to_ids, uuids}) do
     case id_to_components do
       %{^id => {cid, ^component, assigns, private, component_prints}} ->
-        socket = View.configure_component_socket(socket, assigns, private, component_prints)
+        socket = configure_socket_for_component(socket, assigns, private, component_prints)
         {socket, cid, false, {id_to_components, cid_to_ids, uuids}}
 
       %{^id => {cid, _, _, _, _}} ->
@@ -258,13 +263,22 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component) do
-    socket = View.configure_component_socket(socket, %{}, %{}, new_fingerprints())
+    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
 
     if function_exported?(component, :mount, 1) do
       View.call_mount!(component, [socket])
     else
       socket
     end
+  end
+
+  defp configure_socket_for_component(socket, assigns, private, prints) do
+    %{
+      socket
+      | assigns: assigns,
+        private: private,
+        fingerprints: prints,
+    }
   end
 
   defp dump_component(socket, cid, component) do

@@ -319,25 +319,40 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ComponentLive do
+defmodule Phoenix.LiveViewTest.BasicComponent do
+  use Phoenix.LiveComponent
+
+  def mount(socket) do
+    {:ok, assign(socket, id: nil, name: "unknown")}
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div <%= if @id, do: " id=#{@id}", else: "" %>>
+      <%= @name %> says hi with socket: <%= !!@socket %>
+    </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.WithComponentLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~L"""
+    <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent %>
     <%= for name <- @names do %>
-      <div id="<%= name %>" data-phx-component="<%= name %>">
-        <%= name %>
-      </div>
+      <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent, id: name, name: name %>
     <% end %>
     """
   end
 
-  def mount(%{data: %{names: names}}, socket) do
+  def mount(%{names: names}, socket) do
     {:ok, assign(socket, names: names)}
   end
 
   def handle_event("delete-name", %{"name" => name}, socket) do
-    {:noreply, assign(socket, :names, Enum.reject(socket.assigns.names, &(&1 == name)))}
+    {:noreply, update(socket, :names, &List.delete(&1, name))}
   end
 end
 

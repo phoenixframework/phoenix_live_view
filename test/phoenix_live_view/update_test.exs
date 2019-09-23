@@ -130,8 +130,18 @@ defmodule Phoenix.LiveView.UpdateTest do
     end
   end
 
-  @tag session: %{data: %{names: ["chris", "jose"]}}
-  describe "component updates" do
+  describe "components" do
+    @describetag session: %{names: ["chris", "jose"]}
+    @describetag :skip
+
+    test "renders successfully", %{conn: conn} do
+      conn = get(conn, "/components")
+      assert html_response(conn, 200) =~ "<div"
+
+      {:ok, view, _html} = live(conn, "/components")
+      assert render(view) == "<div"
+    end
+
     test "send cids_destroyed event when component children are removed", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
 

@@ -971,29 +971,42 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Renders a LiveComponent within a parent LiveView.
+  Renders a `Phoenix.LiveComponent` within a parent LiveView.
 
   While `LiveView`s can be nested, each LiveView starts its
   own process. A LiveComponent provides similar functionality
   to LiveView, except they run in the same process as the
-  `LiveView`, which its own encapsulated state.
+  `LiveView`, with its own encapsulated state.
 
-  ## Options
-
-    * `:assigns` - a map of assigns that will be given to the component.
-    * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
-    * `:id` - both the DOM ID and the ID to uniquely identify a child LiveComponent
-      when live rendering children of the same type.
+  LiveComponent comes in two shapes, stateful and stateless.
+  See `Phoenix.LiveComponent` for more information.
 
   ## Examples
 
-      # within leex template
-      <%= live_component(@socket, MyApp.ThermostatComponent, id: "thermostat") %>
+  All of the `assigns` given are forwarded directly to the
+  `live_component`:
 
+      <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+
+  However, note the `:id` assign has a special meaning.
+  Whenever an "id" is given, the component becomes stateful.
+  Some components may always require an ID.
   """
-  def live_component(%Socket{} = socket, component, opts) do
-    LiveView.View.component_render(socket, component, opts)
+  def live_component(%Socket{} = socket, component, assigns \\ [])
+      when is_atom(component) and is_list(assigns) do
+    assigns = Map.new(assigns)
+    id = assigns[:id]
+
+    if Code.ensure_loaded?(component) and function_exported?(component, :handle_event, 3) and
+         is_nil(id) do
+      raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
+    end
+
+    if LiveView.View.connected?(socket) do
+      %LiveView.Component{id: id, assigns: assigns, component: component}
+    else
+      LiveView.Diff.component_to_rendered(socket, component, assigns)
+    end
   end
 
   @doc """
@@ -1198,17 +1211,20 @@ defmodule Phoenix.LiveView do
 
   """
   def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+
   def live_link(opts, do: block) when is_list(opts) do
     uri = Keyword.fetch!(opts, :to)
     replace = Keyword.get(opts, :replace, false)
     kind = if replace, do: "replace", else: "push"
 
-    opts = opts
-    |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, [phx_live_link: kind]))
-    |> Keyword.put(:href, uri)
+    opts =
+      opts
+      |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, phx_live_link: kind))
+      |> Keyword.put(:href, uri)
 
     Phoenix.HTML.Tag.content_tag(:a, opts, do: block)
   end
+
   def live_link(text, opts) when is_list(opts) do
     live_link(opts, do: text)
   end
@@ -1234,5 +1250,5 @@ defmodule Phoenix.LiveView do
     do: :ok
 
   defp assert_root_live_view!(_, context),
-    do: raise ArgumentError, "cannot invoke #{context} from a child LiveView"
+    do: raise(ArgumentError, "cannot invoke #{context} from a child LiveView")
 end
