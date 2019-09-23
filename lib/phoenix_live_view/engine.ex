@@ -392,18 +392,24 @@ defmodule Phoenix.LiveView.Engine do
     to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @catch_alls)
   end
 
-  defp to_live_struct({:for, meta, args} = expr, _tainted_vars, _vars, _assigns) do
-    with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
+  defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, _vars, _assigns) do
+    to_live_comprehension(expr)
+  end
+
+  defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
+    to_safe(expr, @catch_alls)
+  end
+
+  defp to_live_comprehension(expr) do
+    with {:for, meta, [_ | _] = args} <- expr,
+         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       {binaries, vars} = bins_and_vars(iodata)
 
       exprs =
         Enum.map(exprs, fn
-          to_safe_match(var, ast) ->
-            {:=, [], [var, to_safe(ast, [Phoenix.LiveView.Component])]}
-
-          other ->
-            other
+          to_safe_match(var, ast) -> {:=, [], [var, to_live_comprehension(ast)]}
+          other -> other
         end)
 
       for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
@@ -413,12 +419,8 @@ defmodule Phoenix.LiveView.Engine do
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe(expr, @catch_alls)
+      _ -> to_safe(expr, [Phoenix.LiveView.Comprehension, Phoenix.LiveView.Component])
     end
-  end
-
-  defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, @catch_alls)
   end
 
   defp maybe_block_to_rendered(block, tainted_vars, vars, assigns) do

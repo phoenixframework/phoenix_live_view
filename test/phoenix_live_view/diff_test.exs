@@ -175,6 +175,19 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
+  def nested_components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for prefix_id <- @ids do %>
+        <%= prefix_id %>
+        <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+          <%= index %>: <%= %{component | id: "#{prefix_id}-#{component.id}"} %>
+        <% end %>
+      <% end %>
+    </div>
+    """
+  end
+
   defmodule MyComponent do
     use Phoenix.LiveComponent
 
@@ -397,7 +410,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    0 => "index_1",
                    1 => "world",
                    :static => ["FROM ", " ", "\n"]
-                 },
+                 }
                },
                :static => ["<div>\n  ", "\n</div>\n"]
              }
@@ -414,6 +427,69 @@ defmodule Phoenix.LiveView.DiffTest do
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
+    end
+
+    test "inside nested comprehension" do
+      components = [
+        %Component{id: "index_0", assigns: %{from: :index_0}, component: MyComponent},
+        %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
+      ]
+
+      rendered = nested_components_template(%{components: components, ids: ["foo", "bar"]})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 dynamics: [
+                   [
+                     "foo",
+                     %{dynamics: [["0", 0], ["1", 1]], static: ["\n      ", ": ", "\n    "]}
+                   ],
+                   [
+                     "bar",
+                     %{dynamics: [["0", 2], ["1", 3]], static: ["\n      ", ": ", "\n    "]}
+                   ]
+                 ],
+                 static: ["\n    ", "\n    ", "\n  "]
+               },
+               :components => %{
+                 0 => %{
+                   0 => "index_0",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+                 1 => %{
+                   0 => "index_1",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+                 2 => %{
+                   0 => "index_0",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+                 3 => %{
+                   0 => "index_1",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+               },
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+
+      {_, cids_to_ids, 4} = components
+      assert cids_to_ids[0] == "foo-index_0"
+      assert cids_to_ids[1] == "foo-index_1"
+      assert cids_to_ids[2] == "bar-index_0"
+      assert cids_to_ids[3] == "bar-index_1"
+
+      for from <- [:index_0, :index_1, :index_0, :index_1] do
+        assert_received {:mount, %Socket{endpoint: __MODULE__}}
+        assert_received {:update, %{from: ^from}, %Socket{assigns: %{hello: "world"}}}
+        assert_received :render
+      end
     end
   end
 end

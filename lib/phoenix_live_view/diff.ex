@@ -141,7 +141,7 @@ defmodule Phoenix.LiveView.Diff do
   defp traverse(
          socket,
          %Comprehension{static: static, dynamics: dynamics},
-         nil,
+         _,
          component_diffs,
          components
        ) do
@@ -181,9 +181,9 @@ defmodule Phoenix.LiveView.Diff do
 
   defp comprehension_to_iodata(socket, dynamics, component_diffs, components) do
     Enum.map_reduce(dynamics, {component_diffs, components}, fn list, acc ->
-      Enum.map_reduce(list, acc, fn component_or_iodata, {component_diffs, components} ->
+      Enum.map_reduce(list, acc, fn rendered, {component_diffs, components} ->
         {diff, _, component_diffs, components} =
-          traverse(socket, component_or_iodata, {nil, %{}}, component_diffs, components)
+          traverse(socket, rendered, {nil, %{}}, component_diffs, components)
 
         {diff, {component_diffs, components}}
       end)

@@ -77,7 +77,6 @@ defmodule Phoenix.LiveView.EngineTest do
                "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
     end
 
-
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
                    ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
@@ -236,12 +235,29 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "does not render dynamic for nested optimized comprehensions with variables" do
-      template = "<%= for x <- @foo do %><%= for y <- @bar do %><%= x %><%= y %><% end %><% end %>"
-      assert [%{dynamics: [[[["1", "1"]]]]}] =
-        changed(template, %{foo: [1], bar: [1]}, nil)
+      template =
+        "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"
+
+      assert [
+               %{
+                 dynamics: [
+                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
+             ] = changed(template, %{foo: [1], bar: [1]}, nil)
+
       assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
-      assert [%{dynamics: [[[["1", "1"]]]]}] =
-        changed(template, %{foo: [1], bar: [1]}, %{foo: true , bar: true})
+
+      assert [
+               %{
+                 dynamics: [
+                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
+             ] =
+               changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
     test "renders dynamic if it uses assigns" do
@@ -448,14 +464,16 @@ defmodule Phoenix.LiveView.EngineTest do
                  nil
                ]
              } = Phoenix.View.render(View, "live_with_live.html", assigns)
-
     end
 
     test "renders live engine with nested live view even on bad fingerprint" do
       rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
 
       {socket, _, _} = Diff.render(%Socket{}, rendered, Diff.new_components())
-      socket = update_in socket.fingerprints, fn {root, child} -> {root, %{child | 1 => :bad}} end
+
+      socket =
+        update_in(socket.fingerprints, fn {root, child} -> {root, %{child | 1 => :bad}} end)
+
       assigns = Map.put(@assigns, :socket, socket)
 
       assert %Rendered{
