@@ -43,35 +43,28 @@ defmodule Phoenix.LiveView.Diff do
 
   It returns the updated `component_diffs` and the updated `components` or
   `:error` if the component cid does not exist.
+
+  ## Example
+
+      {component_diffs, components} =
+        with_component(socket, cid, %{}, state.components, fn socket, component ->
+          case component.handle_event("...", ..., socket) do
+            {:noreply, socket} -> socket
+          end
+        end)
+
   """
-  def with_component(socket, cid, new?, component_diffs, components, fun) do
+  def with_component(socket, cid, component_diffs, components, fun) when is_integer(cid) do
     {id_to_components, cid_to_ids, _} = components
 
     case cid_to_ids do
       %{^cid => id} ->
         {^cid, component, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
-        socket =
-          socket
-          |> View.configure_component_socket(assigns, private, fingerprints)
-          |> fun.(component)
-
-        {socket, component_diffs, {id_to_components, cid_to_ids, uuids}} =
-          if new? or View.changed?(socket) do
-            rendered = View.to_rendered(socket, component)
-
-            {diff, component_prints, component_diffs, components} =
-              traverse(socket, rendered, fingerprints, component_diffs, components)
-
-            socket = View.clear_changed(%{socket | fingerprints: component_prints})
-            component_diffs = Map.put(component_diffs, cid, diff)
-            {socket, component_diffs, components}
-          else
-            {socket, component_diffs, components}
-          end
-
-        id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
-        {component_diffs, {id_to_components, cid_to_ids, uuids}}
+        socket
+        |> View.configure_component_socket(assigns, private, fingerprints)
+        |> fun.(component)
+        |> render_component(component, id, cid, false, component_diffs, components)
 
       %{} ->
         :error
@@ -114,9 +107,25 @@ defmodule Phoenix.LiveView.Diff do
     {Map.put(diff, :static, static), {fingerprint, children}, component_diffs, components}
   end
 
+  defp traverse(
+         socket,
+         %Component{id: nil, component: component, assigns: assigns},
+         fingerprints_tree,
+         component_diffs,
+         components
+       ) do
+    rendered =
+      socket
+      |> mount_component(component)
+      |> View.maybe_call_update!(component, assigns)
+      |> View.to_rendered(component)
+
+    traverse(socket, rendered, fingerprints_tree, component_diffs, components)
+  end
+
   defp traverse(socket, %Component{} = component, fingerprints_tree, component_diffs, components) do
     {cid, component_diffs, components} =
-      render_component(socket, component, component_diffs, components)
+      traverse_component(socket, component, component_diffs, components)
 
     {cid, fingerprints_tree, component_diffs, components}
   end
@@ -190,12 +199,48 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  ## Components helpers
+  ## Stateful components helpers
+
+  defp traverse_component(
+         socket,
+         %Component{id: id, assigns: assigns, component: component},
+         component_diffs,
+         components
+       ) do
+    {socket, cid, new?, components} = ensure_component(socket, id, component, components)
+
+    {component_diffs, components} =
+      socket
+      |> View.maybe_call_update!(component, assigns)
+      |> render_component(component, id, cid, new?, component_diffs, components)
+
+    {cid, component_diffs, components}
+  end
+
+  defp render_component(socket, component, id, cid, new?, component_diffs, components) do
+    {socket, component_diffs, {id_to_components, cid_to_ids, uuids}} =
+      if new? or View.changed?(socket) do
+        rendered = View.to_rendered(socket, component)
+
+        {diff, component_prints, component_diffs, components} =
+          traverse(socket, rendered, socket.fingerprints, component_diffs, components)
+
+        socket = View.clear_changed(%{socket | fingerprints: component_prints})
+        component_diffs = Map.put(component_diffs, cid, diff)
+        {socket, component_diffs, components}
+      else
+        {socket, component_diffs, components}
+      end
+
+    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
+    {component_diffs, {id_to_components, cid_to_ids, uuids}}
+  end
 
   defp ensure_component(socket, id, component, {id_to_components, cid_to_ids, uuids}) do
     case id_to_components do
-      %{^id => {cid, ^component, _assigns, _private, _component_prints}} ->
-        {cid, false, {id_to_components, cid_to_ids, uuids}}
+      %{^id => {cid, ^component, assigns, private, component_prints}} ->
+        socket = View.configure_component_socket(socket, assigns, private, component_prints)
+        {socket, cid, false, {id_to_components, cid_to_ids, uuids}}
 
       %{^id => {cid, _, _, _, _}} ->
         build_component(socket, id, cid, component, id_to_components, cid_to_ids, uuids)
@@ -207,36 +252,22 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp build_component(socket, id, cid, component, id_to_components, cid_to_ids, uuids) do
+    socket = mount_component(socket, component)
+    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
+    {socket, cid, true, {id_to_components, cid_to_ids, uuids}}
+  end
+
+  defp mount_component(socket, component) do
     socket = View.configure_component_socket(socket, %{}, %{}, new_fingerprints())
 
-    socket =
-      if function_exported?(component, :mount, 1) do
-        View.call_mount!(component, [socket])
-      else
-        socket
-      end
-
-    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
-    {cid, true, {id_to_components, cid_to_ids, uuids}}
+    if function_exported?(component, :mount, 1) do
+      View.call_mount!(component, [socket])
+    else
+      socket
+    end
   end
 
   defp dump_component(socket, cid, component) do
     {cid, component, socket.assigns, socket.private, socket.fingerprints}
-  end
-
-  defp render_component(
-         socket,
-         %Component{id: id, assigns: assigns, component: component},
-         component_diffs,
-         components
-       ) do
-    {cid, new?, components} = ensure_component(socket, id, component, components)
-
-    {component_diffs, components} =
-      with_component(socket, cid, new?, component_diffs, components, fn socket, component ->
-        View.maybe_call_update!(component, assigns, socket)
-      end)
-
-    {cid, component_diffs, components}
   end
 end

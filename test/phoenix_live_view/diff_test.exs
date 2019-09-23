@@ -227,7 +227,80 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  describe "components" do
+  defmodule RenderOnlyComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      RENDER ONLY <%= @from %>
+      """
+    end
+  end
+
+  describe "stateless components" do
+    test "on mount" do
+      component = %Component{assigns: %{from: :component}, component: MyComponent}
+      rendered = component_template(%{component: component})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{0 => "component", 1 => "world", :static => ["FROM ", " ", "\n"]},
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert socket.fingerprints != {rendered.fingerprint, %{}}
+      assert components == Diff.new_components()
+
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      refute_received _
+    end
+
+    test "on update" do
+      component = %Component{assigns: %{from: :component}, component: MyComponent}
+      rendered = component_template(%{component: component})
+      {previous_socket, _, previous_components} = render(rendered)
+
+      {socket, full_render, components} =
+        render(rendered, previous_socket.fingerprints, previous_components)
+
+      assert full_render == %{
+               0 => %{0 => "component", 1 => "world"}
+             }
+
+      assert socket.fingerprints == previous_socket.fingerprints
+      assert components == previous_components
+      assert components == Diff.new_components()
+
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      refute_received _
+    end
+
+    test "render only" do
+      component = %Component{assigns: %{from: :component}, component: RenderOnlyComponent}
+      rendered = component_template(%{component: component})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "component",
+                 :static => ["RENDER ONLY ", "\n"]
+               },
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert socket.fingerprints != {rendered.fingerprint, %{}}
+      assert components == Diff.new_components()
+    end
+  end
+
+  describe "stateful components" do
     test "on mount" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
@@ -472,7 +545,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    0 => "index_1",
                    1 => "world",
                    :static => ["FROM ", " ", "\n"]
-                 },
+                 }
                },
                :static => ["<div>\n  ", "\n</div>\n"]
              }

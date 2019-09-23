@@ -553,7 +553,7 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Maybe calls the component update, otherwise update the socket directly.
   """
-  def maybe_call_update!(component, assigns, socket) do
+  def maybe_call_update!(socket, component, assigns) do
     if function_exported?(component, :update, 2) do
       socket =
         case component.update(assigns, socket) do
