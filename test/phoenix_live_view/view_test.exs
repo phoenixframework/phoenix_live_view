@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.ViewTest do
   alias Phoenix.LiveView.{View, Socket}
   alias Phoenix.LiveViewTest.Endpoint
 
-  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{})
+  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do

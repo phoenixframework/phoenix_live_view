@@ -874,7 +874,7 @@ defmodule Phoenix.LiveView do
   @type from :: {pid, reference}
 
   @callback mount(session :: map, socket :: Socket.t()) ::
-              {:ok, Socket.t()}
+              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -971,6 +971,32 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
+  Renders a LiveComponent within a parent LiveView.
+
+  While `LiveView`s can be nested, each LiveView starts its
+  own process. A LiveComponent provides similar functionality
+  to LiveView, except they run in the same process as the
+  `LiveView`, which its own encapsulated state.
+
+  ## Options
+
+    * `:assigns` - a map of assigns that will be given to the component.
+    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
+    * `:id` - both the DOM ID and the ID to uniquely identify a child LiveComponent
+      when live rendering children of the same type.
+
+  ## Examples
+
+      # within leex template
+      <%= live_component(@socket, MyApp.ThermostatComponent, id: "thermostat") %>
+
+  """
+  def live_component(%Socket{} = socket, component, opts) do
+    LiveView.View.component_render(socket, component, opts)
+  end
+
+  @doc """
   Returns true if the socket is connected.
 
   Useful for checking the connectivity status when mounting the view.
@@ -1030,19 +1056,7 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assigned_new: {assigns, keys}} = private} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        private = put_in(private.assigned_new, {assigns, [key | keys]})
-        do_assign(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
-
-      %{} ->
-        do_assign(socket, key, func.())
-    end
+    LiveView.View.assign_new(socket, key, func)
   end
 
   @doc """
@@ -1058,24 +1072,14 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    assign(socket, [{key, value}])
+    LiveView.View.assign(socket, [{key, value}])
   end
 
-  def assign(%Socket{} = socket, attrs)
-      when is_map(attrs) or is_list(attrs) do
-    Enum.reduce(attrs, socket, fn {key, val}, acc ->
-      case Map.fetch(acc.assigns, key) do
-        {:ok, ^val} -> acc
-        {:ok, _old_val} -> do_assign(acc, key, val)
-        :error -> do_assign(acc, key, val)
-      end
-    end)
-  end
-
-  defp do_assign(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed, key, true)
-    new_assigns = Map.put(assigns, key, val)
-    %Socket{acc | assigns: new_assigns, changed: new_changed}
+  @doc """
+  See `assign/2`.
+  """
+  def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
+    LiveView.View.assign(socket, attrs)
   end
 
   @doc """
@@ -1091,7 +1095,7 @@ defmodule Phoenix.LiveView do
   """
   def update(%Socket{assigns: assigns} = socket, key, func) do
     case Map.fetch(assigns, key) do
-      {:ok, val} -> assign(socket, key, func.(val))
+      {:ok, val} -> assign(socket, [{key, func.(val)}])
       :error -> raise KeyError, key: key, term: assigns
     end
   end

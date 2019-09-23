@@ -385,11 +385,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp render_diff(state, %{fingerprints: prints} = socket) do
+  defp render_diff(%{components: components} = state, socket) do
     rendered = View.dynamic_render(socket, view_module(state))
-    {diff, new_prints} = Diff.render(rendered, prints)
-    socket = View.clear_changed(%{socket | fingerprints: new_prints})
-    {diff, %{state | socket: socket}}
+    {socket, diff, new_components} = Diff.render(socket, rendered, components)
+    {diff, %{state | socket: View.clear_changed(socket), components: new_components}}
   end
 
   defp reply(state, ref, status, payload) do
@@ -446,19 +445,24 @@ defmodule Phoenix.LiveView.Channel do
       Process.put(:"$callers", [pid])
     end
 
-    %Socket{
-      endpoint: endpoint,
-      view: view,
-      connected?: true,
-      parent_pid: parent,
-      root_pid: root || self(),
-      id: id
-    }
-    |> View.configure_socket(%{
-      connect_params: connect_params,
-      assigned_new: {parent_assigns, assigned_new}
-    })
-    |> View.call_mount!(view, session)
+    socket =
+      View.configure_socket(
+        %Socket{
+          endpoint: endpoint,
+          view: view,
+          connected?: true,
+          parent_pid: parent,
+          root_pid: root || self(),
+          id: id
+        },
+        %{
+          connect_params: connect_params,
+          assigned_new: {parent_assigns, assigned_new}
+        }
+      )
+
+    view
+    |> View.call_mount!([session, socket])
     |> build_state(phx_socket, verified[:router], url)
     |> maybe_call_mount_handle_params(url)
     |> reply_mount(from)
@@ -493,7 +497,8 @@ defmodule Phoenix.LiveView.Channel do
       serializer: phx_socket.serializer,
       socket: lv_socket,
       topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid
+      transport_pid: phx_socket.transport_pid,
+      components: Diff.new_components()
     }
   end
 

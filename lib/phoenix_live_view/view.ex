@@ -23,7 +23,46 @@ defmodule Phoenix.LiveView.View do
   def render("template.html", %{content: content}) do
     content
   end
+
   def render(_other, _assigns), do: nil
+
+  @doc """
+  Assigns to a socket.
+  """
+  def assign(socket, attrs) do
+    Enum.reduce(attrs, socket, fn {key, val}, acc ->
+      case Map.fetch(acc.assigns, key) do
+        {:ok, ^val} -> acc
+        {:ok, _old_val} -> assign_each(acc, key, val)
+        :error -> assign_each(acc, key, val)
+      end
+    end)
+  end
+
+  defp assign_each(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
+    new_changed = Map.put(changed, key, true)
+    new_assigns = Map.put(assigns, key, val)
+    %Socket{acc | assigns: new_assigns, changed: new_changed}
+  end
+
+  @doc """
+  New assigns to a socket.
+  """
+  def assign_new(socket, key, func) do
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in(private.assigned_new, {assigns, [key | keys]})
+        assign_each(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+
+      %{} ->
+        assign_each(socket, key, func.())
+    end
+  end
 
   @doc """
   Defines the value for the `__live__` callback.
@@ -38,7 +77,8 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Clears the changes from the socket assigns.
   """
-  def clear_changed(%Socket{private: %{temporary_assigns: temporary}, assigns: assigns} = socket) do
+  def clear_changed(%Socket{private: private, assigns: assigns} = socket) do
+    temporary = Map.get(private, :temporary_assigns, %{})
     %Socket{socket | changed: %{}, assigns: Map.merge(assigns, temporary)}
   end
 
@@ -64,15 +104,15 @@ defmodule Phoenix.LiveView.View do
   """
   def get_connect_params(%Socket{} = socket) do
     cond do
+      connect_params = socket.private[:connect_params] ->
+        if connected?(socket), do: connect_params, else: nil
+
       child?(socket) ->
         raise RuntimeError, """
         attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
 
         Only the root LiveView has access to connect params.
         """
-
-      connect_params = socket.private[:connect_params] ->
-        if connected?(socket), do: connect_params, else: nil
 
       true ->
         raise RuntimeError, """
@@ -88,16 +128,24 @@ defmodule Phoenix.LiveView.View do
   Configures the socket for use.
   """
   def configure_socket(%{id: nil} = socket, private) do
-    configure_socket(%{socket | id: random_id()}, private)
+    %{socket | id: random_id(), private: private}
   end
 
   def configure_socket(socket, private) do
-    private =
-      private
-      |> Map.put(:temporary_assigns, %{})
-      |> Map.put_new(:connect_params, %{})
-
     %{socket | private: private}
+  end
+
+  @doc """
+  Configures the socket for further uses in a component.
+  """
+  def configure_component_socket(socket, assigns, private, prints) do
+    %{
+      socket
+      | assigns: assigns,
+        private: private,
+        changed: %{},
+        fingerprints: prints
+    }
   end
 
   @doc """
@@ -148,18 +196,34 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
+  Renders the view with socket into a rendered struct.
+  """
+  def to_rendered(socket, view) do
+    assigns = Map.put(socket.assigns, :socket, socket)
+
+    case view.render(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        rendered
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~L, or your eex template uses the .leex extension.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
+    end
+  end
+
+  @doc """
   Renders the view into a `%Phoenix.LiveView.Rendered{}` struct.
   """
   def dynamic_render(%Socket{} = socket, view) do
     to_rendered(socket, view)
-  end
-
-  defp strip_for_render(%Socket{} = socket) do
-    if connected?(socket) do
-      %Socket{socket | assigns: %{}}
-    else
-      socket
-    end
   end
 
   @doc """
@@ -296,7 +360,7 @@ defmodule Phoenix.LiveView.View do
     socket =
       configure_socket(
         %Socket{endpoint: endpoint, view: view},
-        %{assigned_new: {conn.assigns, []}}
+        %{assigned_new: {conn.assigns, []}, connect_params: %{}}
       )
 
     case call_mount_and_handle_params!(socket, router, view, session, conn.params, request_url) do
@@ -304,8 +368,7 @@ defmodule Phoenix.LiveView.View do
         attrs = [
           {:id, socket.id},
           {:data,
-           phx_view: config.name,
-           phx_session: sign_root_session(socket, router, view, session)}
+           phx_view: config.name, phx_session: sign_root_session(socket, router, view, session)}
           | extended_attrs
         ]
 
@@ -334,7 +397,7 @@ defmodule Phoenix.LiveView.View do
     socket =
       configure_socket(
         %Socket{endpoint: endpoint, view: view},
-        %{assigned_new: {conn.assigns, []}}
+        %{assigned_new: {conn.assigns, []}, connect_params: %{}}
       )
 
     session_token = sign_root_session(socket, router, view, session)
@@ -391,7 +454,7 @@ defmodule Phoenix.LiveView.View do
 
   defp disconnected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
-    socket = call_mount!(socket, view, session)
+    socket = call_mount!(view, [session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
@@ -425,8 +488,8 @@ defmodule Phoenix.LiveView.View do
   end
 
   defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
-    socket
-    |> call_mount!(view, session)
+    view
+    |> call_mount!([session, socket])
     |> mount_handle_params(router, view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
@@ -464,9 +527,9 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Calls the view's `mount/2` callback while handling possible options.
   """
-  def call_mount!(%Socket{} = socket, view, session) do
+  def call_mount!(view, args) do
     socket =
-      case view.mount(session, socket) do
+      case apply(view, :mount, args) do
         {:ok, %Socket{} = socket, opts} when is_list(opts) ->
           Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)
 
@@ -475,17 +538,45 @@ defmodule Phoenix.LiveView.View do
 
         other ->
           raise ArgumentError, """
-          invalid result returned from #{inspect(view)}.mount/2.
+          invalid result returned from #{inspect(view)}.mount/#{length(args)}.
 
           Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
           """
       end
 
     if socket.redirected do
-      raise "cannot redirect socket on mount/2"
+      raise "cannot redirect socket on mount/#{length(args)}"
     end
 
     socket
+  end
+
+  @doc """
+  Maybe calls the component update, otherwise update the socket directly.
+  """
+  def maybe_call_update!(component, assigns, socket) do
+    if function_exported?(component, :update, 2) do
+      socket =
+        case component.update(assigns, socket) do
+          {:ok, %Socket{} = socket} ->
+            socket
+
+          other ->
+            raise ArgumentError, """
+            invalid result returned from #{inspect(component)}.update/2.
+
+            Expected {:ok, socket}, got: #{inspect(other)}
+            """
+        end
+
+      if socket.redirected do
+        raise "cannot redirect socket on update/2"
+      end
+
+      socket
+    else
+      assign(socket, assigns)
+    end
   end
 
   defp sign_root_session(%Socket{id: id, endpoint: endpoint}, router, view, session) do
@@ -542,7 +633,7 @@ defmodule Phoenix.LiveView.View do
         config
 
       %{kind: kind} ->
-        raise "Expected #{inspect view} to be a #{kind}, but it is a #{kind}"
+        raise "Expected #{inspect(view)} to be a #{kind}, but it is a #{kind}"
     end
   end
 
@@ -568,32 +659,15 @@ defmodule Phoenix.LiveView.View do
 
   defp do_mount_opt(socket, :temporary_assigns, keys) when is_list(keys) do
     temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
-    %Socket{socket | assigns: Map.merge(temp_assigns, socket.assigns),
-                     private: Map.put(socket.private, :temporary_assigns, temp_assigns)}
+
+    %Socket{
+      socket
+      | assigns: Map.merge(temp_assigns, socket.assigns),
+        private: Map.put(socket.private, :temporary_assigns, temp_assigns)
+    }
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
-  end
-
-  defp to_rendered(socket ,view) do
-    assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
-
-    case view.render(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        rendered
-
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
-
-        Ensure your render function uses ~L, or your eex template uses the .leex extension.
-
-        Got:
-
-            #{inspect(other)}
-
-        """
-    end
   end
 end

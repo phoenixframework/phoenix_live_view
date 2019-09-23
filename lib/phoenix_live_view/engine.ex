@@ -1,3 +1,29 @@
+defmodule Phoenix.LiveView.Component do
+  @moduledoc """
+  The struct returned by components in .leex templates.
+
+  This component is never meant to be output directly
+  into the template. It should always be handled by
+  the diffing algorithm.
+  """
+
+  defstruct [:id, :component, :assigns]
+
+  @type t :: %__MODULE__{
+          id: binary(),
+          component: module(),
+          assigns: map()
+        }
+
+  defimpl Phoenix.HTML.Safe do
+    def to_iodata(%{id: id, component: component}) do
+      raise ArgumentError,
+            "cannot convert component #{inspect(component)} with id #{inspect(id)} to HTML. " <>
+              "A component must always be returned directly as part of a LiveView template"
+    end
+  end
+end
+
 defmodule Phoenix.LiveView.Comprehension do
   @moduledoc """
   The struct returned by for-comprehensions in .leex templates.
@@ -609,6 +635,7 @@ defmodule Phoenix.LiveView.Engine do
       if rendered_catch_all? do
         quote generated: true, line: line do
           %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+          %{__struct__: Phoenix.LiveView.Component} = other -> other
         end
       else
         []

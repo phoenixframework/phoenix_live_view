@@ -46,7 +46,15 @@ defmodule Phoenix.LiveView.MixProject do
     [
       main: "Phoenix.LiveView",
       source_ref: "v#{@version}",
-      source_url: "https://github.com/phoenixframework/phoenix_live_view"
+      source_url: "https://github.com/phoenixframework/phoenix_live_view",
+      groups_for_modules: [
+        "Live EEx Engine": [
+          Phoenix.LiveView.Engine,
+          Phoenix.LiveView.Component,
+          Phoenix.LiveView.Rendered,
+          Phoenix.LiveView.Comprehension,
+        ]
+      ],
     ]
   end
 
