@@ -260,27 +260,21 @@ export class LiveSocket {
     let rootID = this.root.id
     let wasLoading = this.root.isLoading()
 
-    return new Promise((resolve, reject) => {
-      Browser.fetchPage(href, (status, html) => {
-        if(status !== 200){
-          reject(html)
-          return Browser.redirect(href)
-        }
+    return Browser.fetchPage(href, (status, html) => {
+      if(status !== 200){ return Browser.redirect(href) }
 
-        let div = document.createElement("div")
-        div.innerHTML = html
-        this.joinView(div.firstChild, null, href, newRoot => {
-          if(!this.commitPendingLink(linkRef)){
-            newRoot.destroy()
-            return
-          }
-          callback && callback()
-          this.destroyViewById(rootID)
-          rootEl.replaceWith(newRoot.el)
-          this.root = newRoot
-          if(wasLoading){ this.root.showLoader() }
-          resolve(html)
-        })
+      let div = document.createElement("div")
+      div.innerHTML = html
+      this.joinView(div.firstChild, null, href, newRoot => {
+        if(!this.commitPendingLink(linkRef)){
+          newRoot.destroy()
+          return
+        }
+        callback && callback()
+        this.destroyViewById(rootID)
+        rootEl.replaceWith(newRoot.el)
+        this.root = newRoot
+        if(wasLoading){ this.root.showLoader() }
       })
     })
   }
@@ -563,13 +557,23 @@ export let Browser = {
     req.setRequestHeader(LINK_HEADER, "live-link")
     req.onerror = () => callback(400, '400 Not Found')
     req.ontimeout = () => callback(504, '504 Timeout')
-    req.onreadystatechange = () => {
-      if(req.readyState !== 4){ return }
-      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400, '404 Not Found') }
-      if(req.status !== 200){ return callback(req.status, req.statusText) }
-      callback(200, req.responseText)
-    }
-    req.send()
+    return new Promise((resolve, reject) => {
+      req.onreadystatechange = () => {
+        if(req.readyState !== 4){ return }
+        if(req.getResponseHeader(LINK_HEADER) !== "live-link"){
+          callback(400)
+          reject({ status: 400, statusText: `${LINK_HEADER} not found in response header` })
+        }
+        if(req.status !== 200){
+          callback(req.status)
+          reject({ status: req.staus, reason: req.statusText })
+        }
+
+        callback(200, req.responseText)
+        resolve(req)
+      }
+      req.send()
+    })
   },
 
   pushState(kind, meta, to){
