@@ -33,4 +33,31 @@ defmodule Phoenix.LiveView.ViewTest do
       assert View.get_connect_params(socket) == %{}
     end
   end
+
+  describe "assign_new" do
+    test "uses socket assigns if no parent assigns are present" do
+      socket =
+        @socket
+        |> View.assign(existing: "existing")
+        |> View.assign_new(:existing, fn -> "new-existing" end)
+        |> View.assign_new(:notexisting, fn -> "new-notexisting" end)
+
+      assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
+    end
+
+    test "uses parent assigns when present and falls back to socket assigns" do
+      socket =
+        put_in(@socket.private[:assigned_new], {%{existing: "existing-parent"}, []})
+        |> View.assign(existing2: "existing2")
+        |> View.assign_new(:existing, fn -> "new-existing" end)
+        |> View.assign_new(:existing2, fn -> "new-existing2" end)
+        |> View.assign_new(:notexisting, fn -> "new-notexisting" end)
+
+      assert socket.assigns == %{
+               existing: "existing-parent",
+               existing2: "existing2",
+               notexisting: "new-notexisting"
+             }
+    end
+  end
 end

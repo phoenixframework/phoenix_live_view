@@ -3,42 +3,13 @@ defmodule Phoenix.LiveView.AssignNewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-
   alias Phoenix.LiveViewTest.Endpoint
-  alias Phoenix.LiveView
-  alias Phoenix.LiveView.{View, Socket}
 
   @endpoint Endpoint
   @moduletag :capture_log
-  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{})
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
-  end
-
-  test "uses socket assigns if no parent assigns are present" do
-    socket =
-      @socket
-      |> LiveView.assign(:existing, "existing")
-      |> LiveView.assign_new(:existing, fn -> "new-existing" end)
-      |> LiveView.assign_new(:notexisting, fn -> "new-notexisting" end)
-
-    assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
-  end
-
-  test "uses parent assigns when present and falls back to socket assigns" do
-    socket =
-      put_in(@socket.private[:assigned_new], {%{existing: "existing-parent"}, []})
-      |> LiveView.assign(:existing2, "existing2")
-      |> LiveView.assign_new(:existing, fn -> "new-existing" end)
-      |> LiveView.assign_new(:existing2, fn -> "new-existing2" end)
-      |> LiveView.assign_new(:notexisting, fn -> "new-notexisting" end)
-
-    assert socket.assigns == %{
-             existing: "existing-parent",
-             existing2: "existing2",
-             notexisting: "new-notexisting"
-           }
   end
 
   describe "mounted from root" do
