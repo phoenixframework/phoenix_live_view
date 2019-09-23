@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.Diff do
             {diff, component_prints, component_diffs, components} =
               traverse(socket, rendered, fingerprints, component_diffs, components)
 
-            socket = %{socket | fingerprints: component_prints}
+            socket = View.clear_changed(%{socket | fingerprints: component_prints})
             component_diffs = Map.put(component_diffs, cid, diff)
             {socket, component_diffs, components}
           else
@@ -132,8 +132,10 @@ defmodule Phoenix.LiveView.Diff do
          component_diffs,
          components
        ) do
-    {%{dynamics: comprehension_to_iodata(socket, dynamics)}, :comprehension, component_diffs,
-     components}
+    {dynamics, {component_diffs, components}} =
+      comprehension_to_iodata(socket, dynamics, component_diffs, components)
+
+    {%{dynamics: dynamics}, :comprehension, component_diffs, components}
   end
 
   defp traverse(
@@ -143,8 +145,10 @@ defmodule Phoenix.LiveView.Diff do
          component_diffs,
          components
        ) do
-    {%{dynamics: comprehension_to_iodata(socket, dynamics), static: static}, :comprehension,
-     component_diffs, components}
+    {dynamics, {component_diffs, components}} =
+      comprehension_to_iodata(socket, dynamics, component_diffs, components)
+
+    {%{dynamics: dynamics, static: static}, :comprehension, component_diffs, components}
   end
 
   defp traverse(_socket, iodata, _, component_diffs, components) do
@@ -175,9 +179,14 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  defp comprehension_to_iodata(_socket, dynamics) do
-    Enum.map(dynamics, fn list ->
-      Enum.map(list, fn iodata -> IO.iodata_to_binary(iodata) end)
+  defp comprehension_to_iodata(socket, dynamics, component_diffs, components) do
+    Enum.map_reduce(dynamics, {component_diffs, components}, fn list, acc ->
+      Enum.map_reduce(list, acc, fn component_or_iodata, {component_diffs, components} ->
+        {diff, _, component_diffs, components} =
+          traverse(socket, component_or_iodata, {nil, %{}}, component_diffs, components)
+
+        {diff, {component_diffs, components}}
+      end)
     end)
   end
 

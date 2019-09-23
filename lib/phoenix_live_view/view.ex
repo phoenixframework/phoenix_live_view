@@ -143,8 +143,7 @@ defmodule Phoenix.LiveView.View do
       socket
       | assigns: assigns,
         private: private,
-        changed: %{},
-        fingerprints: prints
+        fingerprints: prints,
     }
   end
 

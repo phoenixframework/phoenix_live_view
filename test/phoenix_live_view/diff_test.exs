@@ -165,30 +165,52 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  alias __MODULE__.MyComponent
-  alias __MODULE__.SameComponent
+  def components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+        <%= index %>: <%= component %>
+      <% end %>
+    </div>
+    """
+  end
 
-  for module <- [MyComponent, SameComponent] do
-    defmodule module do
-      use Phoenix.LiveComponent
+  defmodule MyComponent do
+    use Phoenix.LiveComponent
 
-      def mount(socket) do
-        send(self(), {:mount, socket})
-        {:ok, assign(socket, hello: "world")}
-      end
+    def mount(socket) do
+      send(self(), {:mount, socket})
+      {:ok, assign(socket, hello: "world")}
+    end
 
-      def update(assigns, socket) do
-        send(self(), {:update, assigns, socket})
-        {:ok, assign(socket, assigns)}
-      end
+    def update(assigns, socket) do
+      send(self(), {:update, assigns, socket})
+      {:ok, assign(socket, assigns)}
+    end
 
-      def render(assigns) do
-        send(self(), :render)
+    def render(assigns) do
+      send(self(), :render)
 
-        ~L"""
-        FROM <%= @from %> <%= @hello %>
-        """
-      end
+      ~L"""
+      FROM <%= @from %> <%= @hello %>
+      """
+    end
+  end
+
+  defmodule TempComponent do
+    use Phoenix.LiveComponent
+
+    def mount(socket) do
+      send(self(), {:temporary_mount, socket})
+      {:ok, assign(socket, :first_time, true), temporary_assigns: [:first_time]}
+    end
+
+    def render(assigns) do
+      send(self(), {:temporary_render, assigns})
+
+      ~L"""
+      FROM <%= if @first_time, do: "WELCOME!", else: @from %>
+      """
     end
   end
 
@@ -263,6 +285,35 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
+    test "on update with temporary" do
+      component = %Component{id: "hello", assigns: %{from: :component}, component: TempComponent}
+      rendered = component_template(%{component: component})
+      {previous_socket, full_render, previous_components} = render(rendered)
+
+      assert full_render == %{
+               0 => 0,
+               :components => %{
+                 0 => %{0 => "WELCOME!", :static => ["FROM ", "\n"]}
+               },
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      component = %Component{id: "hello", assigns: %{from: :rerender}, component: TempComponent}
+      rendered = component_template(%{component: component})
+
+      {socket, full_render, components} =
+        render(rendered, previous_socket.fingerprints, previous_components)
+
+      assert full_render == %{0 => 0, :components => %{0 => %{0 => "rerender"}}}
+      assert socket.fingerprints == previous_socket.fingerprints
+      assert components != previous_components
+
+      assert_received {:temporary_mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:temporary_render, %{first_time: true}}
+      assert_received {:temporary_render, %{first_time: nil}}
+      refute_received _
+    end
+
     test "on addition" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
@@ -294,7 +345,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "on replace" do
-      component = %Component{id: "hello", assigns: %{from: :component}, component: SameComponent}
+      component = %Component{id: "hello", assigns: %{from: :component}, component: TempComponent}
       rendered = component_template(%{component: component})
       {previous_socket, _, previous_components} = render(rendered)
 
@@ -314,13 +365,55 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == previous_socket.fingerprints
       assert components != previous_components
 
-      assert_received {:mount, %Socket{endpoint: __MODULE__}}
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
+      assert_received {:temporary_mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:temporary_render, %{first_time: true, from: :component}}
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received {:update, %{from: :replaced}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
+    end
+
+    test "inside comprehension" do
+      components = [
+        %Component{id: "index_0", assigns: %{from: :index_0}, component: MyComponent},
+        %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
+      ]
+
+      rendered = components_template(%{components: components})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 dynamics: [["0", 0], ["1", 1]],
+                 static: ["\n    ", ": ", "\n  "]
+               },
+               :components => %{
+                 0 => %{
+                   0 => "index_0",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+                 1 => %{
+                   0 => "index_1",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+               },
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+
+      {_, cids_to_ids, 2} = components
+      assert cids_to_ids[0] == "index_0"
+      assert cids_to_ids[1] == "index_1"
+
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :index_0}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
     end
   end
 end

@@ -123,6 +123,7 @@ defmodule Phoenix.LiveView.Engine do
     2. nil - the dynamic content did not change, see "Tracking changes" below
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
     4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
+    4. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a `.leex` template, you can convert the
   rendered structure to iodata by intercalating the static
@@ -218,14 +219,18 @@ defmodule Phoenix.LiveView.Engine do
   the data sent by comprehensions, as the static parts
   are emitted once, regardless of the number of items.
 
-  The list of dynamics is always a list of iodatas, as we
-  only perform change tracking at the root and never inside
-  `case`, `cond`, `comprehensions`, etc. Similarly,
-  comprehensions do not have fingerprints because they
-  are only optimized at the root, so conditional evaluation,
-  as the one seen in rendering, is not possible. The only
-  possible outcome for a dynamic field that returns a
+  The list of dynamics is always a list of iodatas or components,
+  as we don't perform change tracking inside the comprehensions
+  themselves. Similarly, comprehensions do not have fingerprints
+  because they are only optimized at the root, so conditional
+  evaluation, as the one seen in rendering, is not possible.
+  The only possible outcome for a dynamic field that returns a
   comprehension is `nil`.
+
+  ## Components
+
+  `.leex` also supports stateful components. Since they are
+  stateful, they are always handled lazily by the diff algorithm.
   """
 
   @behaviour Phoenix.Template.Engine
@@ -359,6 +364,18 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
+  @catch_alls [Phoenix.LiveView.Rendered, Phoenix.LiveView.Component]
+
+  defmacrop to_safe_match(var, ast) do
+    quote do
+      {:=, [],
+       [
+         {_, _, __MODULE__} = unquote(var),
+         {{:., _, [__MODULE__, :to_safe]}, _, [unquote(ast)]}
+       ]}
+    end
+  end
+
   defp to_live_struct(
          {:if, meta, [condition, [{:do, do_block} | opts]]},
          tainted_vars,
@@ -367,17 +384,28 @@ defmodule Phoenix.LiveView.Engine do
        ) do
     {condition, tainted_vars, vars, assigns} = analyze(condition, tainted_vars, vars, assigns)
     do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+
     # It is ok to convert else to an empty string as to_safe would do it anyway.
     else_block =
       maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars, vars, assigns)
 
-    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, true)
+    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @catch_alls)
   end
 
   defp to_live_struct({:for, meta, args} = expr, _tainted_vars, _vars, _assigns) do
     with {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       {binaries, vars} = bins_and_vars(iodata)
+
+      exprs =
+        Enum.map(exprs, fn
+          to_safe_match(var, ast) ->
+            {:=, [], [var, to_safe(ast, [Phoenix.LiveView.Component])]}
+
+          other ->
+            other
+        end)
+
       for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
 
       quote do
@@ -385,12 +413,12 @@ defmodule Phoenix.LiveView.Engine do
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe(expr, true)
+      _ -> to_safe(expr, @catch_alls)
     end
   end
 
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, true)
+    to_safe(expr, @catch_alls)
   end
 
   defp maybe_block_to_rendered(block, tainted_vars, vars, assigns) do
@@ -405,8 +433,7 @@ defmodule Phoenix.LiveView.Engine do
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, _} =
         Enum.map_reduce(dynamic, {0, vars}, fn
-          {:=, [], [{_, _, __MODULE__} = var, {{:., _, [__MODULE__, :to_safe]}, _, [ast]}]},
-          {counter, vars} ->
+          to_safe_match(var, ast), {counter, vars} ->
             {ast, keys, vars} = analyze_and_return_tainted_keys(ast, tainted_vars, vars, assigns)
             live_struct = to_live_struct(ast, tainted_vars, vars, assigns)
             fingerprint_live_struct = maybe_pdict_fingerprint(live_struct, check_prints?, counter)
@@ -625,20 +652,18 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro to_safe(ast) do
-    to_safe(ast, false)
+    to_safe(ast, [])
   end
 
-  defp to_safe(ast, rendered_catch_all?) do
+  defp to_safe(ast, catch_alls) do
     line = line_from_expr(ast)
 
     extra_clauses =
-      if rendered_catch_all? do
+      for catch_all <- catch_alls do
         quote generated: true, line: line do
-          %{__struct__: Phoenix.LiveView.Rendered} = other -> other
-          %{__struct__: Phoenix.LiveView.Component} = other -> other
+          %{__struct__: unquote(catch_all)} = other -> other
         end
-      else
-        []
+        |> hd()
       end
 
     to_safe(ast, line, extra_clauses)
