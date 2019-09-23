@@ -260,21 +260,27 @@ export class LiveSocket {
     let rootID = this.root.id
     let wasLoading = this.root.isLoading()
 
-    Browser.fetchPage(href, (status, html) => {
-      if(status !== 200){ return Browser.redirect(href) }
-
-      let div = document.createElement("div")
-      div.innerHTML = html
-      this.joinView(div.firstChild, null, href, newRoot => {
-        if(!this.commitPendingLink(linkRef)){
-          newRoot.destroy()
-          return
+    return new Promise((resolve, reject) => {
+      Browser.fetchPage(href, (status, html) => {
+        if(status !== 200){
+          reject(html)
+          return Browser.redirect(href)
         }
-        callback && callback()
-        this.destroyViewById(rootID)
-        rootEl.replaceWith(newRoot.el)
-        this.root = newRoot
-        if(wasLoading){ this.root.showLoader() }
+
+        let div = document.createElement("div")
+        div.innerHTML = html
+        this.joinView(div.firstChild, null, href, newRoot => {
+          if(!this.commitPendingLink(linkRef)){
+            newRoot.destroy()
+            return
+          }
+          callback && callback()
+          this.destroyViewById(rootID)
+          rootEl.replaceWith(newRoot.el)
+          this.root = newRoot
+          if(wasLoading){ this.root.showLoader() }
+          resolve(html)
+        })
       })
     })
   }
@@ -555,12 +561,12 @@ export let Browser = {
     req.setRequestHeader("content-type", "text/html")
     req.setRequestHeader("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
     req.setRequestHeader(LINK_HEADER, "live-link")
-    req.onerror = () => callback(400)
-    req.ontimeout = () => callback(504)
+    req.onerror = () => callback(400, '400 Not Found')
+    req.ontimeout = () => callback(504, '504 Timeout')
     req.onreadystatechange = () => {
       if(req.readyState !== 4){ return }
-      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400) }
-      if(req.status !== 200){ return callback(req.status) }
+      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400, '404 Not Found') }
+      if(req.status !== 200){ return callback(req.status, req.statusText) }
       callback(200, req.responseText)
     }
     req.send()
@@ -1028,7 +1034,9 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
+    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to)).then(() => {
+      this.liveSocket.registerNewLocation(window.location.href)
+    })
   }
 
   onLiveRedirect({to, kind}){
