@@ -1,4 +1,4 @@
-## 0.3.1-dev
+## 0.3.1 (2019-09-23)
 
 ### Backwards incompatible changes
   - `live_isolated` in tests no longer requires a router and a pipeline (it now expects only 3 arguments)
@@ -6,6 +6,7 @@
 
 ### Bug Fixes
   - [LiveViewTest] Fix function clause errors caused by HTML comments
+  - Fix `live_redirect` failing to detect back button URL changes
 
 ## 0.3.0 (2019-09-19)
 
