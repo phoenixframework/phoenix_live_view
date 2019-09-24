@@ -3,34 +3,62 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   @phx_component "data-phx-component"
 
-  def render_diff(rendered) do
+  def render_diff(rendered), do: render_diff(rendered, Map.get(rendered, :components, %{}))
+
+  def render_diff(rendered, components) do
     rendered
-    |> to_output_buffer([])
+    |> to_output_buffer(components, [])
     |> Enum.reverse()
     |> Enum.join("")
   end
 
   # for comprehension
-  defp to_output_buffer(%{dynamics: for_dynamics, static: statics}, acc) do
+  defp to_output_buffer(%{dynamics: for_dynamics, static: statics}, components, acc) do
     Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
       dynamics
       |> Enum.with_index()
       |> Enum.into(%{static: statics}, fn {val, key} -> {key, val} end)
-      |> to_output_buffer(acc)
+      |> to_output_buffer(components, acc)
     end)
   end
 
-  defp to_output_buffer(%{static: statics} = rendered, acc) do
+  defp to_output_buffer(%{static: statics} = rendered, components, acc) do
     statics
     |> Enum.with_index()
     |> tl()
     |> Enum.reduce([Enum.at(statics, 0) | acc], fn {static, index}, acc ->
-      [static | dynamic_to_buffer(rendered[index - 1], acc)]
+      [static | dynamic_to_buffer(rendered[index - 1], components, acc)]
     end)
   end
 
-  defp dynamic_to_buffer(%{} = rendered, acc), do: to_output_buffer(rendered, []) ++ acc
-  defp dynamic_to_buffer(str, acc) when is_binary(str), do: [str | acc]
+  defp dynamic_to_buffer(%{} = rendered, components, acc) do
+    to_output_buffer(rendered, components, []) ++ acc
+  end
+
+  defp dynamic_to_buffer(str, _components, acc) when is_binary(str), do: [str | acc]
+
+  defp dynamic_to_buffer(cid, components, acc) when is_integer(cid) do
+    html_with_cids =
+      components
+      |> Map.fetch!(cid)
+      |> render_diff(components)
+      |> parse()
+      |> List.wrap()
+      |> Enum.map(fn
+        {:pi, _, _} = xml -> xml
+        {:comment, _children} = comment -> comment
+        {:doctype, _, _, _} = doctype -> doctype
+        {_tag, _attrs, _children} = node -> inject_cid_attr(node, cid)
+      end)
+      |> to_html()
+
+    [html_with_cids | acc]
+  end
+
+  defp inject_cid_attr({tag, attrs, children} = node, cid) do
+    cid_attr = attrs(node, "id") || to_string(cid)
+    {tag, attrs ++ [{@phx_component, cid_attr}], children}
+  end
 
   def find_static_views(html) do
     html

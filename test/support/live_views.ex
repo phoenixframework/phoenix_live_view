@@ -328,7 +328,7 @@ defmodule Phoenix.LiveViewTest.BasicComponent do
 
   def render(assigns) do
     ~L"""
-    <div <%= if @id, do: " id=#{@id}", else: "" %>>
+    <div <%= if @id, do: Phoenix.HTML.raw("id=\"#{@id}\""), else: "" %>>
       <%= @name %> says hi with socket: <%= !!@socket %>
     </div>
     """
