@@ -54,9 +54,13 @@ defmodule Phoenix.LiveView.Channel do
       {:internal, params} ->
         new_state = %{state | uri: parse_uri(url)}
 
-        params
-        |> new_state.socket.view.handle_params(url, new_state.socket)
-        |> handle_result({:handle_params, 3, msg.ref}, new_state)
+        if function_exported?(view, :handle_params, 3) do
+          params
+          |> new_state.socket.view.handle_params(url, new_state.socket)
+          |> handle_result({:handle_params, 3, msg.ref}, new_state)
+        else
+          {:noreply, reply(new_state, msg.ref, :ok, %{})}
+        end
 
       :external ->
         {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
