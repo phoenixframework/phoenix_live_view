@@ -333,7 +333,7 @@ defmodule Phoenix.LiveView do
         <%= user.name %>
       <% end %>
 
-  Then Phoenix will never re-render the section above, even if the amount of
+  Then Phoenix will never re-render the section above, even if the number of
   users in the database changes. Instead, you need to store the users as
   assigns in your LiveView before it renders the template:
 
@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView do
   identify the child. A child LiveView will only ever be rendered and mounted
   a single time, provided its ID remains unchanged. Updates to a child session
   will be merged on the client, but not passed back up until either a crash and
-  re-mount or a connetion drop and recovery. To force a child to re-mount with
+  re-mount or a connection drop and recovery. To force a child to re-mount with
   new session data, a new ID must be provided.
 
   Given a LiveView runs on its own process, it is an excellent tool for creating
@@ -1083,7 +1083,7 @@ defmodule Phoenix.LiveView do
   Note the `:id` won't necessarily be used as the DOM ID.
   That's up to the component. However, note the `:id` has
   a special meaning: whenever an `:id` is given, the component
-  becomes stateful. Otherwise, `:id` is always set to nil.
+  becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
   defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
     assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns)
