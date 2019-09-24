@@ -541,8 +541,8 @@ defmodule Phoenix.LiveView.View do
       %{kind: ^kind} = config ->
         config
 
-      %{kind: kind} ->
-        raise "Expected #{inspect view} to be a #{kind}, but it is a #{kind}"
+      %{kind: other_kind} ->
+        raise "Expected #{inspect view} to be a #{kind}, but it is a #{other_kind}"
     end
   end
 
