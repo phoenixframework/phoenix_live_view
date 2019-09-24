@@ -330,7 +330,7 @@ defmodule Phoenix.LiveView do
         <%= user.name %>
       <% end %>
 
-  Then Phoenix will never re-render the section above, even if the amount of
+  Then Phoenix will never re-render the section above, even if the number of
   users in the database changes. Instead, you need to store the users as
   assigns in your LiveView before it renders the template:
 
@@ -344,11 +344,11 @@ defmodule Phoenix.LiveView do
 
   By default, all LiveView assigns are stateful, which enables change tracking
   and stateful interactions. In some cases, it's useful to mark assigns as temporary,
-  meaning they will be set to nil after each update, allowing otherwise large, but
+  meaning they will be set to `nil` after each update, allowing otherwise large, but
   infrequently updated values to be discarded after the client has been patched.
 
   *Note*: this requires refetching/recomputing the temporary assigns should they
-  need accessed in future callbacks.
+  need to be accessed in future callbacks.
 
   To mark assigns as temporary, pass the `:temporary_assigns` option in mount:
 
