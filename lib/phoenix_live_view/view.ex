@@ -199,6 +199,10 @@ defmodule Phoenix.LiveView.View do
   @doc """
   Signs the socket's flash into a token if it has been set.
   """
+  def sign_flash(%Socket{} = socket) do
+    sign_flash(socket, get_flash(socket))
+  end
+
   def sign_flash(%Socket{}, nil), do: nil
 
   def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do

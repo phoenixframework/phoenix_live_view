@@ -347,13 +347,11 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_redirect(state, %{to: to}, nil = _ref) do
-    flash = View.get_flash(state.socket)
-    push(state, "redirect", %{to: to, flash: View.sign_flash(state.socket, flash)})
+    push(state, "redirect", %{to: to, flash: View.sign_flash(state.socket)})
   end
 
   defp push_redirect(state, %{to: to}, ref) do
-    flash = View.get_flash(state.socket)
-    reply(state, ref, :ok, %{redirect: %{to: to, flash: View.sign_flash(state.socket, flash)}})
+    reply(state, ref, :ok, %{redirect: %{to: to, flash: View.sign_flash(state.socket)}})
   end
 
   defp push_noop(state, nil = _ref), do: state
@@ -509,7 +507,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp put_flash(%{socket: socket}, opts) do
-    Map.put(opts, :flash, View.sign_flash(socket, View.get_flash(socket)))
+    Map.put(opts, :flash, View.sign_flash(socket))
   end
 
   defp parse_uri(url) do
