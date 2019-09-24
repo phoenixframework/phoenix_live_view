@@ -1028,7 +1028,10 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
+    this.liveSocket.replaceRoot(to, () => {
+      Browser.pushState(kind, {}, to)
+      this.liveSocket.registerNewLocation(window.location)
+    })
   }
 
   onLiveRedirect({to, kind}){
