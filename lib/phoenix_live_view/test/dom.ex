@@ -143,7 +143,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       |> to_html()
 
     cids_after = find_component_ids(id, new_html)
-    deleted_cids = for cid <- cids_before -- cids_after, {int, _} = Integer.parse(cid), do: int
+    deleted_cids = for cid <- cids_before -- cids_after, do: String.to_integer(cid)
     deleted_ids =
       html
       |> all(Enum.join(Enum.map(deleted_cids, &"[#{@phx_component}=\"#{&1}\"]"), ", "))
