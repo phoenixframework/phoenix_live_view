@@ -1165,7 +1165,6 @@ export class View {
   }
 
   pushComponentsDestroyed(cids){
-    console.log(cids)
     this.pushWithReply("cids_destroyed", {cids: cids.map(id => parseInt(id))})
   }
 
