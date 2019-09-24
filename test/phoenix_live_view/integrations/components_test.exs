@@ -23,9 +23,9 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     assert [
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "chris"}],
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
               ["\n  chris says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "jose"}],
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
               ["\n  jose says hi with socket: true\n"]}
            ] = DOM.parse(render(view))
   end
@@ -34,14 +34,14 @@ defmodule Phoenix.LiveView.ComponentTest do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
-             {"div", [{"id", "chris"}, {"data-phx-component", "chris"}], ["\n  chris says" <> _]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "jose"}], ["\n  jose says" <> _]}
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}], ["\n  chris says" <> _]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
            ] = DOM.all(html, "#chris, #jose")
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
-             {"div", [{"id", "jose"}, {"data-phx-component", "jose"}], ["\n  jose says" <> _]}
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
            ] = DOM.all(html, "#chris, #jose")
 
     assert_remove_component(view, "chris")

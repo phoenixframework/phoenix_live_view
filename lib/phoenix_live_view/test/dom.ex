@@ -55,9 +55,8 @@ defmodule Phoenix.LiveViewTest.DOM do
     [html_with_cids | acc]
   end
 
-  defp inject_cid_attr({tag, attrs, children} = node, cid) do
-    cid_attr = attrs(node, "id") || to_string(cid)
-    {tag, attrs ++ [{@phx_component, cid_attr}], children}
+  defp inject_cid_attr({tag, attrs, children}, cid) do
+    {tag, attrs ++ [{@phx_component, to_string(cid)}], children}
   end
 
   def find_static_views(html) do
@@ -144,9 +143,13 @@ defmodule Phoenix.LiveViewTest.DOM do
       |> to_html()
 
     cids_after = find_component_ids(id, new_html)
-    deleted_cids = cids_before -- cids_after
+    deleted_cids = for cid <- cids_before -- cids_after, {int, _} = Integer.parse(cid), do: int
+    deleted_ids =
+      html
+      |> all(Enum.join(Enum.map(deleted_cids, &"[#{@phx_component}=\"#{&1}\"]"), ", "))
+      |> all_attributes("id")
 
-    {new_html, deleted_cids}
+    {new_html, deleted_cids, deleted_ids}
   end
 
   def inner_html(html, id) do
@@ -158,7 +161,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     html
     |> by_id(id)
     |> all("[#{@phx_component}]")
-    |> all_attributes("id")
+    |> all_attributes(@phx_component)
   end
 
   defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)

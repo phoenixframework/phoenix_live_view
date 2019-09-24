@@ -342,11 +342,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
-      {new_html, [_ | _] = deleted_cids} ->
-        for cid <- deleted_cids, do: send_caller(state, {:removed_component, view.topic, cid})
+      {new_html, [_ | _] = deleted_cids, deleted_cid_ids} ->
+        for cid <- deleted_cids ++ deleted_cid_ids,
+            do: send_caller(state, {:removed_component, view.topic, cid})
+
         push(%{state | html: new_html}, view, "cids_destroyed", %{"cids" => deleted_cids})
 
-      {new_html, [] = _deleted_cids} ->
+      {new_html, [] = _deleted_cids, [] = _deleted_cid_ids} ->
         %{state | html: new_html}
     end
   end

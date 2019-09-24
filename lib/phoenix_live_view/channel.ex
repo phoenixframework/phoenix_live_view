@@ -64,9 +64,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "cids_destroyed"} = msg, %{topic: topic} = state) do
-    %{"cids" => _cids} = msg.payload
-    # TODO
-    {:noreply, state}
+    %{"cids" => cids} = msg.payload
+
+    new_components =
+      Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
+
+    {:noreply, %{state | components: new_components}}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
@@ -149,9 +152,9 @@ defmodule Phoenix.LiveView.Channel do
           |> mount_handle_params_result(state, :mount)
 
         :external ->
-          raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
-                  "because #{inspect socket.view} was not declared in the router with " <>
-                  "the live/3 macro under #{inspect url}"
+          raise "cannot invoke handle_params/3 for #{inspect(socket.view)} " <>
+                  "because #{inspect(socket.view)} was not declared in the router with " <>
+                  "the live/3 macro under #{inspect(url)}"
       end
     else
       {diff, new_state} = render_diff(state, socket)
@@ -428,12 +431,12 @@ defmodule Phoenix.LiveView.Channel do
 
   defp verified_mount(verified, params, from, phx_socket) do
     %{
-       id: id,
-       view: view,
-       parent_pid: parent,
-       root_pid: root,
-       session: session,
-       assigned_new: assigned_new
+      id: id,
+      view: view,
+      parent_pid: parent,
+      root_pid: root,
+      session: session,
+      assigned_new: assigned_new
     } = verified
 
     %Phoenix.Socket{endpoint: endpoint} = phx_socket

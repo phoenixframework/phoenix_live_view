@@ -106,8 +106,8 @@ export let Rendered = {
 
   isNewFingerprint(diff = {}){ return !!diff.static },
 
-  toString(rendered){
-    let output = {buffer: ""}
+  toString(rendered, components = rendered.components || {}){
+    let output = {buffer: "", components: components, container: document.createElement("div")}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
@@ -137,7 +137,13 @@ export let Rendered = {
   },
 
   dynamicToBuffer(rendered, output){
-    if(isObject(rendered)){
+    if(typeof(rendered) === "number"){
+      let component = output.components[rendered] || logError("encountered invalid component")
+      let html = this.toString(component, output.components)
+      output.container.innerHTML = html
+      Array.from(container.children).forEach(c => c.setAttribute(PHX_COMPONENT, rendered))
+      output.buffer += container.innerHTML
+    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
       output.buffer += rendered
@@ -1091,7 +1097,7 @@ export class View {
     )
   }
 
-  componentID(el){ return el.getAttribute && el.getAttribute(PHX_COMPONENT) && el.id }
+  componentID(el){ return el.getAttribute && el.getAttribute(PHX_COMPONENT) }
 
   targetComponentID(target){
     return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
@@ -1159,7 +1165,8 @@ export class View {
   }
 
   pushComponentsDestroyed(cids){
-    this.pushWithReply("cids_destroyed", {cids: cids})
+    console.log(cids)
+    this.pushWithReply("cids_destroyed", {cids: cids.map(id => parseInt(id))})
   }
 
   ownsElement(el){
