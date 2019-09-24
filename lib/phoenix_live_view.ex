@@ -381,7 +381,7 @@ defmodule Phoenix.LiveView do
   identify the child. A child will only ever be rendered and mounted a single
   time, provided its ID remains unchanged. Updates to a child session will be
   merged on the client, but not passed back up until either a crash and re-mount or
-  a connetion drop and recovery. To force a child to re-mount with new session
+  a connection drop and recovery. To force a child to re-mount with new session
   data, a new ID must be provided.
 
   ## Bindings
