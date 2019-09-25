@@ -636,8 +636,12 @@ defmodule Phoenix.LiveView.View do
     """
   end
 
-  defp do_mount_opt(socket, :temporary_assigns, keys) when is_list(keys) do
-    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+  defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
+    unless Keyword.keyword?(temp_assigns) do
+      raise ":temporary_assigns must be keyword list"
+    end
+
+    temp_assigns = Map.new(temp_assigns)
 
     %Socket{
       socket

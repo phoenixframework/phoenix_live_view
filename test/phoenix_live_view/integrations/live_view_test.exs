@@ -516,7 +516,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "can be configured with mount options", %{conn: conn} do
       {:ok, conf_live, html} =
         conn
-        |> put_session(:opts, temporary_assigns: [:description])
+        |> put_session(:opts, temporary_assigns: [description: nil])
         |> live("/opts")
 
       assert html =~ "long description. canary"

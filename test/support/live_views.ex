@@ -290,7 +290,7 @@ defmodule Phoenix.LiveViewTest.AppendLive do
 
   def mount(%{time_zones: {update_type, time_zones}}, socket) do
     {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
-     temporary_assigns: [:time_zones]}
+     temporary_assigns: [time_zones: []]}
   end
 
   def handle_event("add-tz", %{"id" => id, "name" => name}, socket) do

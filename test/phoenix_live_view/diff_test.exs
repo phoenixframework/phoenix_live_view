@@ -215,7 +215,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     def mount(socket) do
       send(self(), {:temporary_mount, socket})
-      {:ok, assign(socket, :first_time, true), temporary_assigns: [:first_time]}
+      {:ok, assign(socket, :first_time, true), temporary_assigns: [first_time: false]}
     end
 
     def render(assigns) do
@@ -396,7 +396,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert_received {:temporary_mount, %Socket{endpoint: __MODULE__}}
       assert_received {:temporary_render, %{first_time: true}}
-      assert_received {:temporary_render, %{first_time: nil}}
+      assert_received {:temporary_render, %{first_time: false}}
       refute_received _
     end
 

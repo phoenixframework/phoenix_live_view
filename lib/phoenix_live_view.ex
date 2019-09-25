@@ -344,8 +344,9 @@ defmodule Phoenix.LiveView do
 
   By default, all LiveView assigns are stateful, which enables change tracking
   and stateful interactions. In some cases, it's useful to mark assigns as temporary,
-  meaning they will be set to nil after each update, allowing otherwise large, but
-  infrequently updated values to be discarded after the client has been patched.
+  meaning they will be reset to a default value after each update, allowing otherwise
+  large, but infrequently updated values to be discarded after the client has been
+  patched.
 
   *Note*: this requires refetching/recomputing the temporary assigns should they
   need accessed in future callbacks.
@@ -354,7 +355,7 @@ defmodule Phoenix.LiveView do
 
       def mount(_session, socket) do
         desc = fetch_large_description()
-        {:ok, assign(socket, description: desc), temporary_assigns: [:description]}
+        {:ok, assign(socket, description: desc), temporary_assigns: [description: nil]}
       end
 
   ## Containers
