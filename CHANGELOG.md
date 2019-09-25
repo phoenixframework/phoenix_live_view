@@ -1,3 +1,8 @@
+## 0.3.2-dev
+
+### Enhancements
+  - Handle outdated clients by refreshing the page with jitter when a valid, but outdated session is detected
+
 ## 0.3.1 (2019-09-23)
 
 ### Backwards incompatible changes
