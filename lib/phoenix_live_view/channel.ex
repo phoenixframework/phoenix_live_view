@@ -275,7 +275,7 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    reply(%{state | components: new_components}, ref, :ok, %{cdiff: diffs})
+    push_render(%{state | components: new_components}, %{components: diffs}, ref)
   end
 
   defp view_module(%{socket: %Socket{view: view}}), do: view

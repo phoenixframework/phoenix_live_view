@@ -1089,7 +1089,6 @@ export class View {
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.cdiff){ this.update({components: resp.cdiff}) }
         if(resp.diff){ this.update(resp.diff) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }

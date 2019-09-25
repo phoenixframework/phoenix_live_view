@@ -421,9 +421,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp merge_rendered(state, topic, %{cdiff: cdiff}),
-    do: merge_rendered(state, topic, %{components: cdiff})
-
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
