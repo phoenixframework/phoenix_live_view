@@ -76,9 +76,15 @@ defmodule Phoenix.LiveView.Channel do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode(type, state.router, raw_val)
 
-    event
-    |> view_module(state).handle_event(val, state.socket)
-    |> handle_result({:handle_event, 3, msg.ref}, state)
+    case Map.fetch(msg.payload, "cid") do
+      {:ok, cid} ->
+        {:noreply, component_handle_event(state, cid, event, val, msg.ref)}
+
+      :error ->
+        event
+        |> view_module(state).handle_event(val, state.socket)
+        |> handle_result({:handle_event, 3, msg.ref}, state)
+    end
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -250,6 +256,26 @@ defmodule Phoenix.LiveView.Channel do
 
     Got: #{inspect(result)}
     """
+  end
+
+  defp component_handle_event(%{socket: socket, components: components} = state, cid, event, val, ref) do
+    {diffs, new_components} =
+      Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
+        case component.handle_event(event, val, component_socket) do
+          {:noreply, component_socket} ->
+            component_socket
+
+          other ->
+            raise ArgumentError, """
+            invalid return from #{inspect(component)}.handle_event/3 callback.
+
+            Expected: {:noreply, %Socket{}}
+            Got: #{inspect(other)}
+            """
+        end
+      end)
+
+    reply(%{state | components: new_components}, ref, :ok, %{cdiff: diffs})
   end
 
   defp view_module(%{socket: %Socket{view: view}}), do: view

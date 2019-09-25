@@ -46,4 +46,27 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     assert_remove_component(view, "chris")
   end
+
+  test "handle_event delegates event to component", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/components")
+
+    html = render_click([view, "chris"], "transform", %{"op" => "upcase"})
+
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              ["\n  jose says hi with socket: true\n"]}
+           ] = DOM.parse(html)
+
+    html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              ["\n  Jose says hi with socket: true\n"]}
+           ] = DOM.parse(html)
+  end
 end

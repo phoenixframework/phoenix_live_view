@@ -98,6 +98,17 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
+  def fetch_cid_by_id(rendered, id) do
+    rendered
+    |> render_diff()
+    |> by_id(id)
+    |> all_attributes(@phx_component)
+    |> case do
+      [cid] -> {:ok, String.to_integer(cid)}
+      [] -> :error
+    end
+  end
+
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
   def parse(html), do: Floki.parse(html)

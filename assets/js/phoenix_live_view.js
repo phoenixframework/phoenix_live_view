@@ -96,7 +96,7 @@ let recursiveMerge = (target, source) => {
 
 export let Rendered = {
   mergeDiff(source, diff){
-    if(this.isNewFingerprint(diff)){
+    if(!diff.components && this.isNewFingerprint(diff)){
       return diff
     } else {
       recursiveMerge(source, diff)
@@ -141,8 +141,8 @@ export let Rendered = {
       let component = output.components[rendered] || logError("encountered invalid component")
       let html = this.toString(component, output.components)
       output.container.innerHTML = html
-      Array.from(container.children).forEach(c => c.setAttribute(PHX_COMPONENT, rendered))
-      output.buffer += container.innerHTML
+      Array.from(output.container.children).forEach(c => c.setAttribute(PHX_COMPONENT, rendered))
+      output.buffer += output.container.innerHTML
     } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
@@ -1006,7 +1006,7 @@ export class View {
     })
     changes.discarded.forEach(el => {
       let cid = this.componentID(el)
-      if(cid){ destroyedCIDs.push(cid) }
+      if(typeof(cid) === "number"){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
@@ -1086,8 +1086,10 @@ export class View {
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
+    if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+        if(resp.cdiff){ this.update({components: resp.cdiff}) }
         if(resp.diff){ this.update(resp.diff) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
@@ -1097,7 +1099,10 @@ export class View {
     )
   }
 
-  componentID(el){ return el.getAttribute && el.getAttribute(PHX_COMPONENT) }
+  componentID(el){
+    let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT)
+    return cid ? parseInt(cid) : null
+  }
 
   targetComponentID(target){
     return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
@@ -1115,7 +1120,7 @@ export class View {
       type: type,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(el) || undefined
+      cid: this.targetComponentID(el)
     })
   }
 
@@ -1126,7 +1131,7 @@ export class View {
       type: kind,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(keyElement) || undefined
+      cid: this.targetComponentID(keyElement)
     })
   }
 
@@ -1136,7 +1141,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: e.target.name}),
-      cid: this.targetComponentID(inputEl) || undefined
+      cid: this.targetComponentID(inputEl)
     })
   }
 
@@ -1145,7 +1150,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
-      cid: this.targetComponentID(formEl) || undefined
+      cid: this.targetComponentID(formEl)
     }, onReply)
   }
 
@@ -1165,7 +1170,7 @@ export class View {
   }
 
   pushComponentsDestroyed(cids){
-    this.pushWithReply("cids_destroyed", {cids: cids.map(id => parseInt(id))})
+    this.pushWithReply("cids_destroyed", {cids})
   }
 
   ownsElement(el){

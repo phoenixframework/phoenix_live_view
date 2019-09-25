@@ -260,9 +260,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_event, topic, type, event, raw_val}, from, state) do
+  def handle_call({:render_event, topic, type, path, event, raw_val}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    payload = %{"value" => raw_val, "event" => to_string(event), "type" => to_string(type)}
+
+    payload =
+      maybe_add_cid_to_payload(view, path, %{
+        "value" => raw_val,
+        "event" => to_string(event),
+        "type" => to_string(type)
+      })
 
     {:noreply, push_with_reply(state, from, view, "event", payload)}
   end
@@ -314,7 +320,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp drop_child(state, %ClientProxy{} = parent, id, reason) do
     state
     |> update_in([:views, parent.topic], fn %ClientProxy{} = parent ->
-      %ClientProxy{parent | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)}
+      %ClientProxy{
+        parent
+        | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)
+      }
     end)
     |> drop_view_by_id(id, reason)
   end
@@ -412,6 +421,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp merge_rendered(state, topic, %{cdiff: cdiff}),
+    do: merge_rendered(state, topic, %{components: cdiff})
+
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
@@ -474,8 +486,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         :error ->
           static = static || Map.get(state.root_view.child_statics, id)
 
-          child_view =
-            build_child(view, id: id, session_token: session, static_token: static)
+          child_view = build_child(view, id: id, session_token: session, static_token: static)
 
           acc
           |> mount_view(child_view, acc.timeout)
@@ -549,5 +560,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       mount_path: parent.mount_path
     )
     |> build()
+  end
+
+  defp maybe_add_cid_to_payload(_view, [], payload), do: payload
+
+  defp maybe_add_cid_to_payload(view, [id], payload) do
+    case DOM.fetch_cid_by_id(view.rendered, id) do
+      {:ok, cid} ->
+        Map.put(payload, "cid", cid)
+
+      :error ->
+        raise ArgumentError,
+              "no component with ID #{inspect(id)} found in view #{inspect(view.module)}"
+    end
   end
 end
