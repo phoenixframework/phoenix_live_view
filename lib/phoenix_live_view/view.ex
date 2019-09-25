@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.View do
   alias Phoenix.LiveView.Socket
 
   # Token version. Should be changed whenever new data is stored.
-  @token_vsn 1
+  @token_vsn 2
 
   # Max session age in seconds. Equivalent to 2 weeks.
   @max_session_age 1_209_600
