@@ -80,12 +80,6 @@ defmodule Phoenix.LiveView do
   There are other cases that have limited support but
   will become first-class as we further develop LiveView:
 
-    * Page and data navigation - such as navigating between
-      pages, pagination, etc can be built with LiveView
-      but currently you will lose the back/forward button,
-      and the ability to link to pages as you navigate.
-      Support for `pushState` is on the roadmap;
-
     * Transitions and loading states - the LiveView
       programming model provides a good foundation for
       transitions and loading states since any UI change
