@@ -340,7 +340,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
   def mount(socket) do
-    {:ok, assign(socket, id: nil, name: "unknown")}
+    {:ok, assign(socket, name: "unknown")}
   end
 
   def render(assigns) do

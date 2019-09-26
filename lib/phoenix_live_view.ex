@@ -999,9 +999,8 @@ defmodule Phoenix.LiveView do
   def live_component(%Socket{} = socket, component, assigns \\ [])
       when is_atom(component) and is_list(assigns) do
     _ = LiveView.View.load_live!(component, :component)
-    assigns = Map.new(assigns)
+    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
-
 
     if function_exported?(component, :handle_event, 3) and is_nil(id) do
       raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
