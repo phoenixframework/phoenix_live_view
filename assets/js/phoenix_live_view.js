@@ -752,7 +752,6 @@ export let DOM = {
           view.liveSocket.destroyViewByEl(el)
           return true
         }
-        changes.discarded.push(el)
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
