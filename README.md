@@ -1,6 +1,6 @@
 # Phoenix LiveView
 
-[![Build Status](https://travis-ci.org/phoenixframework/phoenix_live_view.svg?branch=master)](https://travis-ci.org/phoenixframework/phoenix_live_view)
+![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)
 
 Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
 
