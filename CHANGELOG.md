@@ -3,6 +3,9 @@
 ### Enhancements
   - Handle outdated clients by refreshing the page with jitter when a valid, but outdated session is detected
 
+### Bug Fixes
+  - Fix phx-hook destroyed callback failing to be called in certain cases
+
 ## 0.3.1 (2019-09-23)
 
 ### Backwards incompatible changes

@@ -745,6 +745,7 @@ export let DOM = {
         }
         changes.added.push(el)
       },
+      onNodeDiscarded: function(el){ changes.discarded.push(el) },
       onBeforeNodeDiscarded: function(el){
         // nested view handling
         if(DOM.isPhxChild(el)){
