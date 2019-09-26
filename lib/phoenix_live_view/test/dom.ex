@@ -141,8 +141,8 @@ defmodule Phoenix.LiveViewTest.DOM do
     content_changed? = new_ids !== existing_ids
 
     dup_ids =
-      if content_changed? do
-        Enum.filter((content_changed? && new_ids) || [], fn id -> id in existing_ids end)
+      if content_changed? && new_ids do
+        Enum.filter(new_ids, fn id -> id in existing_ids end)
       else
         []
       end
