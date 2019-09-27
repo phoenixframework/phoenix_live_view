@@ -24,8 +24,11 @@ defmodule Phoenix.LiveView.Router do
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
       your application's namespace.
+
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
+      See `Phoenix.LiveView.live_render/3` for more information on examples.
+
     * `:as` - optionally configures the named helper. Defaults to `:live`.
 
   ## Examples
