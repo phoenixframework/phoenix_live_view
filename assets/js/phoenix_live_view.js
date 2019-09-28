@@ -30,6 +30,7 @@ const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
+const PHX_HOOK_ADDED = "data-phx-hook-is-add"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_CHANGE = "phx-change"
@@ -924,14 +925,18 @@ export class View {
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
-      for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
+      for(let id in this.viewHooks){
+        this.viewHooks[id].forEach(hook => hook && hook.__trigger__("disconnected"))
+      }
       this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     }
   }
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
+    for(let id in this.viewHooks){
+      this.viewHooks[id].forEach(hook => hook && hook.__trigger__("reconnected"))
+    }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
   }
 
@@ -977,15 +982,38 @@ export class View {
     this.triggerHooks(changes)
   }
 
-  getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
+  getHooks(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
-  addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(this.binding(PHX_HOOK)))
-    if(callbacks && this.ownsElement(el)){
-      let hook = new ViewHook(this, el, callbacks)
-      this.viewHooks[ViewHook.elementID(hook.el)] = hook
-      hook.__trigger__("mounted")
+  addHook(el){ if(!el.getAttribute || el.getAttribute(PHX_HOOK_ADDED)){ return }
+    // Retrieve names attached to the "phx-hook" attribute, in one string
+    let hookNamesStr = el.getAttribute(this.binding(PHX_HOOK))
+    if (hookNamesStr == null || hookNamesStr == "") {
+      return
     }
+
+    // Split the names on space and transform each to a callback object
+    let callbacksArray = hookNamesStr
+      .split(" ")
+      .filter((value, index, ary) => ary.indexOf(value) == index) // uniq
+      .map(hookName => this.liveSocket.getHookCallbacks(hookName))
+      .filter(callback => callback != null)
+
+    // Create a ViewHook for each callback object
+    if (this.ownsElement(el)) {
+      callbacksArray.forEach(callback => {
+        let hook = new ViewHook(this, el, callback)
+        let ekey = ViewHook.elementID(hook.el)
+        if (this.viewHooks[ekey] == null) {
+          this.viewHooks[ekey] = [hook]
+        } else {
+          this.viewHooks[ekey].push(hook)
+        }
+        hook.__trigger__("mounted")
+      })
+    }
+    // Mark element to prevent duplicate loads; since we can no longer
+    // check if ViewHook is clear when we're adding a hook (this could be 2nd hook)
+    el.setAttribute(PHX_HOOK_ADDED, true)
   }
 
   destroyHook(hook){
@@ -998,20 +1026,27 @@ export class View {
     changes.updated.push({fromEl: this.el, toEl: this.el})
     changes.added.forEach(el => this.addHook(el))
     changes.updated.forEach(({fromEl, toEl}) => {
-      let hook = this.getHook(fromEl)
+      let hooks = this.getHooks(fromEl)
       let phxAttr = this.binding(PHX_HOOK)
-      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
-        hook.__trigger__("updated")
-      } else if(hook){
-        this.destroyHook(hook)
+      if (
+        hooks != null &&
+        hooks.length > 0 &&
+        toEl.getAttribute &&
+        fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)
+      ) {
+        hooks.forEach(hook => hook && hook.__trigger__("updated"))
+      } else if (hooks != null && hooks.length > 0) {
+        hooks.forEach(hook => hook && this.destroyHook(hook))
         this.addHook(fromEl)
       }
     })
     changes.discarded.forEach(el => {
       let cid = this.componentID(el)
       if(cid){ destroyedCIDs.push(cid) }
-      let hook = this.getHook(el)
-      hook && this.destroyHook(hook)
+      let hooks = this.getHooks(el)
+      if (hooks != null) {
+        hooks.forEach(hook => hook && this.destroyHook(hook))
+      }
     })
     if(destroyedCIDs.length > 0){ this.pushComponentsDestroyed(destroyedCIDs) }
   }
@@ -1204,7 +1239,9 @@ class ViewHook {
     this.__callbacks = callbacks
     this.el = el
     this.viewName = view.view
-    this.el.phxHookId = this.constructor.makeID()
+    if (this.el.phxHookId == null) {
+      this.el.phxHookId = this.constructor.makeID()
+    }
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 

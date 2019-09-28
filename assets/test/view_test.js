@@ -274,6 +274,7 @@ describe('View Hooks', function() {
 
   test('hooks', async () => {
     let upcaseWasDestroyed = false
+    let twoWasDestroyed = false
     let Hooks = {
       Upcase: {
         mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
@@ -281,6 +282,13 @@ describe('View Hooks', function() {
         disconnected(){ this.el.innerHTML = 'disconnected' },
         reconnected(){ this.el.innerHTML = 'connected' },
         destroyed(){ upcaseWasDestroyed = true },
+      },
+      Two: {
+        mounted() { this.el.innerHTML += " m2m" },
+        updated() { this.el.innerHTML += " u2u" },
+        disconnected() { this.el.innerHTML += " d2d" },
+        reconnected() { this.el.innerHTML += " c2c" },
+        destroyed() { twoWasDestroyed = true }
       }
     }
     let liveSocket = new LiveSocket('/live', Socket, {hooks: Hooks})
@@ -288,6 +296,7 @@ describe('View Hooks', function() {
 
     let view = new View(el, liveSocket)
 
+    //// hook = "Upcase" ////
     view.onJoin({rendered: {
       static: ['<h2 phx-hook="Upcase">test mount</h2>'],
       fingerprint: 123
@@ -308,5 +317,53 @@ describe('View Hooks', function() {
 
     view.update({static: ['<div></div>'], fingerprint: 123})
     expect(upcaseWasDestroyed).toBe(true)
+
+    //// hook = "Two" ////
+    view.onJoin({rendered: {
+        static: ['<h2 phx-hook="Two">test mount</h2>'],
+        fingerprint: 456
+    }})
+    expect(view.el.firstChild.innerHTML).toBe("test mount m2m")
+
+    view.update({
+      static: ['<h2 phx-hook="Two">test update</h2>'],
+      fingerprint: 456
+    })
+    expect(view.el.firstChild.innerHTML).toBe("test update u2u")
+
+    view.showLoader()
+    expect(view.el.firstChild.innerHTML).toBe("test update u2u d2d")
+
+    view.hideLoader()
+    expect(view.el.firstChild.innerHTML).toBe("test update u2u d2d c2c")
+
+    view.update({ static: ["<div></div>"], fingerprint: 456 })
+    expect(twoWasDestroyed).toBe(true)
+
+    //// hook = "Upcase Two" ////
+    upcaseWasDestroyed = false
+    twoWasDestroyed = false
+
+    view.onJoin({rendered: {
+        static: ['<h2 phx-hook="Upcase Two">test mount</h2>'],
+        fingerprint: 789
+    }})
+    expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT m2m")
+
+    view.update({
+      static: ['<h2 phx-hook="Upcase Two">test update</h2>'],
+      fingerprint: 789
+    })
+    expect(view.el.firstChild.innerHTML).toBe("test update updated u2u")
+
+    view.showLoader()
+    expect(view.el.firstChild.innerHTML).toBe("disconnected d2d")
+
+    view.hideLoader()
+    expect(view.el.firstChild.innerHTML).toBe("connected c2c")
+
+    view.update({ static: ["<div></div>"], fingerprint: 789 })
+    expect(upcaseWasDestroyed).toBe(true)
+    expect(twoWasDestroyed).toBe(true)
   })
 })
