@@ -58,13 +58,13 @@ defmodule Phoenix.LiveView.Diff do
     {id_to_components, cid_to_ids, _} = components
 
     case cid_to_ids do
-      %{^cid => id} ->
-        {^cid, component, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
+      %{^cid => {component, _} = id} ->
+        {^cid, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
         socket
         |> configure_socket_for_component(assigns, private, fingerprints)
         |> fun.(component)
-        |> render_component(component, id, cid, false, component_diffs, components)
+        |> render_component(id, cid, false, component_diffs, components)
 
       %{} ->
         :error
@@ -212,17 +212,18 @@ defmodule Phoenix.LiveView.Diff do
          component_diffs,
          components
        ) do
-    {socket, cid, new?, components} = ensure_component(socket, id, component, components)
+    id = {component, id}
+    {socket, cid, new?, components} = ensure_component(socket, id, components)
 
     {component_diffs, components} =
       socket
       |> View.maybe_call_update!(component, assigns)
-      |> render_component(component, id, cid, new?, component_diffs, components)
+      |> render_component(id, cid, new?, component_diffs, components)
 
     {cid, component_diffs, components}
   end
 
-  defp render_component(socket, component, id, cid, new?, component_diffs, components) do
+  defp render_component(socket, {component, _} = id, cid, new?, component_diffs, components) do
     {socket, component_diffs, {id_to_components, cid_to_ids, uuids}} =
       if new? or View.changed?(socket) do
         rendered = View.to_rendered(socket, component)
@@ -237,29 +238,23 @@ defmodule Phoenix.LiveView.Diff do
         {socket, component_diffs, components}
       end
 
-    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
+    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
     {component_diffs, {id_to_components, cid_to_ids, uuids}}
   end
 
-  defp ensure_component(socket, id, component, {id_to_components, cid_to_ids, uuids}) do
+  defp ensure_component(socket, {component, _} = id, {id_to_components, cid_to_ids, uuids}) do
     case id_to_components do
-      %{^id => {cid, ^component, assigns, private, component_prints}} ->
+      %{^id => {cid, assigns, private, component_prints}} ->
         socket = configure_socket_for_component(socket, assigns, private, component_prints)
         {socket, cid, false, {id_to_components, cid_to_ids, uuids}}
 
-      %{^id => {cid, _, _, _, _}} ->
-        build_component(socket, id, cid, component, id_to_components, cid_to_ids, uuids)
-
       %{} ->
-        cid_to_ids = Map.put(cid_to_ids, uuids, id)
-        build_component(socket, id, uuids, component, id_to_components, cid_to_ids, uuids + 1)
+        cid = uuids
+        socket = mount_component(socket, component)
+        id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
+        cid_to_ids = Map.put(cid_to_ids, cid, id)
+        {socket, cid, true, {id_to_components, cid_to_ids, uuids + 1}}
     end
-  end
-
-  defp build_component(socket, id, cid, component, id_to_components, cid_to_ids, uuids) do
-    socket = mount_component(socket, component)
-    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid, component))
-    {socket, cid, true, {id_to_components, cid_to_ids, uuids}}
   end
 
   defp mount_component(socket, component) do
@@ -277,7 +272,7 @@ defmodule Phoenix.LiveView.Diff do
     }
   end
 
-  defp dump_component(socket, cid, component) do
-    {cid, component, socket.assigns, socket.private, socket.fingerprints}
+  defp dump_component(socket, cid) do
+    {cid, socket.assigns, socket.private, socket.fingerprints}
   end
 end

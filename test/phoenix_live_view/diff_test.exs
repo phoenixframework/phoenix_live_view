@@ -321,7 +321,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{}}
 
       {_, cids_to_ids, 1} = components
-      assert cids_to_ids[0] == "hello"
+      assert cids_to_ids[0] == {MyComponent, "hello"}
 
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
@@ -430,7 +430,7 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
-    test "on replace" do
+    test "duplicate IDs" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: TempComponent}
       rendered = component_template(%{component: component})
       {previous_socket, _, previous_components} = render(rendered)
@@ -442,9 +442,9 @@ defmodule Phoenix.LiveView.DiffTest do
         render(rendered, previous_socket.fingerprints, previous_components)
 
       assert full_render == %{
-               0 => 0,
+               0 => 1,
                :components => %{
-                 0 => %{0 => "replaced", 1 => "world", :static => ["FROM ", " ", "\n"]}
+                 1 => %{0 => "replaced", 1 => "world", :static => ["FROM ", " ", "\n"]}
                }
              }
 
@@ -491,8 +491,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
 
       {_, cids_to_ids, 2} = components
-      assert cids_to_ids[0] == "index_0"
-      assert cids_to_ids[1] == "index_1"
+      assert cids_to_ids[0] == {MyComponent, "index_0"}
+      assert cids_to_ids[1] == {MyComponent, "index_1"}
 
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received {:update, %{from: :index_0}, %Socket{assigns: %{hello: "world"}}}
@@ -553,10 +553,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
 
       {_, cids_to_ids, 4} = components
-      assert cids_to_ids[0] == "foo-index_0"
-      assert cids_to_ids[1] == "foo-index_1"
-      assert cids_to_ids[2] == "bar-index_0"
-      assert cids_to_ids[3] == "bar-index_1"
+      assert cids_to_ids[0] == {MyComponent, "foo-index_0"}
+      assert cids_to_ids[1] == {MyComponent, "foo-index_1"}
+      assert cids_to_ids[2] == {MyComponent, "bar-index_0"}
+      assert cids_to_ids[3] == {MyComponent, "bar-index_1"}
 
       for from <- [:index_0, :index_1, :index_0, :index_1] do
         assert_received {:mount, %Socket{endpoint: __MODULE__}}

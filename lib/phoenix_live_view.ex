@@ -1076,9 +1076,10 @@ defmodule Phoenix.LiveView do
 
       <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
 
-  However, note the `:id` assign has a special meaning.
-  Whenever an "id" is given, the component becomes stateful.
-  Some components may always require an ID.
+  Note the `:id` won't necessarily be used as the DOM ID.
+  That's up to the component. However, note the `:id` has
+  a special meaning: whenever an `:id` is given, the component
+  becomes stateful. Otherwise, `:id` is always set to nil.
   """
   def live_component(%Socket{} = socket, component, assigns \\ [])
       when is_atom(component) and is_list(assigns) do
@@ -1087,7 +1088,8 @@ defmodule Phoenix.LiveView do
     id = assigns[:id]
 
     if function_exported?(component, :handle_event, 3) and is_nil(id) do
-      raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
+      raise "the component #{inspect(component)} has implemented handle_event/3, " <>
+              "which requires an ID element"
     end
 
     if LiveView.View.connected?(socket) do
