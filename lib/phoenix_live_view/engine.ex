@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.Engine do
   def handle_end(state) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
-    {:__block__, [], Enum.reverse([safe | dynamic])}
+    {:__block__, [live_rendered: true], Enum.reverse([safe | dynamic])}
   end
 
   @impl true
@@ -431,7 +431,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_rendered_struct(expr, check_prints?, tainted_vars, vars, assigns) do
-    with {:__block__, _, entries} <- expr,
+    with {:__block__, [live_rendered: true], entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, _} =
         Enum.map_reduce(dynamic, {0, vars}, fn
