@@ -561,7 +561,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_add_cid_to_payload(_view, [], payload), do: payload
 
-  defp maybe_add_cid_to_payload(view, [id], payload) do
+  defp maybe_add_cid_to_payload(view, id, payload) do
+    # find id in all children
     case DOM.fetch_cid_by_id(view.rendered, id) do
       {:ok, cid} ->
         Map.put(payload, "cid", cid)
