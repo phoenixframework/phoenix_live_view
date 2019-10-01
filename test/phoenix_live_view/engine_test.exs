@@ -3,8 +3,8 @@ defmodule Phoenix.LiveView.EngineTest do
 
   alias Phoenix.LiveView.{Engine, Rendered}
 
-  def safe(do: {:safe, _} = safe), do: safe
-  def unsafe(do: {:safe, content}), do: content
+  def safe(do: do_block), do: do_block
+  def unsafe(do: %{static: [content]}), do: content
 
   describe "rendering" do
     test "escapes HTML" do
