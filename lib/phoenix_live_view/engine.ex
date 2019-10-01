@@ -363,6 +363,17 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
+  defp to_live_struct({name, meta, [_|_] = args} = expr, tainted_vars, vars, assigns) do
+    case List.last(args) do
+      do: do_block ->
+        do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+        to_safe({name, meta, List.replace_at(args, -1, [do: do_block])}, true)
+
+      _ ->
+        to_safe(expr, true)
+    end
+  end
+
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
     to_safe(expr, true)
   end
