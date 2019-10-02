@@ -33,8 +33,6 @@ const PHX_THROTTLE = "throttle"
 const PHX_CHANGE = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
-const PHX_START = "phx-start"
-const PHX_END = "phx-end"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -113,20 +111,18 @@ export let Rendered = {
     let template = document.createElement("template")
     template.innerHTML = this.toString(component, components)
     let container = template.content
-    let index = 0
-    let firstChild = null
     Array.from(container.childNodes).forEach(child => {
       if(child.nodeType === Node.ELEMENT_NODE){
-        if(!firstChild){
-          firstChild = child
-          child.setAttribute(PHX_START, index)
-          child.setAttribute(PHX_END, container.childNodes.length - 1)
-        }
         child.setAttribute(PHX_COMPONENT, cid)
+      } else {
+        if(child.nodeValue.trim() !== ""){
+          logError(`only HTML element tags are allowed at the root of components.\n\n` +
+                   `got: "${child.nodeValue.trim()}"\n\n` +
+                   `within:\n`, template.innerHTML.trim())
+        }
+        child.remove()
       }
-      index++
     })
-    if(!firstChild){ logError(`at least one element tag is required at the component root. Got ${container.innerHTML}`)}
 
     return template.innerHTML
   },
@@ -622,39 +618,7 @@ export let DOM = {
     return callback ? array.forEach(callback) : array
   },
 
-  findComponentNodeList(node, cid){
-    let components = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
-    if(components.length === 0){ return [] }
-    let firstChild = components[0]
-    let lastChild = components[components.length - 1]
-    let start = parseInt(firstChild.getAttribute(PHX_START))
-    let end = parseInt(firstChild.getAttribute(PHX_END))
-    let nodes = []
-    let current = firstChild
-
-    while(nodes.length < start){
-      current = current.previousSibling
-      nodes.unshift(current)
-    }
-    nodes.push(firstChild)
-    if(firstChild.isEqualNode(lastChild)){
-      return nodes
-    } else {
-      current = firstChild.nextSibling
-      while(current && !current.isEqualNode(lastChild)){
-        nodes.push(current)
-        current = current.nextSibling
-      }
-      nodes.push(lastChild)
-      current = lastChild
-      while(nodes.length <= end){
-        current = current.nextSibling
-        nodes.push(current)
-      }
-
-      return nodes
-    }
-  },
+  findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
 
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
