@@ -318,7 +318,7 @@ defmodule Phoenix.LiveView.View do
   end
 
   @doc """
-  Renders only the static container of the Liveview.
+  Renders only the static container of the LiveView.
 
   Accepts same options as `static_render/3`.
 
@@ -576,7 +576,7 @@ defmodule Phoenix.LiveView.View do
     %Socket{socket | private: Map.drop(private, keys)}
   end
 
-  defp to_rendered(socket ,view) do
+  defp to_rendered(socket, view) do
     assigns = Map.put(socket.assigns, :socket, strip_for_render(socket))
 
     case view.render(assigns) do

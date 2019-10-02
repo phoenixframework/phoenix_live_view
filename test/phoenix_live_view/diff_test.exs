@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert fingerprint_tree == {rendered.fingerprint, %{}}
     end
 
-    test "nested %Renderered{}'s" do
+    test "nested %Rendered{}'s" do
       {full_render, fingerprint_tree} = Diff.render(@nested, Diff.new_fingerprints())
 
       assert full_render ==
@@ -117,7 +117,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert prints == {rendered.fingerprint, %{}}
     end
 
-    test "renders nested %Renderered{}'s" do
+    test "renders nested %Rendered{}'s" do
       tree = {123, %{3 => {789, %{}}, 1 => {456, %{}}}}
       {diffed_render, diffed_tree} = Diff.render(@nested, tree)
 
