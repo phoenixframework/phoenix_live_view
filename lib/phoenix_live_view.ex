@@ -868,7 +868,7 @@ defmodule Phoenix.LiveView do
   @type from :: {pid, reference}
 
   @callback mount(session :: map, socket :: Socket.t()) ::
-              {:ok, Socket.t()}
+              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
