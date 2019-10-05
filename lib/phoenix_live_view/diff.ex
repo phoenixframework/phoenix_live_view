@@ -61,10 +61,13 @@ defmodule Phoenix.LiveView.Diff do
       %{^cid => {component, _} = id} ->
         {^cid, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
-        socket
-        |> configure_socket_for_component(assigns, private, fingerprints)
-        |> fun.(component)
-        |> render_component(id, cid, false, component_diffs, components)
+        {diffs, components} =
+          socket
+          |> configure_socket_for_component(assigns, private, fingerprints)
+          |> fun.(component)
+          |> render_component(id, cid, false, component_diffs, components)
+
+        {%{components: diffs}, components}
 
       %{} ->
         :error

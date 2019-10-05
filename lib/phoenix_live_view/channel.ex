@@ -259,7 +259,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp component_handle_event(%{socket: socket, components: components} = state, cid, event, val, ref) do
-    {diffs, new_components} =
+    {diff, new_components} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
           {:noreply, %Socket{redirected: nil} = component_socket} ->
@@ -278,7 +278,7 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    push_render(%{state | components: new_components}, %{components: diffs}, ref)
+    push_render(%{state | components: new_components}, diff, ref)
   end
 
   defp view_module(%{socket: %Socket{view: view}}), do: view
