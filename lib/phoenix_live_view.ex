@@ -554,9 +554,10 @@ defmodule Phoenix.LiveView do
   If the other template has the `.leex` extension, LiveView change tracking
   will also work across templates.
 
-  However, if the "child_template" has any Phoenix LiveView binding and said
-  template is shared across different LiveView, each LiveView would have to
-  implement the `handle_event` callback to handle said binding.
+  When rendering a child template, any of the events bound in the child
+  template will be sent to the parent LiveView. In other words, similar to
+  regular Phoenix templaes, a regular `render` call does not start another
+  LiveView. This means `render` is useful to sharing markup between views.
 
   One option to address this problem is to render a child LiveView insied a
   parent LiveView by calling `live_render/3` instead of `render/3` from the
@@ -566,7 +567,7 @@ defmodule Phoenix.LiveView do
   all children are terminated.
 
   When rendering a child LiveView, the `:id` option is required to uniquely
-  identify the child.  A child LiveView will only ever be rendered and mounted
+  identify the child. A child LiveView will only ever be rendered and mounted
   a single time, provided its ID remains unchanged. Updates to a child session
   will be merged on the client, but not passed back up until either a crash and
   re-mount or a connetion drop and recovery. To force a child to re-mount with
@@ -574,18 +575,24 @@ defmodule Phoenix.LiveView do
 
   Given a LiveView runs on its own process, it is an excellent tool for creating
   completely isolated UI elements, but it is a slightly expensive abstraction if
-  all you want is to compartimentalize markup and events. For example, you shouldn't
-  render each button in a page as a separate `LiveView`. For those cases, Phoenix
-  LiveView provides `Phoenix.LiveComponent`, which are rendered using `live_component/3`.
-  Components have their own state, `mount` and `handle_event` callbacks, but are
-  much more lightweight as they "run" in the same process as the `LiveView`.
-  Therefore, an error in a component would cause the whole view to fail to render.
-  See `Phoenix.LiveComponent` for a complete rundown on components.
+  all you want is to compartimentalize markup and events. For example, if you are
+  showing a table with all users in the system, and you want to compartimentalize
+  this logic, using a separate `LiveView`, each with its own process, would likely
+  be too expensive. For these cases, LiveView provides `Phoenix.LiveComponent`,
+  which are rendered using `live_component/3`:
+
+      <%= live_component UserComponent, id: user.id, user: user %>
+
+  Components have their own `mount` and `handle_event` callbacks, as well as their
+  own state with change tracking support. Components are also lightweight as they
+  "run" in the same process as the parent `LiveView`. However, this means an error
+  in a component would cause the whole view to fail to render. See
+  `Phoenix.LiveComponent` for a complete rundown on components.
 
   To sum it up:
 
     * `render` - compartimentalizes markup
-    * `live_component` - compartimentalizes state, markup and events
+    * `live_component` - compartimentalizes state, markup, and events
     * `live_render` - compartimentalizes state, markup, events, and error isolation
 
   ## Rate limiting events with Debounce and Throttle
@@ -934,9 +941,6 @@ defmodule Phoenix.LiveView do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
-  @type unsigned_params :: map
-  @type from :: {pid, reference}
-
   @callback mount(session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
@@ -945,13 +949,13 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
-  @callback handle_params(unsigned_params, uri :: String.t(), socket :: Socket.t()) ::
+  @callback handle_params(Socket.unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_event(event :: binary, unsigned_params, socket :: Socket.t()) ::
+  @callback handle_event(event :: binary, Socket.unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_call(msg :: term, from, socket :: Socket.t()) ::
+  @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_info(msg :: term, socket :: Socket.t()) ::

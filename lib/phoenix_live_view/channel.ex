@@ -262,8 +262,11 @@ defmodule Phoenix.LiveView.Channel do
     {diffs, new_components} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
-          {:noreply, component_socket} ->
+          {:noreply, %Socket{redirected: nil} = component_socket} ->
             component_socket
+
+          {:noreply, _} ->
+            raise ArgumentError, "cannot redirect from from #{inspect(component)}.handle_event/3"
 
           other ->
             raise ArgumentError, """
