@@ -188,6 +188,16 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
+  def rendered_components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+        <%= index %>: <%= component_template(%{component: component}) %>
+      <% end %>
+    </div>
+    """
+  end
+
   defmodule MyComponent do
     use Phoenix.LiveComponent
 
@@ -563,6 +573,58 @@ defmodule Phoenix.LiveView.DiffTest do
         assert_received {:update, %{from: ^from}, %Socket{assigns: %{hello: "world"}}}
         assert_received :render
       end
+    end
+
+    test "inside rendered inside comprehension" do
+      components = [
+        %Component{id: "index_0", assigns: %{from: :index_0}, component: MyComponent},
+        %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
+      ]
+
+      rendered = rendered_components_template(%{components: components})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+              0 => %{
+                dynamics: [
+                  [
+                    "0",
+                    %{0 => 0, :static => ["<div>\n  ", "\n</div>\n"]}
+                  ],
+                  [
+                    "1",
+                    %{0 => 1, :static => ["<div>\n  ", "\n</div>\n"]}
+                  ]
+                ],
+                static: ["\n    ", ": ", "\n  "]
+              },
+              :components => %{
+                0 => %{
+                  0 => "index_0",
+                  1 => "world",
+                  :static => ["FROM ", " ", "\n"]
+                },
+                1 => %{
+                  0 => "index_1",
+                  1 => "world",
+                  :static => ["FROM ", " ", "\n"]
+                }
+              },
+              :static => ["<div>\n  ", "\n</div>\n"]
+            }
+
+      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+
+      {_, cids_to_ids, 2} = components
+      assert cids_to_ids[0] == {MyComponent, "index_0"}
+      assert cids_to_ids[1] == {MyComponent, "index_1"}
+
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :index_0}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
     end
   end
 end

@@ -44,6 +44,10 @@ defmodule Phoenix.LiveView.Comprehension do
       for dynamic <- dynamics, do: to_iodata(static, dynamic, [])
     end
 
+    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail], acc) do
+      to_iodata(static_tail, dynamic_tail, [Phoenix.HTML.Safe.to_iodata(struct), static_head | acc])
+    end
+
     defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
       to_iodata(static_tail, dynamic_tail, [dynamic_head, static_head | acc])
     end
@@ -77,8 +81,8 @@ defmodule Phoenix.LiveView.Rendered do
       to_iodata(static, dynamic, [])
     end
 
-    def to_iodata(%Phoenix.LiveView.Comprehension{} = for) do
-      Phoenix.HTML.Safe.Phoenix.LiveView.Comprehension.to_iodata(for)
+    def to_iodata(%_{} = struct) do
+      Phoenix.HTML.Safe.to_iodata(struct)
     end
 
     def to_iodata(nil) do
@@ -364,8 +368,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  @catch_alls [Phoenix.LiveView.Rendered, Phoenix.LiveView.Component]
-
   defmacrop to_safe_match(var, ast) do
     quote do
       {:=, [],
@@ -389,7 +391,7 @@ defmodule Phoenix.LiveView.Engine do
     else_block =
       maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars, vars, assigns)
 
-    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @catch_alls)
+    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, true)
   end
 
   defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, _vars, _assigns) do
@@ -397,7 +399,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, @catch_alls)
+    to_safe(expr, true)
   end
 
   defp to_live_comprehension(expr) do
@@ -419,7 +421,7 @@ defmodule Phoenix.LiveView.Engine do
         %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
       end
     else
-      _ -> to_safe(expr, [Phoenix.LiveView.Comprehension, Phoenix.LiveView.Component])
+      _ -> to_safe(expr, true)
     end
   end
 
@@ -654,18 +656,21 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro to_safe(ast) do
-    to_safe(ast, [])
+    to_safe(ast, false)
   end
 
-  defp to_safe(ast, catch_alls) do
+  defp to_safe(ast, false) do
+    to_safe(ast, line_from_expr(ast), [])
+  end
+
+  defp to_safe(ast, true) do
     line = line_from_expr(ast)
 
     extra_clauses =
-      for catch_all <- catch_alls do
-        quote generated: true, line: line do
-          %{__struct__: unquote(catch_all)} = other -> other
-        end
-        |> hd()
+      quote do
+        %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+        %{__struct__: Phoenix.LiveView.Component} = other -> other
+        %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
       end
 
     to_safe(ast, line, extra_clauses)
