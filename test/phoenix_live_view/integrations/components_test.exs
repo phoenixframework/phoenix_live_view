@@ -60,6 +60,9 @@ defmodule Phoenix.LiveView.ComponentTest do
               ["\n  jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
+
+    # TODO find_child
+
     html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
 
     assert [

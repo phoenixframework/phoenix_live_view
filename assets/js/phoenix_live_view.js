@@ -106,8 +106,30 @@ export let Rendered = {
 
   isNewFingerprint(diff = {}){ return !!diff.static },
 
+  componentToString(components, cid){
+    let component = components[cid] || logError(`no component for CID ${cid}`, components)
+    let template = document.createElement("template")
+    template.innerHTML = this.toString(component, components)
+    let container = template.content
+    Array.from(container.childNodes).forEach(child => {
+      if(child.nodeType === Node.ELEMENT_NODE){
+        child.setAttribute(PHX_COMPONENT, cid)
+      } else {
+        if(child.nodeValue.trim() !== ""){
+          logError(`only HTML element tags are allowed at the root of components.\n\n` +
+                   `got: "${child.nodeValue.trim()}"\n\n` +
+                   `within:\n`, template.innerHTML.trim())
+        }
+        child.remove()
+      }
+    })
+
+    return template.innerHTML
+  },
+
+
   toString(rendered, components = rendered.components || {}){
-    let output = {buffer: "", components: components, container: document.createElement("div")}
+    let output = {buffer: "", components: components}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
@@ -138,12 +160,8 @@ export let Rendered = {
 
   dynamicToBuffer(rendered, output){
     if(typeof(rendered) === "number"){
-      let component = output.components[rendered] || logError("encountered invalid component")
-      let html = this.toString(component, output.components)
-      output.container.innerHTML = html
-      Array.from(output.container.children).forEach(c => c.setAttribute(PHX_COMPONENT, rendered))
-      output.buffer += output.container.innerHTML
-    } else if(isObject(rendered)){
+      output.buffer += this.componentToString(output.components, rendered)
+   } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
       output.buffer += rendered
@@ -596,8 +614,11 @@ export let Browser = {
 
 export let DOM = {
   all(node, query, callback){
-    return Array.from(node.querySelectorAll(query)).forEach(callback)
+    let array = Array.from(node.querySelectorAll(query))
+    return callback ? array.forEach(callback) : array
   },
+
+  findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
 
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
@@ -721,18 +742,18 @@ export let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  patch(view, container, id, html){
+  patch(view, container, id, html, targetCID){
     let changes = {added: [], updated: [], discarded: [], phxChildrenAdded: []}
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
-    let diffContainer = this.buildDiffContainer(container, html, phxUpdate)
+    let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
 
-    morphdom(container, diffContainer.outerHTML, {
+    morphdom(targetContainer, diffContainer.outerHTML, {
       childrenOnly: true,
       onBeforeNodeAdded: function(el){
         //input handling
-        DOM.discardError(container, el)
+        DOM.discardError(targetContainer, el)
         return el
       },
       onNodeAdded: function(el){
@@ -742,17 +763,21 @@ export let DOM = {
         }
         changes.added.push(el)
       },
+      onNodeDiscarded(el){ changes.discarded.push(el) },
       onBeforeNodeDiscarded: function(el){
         // nested view handling
         if(DOM.isPhxChild(el)){
           view.liveSocket.destroyViewByEl(el)
           return true
         }
-        changes.discarded.push(el)
       },
       onBeforeElUpdated: function(fromEl, toEl) {
         if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
-        if(fromEl.getAttribute(phxUpdate) === "ignore"){ return false }
+        if(fromEl.getAttribute(phxUpdate) === "ignore"){
+          DOM.mergeAttrs(fromEl, toEl)
+          changes.updated.push({fromEl, toEl: fromEl})
+          return false
+        }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
 
         // nested view handling
@@ -765,7 +790,7 @@ export let DOM = {
 
         // input handling
         DOM.copyPrivates(toEl, fromEl)
-        DOM.discardError(container, toEl)
+        DOM.discardError(targetContainer, toEl)
 
         if(DOM.isTextualInput(fromEl) && fromEl === focused){
           DOM.mergeInputs(fromEl, toEl)
@@ -799,10 +824,31 @@ export let DOM = {
   //   the contents had been appended/prepended on full child node list
   // - precomputes updates on existing child ids within a prepend/append child list
   //   to allow existing nodes to be updated in place rather than reordered
-  buildDiffContainer(container, html, phxUpdate){
-    let diffContainer = this.cloneNode(container, html)
+  buildDiffContainer(container, html, phxUpdate, targetCID){
+    let targetContainer = container
+    let diffContainer = null
     let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
     let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
+    if(typeof(targetCID) === "number"){
+      targetContainer = container.querySelector(`[${PHX_COMPONENT}="${targetCID}"]`).parentNode
+      diffContainer = this.cloneNode(targetContainer)
+      let componentNodes = this.findComponentNodeList(diffContainer, targetCID)
+      let prevSibling = componentNodes[0].previousSibling
+      componentNodes.forEach(c => c.remove())
+      let nextSibling = prevSibling && prevSibling.nextSibling
+
+      if(prevSibling && nextSibling){
+        let template = document.createElement("template")
+        template.innerHTML = html
+        Array.from(template.content.childNodes).forEach(child => diffContainer.insertBefore(child, nextSibling))
+      } else if(prevSibling){
+        diffContainer.insertAdjacentHTML("beforeend", html)
+      } else {
+        diffContainer.insertAdjacentHTML("afterbegin", html)
+      }
+    } else {
+      diffContainer = this.cloneNode(container, html)
+    }
 
     DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
       let id = el.id || logError("append/prepend requires an ID, got: ", el)
@@ -823,7 +869,7 @@ export let DOM = {
       }
     })
 
-    return diffContainer
+    return [diffContainer, targetContainer]
   },
 
   mergeAttrs(target, source, exclude = []){
@@ -960,14 +1006,17 @@ export class View {
     })
   }
 
-  update(diff){
+  update(diff, cid){
     if(isEmpty(diff)){ return }
-    if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push(diff) }
+    if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
-    let html = Rendered.toString(this.rendered)
-    let changes = DOM.patch(this, this.el, this.id, html)
+    let html = typeof(cid) === "number" ?
+      Rendered.componentToString(this.rendered.components, cid) :
+      Rendered.toString(this.rendered)
+
+    let changes = DOM.patch(this, this.el, this.id, html, cid)
     if(changes.phxChildrenAdded.length > 0){
       this.joinNewChildren()
     }
@@ -1010,11 +1059,12 @@ export class View {
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
-    if(destroyedCIDs.length > 0){ this.pushComponentsDestroyed(destroyedCIDs) }
+
+    this.maybePushComponentsDestroyed(destroyedCIDs)
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(diff => this.update(diff))
+    this.pendingDiffs.forEach(({diff, cid}) => this.update(diff, cid))
     this.pendingDiffs = []
   }
 
@@ -1089,7 +1139,7 @@ export class View {
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.diff){ this.update(resp.diff) }
+        if(resp.diff){ this.update(resp.diff, payload.cid) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
         if(resp.external_live_redirect){ this.onExternalLiveRedirect(resp.external_live_redirect) }
@@ -1168,8 +1218,13 @@ export class View {
     }).receive("timeout", () => Browser.redirect(window.location.href))
   }
 
-  pushComponentsDestroyed(cids){
-    this.pushWithReply("cids_destroyed", {cids})
+  maybePushComponentsDestroyed(destroyedCIDs){
+    let completelyDestroyedCIDs = destroyedCIDs.filter(cid => {
+      return DOM.findComponentNodeList(this.el, cid).length === 0
+    })
+    if(completelyDestroyedCIDs.length > 0){
+      this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs})
+    }
   }
 
   ownsElement(el){
