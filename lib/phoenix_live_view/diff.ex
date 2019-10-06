@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
-  Renders a dif for the rendered struct in regards to the given socket.
+  Renders a diff for the rendered struct in regards to the given socket.
   """
   def render(%{fingerprints: prints} = socket, %Rendered{} = rendered, components) do
     {diff, prints, pending_components, components} =
@@ -252,9 +252,8 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component) do
-    socket
-    |> configure_socket_for_component(%{}, %{}, new_fingerprints())
-    |> View.maybe_call_mount!(component, [socket])
+    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+    View.maybe_call_mount!(socket, component, [socket])
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
