@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.ComponentTest do
            ] = DOM.parse(render(view))
   end
 
-  test "send cids_destroyed event when components are removed", %{conn: conn} do
+  test "tracks removals", %{conn: conn} do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
