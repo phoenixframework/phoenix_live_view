@@ -3,7 +3,11 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   @phx_component "data-phx-component"
 
-  def render_diff(rendered), do: render_diff(rendered, Map.get(rendered, :components, %{}))
+  @static :s
+  @dynamics :d
+  @components :c
+
+  def render_diff(rendered), do: render_diff(rendered, Map.get(rendered, @components, %{}))
 
   def render_diff(rendered, components) do
     rendered
@@ -13,16 +17,16 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   # for comprehension
-  defp to_output_buffer(%{dynamics: for_dynamics, static: statics}, components, acc) do
+  defp to_output_buffer(%{@dynamics => for_dynamics, @static => statics}, components, acc) do
     Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
       dynamics
       |> Enum.with_index()
-      |> Enum.into(%{static: statics}, fn {val, key} -> {key, val} end)
+      |> Enum.into(%{@static => statics}, fn {val, key} -> {key, val} end)
       |> to_output_buffer(components, acc)
     end)
   end
 
-  defp to_output_buffer(%{static: statics} = rendered, components, acc) do
+  defp to_output_buffer(%{@static => statics} = rendered, components, acc) do
     statics
     |> Enum.with_index()
     |> tl()

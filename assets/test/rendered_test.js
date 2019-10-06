@@ -1,5 +1,8 @@
 import { Rendered } from '../js/phoenix_live_view'
 
+const STATIC = "s"
+const DYNAMICS = "d"
+
 describe('Rendered', () => {
   describe('mergeDiff', () => {
     test('recursively merges two diffs', () => {
@@ -11,31 +14,31 @@ describe('Rendered', () => {
 
     test('returns the latter diff if it contains a `static` key', () => {
       const diff1 = { 0: ['a'], 1: ['b'] };
-      const diff2 = { 0: ['c'], static: 'c' };
+      const diff2 = { 0: ['c'], [STATIC]: 'c' };
       expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
     });
 
     test('replaces a string when a map is returned', () => {
-      const diff1 = { 0: { 0: '<button>Press Me</button>', static: '' } }
-      const diff2 = { 0: { 0: { 0: 'val', static: '' }, static: '' } }
+      const diff1 = { 0: { 0: '<button>Press Me</button>', [STATIC]: '' } }
+      const diff2 = { 0: { 0: { 0: 'val', [STATIC]: '' }, [STATIC]: '' } }
       expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
     });
 
     test('replaces a map when a string is returned', () => {
-      const diff1 = { 0: { 0: { 0: 'val', static: '' }, static: '' } }
-      const diff2 = { 0: { 0: '<button>Press Me</button>', static: '' } }
+      const diff1 = { 0: { 0: { 0: 'val', [STATIC]: '' }, [STATIC]: '' } }
+      const diff2 = { 0: { 0: '<button>Press Me</button>', [STATIC]: '' } }
       expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
     });
   });
 
   describe('isNewFingerprint', () => {
     test('returns true if `diff.static` is truthy', () => {
-      const diff = { static: ['<h2>'] };
+      const diff = { [STATIC]: ['<h2>'] };
       expect(Rendered.isNewFingerprint(diff)).toEqual(true);
     });
 
     test('returns false if `diff.static` is falsy', () => {
-      const diff = { static: undefined };
+      const diff = { [STATIC]: undefined };
       expect(Rendered.isNewFingerprint(diff)).toEqual(false);
     });
 
@@ -75,7 +78,7 @@ const simpleDiff1 = {
   '0': 'cooling',
   '1': 'cooling',
   '2': '07:15:03 PM',
-  static: [
+  [STATIC]: [
     '<div class="thermostat">\n  <div class="bar ',
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
@@ -91,7 +94,7 @@ const simpleDiffResult = {
   '0': 'cooling',
   '1': 'cooling',
   '2': '07:15:04 PM',
-  static: [
+  [STATIC]: [
     '<div class="thermostat">\n  <div class="bar ',
     '">\n    <a href="#" phx-click="toggle-mode">',
     '</a>\n    <span>',
@@ -102,16 +105,16 @@ const simpleDiffResult = {
 const deepDiff1 = {
   '0': {
     '0': {
-      dynamics: [['user1058', '1'], ['user99', '1']],
-      static: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
+      [DYNAMICS]: [['user1058', '1'], ['user99', '1']],
+      [STATIC]: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
     },
-    static: [
+    [STATIC]: [
       '  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n',
       '    </tbody>\n  </table>\n',
     ],
   },
   '1': {
-    dynamics: [
+    [DYNAMICS]: [
       [
         'asdf_asdf',
         'asdf@asdf.com',
@@ -121,7 +124,7 @@ const deepDiff1 = {
         '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
       ],
     ],
-    static: [
+    [STATIC]: [
       '    <tr>\n      <td>',
       '</td>\n      <td>',
       '</td>\n      <td>',
@@ -136,7 +139,7 @@ const deepDiff1 = {
 const deepDiff2 = {
   '0': {
     '0': {
-      dynamics: [['user1058', '2']],
+      [DYNAMICS]: [['user1058', '2']],
     },
   }
 };
@@ -144,16 +147,16 @@ const deepDiff2 = {
 const deepDiffResult = {
   '0': {
     '0': {
-      dynamics: [['user1058', '2']],
-      static: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
+      [DYNAMICS]: [['user1058', '2']],
+      [STATIC]: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
     },
-    static: [
+    [STATIC]: [
       '  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n',
       '    </tbody>\n  </table>\n',
     ],
   },
   '1': {
-    dynamics: [
+    [DYNAMICS]: [
       [
         'asdf_asdf',
         'asdf@asdf.com',
@@ -163,7 +166,7 @@ const deepDiffResult = {
         '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
       ],
     ],
-    static: [
+    [STATIC]: [
       '    <tr>\n      <td>',
       '</td>\n      <td>',
       '</td>\n      <td>',

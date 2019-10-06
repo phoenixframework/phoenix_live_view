@@ -41,6 +41,10 @@ const LINK_HEADER = "x-requested-with"
 const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
 const DEBOUNCE_PREV_KEY = "debounce-prev-key"
+// Rendered
+const DYNAMICS = "d"
+const STATIC = "s"
+const COMPONENTS = "c"
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -86,7 +90,7 @@ let recursiveMerge = (target, source) => {
     let val = source[key]
     let targetVal = target[key]
     if(isObject(val) && isObject(targetVal)){
-      if(targetVal.dynamics && !val.dynamics){ delete targetVal.dynamics}
+      if(targetVal[DYNAMICS] && !val[DYNAMICS]){ delete targetVal[DYNAMICS] }
       recursiveMerge(targetVal, val)
     } else {
       target[key] = val
@@ -96,7 +100,7 @@ let recursiveMerge = (target, source) => {
 
 export let Rendered = {
   mergeDiff(source, diff){
-    if(!diff.components && this.isNewFingerprint(diff)){
+    if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
       return diff
     } else {
       recursiveMerge(source, diff)
@@ -104,7 +108,7 @@ export let Rendered = {
     }
   },
 
-  isNewFingerprint(diff = {}){ return !!diff.static },
+  isNewFingerprint(diff = {}){ return !!diff[STATIC] },
 
   componentToString(components, cid){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
@@ -128,15 +132,15 @@ export let Rendered = {
   },
 
 
-  toString(rendered, components = rendered.components || {}){
+  toString(rendered, components = rendered[COMPONENTS] || {}){
     let output = {buffer: "", components: components}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
 
   toOutputBuffer(rendered, output){
-    if(rendered.dynamics){ return this.comprehensionToBuffer(rendered, output) }
-    let {static: statics} = rendered
+    if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, output) }
+    let {[STATIC]: statics} = rendered
 
     output.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
@@ -146,7 +150,7 @@ export let Rendered = {
   },
 
   comprehensionToBuffer(rendered, output){
-    let {dynamics: dynamics, static: statics} = rendered
+    let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
 
     for(let d = 0; d < dynamics.length; d++){
       let dynamic = dynamics[d]
@@ -1013,7 +1017,7 @@ export class View {
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = typeof(cid) === "number" ?
-      Rendered.componentToString(this.rendered.components, cid) :
+      Rendered.componentToString(this.rendered[COMPONENTS], cid) :
       Rendered.toString(this.rendered)
 
     let changes = DOM.patch(this, this.el, this.id, html, cid)

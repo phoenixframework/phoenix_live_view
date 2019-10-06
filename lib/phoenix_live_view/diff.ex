@@ -6,6 +6,10 @@ defmodule Phoenix.LiveView.Diff do
 
   alias Phoenix.LiveView.{View, Rendered, Comprehension, Component}
 
+  @components :c
+  @static :s
+  @dynamics :d
+
   @doc """
   Returns the diff component state.
   """
@@ -32,7 +36,7 @@ defmodule Phoenix.LiveView.Diff do
     if map_size(component_diffs) == 0 do
       {socket, diff, components}
     else
-      {socket, Map.put(diff, :components, component_diffs), components}
+      {socket, Map.put(diff, @components, component_diffs), components}
     end
   end
 
@@ -67,7 +71,7 @@ defmodule Phoenix.LiveView.Diff do
           |> fun.(component)
           |> render_component(id, cid, false, component_diffs, components)
 
-        {%{components: diffs}, components}
+        {%{@components => diffs}, components}
 
       %{} ->
         :error
@@ -117,7 +121,7 @@ defmodule Phoenix.LiveView.Diff do
     {_counter, diff, children, component_diffs, components} =
       traverse_dynamic(socket, dynamic, %{}, component_diffs, components)
 
-    {Map.put(diff, :static, static), {fingerprint, children}, component_diffs, components}
+    {Map.put(diff, @static, static), {fingerprint, children}, component_diffs, components}
   end
 
   defp traverse(
@@ -152,7 +156,7 @@ defmodule Phoenix.LiveView.Diff do
     {dynamics, {component_diffs, components}} =
       comprehension_to_iodata(socket, dynamics, component_diffs, components)
 
-    {%{dynamics: dynamics}, :comprehension, component_diffs, components}
+    {%{@dynamics => dynamics}, :comprehension, component_diffs, components}
   end
 
   defp traverse(
@@ -165,7 +169,7 @@ defmodule Phoenix.LiveView.Diff do
     {dynamics, {component_diffs, components}} =
       comprehension_to_iodata(socket, dynamics, component_diffs, components)
 
-    {%{dynamics: dynamics, static: static}, :comprehension, component_diffs, components}
+    {%{@dynamics => dynamics, @static => static}, :comprehension, component_diffs, components}
   end
 
   defp traverse(_socket, iodata, _, component_diffs, components) do
