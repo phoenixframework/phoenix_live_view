@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "comprehensions" do
-      rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
+      %{fingerprint: fingerprint} = rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
       {socket, full_render, _} = render(rendered)
 
       assert full_render == %{
@@ -113,7 +113,8 @@ defmodule Phoenix.LiveView.DiffTest do
                }
              }
 
-      assert socket.fingerprints == {rendered.fingerprint, %{1 => :comprehension}}
+      assert {^fingerprint, %{1 => comprehension_print}} = socket.fingerprints
+      assert is_integer(comprehension_print)
     end
   end
 
@@ -553,7 +554,7 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
-      rendered = components_template(%{components: components})
+      %{fingerprint: fingerprint} = rendered = components_template(%{components: components})
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -576,7 +577,7 @@ defmodule Phoenix.LiveView.DiffTest do
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
-      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+      assert {^fingerprint, %{0 => _}} = socket.fingerprints
 
       {_, cids_to_ids, 2} = components
       assert cids_to_ids[0] == {MyComponent, "index_0"}
@@ -596,7 +597,9 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
-      rendered = nested_components_template(%{components: components, ids: ["foo", "bar"]})
+      %{fingerprint: fingerprint} =
+        rendered = nested_components_template(%{components: components, ids: ["foo", "bar"]})
+
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -638,7 +641,7 @@ defmodule Phoenix.LiveView.DiffTest do
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
-      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+      assert {^fingerprint, %{0 => _}} = socket.fingerprints
 
       {_, cids_to_ids, 4} = components
       assert cids_to_ids[0] == {MyComponent, "foo-index_0"}
@@ -659,7 +662,9 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
-      rendered = rendered_components_template(%{components: components})
+      %{fingerprint: fingerprint} =
+        rendered = rendered_components_template(%{components: components})
+
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -691,7 +696,7 @@ defmodule Phoenix.LiveView.DiffTest do
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
-      assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
+      assert {^fingerprint, %{0 => _}} = socket.fingerprints
 
       {_, cids_to_ids, 2} = components
       assert cids_to_ids[0] == {MyComponent, "index_0"}

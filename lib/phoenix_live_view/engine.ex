@@ -32,11 +32,19 @@ defmodule Phoenix.LiveView.Comprehension do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamics]
+  defstruct [:static, :dynamics, :fingerprint]
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamics: [[iodata()]]
+          dynamics: [
+            [
+              iodata()
+              | Phoenix.LiveView.Rendered.t()
+              | Phoenix.LiveView.Comprehension.t()
+              | Phoenix.LiveView.Component.t()
+            ]
+          ],
+          fingerprint: integer()
         }
 
   defimpl Phoenix.HTML.Safe do
@@ -72,7 +80,11 @@ defmodule Phoenix.LiveView.Rendered do
   @type t :: %__MODULE__{
           static: [String.t()],
           dynamic: [
-            nil | iodata() | Phoenix.LiveView.Rendered.t() | Phoenix.LiveView.Comprehension.t()
+            nil
+            | iodata()
+            | Phoenix.LiveView.Rendered.t()
+            | Phoenix.LiveView.Comprehension.t()
+            | Phoenix.LiveView.Component.t()
           ],
           fingerprint: integer()
         }
@@ -421,6 +433,7 @@ defmodule Phoenix.LiveView.Engine do
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       {binaries, vars} = bins_and_vars(iodata)
+      fingerprint = static_fingerprint(binaries)
 
       exprs =
         Enum.map(exprs, fn
@@ -431,8 +444,11 @@ defmodule Phoenix.LiveView.Engine do
       for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
 
       quote do
-        for = unquote(for)
-        %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
+        %Phoenix.LiveView.Comprehension{
+          static: unquote(binaries),
+          dynamics: unquote(for),
+          fingerprint: unquote(fingerprint)
+        }
       end
     else
       _ -> to_safe(expr, true)
@@ -480,13 +496,7 @@ defmodule Phoenix.LiveView.Engine do
         end)
 
       {static, dynamic} = bins_and_vars(static)
-
-      # We compute the term to binary instead of passing all binaries
-      # because we need to take into account the positions of dynamics.
-      <<fingerprint::8*16>> =
-        static
-        |> :erlang.term_to_binary()
-        |> :erlang.md5()
+      fingerprint = static_fingerprint(static)
 
       rendered =
         quote do
@@ -664,6 +674,17 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   ## Callbacks
+
+  defp static_fingerprint(static) do
+    # We compute the term to binary instead of passing all binaries
+    # because we need to take into account the positions of dynamics.
+    <<fingerprint::8*16>> =
+      static
+      |> :erlang.term_to_binary()
+      |> :erlang.md5()
+
+    fingerprint
+  end
 
   @doc false
   defmacro to_safe(ast) do

@@ -142,7 +142,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert static == ["before\n", "\nafter\n"]
 
-      assert dynamic == [
+      assert [
                %Phoenix.LiveView.Comprehension{
                  static: ["\n  x: ", "\n  y: ", "\n"],
                  dynamics: [
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.EngineTest do
                    ["3", "4"]
                  ]
                }
-             ]
+             ] = dynamic
     end
   end
 

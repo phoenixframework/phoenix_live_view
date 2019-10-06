@@ -142,26 +142,22 @@ defmodule Phoenix.LiveView.Diff do
     {cid, fingerprints_tree, component_diffs, components}
   end
 
-  defp traverse(_socket, nil, fingerprint_tree, component_diffs, components) do
-    {nil, fingerprint_tree, component_diffs, components}
-  end
-
   defp traverse(
          socket,
-         %Comprehension{dynamics: dynamics},
-         :comprehension,
+         %Comprehension{dynamics: dynamics, fingerprint: fingerprint},
+         fingerprint,
          component_diffs,
          components
        ) do
     {dynamics, {component_diffs, components}} =
       comprehension_to_iodata(socket, dynamics, component_diffs, components)
 
-    {%{@dynamics => dynamics}, :comprehension, component_diffs, components}
+    {%{@dynamics => dynamics}, fingerprint, component_diffs, components}
   end
 
   defp traverse(
          socket,
-         %Comprehension{static: static, dynamics: dynamics},
+         %Comprehension{static: static, dynamics: dynamics, fingerprint: fingerprint},
          _,
          component_diffs,
          components
@@ -169,7 +165,11 @@ defmodule Phoenix.LiveView.Diff do
     {dynamics, {component_diffs, components}} =
       comprehension_to_iodata(socket, dynamics, component_diffs, components)
 
-    {%{@dynamics => dynamics, @static => static}, :comprehension, component_diffs, components}
+    {%{@dynamics => dynamics, @static => static}, fingerprint, component_diffs, components}
+  end
+
+  defp traverse(_socket, nil, fingerprint_tree, component_diffs, components) do
+    {nil, fingerprint_tree, component_diffs, components}
   end
 
   defp traverse(_socket, iodata, _, component_diffs, components) do
