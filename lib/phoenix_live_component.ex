@@ -89,6 +89,36 @@ defmodule Phoenix.LiveComponent do
   Components must only contain HTML tags at their root. At least one HTML
   tag must be present. It is not possible to have components that render
   only text or text mixed with tags at the root.
+
+  Another limitation of components is that they must always be change
+  tracked. For example, if you render a component inside `form_for`, like
+  this:
+
+      <%= form_for @changeset, fn f -> %>
+        <%= live_component SomeComponent, f: f %>
+      <% end %>
+
+  The component ends up enclosed by the form markup, where LiveView
+  cannot track it. In such cases, you may receive an error such as:
+
+      ** (ArgumentError) cannot convert component SomeComponen to HTML.
+      A component must always be returned directly as part of a LiveView template
+
+  In this particular case, this can be addressed by using the `form_for`
+  variant without anonymous functions:
+
+      <%= f = form_for @changeset %>
+        <%= live_component SomeComponent, f: f %>
+      </form>
+
+  This issue can also happen with other helpers, such as `content_tag`:
+
+      <%= content_tag :div do %>
+        <%= live_component SomeComponent, f: f %>
+      <% end %>
+
+  In this case, the solution is to not use `content_tag` and rely on LiveEEx
+  to build the markup.
   """
   defmacro __using__(_) do
     quote do
