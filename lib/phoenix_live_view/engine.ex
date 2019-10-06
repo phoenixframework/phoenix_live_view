@@ -445,7 +445,7 @@ defmodule Phoenix.LiveView.Engine do
       Enum.map_reduce(blocks, {tainted_vars, vars, assigns}, fn
         {:->, meta, [args, block]}, {tainted_vars, vars, assigns} ->
           {args, tainted_vars, vars, assigns} =
-            analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
+            analyze_list(args, tainted_vars, vars, assigns, [])
 
           {{:->, meta, [args, block]}, {tainted_vars, vars, assigns}}
       end)
