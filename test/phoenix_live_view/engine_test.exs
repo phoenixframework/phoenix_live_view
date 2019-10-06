@@ -256,8 +256,7 @@ defmodule Phoenix.LiveView.EngineTest do
                  ],
                  static: ["X: ", ""]
                }
-             ] =
-               changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
+             ] = changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
     test "renders dynamic if it uses assigns" do
@@ -468,7 +467,6 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders live engine with nested live view even on bad fingerprint" do
       rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
-
       {socket, _, _} = Diff.render(%Socket{}, rendered, Diff.new_components())
 
       socket =

@@ -998,7 +998,7 @@ defmodule Phoenix.LiveView do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name, kind: :view}
+    %{container: container, name: name, kind: :view, module: module}
   end
 
   @doc """
@@ -1085,9 +1085,51 @@ defmodule Phoenix.LiveView do
   a special meaning: whenever an `:id` is given, the component
   becomes stateful. Otherwise, `:id` is always set to nil.
   """
-  def live_component(%Socket{} = socket, component, assigns \\ [])
-      when is_atom(component) and is_list(assigns) do
-    _ = LiveView.View.load_live!(component, :component)
+  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
+    assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns)
+
+    quote do
+      Phoenix.LiveView.__live_component__(
+        unquote(socket),
+        unquote(component).__live__,
+        unquote(assigns)
+      )
+    end
+  end
+
+  defp maybe_do(value) do
+    if Keyword.keyword?(value), do: value[:do]
+  end
+
+  defp rewrite_do(nil, opts), do: opts
+
+  defp rewrite_do(do_block, opts) do
+    do_fun = rewrite_do(do_block)
+
+    if Keyword.keyword?(opts) do
+      Keyword.put(opts, :inner_content, do_fun)
+    else
+      quote do
+        Keyword.put(unquote(opts), :inner_content, unquote(do_fun))
+      end
+    end
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block) do
+    {:fn, meta, do_block}
+  end
+
+  defp rewrite_do(do_block) do
+    quote do
+      fn extra_assigns ->
+        var!(assigns) = Enum.into(extra_assigns, var!(assigns))
+        unquote(do_block)
+      end
+    end
+  end
+
+  def __live_component__(%Socket{} = socket, %{kind: :component, module: component}, assigns)
+      when is_list(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
@@ -1101,6 +1143,11 @@ defmodule Phoenix.LiveView do
     else
       LiveView.Diff.component_to_rendered(socket, component, assigns)
     end
+  end
+
+  def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
+      when is_list(assigns) do
+    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
   @doc """

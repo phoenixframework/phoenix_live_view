@@ -125,7 +125,7 @@ defmodule Phoenix.LiveComponent do
       import Phoenix.LiveView
 
       @doc false
-      def __live__, do: %{kind: :component}
+      def __live__, do: %{kind: :component, module: __MODULE__}
     end
   end
 

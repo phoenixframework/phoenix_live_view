@@ -378,6 +378,17 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
+  defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns) do
+    case Enum.split(args, -1) do
+      {args, [[do: do_block]]} ->
+        do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+        to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
+
+      _ ->
+        to_safe(expr, true)
+    end
+  end
+
   defp to_live_struct(
          {:if, meta, [condition, [{:do, do_block} | opts]]},
          tainted_vars,
@@ -422,6 +433,12 @@ defmodule Phoenix.LiveView.Engine do
       end
     else
       _ -> to_safe(expr, true)
+    end
+  end
+
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, tainted_vars, vars, assigns) do
+    for {:->, meta, [args, block]} <- blocks do
+      {:->, meta, [args, maybe_block_to_rendered(block, tainted_vars, vars, assigns)]}
     end
   end
 

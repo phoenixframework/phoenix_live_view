@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.DiffTest do
   use ExUnit.Case, async: true
-  import Phoenix.LiveView, only: [sigil_L: 2]
+
+  import Phoenix.LiveView,
+    only: [sigil_L: 2, live_component: 2, live_component: 3, live_component: 4]
 
   alias Phoenix.LiveView.{Socket, Diff, Rendered, Component}
 
@@ -157,47 +159,6 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  def component_template(assigns) do
-    ~L"""
-    <div>
-      <%= @component %>
-    </div>
-    """
-  end
-
-  def components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-        <%= index %>: <%= component %>
-      <% end %>
-    </div>
-    """
-  end
-
-  def nested_components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for prefix_id <- @ids do %>
-        <%= prefix_id %>
-        <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-          <%= index %>: <%= %{component | id: "#{prefix_id}-#{component.id}"} %>
-        <% end %>
-      <% end %>
-    </div>
-    """
-  end
-
-  def rendered_components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-        <%= index %>: <%= component_template(%{component: component}) %>
-      <% end %>
-    </div>
-    """
-  end
-
   defmodule MyComponent do
     use Phoenix.LiveComponent
 
@@ -245,6 +206,79 @@ defmodule Phoenix.LiveView.DiffTest do
       RENDER ONLY <%= @from %>
       """
     end
+  end
+
+  defmodule BlockComponent do
+    use Phoenix.LiveComponent
+
+    def mount(socket) do
+      {:ok, assign(socket, :id, "DEFAULT")}
+    end
+
+    def render(assigns) do
+      ~L"""
+      HELLO <%= @id %> <%= @inner_content.(value: 1) %>
+      HELLO <%= @id %> <%= @inner_content.(value: 2) %>
+      """
+    end
+  end
+
+  def component_template(assigns) do
+    ~L"""
+    <div>
+      <%= @component %>
+    </div>
+    """
+  end
+
+  def components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+        <%= index %>: <%= component %>
+      <% end %>
+    </div>
+    """
+  end
+
+  def nested_components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for prefix_id <- @ids do %>
+        <%= prefix_id %>
+        <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+          <%= index %>: <%= %{component | id: "#{prefix_id}-#{component.id}"} %>
+        <% end %>
+      <% end %>
+    </div>
+    """
+  end
+
+  def rendered_components_template(assigns) do
+    ~L"""
+    <div>
+      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+        <%= index %>: <%= component_template(%{component: component}) %>
+      <% end %>
+    </div>
+    """
+  end
+
+  def block_component_template(assigns) do
+    ~L"""
+    <%= live_component @socket, BlockComponent, id: "WORLD" do %>
+      WITH VALUE <%= @value %>
+    <% end %>
+    """
+  end
+
+  def explicit_block_component_template(assigns) do
+    ~L"""
+    <%= live_component @socket, BlockComponent, id: "WORLD" do %>
+      <% extra -> %>
+        WITH EXTRA <%= inspect(extra) %>
+    <% end %>
+    """
   end
 
   describe "stateless components" do
@@ -303,6 +337,50 @@ defmodule Phoenix.LiveView.DiffTest do
                  :static => ["RENDER ONLY ", "\n"]
                },
                :static => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert socket.fingerprints != {rendered.fingerprint, %{}}
+      assert components == Diff.new_components()
+    end
+
+    test "block tracking" do
+      rendered = block_component_template(%{socket: %Socket{}})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               :static => ["", "\n"],
+               0 => %{
+                 0 => "WORLD",
+                 1 => %{0 => "1", :static => ["\n  WITH VALUE ", "\n"]},
+                 2 => "WORLD",
+                 3 => %{0 => "2", :static => ["\n  WITH VALUE ", "\n"]},
+                 :static => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
+               }
+             }
+
+      assert socket.fingerprints != {rendered.fingerprint, %{}}
+      assert components == Diff.new_components()
+    end
+
+    test "explicit block tracking" do
+      rendered = explicit_block_component_template(%{socket: %Socket{}})
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "WORLD",
+                 1 => %{
+                   0 => "[value: 1]",
+                   :static => ["\n    WITH EXTRA ", "\n"]
+                 },
+                 2 => "WORLD",
+                 3 => %{
+                   0 => "[value: 2]",
+                   :static => ["\n    WITH EXTRA ", "\n"]
+                 },
+                 :static => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
+               },
+               :static => ["", "\n"]
              }
 
       assert socket.fingerprints != {rendered.fingerprint, %{}}
@@ -585,33 +663,33 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
-              0 => %{
-                dynamics: [
-                  [
-                    "0",
-                    %{0 => 0, :static => ["<div>\n  ", "\n</div>\n"]}
-                  ],
-                  [
-                    "1",
-                    %{0 => 1, :static => ["<div>\n  ", "\n</div>\n"]}
-                  ]
-                ],
-                static: ["\n    ", ": ", "\n  "]
-              },
-              :components => %{
-                0 => %{
-                  0 => "index_0",
-                  1 => "world",
-                  :static => ["FROM ", " ", "\n"]
-                },
-                1 => %{
-                  0 => "index_1",
-                  1 => "world",
-                  :static => ["FROM ", " ", "\n"]
-                }
-              },
-              :static => ["<div>\n  ", "\n</div>\n"]
-            }
+               0 => %{
+                 dynamics: [
+                   [
+                     "0",
+                     %{0 => 0, :static => ["<div>\n  ", "\n</div>\n"]}
+                   ],
+                   [
+                     "1",
+                     %{0 => 1, :static => ["<div>\n  ", "\n</div>\n"]}
+                   ]
+                 ],
+                 static: ["\n    ", ": ", "\n  "]
+               },
+               :components => %{
+                 0 => %{
+                   0 => "index_0",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 },
+                 1 => %{
+                   0 => "index_1",
+                   1 => "world",
+                   :static => ["FROM ", " ", "\n"]
+                 }
+               },
+               :static => ["<div>\n  ", "\n</div>\n"]
+             }
 
       assert socket.fingerprints == {rendered.fingerprint, %{0 => :comprehension}}
 
