@@ -102,6 +102,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     rendered
     |> render_diff()
     |> by_id(id)
+    |> Kernel.||([])
     |> all_attributes(@phx_component)
     |> case do
       [cid] -> {:ok, String.to_integer(cid)}

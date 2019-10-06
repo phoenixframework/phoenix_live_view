@@ -259,7 +259,6 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp component_handle_event(%{socket: socket, components: components} = state, cid, event, val, ref) do
-    IO.inspect({:cid, cid, event})
     {diffs, new_components} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do

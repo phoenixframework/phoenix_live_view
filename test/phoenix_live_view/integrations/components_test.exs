@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     # TODO find_child
 
-    html = render_click([view, "child-id", "jose"], "transform", %{"op" => "title-case"})
+    html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
 
     assert [
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
