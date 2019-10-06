@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.EngineTest do
     end
   end
 
-  describe "conditionals" do
+  describe "if" do
     test "converts if-do into rendered" do
       template = "<%= if true do %>one<%= @foo %>two<% end %>"
 
@@ -301,13 +301,13 @@ defmodule Phoenix.LiveView.EngineTest do
                changed(template, %{foo: 123, bar: true}, %{foo: true, bar: true})
 
       # bar = false
-      assert [[]] = changed(template, %{foo: 123, bar: false}, nil)
+      assert [""] = changed(template, %{foo: 123, bar: false}, nil)
 
       assert changed(template, %{foo: 123, bar: false}, %{}) ==
                [nil]
 
       assert changed(template, %{foo: 123, bar: false}, %{bar: true}) ==
-               [[]]
+               [""]
     end
 
     test "converts if-do-else into rendered with dynamic condition" do
@@ -375,6 +375,198 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "does not convert if-do-else in the wrong format" do
       template = "<%= if @bar do @foo else @baz end %>"
+
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, nil) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{}) == [nil]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true}) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{foo: true}) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{baz: true}) == ["123"]
+
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, nil) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{}) == [nil]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true}) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true}) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true}) == ["456"]
+    end
+  end
+
+  describe "case" do
+    test "converts case into rendered" do
+      template = "<%= case true do %><% true -> %>one<%= @foo %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "converts multiple case into rendered with dynamic condition" do
+      template =
+        "<%= case @bar do %><% true -> %>one<%= @foo %>two<% false -> %>uno<%= @baz %>dos<% end %>"
+
+      # bar = true
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, nil)
+
+      assert [nil] = changed(template, %{foo: 123, bar: true, baz: 456}, %{})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true, baz: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{baz: true})
+
+      # bar = false
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, nil)
+
+      assert [nil] = changed(template, %{foo: 123, bar: false, baz: 456}, %{})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true, bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true})
+
+      assert fptrue != fpfalse
+    end
+
+    test "converts nested case into rendered" do
+      template =
+        "<%= case true do %><% true -> %>one<%= case true do %><% true -> %>uno<%= @foo %>dos<% end %>two<% end %>"
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "does not convert cases in the wrong format" do
+      template = "<%= case @bar do true -> @foo; false -> @baz end %>"
+
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, nil) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{}) == [nil]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true}) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{foo: true}) == ["123"]
+      assert changed(template, %{foo: 123, bar: true, baz: 456}, %{baz: true}) == ["123"]
+
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, nil) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{}) == [nil]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true}) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true}) == ["456"]
+      assert changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true}) == ["456"]
+    end
+  end
+
+  describe "cond" do
+    test "converts cond into rendered" do
+      template = "<%= cond do %><% true -> %>one<%= @foo %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "converts multiple cond into rendered with dynamic condition" do
+      template =
+        "<%= cond do %><% @bar -> %>one<%= @foo %>two<% true -> %>uno<%= @baz %>dos<% end %>"
+
+      # bar = true
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, nil)
+
+      assert [nil] = changed(template, %{foo: 123, bar: true, baz: 456}, %{})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true, baz: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["one", "two"], fingerprint: ^fptrue}] =
+               changed(template, %{foo: 123, bar: true, baz: 456}, %{baz: true})
+
+      # bar = false
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, nil)
+
+      assert [nil] = changed(template, %{foo: 123, bar: false, baz: 456}, %{})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true, bar: true})
+
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true})
+
+      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+               changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true})
+
+      assert fptrue != fpfalse
+    end
+
+    test "converts nested cond into rendered" do
+      template =
+        "<%= cond do %><% true -> %>one<%= cond do %><% true -> %>uno<%= @foo %>dos<% end %>two<% end %>"
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "does not convert conds in the wrong format" do
+      template = "<%= cond do @bar -> @foo; true -> @baz end %>"
 
       assert changed(template, %{foo: 123, bar: true, baz: 456}, nil) == ["123"]
       assert changed(template, %{foo: 123, bar: true, baz: 456}, %{}) == [nil]

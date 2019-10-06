@@ -45,7 +45,8 @@ defmodule Phoenix.LiveView.Comprehension do
     end
 
     defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail], acc) do
-      to_iodata(static_tail, dynamic_tail, [Phoenix.HTML.Safe.to_iodata(struct), static_head | acc])
+      dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
+      to_iodata(static_tail, dynamic_tail, [dynamic_head, static_head | acc])
     end
 
     defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
@@ -381,6 +382,7 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns) do
     case Enum.split(args, -1) do
       {args, [[do: do_block]]} ->
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
         do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
         to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
 
@@ -389,24 +391,25 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct(
-         {:if, meta, [condition, [{:do, do_block} | opts]]},
-         tainted_vars,
-         vars,
-         assigns
-       ) do
-    {condition, tainted_vars, vars, assigns} = analyze(condition, tainted_vars, vars, assigns)
-    do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
-
-    # It is ok to convert else to an empty string as to_safe would do it anyway.
-    else_block =
-      maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars, vars, assigns)
-
-    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, true)
-  end
-
   defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, _vars, _assigns) do
     to_live_comprehension(expr)
+  end
+
+  defp to_live_struct({macro, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns)
+       when is_atom(macro) do
+    if classify_taint(macro, args) == :live do
+      {args, [opts]} = Enum.split(args, -1)
+      {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+
+      opts =
+        for {key, value} <- opts do
+          {key, maybe_block_to_rendered(value, tainted_vars, vars, assigns)}
+        end
+
+      to_safe({macro, meta, args ++ [opts]}, true)
+    else
+      to_safe(expr, true)
+    end
   end
 
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
@@ -437,6 +440,17 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, tainted_vars, vars, assigns) do
+    # First collect all vars across all assigns since cond/case may be linear
+    {blocks, {tainted_vars, vars, assigns}} =
+      Enum.map_reduce(blocks, {tainted_vars, vars, assigns}, fn
+        {:->, meta, [args, block]}, {tainted_vars, vars, assigns} ->
+          {args, tainted_vars, vars, assigns} =
+            analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
+
+          {{:->, meta, [args, block]}, {tainted_vars, vars, assigns}}
+      end)
+
+    # Now convert blocks
     for {:->, meta, [args, block]} <- blocks do
       {:->, meta, [args, maybe_block_to_rendered(block, tainted_vars, vars, assigns)]}
     end
@@ -511,8 +525,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Assigns tracking
 
-  @lexical_forms [:import, :alias, :require]
-
   # Here we compute if an expression should be always computed (:tainted),
   # never computed (no assigns) or some times computed based on assigns.
   #
@@ -581,51 +593,33 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  # Lexical forms always taint
-  defp analyze({lexical_form, _, [_]} = expr, tainted_vars, vars, assigns)
-       when lexical_form in @lexical_forms do
-    tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
-    {expr, tainted_vars, vars, assigns}
-  end
+  # Classify calls
+  defp analyze({left, meta, args} = expr, tainted_vars, vars, assigns) do
+    case classify_taint(left, args) do
+      :always ->
+        tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
+        {expr, tainted_vars, vars, assigns}
 
-  defp analyze({lexical_form, _, [_, _]} = expr, tainted_vars, vars, assigns)
-       when lexical_form in @lexical_forms do
-    tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
-    {expr, tainted_vars, vars, assigns}
-  end
+      :never ->
+        {args, tainted_vars, vars, assigns} =
+          analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
 
-  # with/for/fn never taint regardless of arity
-  defp analyze({special_form, meta, args}, tainted_vars, vars, assigns)
-       when special_form in [:with, :for, :fn] do
-    {args, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
+        {{left, meta, args}, tainted_vars, vars, assigns}
 
-    {{special_form, meta, args}, tainted_vars, vars, assigns}
-  end
+      :live ->
+        {args, [opts]} = Enum.split(args, -1)
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
 
-  # case/2 only taint first arg
-  defp analyze({:case, meta, [expr, blocks]}, tainted_vars, vars, assigns) do
-    {expr, tainted_vars, vars, assigns} = analyze(expr, tainted_vars, vars, assigns)
+        {opts, tainted_vars, vars, assigns} =
+          analyze_with_restricted_tainted_vars(opts, tainted_vars, vars, assigns)
 
-    {blocks, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(blocks, tainted_vars, vars, assigns)
+        {{left, meta, args ++ [opts]}, tainted_vars, vars, assigns}
 
-    {{:case, meta, [expr, blocks]}, tainted_vars, vars, assigns}
-  end
-
-  # try/receive/cond/&/1 never taint
-  defp analyze({special_form, meta, [blocks]}, tainted_vars, vars, assigns)
-       when special_form in [:try, :receive, :cond, :&] do
-    {blocks, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(blocks, tainted_vars, vars, assigns)
-
-    {{special_form, meta, [blocks]}, tainted_vars, vars, assigns}
-  end
-
-  defp analyze({left, meta, args}, tainted_vars, vars, assigns) do
-    {left, tainted_vars, vars, assigns} = analyze(left, tainted_vars, vars, assigns)
-    {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
-    {{left, meta, args}, tainted_vars, vars, assigns}
+      :none ->
+        {left, tainted_vars, vars, assigns} = analyze(left, tainted_vars, vars, assigns)
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+        {{left, meta, args}, tainted_vars, vars, assigns}
+    end
   end
 
   defp analyze({left, right}, tainted_vars, vars, assigns) do
@@ -756,4 +750,24 @@ defmodule Phoenix.LiveView.Engine do
         """
     end
   end
+
+  defp classify_taint(:case, [_, _]), do: :live
+  defp classify_taint(:if, [_, _]), do: :live
+  defp classify_taint(:cond, [_]), do: :live
+  defp classify_taint(:try, [_]), do: :live
+  defp classify_taint(:receive, [_]), do: :live
+
+  defp classify_taint(:alias, [_]), do: :always
+  defp classify_taint(:import, [_]), do: :always
+  defp classify_taint(:require, [_]), do: :always
+  defp classify_taint(:alias, [_, _]), do: :always
+  defp classify_taint(:import, [_, _]), do: :always
+  defp classify_taint(:require, [_, _]), do: :always
+
+  defp classify_taint(:&, [_]), do: :never
+  defp classify_taint(:with, _), do: :never
+  defp classify_taint(:for, _), do: :never
+  defp classify_taint(:fn, _), do: :never
+
+  defp classify_taint(_, _), do: :none
 end
