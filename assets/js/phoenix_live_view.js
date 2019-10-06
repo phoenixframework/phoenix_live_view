@@ -17,6 +17,7 @@ const PHX_LIVE_LINK = "data-phx-live-link"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
+const PHX_CLICKED_CLASS = "phx-clicked"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
@@ -463,7 +464,18 @@ export class LiveSocket {
       }
 
       this.owner(target, view => {
-        this.debounce(target, e, () => view.pushEvent("click", target, phxEvent, meta))
+        this.debounce(target, e, () => {
+          let text = target.innerText
+          target.classList.add(PHX_CLICKED_CLASS)
+          target.innerText = target.getAttribute(this.binding(PHX_DISABLE_WITH))
+          target.disabled = true
+
+          view.pushEvent("click", target, phxEvent, meta, () => {
+            target.classList.remove(PHX_CLICKED_CLASS)
+            target.innerText = text
+            target.disabled = false
+          })
+        })
       })
     }, false)
   }
@@ -1110,7 +1122,7 @@ export class View {
     return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
   }
 
-  pushEvent(type, el, phxEvent, meta){
+  pushEvent(type, el, phxEvent, meta, onReply){
     let prefix = this.binding("value-")
     for (let i = 0; i < el.attributes.length; i++){
       let name = el.attributes[i].name
@@ -1123,7 +1135,7 @@ export class View {
       event: phxEvent,
       value: meta,
       cid: this.targetComponentID(el) || undefined
-    })
+    }, onReply)
   }
 
   pushKey(keyElement, kind, phxEvent, meta){
