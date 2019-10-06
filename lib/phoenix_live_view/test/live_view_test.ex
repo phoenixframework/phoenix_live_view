@@ -203,7 +203,7 @@ defmodule Phoenix.LiveViewTest do
   def __isolated__(conn, endpoint, live_view, opts) do
     {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
 
-    put_in(conn.private[:phoenix_endpoint], endpoint || raise "no @endpoint set in test case")
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(conn.request_path, mount_opts, :noop)
   end
@@ -422,12 +422,16 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :focus, event, value)
   end
 
-  defp render_event([%View{} = view | path], type, event, value)  do
-    case GenServer.call(proxy_pid(view), {:render_event, proxy_topic(view), type, path, event, stringify(value)}) do
+  defp render_event([%View{} = view | path], type, event, value) do
+    case GenServer.call(
+           proxy_pid(view),
+           {:render_event, proxy_topic(view), type, path, event, stringify(value)}
+         ) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
   end
+
   defp render_event(%View{} = view, type, event, value) do
     render_event([view], type, event, value)
   end
@@ -460,6 +464,28 @@ defmodule Phoenix.LiveViewTest do
     |> Enum.map(fn %ClientProxy{} = proxy_view ->
       build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
     end)
+  end
+
+  @doc """
+  Finds the nested LiveView child given a parent.
+
+  ## Examples
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert clock_view = find_child(view, "clock")
+      assert render_click(clock_view, :snooze) =~ "snoozing"
+  """
+  def find_child(%View{} = parent, child_id) do
+    parent
+    |> children()
+    |> Enum.find(fn %ClientProxy{id: id} -> id == child_id end)
+    |> case do
+      %ClientProxy{} = proxy_view ->
+        build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
+
+      nil ->
+        nil
+    end
   end
 
   @doc """
