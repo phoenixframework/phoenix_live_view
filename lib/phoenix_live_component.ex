@@ -84,6 +84,59 @@ defmodule Phoenix.LiveComponent do
   called for a component, only the diff of the component is sent to the
   client, making them extremely efficient.
 
+  ## Live component blocks
+
+  When `live_component` is invoked, it is also possible to pass a `do/end`
+  block:
+
+      <%= live_component @socket, GridComponent, entries: @entries do %>
+        New entry: <%= @entry %>
+      <% end %>
+
+  The `do/end` will be available as an anonymous function in an assign named
+  `@inner_content`. The anonymous function must be invoked passing a new set
+  of assigns that will be merged into the user assigns. For example, the grid
+  component above, could be implemented as:
+
+      defmodule TableComponent do
+        use Phoenix.LiveComponent
+
+        def render(assigns) do
+          ~L"\""
+          <div class="grid">
+            <%= for entry <- @entries do %>
+              <div class="column">
+                <%= @inner_content.(entry: entry) %>
+              </div>
+            <% end %>
+          </div>
+          "\""
+        end
+      end
+
+  Where the `:entry` assign was injected into the `do/end` block. If you don't
+  want assigns to be automatically injected, you can pass a clause to the do/end
+  block:
+
+      <%= live_component @socket, GridComponent, entries: @entries do %>
+        <% new_assigns -> %>
+          New entry: <%= new_assigns[:entry] %>
+      <% end %>
+
+  ## Communicating with the parent LiveView
+
+  Since components run in the LiveView process, sending a message to the
+  parent LiveView is simply a matter of sending a message to `self()`:
+
+      send self(), :do_something
+
+  The parent LiveView can then handle said message in its `handle_info/2`
+  callback:
+
+      def handle_info(:do_something, socket) do
+        ...
+      end
+
   ## Limitations
 
   Components must only contain HTML tags at their root. At least one HTML
