@@ -477,7 +477,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->
-          {_, _, inner_html} = DOM.by_id(html_before, view.id)
+          {_, _, inner_html} = DOM.by_id!(html_before, view.id)
           patch_view(acc, view, inner_html)
 
         :error ->

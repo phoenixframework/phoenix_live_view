@@ -61,6 +61,7 @@ defmodule Phoenix.LiveView.ComponentTest do
            ] = DOM.parse(html)
 
     html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
+
     assert [
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
@@ -68,5 +69,47 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
               ["\n  Jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
+  end
+
+  defmodule MyComponent do
+    use Phoenix.LiveComponent
+
+    def mount(socket) do
+      send(self(), {:mount, socket})
+      {:ok, assign(socket, hello: "world")}
+    end
+
+    def update(assigns, socket) do
+      send(self(), {:update, assigns, socket})
+      {:ok, assign(socket, assigns)}
+    end
+
+    def render(assigns) do
+      send(self(), :render)
+
+      ~L"""
+      FROM <%= @from %> <%= @hello %>
+      """
+    end
+  end
+
+  defmodule RenderOnlyComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      RENDER ONLY <%= @from %>
+      """
+    end
+  end
+
+  describe "render_component/2" do
+    test "full life-cycle" do
+      assert render_component(MyComponent, from: "test") =~ "FROM test world"
+    end
+
+    test "render only" do
+      assert render_component(RenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
   end
 end

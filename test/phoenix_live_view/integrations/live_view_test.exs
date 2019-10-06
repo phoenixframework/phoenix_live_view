@@ -75,7 +75,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      {_tag, _attrs, children} = DOM.by_id(html, view.id)
+      {_tag, _attrs, children} = DOM.by_id!(html, view.id)
 
       assert children == [
                "The temp is: 1\n",

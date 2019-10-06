@@ -91,17 +91,14 @@ defmodule Phoenix.LiveViewTest.DOM do
     end)
   end
 
-  def by_id(html_tree, id) do
-    case Floki.find(html_tree, "##{id}") do
-      [node | _] -> node
-      [] -> nil
-    end
+  def by_id!(html_tree, id) do
+    by_id(html_tree, id) || raise ArgumentError, "could not find ID #{inspect id} in the DOM"
   end
 
   def fetch_cid_by_id(rendered, id) do
     rendered
     |> render_diff()
-    |> by_id(id)
+    |> by_id!(id)
     |> all_attributes(@phx_component)
     |> case do
       [cid] -> {:ok, String.to_integer(cid)}
@@ -164,13 +161,13 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   def inner_html(html, id) do
-    {_container, _attrs, children} = by_id(html, id)
+    {_container, _attrs, children} = by_id!(html, id)
     to_html(children)
   end
 
   defp find_component_ids(id, html) do
     html
-    |> by_id(id)
+    |> by_id!(id)
     |> all("[#{@phx_component}]")
     |> all_attributes(@phx_component)
   end
@@ -231,6 +228,13 @@ defmodule Phoenix.LiveViewTest.DOM do
     case by_id(html, id) do
       {_, _, children_before} -> children_before
       nil -> raise ArgumentError, "phx-update append/prepend containers require an ID"
+    end
+  end
+
+  defp by_id(html_tree, id) do
+    case Floki.find(html_tree, "##{id}") do
+      [node | _] -> node
+      [] -> nil
     end
   end
 end

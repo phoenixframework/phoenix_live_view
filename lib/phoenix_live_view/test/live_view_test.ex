@@ -122,6 +122,7 @@ defmodule Phoenix.LiveViewTest do
 
   require Phoenix.ConnTest
 
+  alias Phoenix.LiveView.{Diff, Socket}
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
@@ -327,6 +328,16 @@ defmodule Phoenix.LiveViewTest do
 
   defp fetch(%Plug.Conn.Unfetched{}), do: %{}
   defp fetch(other), do: other
+
+  @doc """
+  Mounts, updates and renders a component.
+  """
+  def render_component(component, assigns) do
+    %Socket{}
+    |> Diff.component_to_rendered(component, assigns)
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
 
   @doc """
   Sends a click event to the view and returns the rendered result.
