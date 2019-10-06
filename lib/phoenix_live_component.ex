@@ -4,7 +4,7 @@ defmodule Phoenix.LiveComponent do
   events in LiveView.
 
   Components are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.live_component/2` in a parent LiveView.
+  by calling `Phoenix.LiveView.live_component/3` in a parent LiveView.
   Components run inside the LiveView process, but may have their own
   state and event handling.
 
@@ -23,7 +23,7 @@ defmodule Phoenix.LiveComponent do
   When `use Phoenix.LiveComponent` is used, all functions in
   `Phoenix.LiveView` are imported. A component can be invoked as:
 
-      <%= live_component HeroComponent, content: @content %>
+      <%= live_component @socket, HeroComponent, content: @content %>
 
   Components come in two shapes, stateless or stateful. The component
   above is a stateless component. Of course, the component above is not
@@ -53,14 +53,14 @@ defmodule Phoenix.LiveComponent do
 
   A stateful component is a component that receives an `:id` on `live_component/2`:
 
-      <%= live_component HeroComponent, id: :hero, content: @content %>
+      <%= live_component @socket, HeroComponent, id: :hero, content: @content %>
 
   Stateful components are identified by the component module and their ID.
   Therefore, two different component module with the same ID are different
   components. This means we can often tie the component ID to some application
   based ID:
 
-      <%= live_component UserComponent, id: @user.id, user: @user %>
+      <%= live_component @socket, UserComponent, id: @user.id, user: @user %>
 
   Also note the given `:id` is not necessarily used as the DOM ID. If you
   want to set a DOM ID, it is your responsibility to set it when rendering:
@@ -95,7 +95,7 @@ defmodule Phoenix.LiveComponent do
   this:
 
       <%= form_for @changeset, fn f -> %>
-        <%= live_component SomeComponent, f: f %>
+        <%= live_component @socket, SomeComponent, f: f %>
       <% end %>
 
   The component ends up enclosed by the form markup, where LiveView
@@ -108,13 +108,13 @@ defmodule Phoenix.LiveComponent do
   variant without anonymous functions:
 
       <%= f = form_for @changeset %>
-        <%= live_component SomeComponent, f: f %>
+        <%= live_component @socket, SomeComponent, f: f %>
       </form>
 
   This issue can also happen with other helpers, such as `content_tag`:
 
       <%= content_tag :div do %>
-        <%= live_component SomeComponent, f: f %>
+        <%= live_component @socket, SomeComponent, f: f %>
       <% end %>
 
   In this case, the solution is to not use `content_tag` and rely on LiveEEx
