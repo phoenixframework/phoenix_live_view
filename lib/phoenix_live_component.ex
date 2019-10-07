@@ -114,14 +114,16 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  Where the `:entry` assign was injected into the `do/end` block. If you don't
-  want assigns to be automatically injected, you can pass a clause to the do/end
-  block:
+  Where the `:entry` assign was injected into the `do/end` block.
 
-      <%= live_component @socket, GridComponent, entries: @entries do %>
-        <% new_assigns -> %>
-          New entry: <%= new_assigns[:entry] %>
-      <% end %>
+  The approach above is the preferred one when passing blocks to `do/end`.
+  However, if you are outside of a .leex template and you want to invoke a
+  component passing `do/end` blocks, you will have to explicitly handle the
+  assigns by giving it a clause:
+
+      live_component @socket, GridComponent, entries: @entries do
+        new_assigns -> "New entry: " <> new_assigns[:entry]
+      end
 
   ## Communicating with the parent LiveView
 

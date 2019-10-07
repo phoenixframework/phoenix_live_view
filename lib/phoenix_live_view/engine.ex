@@ -288,14 +288,14 @@ defmodule Phoenix.LiveView.Engine do
     quote do
       require Phoenix.LiveView.Engine
 
-      {fingerprint, __prints__} =
+      {fingerprint, prints} =
         Process.get(unquote(@pdict_key)) ||
           case var!(assigns) do
             %{socket: %{fingerprints: fingerprints}} -> fingerprints
             _ -> {nil, %{}}
           end
 
-      __changed__ =
+      changed =
         case var!(assigns) do
           %{socket: %{changed: changed}} when unquote(fingerprint) == fingerprint -> changed
           _ -> nil
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defp maybe_pdict_fingerprint(ast, true, counter) do
     quote do
-      case __prints__ do
+      case prints do
         %{unquote(counter) => {_, _} = print} -> Process.put(unquote(@pdict_key), print)
         %{} -> :ok
       end
@@ -354,7 +354,7 @@ defmodule Phoenix.LiveView.Engine do
   defp to_conditional_var([], var, live_struct) do
     quote do
       unquote(var) =
-        case __changed__ do
+        case changed do
           %{} -> nil
           _ -> unquote(live_struct)
         end
@@ -374,7 +374,7 @@ defmodule Phoenix.LiveView.Engine do
   defp changed_assigns(assigns) do
     assigns
     |> Enum.map(fn assign ->
-      quote do: unquote(__MODULE__).changed_assign?(__changed__, unquote(assign))
+      quote do: unquote(__MODULE__).changed_assign?(changed, unquote(assign))
     end)
     |> Enum.reduce(&{:or, [], [&1, &2]})
   end

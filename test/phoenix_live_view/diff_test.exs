@@ -101,7 +101,9 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "comprehensions" do
-      %{fingerprint: fingerprint} = rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
+      %{fingerprint: fingerprint} =
+        rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
+
       {socket, full_render, _} = render(rendered)
 
       assert full_render == %{
@@ -361,6 +363,17 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert socket.fingerprints != {rendered.fingerprint, %{}}
       assert components == Diff.new_components()
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "WORLD",
+                 1 => %{0 => "1"},
+                 2 => "WORLD",
+                 3 => %{0 => "2"}
+               }
+             }
     end
 
     test "explicit block tracking" do

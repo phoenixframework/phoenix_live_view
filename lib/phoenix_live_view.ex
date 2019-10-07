@@ -1086,7 +1086,7 @@ defmodule Phoenix.LiveView do
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
   defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
-    assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns)
+    assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns, __CALLER__)
 
     quote do
       Phoenix.LiveView.__live_component__(
@@ -1101,10 +1101,10 @@ defmodule Phoenix.LiveView do
     if Keyword.keyword?(value), do: value[:do]
   end
 
-  defp rewrite_do(nil, opts), do: opts
+  defp rewrite_do(nil, opts, _caller), do: opts
 
-  defp rewrite_do(do_block, opts) do
-    do_fun = rewrite_do(do_block)
+  defp rewrite_do(do_block, opts, caller) do
+    do_fun = rewrite_do(do_block, caller)
 
     if Keyword.keyword?(opts) do
       Keyword.put(opts, :inner_content, do_fun)
@@ -1115,14 +1115,27 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  defp rewrite_do([{:->, meta, _} | _] = do_block) do
+  defp rewrite_do([{:->, meta, _} | _] = do_block, _caller) do
     {:fn, meta, do_block}
   end
 
-  defp rewrite_do(do_block) do
+  defp rewrite_do(do_block, caller) do
+    unless Macro.Env.has_var?(caller, {:assigns, nil}) and
+             Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
+      raise ArgumentError,
+            "cannot use live_compoment do/end blocks because we could not find existing assigns. " <>
+              "Please pass a clause to do/end instead"
+    end
+
     quote do
       fn extra_assigns ->
         var!(assigns) = Enum.into(extra_assigns, var!(assigns))
+
+        var!(changed, Phoenix.LiveView.Engine) =
+          if var = var!(changed, Phoenix.LiveView.Engine) do
+            for {key, _} <- extra_assigns, into: var, do: {key, true}
+          end
+
         unquote(do_block)
       end
     end
