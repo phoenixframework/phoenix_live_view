@@ -69,7 +69,7 @@ defmodule Phoenix.LiveView.Channel do
     new_components =
       Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
 
-    {:noreply, %{state | components: new_components}}
+    {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do

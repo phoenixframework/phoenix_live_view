@@ -170,6 +170,11 @@ export let Rendered = {
     } else {
       output.buffer += rendered
     }
+  },
+
+  pruneCIDs(rendered, cids){
+    cids.forEach(cid => delete rendered[COMPONENTS][cid])
+    return rendered
   }
 }
 
@@ -1059,7 +1064,7 @@ export class View {
     })
     changes.discarded.forEach(el => {
       let cid = this.componentID(el)
-      if(typeof(cid) === "number"){ destroyedCIDs.push(cid) }
+      if(typeof(cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
@@ -1227,8 +1232,9 @@ export class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
     if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs})
-      // todo on ack, delete components from rendered struct if they are not present
+      this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
+        this.rendered = Rendered.pruneCIDs(this.rendered, completelyDestroyedCIDs)
+      })
     }
   }
 
