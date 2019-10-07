@@ -28,8 +28,11 @@ defmodule Phoenix.LiveView.Diff do
   Renders a dif for the rendered struct in regards to the given socket.
   """
   def render(%{fingerprints: prints} = socket, %Rendered{} = rendered, components) do
-    {diff, prints, component_diffs, components} =
+    {diff, prints, pending_components, components} =
       traverse(socket, rendered, prints, %{}, components)
+
+    {component_diffs, components} =
+      render_pending_components(socket, pending_components, %{}, components)
 
     socket = %{socket | fingerprints: prints}
 
@@ -65,13 +68,16 @@ defmodule Phoenix.LiveView.Diff do
       %{^cid => {component, _} = id} ->
         {^cid, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
-        {diffs, components} =
+        {pending_components, component_diffs, components} =
           socket
           |> configure_socket_for_component(assigns, private, fingerprints)
           |> fun.(component)
-          |> render_component(id, cid, false, component_diffs, components)
+          |> render_component(id, cid, false, %{}, component_diffs, components)
 
-        {%{@components => diffs}, components}
+        {component_diffs, components} =
+          render_pending_components(socket, pending_components, component_diffs, components)
+
+        {%{@components => component_diffs}, components}
 
       %{} ->
         :error
@@ -102,85 +108,91 @@ defmodule Phoenix.LiveView.Diff do
          socket,
          %Rendered{fingerprint: fingerprint, dynamic: dynamic},
          {fingerprint, children},
-         component_diffs,
+         pending_components,
          components
        ) do
-    {_counter, diff, children, component_diffs, components} =
-      traverse_dynamic(socket, dynamic, children, component_diffs, components)
+    {_counter, diff, children, pending_components, components} =
+      traverse_dynamic(socket, dynamic, children, pending_components, components)
 
-    {diff, {fingerprint, children}, component_diffs, components}
+    {diff, {fingerprint, children}, pending_components, components}
   end
 
   defp traverse(
          socket,
          %Rendered{fingerprint: fingerprint, static: static, dynamic: dynamic},
          _,
-         component_diffs,
+         pending_components,
          components
        ) do
-    {_counter, diff, children, component_diffs, components} =
-      traverse_dynamic(socket, dynamic, %{}, component_diffs, components)
+    {_counter, diff, children, pending_components, components} =
+      traverse_dynamic(socket, dynamic, %{}, pending_components, components)
 
-    {Map.put(diff, @static, static), {fingerprint, children}, component_diffs, components}
+    {Map.put(diff, @static, static), {fingerprint, children}, pending_components, components}
   end
 
   defp traverse(
          socket,
          %Component{id: nil, component: component, assigns: assigns},
          fingerprints_tree,
-         component_diffs,
+         pending_components,
          components
        ) do
     rendered = component_to_rendered(socket, component, assigns)
-    traverse(socket, rendered, fingerprints_tree, component_diffs, components)
+    traverse(socket, rendered, fingerprints_tree, pending_components, components)
   end
 
-  defp traverse(socket, %Component{} = component, fingerprints_tree, component_diffs, components) do
-    {cid, component_diffs, components} =
-      traverse_component(socket, component, component_diffs, components)
+  defp traverse(
+         socket,
+         %Component{} = component,
+         fingerprints_tree,
+         pending_components,
+         components
+       ) do
+    {cid, pending_components, components} =
+      traverse_component(socket, component, pending_components, components)
 
-    {cid, fingerprints_tree, component_diffs, components}
+    {cid, fingerprints_tree, pending_components, components}
   end
 
   defp traverse(
          socket,
          %Comprehension{dynamics: dynamics, fingerprint: fingerprint},
          fingerprint,
-         component_diffs,
+         pending_components,
          components
        ) do
-    {dynamics, {component_diffs, components}} =
-      comprehension_to_iodata(socket, dynamics, component_diffs, components)
+    {dynamics, {pending_components, components}} =
+      comprehension_to_iodata(socket, dynamics, pending_components, components)
 
-    {%{@dynamics => dynamics}, fingerprint, component_diffs, components}
+    {%{@dynamics => dynamics}, fingerprint, pending_components, components}
   end
 
   defp traverse(
          socket,
          %Comprehension{static: static, dynamics: dynamics, fingerprint: fingerprint},
          _,
-         component_diffs,
+         pending_components,
          components
        ) do
-    {dynamics, {component_diffs, components}} =
-      comprehension_to_iodata(socket, dynamics, component_diffs, components)
+    {dynamics, {pending_components, components}} =
+      comprehension_to_iodata(socket, dynamics, pending_components, components)
 
-    {%{@dynamics => dynamics, @static => static}, fingerprint, component_diffs, components}
+    {%{@dynamics => dynamics, @static => static}, fingerprint, pending_components, components}
   end
 
-  defp traverse(_socket, nil, fingerprint_tree, component_diffs, components) do
-    {nil, fingerprint_tree, component_diffs, components}
+  defp traverse(_socket, nil, fingerprint_tree, pending_components, components) do
+    {nil, fingerprint_tree, pending_components, components}
   end
 
-  defp traverse(_socket, iodata, _, component_diffs, components) do
-    {IO.iodata_to_binary(iodata), nil, component_diffs, components}
+  defp traverse(_socket, iodata, _, pending_components, components) do
+    {IO.iodata_to_binary(iodata), nil, pending_components, components}
   end
 
-  defp traverse_dynamic(socket, dynamic, children, component_diffs, components) do
-    Enum.reduce(dynamic, {0, %{}, children, component_diffs, components}, fn
-      entry, {counter, diff, children, component_diffs, components} ->
-        {serialized, child_fingerprint, component_diffs, components} =
-          traverse(socket, entry, Map.get(children, counter), component_diffs, components)
+  defp traverse_dynamic(socket, dynamic, children, pending_components, components) do
+    Enum.reduce(dynamic, {0, %{}, children, pending_components, components}, fn
+      entry, {counter, diff, children, pending_components, components} ->
+        {serialized, child_fingerprint, pending_components, components} =
+          traverse(socket, entry, Map.get(children, counter), pending_components, components)
 
         diff =
           if serialized do
@@ -196,17 +208,17 @@ defmodule Phoenix.LiveView.Diff do
             Map.delete(children, counter)
           end
 
-        {counter + 1, diff, children, component_diffs, components}
+        {counter + 1, diff, children, pending_components, components}
     end)
   end
 
-  defp comprehension_to_iodata(socket, dynamics, component_diffs, components) do
-    Enum.map_reduce(dynamics, {component_diffs, components}, fn list, acc ->
-      Enum.map_reduce(list, acc, fn rendered, {component_diffs, components} ->
-        {diff, _, component_diffs, components} =
-          traverse(socket, rendered, {nil, %{}}, component_diffs, components)
+  defp comprehension_to_iodata(socket, dynamics, pending_components, components) do
+    Enum.map_reduce(dynamics, {pending_components, components}, fn list, acc ->
+      Enum.map_reduce(list, acc, fn rendered, {pending_components, components} ->
+        {diff, _, pending_components, components} =
+          traverse(socket, rendered, {nil, %{}}, pending_components, components)
 
-        {diff, {component_diffs, components}}
+        {diff, {pending_components, components}}
       end)
     end)
   end
@@ -216,51 +228,26 @@ defmodule Phoenix.LiveView.Diff do
   defp traverse_component(
          socket,
          %Component{id: id, assigns: assigns, component: component},
-         component_diffs,
+         pending_components,
          components
        ) do
-    id = {component, id}
-    {socket, cid, new?, components} = ensure_component(socket, id, components)
-
-    {component_diffs, components} =
-      socket
-      |> View.maybe_call_update!(component, assigns)
-      |> render_component(id, cid, new?, component_diffs, components)
-
-    {cid, component_diffs, components}
-  end
-
-  defp render_component(socket, {component, _} = id, cid, new?, component_diffs, components) do
-    {socket, component_diffs, {id_to_components, cid_to_ids, uuids}} =
-      if new? or View.changed?(socket) do
-        rendered = View.to_rendered(socket, component)
-
-        {diff, component_prints, component_diffs, components} =
-          traverse(socket, rendered, socket.fingerprints, component_diffs, components)
-
-        socket = View.clear_changed(%{socket | fingerprints: component_prints})
-        component_diffs = Map.put(component_diffs, cid, diff)
-        {socket, component_diffs, components}
-      else
-        {socket, component_diffs, components}
-      end
-
-    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
-    {component_diffs, {id_to_components, cid_to_ids, uuids}}
+    {cid, new?, components} = ensure_component(socket, {component, id}, components)
+    entry = {id, new?, assigns}
+    pending_components = Map.update(pending_components, component, [entry], &[entry | &1])
+    {cid, pending_components, components}
   end
 
   defp ensure_component(socket, {component, _} = id, {id_to_components, cid_to_ids, uuids}) do
     case id_to_components do
-      %{^id => {cid, assigns, private, component_prints}} ->
-        socket = configure_socket_for_component(socket, assigns, private, component_prints)
-        {socket, cid, false, {id_to_components, cid_to_ids, uuids}}
+      %{^id => {cid, _assigns, _private, _component_prints}} ->
+        {cid, false, {id_to_components, cid_to_ids, uuids}}
 
       %{} ->
         cid = uuids
         socket = mount_component(socket, component)
         id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
         cid_to_ids = Map.put(cid_to_ids, cid, id)
-        {socket, cid, true, {id_to_components, cid_to_ids, uuids + 1}}
+        {cid, true, {id_to_components, cid_to_ids, uuids + 1}}
     end
   end
 
@@ -281,5 +268,53 @@ defmodule Phoenix.LiveView.Diff do
 
   defp dump_component(socket, cid) do
     {cid, socket.assigns, socket.private, socket.fingerprints}
+  end
+
+  ## Component rendering
+
+  defp render_pending_components(_, pending_components, component_diffs, components)
+       when map_size(pending_components) == 0 do
+    {component_diffs, components}
+  end
+
+  defp render_pending_components(socket, pending_components, component_diffs, components) do
+    {id_to_components, _, _} = components
+    acc = {%{}, component_diffs, components}
+
+    {pending_components, component_diffs, components} =
+      Enum.reduce(pending_components, acc, fn {component, entries}, acc ->
+        Enum.reduce(entries, acc, fn {id, new?, new_assigns}, acc ->
+          {pending_components, component_diffs, components} = acc
+          id = {component, id}
+          %{^id => {cid, assigns, private, component_prints}} = id_to_components
+
+          socket
+          |> configure_socket_for_component(assigns, private, component_prints)
+          |> View.maybe_call_update!(component, new_assigns)
+          |> render_component(id, cid, new?, pending_components, component_diffs, components)
+        end)
+      end)
+
+    render_pending_components(socket, pending_components, component_diffs, components)
+  end
+
+  defp render_component(socket, id, cid, new?, pending_components, component_diffs, components) do
+    {component, _} = id
+
+    {socket, pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}} =
+      if new? or View.changed?(socket) do
+        rendered = View.to_rendered(socket, component)
+
+        {diff, component_prints, pending_components, components} =
+          traverse(socket, rendered, socket.fingerprints, %{}, components)
+
+        socket = View.clear_changed(%{socket | fingerprints: component_prints})
+        {socket, pending_components, Map.put(component_diffs, cid, diff), components}
+      else
+        {socket, pending_components, component_diffs, components}
+      end
+
+    id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
+    {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
   end
 end
