@@ -32,7 +32,7 @@ defmodule Phoenix.LiveComponent do
 
   ## Stateless components life-cycle
 
-  When `live_component` is called, the following callbacks will invoked
+  When `live_component` is called, the following callbacks will be invoked
   in the component:
 
       mount(socket) -> update(assigns, socket) -> render(assigns)
@@ -154,7 +154,7 @@ defmodule Phoenix.LiveComponent do
   The component ends up enclosed by the form markup, where LiveView
   cannot track it. In such cases, you may receive an error such as:
 
-      ** (ArgumentError) cannot convert component SomeComponen to HTML.
+      ** (ArgumentError) cannot convert component SomeComponent to HTML.
       A component must always be returned directly as part of a LiveView template
 
   In this particular case, this can be addressed by using the `form_for`
