@@ -21,13 +21,14 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     {:ok, view, _html} = live(conn, "/components")
 
-    assert [
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
-              ["\n  chris says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
-              ["\n  jose says hi with socket: true\n"]}
-           ] = DOM.parse(render(view))
+    assert {"div", _,
+            [
+              {"div", [], ["\n  unknown says hi with socket: true\n"]},
+              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+               ["\n  chris says hi with socket: true\n"]},
+              {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+               ["\n  jose says hi with socket: true\n"]}
+            ]} = DOM.parse(render(view))
   end
 
   test "tracks removals", %{conn: conn} do
@@ -60,9 +61,6 @@ defmodule Phoenix.LiveView.ComponentTest do
               ["\n  jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
-
-    # TODO find_child
-
     html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
 
     assert [
@@ -72,6 +70,37 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
               ["\n  Jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
+
+    html = render_click([view, "jose"], "transform", %{"op" => "dup"})
+
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              [
+                "\n  Jose says hi with socket: true",
+                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                 ["\n  Jose-dup says hi with socket: true\n"]}
+              ]}
+           ] = DOM.parse(html)
+
+    html = render_click([view, "jose", "Jose-dup"], "transform", %{"op" => "upcase"})
+
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              [
+                "\n  Jose says hi with socket: true",
+                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                 ["\n  JOSE-DUP says hi with socket: true\n"]}
+              ]}
+           ] = DOM.parse(html)
+
+    assert render([view, "jose", "Jose-dup"]) ==
+             "<div id=\"Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
   end
 
   defmodule MyComponent do

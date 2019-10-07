@@ -96,17 +96,17 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   def by_id!(html_tree, id) do
-    by_id(html_tree, id) || raise ArgumentError, "could not find ID #{inspect id} in the DOM"
+    by_id(html_tree, id) || raise ArgumentError, "could not find ID #{inspect(id)} in the DOM"
   end
 
-  def fetch_cid_by_id(rendered, id) do
+  def cid_by_id(rendered, id) do
     rendered
     |> render_diff()
     |> by_id!(id)
     |> all_attributes(@phx_component)
     |> case do
-      [cid] -> {:ok, String.to_integer(cid)}
-      [] -> :error
+      [cid] -> String.to_integer(cid)
+      [] -> nil
     end
   end
 
@@ -156,6 +156,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     cids_after = find_component_ids(id, new_html)
     deleted_cids = for cid <- cids_before -- cids_after, do: String.to_integer(cid)
+
     deleted_ids =
       html
       |> all(Enum.join(Enum.map(deleted_cids, &"[#{@phx_component}=\"#{&1}\"]"), ", "))
@@ -164,9 +165,19 @@ defmodule Phoenix.LiveViewTest.DOM do
     {new_html, deleted_cids, deleted_ids}
   end
 
+  def child_nodes({_, _, children}), do: children
+
   def inner_html(html, id) do
-    {_container, _attrs, children} = by_id!(html, id)
-    to_html(children)
+    html
+    |> by_id!(id)
+    |> child_nodes()
+    |> to_html()
+  end
+
+  def outer_html(html, id) do
+    html
+    |> by_id!(id)
+    |> to_html()
   end
 
   defp find_component_ids(id, html) do
@@ -232,6 +243,14 @@ defmodule Phoenix.LiveViewTest.DOM do
     case by_id(html, id) do
       {_, _, children_before} -> children_before
       nil -> raise ArgumentError, "phx-update append/prepend containers require an ID"
+    end
+  end
+
+  defp by_id(html_tree, ids) when is_list(ids) do
+    selector = Enum.join(Enum.map(ids, fn id -> "##{id}" end), " ")
+    case Floki.find(html_tree, selector) do
+      [node | _] -> node
+      [] -> nil
     end
   end
 

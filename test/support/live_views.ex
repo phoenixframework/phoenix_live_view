@@ -340,13 +340,13 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
   def mount(socket) do
-    {:ok, assign(socket, name: "unknown")}
+    {:ok, assign(socket, name: "unknown", dup_name: nil)}
   end
 
   def render(assigns) do
     ~L"""
     <div id="<%= @id %>">
-      <%= @name %> says hi with socket: <%= !!@socket %>
+      <%= @name %> says hi with socket: <%= !!@socket %><%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
     """
   end
@@ -361,6 +361,9 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
          update(socket, :name, fn <<first::binary-size(1), rest::binary>> ->
            String.upcase(first) <> rest
          end)}
+
+      "dup" ->
+        {:noreply, assign(socket, :dup_name, socket.assigns.name <> "-dup")}
     end
   end
 end

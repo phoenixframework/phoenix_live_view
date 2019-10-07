@@ -1228,6 +1228,7 @@ export class View {
     })
     if(completelyDestroyedCIDs.length > 0){
       this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs})
+      // todo on ack, delete components from rendered struct if they are not present
     }
   }
 
