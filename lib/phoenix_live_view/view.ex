@@ -167,16 +167,13 @@ defmodule Phoenix.LiveView.View do
     %Socket{socket | redirected: nil}
   end
 
-  @doc """
-  Loads the `view_or_component`, asserting its `kind`.
-  """
-  def load_live!(view_or_component, kind) do
+  defp load_live!(view_or_component, kind) do
     case view_or_component.__live__() do
       %{kind: ^kind} = config ->
         config
 
-      %{kind: kind} ->
-        raise "expected #{inspect(view_or_component)} to be a #{kind}, but it is a #{kind}"
+      %{kind: other} ->
+        raise "expected #{inspect(view_or_component)} to be a #{kind}, but it is a #{other}"
     end
   end
 
@@ -636,8 +633,12 @@ defmodule Phoenix.LiveView.View do
     """
   end
 
-  defp do_mount_opt(socket, :temporary_assigns, keys) when is_list(keys) do
-    temp_assigns = for(key <- keys, into: %{}, do: {key, nil})
+  defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
+    unless Keyword.keyword?(temp_assigns) do
+      raise ":temporary_assigns must be keyword list"
+    end
+
+    temp_assigns = Map.new(temp_assigns)
 
     %Socket{
       socket

@@ -32,16 +32,29 @@ defmodule Phoenix.LiveView.Comprehension do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamics]
+  defstruct [:static, :dynamics, :fingerprint]
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamics: [[iodata()]]
+          dynamics: [
+            [
+              iodata()
+              | Phoenix.LiveView.Rendered.t()
+              | Phoenix.LiveView.Comprehension.t()
+              | Phoenix.LiveView.Component.t()
+            ]
+          ],
+          fingerprint: integer()
         }
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
       for dynamic <- dynamics, do: to_iodata(static, dynamic, [])
+    end
+
+    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail], acc) do
+      dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
+      to_iodata(static_tail, dynamic_tail, [dynamic_head, static_head | acc])
     end
 
     defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
@@ -67,7 +80,11 @@ defmodule Phoenix.LiveView.Rendered do
   @type t :: %__MODULE__{
           static: [String.t()],
           dynamic: [
-            nil | iodata() | Phoenix.LiveView.Rendered.t() | Phoenix.LiveView.Comprehension.t()
+            nil
+            | iodata()
+            | Phoenix.LiveView.Rendered.t()
+            | Phoenix.LiveView.Comprehension.t()
+            | Phoenix.LiveView.Component.t()
           ],
           fingerprint: integer()
         }
@@ -77,8 +94,8 @@ defmodule Phoenix.LiveView.Rendered do
       to_iodata(static, dynamic, [])
     end
 
-    def to_iodata(%Phoenix.LiveView.Comprehension{} = for) do
-      Phoenix.HTML.Safe.Phoenix.LiveView.Comprehension.to_iodata(for)
+    def to_iodata(%_{} = struct) do
+      Phoenix.HTML.Safe.to_iodata(struct)
     end
 
     def to_iodata(nil) do
@@ -261,7 +278,7 @@ defmodule Phoenix.LiveView.Engine do
   def handle_end(state) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
-    {:__block__, [], Enum.reverse([safe | dynamic])}
+    {:__block__, [live_rendered: true], Enum.reverse([safe | dynamic])}
   end
 
   @impl true
@@ -364,8 +381,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  @catch_alls [Phoenix.LiveView.Rendered, Phoenix.LiveView.Component]
-
   defmacrop to_safe_match(var, ast) do
     quote do
       {:=, [],
@@ -376,28 +391,41 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct(
-         {:if, meta, [condition, [{:do, do_block} | opts]]},
-         tainted_vars,
-         vars,
-         assigns
-       ) do
-    {condition, tainted_vars, vars, assigns} = analyze(condition, tainted_vars, vars, assigns)
-    do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+  defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns) do
+    case Enum.split(args, -1) do
+      {args, [[do: do_block]]} ->
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+        do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+        to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
 
-    # It is ok to convert else to an empty string as to_safe would do it anyway.
-    else_block =
-      maybe_block_to_rendered(Keyword.get(opts, :else, ""), tainted_vars, vars, assigns)
-
-    to_safe({:if, meta, [condition, [do: do_block, else: else_block]]}, @catch_alls)
+      _ ->
+        to_safe(expr, true)
+    end
   end
 
   defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, _vars, _assigns) do
     to_live_comprehension(expr)
   end
 
+  defp to_live_struct({macro, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns)
+       when is_atom(macro) do
+    if classify_taint(macro, args) == :live do
+      {args, [opts]} = Enum.split(args, -1)
+      {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+
+      opts =
+        for {key, value} <- opts do
+          {key, maybe_block_to_rendered(value, tainted_vars, vars, assigns)}
+        end
+
+      to_safe({macro, meta, args ++ [opts]}, true)
+    else
+      to_safe(expr, true)
+    end
+  end
+
   defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, @catch_alls)
+    to_safe(expr, true)
   end
 
   defp to_live_comprehension(expr) do
@@ -405,6 +433,7 @@ defmodule Phoenix.LiveView.Engine do
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
       {binaries, vars} = bins_and_vars(iodata)
+      fingerprint = static_fingerprint(binaries)
 
       exprs =
         Enum.map(exprs, fn
@@ -415,11 +444,31 @@ defmodule Phoenix.LiveView.Engine do
       for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
 
       quote do
-        for = unquote(for)
-        %Phoenix.LiveView.Comprehension{static: unquote(binaries), dynamics: for}
+        %Phoenix.LiveView.Comprehension{
+          static: unquote(binaries),
+          dynamics: unquote(for),
+          fingerprint: unquote(fingerprint)
+        }
       end
     else
-      _ -> to_safe(expr, [Phoenix.LiveView.Comprehension, Phoenix.LiveView.Component])
+      _ -> to_safe(expr, true)
+    end
+  end
+
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, tainted_vars, vars, assigns) do
+    # First collect all vars across all assigns since cond/case may be linear
+    {blocks, {tainted_vars, vars, assigns}} =
+      Enum.map_reduce(blocks, {tainted_vars, vars, assigns}, fn
+        {:->, meta, [args, block]}, {tainted_vars, vars, assigns} ->
+          {args, tainted_vars, vars, assigns} =
+            analyze_list(args, tainted_vars, vars, assigns, [])
+
+          {{:->, meta, [args, block]}, {tainted_vars, vars, assigns}}
+      end)
+
+    # Now convert blocks
+    for {:->, meta, [args, block]} <- blocks do
+      {:->, meta, [args, maybe_block_to_rendered(block, tainted_vars, vars, assigns)]}
     end
   end
 
@@ -431,7 +480,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_rendered_struct(expr, check_prints?, tainted_vars, vars, assigns) do
-    with {:__block__, _, entries} <- expr,
+    with {:__block__, [live_rendered: true], entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, _} =
         Enum.map_reduce(dynamic, {0, vars}, fn
@@ -447,13 +496,7 @@ defmodule Phoenix.LiveView.Engine do
         end)
 
       {static, dynamic} = bins_and_vars(static)
-
-      # We compute the term to binary instead of passing all binaries
-      # because we need to take into account the positions of dynamics.
-      <<fingerprint::8*16>> =
-        static
-        |> :erlang.term_to_binary()
-        |> :erlang.md5()
+      fingerprint = static_fingerprint(static)
 
       rendered =
         quote do
@@ -491,8 +534,6 @@ defmodule Phoenix.LiveView.Engine do
     do: {Enum.reverse(["" | bins]), Enum.reverse(vars)}
 
   ## Assigns tracking
-
-  @lexical_forms [:import, :alias, :require]
 
   # Here we compute if an expression should be always computed (:tainted),
   # never computed (no assigns) or some times computed based on assigns.
@@ -562,51 +603,33 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  # Lexical forms always taint
-  defp analyze({lexical_form, _, [_]} = expr, tainted_vars, vars, assigns)
-       when lexical_form in @lexical_forms do
-    tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
-    {expr, tainted_vars, vars, assigns}
-  end
+  # Classify calls
+  defp analyze({left, meta, args} = expr, tainted_vars, vars, assigns) do
+    case classify_taint(left, args) do
+      :always ->
+        tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
+        {expr, tainted_vars, vars, assigns}
 
-  defp analyze({lexical_form, _, [_, _]} = expr, tainted_vars, vars, assigns)
-       when lexical_form in @lexical_forms do
-    tainted_vars = if tainted_vars == :restricted, do: :restricted, else: true
-    {expr, tainted_vars, vars, assigns}
-  end
+      :never ->
+        {args, tainted_vars, vars, assigns} =
+          analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
 
-  # with/for/fn never taint regardless of arity
-  defp analyze({special_form, meta, args}, tainted_vars, vars, assigns)
-       when special_form in [:with, :for, :fn] do
-    {args, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
+        {{left, meta, args}, tainted_vars, vars, assigns}
 
-    {{special_form, meta, args}, tainted_vars, vars, assigns}
-  end
+      :live ->
+        {args, [opts]} = Enum.split(args, -1)
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
 
-  # case/2 only taint first arg
-  defp analyze({:case, meta, [expr, blocks]}, tainted_vars, vars, assigns) do
-    {expr, tainted_vars, vars, assigns} = analyze(expr, tainted_vars, vars, assigns)
+        {opts, tainted_vars, vars, assigns} =
+          analyze_with_restricted_tainted_vars(opts, tainted_vars, vars, assigns)
 
-    {blocks, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(blocks, tainted_vars, vars, assigns)
+        {{left, meta, args ++ [opts]}, tainted_vars, vars, assigns}
 
-    {{:case, meta, [expr, blocks]}, tainted_vars, vars, assigns}
-  end
-
-  # try/receive/cond/&/1 never taint
-  defp analyze({special_form, meta, [blocks]}, tainted_vars, vars, assigns)
-       when special_form in [:try, :receive, :cond, :&] do
-    {blocks, tainted_vars, vars, assigns} =
-      analyze_with_restricted_tainted_vars(blocks, tainted_vars, vars, assigns)
-
-    {{special_form, meta, [blocks]}, tainted_vars, vars, assigns}
-  end
-
-  defp analyze({left, meta, args}, tainted_vars, vars, assigns) do
-    {left, tainted_vars, vars, assigns} = analyze(left, tainted_vars, vars, assigns)
-    {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
-    {{left, meta, args}, tainted_vars, vars, assigns}
+      :none ->
+        {left, tainted_vars, vars, assigns} = analyze(left, tainted_vars, vars, assigns)
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+        {{left, meta, args}, tainted_vars, vars, assigns}
+    end
   end
 
   defp analyze({left, right}, tainted_vars, vars, assigns) do
@@ -652,20 +675,34 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Callbacks
 
-  @doc false
-  defmacro to_safe(ast) do
-    to_safe(ast, [])
+  defp static_fingerprint(static) do
+    # We compute the term to binary instead of passing all binaries
+    # because we need to take into account the positions of dynamics.
+    <<fingerprint::8*16>> =
+      static
+      |> :erlang.term_to_binary()
+      |> :erlang.md5()
+
+    fingerprint
   end
 
-  defp to_safe(ast, catch_alls) do
+  @doc false
+  defmacro to_safe(ast) do
+    to_safe(ast, false)
+  end
+
+  defp to_safe(ast, false) do
+    to_safe(ast, line_from_expr(ast), [])
+  end
+
+  defp to_safe(ast, true) do
     line = line_from_expr(ast)
 
     extra_clauses =
-      for catch_all <- catch_alls do
-        quote generated: true, line: line do
-          %{__struct__: unquote(catch_all)} = other -> other
-        end
-        |> hd()
+      quote do
+        %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+        %{__struct__: Phoenix.LiveView.Component} = other -> other
+        %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
       end
 
     to_safe(ast, line, extra_clauses)
@@ -734,4 +771,24 @@ defmodule Phoenix.LiveView.Engine do
         """
     end
   end
+
+  defp classify_taint(:case, [_, _]), do: :live
+  defp classify_taint(:if, [_, _]), do: :live
+  defp classify_taint(:cond, [_]), do: :live
+  defp classify_taint(:try, [_]), do: :live
+  defp classify_taint(:receive, [_]), do: :live
+
+  defp classify_taint(:alias, [_]), do: :always
+  defp classify_taint(:import, [_]), do: :always
+  defp classify_taint(:require, [_]), do: :always
+  defp classify_taint(:alias, [_, _]), do: :always
+  defp classify_taint(:import, [_, _]), do: :always
+  defp classify_taint(:require, [_, _]), do: :always
+
+  defp classify_taint(:&, [_]), do: :never
+  defp classify_taint(:with, _), do: :never
+  defp classify_taint(:for, _), do: :never
+  defp classify_taint(:fn, _), do: :never
+
+  defp classify_taint(_, _), do: :none
 end

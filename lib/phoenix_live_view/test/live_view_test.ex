@@ -113,15 +113,36 @@ defmodule Phoenix.LiveViewTest do
 
       assert render(parent) =~ "some content in child"
 
-      [child] = children(parent)
+      assert child = find_child(parent, "child-dom-id)
       send(parent.pid, :msg_that_removes_child)
 
       assert_remove child, _
       refute render(parent) =~ "some content in child"
+
+  ## Testing components
+
+  There are two main mechanisms for testing components. To test stateless
+  components or just a regular rendering of a component, one can use
+  `render_component/2`:
+
+      assert render_component(MyComponent, id: 123, user: %User{}) =~
+               "some markup in component"
+
+  If you want to test how components are mounted by a LiveView and
+  interact with DOM events, you can use the regular `live/2` macro
+  to build the LiveView with the component and then scope events by
+  passing the view and the component **DOM ID** in a list:
+
+      {:ok, view, html} = live(conn, "/users")
+      html = render_click([view, "user-13"], "delete", %{})
+      refute html =~ "user-13"
+      assert_remove_component(view, "user-13")
+
   """
 
   require Phoenix.ConnTest
 
+  alias Phoenix.LiveView.{Diff, Socket}
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
@@ -203,7 +224,7 @@ defmodule Phoenix.LiveViewTest do
   def __isolated__(conn, endpoint, live_view, opts) do
     {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
 
-    put_in(conn.private[:phoenix_endpoint], endpoint || raise "no @endpoint set in test case")
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(conn.request_path, mount_opts, :noop)
   end
@@ -329,6 +350,22 @@ defmodule Phoenix.LiveViewTest do
   defp fetch(other), do: other
 
   @doc """
+  Mounts, updates and renders a component.
+
+  ## Examples
+
+      assert render_component(MyComponent, id: 123, user: %User{}) =~
+               "some markup in component"
+
+  """
+  def render_component(component, assigns) do
+    %Socket{}
+    |> Diff.component_to_rendered(component, assigns)
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
+
+  @doc """
   Sends a click event to the view and returns the rendered result.
 
   ## Examples
@@ -336,6 +373,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
+      assert render_click([view, "clock"], :set, %{time: "1:00"}) =~ "time: 1:00 PM"
   """
   def render_click(view, event, value \\ %{}) do
     render_event(view, :click, event, value)
@@ -377,6 +415,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
+      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keyup(view, event, key_code) do
     render_event(view, :keyup, event, key_code)
@@ -390,6 +429,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
+      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keydown(view, event, key_code) do
     render_event(view, :keydown, event, key_code)
@@ -403,6 +443,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
+      assert render_blur([view, "child-id"], :inactive) =~ "Tap to wake"
   """
   def render_blur(view, event, value \\ %{}) do
     render_event(view, :blur, event, value)
@@ -417,17 +458,22 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
+      assert render_focus([view, "child-id"], :active) =~ "Waking up..."
   """
   def render_focus(view, event, value \\ %{}) do
     render_event(view, :focus, event, value)
   end
 
-  defp render_event([%View{} = view | path], type, event, value)  do
-    case GenServer.call(proxy_pid(view), {:render_event, proxy_topic(view), type, path, event, stringify(value)}) do
+  defp render_event([%View{} = view | path], type, event, value) do
+    case GenServer.call(
+           proxy_pid(view),
+           {:render_event, proxy_topic(view), type, path, event, stringify(value)}
+         ) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
   end
+
   defp render_event(%View{} = view, type, event, value) do
     render_event([view], type, event, value)
   end
@@ -463,11 +509,43 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the string of HTML of the rendered view.
+  Finds the nested LiveView child given a parent.
+
+  ## Examples
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert clock_view = find_child(view, "clock")
+      assert render_click(clock_view, :snooze) =~ "snoozing"
   """
-  def render(%View{} = view) do
-    {:ok, html} = GenServer.call(proxy_pid(view), {:render_tree, proxy_topic(view)})
+  def find_child(%View{} = parent, child_id) do
+    parent
+    |> children()
+    |> Enum.find(fn %View{id: id} -> id == child_id end)
+  end
+
+  @doc """
+  Returns the string of HTML of the rendered view or component.
+
+  If a view is provided, the entire LiveView is rendered. A list
+  may be passed containing view and the component **DOM ID's**:
+
+  ## Examples
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert render(view) =~ "cooling"
+      assert render([view, "clock"]) =~ "12:00 PM"
+      assert render([view, "clock", "alarm"]) =~ "Snooze"
+  """
+  def render(%View{} = view), do: render([view])
+
+  def render([%View{} = view | path]) do
+    {:ok, html} = GenServer.call(proxy_pid(view), {:render_tree, proxy_topic(view), path})
     html
+  end
+
+  def render(other) do
+    raise ArgumentError,
+          "expected to render a %View{} or view ID selector. Got: #{inspect(other)}"
   end
 
   @doc """

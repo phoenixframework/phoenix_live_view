@@ -75,7 +75,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      {_tag, _attrs, children} = DOM.by_id(html, view.id)
+      {_tag, _attrs, children} = DOM.by_id!(html, view.id)
 
       assert children == [
                "The temp is: 1\n",
@@ -232,7 +232,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
              <button phx-click="inc">+</button>
              """)
 
-      assert DOM.parse(render(view)) == DOM.parse("""
+      assert DOM.child_nodes(DOM.parse(render(view))) == DOM.parse("""
              The temp is: 3
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
@@ -280,15 +280,15 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(thermo_view) =~ "time"
       assert render(thermo_view) =~ "snooze"
 
-      assert [clock_view] = children(thermo_view)
-      assert [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
       assert clock_view.module == ClockLive
       assert controls_view.module == ClockControlsLive
 
       assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
       assert render(clock_view) =~ "time: 12:05"
       assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
-      assert render(controls_view) == "<button phx-click=\"snooze\">+</button>"
+      assert render(controls_view) =~ "<button phx-click=\"snooze\">+</button>"
 
       :ok = GenServer.call(clock_view.pid, {:set, "12:01"})
 
@@ -308,8 +308,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       refute render(thermo_view) == html_without_nesting
 
@@ -318,14 +318,17 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_remove(clock_view, {:shutdown, :removed})
       assert_remove(controls_view, {:shutdown, :removed})
 
-      assert DOM.parse(render(thermo_view)) == html_without_nesting
-      assert children(thermo_view) == []
+      assert DOM.child_nodes(DOM.parse(render(thermo_view))) == html_without_nesting
+
+      refute find_child(thermo_view, "clock")
     end
 
     @tag session: %{dup: false}
     test "multiple nested children of same module", %{conn: conn} do
       {:ok, parent, _} = live(conn, "/same-child")
-      [tokyo, madrid, toronto] = children(parent)
+      assert tokyo = find_child(parent, "Tokyo")
+      assert madrid = find_child(parent, "Madrid")
+      assert toronto = find_child(parent, "Toronto")
       child_ids = for view <- [tokyo, madrid, toronto], do: view.id
 
       assert Enum.uniq(child_ids) == child_ids
@@ -344,8 +347,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "parent graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       stop(thermo_view)
       assert_remove(thermo_view, {:shutdown, :stop})
@@ -357,26 +360,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "child level 1 graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       stop(clock_view)
       assert_remove(clock_view, {:shutdown, :stop})
       assert_remove(controls_view, {:shutdown, :stop})
-      assert children(thermo_view) == []
+
+      refute find_child(thermo_view, "clock")
     end
 
     @tag session: %{nest: []}
     test "child level 2 graceful exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       stop(controls_view)
       assert_remove(controls_view, {:shutdown, :stop})
-      assert children(thermo_view) == [clock_view]
-      assert children(clock_view) == []
+      assert find_child(thermo_view, "clock")
+      refute find_child(clock_view, "NY-controls")
     end
 
     @tag :capture_log
@@ -384,8 +388,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "abnormal parent exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       send(thermo_view.pid, :boom)
 
@@ -399,14 +403,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "abnormal child level 1 exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       send(clock_view.pid, :boom)
 
       assert_remove(clock_view, _)
       assert_remove(controls_view, _)
-      assert children(thermo_view) == []
+      refute find_child(thermo_view, "clock")
     end
 
     @tag :capture_log
@@ -414,14 +418,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "abnormal child level 2 exit removes children", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
 
-      [clock_view] = children(thermo_view)
-      [controls_view] = children(clock_view)
+      assert clock_view = find_child(thermo_view, "clock")
+      assert controls_view = find_child(clock_view, "NY-controls")
 
       send(controls_view.pid, :boom)
 
       assert_remove(controls_view, _)
-      assert children(thermo_view) == [clock_view]
-      assert children(clock_view) == []
+      assert find_child(thermo_view, "clock")
+      refute find_child(clock_view, "NY-controls")
     end
 
     test "nested for comprehensions", %{conn: conn} do
@@ -475,7 +479,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "raises from child", %{conn: conn} do
       {:ok, thermo_view, _html} = live(conn, "/thermo")
       GenServer.call(thermo_view.pid, {:set, :nest, []})
-      assert [clock_view] = children(thermo_view)
+      assert clock_view = find_child(thermo_view, "clock")
 
       send(
         clock_view.pid,
@@ -516,7 +520,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "can be configured with mount options", %{conn: conn} do
       {:ok, conf_live, html} =
         conn
-        |> put_session(:opts, temporary_assigns: [:description])
+        |> put_session(:opts, temporary_assigns: [description: nil])
         |> live("/opts")
 
       assert html =~ "long description. canary"

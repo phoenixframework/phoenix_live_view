@@ -30,7 +30,7 @@ describe('View + DOM', function() {
     let liveSocket = new LiveSocket('/live', Socket)
     let el = liveViewDOM()
     let updatedEl = {
-      static: ['<h2>', '</h2>'],
+      s: ['<h2>', '</h2>'],
       fingerprint: 123
     }
 
@@ -73,7 +73,7 @@ describe('View + DOM', function() {
         return {
           receive(status, cb) {
             let diff = {
-              static: ['<h2>', '</h2>'],
+              s: ['<h2>', '</h2>'],
               fingerprint: 123
             }
             cb(diff)
@@ -289,13 +289,13 @@ describe('View Hooks', function() {
     let view = new View(el, liveSocket)
 
     view.onJoin({rendered: {
-      static: ['<h2 phx-hook="Upcase">test mount</h2>'],
+      s: ['<h2 phx-hook="Upcase">test mount</h2>'],
       fingerprint: 123
     }})
     expect(view.el.firstChild.innerHTML).toBe('TEST MOUNT')
 
     view.update({
-      static: ['<h2 phx-hook="Upcase">test update</h2>'],
+      s: ['<h2 phx-hook="Upcase">test update</h2>'],
       fingerprint: 123
     })
     expect(view.el.firstChild.innerHTML).toBe('test update updated')
@@ -306,7 +306,7 @@ describe('View Hooks', function() {
     view.hideLoader()
     expect(view.el.firstChild.innerHTML).toBe('connected')
 
-    view.update({static: ['<div></div>'], fingerprint: 123})
+    view.update({s: ['<div></div>'], fingerprint: 123})
     expect(upcaseWasDestroyed).toBe(true)
   })
 })

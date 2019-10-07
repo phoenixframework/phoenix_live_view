@@ -8,15 +8,12 @@ defmodule Phoenix.LiveView.Controller do
   @doc """
   Renders a live view from a Plug request and sends an HTML response.
 
-  ## Options
-
-    * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the live view
-      will receive the signed session from the client and verify
-      the contents before proceeding with `mount/2`.
-
   Before render the `@live_view_module` assign will be added to the
   connection assigns for reference.
+
+  ## Options
+
+  See `Phoenix.LiveView.live_render/3` for all supported options.
 
   ## Examples
 

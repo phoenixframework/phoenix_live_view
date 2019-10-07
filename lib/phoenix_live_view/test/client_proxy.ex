@@ -142,9 +142,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, topic, from}, state) do
+  def handle_info({:sync_render, topic, path, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, {:ok, DOM.inner_html(state.html, view.id)})
+    GenServer.reply(from, {:ok, DOM.outer_html(state.html, [view.id | path])})
     {:noreply, state}
   end
 
@@ -253,10 +253,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  def handle_call({:render_tree, topic}, from, state) do
+  def handle_call({:render_tree, topic, path}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(view.pid)
-    send(self(), {:sync_render, topic, from})
+    send(self(), {:sync_render, topic, path, from})
     {:noreply, state}
   end
 
@@ -352,8 +352,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
       {new_html, [_ | _] = deleted_cids, deleted_cid_ids} ->
-        for cid <- deleted_cids ++ deleted_cid_ids,
-            do: send_caller(state, {:removed_component, view.topic, cid})
+        for id <- deleted_cid_ids,
+            do: send_caller(state, {:removed_component, view.topic, id})
 
         push(%{state | html: new_html}, view, "cids_destroyed", %{"cids" => deleted_cids})
 
@@ -477,7 +477,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->
-          {_, _, inner_html} = DOM.by_id(html_before, view.id)
+          {_, _, inner_html} = DOM.by_id!(html_before, view.id)
           patch_view(acc, view, inner_html)
 
         :error ->
@@ -561,14 +561,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_add_cid_to_payload(_view, [], payload), do: payload
 
-  defp maybe_add_cid_to_payload(view, [id], payload) do
-    case DOM.fetch_cid_by_id(view.rendered, id) do
-      {:ok, cid} ->
-        Map.put(payload, "cid", cid)
+  defp maybe_add_cid_to_payload(view, [_ | _] = ids, payload) do
+    id = List.last(ids)
+    cid = DOM.cid_by_id(view.rendered, id)
 
-      :error ->
-        raise ArgumentError,
-              "no component with ID #{inspect(id)} found in view #{inspect(view.module)}"
+    if cid && DOM.by_id!(DOM.render_diff(view.rendered), ids) do
+      Map.put(payload, "cid", cid)
+    else
+      raise ArgumentError,
+            "no component with ID \"#{id}\" found in view #{inspect(view.module)}"
     end
   end
 end

@@ -77,6 +77,12 @@ defmodule Phoenix.LiveView do
     * Events and updates pushed by server - such as
       notifications, dashboards, etc;
 
+    * Page and data navigation - such as navigating between
+      pages, pagination, etc can be built with LiveView
+      but currently you will lose the back/forward button,
+      and the ability to link to pages as you navigate.
+      Support for `pushState` is on the roadmap;
+
   There are other cases that have limited support but
   will become first-class as we further develop LiveView:
 
@@ -92,20 +98,22 @@ defmodule Phoenix.LiveView do
       feature set for modelling those states is coming in
       future versions;
 
-  There are also use cases which are a bad fit for LiveView:
-
-    * Animations - animations, menus, and general events
-      that do not need the server in the first place are a
-      bad fit for LiveView, as they can be achieved purely
-      with CSS and/or CSS transitions;
-
     * Optimistic UIs - once we add transitions and loading
       states, many of the building blocks necessary for
       building optimistic UIs will be part of LiveView, but
       since optimistic UIs are about doing work on the client
       while the server is unavailable, complete support for
       Optimistic UIs cannot be achieved without also writing
-      JavaScript for the cases the server is not available;
+      JavaScript for the cases the server is not available.
+      See  "JS Interop and client controlled DOM" on how to
+      integrate JS hooks;
+
+  There are also use cases which are a bad fit for LiveView:
+
+    * Animations - animations, menus, and general events
+      that do not need the server in the first place are a
+      bad fit for LiveView, as they can be achieved purely
+      with CSS and/or CSS transitions;
 
   ## Life-cycle
 
@@ -237,6 +245,7 @@ defmodule Phoenix.LiveView do
   request to the view, such as the current user's id in the cookie session,
   and parameters from the request. A regular HTML response is sent with a
   signed token embedded in the DOM containing your LiveView session data.
+  See `live_render/3` for more information.
 
   Next, your client code connects to the server:
 
@@ -246,7 +255,7 @@ defmodule Phoenix.LiveView do
       let liveSocket = new LiveSocket("/live", Socket)
       liveSocket.connect()
 
-  *Note*: Comprehensive JavaScript client usage is covered in detail below.
+  *Note*: Comprehensive JavaScript client usage is covered in a later section.
 
   After the client connects, `mount/2` will be invoked inside a spawned
   LiveView process. At this point, you can use `connected?/1` to
@@ -333,50 +342,6 @@ defmodule Phoenix.LiveView do
   Generally speaking, **data loading should never happen inside the template**,
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces those as best practices.
-
-  ### Temporary assigns
-
-  By default, all LiveView assigns are stateful, which enables change tracking
-  and stateful interactions. In some cases, it's useful to mark assigns as temporary,
-  meaning they will be set to nil after each update, allowing otherwise large, but
-  infrequently updated values to be discarded after the client has been patched.
-
-  *Note*: this requires refetching/recomputing the temporary assigns should they
-  need accessed in future callbacks.
-
-  To mark assigns as temporary, pass the `:temporary_assigns` option in mount:
-
-      def mount(_session, socket) do
-        desc = fetch_large_description()
-        {:ok, assign(socket, description: desc), temporary_assigns: [:description]}
-      end
-
-  ## Containers
-
-  When a `LiveView` is rendered, its contents are wrapped in a container.
-  By default, said container is a `div` tag with a handful of `LiveView`
-  specific attributes.
-
-  The container can be customized in different ways:
-
-    * You can change the default `container` on `use Phoenix.LiveView`:
-
-          use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
-
-    * You can override the container tag and pass extra attributes when
-      calling `live_render` (as well as on your `live` call in your router):
-
-          live_render socket, MyLiveView, container: {:tr, class: "highlight"}
-
-  ## Nested LiveViews
-
-  LiveViews can be nested inside a parent LiveView by calling `live_render/3`.
-  When rendering a child LiveView, the `:id` option is required to uniquely
-  identify the child. A child will only ever be rendered and mounted a single
-  time, provided its ID remains unchanged. Updates to a child session will be
-  merged on the client, but not passed back up until either a crash and re-mount or
-  a connetion drop and recovery. To force a child to re-mount with new session
-  data, a new ID must be provided.
 
   ## Bindings
 
@@ -578,7 +543,59 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
-  ## Rate limiting events with debounce and throttle
+  ## Compartimentalizing markup and events with `render`, `live_render`, and `live_component`
+
+  We can render another template directly from a LiveView template by simply
+  calling `render`:
+
+      render "child_template", assigns
+      render SomeOtherView, "child_template", assigns
+
+  If the other template has the `.leex` extension, LiveView change tracking
+  will also work across templates.
+
+  When rendering a child template, any of the events bound in the child
+  template will be sent to the parent LiveView. In other words, similar to
+  regular Phoenix templaes, a regular `render` call does not start another
+  LiveView. This means `render` is useful to sharing markup between views.
+
+  One option to address this problem is to render a child LiveView insied a
+  parent LiveView by calling `live_render/3` instead of `render/3` from the
+  LiveView template. This child LiveView runs in a completely separate process
+  than the parent, with its own `mount` and `handle_event` callbacks. If a
+  child LiveView crashes, it won't affect the parent. If the parent crashes,
+  all children are terminated.
+
+  When rendering a child LiveView, the `:id` option is required to uniquely
+  identify the child. A child LiveView will only ever be rendered and mounted
+  a single time, provided its ID remains unchanged. Updates to a child session
+  will be merged on the client, but not passed back up until either a crash and
+  re-mount or a connetion drop and recovery. To force a child to re-mount with
+  new session data, a new ID must be provided.
+
+  Given a LiveView runs on its own process, it is an excellent tool for creating
+  completely isolated UI elements, but it is a slightly expensive abstraction if
+  all you want is to compartimentalize markup and events. For example, if you are
+  showing a table with all users in the system, and you want to compartimentalize
+  this logic, using a separate `LiveView`, each with its own process, would likely
+  be too expensive. For these cases, LiveView provides `Phoenix.LiveComponent`,
+  which are rendered using `live_component/3`:
+
+      <%= live_component(@socket, UserComponent, id: user.id, user: user) %>
+
+  Components have their own `mount` and `handle_event` callbacks, as well as their
+  own state with change tracking support. Components are also lightweight as they
+  "run" in the same process as the parent `LiveView`. However, this means an error
+  in a component would cause the whole view to fail to render. See
+  `Phoenix.LiveComponent` for a complete rundown on components.
+
+  To sum it up:
+
+    * `render` - compartimentalizes markup
+    * `live_component` - compartimentalizes state, markup, and events
+    * `live_render` - compartimentalizes state, markup, events, and error isolation
+
+  ## Rate limiting events with Debounce and Throttle
 
   All events can be rate-limited on the client by using the
   `phx-debounce` and `phx-throttle` bindings, with the following behavior:
@@ -623,6 +640,83 @@ defmodule Phoenix.LiveView do
       existing inputs.
     * A `phx-keydown` binding is only throttled for key repeats. Unique keypresses
       back-to-back with dispatch the pressed key events.
+
+  ## DOM patching and temporary assigns
+
+  A container can be marked with `phx-update`, allowing the DOM patch
+  operations to avoid updating or removing portions of the LiveView, or to append
+  or prepend the updates rather than replacing the existing contents. This
+  is useful for client-side interop with existing libraries that do their
+  own DOM operations. The following `phx-update` values are supported:
+
+    * `replace` - the default operation. Replaces the element with the contents
+    * `ignore` - ignores updates the DOM regardless of new content changes
+    * `append` - append the new DOM contents instead of replacing
+    * `prepend` - prepend the new DOM contents instead of replacing
+
+  When appending or prepending elements containing an ID already present
+  in the container, LiveView will replace the existing element with the
+  new content instead appending or prepending a new element.
+
+  *Note*: when using `phx-update`, a unique DOM ID must always be set.
+
+  The "ignore" behaviour is frequently used when you need to integrate
+  with another JS library. The "append" and "prepend" feature is often
+  used with "Temporary assigns" to work with large amounts of data. Let's
+  learn more.
+
+  ### Temporary assigns
+
+  By default, all LiveView assigns are stateful, which enables change
+  tracking and stateful interactions. In some cases, it's useful to mark
+  assigns as temporary, meaning they will be reset to a default value after
+  each update, allowing otherwise large, but infrequently updated values
+  to be discarded after the client has been patched.
+
+  Imagine you want to implement a chat application with LiveView. You
+  could render each message like this:
+
+      <%= for message <- @messages do %>
+        <p><span><%= message.username %>:</span> <%= message.text %></p>
+      <% end %>
+
+  Every time there is a new message, you would append it to the `@messages`
+  assign and re-render all messages.
+
+  As you may suspect, keeping the whole chat conversation in memory
+  and resending it on every update would be too expensive, even with
+  LiveView smart change tracking. By using temporary assigns and phx-update,
+  we don't need to keep any message in memory and send messages to be
+  appendded to the UI only when there are new messages.
+
+  To do so, the first step is to mark which assigns are temporary and
+  what are the value they should be reset to on mount:
+
+      def mount(_session, socket) do
+        socket = assign(socket, :messages, load_last_20_messages())
+        {:ok, socket, temporary_assigns: [messages: []]}
+      end
+
+  On mount we also load the initial amount of messages we want to
+  send. After the initial render, the initial batch of messages will
+  be reset back to an empty list.
+
+  Now, whenever there are one or more new messages, we will assign
+  only the new messages to `@messages`:
+
+      socket = assign(socket, :messages, new_messages)
+
+  In the template, we want to wrap all of the messages in a container
+  and tag this content with phx-update as well as an ID:
+
+      <div id="chat-messages" phx-update="append">
+        <%= for message <- @messages do %>
+          <p><span><%= message.username %>:</span> <%= message.text %></p>
+        <% end %>
+      </div>
+
+  And now, once the client recieves new messages, it knows it shouldn't
+  replace the old content, but rather append to it.
 
   ## Live navigation
 
@@ -799,25 +893,6 @@ defmodule Phoenix.LiveView do
   When a form bound with `phx-submit` is submitted, the `"phx-loading"` class
   is applied to the form, which is removed on update.
 
-  ### Custom DOM patching
-
-  A container can be marked with `phx-update`, allowing the DOM patch
-  operations to avoid updating or removing portions of the LiveView, or to append
-  or prepend the updates rather than replacing the existing contents. This
-  is useful for client-side interop with existing libraries that do their
-  own DOM operations. The following `phx-update` values are supported:
-
-    * `replace` - the default operation. Replaces the element with the contents
-    * `ignore` - ignores updates the DOM regardless of new content changes
-    * `append` - append the new DOM contents instead of replacing
-    * `prepend` - prepend the new DOM contents instead of replacing
-
-  When appending or prepending elements containing an ID already present
-  in the container, LiveView will replace the existing element with the
-  new content instead appending or prepending a new element.
-
-  *Note*: when using `phx-update`, a unique DOM ID must always be set.
-
   ### JS Interop and client controlled DOM
 
   To handle custom client-side javascript when an element is added, updated,
@@ -841,7 +916,7 @@ defmodule Phoenix.LiveView do
   For example, a controlled input for phone-number formatting would annotate their
   markup:
 
-      <input type="text" name="user[phone_number]" phx-hook="PhoneNumber" />
+      <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
 
   Then a hook callback object can be defined and passed to the socket:
 
@@ -859,13 +934,12 @@ defmodule Phoenix.LiveView do
 
       let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
       ...
+
+  *Note*: when using `phx-hook`, a unique DOM ID must always be set.
   """
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
-
-  @type unsigned_params :: map
-  @type from :: {pid, reference}
 
   @callback mount(session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
@@ -875,13 +949,13 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
-  @callback handle_params(unsigned_params, uri :: String.t(), socket :: Socket.t()) ::
+  @callback handle_params(Socket.unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_event(event :: binary, unsigned_params, socket :: Socket.t()) ::
+  @callback handle_event(event :: binary, Socket.unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @callback handle_call(msg :: term, from, socket :: Socket.t()) ::
+  @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
 
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
@@ -924,7 +998,7 @@ defmodule Phoenix.LiveView do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name, kind: :view}
+    %{container: container, name: name, kind: :view, module: module}
   end
 
   @doc """
@@ -937,10 +1011,14 @@ defmodule Phoenix.LiveView do
       to the client. When connecting from the client, the LiveView
       will receive the signed session from the client and verify
       the contents before proceeding with `mount/2`.
-    * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
-    * `:id` - both the DOM ID and the ID to uniquely identify a child LiveView when
-      live rendering children of the same type.
+    * `:container` - the optional tuple for the HTML tag and DOM
+      attributes to be used for the LiveView container. For example:
+      `{:li, style: "color: blue;"}`. By default it uses the module
+      definition container. See the "Containers" section for more
+      information.
+    * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
+      One `:id` is automatically generating when rendering root LiveViews
+      but it is a required option when rendering a child LiveView.
 
   ## Examples
 
@@ -949,6 +1027,23 @@ defmodule Phoenix.LiveView do
 
       # within leex template
       <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
+
+  ## Containers
+
+  When a `LiveView` is rendered, its contents are wrapped in a container.
+  By default, said container is a `div` tag with a handful of `LiveView`
+  specific attributes.
+
+  The container can be customized in different ways:
+
+    * You can change the default `container` on `use Phoenix.LiveView`:
+
+          use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
+
+    * You can override the container tag and pass extra attributes when
+      calling `live_render` (as well as on your `live` call in your router):
+
+          live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
   """
   def live_render(conn_or_socket, view, opts \\ [])
@@ -985,19 +1080,62 @@ defmodule Phoenix.LiveView do
 
       <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
 
-  However, note the `:id` assign has a special meaning.
-  Whenever an "id" is given, the component becomes stateful.
-  Some components may always require an ID.
+  Note the `:id` won't necessarily be used as the DOM ID.
+  That's up to the component. However, note the `:id` has
+  a special meaning: whenever an `:id` is given, the component
+  becomes stateful. Otherwise, `:id` is always set to nil.
   """
-  def live_component(%Socket{} = socket, component, assigns \\ [])
-      when is_atom(component) and is_list(assigns) do
-    _ = LiveView.View.load_live!(component, :component)
-    assigns = Map.new(assigns)
+  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
+    assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns)
+
+    quote do
+      Phoenix.LiveView.__live_component__(
+        unquote(socket),
+        unquote(component).__live__,
+        unquote(assigns)
+      )
+    end
+  end
+
+  defp maybe_do(value) do
+    if Keyword.keyword?(value), do: value[:do]
+  end
+
+  defp rewrite_do(nil, opts), do: opts
+
+  defp rewrite_do(do_block, opts) do
+    do_fun = rewrite_do(do_block)
+
+    if Keyword.keyword?(opts) do
+      Keyword.put(opts, :inner_content, do_fun)
+    else
+      quote do
+        Keyword.put(unquote(opts), :inner_content, unquote(do_fun))
+      end
+    end
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block) do
+    {:fn, meta, do_block}
+  end
+
+  defp rewrite_do(do_block) do
+    quote do
+      fn extra_assigns ->
+        var!(assigns) = Enum.into(extra_assigns, var!(assigns))
+        unquote(do_block)
+      end
+    end
+  end
+
+  def __live_component__(%Socket{} = socket, %{kind: :component, module: component}, assigns)
+      when is_list(assigns) do
+    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
-
     if function_exported?(component, :handle_event, 3) and is_nil(id) do
-      raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
+      raise "the component #{inspect(component)} has implemented handle_event/3, " <>
+              "which requires an ID element"
     end
 
     if LiveView.View.connected?(socket) do
@@ -1005,6 +1143,11 @@ defmodule Phoenix.LiveView do
     else
       LiveView.Diff.component_to_rendered(socket, component, assigns)
     end
+  end
+
+  def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
+      when is_list(assigns) do
+    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
   @doc """

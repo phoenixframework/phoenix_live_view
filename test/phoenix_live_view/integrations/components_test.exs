@@ -21,16 +21,17 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     {:ok, view, _html} = live(conn, "/components")
 
-    assert [
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
-              ["\n  chris says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
-              ["\n  jose says hi with socket: true\n"]}
-           ] = DOM.parse(render(view))
+    assert {"div", _,
+            [
+              {"div", [], ["\n  unknown says hi with socket: true\n"]},
+              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+               ["\n  chris says hi with socket: true\n"]},
+              {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+               ["\n  jose says hi with socket: true\n"]}
+            ]} = DOM.parse(render(view))
   end
 
-  test "send cids_destroyed event when components are removed", %{conn: conn} do
+  test "tracks removals", %{conn: conn} do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
@@ -61,6 +62,7 @@ defmodule Phoenix.LiveView.ComponentTest do
            ] = DOM.parse(html)
 
     html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
+
     assert [
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
@@ -68,5 +70,78 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
               ["\n  Jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
+
+    html = render_click([view, "jose"], "transform", %{"op" => "dup"})
+
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              [
+                "\n  Jose says hi with socket: true",
+                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                 ["\n  Jose-dup says hi with socket: true\n"]}
+              ]}
+           ] = DOM.parse(html)
+
+    html = render_click([view, "jose", "Jose-dup"], "transform", %{"op" => "upcase"})
+
+    assert [
+             {"div", [], ["\n  unknown says hi with socket: true\n"]},
+             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  CHRIS says hi with socket: true\n"]},
+             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              [
+                "\n  Jose says hi with socket: true",
+                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                 ["\n  JOSE-DUP says hi with socket: true\n"]}
+              ]}
+           ] = DOM.parse(html)
+
+    assert render([view, "jose", "Jose-dup"]) ==
+             "<div id=\"Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
+  end
+
+  defmodule MyComponent do
+    use Phoenix.LiveComponent
+
+    def mount(socket) do
+      send(self(), {:mount, socket})
+      {:ok, assign(socket, hello: "world")}
+    end
+
+    def update(assigns, socket) do
+      send(self(), {:update, assigns, socket})
+      {:ok, assign(socket, assigns)}
+    end
+
+    def render(assigns) do
+      send(self(), :render)
+
+      ~L"""
+      FROM <%= @from %> <%= @hello %>
+      """
+    end
+  end
+
+  defmodule RenderOnlyComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      RENDER ONLY <%= @from %>
+      """
+    end
+  end
+
+  describe "render_component/2" do
+    test "full life-cycle" do
+      assert render_component(MyComponent, from: "test") =~ "FROM test world"
+    end
+
+    test "render only" do
+      assert render_component(RenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
   end
 end
