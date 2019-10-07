@@ -9,8 +9,6 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import morphdom from "morphdom"
 
-const CLIENT_OUTDATED = "outdated"
-const RELOAD_JITTER = [1000, 10000]
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -98,7 +96,7 @@ let recursiveMerge = (target, source) => {
 
 export let Rendered = {
   mergeDiff(source, diff){
-    if(this.isNewFingerprint(diff)){
+    if(!diff.components && this.isNewFingerprint(diff)){
       return diff
     } else {
       recursiveMerge(source, diff)
@@ -108,8 +106,8 @@ export let Rendered = {
 
   isNewFingerprint(diff = {}){ return !!diff.static },
 
-  toString(rendered){
-    let output = {buffer: ""}
+  toString(rendered, components = rendered.components || {}){
+    let output = {buffer: "", components: components, container: document.createElement("div")}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
@@ -139,7 +137,13 @@ export let Rendered = {
   },
 
   dynamicToBuffer(rendered, output){
-    if(isObject(rendered)){
+    if(typeof(rendered) === "number"){
+      let component = output.components[rendered] || logError("encountered invalid component")
+      let html = this.toString(component, output.components)
+      output.container.innerHTML = html
+      Array.from(output.container.children).forEach(c => c.setAttribute(PHX_COMPONENT, rendered))
+      output.buffer += output.container.innerHTML
+    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
       output.buffer += rendered
@@ -238,13 +242,6 @@ export class LiveSocket {
   disconnect(){ this.socket.disconnect() }
 
   // private
-
-  reloadWithJitter(){
-    this.disconnect()
-    let [minMs, maxMs] = RELOAD_JITTER
-    let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    setTimeout(() => window.location.reload(), afterMs)
-  }
 
   getHookCallbacks(hookName){ return this.hooks[hookName] }
 
@@ -1009,7 +1006,7 @@ export class View {
     })
     changes.discarded.forEach(el => {
       let cid = this.componentID(el)
-      if(cid){ destroyedCIDs.push(cid) }
+      if(typeof(cid) === "number"){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
@@ -1037,10 +1034,7 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceRoot(to, () => {
-      Browser.pushState(kind, {}, to)
-      this.liveSocket.registerNewLocation(window.location)
-    })
+    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
   }
 
   onLiveRedirect({to, kind}){
@@ -1068,7 +1062,6 @@ export class View {
   }
 
   onJoinError(resp){
-    if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter() }
     if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
@@ -1093,6 +1086,7 @@ export class View {
   }
 
   pushWithReply(event, payload, onReply = function(){ }){
+    if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff) }
@@ -1104,7 +1098,10 @@ export class View {
     )
   }
 
-  componentID(el){ return el.getAttribute && el.getAttribute(PHX_COMPONENT) && el.id }
+  componentID(el){
+    let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT)
+    return cid ? parseInt(cid) : null
+  }
 
   targetComponentID(target){
     return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
@@ -1122,7 +1119,7 @@ export class View {
       type: type,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(el) || undefined
+      cid: this.targetComponentID(el)
     })
   }
 
@@ -1133,7 +1130,7 @@ export class View {
       type: kind,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(keyElement) || undefined
+      cid: this.targetComponentID(keyElement)
     })
   }
 
@@ -1143,7 +1140,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: e.target.name}),
-      cid: this.targetComponentID(inputEl) || undefined
+      cid: this.targetComponentID(inputEl)
     })
   }
 
@@ -1152,7 +1149,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
-      cid: this.targetComponentID(formEl) || undefined
+      cid: this.targetComponentID(formEl)
     }, onReply)
   }
 
@@ -1172,7 +1169,7 @@ export class View {
   }
 
   pushComponentsDestroyed(cids){
-    this.pushWithReply("cids_destroyed", {cids: cids})
+    this.pushWithReply("cids_destroyed", {cids})
   }
 
   ownsElement(el){

@@ -422,11 +422,14 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :focus, event, value)
   end
 
-  defp render_event(view, type, event, value) do
-    case GenServer.call(proxy_pid(view), {:render_event, proxy_topic(view), type, event, stringify(value)}) do
+  defp render_event([%View{} = view | path], type, event, value)  do
+    case GenServer.call(proxy_pid(view), {:render_event, proxy_topic(view), type, path, event, stringify(value)}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
+  end
+  defp render_event(%View{} = view, type, event, value) do
+    render_event([view], type, event, value)
   end
 
   @doc """

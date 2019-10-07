@@ -289,7 +289,8 @@ defmodule Phoenix.LiveViewTest.AppendLive do
   end
 
   def mount(%{time_zones: {update_type, time_zones}}, socket) do
-    {:ok, assign(socket, update_type: update_type, time_zones: time_zones), temporary_assigns: [:time_zones]}
+    {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
+     temporary_assigns: [:time_zones]}
   end
 
   def handle_event("add-tz", %{"id" => id, "name" => name}, socket) do
@@ -319,25 +320,68 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ComponentLive do
+defmodule Phoenix.LiveViewTest.BasicComponent do
+  use Phoenix.LiveComponent
+
+  def mount(socket) do
+    {:ok, assign(socket, id: nil, name: "unknown")}
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div <%= if @id, do: Phoenix.HTML.raw("id=\"#{@id}\""), else: "" %>>
+      <%= @name %> says hi with socket: <%= !!@socket %>
+    </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StatefulComponent do
+  use Phoenix.LiveComponent
+
+  def mount(socket) do
+    {:ok, assign(socket, id: nil, name: "unknown")}
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div id="<%= @id %>">
+      <%= @name %> says hi with socket: <%= !!@socket %>
+    </div>
+    """
+  end
+
+  def handle_event("transform", %{"op" => op}, socket) do
+    case op do
+      "upcase" ->
+        {:noreply, update(socket, :name, &String.upcase(&1))}
+
+      "title-case" ->
+        {:noreply,
+         update(socket, :name, fn <<first::binary-size(1), rest::binary>> ->
+           String.upcase(first) <> rest
+         end)}
+    end
+  end
+end
+
+defmodule Phoenix.LiveViewTest.WithComponentLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~L"""
+    <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent %>
     <%= for name <- @names do %>
-      <div id="<%= name %>" data-phx-component="<%= name %>">
-        <%= name %>
-      </div>
+      <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent, id: name, name: name %>
     <% end %>
     """
   end
 
-  def mount(%{data: %{names: names}}, socket) do
+  def mount(%{names: names}, socket) do
     {:ok, assign(socket, names: names)}
   end
 
   def handle_event("delete-name", %{"name" => name}, socket) do
-    {:noreply, assign(socket, :names, Enum.reject(socket.assigns.names, &(&1 == name)))}
+    {:noreply, update(socket, :names, &List.delete(&1, name))}
   end
 end
-

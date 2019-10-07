@@ -130,26 +130,6 @@ defmodule Phoenix.LiveView.UpdateTest do
     end
   end
 
-  @tag session: %{data: %{names: ["chris", "jose"]}}
-  describe "component updates" do
-    test "send cids_destroyed event when component children are removed", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/components")
-
-      assert [
-               {"div", [{"id", "chris"}, {"data-phx-component", "chris"}], ["\n    chris\n  "]},
-               {"div", [{"id", "jose"}, {"data-phx-component", "jose"}], ["\n    jose\n  "]}
-             ] = DOM.all(html, "#chris, #jose")
-
-      html = render_click(view, "delete-name", %{"name" => "chris"})
-
-      assert [
-               {"div", [{"id", "jose"}, {"data-phx-component", "jose"}], ["\n    jose\n  "]}
-             ] = DOM.all(html, "#chris, #jose")
-
-      assert_remove_component(view, "chris")
-    end
-  end
-
   defp find_time_zones(html, zones) do
     DOM.all(html, Enum.join(for(tz <- zones, do: "#tz-#{tz}"), ","))
   end

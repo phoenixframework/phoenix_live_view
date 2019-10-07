@@ -868,7 +868,7 @@ defmodule Phoenix.LiveView do
   @type from :: {pid, reference}
 
   @callback mount(session :: map, socket :: Socket.t()) ::
-              {:ok, Socket.t()}
+              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -887,7 +887,8 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks terminate: 2,
+  @optional_callbacks mount: 2,
+                      terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
@@ -909,19 +910,21 @@ defmodule Phoenix.LiveView do
   defmacro __using__(opts) do
     quote do
       opts = unquote(opts)
-      @__live__ Phoenix.LiveView.View.live_definition(__MODULE__, :view, opts)
-
       import unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
-      @impl unquote(__MODULE__)
-      def mount(_session, socket), do: {:ok, socket}
-
       @doc false
+      @__live__ unquote(__MODULE__).__live__(__MODULE__, opts)
       def __live__, do: @__live__
-
-      defoverridable mount: 2
     end
+  end
+
+  @doc false
+  def __live__(module, opts) do
+    container = opts[:container] || {:div, []}
+    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
+    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+    %{container: container, name: name, kind: :view}
   end
 
   @doc """
@@ -962,6 +965,46 @@ defmodule Phoenix.LiveView do
 
   def live_render(%Socket{} = parent, view, opts) do
     LiveView.View.nested_static_render(parent, view, opts)
+  end
+
+  @doc """
+  Renders a `Phoenix.LiveComponent` within a parent LiveView.
+
+  While `LiveView`s can be nested, each LiveView starts its
+  own process. A LiveComponent provides similar functionality
+  to LiveView, except they run in the same process as the
+  `LiveView`, with its own encapsulated state.
+
+  LiveComponent comes in two shapes, stateful and stateless.
+  See `Phoenix.LiveComponent` for more information.
+
+  ## Examples
+
+  All of the `assigns` given are forwarded directly to the
+  `live_component`:
+
+      <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+
+  However, note the `:id` assign has a special meaning.
+  Whenever an "id" is given, the component becomes stateful.
+  Some components may always require an ID.
+  """
+  def live_component(%Socket{} = socket, component, assigns \\ [])
+      when is_atom(component) and is_list(assigns) do
+    _ = LiveView.View.load_live!(component, :component)
+    assigns = Map.new(assigns)
+    id = assigns[:id]
+
+
+    if function_exported?(component, :handle_event, 3) and is_nil(id) do
+      raise "the component #{inspect(component)} has a handle_event/3 which requires an ID element"
+    end
+
+    if LiveView.View.connected?(socket) do
+      %LiveView.Component{id: id, assigns: assigns, component: component}
+    else
+      LiveView.Diff.component_to_rendered(socket, component, assigns)
+    end
   end
 
   @doc """
@@ -1024,19 +1067,7 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assigned_new: {assigns, keys}} = private} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        private = put_in(private.assigned_new, {assigns, [key | keys]})
-        do_assign(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
-
-      %{} ->
-        do_assign(socket, key, func.())
-    end
+    LiveView.View.assign_new(socket, key, func)
   end
 
   @doc """
@@ -1052,24 +1083,14 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    assign(socket, [{key, value}])
+    LiveView.View.assign(socket, [{key, value}])
   end
 
-  def assign(%Socket{} = socket, attrs)
-      when is_map(attrs) or is_list(attrs) do
-    Enum.reduce(attrs, socket, fn {key, val}, acc ->
-      case Map.fetch(acc.assigns, key) do
-        {:ok, ^val} -> acc
-        {:ok, _old_val} -> do_assign(acc, key, val)
-        :error -> do_assign(acc, key, val)
-      end
-    end)
-  end
-
-  defp do_assign(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed, key, true)
-    new_assigns = Map.put(assigns, key, val)
-    %Socket{acc | assigns: new_assigns, changed: new_changed}
+  @doc """
+  See `assign/2`.
+  """
+  def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
+    LiveView.View.assign(socket, attrs)
   end
 
   @doc """
@@ -1085,7 +1106,7 @@ defmodule Phoenix.LiveView do
   """
   def update(%Socket{assigns: assigns} = socket, key, func) do
     case Map.fetch(assigns, key) do
-      {:ok, val} -> assign(socket, key, func.(val))
+      {:ok, val} -> assign(socket, [{key, func.(val)}])
       :error -> raise KeyError, key: key, term: assigns
     end
   end
@@ -1188,17 +1209,20 @@ defmodule Phoenix.LiveView do
 
   """
   def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+
   def live_link(opts, do: block) when is_list(opts) do
     uri = Keyword.fetch!(opts, :to)
     replace = Keyword.get(opts, :replace, false)
     kind = if replace, do: "replace", else: "push"
 
-    opts = opts
-    |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, [phx_live_link: kind]))
-    |> Keyword.put(:href, uri)
+    opts =
+      opts
+      |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, phx_live_link: kind))
+      |> Keyword.put(:href, uri)
 
     Phoenix.HTML.Tag.content_tag(:a, opts, do: block)
   end
+
   def live_link(text, opts) when is_list(opts) do
     live_link(opts, do: text)
   end
@@ -1224,5 +1248,5 @@ defmodule Phoenix.LiveView do
     do: :ok
 
   defp assert_root_live_view!(_, context),
-    do: raise ArgumentError, "cannot invoke #{context} from a child LiveView"
+    do: raise(ArgumentError, "cannot invoke #{context} from a child LiveView")
 end

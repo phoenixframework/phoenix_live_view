@@ -14,7 +14,6 @@
 
 ### Bug Fixes
   - [LiveViewTest] Fix function clause errors caused by HTML comments
-  - Fix `live_redirect` failing to detect back button URL changes
 
 ## 0.3.0 (2019-09-19)
 

@@ -20,15 +20,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
-  defp simulate_outdated_token_on_page(conn) do
-    html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
-    salt = Phoenix.LiveView.View.salt!(@endpoint)
-    outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
-  end
-
-
   describe "mounting" do
     test "static mount followed by connected mount", %{conn: conn} do
       conn = get(conn, "/thermo")
@@ -99,14 +90,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                assert {:error, %{reason: "badsession"}} = live(conn)
              end) =~ "failed while verifying session"
-    end
-
-    test "live render with outdated session", %{conn: conn} do
-      conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
-
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               assert {:error, %{reason: "outdated"}} = live(conn)
-             end)
     end
 
     test "render_click with string value", %{conn: conn} do

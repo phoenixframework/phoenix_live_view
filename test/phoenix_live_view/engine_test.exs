@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.EngineTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{Engine, Rendered}
+  alias Phoenix.LiveView.{Engine, Rendered, Diff, Socket}
 
   def safe(do: {:safe, _} = safe), do: safe
   def unsafe(do: {:safe, content}), do: content
@@ -76,7 +76,6 @@ defmodule Phoenix.LiveView.EngineTest do
       assert render(template, %{foo: "<hello>"}) ==
                "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
     end
-
 
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
@@ -236,12 +235,29 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "does not render dynamic for nested optimized comprehensions with variables" do
-      template = "<%= for x <- @foo do %><%= for y <- @bar do %><%= x %><%= y %><% end %><% end %>"
-      assert [%{dynamics: [[[["1", "1"]]]]}] =
-        changed(template, %{foo: [1], bar: [1]}, nil)
+      template =
+        "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"
+
+      assert [
+               %{
+                 dynamics: [
+                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
+             ] = changed(template, %{foo: [1], bar: [1]}, nil)
+
       assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
-      assert [%{dynamics: [[[["1", "1"]]]]}] =
-        changed(template, %{foo: [1], bar: [1]}, %{foo: true , bar: true})
+
+      assert [
+               %{
+                 dynamics: [
+                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
+             ] =
+               changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
     test "renders dynamic if it uses assigns" do
@@ -437,8 +453,8 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders live engine with nested live view with change tracking" do
       rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
-      {_, prints} = Phoenix.LiveView.Diff.render(rendered, nil)
-      assigns = Map.put(@assigns, :socket, %{fingerprints: prints, changed: %{}})
+      {socket, _, _} = Diff.render(%Socket{}, rendered, Diff.new_components())
+      assigns = Map.put(@assigns, :socket, socket)
 
       assert %Rendered{
                static: ["pre: ", "\n", "post: ", ""],
@@ -448,14 +464,17 @@ defmodule Phoenix.LiveView.EngineTest do
                  nil
                ]
              } = Phoenix.View.render(View, "live_with_live.html", assigns)
-
     end
 
     test "renders live engine with nested live view even on bad fingerprint" do
       rendered = Phoenix.View.render(View, "live_with_live.html", @assigns)
-      {_, {root, child}} = Phoenix.LiveView.Diff.render(rendered, nil)
-      prints = {root, %{child | 1 => :bad}}
-      assigns = Map.put(@assigns, :socket, %{fingerprints: prints, changed: %{}})
+
+      {socket, _, _} = Diff.render(%Socket{}, rendered, Diff.new_components())
+
+      socket =
+        update_in(socket.fingerprints, fn {root, child} -> {root, %{child | 1 => :bad}} end)
+
+      assigns = Map.put(@assigns, :socket, socket)
 
       assert %Rendered{
                static: ["pre: ", "\n", "post: ", ""],

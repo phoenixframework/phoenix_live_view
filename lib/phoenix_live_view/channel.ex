@@ -54,13 +54,9 @@ defmodule Phoenix.LiveView.Channel do
       {:internal, params} ->
         new_state = %{state | uri: parse_uri(url)}
 
-        if function_exported?(view, :handle_params, 3) do
-          params
-          |> new_state.socket.view.handle_params(url, new_state.socket)
-          |> handle_result({:handle_params, 3, msg.ref}, new_state)
-        else
-          {:noreply, reply(new_state, msg.ref, :ok, %{})}
-        end
+        params
+        |> new_state.socket.view.handle_params(url, new_state.socket)
+        |> handle_result({:handle_params, 3, msg.ref}, new_state)
 
       :external ->
         {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
@@ -68,18 +64,27 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "cids_destroyed"} = msg, %{topic: topic} = state) do
-    %{"cids" => _cids} = msg.payload
-    # TODO
-    {:noreply, state}
+    %{"cids" => cids} = msg.payload
+
+    new_components =
+      Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
+
+    {:noreply, %{state | components: new_components}}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode(type, state.router, raw_val)
 
-    event
-    |> view_module(state).handle_event(val, state.socket)
-    |> handle_result({:handle_event, 3, msg.ref}, state)
+    case Map.fetch(msg.payload, "cid") do
+      {:ok, cid} ->
+        {:noreply, component_handle_event(state, cid, event, val, msg.ref)}
+
+      :error ->
+        event
+        |> view_module(state).handle_event(val, state.socket)
+        |> handle_result({:handle_event, 3, msg.ref}, state)
+    end
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -153,9 +158,9 @@ defmodule Phoenix.LiveView.Channel do
           |> mount_handle_params_result(state, :mount)
 
         :external ->
-          raise "cannot invoke handle_params/3 for #{inspect socket.view} " <>
-                  "because #{inspect socket.view} was not declared in the router with " <>
-                  "the live/3 macro under #{inspect url}"
+          raise "cannot invoke handle_params/3 for #{inspect(socket.view)} " <>
+                  "because #{inspect(socket.view)} was not declared in the router with " <>
+                  "the live/3 macro under #{inspect(url)}"
       end
     else
       {diff, new_state} = render_diff(state, socket)
@@ -251,6 +256,26 @@ defmodule Phoenix.LiveView.Channel do
 
     Got: #{inspect(result)}
     """
+  end
+
+  defp component_handle_event(%{socket: socket, components: components} = state, cid, event, val, ref) do
+    {diffs, new_components} =
+      Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
+        case component.handle_event(event, val, component_socket) do
+          {:noreply, component_socket} ->
+            component_socket
+
+          other ->
+            raise ArgumentError, """
+            invalid return from #{inspect(component)}.handle_event/3 callback.
+
+            Expected: {:noreply, %Socket{}}
+            Got: #{inspect(other)}
+            """
+        end
+      end)
+
+    push_render(%{state | components: new_components}, %{components: diffs}, ref)
   end
 
   defp view_module(%{socket: %Socket{view: view}}), do: view
@@ -389,11 +414,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp render_diff(state, %{fingerprints: prints} = socket) do
+  defp render_diff(%{components: components} = state, socket) do
     rendered = View.dynamic_render(socket, view_module(state))
-    {diff, new_prints} = Diff.render(rendered, prints)
-    socket = View.clear_changed(%{socket | fingerprints: new_prints})
-    {diff, %{state | socket: socket}}
+    {socket, diff, new_components} = Diff.render(socket, rendered, components)
+    {diff, %{state | socket: View.clear_changed(socket), components: new_components}}
   end
 
   defp reply(state, ref, status, payload) do
@@ -415,10 +439,6 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, verified} ->
         verified_mount(verified, params, from, phx_socket)
 
-      {:error, :outdated} ->
-        GenServer.reply(from, {:error, %{reason: "outdated"}})
-        {:stop, :shutdown, :no_state}
-
       {:error, reason} ->
         Logger.error(
           "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
@@ -437,12 +457,12 @@ defmodule Phoenix.LiveView.Channel do
 
   defp verified_mount(verified, params, from, phx_socket) do
     %{
-       id: id,
-       view: view,
-       parent_pid: parent,
-       root_pid: root,
-       session: session,
-       assigned_new: assigned_new
+      id: id,
+      view: view,
+      parent_pid: parent,
+      root_pid: root,
+      session: session,
+      assigned_new: assigned_new
     } = verified
 
     %Phoenix.Socket{endpoint: endpoint} = phx_socket
@@ -454,19 +474,24 @@ defmodule Phoenix.LiveView.Channel do
       Process.put(:"$callers", [pid])
     end
 
-    %Socket{
-      endpoint: endpoint,
-      view: view,
-      connected?: true,
-      parent_pid: parent,
-      root_pid: root || self(),
-      id: id
-    }
-    |> View.configure_socket(%{
-      connect_params: connect_params,
-      assigned_new: {parent_assigns, assigned_new}
-    })
-    |> View.call_mount!(view, session)
+    socket =
+      View.configure_socket(
+        %Socket{
+          endpoint: endpoint,
+          view: view,
+          connected?: true,
+          parent_pid: parent,
+          root_pid: root || self(),
+          id: id
+        },
+        %{
+          connect_params: connect_params,
+          assigned_new: {parent_assigns, assigned_new}
+        }
+      )
+
+    socket
+    |> View.maybe_call_mount!(view, [session, socket])
     |> build_state(phx_socket, verified[:router], url)
     |> maybe_call_mount_handle_params(url)
     |> reply_mount(from)
@@ -501,7 +526,8 @@ defmodule Phoenix.LiveView.Channel do
       serializer: phx_socket.serializer,
       socket: lv_socket,
       topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid
+      transport_pid: phx_socket.transport_pid,
+      components: Diff.new_components()
     }
   end
 
