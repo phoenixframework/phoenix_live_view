@@ -20,6 +20,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
+  defp simulate_outdated_token_on_page(conn) do
+    html = html_response(conn, 200)
+    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    salt = Phoenix.LiveView.View.salt!(@endpoint)
+    outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
+    %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
+  end
+
   describe "mounting" do
     test "static mount followed by connected mount", %{conn: conn} do
       conn = get(conn, "/thermo")
@@ -90,6 +98,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                assert {:error, %{reason: "badsession"}} = live(conn)
              end) =~ "failed while verifying session"
+    end
+
+    test "live render with outdated session", %{conn: conn} do
+      conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               assert {:error, %{reason: "outdated"}} = live(conn)
+             end)
     end
 
     test "render_click with string value", %{conn: conn} do
@@ -220,23 +236,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(view.pid, {:set, :val, 1})
       GenServer.call(view.pid, {:set, :val, 2})
       GenServer.call(view.pid, {:set, :val, 3})
-      assert DOM.parse(render_click(view, :inc)) == DOM.parse("""
-             The temp is: 4
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
-             """)
 
-      assert  DOM.parse(render_click(view, :dec)) == DOM.parse("""
-             The temp is: 3
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
-             """)
+      assert DOM.parse(render_click(view, :inc)) ==
+               DOM.parse("""
+               The temp is: 4
+               <button phx-click="dec">-</button>
+               <button phx-click="inc">+</button>
+               """)
 
-      assert DOM.child_nodes(DOM.parse(render(view))) == DOM.parse("""
-             The temp is: 3
-             <button phx-click="dec">-</button>
-             <button phx-click="inc">+</button>
-             """)
+      assert DOM.parse(render_click(view, :dec)) ==
+               DOM.parse("""
+               The temp is: 3
+               <button phx-click="dec">-</button>
+               <button phx-click="inc">+</button>
+               """)
+
+      assert DOM.child_nodes(DOM.parse(render(view))) ==
+               DOM.parse("""
+               The temp is: 3
+               <button phx-click="dec">-</button>
+               <button phx-click="inc">+</button>
+               """)
     end
   end
 
@@ -300,11 +320,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
-      html_without_nesting = DOM.parse """
-      The temp is: 1
-      <button phx-click="dec">-</button>
-      <button phx-click="inc">+</button>
-      """
+      html_without_nesting =
+        DOM.parse("""
+        The temp is: 1
+        <button phx-click="dec">-</button>
+        <button phx-click="inc">+</button>
+        """)
 
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
@@ -451,9 +472,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _html} = live(conn, "/root")
 
       assert ExUnit.CaptureLog.capture_log(fn ->
-        :ok = GenServer.call(view.pid, {:dynamic_child, :static})
-        catch_exit(render(view))
-      end) =~ "duplicate LiveView id: \"static\""
+               :ok = GenServer.call(view.pid, {:dynamic_child, :static})
+               catch_exit(render(view))
+             end) =~ "duplicate LiveView id: \"static\""
     end
   end
 

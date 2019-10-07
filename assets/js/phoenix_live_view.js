@@ -9,6 +9,8 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import morphdom from "morphdom"
 
+const CLIENT_OUTDATED = "outdated"
+const RELOAD_JITTER = [1000, 10000]
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -269,6 +271,13 @@ export class LiveSocket {
   disconnect(){ this.socket.disconnect() }
 
   // private
+
+  reloadWithJitter(){
+     this.disconnect()
+     let [minMs, maxMs] = RELOAD_JITTER
+     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+     setTimeout(() => window.location.reload(), afterMs)
+   }
 
   getHookCallbacks(hookName){ return this.hooks[hookName] }
 
@@ -1121,6 +1130,7 @@ export class View {
   }
 
   onJoinError(resp){
+    if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter() }
     if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }

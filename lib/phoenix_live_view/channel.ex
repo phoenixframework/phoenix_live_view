@@ -442,6 +442,10 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, verified} ->
         verified_mount(verified, params, from, phx_socket)
 
+      {:error, :outdated} ->
+         GenServer.reply(from, {:error, %{reason: "outdated"}})
+         {:stop, :shutdown, :no_state}
+
       {:error, reason} ->
         Logger.error(
           "Mounting #{phx_socket.topic} failed while verifying session with: #{inspect(reason)}"
