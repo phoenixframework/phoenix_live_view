@@ -603,6 +603,12 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
+  # Ignore binary modifiers
+  defp analyze({:"::", meta, [left, right]}, tainted_vars, vars, assigns) do
+    {left, tainted_vars, vars, assigns} = analyze(left, tainted_vars, vars, assigns)
+    {{:"::", meta, [left, right]}, tainted_vars, vars, assigns}
+  end
+
   # Classify calls
   defp analyze({left, meta, args} = expr, tainted_vars, vars, assigns) do
     case classify_taint(left, args) do

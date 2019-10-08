@@ -176,6 +176,13 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{}, %{}) == [nil]
     end
 
+    test "does not render dynamic on bitstring modifiers" do
+      template = "<%= <<@foo::binary>> %>"
+      assert changed(template, %{foo: "123"}, nil) == ["123"]
+      assert changed(template, %{foo: "123"}, %{}) == [nil]
+      assert changed(template, %{foo: "123"}, %{foo: true}) == ["123"]
+    end
+
     test "renders dynamic if fingerprint does not match" do
       assert changed("<%= @foo %>", %{foo: 123}, %{foo: true}, 123) == ["123"]
       assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, 123) == ["3"]
