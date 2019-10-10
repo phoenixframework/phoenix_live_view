@@ -226,61 +226,34 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule TreeComponent do
+    use Phoenix.LiveComponent
+
+    def preload(list_of_assigns) do
+      send(self(), {:preload, list_of_assigns})
+      Enum.map(list_of_assigns, &Map.put(&1, :preloaded?, true))
+    end
+
+    def update(assigns, socket) do
+      send(self(), {:update, assigns})
+      {:ok, assign(socket, assigns)}
+    end
+
+    def render(assigns) do
+      ~L"""
+      <%= @id %> - <%= @preloaded? %>
+      <%= for {component, index} <- Enum.with_index(@children, 0) do %>
+        <%= index %>: <%= component %>
+      <% end %>
+      """
+    end
+  end
+
   def component_template(assigns) do
     ~L"""
     <div>
       <%= @component %>
     </div>
-    """
-  end
-
-  def components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-        <%= index %>: <%= component %>
-      <% end %>
-    </div>
-    """
-  end
-
-  def nested_components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for prefix_id <- @ids do %>
-        <%= prefix_id %>
-        <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-          <%= index %>: <%= %{component | id: "#{prefix_id}-#{component.id}"} %>
-        <% end %>
-      <% end %>
-    </div>
-    """
-  end
-
-  def rendered_components_template(assigns) do
-    ~L"""
-    <div>
-      <%= for {component, index} <- Enum.with_index(@components, 0) do %>
-        <%= index %>: <%= component_template(%{component: component}) %>
-      <% end %>
-    </div>
-    """
-  end
-
-  def block_component_template(assigns) do
-    ~L"""
-    <%= live_component @socket, BlockComponent, id: "WORLD" do %>
-      WITH VALUE <%= @value %>
-    <% end %>
-    """
-  end
-
-  def explicit_block_component_template(assigns) do
-    ~L"""
-    <%= live_component @socket, BlockComponent, id: "WORLD" do %>
-      <% extra -> %>
-        WITH EXTRA <%= inspect(extra) %>
-    <% end %>
     """
   end
 
@@ -347,7 +320,14 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "block tracking" do
-      rendered = block_component_template(%{socket: %Socket{}})
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~L"""
+      <%= live_component @socket, BlockComponent, id: "WORLD" do %>
+        WITH VALUE <%= @value %>
+      <% end %>
+      """
+
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -377,7 +357,15 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "explicit block tracking" do
-      rendered = explicit_block_component_template(%{socket: %Socket{}})
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~L"""
+      <%= live_component @socket, BlockComponent, id: "WORLD" do %>
+        <% extra -> %>
+          WITH EXTRA <%= inspect(extra) %>
+      <% end %>
+      """
+
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -502,6 +490,70 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
+    test "on preload" do
+      alias Component, as: C
+
+      tree = %C{
+        component: TreeComponent,
+        id: "R",
+        assigns: %{
+          id: "R",
+          children: [
+            %C{
+              component: TreeComponent,
+              id: "A",
+              assigns: %{
+                id: "A",
+                children: [
+                  %C{component: TreeComponent, id: "B", assigns: %{id: "B", children: []}},
+                  %C{component: TreeComponent, id: "C", assigns: %{id: "C", children: []}},
+                  %C{component: TreeComponent, id: "D", assigns: %{id: "D", children: []}}
+                ]
+              }
+            },
+            %C{
+              component: TreeComponent,
+              id: "X",
+              assigns: %{
+                id: "X",
+                children: [
+                  %C{component: TreeComponent, id: "Y", assigns: %{id: "Y", children: []}},
+                  %C{component: TreeComponent, id: "Z", assigns: %{id: "Z", children: []}}
+                ]
+              }
+            }
+          ]
+        }
+      }
+
+      rendered = component_template(%{component: tree})
+      {socket, full_render, components} = render(rendered)
+
+      assert %{
+               c: %{
+                 0 => %{0 => "R"},
+                 1 => %{0 => "A"},
+                 2 => %{0 => "X"},
+                 3 => %{0 => "B"},
+                 4 => %{0 => "C"},
+                 5 => %{0 => "D"},
+                 6 => %{0 => "Y"},
+                 7 => %{0 => "Z"}
+               }
+             } = full_render
+
+      assert socket.fingerprints == {rendered.fingerprint, %{}}
+      assert {_, _, 8} = components
+
+      assert_received {:preload, [%{id: "R"}]}
+      assert_received {:preload, [%{id: "A"}, %{id: "X"}]}
+      assert_received {:preload, [%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}]}
+
+      for id <- ~w(R A X B C D Y Z) do
+        assert_received {:update, %{id: ^id, preloaded?: true}}
+      end
+    end
+
     test "on addition" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
@@ -567,7 +619,17 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
-      %{fingerprint: fingerprint} = rendered = components_template(%{components: components})
+      assigns = %{components: components}
+
+      %{fingerprint: fingerprint} =
+        rendered = ~L"""
+        <div>
+          <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+            <%= index %>: <%= component %>
+          <% end %>
+        </div>
+        """
+
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
@@ -610,8 +672,19 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
+      assigns = %{components: components, ids: ["foo", "bar"]}
+
       %{fingerprint: fingerprint} =
-        rendered = nested_components_template(%{components: components, ids: ["foo", "bar"]})
+        rendered = ~L"""
+        <div>
+          <%= for prefix_id <- @ids do %>
+            <%= prefix_id %>
+            <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+              <%= index %>: <%= %{component | id: "#{prefix_id}-#{component.id}"} %>
+            <% end %>
+          <% end %>
+        </div>
+        """
 
       {socket, full_render, components} = render(rendered)
 
@@ -675,8 +748,16 @@ defmodule Phoenix.LiveView.DiffTest do
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
       ]
 
+      assigns = %{components: components}
+
       %{fingerprint: fingerprint} =
-        rendered = rendered_components_template(%{components: components})
+        rendered = ~L"""
+        <div>
+          <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+            <%= index %>: <%= component_template(%{component: component}) %>
+          <% end %>
+        </div>
+        """
 
       {socket, full_render, components} = render(rendered)
 

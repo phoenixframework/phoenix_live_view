@@ -188,7 +188,7 @@ defmodule Phoenix.LiveComponent do
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback update(Socket.assigns(), socket :: Socket.t()) ::
-              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
+              {:ok, Socket.t()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
