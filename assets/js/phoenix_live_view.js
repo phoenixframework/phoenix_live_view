@@ -480,7 +480,7 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.stopPropagation()
+      e.preventDefault()
 
       let meta = {
         altKey: e.altKey,
@@ -790,7 +790,6 @@ export let DOM = {
         }
       },
       onBeforeElUpdated: function(fromEl, toEl) {
-        if(fromEl.isEqualNode(toEl)){ return false } // Skip subtree if both elems and children are equal
         if(fromEl.getAttribute(phxUpdate) === "ignore"){
           DOM.mergeAttrs(fromEl, toEl)
           changes.updated.push({fromEl, toEl: fromEl})
