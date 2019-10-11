@@ -1050,7 +1050,7 @@ export class View {
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
       hook.__trigger__("mounted")
     } else if(hookName !== null){
-      logError(`unkown hook found for "${hookName}"`, el)
+      logError(`unknown hook found for "${hookName}"`, el)
     }
   }
 
