@@ -1044,8 +1044,10 @@ export class View {
 
   addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let hookName = el.getAttribute(this.binding(PHX_HOOK))
+    if(hookName && !this.ownsElement(el)){ return }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
-    if(callbacks && this.ownsElement(el)){
+
+    if(callbacks){
       let hook = new ViewHook(this, el, callbacks)
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
       hook.__trigger__("mounted")
