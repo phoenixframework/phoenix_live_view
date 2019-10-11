@@ -1043,11 +1043,14 @@ export class View {
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
   addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let callbacks = this.liveSocket.getHookCallbacks(el.getAttribute(this.binding(PHX_HOOK)))
+    let hookName = el.getAttribute(this.binding(PHX_HOOK))
+    let callbacks = this.liveSocket.getHookCallbacks(hookName)
     if(callbacks && this.ownsElement(el)){
       let hook = new ViewHook(this, el, callbacks)
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
       hook.__trigger__("mounted")
+    } else if(hookName !== null){
+      logError(`unkown hook found for "${hookName}"`, el)
     }
   }
 
