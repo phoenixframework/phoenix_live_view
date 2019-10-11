@@ -543,7 +543,7 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
-  ## Compartimentalizing markup and events with `render`, `live_render`, and `live_component`
+  ## Compartmentalizing markup and events with `render`, `live_render`, and `live_component`
 
   We can render another template directly from a LiveView template by simply
   calling `render`:
@@ -575,8 +575,8 @@ defmodule Phoenix.LiveView do
 
   Given a LiveView runs on its own process, it is an excellent tool for creating
   completely isolated UI elements, but it is a slightly expensive abstraction if
-  all you want is to compartimentalize markup and events. For example, if you are
-  showing a table with all users in the system, and you want to compartimentalize
+  all you want is to compartmentalize markup and events. For example, if you are
+  showing a table with all users in the system, and you want to compartmentalize
   this logic, using a separate `LiveView`, each with its own process, would likely
   be too expensive. For these cases, LiveView provides `Phoenix.LiveComponent`,
   which are rendered using `live_component/3`:
@@ -591,9 +591,9 @@ defmodule Phoenix.LiveView do
 
   To sum it up:
 
-    * `render` - compartimentalizes markup
-    * `live_component` - compartimentalizes state, markup, and events
-    * `live_render` - compartimentalizes state, markup, events, and error isolation
+    * `render` - compartmentalizes markup
+    * `live_component` - compartmentalizes state, markup, and events
+    * `live_render` - compartmentalizes state, markup, events, and error isolation
 
   ## Rate limiting events with Debounce and Throttle
 
