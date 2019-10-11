@@ -76,13 +76,57 @@ defmodule Phoenix.LiveComponent do
       end
 
   In stateful components, `c:mount/1` is called only once, when the
-  component is first rendered. Then `c:update/2` is called immediately
-  after `c:mount/1` as well as before each re-rendering.
+  component is first rendered. Then for each rendering, the optional
+  `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
 
   Stateful components can also implement a `handle_event/3` callback,
   that works exactly the same as in LiveView. When `handle_event/3` is
   called for a component, only the diff of the component is sent to the
   client, making them extremely efficient.
+
+  ### Preloading and update
+
+  Every time a stateful component is rendered, both `c:preload/1` and
+  `c:update/2` is called. To understand why both callbacks are necessary,
+  imagine that you implement a component and the component needs to load
+  some state from the database. For example:
+
+      <%= live_component @socket, UserComponent, id: user_id %>
+
+  A possible implementation would be to load the user on the `c:update/2`
+  callback:
+
+      def update(assigns, socket) do
+        user = Repo.get! User, assigns.id
+        {:ok, assign(socket, :user, user)}
+      end
+
+  However, the issue with said approach is that, if you are rendering
+  multiple user components in the same page, you have a N+1 query problem.
+  The `c:preload/1` callback helps address this problem as it is invoked
+  with a list of assigns for all components of the same type. For example,
+  instead of implementing `c:update/2` as above, one could implement:
+
+      def preload(list_of_assigns) do
+        ids = Enum.map(list_of_assigns, & &1.id)
+
+        users =
+          from(u in User, where: u.id in ^list_of_ids, select: {u.id, u})
+          |> Repo.all()
+          |> Map.new()
+
+        Enum.map(list_of_assigns, fn assigns ->
+          Map.put(assigns, :user, users[assigns.id])
+        end)
+      end
+
+  Now only a single query to the database will be made. In fact, the
+  preloading algorithm is a breadth-first tree traversal, which means
+  that even for nested components, the amount of queries are kept to
+  a minimal.
+
+  Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
+  keeping the assigns in the same order as they were given.
 
   ## Live component blocks
 
@@ -187,8 +231,10 @@ defmodule Phoenix.LiveComponent do
   @callback mount(socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
+  @callback preload([Socket.assigns()]) :: [Socket.assigns()]
+
   @callback update(Socket.assigns(), socket :: Socket.t()) ::
-              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
+              {:ok, Socket.t()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 

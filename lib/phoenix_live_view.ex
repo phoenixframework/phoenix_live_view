@@ -1146,7 +1146,7 @@ defmodule Phoenix.LiveView do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
-    if function_exported?(component, :handle_event, 3) and is_nil(id) do
+    if is_nil(id) and (function_exported?(component, :handle_event, 3) or function_exported?(component, :preload, 1)) do
       raise "the component #{inspect(component)} has implemented handle_event/3, " <>
               "which requires an ID element"
     end

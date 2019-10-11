@@ -282,6 +282,8 @@ defmodule Phoenix.LiveView.Diff do
 
     {pending_components, component_diffs, components} =
       Enum.reduce(pending_components, acc, fn {component, entries}, acc ->
+        entries = maybe_preload_components(component, Enum.reverse(entries))
+
         Enum.reduce(entries, acc, fn {id, new?, new_assigns}, acc ->
           {pending_components, component_diffs, components} = acc
           id = {component, id}
@@ -295,6 +297,31 @@ defmodule Phoenix.LiveView.Diff do
       end)
 
     render_pending_components(socket, pending_components, component_diffs, components)
+  end
+
+  defp maybe_preload_components(component, entries) do
+    if function_exported?(component, :preload, 1) do
+      list_of_assigns = Enum.map(entries, fn {_id, _new?, new_assigns} -> new_assigns end)
+      result = component.preload(list_of_assigns)
+      zip_preloads(result, entries, component, result)
+    else
+      entries
+    end
+  end
+
+  defp zip_preloads([new_assigns | assigns], [{id, new?, _} | entries], component, preloaded)
+       when is_map(new_assigns) do
+    [{id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
+  end
+
+  defp zip_preloads([], [], _component, _preloaded) do
+    []
+  end
+
+  defp zip_preloads(_, _, component, preloaded) do
+    raise ArgumentError,
+          "expected #{inspect(component)}.preload/1 to return a list of maps of the same length " <>
+            "as the list of assigns given, got: #{inspect(preloaded)}"
   end
 
   defp render_component(socket, id, cid, new?, pending_components, component_diffs, components) do
