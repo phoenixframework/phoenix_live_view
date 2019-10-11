@@ -8,7 +8,7 @@ defmodule Phoenix.LiveComponent do
   Components run inside the LiveView process, but may have their own
   state and event handling.
 
-  The simplest component simply defines a `render` function:
+  The simplest component only needs to define a `render` function:
 
       defmodule HeroComponent do
         use Phoenix.LiveComponent
@@ -32,7 +32,7 @@ defmodule Phoenix.LiveComponent do
 
   ## Stateless components life-cycle
 
-  When `live_component` is called, the following callbacks will invoked
+  When `live_component` is called, the following callbacks will be invoked
   in the component:
 
       mount(socket) -> update(assigns, socket) -> render(assigns)
@@ -56,7 +56,7 @@ defmodule Phoenix.LiveComponent do
       <%= live_component @socket, HeroComponent, id: :hero, content: @content %>
 
   Stateful components are identified by the component module and their ID.
-  Therefore, two different component module with the same ID are different
+  Therefore, two different component modules with the same ID are different
   components. This means we can often tie the component ID to some application
   based ID:
 
@@ -108,7 +108,7 @@ defmodule Phoenix.LiveComponent do
   instead of implementing `c:update/2` as above, one could implement:
 
       def preload(list_of_assigns) do
-        ids = Enum.map(list_of_assigns, & &1.id)
+        list_of_ids = Enum.map(list_of_assigns, & &1.id)
 
         users =
           from(u in User, where: u.id in ^list_of_ids, select: {u.id, u})
@@ -123,7 +123,7 @@ defmodule Phoenix.LiveComponent do
   Now only a single query to the database will be made. In fact, the
   preloading algorithm is a breadth-first tree traversal, which means
   that even for nested components, the amount of queries are kept to
-  a minimal.
+  a minimum.
 
   Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
   keeping the assigns in the same order as they were given.
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveComponent do
   The `do/end` will be available as an anonymous function in an assign named
   `@inner_content`. The anonymous function must be invoked passing a new set
   of assigns that will be merged into the user assigns. For example, the grid
-  component above, could be implemented as:
+  component above could be implemented as:
 
       defmodule TableComponent do
         use Phoenix.LiveComponent
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveComponent do
   The component ends up enclosed by the form markup, where LiveView
   cannot track it. In such cases, you may receive an error such as:
 
-      ** (ArgumentError) cannot convert component SomeComponen to HTML.
+      ** (ArgumentError) cannot convert component SomeComponent to HTML.
       A component must always be returned directly as part of a LiveView template
 
   In this particular case, this can be addressed by using the `form_for`
