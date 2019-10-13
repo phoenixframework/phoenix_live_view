@@ -1286,7 +1286,7 @@ class ViewHook {
   }
 
   pushEvent(event, payload = {}){
-    this.__view.pushWithReply("event", {type: "hook", event: event, value: payload})
+    this.__view.pushEvent("hook", this.el, event, payload)
   }
   __trigger__(kind){
     let callback = this.__callbacks[kind]
