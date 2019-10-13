@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ComponentTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -142,6 +142,43 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "render only" do
       assert render_component(RenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
+  end
+
+  describe "send_update" do
+    test "updates child from parent", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      send(
+        view.pid,
+        {:send_update,
+         [
+           {StatefulComponent, id: "chris", name: "NEW-chris", from: self()},
+           {StatefulComponent, id: "jose", name: "NEW-jose", from: self()}
+         ]}
+      )
+
+      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
+      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
+      assert_receive {:preload, [%{id: "chris", name: "NEW-chris"}]}
+      assert_receive {:preload, [%{id: "jose", name: "NEW-jose"}]}
+      refute_receive {:updated, _}
+      refute_receive {:preload, _}
+
+      assert {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  NEW-chris says hi with socket: true\n"]} == DOM.parse(render([view, "chris"]))
+
+      assert {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              ["\n  NEW-jose says hi with socket: true\n"]} == DOM.parse(render([view, "jose"]))
+    end
+
+    test "updates without :id raise", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+        send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
+        refute_receive {:updated, _}
+      end) =~ "** (ArgumentError) missing required :id in send_update"
     end
   end
 end

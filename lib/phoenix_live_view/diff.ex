@@ -85,6 +85,37 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
+  Updates the components with a list of `send_update` operations.
+
+  Like `with_component/5`, it will store the result under the `cid
+   key in the `component_diffs` map.
+
+  It returns the updated `component_diffs` and the updated `components` or
+  raises an `ArgumentError` if no component matching the update `:id` exists.
+
+  Components are preloaded before the update callback.
+
+  ## Example
+
+    {diffs, new_components} = Diff.update_components(socket, state.components, updates)
+  """
+  def update_components(socket, components, updates) do
+    {diffs, new_components} =
+      Enum.reduce(updates, {[], components}, fn {module, id, updated_assigns}, {diffs, components_acc} ->
+        {cid, existing_assigns} = fetch_component!(module, id, components_acc)
+        [new_assigns] = maybe_update_preload(module, Map.merge(existing_assigns, updated_assigns))
+        {diff, new_components} =
+          with_component(socket, cid, %{}, components_acc, fn component_socket, component ->
+            View.maybe_call_update!(component_socket, component, new_assigns)
+          end)
+
+        {[diff | diffs], new_components}
+      end)
+
+    {Enum.reverse(diffs), new_components}
+  end
+
+  @doc """
   Deletes a component by `cid`.
   """
   def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
@@ -309,6 +340,15 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
+  # todo potentially batch in the future on send_update
+  defp maybe_update_preload(module, assigns) do
+    if function_exported?(module, :preload, 1) do
+      module.preload([assigns])
+    else
+      [assigns]
+    end
+  end
+
   defp zip_preloads([new_assigns | assigns], [{id, new?, _} | entries], component, preloaded)
        when is_map(new_assigns) do
     [{id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
@@ -342,5 +382,14 @@ defmodule Phoenix.LiveView.Diff do
 
     id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
     {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
+  end
+
+  defp fetch_component!(module, id, components) do
+    {id_to_components, _cid_to_ids, _} = components
+    case Map.fetch(id_to_components, {module, id}) do
+      {:ok, {cid, assigns, _, _}} -> {cid, assigns}
+      :error ->
+        raise ArgumentError, "no #{inspect(module)} component found with :id #{inspect(id)}"
+    end
   end
 end
