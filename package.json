@@ -14,6 +14,7 @@
     "LICENSE.md",
     "package.json",
     "priv/static/phoenix_live_view.js",
-    "assets/js/phoenix_live_view.js"
+    "assets/js/phoenix_live_view.js",
+    "assets/css/live_view.css"
   ]
 }
