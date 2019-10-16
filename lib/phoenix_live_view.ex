@@ -161,13 +161,8 @@ defmodule Phoenix.LiveView do
         end
 
         def mount(%{id: id, current_user_id: user_id}, socket) do
-          case Thermostat.get_user_reading(user_id, id) do
-            {:ok, temperature} ->
-              {:ok, assign(socket, :temperature, temperature)}
-
-            {:error, reason} ->
-              {:error, reason}
-          end
+          temperature = Thermostat.get_user_reading(user_id, id) do
+          {:ok, assign(socket, :temperature, temperature)}
         end
       end
 
