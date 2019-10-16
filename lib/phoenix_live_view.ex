@@ -639,7 +639,7 @@ defmodule Phoenix.LiveView do
       input is triggered, any current debounce or throttle timers are reset for
       existing inputs.
     * A `phx-keydown` binding is only throttled for key repeats. Unique keypresses
-      back-to-back with dispatch the pressed key events.
+      back-to-back will dispatch the pressed key events.
 
   ## DOM patching and temporary assigns
 
