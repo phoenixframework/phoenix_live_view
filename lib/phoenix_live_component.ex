@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveComponent do
   @moduledoc ~S"""
-  Components are a mechanism to compartimentalize state, markup, and
+  Components are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
   Components are defined by using `Phoenix.LiveComponent` and are used
