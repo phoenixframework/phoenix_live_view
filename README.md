@@ -17,12 +17,19 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
+There are currently two methods for installing LiveView. For projects that
+require more stability, it is recommended that you install using the
+[installation guide on
+HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html). If you want to
+use the latest features, you should follow the instructions below to use the
+current `master` branch of the project.
+
 To use LiveView, add to your `mix.exs` and run `mix deps.get`:
 
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.3.0"},
+    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view", branch: "master"},
     {:floki, ">= 0.0.0", only: :test}
   ]
 end

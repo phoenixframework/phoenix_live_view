@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_html, "~> 2.13.2"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.20", only: :docs},
-      {:floki, "~> 0.23.0", only: :test},
+      {:floki, "~> 0.23.0", only: :test}
     ]
   end
 
@@ -47,14 +47,33 @@ defmodule Phoenix.LiveView.MixProject do
       main: "Phoenix.LiveView",
       source_ref: "v#{@version}",
       source_url: "https://github.com/phoenixframework/phoenix_live_view",
-      groups_for_modules: [
-        "Live EEx Engine": [
-          Phoenix.LiveView.Engine,
-          Phoenix.LiveView.Component,
-          Phoenix.LiveView.Rendered,
-          Phoenix.LiveView.Comprehension,
-        ]
-      ],
+      extra_section: "GUIDES",
+      extras: extras(),
+      groups_for_extras: groups_for_extras(),
+      groups_for_modules: groups_for_modules()
+    ]
+  end
+
+  defp extras do
+    [
+      "guides/introduction/installation.md"
+    ]
+  end
+
+  defp groups_for_extras do
+    [
+      Introduction: ~r/guides\/introduction\/.?/
+    ]
+  end
+
+  defp groups_for_modules do
+    [
+      "Live EEx Engine": [
+        Phoenix.LiveView.Engine,
+        Phoenix.LiveView.Component,
+        Phoenix.LiveView.Rendered,
+        Phoenix.LiveView.Comprehension
+      ]
     ]
   end
 
