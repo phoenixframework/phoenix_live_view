@@ -183,6 +183,14 @@ defmodule Phoenix.LiveComponent do
         ...
       end
 
+  ## Live links and live redirects
+
+  A template rendered inside a component can use `live_link` calls. The
+  `live_link` is always handled by the parent `LiveView`, as components
+  do not provide `handle_params`. `live_redirect` from inside a component
+  is not currently supported. For such, you must send a message to the
+  LiveView itself, as mentioned above, which may then redirect.
+
   ## Limitations
 
   Components must only contain HTML tags at their root. At least one HTML
