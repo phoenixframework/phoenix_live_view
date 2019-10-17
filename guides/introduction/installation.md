@@ -7,7 +7,8 @@ GitHub to get the latest features, follow the instructions in [the README
 there](https://github.com/phoenixframework/phoenix_live_view/blob/master/README.md#installation)
 instead.
 
-To start using LiveView, add to your `mix.exs` and run `mix deps.get`:
+To start using LiveView, add to your `mix.exs` and run `mix deps.get`. If
+installing from Hex, use the latest version from there:
 
 ```elixir
 def deps do
@@ -16,6 +17,16 @@ def deps do
     {:floki, ">= 0.0.0", only: :test}
   ]
 end
+```
+
+If you want the latest features, install from GitHub:
+
+```elixir
+def deps do
+  [
+    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
+    {:floki, ">= 0.0.0", only: :test}
+  ]
 ```
 
 Once installed, update your endpoint's configuration to include a signing salt.
