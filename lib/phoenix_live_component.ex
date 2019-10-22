@@ -142,7 +142,7 @@ defmodule Phoenix.LiveComponent do
   of assigns that will be merged into the user assigns. For example, the grid
   component above could be implemented as:
 
-      defmodule TableComponent do
+      defmodule GridComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
