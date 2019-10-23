@@ -106,6 +106,19 @@ Add LiveView NPM dependencies in your `assets/package.json`.
 }
 ```
 
+If you're adding phoenix_live_view to an umbrella application, the dependency paths should be modified appropriately:
+
+```json
+{
+  "dependencies": {
+    "phoenix": "file:../../../deps/phoenix",
+    "phoenix_html": "file:../../../deps/phoenix_html",
+    "phoenix_live_view": "file:../../../deps/phoenix_live_view"
+  }
+}
+```
+
+
 Then install the new npm dependency.
 
 ```bash
@@ -135,6 +148,13 @@ You can also optionally import the style for the default CSS classes in your `ap
 ```css
 /* assets/css/app.css */
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
+```
+
+If you're adding phoenix_live_view to an umbrella application, the import link should be modified appropriately:
+
+```css
+/* assets/css/app.css */
+@import "../../../../deps/phoenix_live_view/assets/css/live_view.css";
 ```
 
 ## Browser Support
