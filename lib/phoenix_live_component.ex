@@ -201,7 +201,7 @@ defmodule Phoenix.LiveComponent do
   tracked. For example, if you render a component inside `form_for`, like
   this:
 
-      <%= form_for @changeset, fn f -> %>
+      <%= form_for @changeset, "#", fn f -> %>
         <%= live_component @socket, SomeComponent, f: f %>
       <% end %>
 
@@ -214,7 +214,7 @@ defmodule Phoenix.LiveComponent do
   In this particular case, this can be addressed by using the `form_for`
   variant without anonymous functions:
 
-      <%= f = form_for @changeset %>
+      <%= f = form_for @changeset, "#" %>
         <%= live_component @socket, SomeComponent, f: f %>
       </form>
 
