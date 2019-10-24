@@ -69,7 +69,8 @@ def view do
   quote do
     ...
     import Phoenix.LiveView,
-      only: [live_render: 2, live_render: 3, live_link: 1, live_link: 2]
+      only: [live_render: 2, live_render: 3, live_link: 1, live_link: 2,
+             live_component: 2, live_component: 3, live_component: 4]
   end
 end
 
@@ -95,7 +96,7 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Add LiveView NPM dependencies in your `assets/package.json`.
+Add LiveView NPM dependencies in your `assets/package.json`. For a regular project, do:
 
 ```json
 {
@@ -107,13 +108,25 @@ Add LiveView NPM dependencies in your `assets/package.json`.
 }
 ```
 
+However, if you're adding `phoenix_live_view` to an umbrella project, the dependency paths should be modified appropriately:
+
+```json
+{
+  "dependencies": {
+    "phoenix": "file:../../../deps/phoenix",
+    "phoenix_html": "file:../../../deps/phoenix_html",
+    "phoenix_live_view": "file:../../../deps/phoenix_live_view"
+  }
+}
+```
+
 Then install the new npm dependency.
 
 ```bash
 npm install --prefix assets
 ```
 
-If you had previously installed phoenix_live_view and want to get the
+If you had previously installed `phoenix_live_view` and want to get the
 latest javascript, then force an install.
 
 ```bash
@@ -131,9 +144,15 @@ let liveSocket = new LiveSocket("/live", Socket)
 liveSocket.connect()
 ```
 
-You can also optionally import the style for the default CSS classes in your `app.css` file.
+You can also optionally import the style for the default CSS classes in your `app.css` file. For a regular project:
 
 ```css
 /* assets/css/app.css */
 @import "../../deps/phoenix_live_view/assets/css/live_view.css";
 ```
+
+However, if you're adding `phoenix_live_view` to an umbrella project, the import link should be modified appropriately:
+
+```css
+/* assets/css/app.css */
+@import "../../../../deps/phoenix_live_view/assets/css/live_view.css";
