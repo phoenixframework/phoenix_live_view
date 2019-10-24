@@ -742,6 +742,9 @@ defmodule Phoenix.LiveView do
       performing a full static render (which reduces latency and improves
       performance). Once information is retrieved, the new LiveView is mounted.
 
+  `live_link/3` and `live_redirect/2` are by default only available in LiveViews
+  defined at the router with the `live/3` macro.
+
   ### `handle_params/3`
 
   The `c:handle_params/3` callback is invoked after `c:mount/2`. It receives the
@@ -1014,6 +1017,12 @@ defmodule Phoenix.LiveView do
     * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
       One `:id` is automatically generating when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
+    * `:router` - an optional router that enables this LiveView to
+      perform `live_link` and `live_redirect`. Only a single LiveView
+      in a page may have the `:router` set and  and it will effectively
+      become the view responsible for handling `live_link` and `live_redirect`.
+      LiveViews defined at the router with the `live` macro automatically
+      have the `:router` option set.
 
   ## Examples
 
