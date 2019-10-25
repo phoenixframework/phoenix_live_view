@@ -229,6 +229,7 @@ export class LiveSocket {
     this.prevValue = null
     this.silenced = false
     this.root = null
+    this.main = null
     this.linkRef = 0
     this.href = window.location.href
     this.pendingLink = null
@@ -292,6 +293,9 @@ export class LiveSocket {
   joinRootViews(){
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       let view = this.joinView(rootEl, null, this.getHref())
+      if(view.el.dataset["phxMain"]) {
+        this.main = view
+      }
       this.root = this.root || view
     })
   }
@@ -520,7 +524,7 @@ export class LiveSocket {
       if(!phxEvent){ return }
       let href = target.href
       e.preventDefault()
-      this.root.pushInternalLink(href, () => {
+      this.main.pushInternalLink(href, () => {
         Browser.pushState(phxEvent, {}, href)
         this.registerNewLocation(window.location)
       })
