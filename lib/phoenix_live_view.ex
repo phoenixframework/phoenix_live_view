@@ -554,7 +554,7 @@ defmodule Phoenix.LiveView do
   regular Phoenix templaes, a regular `render` call does not start another
   LiveView. This means `render` is useful to sharing markup between views.
 
-  One option to address this problem is to render a child LiveView insied a
+  One option to address this problem is to render a child LiveView inside a
   parent LiveView by calling `live_render/3` instead of `render/3` from the
   LiveView template. This child LiveView runs in a completely separate process
   than the parent, with its own `mount` and `handle_event` callbacks. If a
