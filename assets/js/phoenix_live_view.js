@@ -300,27 +300,27 @@ export class LiveSocket {
     })
   }
 
-  replaceRoot(href, callback = null, linkRef = this.setPendingLink(href)){
-    this.root.showLoader(LOADER_TIMEOUT)
-    let rootEl = this.root.el
-    let rootID = this.root.id
-    let wasLoading = this.root.isLoading()
+  replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
+    this.main.showLoader(LOADER_TIMEOUT)
+    let mainEl = this.main.el
+    let mainID = this.main.id
+    let wasLoading = this.main.isLoading()
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
 
       let div = document.createElement("div")
       div.innerHTML = html
-      this.joinView(div.firstChild, null, href, newRoot => {
+      this.joinView(div.firstChild, null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
-          newRoot.destroy()
+          newMain.destroy()
           return
         }
         callback && callback()
-        this.destroyViewById(rootID)
-        rootEl.replaceWith(newRoot.el)
-        this.root = newRoot
-        if(wasLoading){ this.root.showLoader() }
+        this.destroyViewById(mainID)
+        mainEl.replaceWith(newMain.el)
+        this.main = newMain
+        if(wasLoading){ this.main.showLoader() }
       })
     })
   }
@@ -512,10 +512,10 @@ export class LiveSocket {
 
       let href = window.location.href
 
-      if(this.root.isConnected()) {
-        this.root.pushInternalLink(href)
+      if(this.main.isConnected()) {
+        this.main.pushInternalLink(href)
       } else {
-        this.replaceRoot(href)
+        this.replaceMain(href)
       }
     }
     window.addEventListener("click", e => {
@@ -1110,7 +1110,7 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
+    this.liveSocket.replaceMain(to, () => Browser.pushState(kind, {}, to))
   }
 
   onLiveRedirect({to, kind}){
@@ -1235,7 +1235,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
-        this.liveSocket.replaceRoot(href, callback, linkRef)
+        this.liveSocket.replaceMain(href, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
