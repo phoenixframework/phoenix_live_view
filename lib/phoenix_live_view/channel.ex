@@ -13,6 +13,10 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket})
   end
 
+  def send_update(module, id, assigns) do
+    send(self(), {@prefix, :send_update, {module, id, assigns}})
+  end
+
   def ping(pid) do
     GenServer.call(pid, {@prefix, :ping})
   end
@@ -84,6 +88,16 @@ defmodule Phoenix.LiveView.Channel do
         event
         |> view_module(state).handle_event(val, state.socket)
         |> handle_result({:handle_event, 3, msg.ref}, state)
+    end
+  end
+
+  def handle_info({@prefix, :send_update, update}, state) do
+    case Diff.update_component(state.socket, state.components, update) do
+      {:diff, diff, new_components} ->
+        {:noreply, push_render(%{state | components: new_components}, diff, nil)}
+
+      :noop ->
+        {:noreply, state}
     end
   end
 
@@ -258,7 +272,13 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp component_handle_event(%{socket: socket, components: components} = state, cid, event, val, ref) do
+  defp component_handle_event(
+         %{socket: socket, components: components} = state,
+         cid,
+         event,
+         val,
+         ref
+       ) do
     {diff, new_components} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
@@ -443,8 +463,8 @@ defmodule Phoenix.LiveView.Channel do
         verified_mount(verified, params, from, phx_socket)
 
       {:error, :outdated} ->
-         GenServer.reply(from, {:error, %{reason: "outdated"}})
-         {:stop, :shutdown, :no_state}
+        GenServer.reply(from, {:error, %{reason: "outdated"}})
+        {:stop, :shutdown, :no_state}
 
       {:error, reason} ->
         Logger.error(

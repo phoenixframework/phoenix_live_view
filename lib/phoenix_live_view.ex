@@ -1404,6 +1404,33 @@ defmodule Phoenix.LiveView do
     LiveView.View.get_connect_params(socket)
   end
 
+  @doc """
+  Asynchronously updates a component with new assigns.
+
+  Requires a stateful component with a matching `:id` to send
+  the update to. Following the optional `preload/1` callback being invoked,
+  the updated values are merged with the component's assigns and `update/2`
+  is called for the updated component(s).
+
+  While a component may always be updated from the parent by updating some
+  parent assigns which will re-render the child, thus invoking `update/2` on
+  the child component, `send_update/2` is useful for updating a component
+  that entirely manages its own state, as well as messaging between components.
+
+  ## Examples
+
+      def handle_event("cancel-order", _, socket) do
+        ...
+        send_update(Cart, id: "cart", status: "cancelled")
+        {:noreply, socket}
+      end
+  """
+  def send_update(module, assigns) do
+    assigns = Enum.into(assigns, %{})
+    id = assigns[:id] || raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
+    Phoenix.LiveView.Channel.send_update(module, id, assigns)
+  end
+
   defp assert_root_live_view!(%{parent_pid: nil}, _context),
     do: :ok
 

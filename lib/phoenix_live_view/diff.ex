@@ -85,6 +85,38 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
+  Sends an update to a component.
+
+  Like `with_component/5`, it will store the result under the `cid
+   key in the `component_diffs` map.
+
+  If the component exists, a `{:diff, component_diff, updated_components}` tuple
+  is returned. Otherwise, `:noop` is returned.
+
+  The component is preloaded before the update callback is invoked.
+
+  ## Example
+
+      {:diff diff, new_components} = Diff.update_components(socket, state.components, update)
+  """
+  def update_component(socket, components, {module, id, updated_assigns}) do
+    case fetch_component(module, id, components) do
+      {:ok, {cid, existing_assigns}} ->
+        new_assigns = maybe_update_preload(module, Map.merge(existing_assigns, updated_assigns))
+
+        {diff, new_components} =
+          with_component(socket, cid, %{}, components, fn component_socket, component ->
+            View.maybe_call_update!(component_socket, component, new_assigns)
+          end)
+
+        {:diff, diff, new_components}
+
+      :error ->
+        :noop
+    end
+  end
+
+  @doc """
   Deletes a component by `cid`.
   """
   def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
@@ -309,6 +341,15 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
+  defp maybe_update_preload(module, assigns) do
+    if function_exported?(module, :preload, 1) do
+      [new_assigns] = module.preload([assigns])
+      new_assigns
+    else
+      assigns
+    end
+  end
+
   defp zip_preloads([new_assigns | assigns], [{id, new?, _} | entries], component, preloaded)
        when is_map(new_assigns) do
     [{id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
@@ -342,5 +383,12 @@ defmodule Phoenix.LiveView.Diff do
 
     id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
     {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
+  end
+
+  defp fetch_component(module, id, {id_to_components, _cid_to_ids, _} = _components) do
+    case Map.fetch(id_to_components, {module, id}) do
+      {:ok, {cid, assigns, _, _}} -> {:ok, {cid, assigns}}
+      :error -> :error
+    end
   end
 end
