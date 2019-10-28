@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def send_update(module, id, assigns) do
-    send(self(), {@prefix, :send_update, [{module, id, assigns}]})
+    send(self(), {@prefix, :send_update, {module, id, assigns}})
   end
 
   def ping(pid) do
@@ -91,16 +91,14 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :send_update, [_ | _] = updates}, state) do
-    updates = receive_updates(updates)
-    {diffs, new_components} = Diff.update_components(state.socket, state.components, updates)
+  def handle_info({@prefix, :send_update, update}, state) do
+    case Diff.update_component(state.socket, state.components, update) do
+      {:diff, diff, new_components} ->
+        {:noreply, push_render(%{state | components: new_components}, diff, nil)}
 
-    new_state =
-      Enum.reduce(diffs, %{state | components: new_components}, fn diff, acc ->
-        push_render(acc, diff, nil)
-      end)
-
-    {:noreply, new_state}
+      :noop ->
+        {:noreply, state}
+    end
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -582,13 +580,5 @@ defmodule Phoenix.LiveView.Channel do
 
   defp post_mount_prune(%{socket: socket} = state) do
     %{state | socket: View.post_mount_prune(socket)}
-  end
-
-  defp receive_updates(acc) do
-    receive do
-      {@prefix, :send_update, [_ | _] = updates} -> receive_updates(acc ++ updates)
-    after
-      0 -> acc
-    end
   end
 end

@@ -85,34 +85,35 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
-  Updates the components with a list of `send_update` operations.
+  Sends an update to a component.
 
   Like `with_component/5`, it will store the result under the `cid
    key in the `component_diffs` map.
 
-  It returns the updated `component_diffs` and the updated `components` or
-  raises an `ArgumentError` if no component matching the update `:id` exists.
+  If the component exists, a `{:diff, component_diff, updated_components}` tuple
+  is returned. Otherwise, `:noop` is returned.
 
-  Components are preloaded before the update callback.
+  The component is preloaded before the update callback is invoked.
 
   ## Example
 
-    {diffs, new_components} = Diff.update_components(socket, state.components, updates)
+      {:diff diff, new_components} = Diff.update_components(socket, state.components, update)
   """
-  def update_components(socket, components, updates) do
-    {diffs, new_components} =
-      Enum.reduce(updates, {[], components}, fn {module, id, updated_assigns}, {diffs, components_acc} ->
-        {cid, existing_assigns} = fetch_component!(module, id, components_acc)
-        [new_assigns] = maybe_update_preload(module, Map.merge(existing_assigns, updated_assigns))
+  def update_component(socket, components, {module, id, updated_assigns}) do
+    case fetch_component(module, id, components) do
+      {:ok, {cid, existing_assigns}} ->
+        new_assigns = maybe_update_preload(module, Map.merge(existing_assigns, updated_assigns))
+
         {diff, new_components} =
-          with_component(socket, cid, %{}, components_acc, fn component_socket, component ->
+          with_component(socket, cid, %{}, components, fn component_socket, component ->
             View.maybe_call_update!(component_socket, component, new_assigns)
           end)
 
-        {[diff | diffs], new_components}
-      end)
+        {:diff, diff, new_components}
 
-    {Enum.reverse(diffs), new_components}
+      :error ->
+        :noop
+    end
   end
 
   @doc """
@@ -340,12 +341,12 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  # todo potentially batch in the future on send_update
   defp maybe_update_preload(module, assigns) do
     if function_exported?(module, :preload, 1) do
-      module.preload([assigns])
+      [new_assigns] = module.preload([assigns])
+      new_assigns
     else
-      [assigns]
+      assigns
     end
   end
 
@@ -384,12 +385,10 @@ defmodule Phoenix.LiveView.Diff do
     {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
   end
 
-  defp fetch_component!(module, id, components) do
-    {id_to_components, _cid_to_ids, _} = components
+  defp fetch_component(module, id, {id_to_components, _cid_to_ids, _} = _components) do
     case Map.fetch(id_to_components, {module, id}) do
-      {:ok, {cid, assigns, _, _}} -> {cid, assigns}
-      :error ->
-        raise ArgumentError, "no #{inspect(module)} component found with :id #{inspect(id)}"
+      {:ok, {cid, assigns, _, _}} -> {:ok, {cid, assigns}}
+      :error -> :error
     end
   end
 end
