@@ -352,7 +352,7 @@ defmodule Phoenix.LiveView.View do
           phx_session: sign_root_session(socket, router, view, session)
         ]
 
-        data_attrs = if router, do: Keyword.put(data_attrs, :phx_main, true), else: data_attrs
+        data_attrs = (if router, do: [phx_main: true], else: []) ++ data_attrs
 
         attrs = [
           {:id, socket.id},
