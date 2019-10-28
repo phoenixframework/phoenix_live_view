@@ -43,9 +43,12 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp session(conn, session_keys) do
-    for key <- session_keys, into: %{} do
-      {key, Conn.get_session(conn, key)}
-    end
+    session_keys
+    |> Enum.map(fn
+      key when is_atom(key) -> {key, Conn.get_session(conn, key)}
+      {key, value} -> {key, value}
+    end)
+    |> Enum.into(%{})
   end
 
   defp put_new_layout_from_router(conn, opts) do
