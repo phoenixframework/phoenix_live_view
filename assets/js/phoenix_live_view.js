@@ -20,6 +20,7 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
+const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
@@ -240,6 +241,7 @@ export class LiveSocket {
       if(this.isUnloaded()){
         this.destroyAllViews()
         this.joinRootViews()
+        this.detectMainView()
       }
       this.unloaded = false
     })
@@ -261,9 +263,11 @@ export class LiveSocket {
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
       this.joinRootViews()
+      this.detectMainView()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
         this.joinRootViews()
+        this.detectMainView()
       })
     }
     return this.socket.connect()
@@ -293,10 +297,16 @@ export class LiveSocket {
   joinRootViews(){
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       let view = this.joinView(rootEl, null, this.getHref())
-      if(view.el.dataset["phxMain"]) {
-        this.main = view
-      }
       this.root = this.root || view
+    })
+  }
+
+  detectMainView(){
+    DOM.all(document, `${PHX_MAIN_VIEW_SELECTOR}`, el => {
+      let main = this.getViewByEl(el)
+      if(main) {
+        this.main = main
+      }
     })
   }
 
