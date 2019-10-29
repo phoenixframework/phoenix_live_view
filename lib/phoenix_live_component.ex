@@ -197,7 +197,7 @@ defmodule Phoenix.LiveComponent do
         ...
         def handle_event("update_title", %{"title" => title}, socket) do
           message = {:updated_card, %{socket.assigns.card | title: title}}
-          MyApp.Endpoint.broadcast(board_topic(socket), message)
+          Phoenix.PubSub.broadcast(MyApp.PubSub, board_topic(socket), message)
           {:noreply, socket}
         end
 
