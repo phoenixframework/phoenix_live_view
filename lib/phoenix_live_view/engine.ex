@@ -705,7 +705,7 @@ defmodule Phoenix.LiveView.Engine do
     line = line_from_expr(ast)
 
     extra_clauses =
-      quote do
+      quote generated: true do
         %{__struct__: Phoenix.LiveView.Rendered} = other -> other
         %{__struct__: Phoenix.LiveView.Component} = other -> other
         %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
