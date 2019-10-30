@@ -480,7 +480,7 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.preventDefault()
+      e.stopPropagation()
 
       let meta = {
         altKey: e.altKey,
@@ -1186,7 +1186,13 @@ export class View {
       let name = el.attributes[i].name
       if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
-    if(el.value !== undefined){ meta.value = el.value }
+    if(el.value !== undefined){
+      meta.value = el.value
+
+      if (el.type === "checkbox" && !el.checked) {
+        delete meta.value
+      }
+    }
 
     this.pushWithReply("event", {
       type: type,
