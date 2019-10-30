@@ -1189,7 +1189,7 @@ export class View {
     if(el.value !== undefined){
       meta.value = el.value
 
-      if (el.type === "checkbox" && !el.checked) {
+      if (el.tagName === "INPUT" && el.type === "checkbox" && !el.checked) {
         delete meta.value
       }
     }
