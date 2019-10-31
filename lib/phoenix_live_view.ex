@@ -1192,9 +1192,7 @@ defmodule Phoenix.LiveView do
         end
       end
   """
-  def connected?(%Socket{} = socket) do
-    LiveView.View.connected?(socket)
-  end
+  def connected?(%Socket{connected?: connected?}), do: connected?
 
   @doc """
   Assigns a value into the socket only if it does not exist.
@@ -1225,7 +1223,19 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
-    LiveView.View.assign_new(socket, key, func)
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in(private.assigned_new, {assigns, [key | keys]})
+        assign_each(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+
+      %{} ->
+        assign_each(socket, key, func.())
+    end
   end
 
   @doc """
@@ -1241,14 +1251,26 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    LiveView.View.assign(socket, [{key, value}])
+    assign(socket, [{key, value}])
   end
 
   @doc """
   See `assign/2`.
   """
   def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
-    LiveView.View.assign(socket, attrs)
+    Enum.reduce(attrs, socket, fn {key, val}, acc ->
+      case Map.fetch(acc.assigns, key) do
+        {:ok, ^val} -> acc
+        {:ok, _old_val} -> assign_each(acc, key, val)
+        :error -> assign_each(acc, key, val)
+      end
+    end)
+  end
+
+  defp assign_each(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
+    new_changed = Map.put(changed, key, true)
+    new_assigns = Map.put(assigns, key, val)
+    %Socket{acc | assigns: new_assigns, changed: new_changed}
   end
 
   @doc """
@@ -1306,7 +1328,7 @@ defmodule Phoenix.LiveView do
   # TODO support `:external` and validation `:to` is a local path
   def redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "redirect/2")
-    LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
+    put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
   end
 
   @doc """
@@ -1331,8 +1353,31 @@ defmodule Phoenix.LiveView do
   def live_redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "live_redirect/2")
     kind = if opts[:replace], do: :replace, else: :push
-    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
+    put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
+    %Socket{socket | redirected: {:redirect, opts}}
+  end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
+      when kind in [:push, :replace] do
+    if child?(socket) do
+      raise ArgumentError, """
+      attempted to live_redirect from a nested child socket.
+
+      Only the root parent LiveView can issue live redirects.
+      """
+    else
+      %Socket{socket | redirected: {:live, opts}}
+    end
+  end
+
+  defp put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
+    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
+  end
+
+  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -1398,8 +1443,26 @@ defmodule Phoenix.LiveView do
         {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
       end
   """
-  def get_connect_params(%Socket{} = socket) do
-    LiveView.View.get_connect_params(socket)
+  def get_connect_params(%Socket{private: private} = socket) do
+    cond do
+      connect_params = private[:connect_params] ->
+        if connected?(socket), do: connect_params, else: nil
+
+      child?(socket) ->
+        raise RuntimeError, """
+        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
+
+        Only the root LiveView has access to connect params.
+        """
+
+      true ->
+        raise RuntimeError, """
+        attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
+
+        connect_params only exist while mounting. If you require access to this information
+        after mount, store the state in socket assigns.
+        """
+    end
   end
 
   @doc """

@@ -11,44 +11,6 @@ defmodule Phoenix.LiveView.View do
   @mount_opts [:temporary_assigns]
 
   @doc """
-  Assigns to a socket.
-  """
-  def assign(socket, attrs) do
-    Enum.reduce(attrs, socket, fn {key, val}, acc ->
-      case Map.fetch(acc.assigns, key) do
-        {:ok, ^val} -> acc
-        {:ok, _old_val} -> assign_each(acc, key, val)
-        :error -> assign_each(acc, key, val)
-      end
-    end)
-  end
-
-  defp assign_each(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed, key, true)
-    new_assigns = Map.put(assigns, key, val)
-    %Socket{acc | assigns: new_assigns, changed: new_changed}
-  end
-
-  @doc """
-  New assigns to a socket.
-  """
-  def assign_new(socket, key, func) do
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assigned_new: {assigns, keys}} = private} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        private = put_in(private.assigned_new, {assigns, [key | keys]})
-        assign_each(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
-
-      %{} ->
-        assign_each(socket, key, func.())
-    end
-  end
-
-  @doc """
   Clears the changes from the socket assigns.
   """
   def clear_changed(%Socket{private: private, assigns: assigns} = socket) do
@@ -66,36 +28,6 @@ defmodule Phoenix.LiveView.View do
   """
   def get_flash(%Socket{private: private}) do
     private[:flash]
-  end
-
-  @doc """
-  Returns true if the socket is connected.
-  """
-  def connected?(%Socket{connected?: connected?}), do: connected?
-
-  @doc """
-  Returns the connect params.
-  """
-  def get_connect_params(%Socket{} = socket) do
-    cond do
-      connect_params = socket.private[:connect_params] ->
-        if connected?(socket), do: connect_params, else: nil
-
-      child?(socket) ->
-        raise RuntimeError, """
-        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
-
-        Only the root LiveView has access to connect params.
-        """
-
-      true ->
-        raise RuntimeError, """
-        attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
-
-        connect_params only exist while mounting. If you require access to this information
-        after mount, store the state in socket assigns.
-        """
-    end
   end
 
   @doc """
@@ -125,34 +57,6 @@ defmodule Phoenix.LiveView.View do
     socket
     |> clear_changed()
     |> drop_private([:connect_params, :assigned_new])
-  end
-
-  @doc """
-  Annotates the socket for redirect.
-  """
-  def put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
-    %Socket{socket | redirected: {:redirect, opts}}
-  end
-
-  def put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
-      when kind in [:push, :replace] do
-    if child?(socket) do
-      raise ArgumentError, """
-      attempted to live_redirect from a nested child socket.
-
-      Only the root parent LiveView can issue live redirects.
-      """
-    else
-      %Socket{socket | redirected: {:live, opts}}
-    end
-  end
-
-  def put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
-    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
-  end
-
-  def drop_redirect(%Socket{} = socket) do
-    %Socket{socket | redirected: nil}
   end
 
   @doc """
@@ -310,7 +214,7 @@ defmodule Phoenix.LiveView.View do
 
       socket
     else
-      assign(socket, assigns)
+      LiveView.assign(socket, assigns)
     end
   end
 
@@ -319,8 +223,6 @@ defmodule Phoenix.LiveView.View do
     |> :crypto.strong_rand_bytes()
     |> Base.encode64()
   end
-
-  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp mount_opt(%Socket{} = socket, key, val) when key in @mount_opts do
     do_mount_opt(socket, key, val)
