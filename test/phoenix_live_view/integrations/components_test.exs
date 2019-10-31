@@ -48,6 +48,18 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert_remove_component(view, "chris")
   end
 
+  test "preloads", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{from: self()})
+      |> get("/components")
+
+    assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
+
+    {:ok, _view, _html} = live(conn)
+    assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
+  end
+
   test "handle_event delegates event to component", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
@@ -166,10 +178,10 @@ defmodule Phoenix.LiveView.ComponentTest do
          ]}
       )
 
-      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
-      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       assert_receive {:preload, [%{id: "chris", name: "NEW-chris"}]}
       assert_receive {:preload, [%{id: "jose", name: "NEW-jose"}]}
+      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
+      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       refute_receive {:updated, _}
       refute_receive {:preload, _}
 

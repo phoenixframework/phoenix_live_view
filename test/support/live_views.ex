@@ -350,11 +350,13 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     {:ok, assign(socket, assigns)}
   end
 
-  def preload([%{from: from} | _] = lists_of_assigns) when is_pid(from) do
-    send(from, {:preload, lists_of_assigns})
+  def preload([assigns | _] = lists_of_assigns) do
+    if from = assigns[:from] do
+      send(from, {:preload, lists_of_assigns})
+    end
+
     lists_of_assigns
   end
-  def preload(lists_of_assigns), do: lists_of_assigns
 
   def render(assigns) do
     ~L"""
@@ -393,8 +395,8 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     """
   end
 
-  def mount(%{names: names}, socket) do
-    {:ok, assign(socket, names: names, from: nil)}
+  def mount(%{names: names, from: from}, socket) do
+    {:ok, assign(socket, names: names, from: from)}
   end
 
   def handle_info({:send_update, updates}, socket) do

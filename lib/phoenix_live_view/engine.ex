@@ -49,20 +49,20 @@ defmodule Phoenix.LiveView.Comprehension do
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
-      for dynamic <- dynamics, do: to_iodata(static, dynamic, [])
+      for dynamic <- dynamics, do: to_iodata(static, dynamic)
     end
 
-    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail], acc) do
+    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail]) do
       dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
-      to_iodata(static_tail, dynamic_tail, [dynamic_head, static_head | acc])
+      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
     end
 
-    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
-      to_iodata(static_tail, dynamic_tail, [dynamic_head, static_head | acc])
+    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
+      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
     end
 
-    defp to_iodata([static_head], [], acc) do
-      Enum.reverse([static_head | acc])
+    defp to_iodata([static_head], []) do
+      [static_head]
     end
   end
 end

@@ -1145,7 +1145,7 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  def __live_component__(%Socket{} = socket, %{kind: :component, module: component}, assigns)
+  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
       when is_list(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
@@ -1157,11 +1157,7 @@ defmodule Phoenix.LiveView do
               "which requires an ID element"
     end
 
-    if LiveView.View.connected?(socket) do
-      %LiveView.Component{id: id, assigns: assigns, component: component}
-    else
-      LiveView.Diff.component_to_rendered(socket, component, assigns)
-    end
+    %LiveView.Component{id: id, assigns: assigns, component: component}
   end
 
   def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)

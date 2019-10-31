@@ -25,6 +25,57 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
+  Converts a diff into iodata.
+
+  It only acepts a full render diff.
+  """
+  def to_iodata(map) do
+    to_iodata(map, Map.get(map, @components, %{}))
+  end
+
+  defp to_iodata(%{@dynamics => dynamics, @static => static}, components) do
+    for dynamic <- dynamics do
+      comprehension_to_iodata(static, dynamic, components)
+    end
+  end
+
+  defp to_iodata(%{@static => static} = parts, components) do
+    parts_to_iodata(static, parts, 0, components)
+  end
+
+  defp to_iodata(int, components) when is_integer(int) do
+    to_iodata(Map.fetch!(components, int), components)
+  end
+
+  defp to_iodata(binary, _components) when is_binary(binary) do
+    binary
+  end
+
+  defp parts_to_iodata([last], _parts, _counter, _components) do
+    [last]
+  end
+
+  defp parts_to_iodata([head | tail], parts, counter, components) do
+    [
+      head,
+      to_iodata(Map.fetch!(parts, counter), components)
+      | parts_to_iodata(tail, parts, counter + 1, components)
+    ]
+  end
+
+  defp comprehension_to_iodata([static_head | static_tail], [dyn_head | dyn_tail], components) do
+    [
+      static_head,
+      to_iodata(dyn_head, components)
+      | comprehension_to_iodata(static_tail, dyn_tail, components)
+    ]
+  end
+
+  defp comprehension_to_iodata([static_head], [], _components) do
+    [static_head]
+  end
+
+  @doc """
   Renders a diff for the rendered struct in regards to the given socket.
   """
   def render(%{fingerprints: prints} = socket, %Rendered{} = rendered, components) do

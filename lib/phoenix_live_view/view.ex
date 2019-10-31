@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.View do
   @moduledoc false
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Socket, Diff}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 2
@@ -128,6 +128,15 @@ defmodule Phoenix.LiveView.View do
 
   def configure_socket(socket, private) do
     %{socket | private: private}
+  end
+
+  @doc """
+  Returns a random ID with valid DOM tokens
+  """
+  def random_id do
+    "phx-"
+    |> Kernel.<>(random_encoded_bytes())
+    |> String.replace(["/", "+"], "-")
   end
 
   @doc """
@@ -354,8 +363,7 @@ defmodule Phoenix.LiveView.View do
           | extended_attrs
         ]
 
-        html = Phoenix.HTML.Tag.content_tag(tag, to_rendered(socket, view), attrs)
-        {:ok, html}
+        {:ok, to_rendered_content_tag(socket, tag, view, attrs)}
 
       {:stop, reason} ->
         {:stop, reason}
@@ -432,13 +440,6 @@ defmodule Phoenix.LiveView.View do
     end
   end
 
-  @doc "Returns a random ID with valid DOM tokens"
-  def random_id do
-    "phx-"
-    |> Kernel.<>(random_encoded_bytes())
-    |> String.replace(["/", "+"], "-")
-  end
-
   defp disconnected_nested_static_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
     socket = maybe_call_mount!(socket, view, [session, socket])
@@ -457,7 +458,7 @@ defmodule Phoenix.LiveView.View do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, to_rendered(socket, view), attrs)
+    to_rendered_content_tag(socket, tag, view, attrs)
   end
 
   defp connected_nested_static_render(parent, config, socket, view, session, container) do
@@ -472,6 +473,13 @@ defmodule Phoenix.LiveView.View do
     ]
 
     Phoenix.HTML.Tag.content_tag(tag, "", attrs)
+  end
+
+  defp to_rendered_content_tag(socket, tag, view, attrs) do
+    rendered = to_rendered(socket, view)
+    # TODO: Remove cyclic dependency
+    {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
+    Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
   end
 
   defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
