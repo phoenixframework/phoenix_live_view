@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, View, Diff}
+  alias Phoenix.LiveView.{Socket, View, Diff, Static}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
@@ -438,7 +438,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(%{components: components} = state, socket) do
-    rendered = View.dynamic_render(socket, view_module(state))
+    rendered = View.to_rendered(socket, view_module(state))
     {socket, diff, new_components} = Diff.render(socket, rendered, components)
     {diff, %{state | socket: View.clear_changed(socket), components: new_components}}
   end
@@ -458,7 +458,7 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount({%{"session" => session_token} = params, from, phx_socket}) do
-    case View.verify_session(phx_socket.endpoint, session_token, params["static"]) do
+    case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
         verified_mount(verified, params, from, phx_socket)
 

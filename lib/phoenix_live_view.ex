@@ -1053,7 +1053,7 @@ defmodule Phoenix.LiveView do
   def live_render(conn_or_socket, view, opts \\ [])
 
   def live_render(%Plug.Conn{} = conn, view, opts) do
-    case LiveView.View.static_render(conn, view, opts) do
+    case LiveView.Static.render(conn, view, opts) do
       {:ok, content} ->
         content
 
@@ -1063,7 +1063,7 @@ defmodule Phoenix.LiveView do
   end
 
   def live_render(%Socket{} = parent, view, opts) do
-    LiveView.View.nested_static_render(parent, view, opts)
+    LiveView.Static.nested_render(parent, view, opts)
   end
 
   @doc """
