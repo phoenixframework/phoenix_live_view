@@ -3,14 +3,14 @@ defmodule Phoenix.LiveViewUnitTest do
 
   import Phoenix.LiveView
 
-  alias Phoenix.LiveView.{View, Socket}
+  alias Phoenix.LiveView.{Utils, Socket}
   alias Phoenix.LiveViewTest.Endpoint
 
-  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
+  @socket Utils.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
-      socket = View.post_mount_prune(%{@socket | connected?: true})
+      socket = Utils.post_mount_prune(%{@socket | connected?: true})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
         get_connect_params(socket)
@@ -18,7 +18,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "raises when not in mounting state and disconnected" do
-      socket = View.post_mount_prune(%{@socket | connected?: false})
+      socket = Utils.post_mount_prune(%{@socket | connected?: false})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
         get_connect_params(socket)

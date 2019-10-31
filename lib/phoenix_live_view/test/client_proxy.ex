@@ -542,7 +542,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def build(attrs) do
     attrs_with_defaults =
       attrs
-      |> Keyword.merge(topic: Phoenix.LiveView.View.random_id())
+      |> Keyword.merge(topic: Phoenix.LiveView.Utils.random_id())
       |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
 
     struct(__MODULE__, attrs_with_defaults)

@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, View, Diff}
+  alias Phoenix.LiveView.{Socket, Utils, Diff}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 2
@@ -47,7 +47,7 @@ defmodule Phoenix.LiveView.Static do
   defp verify_static_token(endpoint, token), do: verify_token(endpoint, token)
 
   defp verify_token(endpoint, token) do
-    case Phoenix.Token.verify(endpoint, View.salt!(endpoint), token, max_age: @max_session_age) do
+    case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
       {:ok, {@token_vsn, term}} -> {:ok, term}
       {:ok, _} -> {:error, :outdated}
       {:error, _} = error -> error
@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.Static do
     request_url = Plug.Conn.request_url(conn)
 
     socket =
-      View.configure_socket(
+      Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}}
       )
@@ -112,7 +112,7 @@ defmodule Phoenix.LiveView.Static do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
-      View.configure_socket(
+      Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}}
       )
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.Static do
                 "The :id must uniquely identify the child."
 
     socket =
-      View.configure_socket(
+      Utils.configure_socket(
         %Socket{
           id: to_string(child_id),
           endpoint: endpoint,
@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.Static do
 
   defp disconnected_nested_render(parent, config, socket, view, session, container) do
     {tag, extended_attrs} = container
-    socket = View.maybe_call_mount!(socket, view, [session, socket])
+    socket = Utils.maybe_call_mount!(socket, view, [session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
@@ -203,7 +203,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
-    rendered = View.to_rendered(socket, view)
+    rendered = Utils.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
   end
@@ -220,7 +220,7 @@ defmodule Phoenix.LiveView.Static do
 
   defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
     socket
-    |> View.maybe_call_mount!(view, [session, socket])
+    |> Utils.maybe_call_mount!(view, [session, socket])
     |> mount_handle_params(router, view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
@@ -230,10 +230,10 @@ defmodule Phoenix.LiveView.Static do
         {:stop, redirected}
 
       {:stop, %Socket{redirected: nil}} ->
-        View.raise_bad_stop_and_no_redirect!()
+        Utils.raise_bad_stop_and_no_redirect!()
 
       {:stop, %Socket{redirected: {:live, _}}} ->
-        View.raise_bad_stop_and_live_redirect!()
+        Utils.raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{redirected: redirected}} ->
         {:stop, redirected}
@@ -246,7 +246,7 @@ defmodule Phoenix.LiveView.Static do
         {:noreply, socket}
 
       router == nil ->
-        View.live_link_info!(router, view, uri)
+        Utils.live_link_info!(router, view, uri)
 
       true ->
         view.handle_params(params, uri, socket)
@@ -287,7 +287,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp sign_token(endpoint, data) do
-    Phoenix.Token.sign(endpoint, View.salt!(endpoint), {@token_vsn, data})
+    Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
   end
 
   defp container(%{container: {tag, attrs}}, opts) do

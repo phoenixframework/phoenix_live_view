@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Diff do
   # handled here.
   @moduledoc false
 
-  alias Phoenix.LiveView.{View, Rendered, Comprehension, Component}
+  alias Phoenix.LiveView.{Utils, Rendered, Comprehension, Component}
 
   @components :c
   @static :s
@@ -157,7 +157,7 @@ defmodule Phoenix.LiveView.Diff do
 
         {diff, new_components} =
           with_component(socket, cid, %{}, components, fn component_socket, component ->
-            View.maybe_call_update!(component_socket, component, updated_assigns)
+            Utils.maybe_call_update!(component_socket, component, updated_assigns)
           end)
 
         {:diff, diff, new_components}
@@ -183,8 +183,8 @@ defmodule Phoenix.LiveView.Diff do
     assigns = maybe_call_preload!(component, assigns)
 
     socket
-    |> View.maybe_call_update!(component, assigns)
-    |> View.to_rendered(component)
+    |> Utils.maybe_call_update!(component, assigns)
+    |> Utils.to_rendered(component)
   end
 
   ## Traversal
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp mount_component(socket, component) do
     socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
-    View.maybe_call_mount!(socket, component, [socket])
+    Utils.maybe_call_mount!(socket, component, [socket])
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
@@ -376,7 +376,7 @@ defmodule Phoenix.LiveView.Diff do
 
           socket
           |> configure_socket_for_component(assigns, private, component_prints)
-          |> View.maybe_call_update!(component, new_assigns)
+          |> Utils.maybe_call_update!(component, new_assigns)
           |> render_component(id, cid, new?, pending_components, component_diffs, components)
         end)
       end)
@@ -422,13 +422,13 @@ defmodule Phoenix.LiveView.Diff do
     {component, _} = id
 
     {socket, pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}} =
-      if new? or View.changed?(socket) do
-        rendered = View.to_rendered(socket, component)
+      if new? or Utils.changed?(socket) do
+        rendered = Utils.to_rendered(socket, component)
 
         {diff, component_prints, pending_components, components} =
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
-        socket = View.clear_changed(%{socket | fingerprints: component_prints})
+        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
         {socket, pending_components, Map.put(component_diffs, cid, diff), components}
       else
         {socket, pending_components, component_diffs, components}
