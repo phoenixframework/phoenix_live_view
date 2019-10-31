@@ -43,8 +43,11 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp session(conn, session_keys) do
-    for key <- session_keys, into: %{} do
-      {key, Conn.get_session(conn, key)}
+    for key_or_pair <- session_keys, into: %{} do
+      case key_or_pair do
+        key when is_atom(key) -> {key, Conn.get_session(conn, key)}
+        {key, value} -> {key, value}
+      end
     end
   end
 
