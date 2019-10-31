@@ -100,13 +100,13 @@ defmodule Phoenix.LiveView.Diff do
       {:diff diff, new_components} = Diff.update_components(socket, state.components, update)
   """
   def update_component(socket, components, {module, id, updated_assigns}) do
-    case fetch_component(module, id, components) do
-      {:ok, {cid, existing_assigns}} ->
-        new_assigns = maybe_update_preload(module, Map.merge(existing_assigns, updated_assigns))
+    case fetch_cid(module, id, components) do
+      {:ok, cid} ->
+        updated_assigns = maybe_call_preload!(module, updated_assigns)
 
         {diff, new_components} =
           with_component(socket, cid, %{}, components, fn component_socket, component ->
-            View.maybe_call_update!(component_socket, component, new_assigns)
+            View.maybe_call_update!(component_socket, component, updated_assigns)
           end)
 
         {:diff, diff, new_components}
@@ -128,8 +128,10 @@ defmodule Phoenix.LiveView.Diff do
   Converts a component to a rendered struct.
   """
   def component_to_rendered(socket, component, assigns) do
+    socket = mount_component(socket, component)
+    assigns = maybe_call_preload!(component, assigns)
+
     socket
-    |> mount_component(component)
     |> View.maybe_call_update!(component, assigns)
     |> View.to_rendered(component)
   end
@@ -341,7 +343,7 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp maybe_update_preload(module, assigns) do
+  defp maybe_call_preload!(module, assigns) do
     if function_exported?(module, :preload, 1) do
       [new_assigns] = module.preload([assigns])
       new_assigns
@@ -385,9 +387,9 @@ defmodule Phoenix.LiveView.Diff do
     {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
   end
 
-  defp fetch_component(module, id, {id_to_components, _cid_to_ids, _} = _components) do
+  defp fetch_cid(module, id, {id_to_components, _cid_to_ids, _} = _components) do
     case Map.fetch(id_to_components, {module, id}) do
-      {:ok, {cid, assigns, _, _}} -> {:ok, {cid, assigns}}
+      {:ok, {cid, _, _, _}} -> {:ok, cid}
       :error -> :error
     end
   end

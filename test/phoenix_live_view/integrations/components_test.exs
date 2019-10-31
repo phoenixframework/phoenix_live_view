@@ -111,6 +111,11 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, assign(socket, hello: "world")}
     end
 
+    def preload(list_of_assigns) do
+      send(self(), {:preload, list_of_assigns})
+      list_of_assigns
+    end
+
     def update(assigns, socket) do
       send(self(), {:update, assigns, socket})
       {:ok, assign(socket, assigns)}
@@ -138,6 +143,9 @@ defmodule Phoenix.LiveView.ComponentTest do
   describe "render_component/2" do
     test "full life-cycle" do
       assert render_component(MyComponent, from: "test") =~ "FROM test world"
+      assert_received {:mount, _}
+      assert_received {:preload, _}
+      assert_received {:update, _, _}
     end
 
     test "render only" do
