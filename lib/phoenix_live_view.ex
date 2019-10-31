@@ -554,7 +554,7 @@ defmodule Phoenix.LiveView do
   regular Phoenix templaes, a regular `render` call does not start another
   LiveView. This means `render` is useful to sharing markup between views.
 
-  One option to address this problem is to render a child LiveView insied a
+  One option to address this problem is to render a child LiveView inside a
   parent LiveView by calling `live_render/3` instead of `render/3` from the
   LiveView template. This child LiveView runs in a completely separate process
   than the parent, with its own `mount` and `handle_event` callbacks. If a
@@ -645,7 +645,7 @@ defmodule Phoenix.LiveView do
   own DOM operations. The following `phx-update` values are supported:
 
     * `replace` - the default operation. Replaces the element with the contents
-    * `ignore` - ignores updates the DOM regardless of new content changes
+    * `ignore` - ignores updates to the DOM regardless of new content changes
     * `append` - append the new DOM contents instead of replacing
     * `prepend` - prepend the new DOM contents instead of replacing
 
@@ -1150,7 +1150,9 @@ defmodule Phoenix.LiveView do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
-    if is_nil(id) and (function_exported?(component, :handle_event, 3) or function_exported?(component, :preload, 1)) do
+    if is_nil(id) and
+         (function_exported?(component, :handle_event, 3) or
+            function_exported?(component, :preload, 1)) do
       raise "the component #{inspect(component)} has implemented handle_event/3, " <>
               "which requires an ID element"
     end
