@@ -248,6 +248,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp by_id(html_tree, ids) when is_list(ids) do
     selector = Enum.join(Enum.map(ids, fn id -> "##{id}" end), " ")
+
     case Floki.find(html_tree, selector) do
       [node | _] -> node
       [] -> nil

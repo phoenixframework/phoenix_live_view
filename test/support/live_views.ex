@@ -347,6 +347,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     if from = assigns[:from] do
       send(from, {:updated, assigns})
     end
+
     {:ok, assign(socket, assigns)}
   end
 

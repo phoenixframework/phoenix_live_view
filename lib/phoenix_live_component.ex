@@ -350,7 +350,11 @@ defmodule Phoenix.LiveComponent do
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback handle_event(event :: binary, Phoenix.LiveView.unsigned_params, socket :: Socket.t()) ::
+  @callback handle_event(
+              event :: binary,
+              Phoenix.LiveView.unsigned_params(),
+              socket :: Socket.t()
+            ) ::
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 1, update: 2, handle_event: 3

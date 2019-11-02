@@ -367,7 +367,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp drop_redirect(state) do
-    put_in state.socket.redirected, nil
+    put_in(state.socket.redirected, nil)
   end
 
   defp sync_handle_params_with_live_redirect(state, params, %{to: to} = opts, ref) do

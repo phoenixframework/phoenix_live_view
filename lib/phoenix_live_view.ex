@@ -1361,7 +1361,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
-      when kind in [:push, :replace] do
+       when kind in [:push, :replace] do
     if child?(socket) do
       raise ArgumentError, """
       attempted to live_redirect from a nested child socket.
@@ -1488,7 +1488,11 @@ defmodule Phoenix.LiveView do
   """
   def send_update(module, assigns) do
     assigns = Enum.into(assigns, %{})
-    id = assigns[:id] || raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
+
+    id =
+      assigns[:id] ||
+        raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
+
     Phoenix.LiveView.Channel.send_update(module, id, assigns)
   end
 
