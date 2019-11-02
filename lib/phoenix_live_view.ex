@@ -1153,8 +1153,8 @@ defmodule Phoenix.LiveView do
     if is_nil(id) and
          (function_exported?(component, :handle_event, 3) or
             function_exported?(component, :preload, 1)) do
-      raise "the component #{inspect(component)} has implemented handle_event/3, " <>
-              "which requires an ID element"
+      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
+              "requires an :id assign to be given"
     end
 
     %LiveView.Component{id: id, assigns: assigns, component: component}
