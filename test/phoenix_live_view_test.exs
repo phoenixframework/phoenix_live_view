@@ -1,36 +1,38 @@
-defmodule Phoenix.LiveView.ViewTest do
+defmodule Phoenix.LiveViewUnitTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{View, Socket}
+  import Phoenix.LiveView
+
+  alias Phoenix.LiveView.{Utils, Socket}
   alias Phoenix.LiveViewTest.Endpoint
 
-  @socket View.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
+  @socket Utils.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
-      socket = View.post_mount_prune(%{@socket | connected?: true})
+      socket = Utils.post_mount_prune(%{@socket | connected?: true})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
-        View.get_connect_params(socket)
+        get_connect_params(socket)
       end
     end
 
     test "raises when not in mounting state and disconnected" do
-      socket = View.post_mount_prune(%{@socket | connected?: false})
+      socket = Utils.post_mount_prune(%{@socket | connected?: false})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
-        View.get_connect_params(socket)
+        get_connect_params(socket)
       end
     end
 
     test "returns nil when disconnected" do
       socket = %{@socket | connected?: false}
-      assert View.get_connect_params(socket) == nil
+      assert get_connect_params(socket) == nil
     end
 
     test "returns params connected and mounting" do
       socket = %{@socket | connected?: true}
-      assert View.get_connect_params(socket) == %{}
+      assert get_connect_params(socket) == %{}
     end
   end
 
@@ -38,9 +40,9 @@ defmodule Phoenix.LiveView.ViewTest do
     test "uses socket assigns if no parent assigns are present" do
       socket =
         @socket
-        |> View.assign(existing: "existing")
-        |> View.assign_new(:existing, fn -> "new-existing" end)
-        |> View.assign_new(:notexisting, fn -> "new-notexisting" end)
+        |> assign(existing: "existing")
+        |> assign_new(:existing, fn -> "new-existing" end)
+        |> assign_new(:notexisting, fn -> "new-notexisting" end)
 
       assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
     end
@@ -48,10 +50,10 @@ defmodule Phoenix.LiveView.ViewTest do
     test "uses parent assigns when present and falls back to socket assigns" do
       socket =
         put_in(@socket.private[:assigned_new], {%{existing: "existing-parent"}, []})
-        |> View.assign(existing2: "existing2")
-        |> View.assign_new(:existing, fn -> "new-existing" end)
-        |> View.assign_new(:existing2, fn -> "new-existing2" end)
-        |> View.assign_new(:notexisting, fn -> "new-notexisting" end)
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn -> "new-existing" end)
+        |> assign_new(:existing2, fn -> "new-existing2" end)
+        |> assign_new(:notexisting, fn -> "new-notexisting" end)
 
       assert socket.assigns == %{
                existing: "existing-parent",

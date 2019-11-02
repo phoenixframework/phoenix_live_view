@@ -48,6 +48,18 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert_remove_component(view, "chris")
   end
 
+  test "preloads", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{from: self()})
+      |> get("/components")
+
+    assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
+
+    {:ok, _view, _html} = live(conn)
+    assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
+  end
+
   test "handle_event delegates event to component", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
@@ -111,6 +123,11 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, assign(socket, hello: "world")}
     end
 
+    def preload(list_of_assigns) do
+      send(self(), {:preload, list_of_assigns})
+      list_of_assigns
+    end
+
     def update(assigns, socket) do
       send(self(), {:update, assigns, socket})
       {:ok, assign(socket, assigns)}
@@ -138,6 +155,9 @@ defmodule Phoenix.LiveView.ComponentTest do
   describe "render_component/2" do
     test "full life-cycle" do
       assert render_component(MyComponent, from: "test") =~ "FROM test world"
+      assert_received {:mount, _}
+      assert_received {:preload, _}
+      assert_received {:update, _, _}
     end
 
     test "render only" do
@@ -158,10 +178,10 @@ defmodule Phoenix.LiveView.ComponentTest do
          ]}
       )
 
-      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
-      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       assert_receive {:preload, [%{id: "chris", name: "NEW-chris"}]}
       assert_receive {:preload, [%{id: "jose", name: "NEW-jose"}]}
+      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
+      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       refute_receive {:updated, _}
       refute_receive {:preload, _}
 
@@ -176,9 +196,9 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, _html} = live(conn, "/components")
 
       assert ExUnit.CaptureLog.capture_log(fn ->
-        send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
-        refute_receive {:updated, _}
-      end) =~ "** (ArgumentError) missing required :id in send_update"
+               send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
+               refute_receive {:updated, _}
+             end) =~ "** (ArgumentError) missing required :id in send_update"
     end
   end
 end

@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.Plug do
       |> Keyword.put(:session, session(conn, session_keys))
 
     if live_link?(conn) do
-      html = Phoenix.LiveView.View.static_container_render(conn, view, render_opts)
+      html = Phoenix.LiveView.Static.container_render(conn, view, render_opts)
 
       conn
       |> put_cache_headers()
@@ -39,12 +39,18 @@ defmodule Phoenix.LiveView.Plug do
   def put_cache_headers(conn) do
     conn
     |> Plug.Conn.put_resp_header("vary", @link_header)
-    |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
+    |> Plug.Conn.put_resp_header(
+      "cache-control",
+      "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0"
+    )
   end
 
   defp session(conn, session_keys) do
-    for key <- session_keys, into: %{} do
-      {key, Conn.get_session(conn, key)}
+    for key_or_pair <- session_keys, into: %{} do
+      case key_or_pair do
+        key when is_atom(key) -> {key, Conn.get_session(conn, key)}
+        {key, value} -> {key, value}
+      end
     end
   end
 

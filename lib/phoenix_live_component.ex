@@ -151,7 +151,7 @@ defmodule Phoenix.LiveComponent do
   for fetching all of the cards in a board. Then it will call `live_component/2`
   for each card, passing the card struct as argument to CardComponent:
 
-      <%= for card <- @cards %>
+      <%= for card <- @cards do %>
         <%= live_component CardComponent, card: card, board_id: @id %>
       <% end %>
 
@@ -218,7 +218,7 @@ defmodule Phoenix.LiveComponent do
   the view must only fetch all of the card ids and render the component
   only by passing the IDs:
 
-      <%= for card_id <- @card_ids %>
+      <%= for card_id <- @card_ids do %>
         <%= live_component CardComponent, card_id: card_id, board_id: @id %>
       <% end %>
 
@@ -350,7 +350,11 @@ defmodule Phoenix.LiveComponent do
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback handle_event(event :: binary, Phoenix.LiveView.unsigned_params, socket :: Socket.t()) ::
+  @callback handle_event(
+              event :: binary,
+              Phoenix.LiveView.unsigned_params(),
+              socket :: Socket.t()
+            ) ::
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 1, update: 2, handle_event: 3

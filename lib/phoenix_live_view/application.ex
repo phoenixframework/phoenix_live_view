@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Application do
   def start(_type, _args) do
     Supervisor.start_link(
       [
-        {DynamicSupervisor, strategy: :one_for_one, name: Phoenix.LiveView.DynamicSupervisor},
+        {DynamicSupervisor, strategy: :one_for_one, name: Phoenix.LiveView.DynamicSupervisor}
       ],
       strategy: :one_for_one,
       name: Phoenix.LiveView.Supervisor

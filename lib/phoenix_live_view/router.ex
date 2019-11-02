@@ -20,6 +20,12 @@ defmodule Phoenix.LiveView.Router do
       user ID and the `remember_me` value into the LiveView session:
 
           [:user_id, :remember_me]
+      
+      This also accepts key/value entries which are mapped directly into the
+      LiveView session.  This is useful for identifying which `live` macro was
+      matched.
+      
+          [action: :index]
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to

@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.ControllerTest do
 
   @endpoint Endpoint
 
-  setup do      
+  setup do
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 

@@ -329,7 +329,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp verify_session(%ClientProxy{} = view) do
-    Phoenix.LiveView.View.verify_session(view.endpoint, view.session_token, view.static_token)
+    Phoenix.LiveView.Static.verify_session(view.endpoint, view.session_token, view.static_token)
   end
 
   defp put_view(state, %ClientProxy{} = view, pid, rendered) do
@@ -542,7 +542,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def build(attrs) do
     attrs_with_defaults =
       attrs
-      |> Keyword.merge(topic: Phoenix.LiveView.View.random_id())
+      |> Keyword.merge(topic: Phoenix.LiveView.Utils.random_id())
       |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
 
     struct(__MODULE__, attrs_with_defaults)

@@ -23,7 +23,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   defp simulate_outdated_token_on_page(conn) do
     html = html_response(conn, 200)
     [{_id, session_token, nil} | _] = DOM.find_views(html)
-    salt = Phoenix.LiveView.View.salt!(@endpoint)
+    salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
   end

@@ -124,6 +124,8 @@ Then install the new npm dependency.
 
 ```bash
 npm install --prefix assets
+
+# or `cd assets && npm install` for Windows users if --prefix doesn't work
 ```
 
 If you had previously installed `phoenix_live_view` and want to get the
