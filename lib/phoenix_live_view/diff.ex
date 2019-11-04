@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Diff do
   # handled here.
   @moduledoc false
 
-  alias Phoenix.LiveView.{View, Rendered, Comprehension, Component}
+  alias Phoenix.LiveView.{Utils, Rendered, Comprehension, Component}
 
   @components :c
   @static :s
@@ -22,6 +22,57 @@ defmodule Phoenix.LiveView.Diff do
   """
   def new_fingerprints do
     {nil, %{}}
+  end
+
+  @doc """
+  Converts a diff into iodata.
+
+  It only acepts a full render diff.
+  """
+  def to_iodata(map) do
+    to_iodata(map, Map.get(map, @components, %{}))
+  end
+
+  defp to_iodata(%{@dynamics => dynamics, @static => static}, components) do
+    for dynamic <- dynamics do
+      comprehension_to_iodata(static, dynamic, components)
+    end
+  end
+
+  defp to_iodata(%{@static => static} = parts, components) do
+    parts_to_iodata(static, parts, 0, components)
+  end
+
+  defp to_iodata(int, components) when is_integer(int) do
+    to_iodata(Map.fetch!(components, int), components)
+  end
+
+  defp to_iodata(binary, _components) when is_binary(binary) do
+    binary
+  end
+
+  defp parts_to_iodata([last], _parts, _counter, _components) do
+    [last]
+  end
+
+  defp parts_to_iodata([head | tail], parts, counter, components) do
+    [
+      head,
+      to_iodata(Map.fetch!(parts, counter), components)
+      | parts_to_iodata(tail, parts, counter + 1, components)
+    ]
+  end
+
+  defp comprehension_to_iodata([static_head | static_tail], [dyn_head | dyn_tail], components) do
+    [
+      static_head,
+      to_iodata(dyn_head, components)
+      | comprehension_to_iodata(static_tail, dyn_tail, components)
+    ]
+  end
+
+  defp comprehension_to_iodata([static_head], [], _components) do
+    [static_head]
   end
 
   @doc """
@@ -85,6 +136,38 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
+  Sends an update to a component.
+
+  Like `with_component/5`, it will store the result under the `cid
+   key in the `component_diffs` map.
+
+  If the component exists, a `{:diff, component_diff, updated_components}` tuple
+  is returned. Otherwise, `:noop` is returned.
+
+  The component is preloaded before the update callback is invoked.
+
+  ## Example
+
+      {:diff diff, new_components} = Diff.update_components(socket, state.components, update)
+  """
+  def update_component(socket, components, {module, id, updated_assigns}) do
+    case fetch_cid(module, id, components) do
+      {:ok, cid} ->
+        updated_assigns = maybe_call_preload!(module, updated_assigns)
+
+        {diff, new_components} =
+          with_component(socket, cid, %{}, components, fn component_socket, component ->
+            Utils.maybe_call_update!(component_socket, component, updated_assigns)
+          end)
+
+        {:diff, diff, new_components}
+
+      :error ->
+        :noop
+    end
+  end
+
+  @doc """
   Deletes a component by `cid`.
   """
   def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
@@ -96,10 +179,12 @@ defmodule Phoenix.LiveView.Diff do
   Converts a component to a rendered struct.
   """
   def component_to_rendered(socket, component, assigns) do
+    socket = mount_component(socket, component)
+    assigns = maybe_call_preload!(component, assigns)
+
     socket
-    |> mount_component(component)
-    |> View.maybe_call_update!(component, assigns)
-    |> View.to_rendered(component)
+    |> Utils.maybe_call_update!(component, assigns)
+    |> Utils.to_rendered(component)
   end
 
   ## Traversal
@@ -253,7 +338,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp mount_component(socket, component) do
     socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
-    View.maybe_call_mount!(socket, component, [socket])
+    Utils.maybe_call_mount!(socket, component, [socket])
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
@@ -291,7 +376,7 @@ defmodule Phoenix.LiveView.Diff do
 
           socket
           |> configure_socket_for_component(assigns, private, component_prints)
-          |> View.maybe_call_update!(component, new_assigns)
+          |> Utils.maybe_call_update!(component, new_assigns)
           |> render_component(id, cid, new?, pending_components, component_diffs, components)
         end)
       end)
@@ -306,6 +391,15 @@ defmodule Phoenix.LiveView.Diff do
       zip_preloads(result, entries, component, result)
     else
       entries
+    end
+  end
+
+  defp maybe_call_preload!(module, assigns) do
+    if function_exported?(module, :preload, 1) do
+      [new_assigns] = module.preload([assigns])
+      new_assigns
+    else
+      assigns
     end
   end
 
@@ -328,13 +422,13 @@ defmodule Phoenix.LiveView.Diff do
     {component, _} = id
 
     {socket, pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}} =
-      if new? or View.changed?(socket) do
-        rendered = View.to_rendered(socket, component)
+      if new? or Utils.changed?(socket) do
+        rendered = Utils.to_rendered(socket, component)
 
         {diff, component_prints, pending_components, components} =
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
-        socket = View.clear_changed(%{socket | fingerprints: component_prints})
+        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
         {socket, pending_components, Map.put(component_diffs, cid, diff), components}
       else
         {socket, pending_components, component_diffs, components}
@@ -342,5 +436,12 @@ defmodule Phoenix.LiveView.Diff do
 
     id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
     {pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}}
+  end
+
+  defp fetch_cid(module, id, {id_to_components, _cid_to_ids, _} = _components) do
+    case Map.fetch(id_to_components, {module, id}) do
+      {:ok, {cid, _, _, _}} -> {:ok, cid}
+      :error -> :error
+    end
   end
 end

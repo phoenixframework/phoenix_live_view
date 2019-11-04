@@ -554,7 +554,7 @@ defmodule Phoenix.LiveView do
   regular Phoenix templaes, a regular `render` call does not start another
   LiveView. This means `render` is useful to sharing markup between views.
 
-  One option to address this problem is to render a child LiveView insied a
+  One option to address this problem is to render a child LiveView inside a
   parent LiveView by calling `live_render/3` instead of `render/3` from the
   LiveView template. This child LiveView runs in a completely separate process
   than the parent, with its own `mount` and `handle_event` callbacks. If a
@@ -645,7 +645,7 @@ defmodule Phoenix.LiveView do
   own DOM operations. The following `phx-update` values are supported:
 
     * `replace` - the default operation. Replaces the element with the contents
-    * `ignore` - ignores updates the DOM regardless of new content changes
+    * `ignore` - ignores updates to the DOM regardless of new content changes
     * `append` - append the new DOM contents instead of replacing
     * `prepend` - prepend the new DOM contents instead of replacing
 
@@ -1053,7 +1053,7 @@ defmodule Phoenix.LiveView do
   def live_render(conn_or_socket, view, opts \\ [])
 
   def live_render(%Plug.Conn{} = conn, view, opts) do
-    case LiveView.View.static_render(conn, view, opts) do
+    case LiveView.Static.render(conn, view, opts) do
       {:ok, content} ->
         content
 
@@ -1063,7 +1063,7 @@ defmodule Phoenix.LiveView do
   end
 
   def live_render(%Socket{} = parent, view, opts) do
-    LiveView.View.nested_static_render(parent, view, opts)
+    LiveView.Static.nested_render(parent, view, opts)
   end
 
   @doc """
@@ -1145,21 +1145,19 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  def __live_component__(%Socket{} = socket, %{kind: :component, module: component}, assigns)
+  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
       when is_list(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
-    if is_nil(id) and (function_exported?(component, :handle_event, 3) or function_exported?(component, :preload, 1)) do
-      raise "the component #{inspect(component)} has implemented handle_event/3, " <>
-              "which requires an ID element"
+    if is_nil(id) and
+         (function_exported?(component, :handle_event, 3) or
+            function_exported?(component, :preload, 1)) do
+      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
+              "requires an :id assign to be given"
     end
 
-    if LiveView.View.connected?(socket) do
-      %LiveView.Component{id: id, assigns: assigns, component: component}
-    else
-      LiveView.Diff.component_to_rendered(socket, component, assigns)
-    end
+    %LiveView.Component{id: id, assigns: assigns, component: component}
   end
 
   def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
@@ -1194,9 +1192,7 @@ defmodule Phoenix.LiveView do
         end
       end
   """
-  def connected?(%Socket{} = socket) do
-    LiveView.View.connected?(socket)
-  end
+  def connected?(%Socket{connected?: connected?}), do: connected?
 
   @doc """
   Assigns a value into the socket only if it does not exist.
@@ -1227,7 +1223,19 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
-    LiveView.View.assign_new(socket, key, func)
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assigned_new: {assigns, keys}} = private} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        private = put_in(private.assigned_new, {assigns, [key | keys]})
+        assign_each(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+
+      %{} ->
+        assign_each(socket, key, func.())
+    end
   end
 
   @doc """
@@ -1243,14 +1251,26 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    LiveView.View.assign(socket, [{key, value}])
+    assign(socket, [{key, value}])
   end
 
   @doc """
   See `assign/2`.
   """
   def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
-    LiveView.View.assign(socket, attrs)
+    Enum.reduce(attrs, socket, fn {key, val}, acc ->
+      case Map.fetch(acc.assigns, key) do
+        {:ok, ^val} -> acc
+        {:ok, _old_val} -> assign_each(acc, key, val)
+        :error -> assign_each(acc, key, val)
+      end
+    end)
+  end
+
+  defp assign_each(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
+    new_changed = Map.put(changed, key, true)
+    new_assigns = Map.put(assigns, key, val)
+    %Socket{acc | assigns: new_assigns, changed: new_changed}
   end
 
   @doc """
@@ -1308,7 +1328,7 @@ defmodule Phoenix.LiveView do
   # TODO support `:external` and validation `:to` is a local path
   def redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "redirect/2")
-    LiveView.View.put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
+    put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
   end
 
   @doc """
@@ -1333,8 +1353,31 @@ defmodule Phoenix.LiveView do
   def live_redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "live_redirect/2")
     kind = if opts[:replace], do: :replace, else: :push
-    LiveView.View.put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
+    put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
   end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
+    %Socket{socket | redirected: {:redirect, opts}}
+  end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
+       when kind in [:push, :replace] do
+    if child?(socket) do
+      raise ArgumentError, """
+      attempted to live_redirect from a nested child socket.
+
+      Only the root parent LiveView can issue live redirects.
+      """
+    else
+      %Socket{socket | redirected: {:live, opts}}
+    end
+  end
+
+  defp put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
+    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
+  end
+
+  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -1400,8 +1443,57 @@ defmodule Phoenix.LiveView do
         {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
       end
   """
-  def get_connect_params(%Socket{} = socket) do
-    LiveView.View.get_connect_params(socket)
+  def get_connect_params(%Socket{private: private} = socket) do
+    cond do
+      connect_params = private[:connect_params] ->
+        if connected?(socket), do: connect_params, else: nil
+
+      child?(socket) ->
+        raise RuntimeError, """
+        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
+
+        Only the root LiveView has access to connect params.
+        """
+
+      true ->
+        raise RuntimeError, """
+        attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
+
+        connect_params only exist while mounting. If you require access to this information
+        after mount, store the state in socket assigns.
+        """
+    end
+  end
+
+  @doc """
+  Asynchronously updates a component with new assigns.
+
+  Requires a stateful component with a matching `:id` to send
+  the update to. Following the optional `preload/1` callback being invoked,
+  the updated values are merged with the component's assigns and `update/2`
+  is called for the updated component(s).
+
+  While a component may always be updated from the parent by updating some
+  parent assigns which will re-render the child, thus invoking `update/2` on
+  the child component, `send_update/2` is useful for updating a component
+  that entirely manages its own state, as well as messaging between components.
+
+  ## Examples
+
+      def handle_event("cancel-order", _, socket) do
+        ...
+        send_update(Cart, id: "cart", status: "cancelled")
+        {:noreply, socket}
+      end
+  """
+  def send_update(module, assigns) do
+    assigns = Enum.into(assigns, %{})
+
+    id =
+      assigns[:id] ||
+        raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
+
+    Phoenix.LiveView.Channel.send_update(module, id, assigns)
   end
 
   defp assert_root_live_view!(%{parent_pid: nil}, _context),

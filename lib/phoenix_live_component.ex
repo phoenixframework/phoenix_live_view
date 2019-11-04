@@ -128,6 +128,124 @@ defmodule Phoenix.LiveComponent do
   Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
   keeping the assigns in the same order as they were given.
 
+  ## Managing state
+
+  Now that we have learned how to define and use components, as well as
+  how to use `c:preload/1` as a data loading optimization, it is important
+  to talk about how to manage state in components.
+
+  Generally speaking, you want to avoid both the parent LiveView and the
+  LiveComponent working on two different copies of the state. Instead, you
+  should assume only one of them to be the source of truth. Let's discuss
+  these approaches in detail.
+
+  Imagine that the scenario we will explore is that we have a LiveView
+  representing a board, where each card in the board is a separate component.
+  Each card has a form that allows to update the form title directly in the
+  component. We will see how to organize the data flow keeping either the
+  view or the component as the source of truth.
+
+  ### LiveView as the source of truth
+
+  If the LiveView is the source of truth, the LiveView will be responsible
+  for fetching all of the cards in a board. Then it will call `live_component/2`
+  for each card, passing the card struct as argument to CardComponent:
+
+      <%= for card <- @cards do %>
+        <%= live_component CardComponent, card: card, board_id: @id %>
+      <% end %>
+
+  Now, when the user submits a form inside the CardComponent to update the
+  card, `CardComponent.handle_event/3` will be triggered. However, if the
+  update succeeds, you must not change the card struct inside the component.
+  If you do so, the card struct in the component will get out of sync with
+  the LiveView. Since the LiveView is the source of truth, we should instead
+  tell the LiveView the card was updated.
+
+  Luckily, because the component and the view run in the same process,
+  sending a message from the component to the parent LiveView is as simple
+  as sending a message to self:
+
+      defmodule CardComponent do
+        ...
+        def handle_event("update_title", %{"title" => title}, socket) do
+          send self(), {:updated_card, %{socket.assigns.card | title: title}}
+          {:noreply, socket}
+        end
+      end
+
+  The LiveView can receive this event using `handle_info`:
+
+      defmodule BoardView do
+        ...
+        def handle_info({:updated_card, card}, socket) do
+          # update the list of cards in the socket
+          {:noreply, updated_socket}
+        end
+      end
+
+  As the list of cards in the parent socket was updated, the parent
+  will be re-rendered, sending the updated card to the component.
+  So in the end, the component does get the updated card, but always
+  driven from the parent.
+
+  Alternatively, instead of having the component directly send a
+  message to the parent, the component could broadcast the update
+  using `Phoenix.PubSub`. Such as:
+
+      defmodule CardComponent do
+        ...
+        def handle_event("update_title", %{"title" => title}, socket) do
+          message = {:updated_card, %{socket.assigns.card | title: title}}
+          Phoenix.PubSub.broadcast(MyApp.PubSub, board_topic(socket), message)
+          {:noreply, socket}
+        end
+
+        defp board_topic(socket) do
+          "board:" <> socket.assigns.board_id
+        end
+      end
+
+  As long as the parent LiveView subscribes to the "board:ID" topic,
+  it will receive updates. The advantage of using PubSub is that we get
+  distributed updates out of the box. Now if any user connected to the
+  board changes a card, all other users will see the change.
+
+  ### LiveComponent as the source of truth
+
+  If the component is the source of truth, then the LiveView must no
+  longer fetch all of the cards structs from the database. Instead,
+  the view must only fetch all of the card ids and render the component
+  only by passing the IDs:
+
+      <%= for card_id <- @card_ids do %>
+        <%= live_component CardComponent, card_id: card_id, board_id: @id %>
+      <% end %>
+
+  Now, each CardComponent loads their own card. Of course, doing so per
+  card would be expensive and lead to N queries, where N is the number
+  of components, so we must use the `c:preload/1` callback to make it
+  efficient.
+
+  Once all card components are started, they can fully manage each
+  card as a whole, without concerning themselves with the parent LiveView.
+
+  However, note that components do not have a `handle_info/2` callback.
+  Therefore, if you want to track distributed changes on a card, you
+  must have the parent LiveView receive those events and redirect them
+  to the appropriate card. For example, assuming card updates are sent
+  to the "board:ID" topic, and that the board LiveView is subscribed to
+  said topic, one could do:
+
+      def handle_info({:updated_card, card}, socket) do
+        send_update CardComponent, id: card.id, board_id: socket.assigns.id
+        {:noreply, socket}
+      end
+
+  With `send_update`, the CardComponent given by `id` will be invoked,
+  triggering both preload and update callbacks, which will load the
+  most up to date data from the database.
+
   ## Live component blocks
 
   When `live_component` is invoked, it is also possible to pass a `do/end`
@@ -167,20 +285,6 @@ defmodule Phoenix.LiveComponent do
 
       live_component @socket, GridComponent, entries: @entries do
         new_assigns -> "New entry: " <> new_assigns[:entry]
-      end
-
-  ## Communicating with the parent LiveView
-
-  Since components run in the LiveView process, sending a message to the
-  parent LiveView is simply a matter of sending a message to `self()`:
-
-      send self(), :do_something
-
-  The parent LiveView can then handle said message in its `handle_info/2`
-  callback:
-
-      def handle_info(:do_something, socket) do
-        ...
       end
 
   ## Live links and live redirects
@@ -246,7 +350,11 @@ defmodule Phoenix.LiveComponent do
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback handle_event(event :: binary, Phoenix.LiveView.unsigned_params, socket :: Socket.t()) ::
+  @callback handle_event(
+              event :: binary,
+              Phoenix.LiveView.unsigned_params(),
+              socket :: Socket.t()
+            ) ::
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 1, update: 2, handle_event: 3

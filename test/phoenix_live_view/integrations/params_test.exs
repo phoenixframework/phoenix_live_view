@@ -133,22 +133,24 @@ defmodule Phoenix.LiveView.ParamsTest do
 
     test "raises on stop without redirect", %{conn: conn} do
       assert ExUnit.CaptureLog.capture_log(fn ->
-        pid = spawn(fn ->
-          conn
-          |> put_serialized_session(:on_handle_params, fn socket ->
-            if LiveView.connected?(socket) do
-              {:stop, socket}
-            else
-              {:noreply, socket}
-            end
-          end)
-          |> get("/counter/123?from=handle_params")
-          |> live()
-        end)
-        ref = Process.monitor(pid)
+               pid =
+                 spawn(fn ->
+                   conn
+                   |> put_serialized_session(:on_handle_params, fn socket ->
+                     if LiveView.connected?(socket) do
+                       {:stop, socket}
+                     else
+                       {:noreply, socket}
+                     end
+                   end)
+                   |> get("/counter/123?from=handle_params")
+                   |> live()
+                 end)
 
-        assert_receive {:DOWN, ^ref, :process, _, _}
-      end) =~ ~r"attempted to stop socket without redirecting"
+               ref = Process.monitor(pid)
+
+               assert_receive {:DOWN, ^ref, :process, _, _}
+             end) =~ ~r"attempted to stop socket without redirecting"
     end
   end
 
