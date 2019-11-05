@@ -17,10 +17,7 @@ comprehensive docs and examples to get up to speed:
 
 ## Installation
 
-There are currently two methods for installing LiveView. For projects that
-require more stability, it is recommended that you install using the
-[installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
-If you want to use the latest features, you should follow the instructions
+Please, follow the instructions
 given in the markdown file [here](guides/introduction/installation.md).
 
 ## Browser Support
