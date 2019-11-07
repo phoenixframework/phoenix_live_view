@@ -1,3 +1,8 @@
+## 0.4.1 (2019-11-07)
+
+### Bug Fixes
+  - Fix bug cuasing blurred inputs
+
 ## 0.4.0 (2019-11-07)
 
 ### Enhancements
