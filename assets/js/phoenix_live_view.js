@@ -494,7 +494,7 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.preventDefault()
+      if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       let meta = {
         altKey: e.altKey,
@@ -737,7 +737,7 @@ export let DOM = {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         if(el.nodeName === "INPUT") {
-          el.value = value
+          el.setAttribute("value", value)
         } else {
           el.innerText = value
         }
@@ -913,7 +913,7 @@ export let DOM = {
 
   mergeInputs(target, source){
     DOM.mergeAttrs(target, source, ["value"])
-    target.readOnly = source.readOnly
+    target.setAttribute("readonly", source.readOnly)
   },
 
   restoreFocus(focused, selectionStart, selectionEnd){
