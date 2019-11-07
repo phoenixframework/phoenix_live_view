@@ -913,7 +913,11 @@ export let DOM = {
 
   mergeInputs(target, source){
     DOM.mergeAttrs(target, source, ["value"])
-    target.setAttribute("readonly", source.readOnly)
+    if(source.readOnly){
+      target.setAttribute("readonly", true)
+    } else {
+      target.removeAttribute("readonly")
+    }
   },
 
   restoreFocus(focused, selectionStart, selectionEnd){
