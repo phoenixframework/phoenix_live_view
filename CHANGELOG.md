@@ -1,4 +1,4 @@
-## 0.4.0 (2019-07-19)
+## 0.4.0 (2019-11-07)
 
 ### Enhancements
   - Add `Phoenix.LiveComponent` to compartmentalize state, markup, and events in LiveView
