@@ -1207,7 +1207,13 @@ export class View {
       let name = el.attributes[i].name
       if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
-    if(el.value !== undefined){ meta.value = el.value }
+    if(el.value !== undefined){
+      meta.value = el.value
+
+      if (el.tagName === "INPUT" && el.type === "checkbox" && !el.checked) {
+        delete meta.value
+      }
+    }
 
     this.pushWithReply("event", {
       type: type,

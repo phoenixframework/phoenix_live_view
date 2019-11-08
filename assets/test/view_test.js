@@ -11,6 +11,7 @@ function liveViewDOM() {
     <form>
       <label for="plus">Plus</label>
       <input id="plus" value="1" name="increment" />
+      <input type="checkbox" phx-click="toggle_me" />
       <button phx-click="inc_temperature">Inc Temperature</button>
     </form>
   `
@@ -109,6 +110,72 @@ describe('View + DOM', function() {
     view.channel = channelStub
 
     view.pushEvent('keyup', input, "click", {})
+  })
+
+  test('pushEvent as checkbox not checked', function() {
+    expect.assertions(1)
+
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewDOM()
+    let input = el.querySelector('input[type="checkbox"]')
+
+    let view = new View(el, liveSocket)
+    let channelStub = {
+      push(evt, payload, timeout) {
+        expect(payload.value).toEqual({})
+        return {
+          receive() {}
+        }
+      }
+    }
+    view.channel = channelStub
+
+    view.pushEvent('click', input, "toggle_me", {})
+  })
+
+  test('pushEvent as checkbox when checked', function() {
+    expect.assertions(1)
+
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewDOM()
+    let input = el.querySelector('input[type="checkbox"]')
+    input.checked = true
+
+    let view = new View(el, liveSocket)
+    let channelStub = {
+      push(evt, payload, timeout) {
+        expect(payload.value).toEqual({"value": "on"})
+        return {
+          receive() {}
+        }
+      }
+    }
+    view.channel = channelStub
+
+    view.pushEvent('click', input, "toggle_me", {})
+  })
+
+  test('pushEvent as checkbox with value', function() {
+    expect.assertions(1)
+
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewDOM()
+    let input = el.querySelector('input[type="checkbox"]')
+    input.value = "1"
+    input.checked = true
+
+    let view = new View(el, liveSocket)
+    let channelStub = {
+      push(evt, payload, timeout) {
+        expect(payload.value).toEqual({"value": "1"})
+        return {
+          receive() {}
+        }
+      }
+    }
+    view.channel = channelStub
+
+    view.pushEvent('click', input, "toggle_me", {})
   })
 
   test('pushKey', function() {
