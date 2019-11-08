@@ -20,6 +20,7 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
+const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
@@ -229,6 +230,7 @@ export class LiveSocket {
     this.prevValue = null
     this.silenced = false
     this.root = null
+    this.main = null
     this.linkRef = 0
     this.href = window.location.href
     this.pendingLink = null
@@ -239,6 +241,7 @@ export class LiveSocket {
       if(this.isUnloaded()){
         this.destroyAllViews()
         this.joinRootViews()
+        this.detectMainView()
       }
       this.unloaded = false
     })
@@ -260,9 +263,11 @@ export class LiveSocket {
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
       this.joinRootViews()
+      this.detectMainView()
     } else {
       document.addEventListener("DOMContentLoaded", () => {
         this.joinRootViews()
+        this.detectMainView()
       })
     }
     return this.socket.connect()
@@ -296,27 +301,36 @@ export class LiveSocket {
     })
   }
 
-  replaceRoot(href, callback = null, linkRef = this.setPendingLink(href)){
-    this.root.showLoader(LOADER_TIMEOUT)
-    let rootEl = this.root.el
-    let rootID = this.root.id
-    let wasLoading = this.root.isLoading()
+  detectMainView(){
+    DOM.all(document, `${PHX_MAIN_VIEW_SELECTOR}`, el => {
+      let main = this.getViewByEl(el)
+      if(main) {
+        this.main = main
+      }
+    })
+  }
+
+  replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
+    this.main.showLoader(LOADER_TIMEOUT)
+    let mainEl = this.main.el
+    let mainID = this.main.id
+    let wasLoading = this.main.isLoading()
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
 
       let div = document.createElement("div")
       div.innerHTML = html
-      this.joinView(div.firstChild, null, href, newRoot => {
+      this.joinView(div.firstChild, null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
-          newRoot.destroy()
+          newMain.destroy()
           return
         }
         callback && callback()
-        this.destroyViewById(rootID)
-        rootEl.replaceWith(newRoot.el)
-        this.root = newRoot
-        if(wasLoading){ this.root.showLoader() }
+        this.destroyViewById(mainID)
+        mainEl.replaceWith(newMain.el)
+        this.main = newMain
+        if(wasLoading){ this.main.showLoader() }
       })
     })
   }
@@ -480,7 +494,7 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, click)
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
-      e.stopPropagation()
+      if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       let meta = {
         altKey: e.altKey,
@@ -508,10 +522,10 @@ export class LiveSocket {
 
       let href = window.location.href
 
-      if(this.root.isConnected()) {
-        this.root.pushInternalLink(href)
+      if(this.main.isConnected()) {
+        this.main.pushInternalLink(href)
       } else {
-        this.replaceRoot(href)
+        this.replaceMain(href)
       }
     }
     window.addEventListener("click", e => {
@@ -520,7 +534,7 @@ export class LiveSocket {
       if(!phxEvent){ return }
       let href = target.href
       e.preventDefault()
-      this.root.pushInternalLink(href, () => {
+      this.main.pushInternalLink(href, () => {
         Browser.pushState(phxEvent, {}, href)
         this.registerNewLocation(window.location)
       })
@@ -723,7 +737,7 @@ export let DOM = {
       let value = el.getAttribute(`${disableWith}-restore`)
       if(value){
         if(el.nodeName === "INPUT") {
-          el.value = value
+          el.setAttribute("value", value)
         } else {
           el.innerText = value
         }
@@ -899,7 +913,11 @@ export let DOM = {
 
   mergeInputs(target, source){
     DOM.mergeAttrs(target, source, ["value"])
-    target.readOnly = source.readOnly
+    if(source.readOnly){
+      target.setAttribute("readonly", true)
+    } else {
+      target.removeAttribute("readonly")
+    }
   },
 
   restoreFocus(focused, selectionStart, selectionEnd){
@@ -1106,7 +1124,10 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceRoot(to, () => Browser.pushState(kind, {}, to))
+    this.liveSocket.replaceMain(to, () => {
+      Browser.pushState(kind, {}, to)
+      this.liveSocket.registerNewLocation(window.location)
+    })
   }
 
   onLiveRedirect({to, kind}){
@@ -1237,7 +1258,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
-        this.liveSocket.replaceRoot(href, callback, linkRef)
+        this.liveSocket.replaceMain(href, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
@@ -1292,7 +1313,7 @@ class ViewHook {
   }
 
   pushEvent(event, payload = {}){
-    this.__view.pushWithReply("event", {type: "hook", event: event, value: payload})
+    this.__view.pushEvent("hook", this.el, event, payload)
   }
   __trigger__(kind){
     let callback = this.__callbacks[kind]

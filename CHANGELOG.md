@@ -1,10 +1,18 @@
-## 0.3.2-dev
+## 0.4.1 (2019-11-07)
+
+### Bug Fixes
+  - Fix bug cuasing blurred inputs
+
+## 0.4.0 (2019-11-07)
 
 ### Enhancements
+  - Add `Phoenix.LiveComponent` to compartmentalize state, markup, and events in LiveView
   - Handle outdated clients by refreshing the page with jitter when a valid, but outdated session is detected
+  - Only dispatch live link clicks to router LiveView
 
 ### Bug Fixes
   - Fix `phx-hook` destroyed callback failing to be called in certain cases
+  - Fix back/forward bug causing LiveView to fail to remount
 
 ## 0.3.1 (2019-09-23)
 

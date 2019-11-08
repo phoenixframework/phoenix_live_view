@@ -83,10 +83,17 @@ defmodule Phoenix.LiveView.Static do
 
     case call_mount_and_handle_params!(socket, router, view, session, conn.params, request_url) do
       {:ok, socket} ->
+
+        data_attrs = [
+          phx_view: config.name,
+          phx_session: sign_root_session(socket, router, view, session)
+        ]
+
+        data_attrs = (if router, do: [phx_main: true], else: []) ++ data_attrs
+
         attrs = [
           {:id, socket.id},
-          {:data,
-           phx_view: config.name, phx_session: sign_root_session(socket, router, view, session)}
+          {:data, data_attrs}
           | extended_attrs
         ]
 
