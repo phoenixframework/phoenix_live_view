@@ -113,7 +113,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert render(parent) =~ "some content in child"
 
-      assert child = find_child(parent, "child-dom-id)
+      assert child = find_child(parent, "child-dom-id")
       send(parent.pid, :msg_that_removes_child)
 
       assert_remove child, _
