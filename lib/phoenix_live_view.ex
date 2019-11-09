@@ -1019,7 +1019,7 @@ defmodule Phoenix.LiveView do
       but it is a required option when rendering a child LiveView.
     * `:router` - an optional router that enables this LiveView to
       perform `live_link` and `live_redirect`. Only a single LiveView
-      in a page may have the `:router` set and  and it will effectively
+      in a page may have the `:router` set and it will effectively
       become the view responsible for handling `live_link` and `live_redirect`.
       LiveViews defined at the router with the `live` macro automatically
       have the `:router` option set.
