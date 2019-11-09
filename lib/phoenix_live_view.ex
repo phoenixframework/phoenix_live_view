@@ -1015,7 +1015,7 @@ defmodule Phoenix.LiveView do
       definition container. See the "Containers" section for more
       information.
     * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
-      One `:id` is automatically generating when rendering root LiveViews
+      One `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
     * `:router` - an optional router that enables this LiveView to
       perform `live_link` and `live_redirect`. Only a single LiveView
