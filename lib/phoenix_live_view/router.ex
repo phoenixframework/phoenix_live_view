@@ -16,18 +16,25 @@ defmodule Phoenix.LiveView.Router do
 
     * `:session` - the optional list of keys to pull out of the Plug
       connection session and into the LiveView session.
-      The `:path_params` keys may also be provided to copy the
-      plug path params into the session. Defaults to `[:path_params]`.
-      For example, the following would copy the path params and
-      Plug session current user ID into the LiveView session:
+      For example, the following would copy Plug's session current
+      user ID and the `remember_me` value into the LiveView session:
 
-          [:path_params, :user_id, :remember_me]
+          [:user_id, :remember_me]
+      
+      This also accepts key/value entries which are mapped directly into the
+      LiveView session.  This is useful for identifying which `live` macro was
+      matched.
+      
+          [action: :index]
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
       your application's namespace.
+
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
+      See `Phoenix.LiveView.live_render/3` for more information on examples.
+
     * `:as` - optionally configures the named helper. Defaults to `:live`.
 
   ## Examples
@@ -40,7 +47,7 @@ defmodule Phoenix.LiveView.Router do
           pipe_through [:browser]
 
           live "/thermostat", ThermostatLive
-          live "/clock", ClockLive, session: [:path_params, :user_id]
+          live "/clock", ClockLive, session: [:user_id]
           live "/dashboard", DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
         end
       end
@@ -56,12 +63,7 @@ defmodule Phoenix.LiveView.Router do
         Phoenix.LiveView.Plug,
         Phoenix.Router.scoped_alias(__MODULE__, live_view),
         private: %{
-          phoenix_live_view:
-            Keyword.put_new(
-              opts,
-              :layout,
-              Phoenix.LiveView.Router.__layout_from_router_module__(__MODULE__)
-            )
+          phoenix_live_view: Phoenix.LiveView.Router.__live_options__(__MODULE__, opts)
         },
         as: opts[:as] || :live,
         alias: false
@@ -70,15 +72,19 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc false
-  def __layout_from_router_module__(module) do
-    view =
-      module
-      |> Atom.to_string()
-      |> String.split(".")
-      |> Enum.take(2)
-      |> Kernel.++(["LayoutView"])
-      |> Module.concat()
+  def __live_options__(router, opts) do
+    opts
+    |> Keyword.put(:router, router)
+    |> Keyword.put_new_lazy(:layout, fn ->
+      view =
+        router
+        |> Atom.to_string()
+        |> String.split(".")
+        |> Enum.drop(-1)
+        |> Kernel.++(["LayoutView"])
+        |> Module.concat()
 
-    {view, :app}
+      {view, :app}
+    end)
   end
 end

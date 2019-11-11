@@ -113,26 +113,50 @@ defmodule Phoenix.LiveViewTest do
 
       assert render(parent) =~ "some content in child"
 
-      [child] = children(parent)
+      assert child = find_child(parent, "child-dom-id)
       send(parent.pid, :msg_that_removes_child)
 
       assert_remove child, _
       refute render(parent) =~ "some content in child"
+
+  ## Testing components
+
+  There are two main mechanisms for testing components. To test stateless
+  components or just a regular rendering of a component, one can use
+  `render_component/2`:
+
+      assert render_component(MyComponent, id: 123, user: %User{}) =~
+               "some markup in component"
+
+  If you want to test how components are mounted by a LiveView and
+  interact with DOM events, you can use the regular `live/2` macro
+  to build the LiveView with the component and then scope events by
+  passing the view and the component **DOM ID** in a list:
+
+      {:ok, view, html} = live(conn, "/users")
+      html = render_click([view, "user-13"], "delete", %{})
+      refute html =~ "user-13"
+      assert_remove_component(view, "user-13")
+
   """
 
+  require Phoenix.ConnTest
+
+  alias Phoenix.LiveView.{Diff, Socket}
   alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
   Spawns a connected LiveView process.
 
   Accepts either a previously rendered `%Plug.Conn{}` or
-  an unsent `%Plug.Conn{}`. The latter case is a conveience
+  an unsent `%Plug.Conn{}`. The latter case is a convenience
   to perform the `get/2` and connected mount in a single
   step.
 
   ## Options
 
-    * `:connect_params` - the map of params available in connected mount
+    * `:connect_params` - the map of params available in the socket connected
+      mount. See `Phoenix.LiveView.get_connect_params/1` for more information.
 
   ## Examples
 
@@ -161,10 +185,48 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc "See `live/2`."
   defmacro live(conn, path, opts) do
     quote bind_quoted: binding(), unquote: true do
       unquote(__MODULE__).__live__(conn, path, opts, fn conn, path -> get(conn, path) end)
     end
+  end
+
+  @doc """
+  Spawns a connected LiveView process mounted in isolation as the sole rendered element.
+
+  Useful for testing LiveViews that are not directly routable, such as those
+  built as small components to be re-used in multiple parents. Testing routable
+  LiveViews is still recommended whenever possible since features such as
+  live navigation require routable LiveViews.
+
+  ## Options
+
+    * `:connect_params` - the map of params available in connected mount.
+      See `Phoenix.LiveView.get_connect_params/1` for more information.
+    * `:session` - the session to be given to the LiveView
+
+  All other options are forwarded to the live view for rendering. Refer to
+  `Phoenix.LiveView.live_render/3` for list of supported render options.
+
+  ## Examples
+
+      {:ok, view, html} =
+        live_isolated(conn, AppWeb.ClockLive, session: %{tz: "EST"})
+  """
+  defmacro live_isolated(conn, live_view, opts \\ []) do
+    quote bind_quoted: binding(), unquote: true do
+      unquote(__MODULE__).__isolated__(conn, @endpoint, live_view, opts)
+    end
+  end
+
+  @doc false
+  def __isolated__(conn, endpoint, live_view, opts) do
+    {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
+
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
+    |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
+    |> __live__(conn.request_path, mount_opts, :noop)
   end
 
   @doc false
@@ -181,20 +243,20 @@ defmodule Phoenix.LiveViewTest do
 
       {_, _, :noop} ->
         raise ArgumentError, """
-          a request has not yet been sent.
+        a request has not yet been sent.
 
-          live/1 must use a connection with a sent response. Either call get/2
-          prior to live/1, or use live/2 while providing a path to have a get
-          request issues for you. For example issuing a get yourself:
+        live/1 must use a connection with a sent response. Either call get/2
+        prior to live/1, or use live/2 while providing a path to have a get
+        request issues for you. For example issuing a get yourself:
 
-              {:ok, view, _html} =
-                conn
-                |> get("#{path}")
-                |> live()
+            {:ok, view, _html} =
+              conn
+              |> get("#{path}")
+              |> live()
 
-          or performing the GET and live connect in a single step:
+        or performing the GET and live connect in a single step:
 
-              {:ok, view, _html} = live(conn, "#{path}")
+            {:ok, view, _html} = live(conn, "#{path}")
         """
     end
   end
@@ -210,32 +272,42 @@ defmodule Phoenix.LiveViewTest do
       |> Phoenix.ConnTest.html_response(200)
       |> IO.iodata_to_binary()
 
-    case DOM.find_sessions(html) do
-      [{session_token, nil, id} | _] -> do_connect(conn, path, html, session_token, id, opts)
+    case DOM.find_views(html) do
+      [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
       [] -> {:error, :nosession}
     end
   end
 
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
+  defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
     live_path = live_path(conn, path)
 
-    child_statics = DOM.find_static_views(html)
+    child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
+    # normalize
+    html = DOM.to_html(DOM.parse(raw_html))
 
-    %View{ref: ref, topic: topic} =
+    %ClientProxy{ref: ref} =
       view =
-      View.build(
-        dom_id: id,
+      ClientProxy.build(
+        id: id,
         mount_path: live_path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         module: conn.assigns.live_view_module,
-        router: Phoenix.Controller.router_module(conn),
         endpoint: Phoenix.Controller.endpoint_module(conn),
         child_statics: child_statics
       )
 
-    case ClientProxy.start_link(caller: {ref, self()}, view: view, timeout: timeout) do
+    unless Code.ensure_loaded?(Floki) do
+      raise """
+      Phoenix LiveView requires Floki as a test dependency.
+      Please add to your mix.exs:
+
+          {:floki, ">= 0.0.0", only: :test}
+      """
+    end
+
+    case ClientProxy.start_link(caller: {self(), ref}, html: html, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
         receive do
           {^ref, {:mounted, view_pid, html}} ->
@@ -246,8 +318,7 @@ defmodule Phoenix.LiveViewTest do
                 {:error, %{redirect: to}}
             after
               0 ->
-                view = %View{view | pid: view_pid, proxy: proxy_pid, topic: topic}
-                {:ok, view, html}
+                {:ok, build_test_view(view, view_pid, proxy_pid), html}
             end
         end
 
@@ -260,14 +331,38 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp live_path(%Plug.Conn{} = conn, path) do
-    if conn.body_params != %{} or conn.query_string != "" do
-      query_params = Plug.Conn.Query.decode(conn.query_string, conn.body_params)
+  defp build_test_view(%ClientProxy{id: id, ref: ref} = view, view_pid, proxy_pid) do
+    %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
+  end
 
+  defp live_path(%Plug.Conn{} = conn, path) do
+    body_params = fetch(conn.body_params)
+
+    if body_params != %{} or conn.query_string != "" do
+      query_params = Plug.Conn.Query.decode(conn.query_string, body_params)
       path <> "?" <> Plug.Conn.Query.encode(query_params)
     else
       path
     end
+  end
+
+  defp fetch(%Plug.Conn.Unfetched{}), do: %{}
+  defp fetch(other), do: other
+
+  @doc """
+  Mounts, updates and renders a component.
+
+  ## Examples
+
+      assert render_component(MyComponent, id: 123, user: %User{}) =~
+               "some markup in component"
+
+  """
+  def render_component(component, assigns) do
+    %Socket{}
+    |> Diff.component_to_rendered(component, assigns)
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
   end
 
   @doc """
@@ -278,6 +373,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
+      assert render_click([view, "clock"], :set, %{time: "1:00"}) =~ "time: 1:00 PM"
   """
   def render_click(view, event, value \\ %{}) do
     render_event(view, :click, event, value)
@@ -319,6 +415,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
+      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keyup(view, event, key_code) do
     render_event(view, :keyup, event, key_code)
@@ -332,6 +429,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
+      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keydown(view, event, key_code) do
     render_event(view, :keydown, event, key_code)
@@ -345,6 +443,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
+      assert render_blur([view, "child-id"], :inactive) =~ "Tap to wake"
   """
   def render_blur(view, event, value \\ %{}) do
     render_event(view, :blur, event, value)
@@ -359,23 +458,31 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
+      assert render_focus([view, "child-id"], :active) =~ "Waking up..."
   """
   def render_focus(view, event, value \\ %{}) do
     render_event(view, :focus, event, value)
   end
 
-  defp render_event(view, type, event, value) do
-    case GenServer.call(view.proxy, {:render_event, view, type, event, stringify(value)}) do
+  defp render_event([%View{} = view | path], type, event, value) do
+    case GenServer.call(
+           proxy_pid(view),
+           {:render_event, proxy_topic(view), type, path, event, stringify(value)}
+         ) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp render_event(%View{} = view, type, event, value) do
+    render_event([view], type, event, value)
   end
 
   @doc """
   Simulates a live_link click to the view and returns the rendered result.
   """
   def render_live_link(view, path) do
-    case GenServer.call(view.proxy, {:render_live_link, view, path}) do
+    case GenServer.call(proxy_pid(view), {:render_live_link, proxy_topic(view), path}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end
@@ -393,15 +500,52 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
   def children(%View{} = parent) do
-    GenServer.call(parent.proxy, {:children, parent})
+    parent
+    |> proxy_pid()
+    |> GenServer.call({:children, proxy_topic(parent)})
+    |> Enum.map(fn %ClientProxy{} = proxy_view ->
+      build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
+    end)
   end
 
   @doc """
-  Returns the string of HTML of the rendered view.
+  Finds the nested LiveView child given a parent.
+
+  ## Examples
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert clock_view = find_child(view, "clock")
+      assert render_click(clock_view, :snooze) =~ "snoozing"
   """
-  def render(%View{} = view) do
-    {:ok, html} = GenServer.call(view.proxy, {:render_tree, view})
+  def find_child(%View{} = parent, child_id) do
+    parent
+    |> children()
+    |> Enum.find(fn %View{id: id} -> id == child_id end)
+  end
+
+  @doc """
+  Returns the string of HTML of the rendered view or component.
+
+  If a view is provided, the entire LiveView is rendered. A list
+  may be passed containing view and the component **DOM ID's**:
+
+  ## Examples
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert render(view) =~ "cooling"
+      assert render([view, "clock"]) =~ "12:00 PM"
+      assert render([view, "clock", "alarm"]) =~ "Snooze"
+  """
+  def render(%View{} = view), do: render([view])
+
+  def render([%View{} = view | path]) do
+    {:ok, html} = GenServer.call(proxy_pid(view), {:render_tree, proxy_topic(view), path})
     html
+  end
+
+  def render(other) do
+    raise ArgumentError,
+          "expected to render a %View{} or view ID selector. Got: #{inspect(other)}"
   end
 
   @doc """
@@ -416,7 +560,7 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro assert_redirect(view, to, func) do
     quote do
-      %View{ref: ref, proxy: proxy_pid, topic: topic} = unquote(view)
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
     end
@@ -435,8 +579,16 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro assert_remove(view, reason, timeout \\ 100) do
     quote do
-      %Phoenix.LiveViewTest.View{ref: ref, topic: topic} = unquote(view)
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
+    end
+  end
+
+  @doc false
+  defmacro assert_remove_component(view, id, timeout \\ 100) do
+    quote bind_quoted: binding() do
+      %View{proxy: {ref, topic, _proxy_pid}} = view
+      assert_receive {^ref, {:removed_component, ^topic, ^id}}, timeout
     end
   end
 
@@ -449,7 +601,7 @@ defmodule Phoenix.LiveViewTest do
       assert_remove view, {:shutdown, :stop}
   """
   def stop(%View{} = view) do
-    GenServer.call(view.proxy, {:stop, view})
+    GenServer.call(proxy_pid(view), {:stop, proxy_topic(view)})
   end
 
   defp ensure_down!(pid, timeout \\ 100) do
@@ -462,9 +614,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  @doc false
-  def encode!(msg), do: msg
-
   defp stringify(%{__struct__: _} = struct),
     do: struct
 
@@ -476,4 +625,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp stringify_kv({k, v}),
     do: {to_string(k), stringify(v)}
+
+  defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
+  defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
 end

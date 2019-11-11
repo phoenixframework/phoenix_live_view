@@ -31,6 +31,7 @@ defmodule Phoenix.LiveView.Flash do
       Valid options include #{inspect(@valid_keys)}, got: #{inspect(opts)}
       """
     end
+
     opts
   end
 
@@ -40,13 +41,16 @@ defmodule Phoenix.LiveView.Flash do
   @impl Plug
   def call(conn, opts) do
     case cookie_flash(conn, salt(conn, opts)) do
-      {conn, nil} -> Phoenix.Controller.fetch_flash(conn, [])
+      {conn, nil} ->
+        Phoenix.Controller.fetch_flash(conn, [])
+
       {conn, flash} ->
         conn
         |> Plug.Conn.put_session("phoenix_flash", flash)
         |> Phoenix.Controller.fetch_flash([])
     end
   end
+
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn, salt) do
     flash =
       case Phoenix.Token.verify(conn, salt, token, max_age: 60_000) do
@@ -56,14 +60,16 @@ defmodule Phoenix.LiveView.Flash do
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
   end
+
   defp cookie_flash(%Plug.Conn{} = conn, _salt), do: {conn, nil}
 
   defp salt(conn, opts) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
-    salt_base = opts[:signing_salt] || Phoenix.LiveView.View.configured_signing_salt!(endpoint)
+    salt_base = opts[:signing_salt] || Phoenix.LiveView.Utils.salt!(endpoint)
     computed_salt(salt_base)
   end
+
   defp computed_salt(salt_base), do: salt_base <> "flash"
 
   @doc false

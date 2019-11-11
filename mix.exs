@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.4.1"
 
   def project do
     [
@@ -11,6 +11,7 @@ defmodule Phoenix.LiveView.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
+      xref: [exclude: [Floki]],
       deps: deps(),
       docs: docs(),
       homepage_url: "http://www.phoenixframework.org",
@@ -36,7 +37,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.4.9"},
       {:phoenix_html, "~> 2.13.2"},
       {:jason, "~> 1.0", optional: true},
-      {:ex_doc, "~> 0.20", only: :docs}
+      {:ex_doc, "~> 0.20", only: :docs},
+      {:floki, "~> 0.23.0", only: :test}
     ]
   end
 
@@ -44,7 +46,34 @@ defmodule Phoenix.LiveView.MixProject do
     [
       main: "Phoenix.LiveView",
       source_ref: "v#{@version}",
-      source_url: "https://github.com/phoenixframework/phoenix_live_view"
+      source_url: "https://github.com/phoenixframework/phoenix_live_view",
+      extra_section: "GUIDES",
+      extras: extras(),
+      groups_for_extras: groups_for_extras(),
+      groups_for_modules: groups_for_modules()
+    ]
+  end
+
+  defp extras do
+    [
+      "guides/introduction/installation.md"
+    ]
+  end
+
+  defp groups_for_extras do
+    [
+      Introduction: ~r/guides\/introduction\/.?/
+    ]
+  end
+
+  defp groups_for_modules do
+    [
+      "Live EEx Engine": [
+        Phoenix.LiveView.Engine,
+        Phoenix.LiveView.Component,
+        Phoenix.LiveView.Rendered,
+        Phoenix.LiveView.Comprehension
+      ]
     ]
   end
 
@@ -54,7 +83,7 @@ defmodule Phoenix.LiveView.MixProject do
       licenses: ["MIT"],
       links: %{github: "https://github.com/phoenixframework/phoenix_live_view"},
       files:
-        ~w(assets lib priv) ++
+        ~w(assets/css assets/js lib priv) ++
           ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
     ]
   end

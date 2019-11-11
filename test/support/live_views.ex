@@ -1,14 +1,14 @@
 alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
 defmodule Phoenix.LiveViewTest.ThermostatLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container: {:article, class: "thermo"}, namespace: Phoenix.LiveViewTest
 
   def render(assigns) do
     ~L"""
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
-      <%= live_render(@socket, ClockLive, render_opts(@nest, session: %{redir: @redir})) %>
+      <%= live_render(@socket, ClockLive, [id: :clock] ++ @nest) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
@@ -16,31 +16,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     """
   end
 
-  defp render_opts(list, opts) when is_list(list), do: Keyword.merge(opts, list)
-  defp render_opts(_, opts), do: opts
-
-  def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
-    if connected?(socket) do
-      do_mount(session, socket)
-    else
-      {:stop, redirect(socket, to: "/thermostat_disconnected")}
-    end
-  end
-
-  def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
-    # Skip underlying redirect log.
-    Logger.disable(self())
-
-    if connected?(socket) do
-      {:stop, redirect(socket, to: "/thermostat_connected")}
-    else
-      do_mount(session, socket)
-    end
-  end
-
-  def mount(session, socket), do: do_mount(session, socket)
-
-  defp do_mount(session, socket) do
+  def mount(session, socket) do
     nest = Map.get(session, :nest, false)
     users = session[:users] || []
     val = if connected?(socket), do: 1, else: 0
@@ -64,7 +40,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_event("key", @key_d, socket) do
     {:noreply, update(socket, :val, &(&1 - 1))}
   end
-
 
   def handle_event("save", %{"temp" => new_temp} = params, socket) do
     {:noreply, assign(socket, val: new_temp, greeting: inspect(params["_target"]))}
@@ -104,41 +79,16 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container: {:section, class: "clock"}
 
   def render(assigns) do
     ~L"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive) %>
+    <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls") %>
     """
   end
 
-  def mount(%{redir: {:disconnected, __MODULE__}} = session, socket) do
-    if connected?(socket) do
-      do_mount(session, socket)
-    else
-      {:stop, redirect(socket, to: "/clock_disconnected")}
-    end
-  end
-
-  def mount(%{redir: {:connected, __MODULE__}} = session, socket) do
-    # Skip underlying redirect log.
-    Logger.disable(self())
-
-    if connected?(socket) do
-      {:stop, redirect(socket, to: "/clock_connected")}
-    else
-      do_mount(session, socket)
-    end
-  end
-
-  def mount(session, socket), do: do_mount(session, socket)
-
-  defp do_mount(session, socket) do
-    if connected?(socket) do
-      Process.register(self(), :"clock#{session[:name]}")
-    end
-
+  def mount(session, socket) do
     {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
   end
 
@@ -163,7 +113,7 @@ defmodule Phoenix.LiveViewTest.ClockControlsLive do
   def mount(_session, socket), do: {:ok, socket}
 
   def handle_event("snooze", _, socket) do
-    send(Process.whereis(:clock), :snooze)
+    send(socket.parent_pid, :snooze)
     {:noreply, socket}
   end
 end
@@ -188,7 +138,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: true} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name}) %>
+      <%= live_render(@socket, ClockLive, id: :dup, session: %{name: name}) %>
     <% end %>
     """
   end
@@ -196,7 +146,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: false} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, child_id: name) %>
+      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, id: name) %>
     <% end %>
     """
   end
@@ -217,9 +167,9 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def render(assigns) do
     ~L"""
     root name: <%= @current_user.name %>
-    <%= live_render(@socket, ChildLive, session: %{child: :static, user_id: @current_user.id}) %>
+    <%= live_render(@socket, ChildLive, id: :static, session: %{child: :static, user_id: @current_user.id}) %>
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, session: %{child: :dynamic, user_id: @current_user.id}, child_id: :dyn) %>
+      <%= live_render(@socket, ChildLive, id: @dynamic_child, session: %{child: :dynamic, user_id: @current_user.id}) %>
     <% end %>
     """
   end
@@ -227,14 +177,14 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def mount(%{user_id: user_id}, socket) do
     {:ok,
      socket
-     |> assign(:dynamic_child, false)
+     |> assign(:dynamic_child, nil)
      |> assign_new(:current_user, fn ->
        %{name: "user-from-root", id: user_id}
      end)}
   end
 
-  def handle_call(:show_dynamic_child, _from, socket) do
-    {:reply, :ok, assign(socket, :dynamic_child, true)}
+  def handle_call({:dynamic_child, child}, _from, socket) do
+    {:reply, :ok, assign(socket, dynamic_child: child)}
   end
 end
 
@@ -243,14 +193,14 @@ defmodule Phoenix.LiveViewTest.ChildLive do
 
   def render(assigns) do
     ~L"""
-    child <%= @child_id %> name: <%= @current_user.name %>
+    child <%= @id %> name: <%= @current_user.name %>
     """
   end
 
-  def mount(%{user_id: user_id, child: child_id}, socket) do
+  def mount(%{user_id: user_id, child: id}, socket) do
     {:ok,
      socket
-     |> assign(:child_id, child_id)
+     |> assign(:id, id)
      |> assign_new(:current_user, fn ->
        %{name: "user-from-child", id: user_id}
      end)}
@@ -263,41 +213,27 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   def render(assigns) do
     ~L"""
     The value is: <%= @val %>
-    <%= if map_size(@params) > 0, do: Phoenix.HTML.raw(inspect(@params)) %>
-    connect: <%= Phoenix.HTML.raw(inspect(@connect_params)) %>
+    <%= if map_size(@params) > 0, do: inspect(@params) %>
+    connect: <%= inspect(@connect_params) %>
     """
   end
 
-  def mount(%{test_pid: pid} = session, socket) do
-    do_mount(session, assign(socket, :test_pid, pid))
-  end
+  def mount(session, socket) do
+    on_handle_params = session[:on_handle_params]
 
-  defp do_mount(%{test: %{external_disconnected_redirect: redir}}, socket) do
-    %{to: to} = redir
-    {:ok, live_redirect(socket, to: to)}
-  end
-
-  defp do_mount(%{test: %{external_connected_redirect: opts}, test_pid: pid}, socket) do
-    %{to: to, stop: stop} = opts
-
-    cond do
-      connected?(socket) && stop -> {:stop, live_redirect(socket, to: to)}
-      connected?(socket) -> {:ok, live_redirect(socket, to: to)}
-      true -> {:ok, do_assign(assign(socket, pid: pid))}
-    end
-  end
-
-  defp do_mount(_session, socket) do
-    {:ok, do_assign(socket)}
-  end
-
-  defp do_assign(socket) do
-    assign(socket, val: 1, connect_params: get_connect_params(socket) || %{})
+    {:ok,
+     assign(
+       socket,
+       val: 1,
+       connect_params: get_connect_params(socket) || %{},
+       test_pid: session[:test_pid],
+       on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
+     )}
   end
 
   def handle_params(%{"from" => "handle_params"} = params, uri, socket) do
     send(socket.assigns.test_pid, {:handle_params, uri, socket.assigns, params})
-    socket.assigns.on_handle_params.(socket)
+    socket.assigns.on_handle_params.(assign(socket, :params, params))
   end
 
   def handle_params(params, uri, socket) do
@@ -315,8 +251,8 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, live_redirect(socket, to: to)}
   end
 
-  def handle_call({:live_redirect, to, func}, _from, socket) do
-    func.(live_redirect(socket, to: to))
+  def handle_call({:live_redirect, func}, _from, socket) do
+    func.(socket)
   end
 
   def handle_cast({:live_redirect, to}, socket) do
@@ -324,19 +260,152 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ConfigureLive do
+defmodule Phoenix.LiveViewTest.OptsLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~L|<%= @description %>|
+  def render(assigns), do: ~L|<%= @description %>. <%= @canary %>|
 
-  def mount(_session, socket) do
-    {:ok,
-     socket
-     |> assign(description: "long description")
-     |> configure_temporary_assigns([:description])}
+  def mount(%{opts: opts}, socket) do
+    {:ok, assign(socket, description: "long description", canary: "canary"), opts}
   end
 
   def handle_call({:exec, func}, _from, socket) do
     func.(socket)
+  end
+end
+
+defmodule Phoenix.LiveViewTest.AppendLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    <div id="times" phx-update="<%= @update_type %>">
+      <%= for %{id: id, name: name} <- @time_zones do %>
+        <h1 id="title-<%= id %>"><%= name %></h1>
+        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{id}", session: %{name: name}) %>
+      <% end %>
+    </div>
+    """
+  end
+
+  def mount(%{time_zones: {update_type, time_zones}}, socket) do
+    {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
+     temporary_assigns: [time_zones: []]}
+  end
+
+  def handle_event("add-tz", %{"id" => id, "name" => name}, socket) do
+    {:noreply, assign(socket, :time_zones, [%{id: id, name: name}])}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.ShuffleLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    <%= for zone <- @time_zones do %>
+      <div id="score-<%= zone.id %>">
+        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{zone.id}", session: %{name: zone.name}) %>
+      </div>
+    <% end %>
+    """
+  end
+
+  def mount(%{time_zones: time_zones}, socket) do
+    {:ok, assign(socket, time_zones: time_zones)}
+  end
+
+  def handle_event("reverse", _, socket) do
+    {:noreply, assign(socket, :time_zones, Enum.reverse(socket.assigns.time_zones))}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.BasicComponent do
+  use Phoenix.LiveComponent
+
+  def mount(socket) do
+    {:ok, assign(socket, id: nil, name: "unknown")}
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div <%= if @id, do: Phoenix.HTML.raw("id=\"#{@id}\""), else: "" %>>
+      <%= @name %> says hi with socket: <%= !!@socket %>
+    </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StatefulComponent do
+  use Phoenix.LiveComponent
+
+  def mount(socket) do
+    {:ok, assign(socket, name: "unknown", dup_name: nil)}
+  end
+
+  def update(assigns, socket) do
+    if from = assigns[:from] do
+      send(from, {:updated, assigns})
+    end
+
+    {:ok, assign(socket, assigns)}
+  end
+
+  def preload([assigns | _] = lists_of_assigns) do
+    if from = assigns[:from] do
+      send(from, {:preload, lists_of_assigns})
+    end
+
+    lists_of_assigns
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div id="<%= @id %>">
+      <%= @name %> says hi with socket: <%= !!@socket %><%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
+    </div>
+    """
+  end
+
+  def handle_event("transform", %{"op" => op}, socket) do
+    case op do
+      "upcase" ->
+        {:noreply, update(socket, :name, &String.upcase(&1))}
+
+      "title-case" ->
+        {:noreply,
+         update(socket, :name, fn <<first::binary-size(1), rest::binary>> ->
+           String.upcase(first) <> rest
+         end)}
+
+      "dup" ->
+        {:noreply, assign(socket, :dup_name, socket.assigns.name <> "-dup")}
+    end
+  end
+end
+
+defmodule Phoenix.LiveViewTest.WithComponentLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent %>
+    <%= for name <- @names do %>
+      <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent, id: name, name: name, from: @from %>
+    <% end %>
+    """
+  end
+
+  def mount(%{names: names, from: from}, socket) do
+    {:ok, assign(socket, names: names, from: from)}
+  end
+
+  def handle_info({:send_update, updates}, socket) do
+    Enum.each(updates, fn {module, args} -> send_update(module, args) end)
+    {:noreply, socket}
+  end
+
+  def handle_event("delete-name", %{"name" => name}, socket) do
+    {:noreply, update(socket, :names, &List.delete(&1, name))}
   end
 end

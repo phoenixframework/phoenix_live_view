@@ -14,14 +14,15 @@ defmodule Phoenix.LiveView.Plug do
 
   @impl Plug
   def call(%Conn{private: %{phoenix_live_view: opts}} = conn, view) do
-    session_opts = Keyword.get(opts, :session, [:path_params])
+    session_keys = Keyword.get(opts, :session, [])
+
     render_opts =
       opts
-      |> Keyword.take([:container])
-      |> Keyword.put(:session, session(conn, session_opts))
+      |> Keyword.take([:container, :router])
+      |> Keyword.put(:session, session(conn, session_keys))
 
     if live_link?(conn) do
-      html = Phoenix.LiveView.View.static_render_container(conn, view, render_opts)
+      html = Phoenix.LiveView.Static.container_render(conn, view, render_opts)
 
       conn
       |> put_cache_headers()
@@ -38,14 +39,19 @@ defmodule Phoenix.LiveView.Plug do
   def put_cache_headers(conn) do
     conn
     |> Plug.Conn.put_resp_header("vary", @link_header)
-    |> Plug.Conn.put_resp_header("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
+    |> Plug.Conn.put_resp_header(
+      "cache-control",
+      "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0"
+    )
   end
 
-  defp session(conn, session_opts) do
-    Enum.reduce(session_opts, %{}, fn
-      :path_params, acc -> Map.put(acc, :path_params, conn.path_params)
-      key, acc -> Map.put(acc, key, Conn.get_session(conn, key))
-    end)
+  defp session(conn, session_keys) do
+    for key_or_pair <- session_keys, into: %{} do
+      case key_or_pair do
+        key when is_atom(key) -> {key, Conn.get_session(conn, key)}
+        {key, value} -> {key, value}
+      end
+    end
   end
 
   defp put_new_layout_from_router(conn, opts) do
@@ -57,10 +63,6 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp live_link?(%Plug.Conn{} = conn) do
-    case Plug.Conn.get_req_header(conn, @link_header) do
-      ["live-link"] -> true
-      [_] -> false
-      [] -> false
-    end
+    Plug.Conn.get_req_header(conn, @link_header) == ["live-link"]
   end
 end

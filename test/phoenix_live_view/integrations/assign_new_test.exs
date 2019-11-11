@@ -3,44 +3,13 @@ defmodule Phoenix.LiveView.AssignNewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-
-  alias Phoenix.LiveViewTest.{Endpoint, Router}
-  alias Phoenix.LiveView
-  alias Phoenix.LiveView.View
+  alias Phoenix.LiveViewTest.Endpoint
 
   @endpoint Endpoint
   @moduletag :capture_log
 
   setup do
-    {:ok,
-     conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
-  end
-
-  test "uses socket assigns if no parent assigns are present" do
-    socket =
-      Endpoint
-      |> View.build_socket(Router, %{})
-      |> LiveView.assign(:existing, "existing")
-      |> LiveView.assign_new(:existing, fn -> "new-existing" end)
-      |> LiveView.assign_new(:notexisting, fn -> "new-notexisting" end)
-
-    assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
-  end
-
-  test "uses parent assigns when present and falls back to socket assigns" do
-    socket =
-      Endpoint
-      |> View.build_socket(Router, %{assigned_new: {%{existing: "existing-parent"}, []}})
-      |> LiveView.assign(:existing2, "existing2")
-      |> LiveView.assign_new(:existing, fn -> "new-existing" end)
-      |> LiveView.assign_new(:existing2, fn -> "new-existing2" end)
-      |> LiveView.assign_new(:notexisting, fn -> "new-notexisting" end)
-
-    assert socket.assigns == %{
-             existing: "existing-parent",
-             existing2: "existing2",
-             notexisting: "new-notexisting"
-           }
+    {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
   describe "mounted from root" do
@@ -73,8 +42,9 @@ defmodule Phoenix.LiveView.AssignNewTest do
         |> live("/root")
 
       assert render(view) =~ "child static name: user-from-root"
+      refute render(view) =~ "child dynamic name"
 
-      :ok = GenServer.call(view.pid, :show_dynamic_child)
+      :ok = GenServer.call(view.pid, {:dynamic_child, :dynamic})
 
       html = render(view)
       assert html =~ "child static name: user-from-root"
