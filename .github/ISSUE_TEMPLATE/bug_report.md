@@ -17,6 +17,7 @@ And remember – be nice and have fun!
 
 * Elixir version (elixir -v):
 * Phoenix version (mix deps):
+* Phoenix LiveView version (mix deps):
 * NodeJS version (node -v):
 * NPM version (npm -v):
 * Operating system:
