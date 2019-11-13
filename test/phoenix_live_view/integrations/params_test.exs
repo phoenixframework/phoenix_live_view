@@ -78,13 +78,21 @@ defmodule Phoenix.LiveView.ParamsTest do
   end
 
   describe "handle_params on connected mount" do
-    test "is called on connected mount with named and query string params", %{conn: conn} do
+    test "is called on connected mount with query string params from get", %{conn: conn} do
       {:ok, _, html} =
         conn
         |> get("/counter/123?q1=1", q2: "2")
         |> live()
 
-      assert html =~ escape(~s|%{"id" => "123", "q1" => "1", "q2" => "2"}|)
+      assert html =~ escape(~s|%{"id" => "123", "q1" => "1"}|)
+    end
+
+    test "is called on connected mount with query string params from live", %{conn: conn} do
+      {:ok, _, html} =
+        conn
+        |> live("/counter/123?q1=1")
+
+      assert html =~ escape(~s|%{"id" => "123", "q1" => "1"}|)
     end
 
     test "hard redirects", %{conn: conn} do

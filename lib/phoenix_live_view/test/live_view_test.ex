@@ -177,10 +177,10 @@ defmodule Phoenix.LiveViewTest do
     quote bind_quoted: binding(), unquote: true, generated: true do
       case path_or_opts do
         opts when is_list(opts) ->
-          unquote(__MODULE__).__live__(conn, conn.request_path, opts, :noop)
+          unquote(__MODULE__).__live__(conn, opts)
 
         path when is_binary(path) ->
-          unquote(__MODULE__).__live__(conn, path, [], fn conn, path -> get(conn, path) end)
+          unquote(__MODULE__).__live__(get(conn, path), path, [])
       end
     end
   end
@@ -188,7 +188,7 @@ defmodule Phoenix.LiveViewTest do
   @doc "See `live/2`."
   defmacro live(conn, path, opts) do
     quote bind_quoted: binding(), unquote: true do
-      unquote(__MODULE__).__live__(conn, path, opts, fn conn, path -> get(conn, path) end)
+      unquote(__MODULE__).__live__(get(conn, path), path, opts)
     end
   end
 
@@ -226,22 +226,20 @@ defmodule Phoenix.LiveViewTest do
 
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
-    |> __live__(conn.request_path, mount_opts, :noop)
+    |> __live__(mount_opts)
   end
 
   @doc false
-  def __live__(%Plug.Conn{state: state, status: status} = conn, path, opts, get_func) do
-    case {state, status, get_func} do
-      {:sent, 200, _} ->
+  def __live__(%Plug.Conn{state: state, status: status} = conn, opts) do
+    path = rebuild_path(conn)
+    case {state, status} do
+      {:sent, 200} ->
         connect_from_static_token(conn, path, opts)
 
-      {:sent, 302, _} ->
+      {:sent, 302} ->
         {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
 
-      {_, _, get} when is_function(get) ->
-        connect_from_static_token(get.(conn, path), path, opts)
-
-      {_, _, :noop} ->
+      {_, _} ->
         raise ArgumentError, """
         a request has not yet been sent.
 
@@ -259,6 +257,10 @@ defmodule Phoenix.LiveViewTest do
             {:ok, view, _html} = live(conn, "#{path}")
         """
     end
+  end
+
+  def __live__(conn, path, opts) do
+    connect_from_static_token(conn, path, opts)
   end
 
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
@@ -279,8 +281,6 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
-    live_path = live_path(conn, path)
-
     child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
     # normalize
@@ -290,7 +290,7 @@ defmodule Phoenix.LiveViewTest do
       view =
       ClientProxy.build(
         id: id,
-        mount_path: live_path,
+        mount_path: path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         module: conn.assigns.live_view_module,
@@ -335,19 +335,11 @@ defmodule Phoenix.LiveViewTest do
     %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
   end
 
-  defp live_path(%Plug.Conn{} = conn, path) do
-    body_params = fetch(conn.body_params)
+  defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: ""}),
+    do: request_path
 
-    if body_params != %{} or conn.query_string != "" do
-      query_params = Plug.Conn.Query.decode(conn.query_string, body_params)
-      path <> "?" <> Plug.Conn.Query.encode(query_params)
-    else
-      path
-    end
-  end
-
-  defp fetch(%Plug.Conn.Unfetched{}), do: %{}
-  defp fetch(other), do: other
+  defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: query_string}),
+    do: request_path <> "?" <> query_string
 
   @doc """
   Mounts, updates and renders a component.

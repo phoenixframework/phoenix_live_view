@@ -15,10 +15,12 @@ defmodule Phoenix.LiveView.ComponentTest do
      conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
   end
 
-  test "renders successfully", %{conn: conn} do
+  test "renders successfully when disconnected", %{conn: conn} do
     conn = get(conn, "/components")
     assert html_response(conn, 200) =~ "<div id=\"chris\">"
+  end
 
+  test "renders successfully when connected", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
     assert {"div", _,
