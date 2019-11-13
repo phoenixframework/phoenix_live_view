@@ -649,11 +649,12 @@ defmodule Phoenix.LiveView do
     * `append` - append the new DOM contents instead of replacing
     * `prepend` - prepend the new DOM contents instead of replacing
 
-  When appending or prepending elements containing an ID already present
-  in the container, LiveView will replace the existing element with the
-  new content instead appending or prepending a new element.
-
-  *Note*: when using `phx-update`, a unique DOM ID must always be set.
+  When using `phx-update`, a unique DOM ID must always be set in the
+  container. If using "append" or "prepend", a DOM ID must also be set
+  for each child. When appending or prepending elements containing an
+  ID already present in the container, LiveView will replace the existing
+  element with the new content instead appending or prepending a new
+  element.
 
   The "ignore" behaviour is frequently used when you need to integrate
   with another JS library. The "append" and "prepend" feature is often
@@ -702,11 +703,14 @@ defmodule Phoenix.LiveView do
       socket = assign(socket, :messages, new_messages)
 
   In the template, we want to wrap all of the messages in a container
-  and tag this content with phx-update as well as an ID:
+  and tag this content with phx-update. Remember must also add an ID
+  to the container as well as to each child:
 
       <div id="chat-messages" phx-update="append">
         <%= for message <- @messages do %>
-          <p><span><%= message.username %>:</span> <%= message.text %></p>
+          <p id="<%= message.id %>">
+            <span><%= message.username %>:</span> <%= message.text %>
+          </p>
         <% end %>
       </div>
 
