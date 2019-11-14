@@ -179,7 +179,7 @@ defmodule Phoenix.LiveView.Diff do
   Converts a component to a rendered struct.
   """
   def component_to_rendered(socket, component, assigns) do
-    socket = mount_component(socket, component)
+    socket = mount_component(socket, component, %{})
     assigns = maybe_call_preload!(component, assigns)
 
     socket
@@ -329,15 +329,15 @@ defmodule Phoenix.LiveView.Diff do
 
       %{} ->
         cid = uuids
-        socket = mount_component(socket, component)
+        socket = mount_component(socket, component, %{cid: cid})
         id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
         cid_to_ids = Map.put(cid_to_ids, cid, id)
         {cid, true, {id_to_components, cid_to_ids, uuids + 1}}
     end
   end
 
-  defp mount_component(socket, component) do
-    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+  defp mount_component(socket, component, assigns) do
+    socket = configure_socket_for_component(socket, assigns, %{}, new_fingerprints())
     Utils.maybe_call_mount!(socket, component, [socket])
   end
 

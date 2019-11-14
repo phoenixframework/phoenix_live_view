@@ -79,10 +79,21 @@ defmodule Phoenix.LiveComponent do
   component is first rendered. Then for each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
 
-  Stateful components can also implement a `handle_event/3` callback,
-  that works exactly the same as in LiveView. When `handle_event/3` is
-  called for a component, only the diff of the component is sent to the
-  client, making them extremely efficient.
+  Stateful components can also implement the `c:handle_event/3` callback
+  that works exactly the same as in LiveView. For a client event to
+  reach a component, the tag must be annotated with a `phx-target`
+  annotation which must be set to the `@cid` assign. The `@cid` assign
+  is a random, unique value, used by LiveView to associate the component
+  instance on the client with its instance on server. To use it, one can
+  do:
+
+      <a href="#" phx-click="say_hello" phx-target="<%= @cid %>">
+        Say hello!
+      </a>
+
+  Then `c:handle_event/3` will be called by with the "say_hello" event.
+  When `c:handle_event/3` is called for a component, only the diff of
+  the component is sent to the client, making them extremely efficient.
 
   ### Preloading and update
 
