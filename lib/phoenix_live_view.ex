@@ -683,7 +683,7 @@ defmodule Phoenix.LiveView do
   and resending it on every update would be too expensive, even with
   LiveView smart change tracking. By using temporary assigns and phx-update,
   we don't need to keep any message in memory and send messages to be
-  appendded to the UI only when there are new messages.
+  appended to the UI only when there are new messages.
 
   To do so, the first step is to mark which assigns are temporary and
   what are the value they should be reset to on mount:
