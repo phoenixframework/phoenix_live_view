@@ -6,9 +6,6 @@ defmodule Phoenix.LiveView.Utils do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
-  # Total length of 8 bytes when 64 encoded
-  @rand_bytes 6
-
   # All available mount options
   @mount_opts [:temporary_assigns]
 
@@ -221,9 +218,13 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp random_encoded_bytes do
-    @rand_bytes
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode64()
+    binary = <<
+      System.system_time(:nanosecond)::32,
+      :erlang.phash2({node(), self()}, 16_777_216)::16,
+      :erlang.unique_integer()::16
+    >>
+
+    Base.encode64(binary, padding: false)
   end
 
   defp mount_opt(%Socket{} = socket, key, val) when key in @mount_opts do
