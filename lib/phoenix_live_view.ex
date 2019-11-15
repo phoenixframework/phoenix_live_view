@@ -551,7 +551,7 @@ defmodule Phoenix.LiveView do
 
   When rendering a child template, any of the events bound in the child
   template will be sent to the parent LiveView. In other words, similar to
-  regular Phoenix templaes, a regular `render` call does not start another
+  regular Phoenix templates, a regular `render` call does not start another
   LiveView. This means `render` is useful to sharing markup between views.
 
   One option to address this problem is to render a child LiveView inside a
@@ -714,7 +714,7 @@ defmodule Phoenix.LiveView do
         <% end %>
       </div>
 
-  And now, once the client recieves new messages, it knows it shouldn't
+  And now, once the client receives new messages, it knows it shouldn't
   replace the old content, but rather append to it.
 
   ## Live navigation
@@ -1019,11 +1019,11 @@ defmodule Phoenix.LiveView do
       definition container. See the "Containers" section for more
       information.
     * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
-      One `:id` is automatically generating when rendering root LiveViews
+      One `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
     * `:router` - an optional router that enables this LiveView to
       perform `live_link` and `live_redirect`. Only a single LiveView
-      in a page may have the `:router` set and  and it will effectively
+      in a page may have the `:router` set and it will effectively
       become the view responsible for handling `live_link` and `live_redirect`.
       LiveViews defined at the router with the `live` macro automatically
       have the `:router` option set.
