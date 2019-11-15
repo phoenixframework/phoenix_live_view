@@ -1124,7 +1124,8 @@ export class View {
   }
 
   onExternalLiveRedirect({to, kind}){
-    this.liveSocket.replaceMain(to, () => {
+    let url = window.location.protocol + '//' + window.location.host + to
+    this.liveSocket.replaceMain(url, () => {
       Browser.pushState(kind, {}, to)
       this.liveSocket.registerNewLocation(window.location)
     })
