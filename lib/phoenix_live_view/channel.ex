@@ -567,6 +567,11 @@ defmodule Phoenix.LiveView.Channel do
 
   defp parse_uri(url) do
     %URI{host: host, port: port, scheme: scheme} = URI.parse(url)
+
+    if host == nil do
+      raise "client did not send full URL, missing host in #{url}"
+    end
+
     %URI{host: host, port: port, scheme: scheme}
   end
 
