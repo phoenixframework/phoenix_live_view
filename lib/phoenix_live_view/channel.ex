@@ -165,6 +165,12 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, url) do
     if function_exported?(socket.view, :handle_params, 3) do
+      # require IEx
+      # IEx.pry()
+      #
+      # state.router is nested router, but url is full url for parent router which does not match
+      # the nested route
+
       case Utils.live_link_info!(state.router, socket.view, url) do
         {:internal, params} ->
           params

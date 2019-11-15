@@ -51,4 +51,21 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/shuffle", ShuffleLive, session: [:time_zones]
     live "/components", WithComponentLive, session: [:names, :from]
   end
+
+  forward "/other", Phoenix.LiveViewTest.Other.Router
+end
+
+defmodule Phoenix.LiveViewTest.Other.Router do
+  use Phoenix.Router
+  import Phoenix.LiveView.Router
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+  end
+
+  scope "/", Phoenix.LiveViewTest.Other do
+    pipe_through [:browser]
+
+    live "/with_params/:id", WithParamsLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
+  end
 end

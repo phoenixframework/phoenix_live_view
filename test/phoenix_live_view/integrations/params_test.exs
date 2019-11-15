@@ -95,6 +95,12 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert html =~ escape(~s|%{"id" => "123", "q1" => "1"}|)
     end
 
+    test "is called on connected mount with forwarded route", %{conn: conn} do
+      {:ok, _, html} = live(conn, "/other/with_params/123")
+
+      assert html =~ escape(~s|%{"id" => "123"}|)
+    end
+
     test "hard redirects", %{conn: conn} do
       {:error, %{redirect: %{to: "/thermo/456"}}} =
         conn

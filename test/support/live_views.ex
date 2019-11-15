@@ -409,3 +409,13 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     {:noreply, update(socket, :names, &List.delete(&1, name))}
   end
 end
+
+defmodule Phoenix.LiveViewTest.Other.WithParamsLive do
+  use Phoenix.LiveView
+
+  def render(assigns), do: ~L|<%= inspect(@params) %>|
+
+  def mount(_session, socket), do: {:ok, assign(socket, :params, %{})}
+
+  def handle_params(params, _uri, socket), do: {:noreply, assign(socket, :params, params)}
+end
