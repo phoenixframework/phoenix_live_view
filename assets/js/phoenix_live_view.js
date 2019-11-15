@@ -949,7 +949,7 @@ export class View {
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        url: this.href || this.liveSocket.root.href,
+        url: this.href || this.liveSocket.main.href,
         params: this.liveSocket.params(this.view),
         session: this.getSession(),
         static: this.getStatic()
