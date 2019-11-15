@@ -1327,12 +1327,20 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:to` - the path to redirect to
+    * `:to` - the path to redirect to. It must always be a local path
+    * `:external` - an external path to redirect to
   """
-  # TODO support `:external` and validation `:to` is a local path
   def redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "redirect/2")
-    put_redirect(socket, :redirect, %{to: Keyword.fetch!(opts, :to)})
+
+    url =
+      cond do
+        to = opts[:to] -> validate_local_url!(to, "redirect/2")
+        external = opts[:external] -> external
+        true -> raise ArgumentError, "expected :to or :external option in redirect/2"
+      end
+
+    put_redirect(socket, :redirect, %{to: url})
   end
 
   @doc """
@@ -1345,7 +1353,7 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:to` - the required path to link to.
+    * `:to` - the required path to link to. It must always be a local path
     * `:replace` - the flag to replace the current history or push a new state.
       Defaults `false`.
 
@@ -1357,7 +1365,9 @@ defmodule Phoenix.LiveView do
   def live_redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "live_redirect/2")
     kind = if opts[:replace], do: :replace, else: :push
-    put_redirect(socket, :live, %{to: Keyword.fetch!(opts, :to), kind: kind})
+    to = Keyword.fetch!(opts, :to)
+    validate_local_url!(to, "live_redirect/2")
+    put_redirect(socket, :live, %{to: to, kind: kind})
   end
 
   defp put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
@@ -1382,6 +1392,28 @@ defmodule Phoenix.LiveView do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+
+  @invalid_local_url_chars ["\\"]
+
+  defp validate_local_url!("//" <> _ = to, where) do
+    raise_invalid_local_url!(to, where)
+  end
+
+  defp validate_local_url!("/" <> _ = to, where) do
+    if String.contains?(to, @invalid_local_url_chars) do
+      raise ArgumentError, "unsafe characters detected for #{where} in URL #{inspect(to)}"
+    else
+      to
+    end
+  end
+
+  defp validate_local_url!(to, where) do
+    raise_invalid_local_url!(to, where)
+  end
+
+  defp raise_invalid_local_url!(to, where) do
+    raise ArgumentError, "the :to option in #{where} expects a path but was #{inspect(to)}"
+  end
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.

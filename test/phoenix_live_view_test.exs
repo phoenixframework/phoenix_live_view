@@ -62,4 +62,37 @@ defmodule Phoenix.LiveViewUnitTest do
              }
     end
   end
+
+  describe "redirect/2" do
+    test "requires local path on to" do
+      assert_raise ArgumentError, ~r"the :to option in redirect/2 expects a path", fn ->
+        redirect(@socket, to: "http://foo.com")
+      end
+
+      assert_raise ArgumentError, ~r"the :to option in redirect/2 expects a path", fn ->
+        redirect(@socket, to: "//foo.com")
+      end
+
+      assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo"}}
+    end
+
+    test "allows external paths" do
+      assert redirect(@socket, external: "http://foo.com/bar").redirected ==
+               {:redirect, %{to: "http://foo.com/bar"}}
+    end
+  end
+
+  describe "live_redirect/2" do
+    test "requires local path on to" do
+      assert_raise ArgumentError, ~r"the :to option in live_redirect/2 expects a path", fn ->
+        live_redirect(@socket, to: "http://foo.com")
+      end
+
+      assert_raise ArgumentError, ~r"the :to option in live_redirect/2 expects a path", fn ->
+        live_redirect(@socket, to: "//foo.com")
+      end
+
+      assert live_redirect(@socket, to: "/foo").redirected == {:live, %{to: "/foo", kind: :push}}
+    end
+  end
 end

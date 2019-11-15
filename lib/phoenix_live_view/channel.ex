@@ -56,11 +56,9 @@ defmodule Phoenix.LiveView.Channel do
 
     case Utils.live_link_info!(router, view, url) do
       {:internal, params} ->
-        new_state = %{state | uri: parse_uri(url)}
-
         params
-        |> new_state.socket.view.handle_params(url, new_state.socket)
-        |> handle_result({:handle_params, 3, msg.ref}, new_state)
+        |> state.socket.view.handle_params(url, state.socket)
+        |> handle_result({:handle_params, 3, msg.ref}, state)
 
       :external ->
         {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
@@ -194,10 +192,10 @@ defmodule Phoenix.LiveView.Channel do
         {:redirect, put_flash(new_state, opts), new_state}
 
       {:live_redirect, {:internal, params}, %{to: to} = opts} ->
-        {url, new_state} = new_state |> drop_redirect() |> compute_url(to)
+        new_state = drop_redirect(new_state)
 
         params
-        |> view_module(new_state).handle_params(url, new_state.socket)
+        |> view_module(new_state).handle_params(build_uri(new_state, to), new_state.socket)
         |> mount_handle_params_result(new_state, {:live_redirect, opts})
 
       {:live_redirect, :external, %{to: to} = opts} ->
@@ -371,19 +369,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp sync_handle_params_with_live_redirect(state, params, %{to: to} = opts, ref) do
-    {url, new_state} = compute_url(state, to)
-
-    case view_module(new_state).handle_params(params, url, new_state.socket) do
+    case view_module(state).handle_params(params, build_uri(state, to), state.socket) do
       {:noreply, %Socket{} = new_socket} ->
-        handle_changed(new_state, new_socket, ref, opts)
+        handle_changed(state, new_socket, ref, opts)
 
       {:stop, %Socket{redirected: {:live, _}}} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{} = new_socket} ->
-        case handle_changed(new_state, new_socket, ref, opts) do
-          {:ok, _changed, new_state} -> {:stop, :shutdown, new_state}
-          {:stop, reason, new_state} -> {:stop, reason, new_state}
+        case handle_changed(state, new_socket, ref, opts) do
+          {:ok, _changed, state} -> {:stop, :shutdown, state}
+          {:stop, reason, state} -> {:stop, reason, state}
         end
     end
   end
@@ -574,9 +570,9 @@ defmodule Phoenix.LiveView.Channel do
     %URI{host: host, port: port, scheme: scheme}
   end
 
-  defp compute_url(state, "http://" <> _ = url), do: {url, %{state | uri: parse_uri(url)}}
-  defp compute_url(state, "https://" <> _ = url), do: {url, %{state | uri: parse_uri(url)}}
-  defp compute_url(%{uri: uri} = state, to), do: {URI.to_string(%{uri | path: to}), state}
+  defp build_uri(%{uri: uri}, "/" <> _ = to) do
+    URI.to_string(%{uri | path: to})
+  end
 
   defp post_mount_prune(%{socket: socket} = state) do
     %{state | socket: Utils.post_mount_prune(socket)}
