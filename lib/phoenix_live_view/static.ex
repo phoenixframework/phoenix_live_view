@@ -83,13 +83,12 @@ defmodule Phoenix.LiveView.Static do
 
     case call_mount_and_handle_params!(socket, router, view, session, conn.params, request_url) do
       {:ok, socket} ->
-
         data_attrs = [
           phx_view: config.name,
           phx_session: sign_root_session(socket, router, view, session)
         ]
 
-        data_attrs = (if router, do: [phx_main: true], else: []) ++ data_attrs
+        data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
 
         attrs = [
           {:id, socket.id},
@@ -99,8 +98,8 @@ defmodule Phoenix.LiveView.Static do
 
         {:ok, to_rendered_content_tag(socket, tag, view, attrs)}
 
-      {:stop, reason} ->
-        {:stop, reason}
+      {:stop, socket} ->
+        {:stop, socket}
     end
   end
 
@@ -233,8 +232,8 @@ defmodule Phoenix.LiveView.Static do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
 
-      {:noreply, %Socket{redirected: redirected}} ->
-        {:stop, redirected}
+      {:noreply, %Socket{} = new_socket} ->
+        {:stop, new_socket}
 
       {:stop, %Socket{redirected: nil}} ->
         Utils.raise_bad_stop_and_no_redirect!()
@@ -242,8 +241,8 @@ defmodule Phoenix.LiveView.Static do
       {:stop, %Socket{redirected: {:live, _}}} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
-      {:stop, %Socket{redirected: redirected}} ->
-        {:stop, redirected}
+      {:stop, %Socket{} = new_socket} ->
+        {:stop, new_socket}
     end
   end
 

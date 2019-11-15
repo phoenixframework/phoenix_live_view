@@ -4,6 +4,7 @@ defmodule Phoenix.LiveView.Controller do
   """
 
   alias Phoenix.LiveView
+  alias Phoenix.LiveView.Socket
 
   @doc """
   Renders a live view from a Plug request and sends an HTML response.
@@ -39,11 +40,18 @@ defmodule Phoenix.LiveView.Controller do
         |> LiveView.Plug.put_cache_headers()
         |> Phoenix.Controller.render("template.html", %{content: content})
 
-      {:stop, {:redirect, opts}} ->
-        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+      {:stop, %Socket{redirected: {:redirect, opts}} = socket} ->
+        conn
+        |> put_flash(LiveView.Utils.get_flash(socket))
+        |> Phoenix.Controller.redirect(to: Map.fetch!(opts, :to))
 
-      {:stop, {:live, opts}} ->
+      {:stop, %Socket{redirected: {:live, opts}}} ->
         Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
     end
   end
+
+  defp put_flash(conn, nil), do: conn
+
+  defp put_flash(conn, flash),
+    do: Enum.reduce(flash, conn, fn {k, v}, acc -> Phoenix.Controller.put_flash(acc, k, v) end)
 end
