@@ -274,6 +274,15 @@ defmodule Phoenix.LiveViewTest do
       |> Phoenix.ConnTest.html_response(200)
       |> IO.iodata_to_binary()
 
+    unless Code.ensure_loaded?(Floki) do
+      raise """
+      Phoenix LiveView requires Floki as a test dependency.
+      Please add to your mix.exs:
+
+      {:floki, ">= 0.0.0", only: :test}
+      """
+    end
+
     case DOM.find_views(html) do
       [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
       [] -> {:error, :nosession}
@@ -297,15 +306,6 @@ defmodule Phoenix.LiveViewTest do
         endpoint: Phoenix.Controller.endpoint_module(conn),
         child_statics: child_statics
       )
-
-    unless Code.ensure_loaded?(Floki) do
-      raise """
-      Phoenix LiveView requires Floki as a test dependency.
-      Please add to your mix.exs:
-
-          {:floki, ">= 0.0.0", only: :test}
-      """
-    end
 
     case ClientProxy.start_link(caller: {self(), ref}, html: html, view: view, timeout: timeout) do
       {:ok, proxy_pid} ->
