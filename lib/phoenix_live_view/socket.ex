@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.Socket do
 
             plug Plug.Session, @session_options
 
-        3) And pass said options to your LiveView socket:
+        3) Also pass the `@session_options` to your LiveView socket:
 
             socket "/live", Phoenix.LiveView.Socket,
               websocket: [connect_info: [session: @session_options]]

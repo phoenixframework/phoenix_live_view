@@ -212,7 +212,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} =
-        live_isolated(conn, AppWeb.ClockLive, session: %{tz: "EST"})
+        live_isolated(conn, AppWeb.ClockLive, session: %{"tz" => "EST"})
   """
   defmacro live_isolated(conn, live_view, opts \\ []) do
     quote bind_quoted: binding(), unquote: true do
