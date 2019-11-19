@@ -123,29 +123,24 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a LiveView from your router or controller
-  while providing *session* data to the view, which represents request info
-  necessary for the view, such as params, cookie session info, etc.
-  The session is signed and stored on the client, then provided back
-  to the server when the client connects, or reconnects to the stateful
-  view. When a view is rendered from the controller, the `mount/2` callback
-  is invoked with the provided session data and the LiveView socket.
-  The `mount/2` callback wires up socket assigns necessary for rendering
-  the view. After mounting, `render/1` is invoked and the HTML is sent
-  as a regular HTML response to the client.
+  You begin by rendering a LiveView from your router, controller, or
+  view. When a view is first rendered, the `mount/2` callback is invoked
+  with the current session and the LiveView socket. The `mount/2`
+  callback wires up socket assigns necessary for rendering the view.
+  After mounting, `render/1` is invoked and the HTML is sent as a
+  regular HTML response to the client.
 
-  After rendering the static page with a signed session, LiveView
-  connects from the client where stateful views are spawned
-  to push rendered updates to the browser, and receive client events
-  via phx bindings. Just like the controller flow, `mount/2` is invoked
-  with the signed session, and socket state, where mount assigns
-  values for rendering. However, in the connected client case, a
-  LiveView process is spawned on the server, pushes the result of
-  `render/1` to the client and continues on for the duration of the
-  connection. If at any point during the stateful life-cycle a
-  crash is encountered, or the client connection drops, the client
-  gracefully reconnects to the server, passing its signed session
-  back to `mount/2`.
+  After rendering the static page, LiveView connects from the client
+  where stateful views are spawned to push rendered updates to the
+  browser, and receive client events via phx bindings. Just like
+  the first rendering, `mount/2` is invoked  with the session, and
+  socket state, where mount assigns values for rendering. However
+  in the connected client case, a LiveView process is spawned on
+  the server, pushes the result of `render/1` to the client and
+  continues on for the duration of the connection. If at any point
+  during the stateful life-cycle a crash is encountered, or the client
+  connection drops, the client gracefully reconnects to the server,
+  calling `mount/2` once again.
 
   ## Example
 
@@ -160,8 +155,8 @@ defmodule Phoenix.LiveView do
           \"""
         end
 
-        def mount(%{id: id, current_user_id: user_id}, socket) do
-          temperature = Thermostat.get_user_reading(user_id, id)
+        def mount(%{"current_user_id" => user_id}, socket) do
+          temperature = Thermostat.get_user_reading(user_id)
           {:ok, assign(socket, :temperature, temperature)}
         end
       end
@@ -189,9 +184,14 @@ defmodule Phoenix.LiveView do
       defmodule AppWeb.Endpoint do
         use Phoenix.Endpoint
 
-        socket "/live", Phoenix.LiveView.Socket
+        socket "/live", Phoenix.LiveView.Socket,
+          websocket: [connect_info: [session: @session_options]]
+
         ...
       end
+
+  Where `@session_options` are the options given to `plug Plug.Session` extracted
+  to a module attribute.
 
   And configure its signing salt in the endpoint:
 
@@ -199,28 +199,25 @@ defmodule Phoenix.LiveView do
         ...,
         live_view: [signing_salt: ...]
 
-  You can generate a secure, random signing salt with the
-  `mix phx.gen.secret 32` task.
+  You can generate a secure, random signing salt with the `mix phx.gen.secret 32` task.
 
   Next, decide where you want to use your LiveView.
 
-  You can serve the LiveView directly from your router, passing along
-  `:session` values if needed (see `Phoenix.LiveView.Router` for more
-  options):
+  You can serve the LiveView directly from your router (recommended):
 
       defmodule AppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
 
         scope "/", AppWeb do
-          live "/thermostat", ThermostatLive, session: [:user_id]
+          live "/thermostat", ThermostatLive
         end
       end
 
   You can also `live_render` from any template:
 
       <h1>Temperature Control</h1>
-      <%= Phoenix.LiveView.live_render(@conn, AppWeb.ThermostatLive, session: %{user_id: @user.id}) %>
+      <%= live_render(@conn, AppWeb.ThermostatLive) %>
 
   Or you can `live_render` your view from any controller:
 
@@ -229,25 +226,37 @@ defmodule Phoenix.LiveView do
         import Phoenix.LiveView.Controller
 
         def show(conn, %{"id" => id}) do
-          live_render(conn, AppWeb.ThermostatLive, session: %{
-            id: id,
-            current_user_id: get_session(conn, :user_id),
-          })
+          live_render(conn, AppWeb.ThermostatLive)
         end
       end
 
-  As we saw in the life-cycle section, you pass `:session` data about the
-  request to the view, such as the current user's id in the cookie session,
-  and parameters from the request. A regular HTML response is sent with a
-  signed token embedded in the DOM containing your LiveView session data.
-  See `live_render/3` for more information.
+  When a LiveView is rendered, all of the data currently stored in the
+  connection session (see `Plug.Conn.get_session/1`) will be given to
+  the LiveView.
 
-  Next, your client code connects to the server:
+  It is also possible to pass extra session information besides the one
+  currently in the connection session to the LiveView, by passing a
+  session parameter:
+
+      # In the router
+      live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
+
+      # In a view
+      <%= live_render(@conn, AppWeb.ThermostatLive, session: %{"extra_token" => "foo"}) %>
+
+  Notice the `:session` uses string keys as a reminder that session data
+  is serialized and sent to the client. So you should always keep the data
+  in the session to a minimum. I.e. instead of storing a User struct, you
+  should store the "user_id" and load the User when the LiveView mounts.
+
+  Once the LiveView is rendered, a regular HTML response is sent. Next, your
+  client code connects to the server:
 
       import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"
 
-      let liveSocket = new LiveSocket("/live", Socket)
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      let liveSocket = new LiveSocket("/live", {params: {_csrf_token: csrfToken}});
       liveSocket.connect()
 
   *Note*: Comprehensive JavaScript client usage is covered in a later section.
@@ -262,12 +271,12 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
         ...
 
-        def mount(%{id: id, current_user_id: user_id}, socket) do
+        def mount(%{"current_user_id" => user_id}, socket) do
           if connected?(socket), do: :timer.send_interval(30000, self(), :update)
 
-          case Thermostat.get_user_reading(user_id, id) do
+          case Thermostat.get_user_reading(user_id) do
             {:ok, temperature} ->
-              {:ok, assign(socket, temperature: temperature, id: id)}
+              {:ok, assign(socket, temperature: temperature, user_id: user_id)}
 
             {:error, reason} ->
               {:error, reason}
@@ -275,7 +284,7 @@ defmodule Phoenix.LiveView do
         end
 
         def handle_info(:update, socket) do
-          {:ok, temperature} = Thermostat.get_reading(socket.assigns.id)
+          {:ok, temperature} = Thermostat.get_reading(socket.assigns.user_id)
           {:noreply, assign(socket, :temperature, temperature)}
         end
       end
@@ -1009,10 +1018,12 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:session` - the map of session data to sign and send
-      to the client. When connecting from the client, the LiveView
-      will receive the signed session from the client and verify
-      the contents before proceeding with `mount/2`.
+    * `:session` - the map of extra session data to be serialized
+      and sent to the client. Note all session data currently in
+      the connection is automatically available in LiveViews. You
+      can use this option to provide extra data. Also note the keys
+      in the session are strings keys, as a reminder that data has
+      to be serialized first.
     * `:container` - the optional tuple for the HTML tag and DOM
       attributes to be used for the LiveView container. For example:
       `{:li, style: "color: blue;"}`. By default it uses the module
@@ -1218,10 +1229,10 @@ defmodule Phoenix.LiveView do
       # controller
       conn
       |> assign(:current_user, user)
-      |> LiveView.Controller.live_render(MyLive, session: %{user_id: user.id})
+      |> LiveView.Controller.live_render(MyLive, session: %{"user_id" => user.id})
 
       # LiveView mount
-      def mount(%{user_id: user_id}, socket) do
+      def mount(%{"user_id" => user_id}, socket) do
         {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 

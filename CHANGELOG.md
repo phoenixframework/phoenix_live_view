@@ -1,3 +1,35 @@
+## 0.5.0-dev
+
+LiveView now makes all connection session automatically available in LiveViews. However, to do so, you need to configure your endpoint accordingly, **otherwise LiveView will fail to connect**.
+
+The steps are:
+
+1) Find `plug Plug.Session, ...` in your endpoint.ex and move the options `...` to a module attribute:
+
+    @session_options [
+      ...
+    ]
+
+2) Change the `plug Plug.Session` to use said attribute:
+
+    plug Plug.Session, @session_options
+
+3) Also pass the `@session_options` to your LiveView socket:
+
+    socket "/live", Phoenix.LiveView.Socket,
+      websocket: [connect_info: [session: @session_options]]
+
+4) You should define the CSRF meta tag inside the in <head> in your layout:
+
+    <%= csrf_meta_tag() %>
+
+5) Then in your app.js:
+
+    let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+    let liveSocket = new LiveSocket("/live", {params: {_csrf_token: csrfToken}});
+
+Also note that **the session from now on will have string keys**. LiveView will warn if atom keys will be used for the session in the future.
+
 ## 0.4.1 (2019-11-07)
 
 ### Bug Fixes

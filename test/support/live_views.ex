@@ -17,15 +17,15 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   end
 
   def mount(session, socket) do
-    nest = Map.get(session, :nest, false)
-    users = session[:users] || []
+    nest = Map.get(session, "nest", false)
+    users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
     {:ok,
      assign(socket,
        val: val,
        nest: nest,
-       redir: session[:redir],
+       redir: session["redir"],
        users: users,
        greeting: nil
      )}
@@ -123,12 +123,12 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
 
   def render(assigns) do
     ~L"""
-    session: <%= Phoenix.HTML.raw inspect(@router_session) %>
+    session: <%= Phoenix.HTML.raw inspect(@session) %>
     """
   end
 
   def mount(session, socket) do
-    {:ok, assign(socket, router_session: session)}
+    {:ok, assign(socket, session: session)}
   end
 end
 
@@ -151,7 +151,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
     """
   end
 
-  def mount(%{dup: dup}, socket) do
+  def mount(%{"dup" => dup}, socket) do
     {:ok, assign(socket, count: 0, dup: dup, names: ~w(Tokyo Madrid Toronto))}
   end
 
@@ -167,14 +167,14 @@ defmodule Phoenix.LiveViewTest.RootLive do
   def render(assigns) do
     ~L"""
     root name: <%= @current_user.name %>
-    <%= live_render(@socket, ChildLive, id: :static, session: %{child: :static, user_id: @current_user.id}) %>
+    <%= live_render(@socket, ChildLive, id: :static, session: %{"child" => :static}) %>
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, id: @dynamic_child, session: %{child: :dynamic, user_id: @current_user.id}) %>
+      <%= live_render(@socket, ChildLive, id: @dynamic_child, session: %{"child" => :dynamic}) %>
     <% end %>
     """
   end
 
-  def mount(%{user_id: user_id}, socket) do
+  def mount(%{"user_id" => user_id}, socket) do
     {:ok,
      socket
      |> assign(:dynamic_child, nil)
@@ -197,7 +197,8 @@ defmodule Phoenix.LiveViewTest.ChildLive do
     """
   end
 
-  def mount(%{user_id: user_id, child: id}, socket) do
+  # The "user_id" is carried from the session to the child live view too
+  def mount(%{"user_id" => user_id, "child" => id}, socket) do
     {:ok,
      socket
      |> assign(:id, id)
@@ -219,14 +220,14 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 
   def mount(session, socket) do
-    on_handle_params = session[:on_handle_params]
+    on_handle_params = session["on_handle_params"]
 
     {:ok,
      assign(
        socket,
        val: 1,
        connect_params: get_connect_params(socket) || %{},
-       test_pid: session[:test_pid],
+       test_pid: session["test_pid"],
        on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
      )}
   end
@@ -265,7 +266,7 @@ defmodule Phoenix.LiveViewTest.OptsLive do
 
   def render(assigns), do: ~L|<%= @description %>. <%= @canary %>|
 
-  def mount(%{opts: opts}, socket) do
+  def mount(%{"opts" => opts}, socket) do
     {:ok, assign(socket, description: "long description", canary: "canary"), opts}
   end
 
@@ -288,7 +289,7 @@ defmodule Phoenix.LiveViewTest.AppendLive do
     """
   end
 
-  def mount(%{time_zones: {update_type, time_zones}}, socket) do
+  def mount(%{"time_zones" => {update_type, time_zones}}, socket) do
     {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
      temporary_assigns: [time_zones: []]}
   end
@@ -311,7 +312,7 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
     """
   end
 
-  def mount(%{time_zones: time_zones}, socket) do
+  def mount(%{"time_zones" => time_zones}, socket) do
     {:ok, assign(socket, time_zones: time_zones)}
   end
 
@@ -396,7 +397,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     """
   end
 
-  def mount(%{names: names, from: from}, socket) do
+  def mount(%{"names" => names, "from" => from}, socket) do
     {:ok, assign(socket, names: names, from: from)}
   end
 

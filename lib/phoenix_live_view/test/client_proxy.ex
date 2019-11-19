@@ -43,6 +43,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     root_html = Keyword.fetch!(opts, :html)
     root_view = Keyword.fetch!(opts, :view)
     timeout = Keyword.fetch!(opts, :timeout)
+    session = Keyword.fetch!(opts, :session)
 
     state = %{
       timeout: timeout,
@@ -54,7 +55,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       pids: %{},
       replies: %{},
       root_view: root_view,
-      html: root_html
+      html: root_html,
+      session: session
     }
 
     case mount_view(state, root_view, timeout) do
@@ -110,7 +112,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       serializer: __MODULE__,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{},
+      private: %{session: state.session},
       topic: view.topic,
       join_ref: state.join_ref
     }
@@ -498,7 +500,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               throw({:stop, {:redirect, child_view, to}, acc})
 
             {:error, reason} ->
-              raise "failed to mount view: #{inspect(reason)}"
+              raise "failed to mount view: #{Exception.format_exit(reason)}"
           end
       end
     end)

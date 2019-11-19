@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.RouterTest do
   @tag plug_session: %{user_id: "chris"}
   test "routing with custom session", %{conn: conn} do
     conn = get(conn, "/router/thermo_session/123")
-    assert conn.resp_body =~ ~s(session: %{user_id: "chris"})
+    assert conn.resp_body =~ ~s(session: %{"user_id" => "chris"})
   end
 
   test "routing with module container", %{conn: conn} do

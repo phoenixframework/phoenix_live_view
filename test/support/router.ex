@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.Controller do
   end
 
   def incoming(conn, %{"type" => "live-render-3"}) do
-    live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{custom: :session})
+    live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"custom" => :session})
   end
 end
 
@@ -29,26 +29,22 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
-    live "/router/thermo_session/:id", DashboardLive, session: [:user_id]
+    live "/router/thermo_session/:id", DashboardLive
     live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
 
     live "/router/thermo_layout/:id", DashboardLive,
       layout: {Phoenix.LiveViewTest.AlternativeLayout, :layout}
 
-    # live view test
-    live "/thermo", ThermostatLive, session: [:nest, :users, :redir]
-    live "/thermo/:id", ThermostatLive, session: [:nest, :users, :redir]
+    live "/thermo", ThermostatLive
+    live "/thermo/:id", ThermostatLive
+    live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
 
-    live "/thermo-container", ThermostatLive,
-      session: [:nest],
-      container: {:span, style: "thermo-flex<script>"}
-
-    live "/same-child", SameChildLive, session: [:dup]
-    live "/root", RootLive, session: [:user_id]
-    live "/counter/:id", ParamCounterLive, session: [:test, :test_pid, :on_handle_params]
-    live "/opts", OptsLive, session: [:opts]
-    live "/time-zones", AppendLive, session: [:time_zones]
-    live "/shuffle", ShuffleLive, session: [:time_zones]
-    live "/components", WithComponentLive, session: [:names, :from]
+    live "/same-child", SameChildLive
+    live "/root", RootLive
+    live "/counter/:id", ParamCounterLive
+    live "/opts", OptsLive
+    live "/time-zones", AppendLive
+    live "/shuffle", ShuffleLive
+    live "/components", WithComponentLive
   end
 end
