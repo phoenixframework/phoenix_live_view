@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.ComponentTest do
   @endpoint Endpoint
   @moduletag :capture_log
 
-  @moduletag session: %{names: ["chris", "jose"]}
+  @moduletag session: %{names: ["chris", "jose"], from: nil}
 
   setup config do
     {:ok,

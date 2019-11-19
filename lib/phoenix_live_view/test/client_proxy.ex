@@ -500,7 +500,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               throw({:stop, {:redirect, child_view, to}, acc})
 
             {:error, reason} ->
-              raise "failed to mount view: #{inspect(reason)}"
+              raise "failed to mount view: #{Exception.format_exit(reason)}"
           end
       end
     end)

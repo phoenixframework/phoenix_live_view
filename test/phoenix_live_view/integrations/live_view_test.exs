@@ -469,7 +469,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "raises on duplicate child LiveView id", %{conn: conn} do
       Process.flag(:trap_exit, true)
-      {:ok, view, _html} = live(conn, "/root")
+
+      {:ok, view, _html} =
+        conn
+        |> Plug.Conn.put_session(:user_id, 13)
+        |> live("/root")
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                :ok = GenServer.call(view.pid, {:dynamic_child, :static})
