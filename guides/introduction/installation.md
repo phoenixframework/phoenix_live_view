@@ -90,11 +90,14 @@ Next, expose a new socket for LiveView updates in your app's endpoint module.
 defmodule MyAppWeb.Endpoint do
   use Phoenix.Endpoint
 
-  socket "/live", Phoenix.LiveView.Socket
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]]
 
   # ...
 end
 ```
+
+Where `@session_options` are the options given to `plug Plug.Session` extracted to a module attribute.
 
 Add LiveView NPM dependencies in your `assets/package.json`. For a regular project, do:
 
@@ -142,7 +145,8 @@ Enable connecting to a LiveView socket in your `app.js` file.
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 
-let liveSocket = new LiveSocket("/live", Socket)
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+let liveSocket = new LiveSocket("/live", {params: {_csrf_token: csrfToken}});
 liveSocket.connect()
 ```
 
