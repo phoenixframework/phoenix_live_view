@@ -54,6 +54,18 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
+  # TODO: Warn if opts :session has atom keys
+  defp load_session(conn_or_socket_session, opts) do
+    user_session = Keyword.get(opts, :session, %{})
+    {user_session, Map.merge(conn_or_socket_session, user_session)}
+  end
+
+  defp maybe_get_session(conn) do
+    Plug.Conn.get_session(conn)
+  rescue
+    _ -> %{}
+  end
+
   @doc """
   Renders a live view without spawning a LiveView server.
 
@@ -68,7 +80,8 @@ defmodule Phoenix.LiveView.Static do
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
   """
   def render(%Plug.Conn{} = conn, view, opts) do
-    session = Keyword.get(opts, :session, %{})
+    conn_session = maybe_get_session(conn)
+    {to_sign_session, mount_session} = load_session(conn_session, opts)
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
@@ -78,14 +91,14 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view},
-        %{assigned_new: {conn.assigns, []}, connect_params: %{}}
+        %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session}
       )
 
-    case call_mount_and_handle_params!(socket, router, view, session, conn.params, request_url) do
+    case call_mount_and_handle_params!(socket, router, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
         data_attrs = [
           phx_view: config.name,
-          phx_session: sign_root_session(socket, router, view, session)
+          phx_session: sign_root_session(socket, router, view, to_sign_session)
         ]
 
         data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
@@ -111,7 +124,7 @@ defmodule Phoenix.LiveView.Static do
   This is called by external live links.
   """
   def container_render(%Plug.Conn{} = conn, view, opts) do
-    session = Keyword.get(opts, :session, %{})
+    {to_sign_session, _mount_session} = load_session(maybe_get_session(conn), opts)
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
@@ -123,7 +136,7 @@ defmodule Phoenix.LiveView.Static do
         %{assigned_new: {conn.assigns, []}, connect_params: %{}}
       )
 
-    session_token = sign_root_session(socket, router, view, session)
+    session_token = sign_root_session(socket, router, view, to_sign_session)
 
     attrs = [
       {:id, socket.id},
@@ -145,7 +158,6 @@ defmodule Phoenix.LiveView.Static do
   Accepts the same options as `static_render/3`.
   """
   def nested_render(%Socket{endpoint: endpoint, connected?: connected?} = parent, view, opts) do
-    session = Keyword.get(opts, :session, %{})
     config = load_live!(view, :view)
     container = container(config, opts)
 
@@ -167,15 +179,19 @@ defmodule Phoenix.LiveView.Static do
       )
 
     if connected? do
-      connected_nested_render(parent, config, socket, view, session, container)
+      connected_nested_render(parent, config, socket, view, container, opts)
     else
-      disconnected_nested_render(parent, config, socket, view, session, container)
+      disconnected_nested_render(parent, config, socket, view, container, opts)
     end
   end
 
-  defp disconnected_nested_render(parent, config, socket, view, session, container) do
+  defp disconnected_nested_render(parent, config, socket, view, container, opts) do
+    conn_session = parent.private.conn_session
+    {_, mount_session} = load_session(conn_session, opts)
     {tag, extended_attrs} = container
-    socket = Utils.maybe_call_mount!(socket, view, [session, socket])
+
+    socket = put_in(socket.private[:conn_session], conn_session)
+    socket = Utils.maybe_call_mount!(socket, view, [mount_session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
@@ -194,9 +210,10 @@ defmodule Phoenix.LiveView.Static do
     to_rendered_content_tag(socket, tag, view, attrs)
   end
 
-  defp connected_nested_render(parent, config, socket, view, session, container) do
+  defp connected_nested_render(parent, config, socket, view, container, opts) do
+    {to_sign_session, _} = load_session(%{}, opts)
     {tag, extended_attrs} = container
-    session_token = sign_nested_session(parent, socket, view, session)
+    session_token = sign_nested_session(parent, socket, view, to_sign_session)
 
     attrs = [
       {:id, socket.id},

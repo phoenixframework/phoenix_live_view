@@ -35,19 +35,9 @@ defmodule Phoenix.LiveView.PlugTest do
   test "with session opts", %{conn: conn} do
     conn =
       conn
-      |> Plug.Conn.put_private(:phoenix_live_view, session: [:user_id])
       |> LiveViewPlug.call(DashboardLive)
 
-    assert conn.resp_body =~ ~s(session: %{user_id: "alex"})
-  end
-
-  test "with static session opts", %{conn: conn} do
-    conn =
-      conn
-      |> Plug.Conn.put_private(:phoenix_live_view, session: [foo: :bar])
-      |> LiveViewPlug.call(DashboardLive)
-
-    assert conn.resp_body =~ ~s(session: %{foo: :bar})
+    assert conn.resp_body =~ ~s(session: %{"user_id" => "alex"})
   end
 
   test "with a module container", %{conn: conn} do

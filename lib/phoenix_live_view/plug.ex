@@ -14,6 +14,7 @@ defmodule Phoenix.LiveView.Plug do
 
   @impl Plug
   def call(%Conn{private: %{phoenix_live_view: opts}} = conn, view) do
+    # TODO: warn if :session is set
     session_keys = Keyword.get(opts, :session, [])
 
     render_opts =

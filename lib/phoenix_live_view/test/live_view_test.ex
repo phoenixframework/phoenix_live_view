@@ -292,7 +292,6 @@ defmodule Phoenix.LiveViewTest do
   defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
     child_statics = DOM.find_static_views(raw_html)
     timeout = opts[:timeout] || 5000
-    # normalize
     html = DOM.to_html(DOM.parse(raw_html))
 
     %ClientProxy{ref: ref} =
@@ -307,7 +306,15 @@ defmodule Phoenix.LiveViewTest do
         child_statics: child_statics
       )
 
-    case ClientProxy.start_link(caller: {self(), ref}, html: html, view: view, timeout: timeout) do
+    opts = [
+      caller: {self(), ref},
+      html: html,
+      view: view,
+      timeout: timeout,
+      session: Plug.Conn.get_session(conn)
+    ]
+
+    case ClientProxy.start_link(opts) do
       {:ok, proxy_pid} ->
         receive do
           {^ref, {:mounted, view_pid, html}} ->

@@ -29,7 +29,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
-    live "/router/thermo_session/:id", DashboardLive, session: [:user_id]
+    live "/router/thermo_session/:id", DashboardLive
     live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
 
     live "/router/thermo_layout/:id", DashboardLive,

@@ -123,12 +123,12 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
 
   def render(assigns) do
     ~L"""
-    session: <%= Phoenix.HTML.raw inspect(@router_session) %>
+    session: <%= Phoenix.HTML.raw inspect(@session) %>
     """
   end
 
   def mount(session, socket) do
-    {:ok, assign(socket, router_session: session)}
+    {:ok, assign(socket, session: session)}
   end
 end
 

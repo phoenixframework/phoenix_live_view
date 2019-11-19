@@ -488,8 +488,14 @@ defmodule Phoenix.LiveView.Channel do
       assigned_new: assigned_new
     } = verified
 
-    %Phoenix.Socket{endpoint: endpoint} = phx_socket
-    Process.monitor(phx_socket.transport_pid)
+    %Phoenix.Socket{
+      endpoint: endpoint,
+      private: %{session: socket_session},
+      transport_pid: transport_pid
+    } = phx_socket
+
+    Process.monitor(transport_pid)
+    load_csrf_token(endpoint, socket_session)
     parent_assigns = sync_with_parent(parent, assigned_new)
     %{"url" => url, "params" => connect_params} = params
 
@@ -514,10 +520,17 @@ defmodule Phoenix.LiveView.Channel do
       )
 
     socket
-    |> Utils.maybe_call_mount!(view, [session, socket])
+    |> Utils.maybe_call_mount!(view, [Map.merge(socket_session, session), socket])
     |> build_state(phx_socket, verified[:router], url)
     |> maybe_call_mount_handle_params(url)
     |> reply_mount(from)
+  end
+
+  defp load_csrf_token(endpoint, socket_session) do
+    token = socket_session["_csrf_token"]
+    state = Plug.CSRFProtection.dump_state_from_session(token)
+    secret_key_base = endpoint.config(:secret_key_base)
+    Plug.CSRFProtection.load_state(secret_key_base, state)
   end
 
   defp reply_mount(result, from) do
