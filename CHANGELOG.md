@@ -26,7 +26,7 @@ The steps are:
 5) Then in your app.js:
 
     let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-    let liveSocket = new LiveSocket("/live", {params: {_csrf_token: csrfToken}});
+    let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
 
 Also note that **the session from now on will have string keys**. LiveView will warn if atom keys will be used for the session in the future.
 
