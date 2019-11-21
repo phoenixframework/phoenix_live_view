@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveComponent do
-  @moduledoc ~S"""
+  @moduledoc """
   Components are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
@@ -14,9 +14,9 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L"\""
+          ~L\"""
           <div class="hero"><%= @content %></div>
-          "\""
+          \"""
         end
       end
 
@@ -69,9 +69,9 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L"\""
+          ~L\"""
           <div id="<%= @id %>" class="hero"><%= @content %></div>
-          "\""
+          \"""
         end
       end
 
@@ -275,7 +275,7 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L"\""
+          ~L\"""
           <div class="grid">
             <%= for entry <- @entries do %>
               <div class="column">
@@ -283,7 +283,7 @@ defmodule Phoenix.LiveComponent do
               </div>
             <% end %>
           </div>
-          "\""
+          \"""
         end
       end
 
