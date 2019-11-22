@@ -10,7 +10,9 @@ defmodule Phoenix.LiveView.Channel do
   @prefix :phoenix
 
   def start_link({auth_payload, from, phx_socket}) do
-    GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket})
+    hibernate_after = phx_socket.endpoint.config(:live_view)[:hibernate_after] || 15000
+    opts = [hibernate_after: hibernate_after]
+    GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket}, opts)
   end
 
   def send_update(module, id, assigns) do

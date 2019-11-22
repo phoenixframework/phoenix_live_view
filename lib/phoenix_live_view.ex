@@ -947,6 +947,18 @@ defmodule Phoenix.LiveView do
       ...
 
   *Note*: when using `phx-hook`, a unique DOM ID must always be set.
+
+  ## Endpoint configuration
+
+  LiveView accepts the following configuration in your endpoint under
+  the `:live_view` key:
+
+    * `:signing_salt` (required) - the salt used to sign data sent
+      to the client
+
+    * `:hibernate_after` (optional) - the amount of time in miliseconds
+      of inactivity inside the LiveView so it hibernates (i.e. it
+      compresses its own memory and state). Defaults to 15000ms (15 seconds)
   """
 
   alias Phoenix.LiveView
