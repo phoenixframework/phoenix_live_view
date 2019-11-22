@@ -342,9 +342,13 @@ defmodule Phoenix.LiveComponent do
   In this case, the solution is to not use `content_tag` and rely on LiveEEx
   to build the markup.
   """
+
+  alias Phoenix.LiveView.Socket
+
   defmacro __using__(_) do
     quote do
       import Phoenix.LiveView
+      @behaviour unquote(__MODULE__)
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}
@@ -354,19 +358,20 @@ defmodule Phoenix.LiveComponent do
   @callback mount(socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
-  @callback preload([Socket.assigns()]) :: [Socket.assigns()]
+  @callback preload(list_of_assigns :: [Socket.assigns()]) ::
+              list_of_assigns :: [Socket.assigns()]
 
-  @callback update(Socket.assigns(), socket :: Socket.t()) ::
+  @callback update(assigns :: Socket.assigns(), socket :: Socket.t()) ::
               {:ok, Socket.t()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
   @callback handle_event(
               event :: binary,
-              Phoenix.LiveView.unsigned_params(),
+              unsigned_params :: Socket.unsigned_params(),
               socket :: Socket.t()
             ) ::
               {:noreply, Socket.t()}
 
-  @optional_callbacks mount: 1, update: 2, handle_event: 3
+  @optional_callbacks mount: 1, preload: 1, update: 2, handle_event: 3
 end
