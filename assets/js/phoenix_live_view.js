@@ -13,8 +13,8 @@ const CLIENT_OUTDATED = "outdated"
 const JOIN_CRASHED = "join crashed"
 const CONSECUTIVE_RELOADS = "consecutive-reloads"
 const MAX_RELOADS = 10
-const RELOAD_JITTER = [1000, 10000]
-const FAILSAFE_JITTER = 60000
+const RELOAD_JITTER = [1000, 3000]
+const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -285,8 +285,8 @@ export class LiveSocket {
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => parseInt(count) + 1)
-    let tries = parseInt(Browser.getLocal(view.name(), CONSECUTIVE_RELOADS))
+    Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
+    let tries = Browser.getLocal(view.name(), CONSECUTIVE_RELOADS)
     this.log(view, "join", () => [`ecountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
@@ -622,11 +622,12 @@ export let Browser = {
   updateLocal(namespace, subkey, initial, func){
     let current = this.getLocal(namespace, subkey)
     let key = this.localKey(namespace, subkey)
-    window.localStorage.setItem(key, current ? func(current) : initial)
+    let newVal = current === null ? initial : func(current)
+    window.localStorage.setItem(key, JSON.stringify(newVal))
   },
 
   getLocal(namespace, subkey){
-    return window.localStorage.getItem(this.localKey(namespace, subkey))
+    return JSON.parse(window.localStorage.getItem(this.localKey(namespace, subkey)))
   },
 
   fetchPage(href, callback){
