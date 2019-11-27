@@ -10,7 +10,11 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 import morphdom from "morphdom"
 
 const CLIENT_OUTDATED = "outdated"
-const RELOAD_JITTER = [1000, 10000]
+const JOIN_CRASHED = "join crashed"
+const CONSECUTIVE_RELOADS = "consecutive-reloads"
+const MAX_RELOADS = 10
+const RELOAD_JITTER = [1000, 3000]
+const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-live-link"
@@ -277,12 +281,18 @@ export class LiveSocket {
 
   // private
 
-  reloadWithJitter(){
-     this.disconnect()
-     let [minMs, maxMs] = RELOAD_JITTER
-     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-     setTimeout(() => window.location.reload(), afterMs)
-   }
+  reloadWithJitter(view){
+    this.disconnect()
+    let [minMs, maxMs] = RELOAD_JITTER
+    let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+    let tries = Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
+    this.log(view, "join", () => [`ecountered ${tries} consecutive reloads`])
+    if(tries > MAX_RELOADS){
+      this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
+      afterMs = FAILSAFE_JITTER
+    }
+    setTimeout(() => window.location.reload(), afterMs)
+  }
 
   getHookCallbacks(hookName){ return this.hooks[hookName] }
 
@@ -604,6 +614,22 @@ export class LiveSocket {
 export let Browser = {
   canPushState(){ return (typeof(history.pushState) !== "undefined") },
 
+  dropLocal(namespace, subkey){
+    return window.localStorage.removeItem(this.localKey(namespace, subkey))
+  },
+
+  updateLocal(namespace, subkey, initial, func){
+    let current = this.getLocal(namespace, subkey)
+    let key = this.localKey(namespace, subkey)
+    let newVal = current === null ? initial : func(current)
+    window.localStorage.setItem(key, JSON.stringify(newVal))
+    return newVal
+  },
+
+  getLocal(namespace, subkey){
+    return JSON.parse(window.localStorage.getItem(this.localKey(namespace, subkey)))
+  },
+
   fetchPage(href, callback){
     let req = new XMLHttpRequest()
     req.open("GET", href, true)
@@ -641,7 +667,9 @@ export let Browser = {
   redirect(toURL, flash){
     if(flash){ Browser.setCookie("__phoenix_flash__", flash + "; max-age=60000; path=/") }
     window.location = toURL
-  }
+  },
+
+  localKey(namespace, subkey){ return `${namespace}-${subkey}` }
 }
 
 export let DOM = {
@@ -959,6 +987,8 @@ export class View {
     this.bindChannel()
   }
 
+  name(){ return this.view }
+
   isConnected(){ return this.channel.canPush() }
 
   getSession(){ return this.el.getAttribute(PHX_SESSION) }
@@ -1019,6 +1049,7 @@ export class View {
 
   onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
+    Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     this.hideLoader()
     let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
@@ -1152,11 +1183,12 @@ export class View {
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
-      .receive("timeout", () => this.onJoinError("timeout"))
+      .receive("timeout", () => this.onJoinError({reason: "timeout"}))
   }
 
   onJoinError(resp){
-    if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter() }
+    if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter(this) }
+    if(resp.reason === JOIN_CRASHED){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
@@ -1308,7 +1340,7 @@ class ViewHook {
     this.__view = view
     this.__callbacks = callbacks
     this.el = el
-    this.viewName = view.view
+    this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
