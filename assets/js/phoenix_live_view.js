@@ -1049,7 +1049,7 @@ export class View {
 
   onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
-    Browser.dropLocal(this.view, CONSECUTIVE_RELOADS)
+    Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     this.hideLoader()
     let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
