@@ -41,6 +41,7 @@ Also note that **the session from now on will have string keys**. LiveView will 
   - Add `Phoenix.LiveComponent` to compartmentalize state, markup, and events in LiveView
   - Handle outdated clients by refreshing the page with jitter when a valid, but outdated session is detected
   - Only dispatch live link clicks to router LiveView
+  - Refresh the page for graceful error recovery on failed mount when the socket is in a connected state
 
 ### Bug Fixes
   - Fix `phx-hook` destroyed callback failing to be called in certain cases
