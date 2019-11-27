@@ -332,6 +332,137 @@ defmodule Phoenix.LiveView.Engine do
     EEx.Engine.handle_expr(state, marker, ast)
   end
 
+  ## Entry point for rendered structs
+
+  defp to_rendered_struct(expr, check_prints?, tainted_vars, vars, assigns) do
+    with {:__block__, [live_rendered: true], entries} <- expr,
+         {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
+      {block, static, dynamic, fingerprint} =
+        analyze_static_and_dynamic(static, dynamic, check_prints?, tainted_vars, vars, assigns)
+
+      rendered =
+        quote do
+          %Phoenix.LiveView.Rendered{
+            static: unquote(static),
+            dynamic: unquote(dynamic),
+            fingerprint: unquote(fingerprint)
+          }
+        end
+
+      {fingerprint, block ++ [rendered]}
+    else
+      _ -> :error
+    end
+  end
+
+  defmacrop to_safe_match(var, ast) do
+    quote do
+      {:=, [],
+       [
+         {_, _, __MODULE__} = unquote(var),
+         {{:., _, [__MODULE__, :to_safe]}, _, [unquote(ast)]}
+       ]}
+    end
+  end
+
+  defp analyze_static_and_dynamic(static, dynamic, check_prints?, tainted_vars, vars, assigns) do
+    {block, _} =
+      Enum.map_reduce(dynamic, {0, vars}, fn
+        to_safe_match(var, ast), {counter, vars} ->
+          {ast, keys, vars} = analyze_and_return_tainted_keys(ast, tainted_vars, vars, assigns)
+          live_struct = to_live_struct(ast, tainted_vars, vars, assigns)
+          fingerprint_live_struct = maybe_pdict_fingerprint(live_struct, check_prints?, counter)
+          {to_conditional_var(keys, var, fingerprint_live_struct), {counter + 1, vars}}
+
+        ast, {counter, vars} ->
+          {ast, _, vars, _} = analyze(ast, tainted_vars, vars, assigns)
+          {ast, {counter, vars}}
+      end)
+
+    {static, dynamic} = bins_and_vars(static)
+    {block, static, dynamic, static_fingerprint(static)}
+  end
+
+  ## Optimize possible expressions into live structs (rendered / comprehensions)
+
+  defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns) do
+    case Enum.split(args, -1) do
+      {args, [[do: do_block]]} ->
+        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+        do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
+        to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
+
+      _ ->
+        to_safe(expr, true)
+    end
+  end
+
+  defp to_live_struct({:for, _, [_ | _]} = expr, tainted_vars, vars, assigns) do
+    with {:for, meta, [_ | _] = args} <- expr,
+         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
+         {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
+      {block, static, dynamic, fingerprint} =
+        analyze_static_and_dynamic(static, dynamic, false, tainted_vars, vars, assigns)
+
+      for = {:for, meta, filters ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
+
+      quote do
+        %Phoenix.LiveView.Comprehension{
+          static: unquote(static),
+          dynamics: unquote(for),
+          fingerprint: unquote(fingerprint)
+        }
+      end
+    else
+      _ -> to_safe(expr, true)
+    end
+  end
+
+  defp to_live_struct({macro, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns)
+       when is_atom(macro) do
+    if classify_taint(macro, args) == :live do
+      {args, [opts]} = Enum.split(args, -1)
+      {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
+
+      opts =
+        for {key, value} <- opts do
+          {key, maybe_block_to_rendered(value, tainted_vars, vars, assigns)}
+        end
+
+      to_safe({macro, meta, args ++ [opts]}, true)
+    else
+      to_safe(expr, true)
+    end
+  end
+
+  defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
+    to_safe(expr, true)
+  end
+
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, tainted_vars, vars, assigns) do
+    # First collect all vars across all assigns since cond/case may be linear
+    {blocks, {tainted_vars, vars, assigns}} =
+      Enum.map_reduce(blocks, {tainted_vars, vars, assigns}, fn
+        {:->, meta, [args, block]}, {tainted_vars, vars, assigns} ->
+          {args, tainted_vars, vars, assigns} =
+            analyze_list(args, tainted_vars, vars, assigns, [])
+
+          {{:->, meta, [args, block]}, {tainted_vars, vars, assigns}}
+      end)
+
+    # Now convert blocks
+    for {:->, meta, [args, block]} <- blocks do
+      {:->, meta, [args, maybe_block_to_rendered(block, tainted_vars, vars, assigns)]}
+    end
+  end
+
+  defp maybe_block_to_rendered(block, tainted_vars, vars, assigns) do
+    case to_rendered_struct(block, false, tainted_vars, vars, assigns) do
+      {_fingerprint, rendered} -> {:__block__, [], rendered}
+      :error -> block
+    end
+  end
+
   ## Emit conditional variables for dirty assigns tracking.
 
   defp maybe_pdict_fingerprint(ast, false, _counter), do: ast
@@ -377,140 +508,6 @@ defmodule Phoenix.LiveView.Engine do
       quote do: unquote(__MODULE__).changed_assign?(changed, unquote(assign))
     end)
     |> Enum.reduce(&{:or, [], [&1, &2]})
-  end
-
-  ## Optimize possible expressions into live structs (rendered / comprehensions)
-
-  defmacrop to_safe_match(var, ast) do
-    quote do
-      {:=, [],
-       [
-         {_, _, __MODULE__} = unquote(var),
-         {{:., _, [__MODULE__, :to_safe]}, _, [unquote(ast)]}
-       ]}
-    end
-  end
-
-  defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns) do
-    case Enum.split(args, -1) do
-      {args, [[do: do_block]]} ->
-        {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
-        do_block = maybe_block_to_rendered(do_block, tainted_vars, vars, assigns)
-        to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
-
-      _ ->
-        to_safe(expr, true)
-    end
-  end
-
-  defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, _vars, _assigns) do
-    to_live_comprehension(expr)
-  end
-
-  defp to_live_struct({macro, meta, [_ | _] = args} = expr, tainted_vars, vars, assigns)
-       when is_atom(macro) do
-    if classify_taint(macro, args) == :live do
-      {args, [opts]} = Enum.split(args, -1)
-      {args, tainted_vars, vars, assigns} = analyze_list(args, tainted_vars, vars, assigns, [])
-
-      opts =
-        for {key, value} <- opts do
-          {key, maybe_block_to_rendered(value, tainted_vars, vars, assigns)}
-        end
-
-      to_safe({macro, meta, args ++ [opts]}, true)
-    else
-      to_safe(expr, true)
-    end
-  end
-
-  defp to_live_struct(expr, _tainted_vars, _vars, _assigns) do
-    to_safe(expr, true)
-  end
-
-  defp to_live_comprehension(expr) do
-    with {:for, meta, [_ | _] = args} <- expr,
-         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
-         {exprs, [{:safe, iodata}]} <- Enum.split(block, -1) do
-      {binaries, vars} = bins_and_vars(iodata)
-      fingerprint = static_fingerprint(binaries)
-
-      exprs =
-        Enum.map(exprs, fn
-          to_safe_match(var, ast) -> {:=, [], [var, to_live_comprehension(ast)]}
-          other -> other
-        end)
-
-      for = {:for, meta, filters ++ [[do: {:__block__, [], exprs ++ [vars]}]]}
-
-      quote do
-        %Phoenix.LiveView.Comprehension{
-          static: unquote(binaries),
-          dynamics: unquote(for),
-          fingerprint: unquote(fingerprint)
-        }
-      end
-    else
-      _ -> to_safe(expr, true)
-    end
-  end
-
-  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, tainted_vars, vars, assigns) do
-    # First collect all vars across all assigns since cond/case may be linear
-    {blocks, {tainted_vars, vars, assigns}} =
-      Enum.map_reduce(blocks, {tainted_vars, vars, assigns}, fn
-        {:->, meta, [args, block]}, {tainted_vars, vars, assigns} ->
-          {args, tainted_vars, vars, assigns} =
-            analyze_list(args, tainted_vars, vars, assigns, [])
-
-          {{:->, meta, [args, block]}, {tainted_vars, vars, assigns}}
-      end)
-
-    # Now convert blocks
-    for {:->, meta, [args, block]} <- blocks do
-      {:->, meta, [args, maybe_block_to_rendered(block, tainted_vars, vars, assigns)]}
-    end
-  end
-
-  defp maybe_block_to_rendered(block, tainted_vars, vars, assigns) do
-    case to_rendered_struct(block, false, tainted_vars, vars, assigns) do
-      {_fingerprint, rendered} -> {:__block__, [], rendered}
-      :error -> block
-    end
-  end
-
-  defp to_rendered_struct(expr, check_prints?, tainted_vars, vars, assigns) do
-    with {:__block__, [live_rendered: true], entries} <- expr,
-         {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
-      {block, _} =
-        Enum.map_reduce(dynamic, {0, vars}, fn
-          to_safe_match(var, ast), {counter, vars} ->
-            {ast, keys, vars} = analyze_and_return_tainted_keys(ast, tainted_vars, vars, assigns)
-            live_struct = to_live_struct(ast, tainted_vars, vars, assigns)
-            fingerprint_live_struct = maybe_pdict_fingerprint(live_struct, check_prints?, counter)
-            {to_conditional_var(keys, var, fingerprint_live_struct), {counter + 1, vars}}
-
-          ast, {counter, vars} ->
-            {ast, _, vars, _} = analyze(ast, tainted_vars, vars, assigns)
-            {ast, {counter, vars}}
-        end)
-
-      {static, dynamic} = bins_and_vars(static)
-      fingerprint = static_fingerprint(static)
-
-      rendered =
-        quote do
-          %Phoenix.LiveView.Rendered{
-            static: unquote(static),
-            dynamic: unquote(dynamic),
-            fingerprint: unquote(fingerprint)
-          }
-        end
-
-      {fingerprint, block ++ [rendered]}
-    else
-      _ -> :error
-    end
   end
 
   ## Extracts binaries and variable from iodata

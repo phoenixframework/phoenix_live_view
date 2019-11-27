@@ -819,5 +819,53 @@ defmodule Phoenix.LiveView.DiffTest do
       assert_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
     end
+
+    test "inside condition inside comprehension" do
+      components = [
+        %Component{id: "index_0", assigns: %{from: :index_0}, component: MyComponent},
+        %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent}
+      ]
+
+      assigns = %{components: components}
+
+      %{fingerprint: fingerprint} =
+        rendered = ~L"""
+        <div>
+          <%= for {component, index} <- Enum.with_index(@components, 0) do %>
+            <%= if index > 0 do %><%= index %>: <%= component %><% end %>
+          <% end %>
+        </div>
+        """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 d: [
+                   [""],
+                   [%{0 => "1", 1 => 0, :s => ["", ": ", ""]}]
+                 ],
+                 s: ["\n    ", "\n  "]
+               },
+               :c => %{
+                 0 => %{
+                   0 => "index_1",
+                   1 => "world",
+                   :s => ["FROM ", " ", "\n"]
+                 }
+               },
+               :s => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert {^fingerprint, %{0 => _}} = socket.fingerprints
+
+      {_, cids_to_ids, 1} = components
+      assert cids_to_ids[0] == {MyComponent, "index_1"}
+
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
+      assert_received :render
+      refute_received {:update, %{from: :index_0}, %Socket{assigns: %{hello: "world"}}}
+    end
   end
 end
