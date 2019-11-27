@@ -285,8 +285,7 @@ export class LiveSocket {
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
-    let tries = Browser.getLocal(view.name(), CONSECUTIVE_RELOADS)
+    let tries = Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
     this.log(view, "join", () => [`ecountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
@@ -624,6 +623,7 @@ export let Browser = {
     let key = this.localKey(namespace, subkey)
     let newVal = current === null ? initial : func(current)
     window.localStorage.setItem(key, JSON.stringify(newVal))
+    return newVal
   },
 
   getLocal(namespace, subkey){
