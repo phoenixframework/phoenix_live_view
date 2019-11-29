@@ -241,6 +241,19 @@ defmodule Phoenix.LiveView.EngineTest do
                changed(template, %{foo: ["1", "2", "3"]}, %{foo: true})
     end
 
+    test "does not render dynamic if it has a variable after a condition inside optimized comprehension" do
+      template =
+        "<%= for foo <- @foo do %><%= if foo == @selected, do: ~s(selected) %><%= foo %><% end %>"
+
+      assert [%{dynamics: [["", "1"], ["selected", "2"], ["", "3"]]}] =
+               changed(template, %{foo: ["1", "2", "3"], selected: "2"}, nil)
+
+      assert [nil] = changed(template, %{foo: ["1", "2", "3"], selected: "2"}, %{})
+
+      assert [%{dynamics: [["", "1"], ["selected", "2"], ["", "3"]]}] =
+               changed(template, %{foo: ["1", "2", "3"], selected: "2"}, %{foo: true})
+    end
+
     test "does not render dynamic for nested optimized comprehensions with variables" do
       template =
         "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"

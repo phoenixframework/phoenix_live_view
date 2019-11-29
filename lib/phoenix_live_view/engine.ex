@@ -614,7 +614,7 @@ defmodule Phoenix.LiveView.Engine do
         {expr, tainted_vars, vars, assigns}
 
       :never ->
-        {args, tainted_vars, vars, assigns} =
+        {args, _tainted_vars, vars, assigns} =
           analyze_with_restricted_tainted_vars(args, tainted_vars, vars, assigns)
 
         {{left, meta, args}, tainted_vars, vars, assigns}
