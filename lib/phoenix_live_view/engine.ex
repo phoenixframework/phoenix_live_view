@@ -649,6 +649,11 @@ defmodule Phoenix.LiveView.Engine do
     {other, tainted_vars, vars, assigns}
   end
 
+  defp analyze_list([head | tail], :restricted, vars, assigns, acc) do
+    {head, tainted_vars, vars, assigns} = analyze(head, :restricted, vars, assigns)
+    analyze_list(tail, tainted_vars || :restricted, vars, assigns, [head | acc])
+  end
+
   defp analyze_list([head | tail], tainted_vars, vars, assigns, acc) do
     {head, tainted_vars, vars, assigns} = analyze(head, tainted_vars, vars, assigns)
     analyze_list(tail, tainted_vars, vars, assigns, [head | acc])
