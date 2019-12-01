@@ -1273,7 +1273,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: e.target.name}),
-      cid: this.targetComponentID(inputEl)
+      cid: this.targetComponentID(inputEl.form)
     })
   }
 
