@@ -56,9 +56,15 @@ defmodule Phoenix.LiveView.Static do
 
   # TODO: Warn if opts :session has atom keys
   defp load_session(conn_or_socket_session, opts) do
-    user_session = Keyword.get(opts, :session, %{})
+    user_session = stringify_keys(Keyword.get(opts, :session, %{}))
     {user_session, Map.merge(conn_or_socket_session, user_session)}
   end
+
+  # Session key conversion is not recursive, mimicking Plug.Session
+  defp stringify_keys(map) when is_map(map), do: Map.new(map, &stringify_key/1)
+  defp stringify_key({key, value}), do: {stringify_key(key), value}
+  defp stringify_key(binary) when is_binary(binary), do: binary
+  defp stringify_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
   defp maybe_get_session(conn) do
     Plug.Conn.get_session(conn)

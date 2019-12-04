@@ -89,7 +89,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   end
 
   def mount(session, socket) do
-    {:ok, assign(socket, time: "12:00", name: session[:name] || "NY")}
+    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
 
   def handle_info(:snooze, socket) do

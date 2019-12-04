@@ -19,4 +19,9 @@ defmodule Phoenix.LiveView.ControllerTest do
     conn = get(conn, "/controller/live-render-3")
     assert html_response(conn, 200) =~ "session: %{\"custom\" => :session}"
   end
+
+  test "live renders from controller with session with atom keys", %{conn: conn} do
+    conn = get(conn, "/controller/live-render-4")
+    assert html_response(conn, 200) =~ "session: %{\"custom\" => :session}"
+  end
 end

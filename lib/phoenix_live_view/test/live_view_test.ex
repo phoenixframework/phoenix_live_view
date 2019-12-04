@@ -225,6 +225,7 @@ defmodule Phoenix.LiveViewTest do
     {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
 
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
+    |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(mount_opts)
   end
@@ -232,6 +233,7 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   def __live__(%Plug.Conn{state: state, status: status} = conn, opts) do
     path = rebuild_path(conn)
+
     case {state, status} do
       {:sent, 200} ->
         connect_from_static_token(conn, path, opts)
