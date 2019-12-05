@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   def live_link_info!(router, view, uri) do
-    %URI{host: host, path: path, query: query} = URI.parse(uri)
+    %URI{host: host, path: path, query: query} = uri |> URI.decode() |> URI.parse()
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     case Phoenix.Router.route_info(router, "GET", path, host) do
