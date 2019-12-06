@@ -138,7 +138,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: true} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, id: :dup, session: %{name: name}) %>
+      <%= live_render(@socket, ClockLive, id: :dup, session: %{"name" => name}) %>
     <% end %>
     """
   end
@@ -146,7 +146,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   def render(%{dup: false} = assigns) do
     ~L"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{name: name, count: @count}, id: name) %>
+      <%= live_render(@socket, ClockLive, session: %{"name" => name, "count" => @count}, id: name) %>
     <% end %>
     """
   end
@@ -283,7 +283,7 @@ defmodule Phoenix.LiveViewTest.AppendLive do
     <div id="times" phx-update="<%= @update_type %>">
       <%= for %{id: id, name: name} <- @time_zones do %>
         <h1 id="title-<%= id %>"><%= name %></h1>
-        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{id}", session: %{name: name}) %>
+        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{id}", session: %{"name" => name}) %>
       <% end %>
     </div>
     """
@@ -305,8 +305,8 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
   def render(assigns) do
     ~L"""
     <%= for zone <- @time_zones do %>
-      <div id="score-<%= zone.id %>">
-        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{zone.id}", session: %{name: zone.name}) %>
+      <div id="score-<%= zone["id"] %>">
+        <%= live_render(@socket, Phoenix.LiveViewTest.ClockLive, id: "tz-#{zone["id"]}", session: %{"name" => zone["name"]}) %>
       </div>
     <% end %>
     """
