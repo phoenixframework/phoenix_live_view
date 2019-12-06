@@ -103,7 +103,14 @@ defmodule Phoenix.LiveView.Static do
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session}
       )
 
-    case call_mount_and_handle_params!(socket, router, view, mount_session, conn.params, request_url) do
+    case call_mount_and_handle_params!(
+           socket,
+           router,
+           view,
+           mount_session,
+           conn.params,
+           request_url
+         ) do
       {:ok, socket} ->
         data_attrs = [
           phx_view: config.name,
