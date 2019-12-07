@@ -3,7 +3,7 @@ import LiveSocket, {View, DOM} from '../js/phoenix_live_view'
 
 function liveViewDOM() {
   const div = document.createElement('div')
-  div.setAttribute('data-phx-view', '')
+  div.setAttribute('data-phx-view', 'User.Form')
   div.setAttribute('data-phx-session', 'abc123')
   div.setAttribute('id', 'container')
   div.setAttribute('class', 'user-implemented-class')
@@ -271,7 +271,7 @@ describe('View', function() {
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
     expect(view.id).toEqual('container')
-    expect(view.view).toEqual('')
+    expect(view.view).toEqual('User.Form')
     expect(view.channel).toBeDefined()
     expect(view.loaderTimer).toBeDefined()
   })
@@ -288,6 +288,17 @@ describe('View', function() {
     let el = liveViewDOM()
     let view = new View(el, liveSocket)
     expect(view.getSession()).toEqual('abc123')
+  })
+
+  test('getStatic', async () => {
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+    expect(view.getStatic()).toEqual(null)
+
+    el.setAttribute('data-phx-static', 'foo')
+    view = new View(el, liveSocket)
+    expect(view.getStatic()).toEqual('foo')
   })
 
   test('showLoader and hideLoader', async () => {
@@ -377,3 +388,65 @@ describe('View Hooks', function() {
     expect(upcaseWasDestroyed).toBe(true)
   })
 })
+
+function liveViewComponent() {
+  const div = document.createElement('div')
+  div.setAttribute('data-phx-view', 'User.Form')
+  div.setAttribute('data-phx-session', 'abc123')
+  div.setAttribute('id', 'container')
+  div.setAttribute('class', 'user-implemented-class')
+  div.innerHTML = `
+    <article data-phx-component="0">
+      <form>
+        <label for="plus">Plus</label>
+        <input id="plus" value="1" name="increment" />
+        <input type="checkbox" phx-click="toggle_me" />
+        <button phx-click="inc_temperature">Inc Temperature</button>
+      </form>
+    </article>
+  `
+  return div
+}
+
+describe('View + Component', function() {
+  beforeEach(() => {
+    global.Phoenix = { Socket }
+    global.document.body.innerHTML = liveViewComponent().outerHTML
+  })
+
+  afterAll(() => {
+    global.document.body.innerHTML = ''
+  })
+
+  test('targetComponentId', async () => {
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewComponent()
+    let view = new View(el, liveSocket)
+    expect(view.targetComponentID(el)).toBe(null)
+    expect(view.targetComponentID(el.querySelector('form'))).toBe(0)
+  })
+
+  test('pushEvent', function() {
+    expect.assertions(4)
+
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewComponent()
+    let input = el.querySelector('input')
+
+    let view = new View(el, liveSocket)
+    let channelStub = {
+      push(evt, payload, timeout) {
+        expect(payload.type).toBe('keyup')
+        expect(payload.event).toBeDefined()
+        expect(payload.value).toEqual({"value": "1"})
+        expect(payload.cid).toEqual(0)
+        return {
+          receive() {}
+        }
+      }
+    }
+    view.channel = channelStub
+
+    view.pushEvent('keyup', input, "click", {})
+  })
+});
