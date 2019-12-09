@@ -366,7 +366,7 @@ defmodule Phoenix.LiveView do
   Another limitation of changing tracking is that it does not work across regular
   function calls. For example, imagine the following template that renders a `div`:
 
-      <%= content_tag :div, id: ""user_#\{@id}" %>
+      <%= content_tag :div, id: ""user_#\{@id}" do %>
         <%= @name %>
         <%= @description %>
       <% end %>
