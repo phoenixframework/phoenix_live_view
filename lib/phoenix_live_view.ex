@@ -347,6 +347,42 @@ defmodule Phoenix.LiveView do
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces those as best practices.
 
+  ### Change tracking pitfalls
+
+  Although change tracking can considerably reduce the amount of data sent
+  over the wire, there are some pitfalls users should be aware of.
+
+  First of all, change tracking can only track assigns directly. So for example,
+  if you do something such as:
+
+      <%= @post.the_whole_content %>
+
+  If any of other field besides `the_whole_content` in `@post` change for any
+  reason, the `the_whole_content` will be sent downstream. Although this is not
+  generally a problem, if you have large fields that you don't want to resend
+  or if you have one field in particular that changes all the time while others
+  do not, you may want to track them as their own assign.
+
+  Another limitation of changing tracking is that it does not work across regular
+  function calls. For example, imagine the following template that renders a `div`:
+
+      <%= content_tag :div, id: ""user_#\{@id}" %>
+        <%= @name %>
+        <%= @description %>
+      <% end %>
+
+  LiveView knows nothing about `content_tag`, which means the whole `div` will be
+  sent whenever any of the assigns change. This can be easily fixed by writing the
+  HTML directly:
+
+      <div id="user_<%= @id %>">
+        <%= @name %>
+        <%= @description %>
+      </div>
+
+  Note though this concern does not apply to Elixir's constructs, such as `if`,
+  `case`, `for`, and friends. LiveView always knows how to optimize across those.
+
   ## Bindings
 
   Phoenix supports DOM element bindings for client-server interaction. For
