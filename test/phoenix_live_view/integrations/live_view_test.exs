@@ -78,14 +78,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
 
-    test "converts custom session keys" do
+    test "warns when session contains atom keys" do
       assert ExUnit.CaptureIO.capture_io(:stderr, fn ->
                {:ok, view, _} =
                  live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
                    session: %{hello: "world"}
                  )
 
-               assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+               assert render(view) =~ "session: %{hello: &quot;world&quot;}"
              end) =~ "Phoenix.LiveView sessions require string keys, got: :hello"
     end
   end
