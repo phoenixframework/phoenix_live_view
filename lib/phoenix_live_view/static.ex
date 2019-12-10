@@ -54,10 +54,17 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  # TODO: Warn if opts :session has atom keys
   defp load_session(conn_or_socket_session, opts) do
     user_session = Keyword.get(opts, :session, %{})
+    validate_session(user_session)
     {user_session, Map.merge(conn_or_socket_session, user_session)}
+  end
+
+  # Validate user-supplied session data uses string keys
+  defp validate_session(session) when is_map(session) do
+    for {key, _value} when not is_binary(key) <- session do
+      IO.warn("Phoenix.LiveView sessions require string keys, got: #{inspect(key)}")
+    end
   end
 
   defp maybe_get_session(conn) do
@@ -94,7 +101,14 @@ defmodule Phoenix.LiveView.Static do
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session}
       )
 
-    case call_mount_and_handle_params!(socket, router, view, mount_session, conn.params, request_url) do
+    case call_mount_and_handle_params!(
+           socket,
+           router,
+           view,
+           mount_session,
+           conn.params,
+           request_url
+         ) do
       {:ok, socket} ->
         data_attrs = [
           phx_view: config.name,

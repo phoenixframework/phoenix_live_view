@@ -108,7 +108,9 @@ defmodule Phoenix.LiveView.UpdateTest do
   end
 
   describe "regular updates" do
-    @tag session: %{time_zones: [%{id: "ny", name: "NY"}, %{id: "sf", name: "SF"}]}
+    @tag session: %{
+           time_zones: [%{"id" => "ny", "name" => "NY"}, %{"id" => "sf", "name" => "SF"}]
+         }
     test "existing ids are replaced when patched without respawning children", %{conn: conn} do
       {:ok, view, html} = live(conn, "/shuffle")
 

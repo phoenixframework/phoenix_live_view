@@ -68,6 +68,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
                    ~r/it is not mounted nor accessed through the router live\/3 macro/,
                    fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
     end
+
+    test "works without an initialized session" do
+      {:ok, view, _} =
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+          session: %{"hello" => "world"}
+        )
+
+      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+    end
+
+    test "warns when session contains atom keys" do
+      assert ExUnit.CaptureIO.capture_io(:stderr, fn ->
+               {:ok, view, _} =
+                 live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+                   session: %{hello: "world"}
+                 )
+
+               assert render(view) =~ "session: %{hello: &quot;world&quot;}"
+             end) =~ "Phoenix.LiveView sessions require string keys, got: :hello"
+    end
   end
 
   describe "rendering" do

@@ -11,6 +11,10 @@ defmodule Phoenix.LiveViewTest.Controller do
   def incoming(conn, %{"type" => "live-render-3"}) do
     live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"custom" => :session})
   end
+
+  def incoming(conn, %{"type" => "live-render-4"}) do
+    live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{custom: :session})
+  end
 end
 
 defmodule Phoenix.LiveViewTest.Router do
