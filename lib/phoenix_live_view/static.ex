@@ -55,18 +55,16 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp load_session(conn_or_socket_session, opts) do
-    user_session = validate_session(Keyword.get(opts, :session, %{}))
+    user_session = Keyword.get(opts, :session, %{})
+    validate_session(user_session)
     {user_session, Map.merge(conn_or_socket_session, user_session)}
   end
 
   # Validate user-supplied session data uses string keys
-  defp validate_session(map) when is_map(map), do: Map.new(map, &validate_session_key/1)
-  defp validate_session_key({key, value}), do: {validate_session_key(key), value}
-  defp validate_session_key(binary) when is_binary(binary), do: binary
-
-  defp validate_session_key(other) do
-    IO.warn("Phoenix.LiveView sessions require string keys, got: #{inspect(other)}")
-    other
+  defp validate_session(session) when is_map(session) do
+    for {key, _value} when not is_binary(key) <- session do
+      IO.warn("Phoenix.LiveView sessions require string keys, got: #{inspect(key)}")
+    end
   end
 
   defp maybe_get_session(conn) do
