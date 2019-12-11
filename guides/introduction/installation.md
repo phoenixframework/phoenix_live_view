@@ -97,7 +97,20 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Where `@session_options` are the options given to `plug Plug.Session` extracted to a module attribute.
+Where `@session_options` are the options given to `plug Plug.Session`,
+extracted to a module attribute. For development, the ETS based session
+cache is sufficient. Ensure that the `ets` table is created before
+Phoenix starts up, for example in your `application.ex`:
+
+```elixir
+:ets.new(:session, [:named_table, :public, read_concurrency: true])
+```
+
+Drop the keyword list parameters into your endpoint module:
+
+```elixir
+@session_options [store: :ets, key: "sid", table: :session]
+```
 
 Add LiveView NPM dependencies in your `assets/package.json`. For a regular project, do:
 
