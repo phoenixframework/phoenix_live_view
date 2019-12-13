@@ -509,7 +509,6 @@ export class LiveSocket {
         screenY: e.screenY,
         offsetX: e.offsetX,
         offsetY: e.offsetY,
-
       }
 
       this.owner(target, view => {
