@@ -529,10 +529,11 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp load_csrf_token(endpoint, socket_session) do
-    token = socket_session["_csrf_token"]
-    state = Plug.CSRFProtection.dump_state_from_session(token)
-    secret_key_base = endpoint.config(:secret_key_base)
-    Plug.CSRFProtection.load_state(secret_key_base, state)
+    if token = socket_session["_csrf_token"] do
+      state = Plug.CSRFProtection.dump_state_from_session(token)
+      secret_key_base = endpoint.config(:secret_key_base)
+      Plug.CSRFProtection.load_state(secret_key_base, state)
+    end
   end
 
   defp reply_mount(result, from) do

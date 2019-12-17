@@ -36,11 +36,11 @@ defmodule Phoenix.LiveView.Socket do
       %{session: session} when is_map(session) ->
         {:ok, put_in(socket.private[:session], session)}
 
-      _ ->
+      %{session: _} ->
         Logger.error("""
-        LiveView was not configured to use session. Do so with:
+        LiveView session was misconfigured or the user token is outdated.
 
-        1) Find `plug Plug.Session, ...` in your endpoint.ex and move the options `...` to a module attribute:
+        1) Ensure your session configuration in your endpoint is in a module attribute:
 
             @session_options [
               ...
@@ -55,17 +55,20 @@ defmodule Phoenix.LiveView.Socket do
             socket "/live", Phoenix.LiveView.Socket,
               websocket: [connect_info: [session: @session_options]]
 
-        4) You should define the CSRF meta tag inside the in <head> in your layout:
+        4) Define the CSRF meta tag inside the in <head> in your layout:
 
             <%= csrf_meta_tag() %>
 
-        5) Then in your app.js:
+        5) Pass it forward in your app.js:
 
             let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
             let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
         """)
 
         :error
+
+      %{} ->
+        {:ok, put_in(socket.private[:session], %{})}
     end
   end
 
