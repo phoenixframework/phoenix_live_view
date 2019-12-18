@@ -563,6 +563,11 @@ defmodule Phoenix.LiveView do
         "shiftKey" => false, "which" => 27
       }
 
+  To determine which key has been pressed you should use `key` value. The
+  available options can be found on
+  [MDN](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values)
+  or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
+
   By default, the bound element will be the event listener, but a
   window-level binding may be provided via `phx-window-keydown`,
   for example:
