@@ -483,18 +483,15 @@ export class LiveSocket {
       view.pushKey(target, targetCtx, type, phxEvent, {
         altGraphKey: e.altGraphKey,
         altKey: e.altKey,
-        charCode: e.charCode,
         code: e.code,
         ctrlKey: e.ctrlKey,
         key: e.key,
-        keyCode: e.keyCode,
         keyIdentifier: e.keyIdentifier,
         keyLocation: e.keyLocation,
         location: e.location,
         metaKey: e.metaKey,
         repeat: e.repeat,
-        shiftKey: e.shiftKey,
-        which: e.which
+        shiftKey: e.shiftKey
       })
     })
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
