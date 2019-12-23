@@ -37,7 +37,7 @@ defmodule Phoenix.LiveView.Socket do
         {:ok, put_in(socket.private[:session], session)}
 
       %{session: _} ->
-        Logger.error("""
+        Logger.debug("""
         LiveView session was misconfigured or the user token is outdated.
 
         1) Ensure your session configuration in your endpoint is in a module attribute:
