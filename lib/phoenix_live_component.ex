@@ -65,12 +65,12 @@ defmodule Phoenix.LiveComponent do
   Also note the given `:id` is not necessarily used as the DOM ID. If you
   want to set a DOM ID, it is your responsibility to set it when rendering:
 
-      defmodule HeroComponent do
+      defmodule UserComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
           ~L\"""
-          <div id="<%= @id %>" class="hero"><%= @content %></div>
+          <div id="user-<%= @id %>" class="user"><%= @user.name %></div>
           \"""
         end
       end
@@ -82,12 +82,12 @@ defmodule Phoenix.LiveComponent do
   Stateful components can also implement the `c:handle_event/3` callback
   that works exactly the same as in LiveView. For a client event to
   reach a component, the tag must be annotated with a `phx-target`
-  annotation which must be set to the `@cid` assign. The `@cid` assign
-  is a random, unique value, used by LiveView to associate the component
-  instance on the client with its instance on server. To use it, one can
-  do:
+  annotation which must be a query selector to an element inside the
+  component. For example, if the `UserComponent` above is started with
+  the `:id` of `13`, it will have the DOM ID of `user-13`. Using a query
+  selector, we can sent an event to it with:
 
-      <a href="#" phx-click="say_hello" phx-target="<%= @cid %>">
+      <a href="#" phx-click="say_hello" phx-target="#user-13">
         Say hello!
       </a>
 

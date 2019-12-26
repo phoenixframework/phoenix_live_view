@@ -299,9 +299,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints != {rendered.fingerprint, %{}}
       assert components == Diff.new_components()
 
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when map_size(assigns) == 0
-
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
@@ -429,8 +427,8 @@ defmodule Phoenix.LiveView.DiffTest do
       {_, cids_to_ids, 1} = components
       assert cids_to_ids[0] == {MyComponent, "hello"}
 
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: %{cid: 0}}}
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world", cid: 0}}}
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
     end
@@ -448,9 +446,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == previous_components
 
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world", cid: 0}}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world", cid: 0}}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       refute_received _
     end
 
@@ -470,9 +468,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components != previous_components
 
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world", cid: 0}}}
+      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
-      assert_received {:update, %{from: :rerender}, %Socket{assigns: %{hello: "world", cid: 0}}}
+      assert_received {:update, %{from: :rerender}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
     end
