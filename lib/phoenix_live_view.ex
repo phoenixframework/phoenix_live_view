@@ -1318,7 +1318,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  See `assign/2`.
+  See `assign/3`.
   """
   def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
     Enum.reduce(attrs, socket, fn {key, val}, acc ->
