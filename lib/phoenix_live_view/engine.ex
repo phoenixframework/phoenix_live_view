@@ -397,12 +397,15 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({:for, _, [_ | _]} = expr, tainted_vars, vars, assigns) do
+  defp to_live_struct({:for, _, [_ | _]} = expr, _tainted_vars, vars, assigns) do
     with {:for, meta, [_ | _] = args} <- expr,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
+      # We never check prints and we always taint vars inside comprehensions.
+      # This is because it is hard to do diff tracking inside a comprehension
+      # as new elements are added and removed to the collection.
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, false, tainted_vars, vars, assigns)
+        analyze_static_and_dynamic(static, dynamic, false, true, vars, assigns)
 
       for = {:for, meta, filters ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
