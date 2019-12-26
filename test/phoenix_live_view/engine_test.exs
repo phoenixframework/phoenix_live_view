@@ -280,16 +280,17 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "renders dynamics for nested comprehensions" do
-      template = "<%= for foo <- @foo do %><%= for bar <- foo.bar do %><%= foo.x %><%= bar.y %><% end %><% end %>"
+      template =
+        "<%= for foo <- @foo do %><%= for bar <- foo.bar do %><%= foo.x %><%= bar.y %><% end %><% end %>"
 
       assert [
-        %{
-          dynamics: [
-            [%{dynamics: [["1", "1"]], static: ["", "", ""]}]
-          ],
-          static: ["", ""]
-        }
-      ] = changed(template, %{foo: [%{x: 1, bar: [%{y: 1}]}]}, %{foo: true})
+               %{
+                 dynamics: [
+                   [%{dynamics: [["1", "1"]], static: ["", "", ""]}]
+                 ],
+                 static: ["", ""]
+               }
+             ] = changed(template, %{foo: [%{x: 1, bar: [%{y: 1}]}]}, %{foo: true})
     end
 
     test "renders dynamic if it uses assigns" do
