@@ -359,7 +359,24 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  getViewByEl(el){ return this.views[el.id] }
+  withinOwners(childEl, callback){
+    let phxTarget = childEl.getAttribute(this.binding("target"))
+    let targetChildren = phxTarget ? Array.from(document.querySelectorAll(phxTarget)) : []
+
+    if(targetChildren.length > 0){
+      targetChildren.forEach(targetEl => {
+        this.owner(targetEl, view => callback(view, targetEl))
+      })
+    } else if(phxTarget === null){
+      this.owner(childEl, view => callback(view, childEl))
+    } else {
+      throw new Error(`no phx-target's found matching selector "${phxTarget}"`)
+    }
+  }
+
+  getViewByEl(el){ return this.getViewById(el.id) }
+
+  getViewById(id){ return this.views[id] }
 
   onViewError(view){
     this.dropActiveElement(view)
@@ -421,8 +438,8 @@ export class LiveSocket {
     this.bindClicks()
     this.bindNav()
     this.bindForms()
-    this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, phxEvent, phxTarget) => {
-      view.pushKey(target, type, phxEvent, {
+    this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
+      view.pushKey(target, targetCtx, type, phxEvent, {
         altGraphKey: e.altGraphKey,
         altKey: e.altKey,
         charCode: e.charCode,
@@ -439,15 +456,15 @@ export class LiveSocket {
         which: e.which
       })
     })
-    this.bindTargetable({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
+    this.bindTargetable({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       if(!phxTarget){
-        view.pushEvent(type, targetEl, phxEvent, {type: type})
+        view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: type})
       }
     })
-    this.bindTargetable({blur: "blur", focus: "focus"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
+    this.bindTargetable({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget && !phxTarget !== "window"){
-        view.pushEvent(type, targetEl, phxEvent, {type: e.type})
+        view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: e.type})
       }
     })
 
@@ -483,14 +500,16 @@ export class LiveSocket {
         let bindTarget = this.binding("target")
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
-          this.owner(e.target, view => {
-            this.debounce(e.target, e, () => callback(e, event, view, e.target, targetPhxEvent, null))
+          this.debounce(e.target, e, () => {
+            this.withinOwners(e.target, (view, targetCtx) => {
+              callback(e, event, view, e.target, targetCtx, targetPhxEvent, null)
+            })
           })
         } else {
           DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
             let phxEvent = el.getAttribute(binding)
             this.owner(el, view => {
-              this.debounce(el, e, () => callback(e, event, view, el, phxEvent, "window"))
+              this.debounce(el, e, () => callback(e, event, view, el, el, phxEvent, "window"))
             })
           })
         }
@@ -519,8 +538,10 @@ export class LiveSocket {
         screenY: e.screenY,
       }
 
-      this.owner(target, view => {
-        this.debounce(target, e, () => view.pushEvent("click", target, phxEvent, meta))
+      this.debounce(target, e, () => {
+        this.withinOwners(target, (view, targetCtx) => {
+          view.pushEvent("click", target, targetCtx, phxEvent, meta)
+        })
       })
     }, false)
   }
@@ -567,7 +588,7 @@ export class LiveSocket {
       if(!phxEvent){ return }
       e.preventDefault()
       e.target.disabled = true
-      this.owner(e.target, view => view.submitForm(e.target, phxEvent))
+      this.withinOwners(e.target, (view, targetCtx) => view.submitForm(e.target, targetCtx, phxEvent))
     }, false)
 
     for(let type of ["change", "input"]){
@@ -582,13 +603,15 @@ export class LiveSocket {
 
         this.prevInput = input
         this.prevValue = value
-        this.owner(input, view => {
-          if(DOM.isTextualInput(input)){
-            DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
-          } else {
-            this.setActiveElement(input)
-          }
-          this.debounce(input, e, () => view.pushInput(input, phxEvent, e))
+        this.debounce(input, e, () => {
+          this.withinOwners(input, (view, targetCtx) => {
+            if(DOM.isTextualInput(input)){
+              DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
+            } else {
+              this.setActiveElement(input)
+            }
+            view.pushInput(input, targetCtx, phxEvent, e)
+          })
         })
       }, false)
     }
@@ -1230,11 +1253,15 @@ export class View {
     return cid ? parseInt(cid) : null
   }
 
-  targetComponentID(target){
-    return maybe(target.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
+  targetComponentID(target, targetCtx){
+    if(target.getAttribute(this.binding("target"))){
+      return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
+    } else {
+      return null
+    }
   }
 
-  pushEvent(type, el, phxEvent, meta){
+  pushEvent(type, el, targetCtx, phxEvent, meta){
     let prefix = this.binding("value-")
     for (let i = 0; i < el.attributes.length; i++){
       let name = el.attributes[i].name
@@ -1248,41 +1275,42 @@ export class View {
       }
     }
 
+    console.log([el, targetCtx, this.targetComponentID(el, targetCtx)])
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(el)
+      cid: this.targetComponentID(el, targetCtx)
     })
   }
 
-  pushKey(keyElement, kind, phxEvent, meta){
+  pushKey(keyElement, targetCtx, kind, phxEvent, meta){
     if(keyElement.value !== undefined){ meta.value = keyElement.value }
 
     this.pushWithReply("event", {
       type: kind,
       event: phxEvent,
       value: meta,
-      cid: this.targetComponentID(keyElement)
+      cid: this.targetComponentID(keyElement, targetCtx)
     })
   }
 
-  pushInput(inputEl, phxEvent, e){
+  pushInput(inputEl, targetCtx, phxEvent, e){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: e.target.name}),
-      cid: this.targetComponentID(inputEl)
+      cid: this.targetComponentID(inputEl, targetCtx)
     })
   }
 
-  pushFormSubmit(formEl, phxEvent, onReply){
+  pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
-      cid: this.targetComponentID(formEl)
+      cid: this.targetComponentID(formEl, targetCtx)
     }, onReply)
   }
 
@@ -1317,12 +1345,12 @@ export class View {
            maybe(el.closest(PHX_VIEW_SELECTOR), node => node.id) === this.id
   }
 
-  submitForm(form, phxEvent){
+  submitForm(form, targetCtx, phxEvent){
     let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
-    this.pushFormSubmit(form, phxEvent, () => {
+    this.pushFormSubmit(form, targetCtx, phxEvent, () => {
       DOM.restoreDisabledForm(form, prefix)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
@@ -1346,7 +1374,7 @@ class ViewHook {
   }
 
   pushEvent(event, payload = {}){
-    this.__view.pushEvent("hook", this.el, event, payload)
+    this.__view.pushEvent("hook", this.el, null, event, payload)
   }
   __trigger__(kind){
     let callback = this.__callbacks[kind]
