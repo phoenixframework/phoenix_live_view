@@ -438,7 +438,7 @@ export class LiveSocket {
     this.bindClicks()
     this.bindNav()
     this.bindForms()
-    this.bindTargetable({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
       view.pushKey(target, targetCtx, type, phxEvent, {
         altGraphKey: e.altGraphKey,
         altKey: e.altKey,
@@ -456,12 +456,12 @@ export class LiveSocket {
         which: e.which
       })
     })
-    this.bindTargetable({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       if(!phxTarget){
         view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: type})
       }
     })
-    this.bindTargetable({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+    this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget && !phxTarget !== "window"){
         view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: e.type})
@@ -491,25 +491,27 @@ export class LiveSocket {
 
   hasPendingLink(){ return !!this.pendingLink }
 
-  bindTargetable(events, callback){
+  bind(events, callback){
     for(let event in events){
       let browserEventName = events[event]
 
       this.on(browserEventName, e => {
         let binding = this.binding(event)
-        let bindTarget = this.binding("target")
+        let windowBinding = `${binding}-window`
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
-        if(targetPhxEvent && !e.target.getAttribute(bindTarget)){
+        if(targetPhxEvent){
           this.debounce(e.target, e, () => {
             this.withinOwners(e.target, (view, targetCtx) => {
               callback(e, event, view, e.target, targetCtx, targetPhxEvent, null)
             })
           })
         } else {
-          DOM.all(document, `[${binding}][${bindTarget}=window]`, el => {
-            let phxEvent = el.getAttribute(binding)
-            this.owner(el, view => {
-              this.debounce(el, e, () => callback(e, event, view, el, el, phxEvent, "window"))
+          DOM.all(document, `[${windowBinding}]`, el => {
+            let phxEvent = el.getAttribute(windowBinding)
+            this.debounce(el, e, () => {
+              this.withinOwners(el, (view, targetCtx) => {
+                callback(e, event, view, el, targetCtx, phxEvent, "window")
+              })
             })
           })
         }
@@ -1096,6 +1098,7 @@ export class View {
   }
 
   update(diff, cid){
+    console.log(diff)
     if(isEmpty(diff)){ return }
     if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
