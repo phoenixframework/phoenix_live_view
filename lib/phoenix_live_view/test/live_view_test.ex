@@ -361,7 +361,7 @@ defmodule Phoenix.LiveViewTest do
   """
   def render_component(component, assigns) do
     %Socket{}
-    |> Diff.component_to_rendered(component, assigns)
+    |> Diff.component_to_rendered(component, Map.new(assigns))
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
   end

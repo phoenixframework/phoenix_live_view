@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Converts a component to a rendered struct.
   """
-  def component_to_rendered(socket, component, assigns) do
+  def component_to_rendered(socket, component, assigns) when is_map(assigns) do
     socket = mount_component(socket, component)
     assigns = maybe_call_preload!(component, assigns)
 
