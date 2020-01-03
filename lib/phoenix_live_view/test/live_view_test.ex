@@ -359,8 +359,23 @@ defmodule Phoenix.LiveViewTest do
                "some markup in component"
 
   """
-  def render_component(component, assigns) do
-    socket = %Socket{}
+  defmacro render_component(component, assigns) do
+    endpoint =
+      Module.get_attribute(__CALLER__.module, :endpoint) ||
+        raise ArgumentError, "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
+
+    quote do
+      Phoenix.LiveViewTest.__render_component__(
+        unquote(endpoint),
+        unquote(component),
+        unquote(assigns)
+      )
+    end
+  end
+
+  @doc false
+  def __render_component__(endpoint, component, assigns) do
+    socket = %Socket{endpoint: endpoint}
     rendered = Diff.component_to_rendered(socket, component, Map.new(assigns))
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()

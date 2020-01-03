@@ -120,7 +120,8 @@ defmodule Phoenix.LiveView.ComponentTest do
   defmodule MyComponent do
     use Phoenix.LiveComponent
 
-    def mount(socket) do
+    # Assert endpoint was set
+    def mount(%{endpoint: Endpoint} = socket) do
       send(self(), {:mount, socket})
       {:ok, assign(socket, hello: "world")}
     end
