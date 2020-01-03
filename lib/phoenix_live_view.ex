@@ -1209,7 +1209,7 @@ defmodule Phoenix.LiveView do
   end
 
   def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
-      when is_list(assigns) do
+      when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
@@ -1224,7 +1224,7 @@ defmodule Phoenix.LiveView do
   end
 
   def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
-      when is_list(assigns) do
+      when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 

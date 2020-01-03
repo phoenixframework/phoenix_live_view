@@ -360,10 +360,10 @@ defmodule Phoenix.LiveViewTest do
 
   """
   def render_component(component, assigns) do
-    %Socket{}
-    |> Diff.component_to_rendered(component, Map.new(assigns))
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
+    socket = %Socket{}
+    rendered = Diff.component_to_rendered(socket, component, Map.new(assigns))
+    {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
+    diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
 
   @doc """

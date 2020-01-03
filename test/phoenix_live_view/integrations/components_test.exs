@@ -154,6 +154,16 @@ defmodule Phoenix.LiveView.ComponentTest do
     end
   end
 
+  defmodule NestedRenderOnlyComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      <%= live_component @socket, RenderOnlyComponent, from: @from %>
+      """
+    end
+  end
+
   describe "render_component/2" do
     test "full life-cycle" do
       assert render_component(MyComponent, from: "test") =~ "FROM test world"
@@ -164,6 +174,10 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "render only" do
       assert render_component(RenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
+
+    test "nested render only" do
+      assert render_component(NestedRenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
     end
   end
 
