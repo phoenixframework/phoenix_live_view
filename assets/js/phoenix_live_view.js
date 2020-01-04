@@ -359,18 +359,23 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  withinOwners(childEl, callback){
-    let phxTarget = childEl.getAttribute(this.binding("target"))
-    let targetChildren = phxTarget ? Array.from(document.querySelectorAll(phxTarget)) : []
-
+  withinTargets(phxTarget, callback){
+    let targetChildren = Array.from(document.querySelectorAll(phxTarget))
     if(targetChildren.length > 0){
       targetChildren.forEach(targetEl => {
         this.owner(targetEl, view => callback(view, targetEl))
       })
-    } else if(phxTarget === null){
-      this.owner(childEl, view => callback(view, childEl))
     } else {
       throw new Error(`no phx-target's found matching selector "${phxTarget}"`)
+    }
+  }
+
+  withinOwners(childEl, callback){
+    let phxTarget = childEl.getAttribute(this.binding("target"))
+    if(phxTarget === null){
+      this.owner(childEl, view => callback(view, childEl))
+    } else {
+      this.withinTargets(phxTarget, callback)
     }
   }
 
@@ -497,7 +502,7 @@ export class LiveSocket {
 
       this.on(browserEventName, e => {
         let binding = this.binding(event)
-        let windowBinding = `${binding}-window`
+        let windowBinding = this.binding(`window-${event}`)
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent){
           this.debounce(e.target, e, () => {
@@ -1258,10 +1263,27 @@ export class View {
 
   targetComponentID(target, targetCtx){
     if(target.getAttribute(this.binding("target"))){
+      return this.closestComponentID(targetCtx)
+    } else {
+      return null
+    }
+  }
+
+  closestComponentID(targetCtx){
+    if(targetCtx){
       return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
     } else {
       return null
     }
+  }
+
+  pushHookEvent(targetCtx, event, payload){
+    this.pushWithReply("event", {
+      type: "hook",
+      event: event,
+      value: payload,
+      cid: this.closestComponentID(targetCtx)
+    })
   }
 
   pushEvent(type, el, targetCtx, phxEvent, meta){
@@ -1278,7 +1300,6 @@ export class View {
       }
     }
 
-    console.log([el, targetCtx, this.targetComponentID(el, targetCtx)])
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
@@ -1369,6 +1390,7 @@ class ViewHook {
 
   constructor(view, el, callbacks){
     this.__view = view
+    this.__liveSocket = view.liveSocket
     this.__callbacks = callbacks
     this.el = el
     this.viewName = view.name()
@@ -1377,8 +1399,15 @@ class ViewHook {
   }
 
   pushEvent(event, payload = {}){
-    this.__view.pushEvent("hook", this.el, null, event, payload)
+    this.__view.pushHookEvent(null, event, payload)
   }
+
+  pushEventTo(phxTarget, event, payload = {}){
+    this.__liveSocket.withinTargets(phxTarget, (view, targetCtx) => {
+      view.pushHookEvent(targetCtx, event, payload)
+    })
+  }
+
   __trigger__(kind){
     let callback = this.__callbacks[kind]
     callback && callback.call(this)
