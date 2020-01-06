@@ -7,6 +7,8 @@ defmodule Phoenix.LiveView.Static do
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 2
 
+  def token_vsn, do: @token_vsn
+
   # Max session age in seconds. Equivalent to 2 weeks.
   @max_session_age 1_209_600
 
