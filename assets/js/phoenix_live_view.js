@@ -1103,7 +1103,6 @@ export class View {
   }
 
   update(diff, cid){
-    console.log(diff)
     if(isEmpty(diff)){ return }
     if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
