@@ -109,7 +109,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('keyup', input, "click", {})
+    view.pushEvent('keyup', input, el, "click", {})
   })
 
   test('pushEvent as checkbox not checked', function() {
@@ -130,7 +130,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('click', input, "toggle_me", {})
+    view.pushEvent('click', input, el, "toggle_me", {})
   })
 
   test('pushEvent as checkbox when checked', function() {
@@ -152,7 +152,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('click', input, "toggle_me", {})
+    view.pushEvent('click', input, el, "toggle_me", {})
   })
 
   test('pushEvent as checkbox with value', function() {
@@ -175,7 +175,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('click', input, "toggle_me", {})
+    view.pushEvent('click', input, el, "toggle_me", {})
   })
 
   test('pushKey', function() {
@@ -198,7 +198,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushKey(input, 'keydown', 'move', {key: "A"})
+    view.pushKey(input, el, 'keydown', 'move', {key: "A"})
   })
 
   test('pushInput', function() {
@@ -221,7 +221,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushInput(input, 'validate', { target: input })
+    view.pushInput(input, el, 'validate', { target: input })
   })
 
   test('submitForm', function() {
@@ -244,7 +244,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.submitForm(form, { target: form })
+    view.submitForm(form, form, { target: form })
     expect(DOM.private(form, 'phx-has-submitted')).toBeTruthy()
     expect(form.classList.contains('phx-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
