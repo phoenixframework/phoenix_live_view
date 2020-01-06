@@ -79,6 +79,8 @@ defmodule Phoenix.LiveComponent do
   component is first rendered. Then for each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
 
+  ## Targeting Component Events
+
   Stateful components can also implement the `c:handle_event/3` callback
   that works exactly the same as in LiveView. For a client event to
   reach a component, the tag must be annotated with a `phx-target`
@@ -94,6 +96,14 @@ defmodule Phoenix.LiveComponent do
   Then `c:handle_event/3` will be called by with the "say_hello" event.
   When `c:handle_event/3` is called for a component, only the diff of
   the component is sent to the client, making them extremely efficient.
+
+  Any valid query selector for `phx-target` is supported, provided the
+  matched nodes are children of a LiveView or LiveComponent, for example
+  to send the `close` event to multiple components:
+
+      <a href="#" phx-click="close" phx-target="#modal, #sidebar">
+        Dismiss
+      </a>
 
   ### Preloading and update
 

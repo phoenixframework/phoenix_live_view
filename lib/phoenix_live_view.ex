@@ -401,9 +401,9 @@ defmodule Phoenix.LiveView do
   | Binding                | Attributes |
   |------------------------|------------|
   | [Params](#module-click-events) | `phx-value-*` |
-  | [Click Events](#module-click-events) | `phx-click` |
+  | [Click Events](#module-click-events) | `phx-click`, `phx-target` |
   | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-target` |
-  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `data-phx-error-for`, `phx-disable-with` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `data-phx-error-for`, `phx-disable-with` |
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [Custom DOM Patching](#module-custom-dom-patching) | `phx-update` |
@@ -438,17 +438,23 @@ defmodule Phoenix.LiveView do
       <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
 
   To detect when the page itself has received focus or blur,
-  `phx-target` may be specified as `"window"`. Like other
+  `phx-window-focus` and `phx-window-blur` may be specified. Like other
   bindings, `phx-value-*` can be provided on the bound element,
   and those values will be sent as part of the payload. For example:
 
       <div class="container"
-          phx-focus="page-active"
-          phx-blur="page-inactive"
-          phx-value-page="123"
-          phx-target="window">
+          phx-window-focus="page-active"
+          phx-window-blur="page-inactive"
+          phx-value-page="123">
         ...
       </div>
+
+  The following window level bindings are supported:
+
+    * `phx-window-focus`
+    * `phx-window-blur`
+    * `phx-window-keydown`
+    * `phx-window-keyup`
 
   ### Form Events
 
@@ -557,13 +563,13 @@ defmodule Phoenix.LiveView do
         "shiftKey" => false, "which" => 27
       }
 
-  By default, the bound element will be the event listener, but an
-  optional `phx-target` may be provided which may be `"document"`,
-  `"window"`, or the DOM id of a target element, for example:
+  By default, the bound element will be the event listener, but a
+  window-level binding may be provided via `phx-window-keydown`,
+  for example:
 
       def render(assigns) do
         ~L\"""
-        <div id="thermostat" phx-keyup="update_temp" phx-target="document">
+        <div id="thermostat" phx-window-keyup="update_temp">
           Current temperature: <%= @temperature %>
         </div>
         \"""
@@ -662,7 +668,7 @@ defmodule Phoenix.LiveView do
 
   Likewise, you may throttle held-down keydown:
 
-      <div phx-keydown="keydown" phx-target="window" phx-throttle="500">
+      <div phx-window-keydown="keydown" phx-throttle="500">
         ...
       </div>
 
