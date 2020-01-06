@@ -30,6 +30,11 @@ The steps are:
 
 Also note that **the session from now on will have string keys**. LiveView will warn if atom keys will be used for the session in the future.
 
+### Backwards incompatible changes
+
+`phx-target="window"` has been removed in favor of `phx-window-keydown`, `phx-window-focus`, etc,
+and the `phx-target` binding has been repurposed for targetting LiveView and LiveComponent events from the client.
+
 ## 0.4.1 (2019-11-07)
 
 ### Bug Fixes
