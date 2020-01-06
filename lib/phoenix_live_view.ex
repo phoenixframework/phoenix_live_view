@@ -965,6 +965,8 @@ defmodule Phoenix.LiveView do
     * `el` - attribute referencing the bound DOM node,
     * `viewName` - attribute matching the dom node's phx-view value
     * `pushEvent(event, payload)` - method to push an event from the client to the LiveView server
+    * `pushEventTo(selector, event, payload)` - method to push targeted events from the client
+      to LiveViews and LiveComponents.
 
   For example, a controlled input for phone-number formatting would annotate their
   markup:
