@@ -298,6 +298,8 @@ export class LiveSocket {
 
   isUnloaded(){ return this.unloaded }
 
+  isConnected(){ return this.socket.isConnected() }
+
   getBindingPrefix(){ return this.bindingPrefix }
 
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
@@ -569,7 +571,7 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent){ return }
+      if(!phxEvent || !this.isConnected()){ return }
       let href = target.href
       e.preventDefault()
       this.main.pushInternalLink(href, () => {
