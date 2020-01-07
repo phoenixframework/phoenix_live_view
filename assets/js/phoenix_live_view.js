@@ -53,10 +53,13 @@ const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
 
+let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
 export let debug = (view, kind, msg, obj) => {
-  console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  if (DEBUG) {
+    console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  }
 }
 
 // wraps value in closure or returns closure
