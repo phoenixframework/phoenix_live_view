@@ -574,7 +574,8 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent || !this.isConnected()){ return }
+      let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
+      if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
       e.preventDefault()
       this.main.pushInternalLink(href, () => {
