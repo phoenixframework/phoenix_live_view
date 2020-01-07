@@ -30,6 +30,9 @@ The steps are:
 
 Also note that **the session from now on will have string keys**. LiveView will warn if atom keys will be used for the session in the future.
 
+### Enhancements
+  - live links now respect new tab behavior
+
 ### Backwards incompatible changes
 
 `phx-target="window"` has been removed in favor of `phx-window-keydown`, `phx-window-focus`, etc,
