@@ -889,6 +889,9 @@ defmodule Phoenix.LiveView do
 
       MyApp.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
+  It is the same mechanism provided by `Phoenix.Socket`, so you can use the
+  same approach to disconnect live users and regular channels.
+
   ## JavaScript Client Specific
 
   As seen earlier, you start by instantiating a single LiveSocket instance to
