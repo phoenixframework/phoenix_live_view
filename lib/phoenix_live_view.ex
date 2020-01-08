@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView do
-  @moduledoc """
+  @moduledoc ~S"""
   LiveView provides rich, real-time user experiences with
   server-rendered HTML.
 
