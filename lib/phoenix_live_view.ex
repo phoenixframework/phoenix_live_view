@@ -874,6 +874,21 @@ defmodule Phoenix.LiveView do
         {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
       end
 
+  ## Disconnecting all instances of a given live user
+
+  It is possible to identify all LiveView sockets by setting a "live_socket_id"
+  in the session. For example, when signing in a user, you could do:
+
+      conn
+      |> put_session(:current_user_id, user.id)
+      |> put_session(:live_socket_id, "users_sockets:#{user.id}")
+
+  Now all LiveView sockets will be identified and listening to the given
+  `live_socket_id`. You can disconnect all live users identified by said
+  ID by broadcasting on the topic:
+
+      MyApp.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
+
   ## JavaScript Client Specific
 
   As seen earlier, you start by instantiating a single LiveSocket instance to
