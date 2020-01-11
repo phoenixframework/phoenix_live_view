@@ -20,11 +20,11 @@ defmodule Phoenix.LiveView.Router do
       user ID and the `remember_me` value into the LiveView session:
 
           [:user_id, :remember_me]
-      
+
       This also accepts key/value entries which are mapped directly into the
       LiveView session.  This is useful for identifying which `live` macro was
       matched.
-      
+
           [action: :index]
 
     * `:layout` - the optional tuple for specifying a layout to render the
@@ -58,33 +58,15 @@ defmodule Phoenix.LiveView.Router do
   """
   defmacro live(path, live_view, opts \\ []) do
     quote bind_quoted: binding() do
+      live_opts = Keyword.put(opts, :router, __MODULE__)
+
       Phoenix.Router.get(
         path,
         Phoenix.LiveView.Plug,
-        Phoenix.Router.scoped_alias(__MODULE__, live_view),
-        private: %{
-          phoenix_live_view: Phoenix.LiveView.Router.__live_options__(__MODULE__, opts)
-        },
+        {Phoenix.Router.scoped_alias(__MODULE__, live_view), live_opts},
         as: opts[:as] || :live,
         alias: false
       )
     end
-  end
-
-  @doc false
-  def __live_options__(router, opts) do
-    opts
-    |> Keyword.put(:router, router)
-    |> Keyword.put_new_lazy(:layout, fn ->
-      view =
-        router
-        |> Atom.to_string()
-        |> String.split(".")
-        |> Enum.drop(-1)
-        |> Kernel.++(["LayoutView"])
-        |> Module.concat()
-
-      {view, :app}
-    end)
   end
 end

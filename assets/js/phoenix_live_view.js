@@ -53,10 +53,13 @@ const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
 
+let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
 export let debug = (view, kind, msg, obj) => {
-  console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  if (DEBUG) {
+    console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  }
 }
 
 // wraps value in closure or returns closure
@@ -297,6 +300,8 @@ export class LiveSocket {
   getHookCallbacks(hookName){ return this.hooks[hookName] }
 
   isUnloaded(){ return this.unloaded }
+
+  isConnected(){ return this.socket.isConnected() }
 
   getBindingPrefix(){ return this.bindingPrefix }
 
@@ -543,6 +548,8 @@ export class LiveSocket {
         pageY: e.pageY,
         screenX: e.screenX,
         screenY: e.screenY,
+        offsetX: e.offsetX,
+        offsetY: e.offsetY,
       }
 
       this.debounce(target, e, () => {
@@ -569,7 +576,8 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent){ return }
+      let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
+      if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
       e.preventDefault()
       this.main.pushInternalLink(href, () => {
