@@ -396,11 +396,11 @@ function liveViewComponent() {
   div.setAttribute('id', 'container')
   div.setAttribute('class', 'user-implemented-class')
   div.innerHTML = `
-    <article data-phx-component="0">
+    <article class="form-wrapper" data-phx-component="0">
       <form>
         <label for="plus">Plus</label>
-        <input id="plus" value="1" name="increment" />
-        <input type="checkbox" phx-click="toggle_me" />
+        <input id="plus" value="1" name="increment" phx-target=".form-wrapper" />
+        <input type="checkbox" phx-click="toggle_me" phx-target=".form-wrapper" />
         <button phx-click="inc_temperature">Inc Temperature</button>
       </form>
     </article>
@@ -418,12 +418,14 @@ describe('View + Component', function() {
     global.document.body.innerHTML = ''
   })
 
-  test('targetComponentId', async () => {
+  test('targetComponentID', async () => {
     let liveSocket = new LiveSocket('/live', Socket)
     let el = liveViewComponent()
     let view = new View(el, liveSocket)
-    expect(view.targetComponentID(el)).toBe(null)
-    expect(view.targetComponentID(el.querySelector('form'))).toBe(0)
+    let form = el.querySelector('input[type="checkbox"]')
+    let targetCtx = el.querySelector('.form-wrapper')
+    expect(view.targetComponentID(el, targetCtx)).toBe(null)
+    expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
   test('pushEvent', function() {
@@ -431,6 +433,7 @@ describe('View + Component', function() {
 
     let liveSocket = new LiveSocket('/live', Socket)
     let el = liveViewComponent()
+    let targetCtx = el.querySelector('.form-wrapper')
     let input = el.querySelector('input')
 
     let view = new View(el, liveSocket)
@@ -447,6 +450,6 @@ describe('View + Component', function() {
     }
     view.channel = channelStub
 
-    view.pushEvent('keyup', input, "click", {})
+    view.pushEvent('keyup', input, targetCtx, "click", {})
   })
 });
