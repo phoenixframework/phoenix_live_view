@@ -438,9 +438,11 @@ defmodule Phoenix.LiveView do
       <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
 
   To detect when the page itself has received focus or blur,
-  `phx-window-focus` and `phx-window-blur` may be specified. Like other
-  bindings, `phx-value-*` can be provided on the bound element,
-  and those values will be sent as part of the payload. For example:
+  `phx-window-focus` and `phx-window-blur` may be specified. These window
+  level events may also be necessary if the element in consideration
+  (most often a `div` with no tabindex) cannot receive focus. Like other
+  bindings, `phx-value-*` can be provided on the bound element, and those
+  values will be sent as part of the payload. For example:
 
       <div class="container"
           phx-window-focus="page-active"
