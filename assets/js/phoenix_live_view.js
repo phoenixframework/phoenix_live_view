@@ -56,6 +56,18 @@ const COMPONENTS = "c"
 let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
+function detectDuplicateIds() {
+  let ids = new Set()
+  let elems = document.querySelectorAll('*[id]')
+  for (let i = 0, len = elems.length; i < len; i++) {
+    if (!ids.has(elems[i].id)) {
+      ids.add(elems[i].id)
+    } else {
+      console.error(`Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`)
+    }
+  }
+}
+
 export let debug = (view, kind, msg, obj) => {
   if (DEBUG) {
     console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -841,6 +853,10 @@ export let DOM = {
   },
 
   patch(view, container, id, html, targetCID){
+    if (DEBUG) {
+      detectDuplicateIds();
+    }
+
     let changes = {added: [], updated: [], discarded: [], phxChildrenAdded: []}
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
