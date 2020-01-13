@@ -853,10 +853,6 @@ export let DOM = {
   },
 
   patch(view, container, id, html, targetCID){
-    if (DEBUG) {
-      detectDuplicateIds();
-    }
-
     let changes = {added: [], updated: [], discarded: [], phxChildrenAdded: []}
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
@@ -915,6 +911,10 @@ export let DOM = {
         }
       }
     })
+
+    if (DEBUG) {
+      detectDuplicateIds();
+    }
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
