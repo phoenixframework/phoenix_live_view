@@ -923,6 +923,7 @@ class DOMPatch {
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let updates = []
     let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
 
     this.trackBefore("added", container)
@@ -952,8 +953,10 @@ class DOMPatch {
           return true
         }
       },
-      onElUpdated: (el) => { this.trackAfter("updated", el, el) },
+      onElUpdated: (el) => { updates.push(el) },
       onBeforeElUpdated: (fromEl, toEl) => {
+        if(fromEl.isEqualNode(toEl)){ return false }
+
         if(fromEl.getAttribute(phxUpdate) === "ignore"){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeAttrs(fromEl, toEl)
@@ -987,6 +990,8 @@ class DOMPatch {
     if (DEBUG) {
       detectDuplicateIds()
     }
+
+    updates.forEach(el => this.trackAfter("updated", el))
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
@@ -1152,14 +1157,9 @@ export class View {
   performPatch(patch){
     let destroyedCIDs = []
     let phxChildrenAdded = false
-    let updatedHooks = []
-    patch.before("added", el => {
-      let hook = this.addHook(el)
-      if(hook){ hook.__trigger__("beforeMount") }
-    })
 
     patch.after("added", el => {
-      let newHook = this.getHook(el)
+      let newHook = this.addHook(el)
       if(newHook){ newHook.__trigger__("mounted") }
     })
 
@@ -1167,11 +1167,12 @@ export class View {
 
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.getHook(fromEl)
-      let phxAttr = this.binding(PHX_HOOK)
-      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
-        updatedHooks.push({fromEl, toEl, wasEqual: fromEl.isEqualNode(toEl)})
-        if(!fromEl.isEqualNode(toEl)){ hook.__trigger__("beforeUpdate") }
-      }
+      if(hook){ hook.__trigger__("beforeUpdate") }
+    })
+
+    patch.after("updated", el => {
+      let hook = this.getHook(el)
+      if(hook){ hook.__trigger__("updated") }
     })
 
     patch.before("discarded", (el) => {
@@ -1186,19 +1187,6 @@ export class View {
       hook && this.destroyHook(hook)
     })
     patch.perform()
-
-    // patch.after("updated", (fromEl, toEl) => {
-    updatedHooks.forEach(({fromEl, toEl, wasEqual}) => {
-      let hook = this.getHook(fromEl)
-      let phxAttr = this.binding(PHX_HOOK)
-      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
-        if(!wasEqual){ hook.__trigger__("updated") }
-      } else if(hook){
-        this.destroyHook(hook)
-        this.addHook(fromEl)
-      }
-    })
-
 
     if(phxChildrenAdded){
       this.joinNewChildren()
