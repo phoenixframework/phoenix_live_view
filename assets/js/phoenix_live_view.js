@@ -60,10 +60,10 @@ function detectDuplicateIds() {
   let ids = new Set()
   let elems = document.querySelectorAll('*[id]')
   for (let i = 0, len = elems.length; i < len; i++) {
-    if (!ids.has(elems[i].id)) {
-      ids.add(elems[i].id)
-    } else {
+    if (ids.has(elems[i].id)) {
       console.error(`Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`)
+    } else {
+      ids.add(elems[i].id)
     }
   }
 }
