@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.RouterTest do
   use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.{Endpoint, ThermostatLive}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -43,5 +43,9 @@ defmodule Phoenix.LiveView.RouterTest do
   test "routing with custom layout", %{conn: conn} do
     conn = get(conn, "/router/thermo_layout/123")
     assert conn.resp_body =~ "ALTERNATIVE"
+  end
+
+  test "live_path helper", %{conn: conn} do
+    assert Phoenix.LiveViewTest.Router.Helpers.live_path(conn, ThermostatLive) == "/thermo"
   end
 end

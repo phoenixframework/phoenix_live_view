@@ -63,7 +63,8 @@ defmodule Phoenix.LiveView.Router do
       Phoenix.Router.get(
         path,
         Phoenix.LiveView.Plug,
-        {Phoenix.Router.scoped_alias(__MODULE__, live_view), live_opts},
+        Phoenix.Router.scoped_alias(__MODULE__, live_view),
+        private: %{phoenix_live_view: Phoenix.LiveView.Plug.__live_opts__(live_opts)},
         as: opts[:as] || :live,
         alias: false
       )
