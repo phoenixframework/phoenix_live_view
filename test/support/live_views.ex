@@ -128,7 +128,7 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
   end
 
   def mount(session, socket) do
-    {:ok, assign(socket, session: session)}
+    {:ok, assign(socket, %{session: session, title: "Dashboard"})}
   end
 end
 
