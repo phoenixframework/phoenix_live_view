@@ -26,4 +26,9 @@ defmodule Phoenix.LiveView.ControllerTest do
              assert html_response(conn, 200) =~ "session: %{custom: :session}"
            end) =~ "Phoenix.LiveView sessions require string keys, got: :custom"
   end
+
+  test "live renders from controller with merged assigns", %{conn: conn} do
+    conn = get(conn, "/controller/live-render-5")
+    assert html_response(conn, 200) =~ "title: Dashboard"
+  end
 end

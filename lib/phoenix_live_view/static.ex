@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.Static do
           | extended_attrs
         ]
 
-        {:ok, to_rendered_content_tag(socket, tag, view, attrs)}
+        {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
 
       {:stop, socket} ->
         {:stop, socket}
