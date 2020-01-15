@@ -712,6 +712,8 @@ defmodule Phoenix.LiveView do
         end
       end
 
+  *Note*: The layout will be wrapped by the LiveView's `:container` tag.
+
   ### Updating the HTML document title
 
   Because the main layout from the Plug pipeline is rendered outside of LiveView,
