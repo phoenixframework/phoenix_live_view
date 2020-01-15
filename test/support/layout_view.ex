@@ -6,7 +6,6 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
   end
 
-
   def render("live.html", assigns) do
     ~L"""
     LIVELAYOUTSTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVELAYOUTEND
