@@ -220,7 +220,13 @@ defmodule Phoenix.LiveView.Helpers do
       {:safe, ["Hello ", "world", "\\n"]}
 
   """
-  defmacro sigil_L({:<<>>, _, [expr]}, []) do
-    EEx.compile_string(expr, engine: Phoenix.LiveView.Engine, line: __CALLER__.line + 1)
+  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.Engine,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
   end
 end
