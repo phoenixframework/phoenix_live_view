@@ -460,7 +460,7 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, verified} ->
         verified_mount(verified, params, from, phx_socket)
 
-      {:error, :outdated} ->
+      {:error, reason} when reason in [:outdated, :expired] ->
         GenServer.reply(from, {:error, %{reason: "outdated"}})
         {:stop, :shutdown, :no_state}
 

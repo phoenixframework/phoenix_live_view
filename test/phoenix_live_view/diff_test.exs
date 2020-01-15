@@ -1,8 +1,7 @@
 defmodule Phoenix.LiveView.DiffTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView,
-    only: [sigil_L: 2, live_component: 2, live_component: 3, live_component: 4]
+  import Phoenix.LiveView.Helpers
 
   alias Phoenix.LiveView.{Socket, Diff, Rendered, Component}
 

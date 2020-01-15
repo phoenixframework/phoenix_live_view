@@ -53,10 +53,25 @@ const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
 
+let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
+function detectDuplicateIds() {
+  let ids = new Set()
+  let elems = document.querySelectorAll('*[id]')
+  for (let i = 0, len = elems.length; i < len; i++) {
+    if (ids.has(elems[i].id)) {
+      console.error(`Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`)
+    } else {
+      ids.add(elems[i].id)
+    }
+  }
+}
+
 export let debug = (view, kind, msg, obj) => {
-  console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  if (DEBUG) {
+    console.log(`${view.id} ${kind}: ${msg} - `, obj)
+  }
 }
 
 // wraps value in closure or returns closure
@@ -297,6 +312,8 @@ export class LiveSocket {
   getHookCallbacks(hookName){ return this.hooks[hookName] }
 
   isUnloaded(){ return this.unloaded }
+
+  isConnected(){ return this.socket.isConnected() }
 
   getBindingPrefix(){ return this.bindingPrefix }
 
@@ -543,6 +560,8 @@ export class LiveSocket {
         pageY: e.pageY,
         screenX: e.screenX,
         screenY: e.screenY,
+        offsetX: e.offsetX,
+        offsetY: e.offsetY,
       }
 
       this.debounce(target, e, () => {
@@ -569,7 +588,8 @@ export class LiveSocket {
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
-      if(!phxEvent){ return }
+      let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
+      if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
       e.preventDefault()
       this.main.pushInternalLink(href, () => {
@@ -832,71 +852,6 @@ export let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
-  patch(view, container, id, html, targetCID){
-    let changes = {added: [], updated: [], discarded: [], phxChildrenAdded: []}
-    let focused = view.liveSocket.getActiveElement()
-    let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
-    let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
-    let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
-
-    morphdom(targetContainer, diffContainer.outerHTML, {
-      childrenOnly: true,
-      onBeforeNodeAdded: function(el){
-        //input handling
-        DOM.discardError(targetContainer, el)
-        return el
-      },
-      onNodeAdded: function(el){
-        // nested view handling
-        if(DOM.isPhxChild(el) && view.ownsElement(el)){
-          changes.phxChildrenAdded.push(el)
-        }
-        changes.added.push(el)
-      },
-      onNodeDiscarded(el){ changes.discarded.push(el) },
-      onBeforeNodeDiscarded: function(el){
-        // nested view handling
-        if(DOM.isPhxChild(el)){
-          view.liveSocket.destroyViewByEl(el)
-          return true
-        }
-      },
-      onBeforeElUpdated: function(fromEl, toEl) {
-        if(fromEl.getAttribute(phxUpdate) === "ignore"){
-          DOM.mergeAttrs(fromEl, toEl)
-          changes.updated.push({fromEl, toEl: fromEl})
-          return false
-        }
-        if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-
-        // nested view handling
-        if(DOM.isPhxChild(toEl)){
-          let prevStatic = fromEl.getAttribute(PHX_STATIC)
-          DOM.mergeAttrs(fromEl, toEl)
-          fromEl.setAttribute(PHX_STATIC, prevStatic)
-          return false
-        }
-
-        // input handling
-        DOM.copyPrivates(toEl, fromEl)
-        DOM.discardError(targetContainer, toEl)
-
-        if(DOM.isTextualInput(fromEl) && fromEl === focused){
-          DOM.mergeInputs(fromEl, toEl)
-          changes.updated.push({fromEl, toEl: fromEl})
-          return false
-        } else {
-          changes.updated.push({fromEl, toEl})
-          return true
-        }
-      }
-    })
-
-    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
-    DOM.dispatchEvent(document, "phx:update")
-    return changes
-  },
-
   dispatchEvent(target, eventString, detail = {}){
     let event = new CustomEvent(eventString, {bubbles: true, cancelable: true, detail: detail})
     target.dispatchEvent(event)
@@ -906,59 +861,6 @@ export let DOM = {
     let cloned = node.cloneNode()
     cloned.innerHTML = html || node.innerHTML
     return cloned
-  },
-
-  // builds container for morphdom patch
-  // - precomputes append/prepend content in diff node to make it appear as if
-  //   the contents had been appended/prepended on full child node list
-  // - precomputes updates on existing child ids within a prepend/append child list
-  //   to allow existing nodes to be updated in place rather than reordered
-  buildDiffContainer(container, html, phxUpdate, targetCID){
-    let targetContainer = container
-    let diffContainer = null
-    let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
-    let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
-    if(typeof(targetCID) === "number"){
-      targetContainer = container.querySelector(`[${PHX_COMPONENT}="${targetCID}"]`).parentNode
-      diffContainer = this.cloneNode(targetContainer)
-      let componentNodes = this.findComponentNodeList(diffContainer, targetCID)
-      let prevSibling = componentNodes[0].previousSibling
-      componentNodes.forEach(c => c.remove())
-      let nextSibling = prevSibling && prevSibling.nextSibling
-
-      if(prevSibling && nextSibling){
-        let template = document.createElement("template")
-        template.innerHTML = html
-        Array.from(template.content.childNodes).forEach(child => diffContainer.insertBefore(child, nextSibling))
-      } else if(prevSibling){
-        diffContainer.insertAdjacentHTML("beforeend", html)
-      } else {
-        diffContainer.insertAdjacentHTML("afterbegin", html)
-      }
-    } else {
-      diffContainer = this.cloneNode(container, html)
-    }
-
-    DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
-      let id = el.id || logError("append/prepend requires an ID, got: ", el)
-      let existingInContainer = container.querySelector(`#${id}`)
-      if(!existingInContainer){ return }
-      let existing = this.cloneNode(existingInContainer)
-      let updateType = el.getAttribute(phxUpdate)
-      let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
-      let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
-
-      if(newIds.toString() !== existingIds.toString()){
-        let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
-        dupIds.forEach(id => {
-          let updatedEl = el.querySelector(`#${id}`)
-          existing.querySelector(`#${id}`).replaceWith(updatedEl)
-        })
-        el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
-      }
-    })
-
-    return [diffContainer, targetContainer]
   },
 
   mergeAttrs(target, source, exclude = []){
@@ -989,6 +891,164 @@ export let DOM = {
 
   isTextualInput(el){
     return FOCUSABLE_INPUTS.indexOf(el.type) >= 0
+  }
+}
+
+class DOMPatch {
+  constructor(view, container, id, html, targetCID){
+    this.view = view,
+    this.container = container
+    this.id = id
+    this.html = html
+    this.targetCID = targetCID
+    this.callbacks = {
+      beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
+      afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
+    }
+  }
+
+  before(kind, callback){ this.callbacks[`before${kind}`].push(callback) }
+  after(kind, callback){ this.callbacks[`after${kind}`].push(callback) }
+
+  trackBefore(kind, ...args){
+    this.callbacks[`before${kind}`].forEach(callback => callback(...args))
+  }
+
+  trackAfter(kind, ...args){
+    this.callbacks[`after${kind}`].forEach(callback => callback(...args))
+  }
+
+  perform(){
+    let {view, container, id, html, targetCID} = this
+    let focused = view.liveSocket.getActiveElement()
+    let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
+    let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let updates = []
+    let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
+
+    this.trackBefore("added", container)
+    this.trackBefore("updated", container, container)
+
+    morphdom(targetContainer, diffContainer.outerHTML, {
+      childrenOnly: true,
+      onBeforeNodeAdded: (el) => {
+        //input handling
+        DOM.discardError(targetContainer, el)
+        this.trackBefore("added", el)
+        return el
+      },
+      onNodeAdded: (el) => {
+        // nested view handling
+        if(DOM.isPhxChild(el) && view.ownsElement(el)){
+          this.trackAfter("phxChildAdded", el)
+        }
+        this.trackAfter("added", el)
+      },
+      onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
+      onBeforeNodeDiscarded: (el) => {
+        this.trackBefore("discarded", el)
+        // nested view handling
+        if(DOM.isPhxChild(el)){
+          view.liveSocket.destroyViewByEl(el)
+          return true
+        }
+      },
+      onElUpdated: (el) => { updates.push(el) },
+      onBeforeElUpdated: (fromEl, toEl) => {
+        if(fromEl.isEqualNode(toEl)){ return false }
+
+        if(fromEl.getAttribute(phxUpdate) === "ignore"){
+          this.trackBefore("updated", fromEl, toEl)
+          DOM.mergeAttrs(fromEl, toEl)
+          return false
+        }
+        if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+
+        // nested view handling
+        if(DOM.isPhxChild(toEl)){
+          let prevStatic = fromEl.getAttribute(PHX_STATIC)
+          DOM.mergeAttrs(fromEl, toEl)
+          fromEl.setAttribute(PHX_STATIC, prevStatic)
+          return false
+        }
+
+        // input handling
+        DOM.copyPrivates(toEl, fromEl)
+        DOM.discardError(targetContainer, toEl)
+
+        if(DOM.isTextualInput(fromEl) && fromEl === focused){
+          this.trackBefore("updated", fromEl, fromEl)
+          DOM.mergeInputs(fromEl, toEl)
+          return false
+        } else {
+          this.trackBefore("updated", fromEl, toEl)
+          return true
+        }
+      }
+    })
+
+    if (DEBUG) {
+      detectDuplicateIds()
+    }
+
+    updates.forEach(el => this.trackAfter("updated", el))
+
+    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
+    DOM.dispatchEvent(document, "phx:update")
+    return true
+  }
+
+  // builds container for morphdom patch
+  // - precomputes append/prepend content in diff node to make it appear as if
+  //   the contents had been appended/prepended on full child node list
+  // - precomputes updates on existing child ids within a prepend/append child list
+  //   to allow existing nodes to be updated in place rather than reordered
+  buildDiffContainer(container, html, phxUpdate, targetCID){
+    let targetContainer = container
+    let diffContainer = null
+    let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
+    let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
+    if(typeof(targetCID) === "number"){
+      targetContainer = container.querySelector(`[${PHX_COMPONENT}="${targetCID}"]`).parentNode
+      diffContainer = DOM.cloneNode(targetContainer)
+      let componentNodes = DOM.findComponentNodeList(diffContainer, targetCID)
+      let prevSibling = componentNodes[0].previousSibling
+      componentNodes.forEach(c => c.remove())
+      let nextSibling = prevSibling && prevSibling.nextSibling
+
+      if(prevSibling && nextSibling){
+        let template = document.createElement("template")
+        template.innerHTML = html
+        Array.from(template.content.childNodes).forEach(child => diffContainer.insertBefore(child, nextSibling))
+      } else if(prevSibling){
+        diffContainer.insertAdjacentHTML("beforeend", html)
+      } else {
+        diffContainer.insertAdjacentHTML("afterbegin", html)
+      }
+    } else {
+      diffContainer = DOM.cloneNode(container, html)
+    }
+
+    DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
+      let id = el.id || logError("append/prepend requires an ID, got: ", el)
+      let existingInContainer = container.querySelector(`#${id}`)
+      if(!existingInContainer){ return }
+      let existing = DOM.cloneNode(existingInContainer)
+      let updateType = el.getAttribute(phxUpdate)
+      let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
+      let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
+
+      if(newIds.toString() !== existingIds.toString()){
+        let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
+        dupIds.forEach(id => {
+          let updatedEl = el.querySelector(`#${id}`)
+          existing.querySelector(`#${id}`).replaceWith(updatedEl)
+        })
+        el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
+      }
+    })
+
+    return [diffContainer, targetContainer]
   }
 }
 
@@ -1082,15 +1142,56 @@ export class View {
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     this.hideLoader()
-    let changes = DOM.patch(this, this.el, this.id, Rendered.toString(this.rendered))
-    changes.added.push(this.el)
-    DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => changes.added.push(hookEl))
-    this.triggerHooks(changes)
-    this.joinNewChildren()
+    let patch = new DOMPatch(this, this.el, this.id, Rendered.toString(this.rendered))
+    this.performPatch(patch)
+    DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
+      let hook = this.addHook(hookEl)
+      if(hook){ hook.__trigger__("mounted") }
+    })
     if(live_redirect){
       let {kind, to} = live_redirect
       Browser.pushState(kind, {}, to)
     }
+  }
+
+  performPatch(patch){
+    let destroyedCIDs = []
+    let phxChildrenAdded = false
+
+    patch.after("added", el => {
+      let newHook = this.addHook(el)
+      if(newHook){ newHook.__trigger__("mounted") }
+    })
+
+    patch.after("phxChildAdded", el => phxChildrenAdded = true)
+
+    patch.before("updated", (fromEl, toEl) => {
+      let hook = this.getHook(fromEl)
+      if(hook){ hook.__trigger__("beforeUpdate") }
+    })
+
+    patch.after("updated", el => {
+      let hook = this.getHook(el)
+      if(hook){ hook.__trigger__("updated") }
+    })
+
+    patch.before("discarded", (el) => {
+      let hook = this.getHook(el)
+      if(hook){ hook.__trigger__("beforeDestroy") }
+    })
+
+    patch.after("discarded", (el) => {
+      let cid = this.componentID(el)
+      if(typeof(cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
+      let hook = this.getHook(el)
+      hook && this.destroyHook(hook)
+    })
+    patch.perform()
+
+    if(phxChildrenAdded){
+      this.joinNewChildren()
+    }
+    this.maybePushComponentsDestroyed(destroyedCIDs)
   }
 
   joinNewChildren(){
@@ -1112,11 +1213,8 @@ export class View {
       Rendered.componentToString(this.rendered[COMPONENTS], cid) :
       Rendered.toString(this.rendered)
 
-    let changes = DOM.patch(this, this.el, this.id, html, cid)
-    if(changes.phxChildrenAdded.length > 0){
-      this.joinNewChildren()
-    }
-    this.triggerHooks(changes)
+    let patch = new DOMPatch(this, this.el, this.id, html, cid)
+    this.performPatch(patch)
   }
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
@@ -1129,7 +1227,7 @@ export class View {
     if(callbacks){
       let hook = new ViewHook(this, el, callbacks)
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
-      hook.__trigger__("mounted")
+      return hook
     } else if(hookName !== null){
       logError(`unknown hook found for "${hookName}"`, el)
     }
@@ -1138,30 +1236,6 @@ export class View {
   destroyHook(hook){
     hook.__trigger__("destroyed")
     delete this.viewHooks[ViewHook.elementID(hook.el)]
-  }
-
-  triggerHooks(changes){
-    let destroyedCIDs = []
-    changes.updated.push({fromEl: this.el, toEl: this.el})
-    changes.added.forEach(el => this.addHook(el))
-    changes.updated.forEach(({fromEl, toEl}) => {
-      let hook = this.getHook(fromEl)
-      let phxAttr = this.binding(PHX_HOOK)
-      if(hook && toEl.getAttribute && fromEl.getAttribute(phxAttr) === toEl.getAttribute(phxAttr)){
-        hook.__trigger__("updated")
-      } else if(hook){
-        this.destroyHook(hook)
-        this.addHook(fromEl)
-      }
-    })
-    changes.discarded.forEach(el => {
-      let cid = this.componentID(el)
-      if(typeof(cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
-      let hook = this.getHook(el)
-      hook && this.destroyHook(hook)
-    })
-
-    this.maybePushComponentsDestroyed(destroyedCIDs)
   }
 
   applyPendingUpdates(){

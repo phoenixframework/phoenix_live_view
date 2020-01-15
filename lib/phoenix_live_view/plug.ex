@@ -10,10 +10,22 @@ defmodule Phoenix.LiveView.Plug do
   def link_header, do: @link_header
 
   @impl Plug
-  def init(opts), do: opts
+  def init(view) when is_atom(view), do: view
+
+  def init({view, opts}) when is_atom(view) and is_list(opts) do
+    {view, __live_opts__(opts)}
+  end
 
   @impl Plug
-  def call(%Conn{private: %{phoenix_live_view: opts}} = conn, view) do
+  def call(%Plug.Conn{private: %{phoenix_live_view: opts}} = conn, view) when is_atom(view) do
+    do_call(conn, view, opts)
+  end
+
+  def call(%Plug.Conn{} = conn, {view, opts}) when is_atom(view) and is_list(opts) do
+    do_call(conn, view, opts)
+  end
+
+  defp do_call(conn, view, opts) do
     # TODO: Deprecate atom entries in :session
     session_keys = Keyword.get(opts, :session, [])
 
@@ -50,6 +62,7 @@ defmodule Phoenix.LiveView.Plug do
     for key_or_pair <- session_keys, into: %{} do
       case key_or_pair do
         key when is_atom(key) -> {key, Conn.get_session(conn, key)}
+        key when is_binary(key) -> {key, Conn.get_session(conn, key)}
         {key, value} -> {key, value}
       end
     end
@@ -65,5 +78,25 @@ defmodule Phoenix.LiveView.Plug do
 
   defp live_link?(%Plug.Conn{} = conn) do
     Plug.Conn.get_req_header(conn, @link_header) == ["live-link"]
+  end
+
+  def __live_opts__(opts) do
+    router = Keyword.fetch!(opts, :router)
+
+    new_opts =
+      opts
+      |> Keyword.put_new_lazy(:layout, fn ->
+        layout_view =
+          router
+          |> Atom.to_string()
+          |> String.split(".")
+          |> Enum.drop(-1)
+          |> Kernel.++(["LayoutView"])
+          |> Module.concat()
+
+        {layout_view, :app}
+      end)
+
+    new_opts
   end
 end

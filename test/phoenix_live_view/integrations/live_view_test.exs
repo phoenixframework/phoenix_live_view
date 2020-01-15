@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.Helpers
+
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive}
 
@@ -26,6 +28,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
+  end
+
+  defp simulate_expired_token_on_page(conn) do
+    html = html_response(conn, 200)
+    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    salt = Phoenix.LiveView.Utils.salt!(@endpoint)
+    expired_token = Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+    %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
   describe "mounting" do
@@ -122,6 +132,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "live render with outdated session", %{conn: conn} do
       conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               assert {:error, %{reason: "outdated"}} = live(conn)
+             end)
+    end
+
+    test "live render with expired session", %{conn: conn} do
+      conn = simulate_expired_token_on_page(get(conn, "/thermo"))
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                assert {:error, %{reason: "outdated"}} = live(conn)
@@ -542,7 +560,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "live_link" do
     test "forwards dom attribute options" do
       dom =
-        LiveView.live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
+        live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|class="btn btn-large"|
@@ -551,7 +569,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "overwrites reserved options" do
       dom =
-        LiveView.live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
+        live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|href="page-1"|
