@@ -22,10 +22,7 @@ defmodule Phoenix.LiveView.Utils do
   """
   def changed?(%Socket{changed: changed}), do: changed != %{}
 
-  def changed?(%Socket{changed: %{} = changed}, assign) do
-    Map.has_key?(changed, assign)
-  end
-
+  def changed?(%Socket{changed: %{} = changed}, assign), do: Map.has_key?(changed, assign)
   def changed?(%Socket{}, _), do: false
 
   @doc """
