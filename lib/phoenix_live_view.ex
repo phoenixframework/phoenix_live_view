@@ -728,7 +728,7 @@ defmodule Phoenix.LiveView do
 
   Then access `@page_title` in the app layout:
 
-     <title><%= @page_title %></title>
+      <title><%= @page_title %></title>
 
   Now, although the app layout is not updated by LiveView, by simply assigning
   to `page_title`, LiveView knows you want the title to be updated:
