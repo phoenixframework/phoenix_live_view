@@ -1199,7 +1199,8 @@ defmodule Phoenix.LiveView do
         {mod, template} when is_atom(mod) and is_binary(template) ->
           {mod, template}
 
-        nil -> nil
+        nil ->
+          nil
 
         other ->
           raise ArgumentError,
