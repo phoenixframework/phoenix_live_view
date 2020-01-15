@@ -21,6 +21,10 @@ defmodule Phoenix.LiveView.Utils do
   Checks if the socket changed.
   """
   def changed?(%Socket{changed: changed}), do: changed != %{}
+  def changed?(%Socket{changed: %{} = changed}, assign) do
+    Map.has_key?(changed, assign)
+  end
+  def changed?(%Socket{}, _), do: false
 
   @doc """
   Returns the socket's flash messages.
@@ -62,9 +66,9 @@ defmodule Phoenix.LiveView.Utils do
   Renders the view with socket into a rendered struct.
   """
   def to_rendered(socket, view) do
-    assigns = Map.put(socket.assigns, :socket, socket)
+    assigns = Map.merge(socket.assigns, %{socket: socket, live_view_module: view})
 
-    case view.render(assigns) do
+    case render_view(socket.layout, view, assigns) do
       %LiveView.Rendered{} = rendered ->
         rendered
 
@@ -256,5 +260,13 @@ defmodule Phoenix.LiveView.Utils do
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
+  end
+
+  defp render_view({layout_mod, layout_template} = _layout, view, assigns) do
+    layout_mod.render(layout_template, Map.put(assigns, :live_view_module, view))
+  end
+
+  defp render_view(nil, view, assigns) do
+    view.render(assigns)
   end
 end

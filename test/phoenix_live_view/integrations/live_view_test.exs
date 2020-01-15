@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -32,7 +32,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
     html = html_response(conn, 200)
     [{_id, session_token, nil} | _] = DOM.find_views(html)
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
-    expired_token = Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+
+    expired_token =
+      Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
@@ -600,6 +603,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
                      |> put_session(:opts, temporary_assignswhoops: [:description])
                      |> live("/opts")
                    end
+    end
+  end
+
+  describe "put_layout" do
+    @tag session: %{live_layout: {LayoutView, "live.html"}}
+    test "from root mount renders within the layout", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert html =~
+               ~r|^LAYOUT<article[\S\s]*LIVELAYOUTSTART-1-The temp is: 1[\S\s]*-LIVELAYOUTEND\n</article>$|
+
+      assert render_click(view, :save, "22") =~
+               ~r|^LIVELAYOUTSTART-22-The temp is: 22[\S\s]*-LIVELAYOUTEND\n$|
+
+      GenServer.call(view.pid, {:set, :page_title, "New Title"})
+      assert_receive {_ref, {:title, "New Title"}}
+    end
+
+    test "raises when called outside of mount", %{conn: _conn} do
+      # TODO
     end
   end
 end

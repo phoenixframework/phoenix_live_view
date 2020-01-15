@@ -28,7 +28,8 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
        redir: session["redir"],
        users: users,
        greeting: nil
-     )}
+     )
+     |> maybe_put_layout(session)}
   end
 
   @key_i 73
@@ -76,6 +77,12 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_call({:set, var, val}, _, socket) do
     {:reply, :ok, assign(socket, var, val)}
   end
+
+  defp maybe_put_layout(socket, %{"live_layout" => {mod, template}}) do
+    put_layout(socket, mod, template)
+  end
+
+  defp maybe_put_layout(socket, session), do: socket
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do

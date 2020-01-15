@@ -38,6 +38,7 @@ const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_CHANGE = "phx-change"
+const PHX_TOUCHED = "phx-touch"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
 const LOADER_TIMEOUT = 1
@@ -346,9 +347,10 @@ export class LiveSocket {
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
 
-      let div = document.createElement("div")
-      div.innerHTML = html
-      this.joinView(div.firstChild, null, href, newMain => {
+      let template = document.createElement("template")
+      template.innerHTML = html
+
+      this.joinView(template.content.childNodes[0], null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
@@ -745,6 +747,8 @@ export let DOM = {
     }
   },
 
+  putTitle(title){ document.title = title },
+
   debounce(el, event, phxDebounce, phxThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
@@ -1139,6 +1143,7 @@ export class View {
 
   onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
+    if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     this.hideLoader()
@@ -1205,6 +1210,7 @@ export class View {
 
   update(diff, cid){
     if(isEmpty(diff)){ return }
+    if(diff.title){ DOM.putTitle(diff.title) }
     if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
@@ -1443,6 +1449,8 @@ export class View {
   }
 
   submitForm(form, targetCtx, phxEvent){
+    // touch all text areas to fix isEqualNode failing to use text area values
+    DOM.all(form, "textarea", el => el.setAttribute(PHX_TOUCHED, true))
     let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)

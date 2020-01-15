@@ -641,6 +641,105 @@ defmodule Phoenix.LiveView do
     * `live_component` - compartmentalizes state, markup, and events
     * `live_render` - compartmentalizes state, markup, events, and error isolation
 
+  ## Layouts
+
+  By default, your plug pipeline will rendered any layout specified using
+  `Plug.Conn.put_layout/2`, such as the default app layout. Assigns from the
+  root LiveView will be accessible by the layout, but they will not be
+  dynamically updated on change. For a live layout, you must specify an additional
+  layout with your LiveView. For example, your regular `app.html` template may display
+  a `@new_message_count` notification, like this:
+
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <%= csrf_meta_tag() %>
+          <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
+          <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+          <title><%= @page_title %></title>
+        </head>
+        <body>
+          <div>
+            <nav>
+              ...
+              Messages (<%= @new_message_count %>)
+            </nav>
+            <%= render @view_module, @view_template, assigns %>
+          </div>
+        </body>
+      </html>
+
+  To allow the `@new_message_count` to be be updated by your LiveView, you can
+  move the dynamic content inside a sub-layout, such as `app_web/templates/layout/live.html.leex`.
+
+  First, you would update your `app.html` layout:
+
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <%= csrf_meta_tag() %>
+          <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
+          <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+          <title><%= @page_title %></title>
+        </head>
+        <body>
+          <%= render @view_module, @view_template, assigns %>
+        </body>
+      </html>
+
+
+      Next, in your new `live.html.leex` layout, you would add the dynamic content, followed
+      by a render of the inner `@live_view_module`:
+
+      <nav>
+        ...
+        Messages (<%= @new_message_count %>)
+      </nav>
+      <%= @live_view_module.render(assigns) %>
+
+  Now, your LiveView can leverage `put_layout/2` and the layout will render
+  dynamic updates:
+
+      defmodule AppWeb.TimelineLive do
+        use Phoenix.LiveView
+        ...
+        def mount(_session, socket) do
+          {:ok,
+           socket
+           |> put_layout(AppWeb.LayoutView, "live.html")
+           |> assign(
+             page_title: "Latest Posts",
+             new_message_count: 0,
+             ...
+          )}
+        end
+
+        def handle_info({:new_messages, count}, socket) do
+          {:noreply, assign(socket, new_messaage_count: count)}
+        end
+      end
+
+  ### Updating the HTML document title
+
+  Because the main layout from the plug pipeline is rendered outside of LiveView,
+  the contents cannot be dynamically patched by LiveView. The one exception
+  is the `<title>` of the HTML document. Phoenix LiveView special cases the
+  `@page_title` assign to allow dynamically updating the title of the page,
+  which is useful when using live navigation, or annoting the browser tab
+  with a notification. For example, to show the user's notfication count in
+  the browers title bar:
+
+      def handle_info({:new_messages, count}, socket) do
+        {:noreply, assign(socket, page_title: "Latest Posts (#{count} new)")}
+      end
+
+  *Note*: If you find yourself needing to dynamically patch other parts of the
+  base layout, such as injecting new scripts and styles into the `<head>` during
+  live navigation, a true page navigation should be used instead. `@page_title`
+  updates the `document.title` directly, and therefore cannot be used to udpate
+  any other part of the plug layout, even if the plug layout references the
+  assign.
+
   ## Rate limiting events with Debounce and Throttle
 
   All events can be rate-limited on the client by using the
@@ -1407,6 +1506,17 @@ defmodule Phoenix.LiveView do
   def put_flash(%Socket{private: private} = socket, kind, msg) do
     new_private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
     %Socket{socket | private: new_private}
+  end
+
+  @doc """
+  Adds the layout to the socket for the LiveView to be rendered within.
+
+  ## Examples
+
+      iex> put_layout(socket, MyAppWeb.LayoutView, "live.html")
+  """
+  def put_layout(%Socket{} = socket, layout_view, template) do
+    %Socket{socket | layout: {layout_view, template}}
   end
 
   @doc """

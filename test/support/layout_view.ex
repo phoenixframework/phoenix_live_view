@@ -1,8 +1,16 @@
 defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
+  import Phoenix.LiveView, only: [sigil_L: 2]
 
   def render("app.html", assigns) do
     ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
+  end
+
+
+  def render("live.html", assigns) do
+    ~L"""
+    LIVELAYOUTSTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVELAYOUTEND
+    """
   end
 end
 
