@@ -675,7 +675,8 @@ defmodule Phoenix.LiveView do
       <!DOCTYPE html>
       <html lang="en">
         <head>
-          <title><%= @page_title %></title>
+          <title>...</title>
+          <script>...</script>
         </head>
         <body>
           <%= render @view_module, @view_template, assigns %>
@@ -699,12 +700,8 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def mount(_session, socket) do
-          {:ok,
-           assign(socket
-             page_title: "Latest Posts",
-             new_message_count: 0,
-             ...
-          ), layout: {AppWeb.LayoutView, "live.html"}}
+          socket = assign(socket, new_message_count: 0)
+          {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
         end
 
         def handle_info({:new_messages, count}, socket) do
@@ -724,9 +721,10 @@ defmodule Phoenix.LiveView do
   For example, to update the user's notfication count in the brower's title bar,
   first set the `page_title` assign on mount:
 
-      def mount(_session, socket) do
-        {:ok, assign(socket, page_title: "Hello World")}
-      end
+        def mount(_session, socket) do
+          socket = assign(socket, page_title: "Latest Posts")
+          {:ok, socket}
+        end
 
   Then access `@page_title` in the app layout:
 
