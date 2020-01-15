@@ -641,6 +641,108 @@ defmodule Phoenix.LiveView do
     * `live_component` - compartmentalizes state, markup, and events
     * `live_render` - compartmentalizes state, markup, events, and error isolation
 
+  ## Live Layouts
+
+  Your LiveView will be rendered within the layout specified in your Plug pipeline,
+  such as the default app layout. Assigns defined during `mount` of the root LiveView
+  are accessible in the layout, but the app layout is never updated after the initial
+  render. For a live layout, you must specify an additional layout to use with your
+  LiveView. For example, your regular `app.html` template may display a `@new_message_count`
+  notification, like this:
+
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <title><%= @page_title %></title>
+        </head>
+        <body>
+          <div>
+            <nav>
+              ...
+              Messages (<%= @new_message_count %>)
+            </nav>
+            <%= render @view_module, @view_template, assigns %>
+          </div>
+        </body>
+      </html>
+
+  To allow the `@new_message_count` to be be updated by your LiveView, you can
+  move the dynamic content inside a sub-layout, such as `app_web/templates/layout/live.html.leex`.
+
+  First, you would update your `app.html` layout to keep only the barebones HTML
+  structure:
+
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <title>...</title>
+          <script>...</script>
+        </head>
+        <body>
+          <%= render @view_module, @view_template, assigns %>
+        </body>
+      </html>
+
+  Next, define a new `live.html.leex` layout with the dynamic content,
+  followed by a render of the inner `@live_view_module`:
+
+      <nav>
+        ...
+        Messages (<%= @new_message_count %>)
+      </nav>
+      <%= @live_view_module.render(assigns) %>
+
+  Finally, update your LiveView to pass the `:layout` option to `use Phoenix.LiveView`:
+
+      use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
+
+  Or alternatively, you can provide the `:layout` dynamically as an option in mount:
+
+        def mount(_session, socket) do
+          socket = assign(socket, new_message_count: 0)
+          {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
+        end
+
+        def handle_info({:new_messages, count}, socket) do
+          {:noreply, assign(socket, new_message_count: count)}
+        end
+      end
+
+  *Note*: The layout will be wrapped by the LiveView's `:container` tag.
+
+  ### Updating the HTML document title
+
+  Because the main layout from the Plug pipeline is rendered outside of LiveView,
+  the contents cannot be dynamically changed. The one exception is the `<title>`
+  of the HTML document. Phoenix LiveView special cases the `@page_title` assign
+  to allow dynamically updating the title of the page,  which is useful when
+  using live navigation, or annoting the browser tab with a notification.
+  For example, to update the user's notfication count in the brower's title bar,
+  first set the `page_title` assign on mount:
+
+        def mount(_session, socket) do
+          socket = assign(socket, page_title: "Latest Posts")
+          {:ok, socket}
+        end
+
+  Then access `@page_title` in the app layout:
+
+      <title><%= @page_title %></title>
+
+  Now, although the app layout is not updated by LiveView, by simply assigning
+  to `page_title`, LiveView knows you want the title to be updated:
+
+      def handle_info({:new_messages, count}, socket) do
+        {:noreply, assign(socket, page_title: "Latest Posts (#{count} new)")}
+      end
+
+  *Note*: If you find yourself needing to dynamically patch other parts of the
+  base layout, such as injecting new scripts or styles into the `<head>` during
+  live navigation, *a true page navigation should be used instead*. Assigning
+  the `@page_title` updates the `document.title` directly, and therefore cannot
+  be used to udpate any other part of the base layout, even if the base layout
+  references the assign.
+
   ## Rate limiting events with Debounce and Throttle
 
   All events can be rate-limited on the client by using the
@@ -1063,12 +1165,14 @@ defmodule Phoenix.LiveView do
 
       use Phoenix.LiveView,
         namespace: MyAppWeb,
-        container: {:tr, class: "colorized"}
+        container: {:tr, class: "colorized"},
+        container: {MyAppWeb.LayoutView, "live.html"}
 
   ## Options
 
     * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
+    * `:layout` - configures the layout the `LiveView` will be rendered in
 
   """
   defmacro __using__(opts) do
@@ -1089,7 +1193,21 @@ defmodule Phoenix.LiveView do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name, kind: :view, module: module}
+
+    layout =
+      case opts[:layout] do
+        {mod, template} when is_atom(mod) and is_binary(template) ->
+          {mod, template}
+
+        nil -> nil
+
+        other ->
+          raise ArgumentError,
+                ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
+                  "got: #{inspect(other)}"
+      end
+
+    %{container: container, name: name, kind: :view, module: module, layout: layout}
   end
 
   @doc """

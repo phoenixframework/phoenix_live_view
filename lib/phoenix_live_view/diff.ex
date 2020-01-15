@@ -87,6 +87,13 @@ defmodule Phoenix.LiveView.Diff do
 
     socket = %{socket | fingerprints: prints}
 
+    diff =
+      if Utils.changed?(socket, :page_title) do
+        Map.put(diff, :title, socket.assigns.page_title)
+      else
+        diff
+      end
+
     if map_size(component_diffs) == 0 do
       {socket, diff, components}
     else

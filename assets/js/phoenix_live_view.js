@@ -32,6 +32,7 @@ const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
+const PHX_TOUCH = "data-phx-touch"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
@@ -342,13 +343,15 @@ export class LiveSocket {
     let mainEl = this.main.el
     let mainID = this.main.id
     let wasLoading = this.main.isLoading()
+    this.destroyAllViews()
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
 
-      let div = document.createElement("div")
-      div.innerHTML = html
-      this.joinView(div.firstChild, null, href, newMain => {
+      let template = document.createElement("template")
+      template.innerHTML = html
+
+      this.joinView(template.content.childNodes[0], null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
@@ -745,6 +748,8 @@ export let DOM = {
     }
   },
 
+  putTitle(title){ document.title = title },
+
   debounce(el, event, phxDebounce, phxThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
@@ -1139,11 +1144,13 @@ export class View {
 
   onJoin({rendered, live_redirect}){
     this.log("join", () => ["", JSON.stringify(rendered)])
+    if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     this.hideLoader()
     let patch = new DOMPatch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.performPatch(patch)
+    this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
@@ -1195,7 +1202,7 @@ export class View {
   }
 
   joinNewChildren(){
-    DOM.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
+    DOM.all(this.el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewByEl(el)
       if(!child){
         this.liveSocket.joinView(el, this)
@@ -1205,6 +1212,7 @@ export class View {
 
   update(diff, cid){
     if(isEmpty(diff)){ return }
+    if(diff.title){ DOM.putTitle(diff.title) }
     if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
@@ -1444,6 +1452,8 @@ export class View {
   }
 
   submitForm(form, targetCtx, phxEvent){
+    // touch all text areas to fix isEqualNode failing to use text area values
+    DOM.all(form, "textarea", el => el.setAttribute(PHX_TOUCH, true))
     let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)

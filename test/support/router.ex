@@ -4,6 +4,12 @@ defmodule Phoenix.LiveViewTest.Controller do
 
   plug :put_layout, false
 
+  def widget(conn, _) do
+    conn
+    |> put_view(Phoenix.LiveViewTest.LayoutView)
+    |> render("widget.html")
+  end
+
   def incoming(conn, %{"type" => "live-render-2"}) do
     live_render(conn, Phoenix.LiveViewTest.DashboardLive)
   end
@@ -36,6 +42,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # controller test
     get "/controller/:type", Controller, :incoming
+    get "/widget", Controller, :widget
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
@@ -56,5 +63,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
+    live "/static-layout", StaticLayoutLive
   end
 end

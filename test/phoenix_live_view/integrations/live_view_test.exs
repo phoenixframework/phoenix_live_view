@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   import Phoenix.LiveView.Helpers
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -34,7 +34,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
     html = html_response(conn, 200)
     [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
-    expired_token = Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+
+    expired_token =
+      Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
@@ -261,6 +264,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
                ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
+    end
+
+    test "widget style live_render", %{conn: conn} do
+      conn = get(conn, "/widget")
+      assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*The temp is: 0/
     end
   end
 
@@ -607,6 +615,29 @@ defmodule Phoenix.LiveView.LiveViewTest do
                      |> put_session(:opts, temporary_assignswhoops: [:description])
                      |> live("/opts")
                    end
+    end
+  end
+
+  describe "layout" do
+    @tag session: %{live_layout: {LayoutView, "live.html"}}
+    test "from root mount renders within the layout", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert html =~
+               ~r|^LAYOUT<article[\S\s]*LIVELAYOUTSTART-1-The temp is: 1[\S\s]*-LIVELAYOUTEND\n</article>$|
+
+      assert render_click(view, :save, "22") =~
+               ~r|^LIVELAYOUTSTART-22-The temp is: 22[\S\s]*-LIVELAYOUTEND\n$|
+
+      GenServer.call(view.pid, {:set, :page_title, "New Title"})
+      assert_receive {_ref, {:title, "New Title"}}
+    end
+
+    test "as argument to use", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/static-layout")
+
+      assert html =~
+               ~r|^LAYOUT<div[\S\s]*LIVELAYOUTSTART-123-The value is: 123[\S\s]*-LIVELAYOUTEND\n</div>$|
     end
   end
 end

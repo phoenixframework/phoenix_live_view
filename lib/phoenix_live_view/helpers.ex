@@ -100,7 +100,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   def live_render(%Plug.Conn{} = conn, view, opts) do
     case Static.render(conn, view, opts) do
-      {:ok, content} ->
+      {:ok, content, _assigns} ->
         content
 
       {:stop, _} ->

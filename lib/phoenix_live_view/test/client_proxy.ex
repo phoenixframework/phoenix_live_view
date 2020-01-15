@@ -425,6 +425,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
+    case diff do
+      %{title: new_title} -> send_caller(state, {:title, new_title})
+      %{} -> :noop
+    end
+
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
         rendered = DOM.deep_merge(view.rendered, diff)
