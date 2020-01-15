@@ -341,12 +341,16 @@ describe('View Hooks', function() {
 
   test('hooks', async () => {
     let upcaseWasDestroyed = false
+    let upcaseBeforeUpdate = false
+    let upcaseBeforeDestroy = false
     let Hooks = {
       Upcase: {
         mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
+        beforeUpdate(){ upcaseBeforeUpdate = true },
         updated(){ this.el.innerHTML = this.el.innerHTML + ' updated' },
         disconnected(){ this.el.innerHTML = 'disconnected' },
         reconnected(){ this.el.innerHTML = 'connected' },
+        beforeDestroy(){ upcaseBeforeDestroy = true },
         destroyed(){ upcaseWasDestroyed = true },
       }
     }
@@ -365,6 +369,7 @@ describe('View Hooks', function() {
       s: ['<h2 phx-hook="Upcase">test update</h2>'],
       fingerprint: 123
     })
+    expect(upcaseBeforeUpdate).toBe(true)
     expect(view.el.firstChild.innerHTML).toBe('test update updated')
 
     view.showLoader()
@@ -374,6 +379,7 @@ describe('View Hooks', function() {
     expect(view.el.firstChild.innerHTML).toBe('connected')
 
     view.update({s: ['<div></div>'], fingerprint: 123})
+    expect(upcaseBeforeDestroy).toBe(true)
     expect(upcaseWasDestroyed).toBe(true)
   })
 })
