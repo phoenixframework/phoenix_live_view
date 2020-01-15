@@ -2,98 +2,9 @@ defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
   @phx_component "data-phx-component"
-
   @static :s
   @dynamics :d
   @components :c
-
-  def render_diff(rendered), do: render_diff(rendered, Map.get(rendered, @components, %{}))
-
-  def render_diff(rendered, components) do
-    rendered
-    |> to_output_buffer(components, [])
-    |> Enum.reverse()
-    |> Enum.join("")
-  end
-
-  # for comprehension
-  defp to_output_buffer(%{@dynamics => for_dynamics, @static => statics}, components, acc) do
-    Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
-      dynamics
-      |> Enum.with_index()
-      |> Enum.into(%{@static => statics}, fn {val, key} -> {key, val} end)
-      |> to_output_buffer(components, acc)
-    end)
-  end
-
-  defp to_output_buffer(%{@static => statics} = rendered, components, acc) do
-    statics
-    |> Enum.with_index()
-    |> tl()
-    |> Enum.reduce([Enum.at(statics, 0) | acc], fn {static, index}, acc ->
-      [static | dynamic_to_buffer(rendered[index - 1], components, acc)]
-    end)
-  end
-
-  defp dynamic_to_buffer(%{} = rendered, components, acc) do
-    to_output_buffer(rendered, components, []) ++ acc
-  end
-
-  defp dynamic_to_buffer(str, _components, acc) when is_binary(str), do: [str | acc]
-
-  defp dynamic_to_buffer(cid, components, acc) when is_integer(cid) do
-    html_with_cids =
-      components
-      |> Map.fetch!(cid)
-      |> render_diff(components)
-      |> parse()
-      |> List.wrap()
-      |> Enum.map(fn
-        {:pi, _, _} = xml -> xml
-        {:comment, _children} = comment -> comment
-        {:doctype, _, _, _} = doctype -> doctype
-        {_tag, _attrs, _children} = node -> inject_cid_attr(node, cid)
-      end)
-      |> to_html()
-
-    [html_with_cids | acc]
-  end
-
-  defp inject_cid_attr({tag, attrs, children}, cid) do
-    {tag, attrs ++ [{@phx_component, to_string(cid)}], children}
-  end
-
-  def find_static_views(html) do
-    html
-    |> all("[data-phx-static]")
-    |> Enum.into(%{}, fn node ->
-      attrs = attrs(node)
-      {attrs["id"], attrs["data-phx-static"]}
-    end)
-  end
-
-  def find_views(html) do
-    html
-    |> all("[data-phx-session]")
-    |> Enum.map(fn node ->
-      attrs = attrs(node)
-
-      static =
-        cond do
-          attrs["data-phx-static"] in [nil, ""] -> nil
-          true -> attrs["data-phx-static"]
-        end
-
-      {attrs["id"], attrs["data-phx-session"], static}
-    end)
-  end
-
-  def deep_merge(target, source) do
-    Map.merge(target, source, fn
-      _, %{} = target, %{} = source -> deep_merge(target, source)
-      _, _target, source -> source
-    end)
-  end
 
   def by_id!(html_tree, id) do
     by_id(html_tree, id) || raise ArgumentError, "could not find ID #{inspect(id)} in the DOM"
@@ -119,40 +30,120 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def all_attributes(html_tree, name), do: Floki.attribute(html_tree, name)
 
-  def to_html(html_tree, opts \\ []), do: Floki.raw_html(html_tree, opts)
+  def to_html(html_tree), do: Floki.raw_html(html_tree)
 
-  def walk(html, func) when is_binary(html) and is_function(func, 1) do
+  def filter_out(html_tree, selector), do: Floki.filter_out(html_tree, selector)
+
+  def child_nodes({_, _, children}), do: children
+
+  def inner_html(html, id), do: html |> by_id!(id) |> child_nodes()
+
+  def outer_html(html, id), do: html |> by_id!(id)
+
+  def find_static_views(html) do
     html
-    |> parse()
-    |> Floki.traverse_and_update(fn
-      {:pi, _, _} = xml -> xml
-      {:comment, _children} = comment -> comment
-      {:doctype, _, _, _} = doctype -> doctype
-      {_tag, _attrs, _children} = node -> func.(node)
+    |> all("[data-phx-static]")
+    |> Enum.into(%{}, fn node ->
+      attrs = attrs(node)
+      {attrs["id"], attrs["data-phx-static"]}
     end)
   end
 
-  def walk(html_tree, func) when is_function(func, 1) do
-    Floki.traverse_and_update(html_tree, fn node -> func.(node) end)
+  def find_live_views(html) do
+    html
+    |> all("[data-phx-session]")
+    |> Enum.map(fn node ->
+      attrs = attrs(node)
+
+      static =
+        cond do
+          attrs["data-phx-static"] in [nil, ""] -> nil
+          true -> attrs["data-phx-static"]
+        end
+
+      {attrs["id"], attrs["data-phx-session"], static}
+    end)
   end
 
-  def filter_out(html_tree, selector), do: Floki.filter_out(html_tree, selector)
+  def deep_merge(target, source) do
+    Map.merge(target, source, fn
+      _, %{} = target, %{} = source -> deep_merge(target, source)
+      _, _target, source -> source
+    end)
+  end
+
+  # Diff rendering
+
+  def render_diff(rendered) do
+    render_diff(rendered, Map.get(rendered, @components, %{}))
+  end
+
+  def render_diff(rendered, components) do
+    rendered
+    |> to_output_buffer(components, [])
+    |> Enum.reverse()
+    |> IO.iodata_to_binary()
+    |> parse()
+    |> List.wrap()
+  end
+
+  # for comprehension
+  defp to_output_buffer(%{@dynamics => for_dynamics, @static => statics}, components, acc) do
+    Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
+      dynamics
+      |> Enum.with_index()
+      |> Enum.into(%{@static => statics}, fn {val, key} -> {key, val} end)
+      |> to_output_buffer(components, acc)
+    end)
+  end
+
+  defp to_output_buffer(%{@static => [head | tail]} = rendered, components, acc) do
+    tail
+    |> Enum.with_index(0)
+    |> Enum.reduce([head | acc], fn {static, index}, acc ->
+      [static | dynamic_to_buffer(rendered[index], components, acc)]
+    end)
+  end
+
+  defp dynamic_to_buffer(%{} = rendered, components, acc) do
+    to_output_buffer(rendered, components, []) ++ acc
+  end
+
+  defp dynamic_to_buffer(str, _components, acc) when is_binary(str), do: [str | acc]
+
+  defp dynamic_to_buffer(cid, components, acc) when is_integer(cid) do
+    html_with_cids =
+      components
+      |> Map.fetch!(cid)
+      |> render_diff(components)
+      |> Enum.map(walk_fun(&inject_cid_attr(&1, cid)))
+      |> to_html()
+
+    [html_with_cids | acc]
+  end
+
+  defp inject_cid_attr({tag, attrs, children}, cid) do
+    {tag, attrs ++ [{@phx_component, to_string(cid)}], children}
+  end
+
+  # Patching
 
   def patch_id(id, html, inner_html) do
     cids_before = find_component_ids(id, html)
 
     phx_update_tree =
-      walk(inner_html, fn node -> apply_phx_update(attrs(node, "phx-update"), html, node) end)
+      walk(inner_html, fn node ->
+        apply_phx_update(attrs(node, "phx-update"), html, node)
+      end)
 
     new_html =
-      html
-      |> walk(fn {tag, attrs, children} = node ->
-        cond do
-          attrs(node, "id") == id -> {tag, attrs, phx_update_tree}
-          true -> {tag, attrs, children}
+      walk(html, fn {tag, attrs, children} = node ->
+        if attrs(node, "id") == id do
+          {tag, attrs, phx_update_tree}
+        else
+          {tag, attrs, children}
         end
       end)
-      |> to_html()
 
     cids_after = find_component_ids(id, new_html)
     deleted_cids = for cid <- cids_before -- cids_after, do: String.to_integer(cid)
@@ -165,19 +156,17 @@ defmodule Phoenix.LiveViewTest.DOM do
     {new_html, deleted_cids, deleted_ids}
   end
 
-  def child_nodes({_, _, children}), do: children
-
-  def inner_html(html, id) do
-    html
-    |> by_id!(id)
-    |> child_nodes()
-    |> to_html()
+  defp walk(html_tree, fun) when is_function(fun, 1) do
+    Floki.traverse_and_update(html_tree, walk_fun(fun))
   end
 
-  def outer_html(html, id) do
-    html
-    |> by_id!(id)
-    |> to_html()
+  defp walk_fun(fun) when is_function(fun, 1) do
+    fn
+      {:pi, _, _} = xml -> xml
+      {:comment, _children} = comment -> comment
+      {:doctype, _, _, _} = doctype -> doctype
+      {_tag, _attrs, _children} = node -> fun.(node)
+    end
   end
 
   defp find_component_ids(id, html) do

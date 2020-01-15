@@ -66,8 +66,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           |> put_view(root_view, pid, rendered)
           |> detect_added_or_removed_children(root_view, root_html)
 
-        send_caller(new_state, {:mounted, pid, new_state.html})
-
+        send_caller(new_state, {:mounted, pid, DOM.to_html(new_state.html)})
         {:ok, new_state}
 
       {:error, reason} ->
@@ -146,7 +145,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info({:sync_render, topic, path, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, {:ok, DOM.outer_html(state.html, [view.id | path])})
+    GenServer.reply(from, {:ok, state.html |> DOM.outer_html([view.id | path]) |> DOM.to_html()})
     {:noreply, state}
   end
 
@@ -415,7 +414,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case fetch_view_by_topic(new_state, topic) do
       {:ok, view} ->
-        GenServer.reply(from, {:ok, DOM.inner_html(new_state.html, view.id)})
+        GenServer.reply(from, {:ok, new_state.html |> DOM.inner_html(view.id) |> DOM.to_html()})
         new_state
 
       :error ->
@@ -450,23 +449,24 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     else
       new_state ->
         {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
-        ids_after = new_state.html |> DOM.all("[data-phx-view]") |> DOM.all_attributes("id")
 
-        ids_after
-        |> Enum.reduce(%{}, fn id, seen ->
-          if Map.has_key?(seen, id) do
-            raise "duplicate LiveView id: #{inspect(id)}"
-          end
+        ids_after =
+          new_state.html
+          |> DOM.all("[data-phx-view]")
+          |> DOM.all_attributes("id")
+          |> Enum.reduce(%{}, fn id, seen ->
+            if Map.has_key?(seen, id) do
+              raise "duplicate LiveView id: #{inspect(id)}"
+            else
+              Map.put(seen, id, true)
+            end
+          end)
 
-          Map.put(seen, id, true)
-        end)
-
-        new_view.children
-        |> Enum.reduce(new_state, fn {id, _session}, acc ->
-          if id not in ids_after do
-            drop_child(acc, new_view, id, :removed)
-          else
+        Enum.reduce(new_view.children, new_state, fn {id, _session}, acc ->
+          if Map.has_key?(ids_after, id) do
             acc
+          else
+            drop_child(acc, new_view, id, :removed)
           end
         end)
     end
@@ -475,7 +475,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp recursive_detect_added_or_removed_children(state, view, html_before) do
     state.html
     |> DOM.inner_html(view.id)
-    |> DOM.find_views()
+    |> DOM.find_live_views()
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->

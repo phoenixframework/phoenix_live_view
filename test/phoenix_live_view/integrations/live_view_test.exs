@@ -18,13 +18,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_bad_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
   defp simulate_outdated_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
@@ -32,7 +32,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_expired_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     expired_token = Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      {_tag, _attrs, children} = DOM.by_id!(html, view.id)
+      {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
 
       assert children == [
                "The temp is: 1\n",

@@ -39,13 +39,13 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}], ["\n  chris says" <> _]},
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
-           ] = DOM.all(html, "#chris, #jose")
+           ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
-           ] = DOM.all(html, "#chris, #jose")
+           ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     assert_remove_component(view, "chris")
   end
