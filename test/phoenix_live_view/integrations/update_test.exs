@@ -133,10 +133,10 @@ defmodule Phoenix.LiveView.UpdateTest do
   end
 
   defp find_time_zones(html, zones) do
-    DOM.all(html, Enum.join(for(tz <- zones, do: "#tz-#{tz}"), ","))
+    html |> DOM.parse() |> DOM.all(Enum.join(for(tz <- zones, do: "#tz-#{tz}"), ","))
   end
 
   defp find_time_titles(html, zones) do
-    DOM.all(html, Enum.join(for(tz <- zones, do: "#title-#{tz}"), ","))
+    html |> DOM.parse() |> DOM.all(Enum.join(for(tz <- zones, do: "#title-#{tz}"), ","))
   end
 end

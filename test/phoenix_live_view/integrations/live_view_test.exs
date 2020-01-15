@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.Helpers
+
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView}
 
@@ -16,13 +18,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_bad_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
   defp simulate_outdated_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
@@ -30,7 +32,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_expired_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = DOM.find_views(html)
+    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
 
     expired_token =
@@ -114,7 +116,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      {_tag, _attrs, children} = DOM.by_id!(html, view.id)
+      {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
 
       assert children == [
                "The temp is: 1\n",
@@ -197,6 +199,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "The temp is: 1", view.id
       assert render_blur(view, :inactive, "Zzz") =~ "Tap to wake – Zzz"
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
+    end
+
+    test "render_hook", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_hook(view, :save, %{temp: 20}) =~ "The temp is: 20"
     end
 
     test "module DOM container", %{conn: conn} do
@@ -561,7 +568,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "live_link" do
     test "forwards dom attribute options" do
       dom =
-        LiveView.live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
+        live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|class="btn btn-large"|
@@ -570,7 +577,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "overwrites reserved options" do
       dom =
-        LiveView.live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
+        live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|href="page-1"|

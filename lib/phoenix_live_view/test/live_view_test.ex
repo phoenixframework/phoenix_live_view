@@ -275,6 +275,7 @@ defmodule Phoenix.LiveViewTest do
       conn
       |> Phoenix.ConnTest.html_response(200)
       |> IO.iodata_to_binary()
+      |> DOM.parse()
 
     unless Code.ensure_loaded?(Floki) do
       raise """
@@ -285,16 +286,15 @@ defmodule Phoenix.LiveViewTest do
       """
     end
 
-    case DOM.find_views(html) do
+    case DOM.find_live_views(html) do
       [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
       [] -> {:error, :nosession}
     end
   end
 
-  defp do_connect(%Plug.Conn{} = conn, path, raw_html, session_token, id, opts) do
-    child_statics = DOM.find_static_views(raw_html)
+  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
+    child_statics = DOM.find_static_views(html)
     timeout = opts[:timeout] || 5000
-    html = DOM.to_html(DOM.parse(raw_html))
 
     %ClientProxy{ref: ref} =
       view =
@@ -362,7 +362,8 @@ defmodule Phoenix.LiveViewTest do
   defmacro render_component(component, assigns) do
     endpoint =
       Module.get_attribute(__CALLER__.module, :endpoint) ||
-        raise ArgumentError, "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
+        raise ArgumentError,
+              "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
 
     quote do
       Phoenix.LiveViewTest.__render_component__(
@@ -478,6 +479,19 @@ defmodule Phoenix.LiveViewTest do
   """
   def render_focus(view, event, value \\ %{}) do
     render_event(view, :focus, event, value)
+  end
+
+  @doc """
+  Sends a hook event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+      assert html =~ "The temp is: 30℉"
+      assert render_hook(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
+  """
+  def render_hook(view, event, value \\ %{}) do
+    render_event(view, :hook, event, value)
   end
 
   defp render_event([%View{} = view | path], type, event, value) do

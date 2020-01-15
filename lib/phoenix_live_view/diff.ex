@@ -83,7 +83,7 @@ defmodule Phoenix.LiveView.Diff do
       traverse(socket, rendered, prints, %{}, components)
 
     {component_diffs, components} =
-      render_pending_components(socket, pending_components, %{}, components)
+      render_pending_components(socket, pending_components, %{}, %{}, components)
 
     socket = %{socket | fingerprints: prints}
 
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.Diff do
           |> render_component(id, cid, false, %{}, component_diffs, components)
 
         {component_diffs, components} =
-          render_pending_components(socket, pending_components, component_diffs, components)
+          render_pending_components(socket, pending_components, %{}, component_diffs, components)
 
         {%{@components => component_diffs}, components}
 
@@ -363,32 +363,46 @@ defmodule Phoenix.LiveView.Diff do
 
   ## Component rendering
 
-  defp render_pending_components(_, pending_components, component_diffs, components)
+  defp render_pending_components(_, pending_components, _seen_ids, component_diffs, components)
        when map_size(pending_components) == 0 do
     {component_diffs, components}
   end
 
-  defp render_pending_components(socket, pending_components, component_diffs, components) do
+  defp render_pending_components(
+         socket,
+         pending_components,
+         seen_ids,
+         component_diffs,
+         components
+       ) do
     {id_to_components, _, _} = components
-    acc = {%{}, component_diffs, components}
+    acc = {{%{}, component_diffs, components}, seen_ids}
 
-    {pending_components, component_diffs, components} =
+    {{pending_components, component_diffs, components}, seen_ids} =
       Enum.reduce(pending_components, acc, fn {component, entries}, acc ->
         entries = maybe_preload_components(component, Enum.reverse(entries))
 
-        Enum.reduce(entries, acc, fn {id, new?, new_assigns}, acc ->
-          {pending_components, component_diffs, components} = acc
+        Enum.reduce(entries, acc, fn {id, new?, new_assigns}, {triplet, seen_ids} ->
+          {pending_components, component_diffs, components} = triplet
           id = {component, id}
           %{^id => {cid, assigns, private, component_prints}} = id_to_components
 
-          socket
-          |> configure_socket_for_component(assigns, private, component_prints)
-          |> Utils.maybe_call_update!(component, new_assigns)
-          |> render_component(id, cid, new?, pending_components, component_diffs, components)
+          if Map.has_key?(seen_ids, id) do
+            raise "found duplicate ID #{inspect(elem(id, 1))} " <>
+                    "for component #{inspect(elem(id, 0))} when rendering template"
+          end
+
+          triplet =
+            socket
+            |> configure_socket_for_component(assigns, private, component_prints)
+            |> Utils.maybe_call_update!(component, new_assigns)
+            |> render_component(id, cid, new?, pending_components, component_diffs, components)
+
+          {triplet, Map.put(seen_ids, id, true)}
         end)
       end)
 
-    render_pending_components(socket, pending_components, component_diffs, components)
+    render_pending_components(socket, pending_components, seen_ids, component_diffs, components)
   end
 
   defp maybe_preload_components(component, entries) do

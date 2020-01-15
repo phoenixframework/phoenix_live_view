@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.4.1"
+  @version "0.5.0-dev"
 
   def project do
     [
@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_html, "~> 2.13.2"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.20", only: :docs},
-      {:floki, "~> 0.23.0", only: :test}
+      {:floki, "~> 0.24.0", only: :test}
     ]
   end
 

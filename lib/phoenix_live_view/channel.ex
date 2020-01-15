@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
-    val = decode(type, state.router, raw_val)
+    val = decode_event_type(type, raw_val)
 
     case Map.fetch(msg.payload, "cid") do
       {:ok, cid} ->
@@ -303,13 +303,13 @@ defmodule Phoenix.LiveView.Channel do
 
   defp view_module(%{socket: %Socket{view: view}}), do: view
 
-  defp decode("form", _router, url_encoded) do
+  defp decode_event_type("form", url_encoded) do
     url_encoded
     |> Plug.Conn.Query.decode()
     |> decode_merge_target()
   end
 
-  defp decode(_, _router, value), do: value
+  defp decode_event_type(_, value), do: value
 
   defp decode_merge_target(%{"_target" => target} = params) when is_list(target), do: params
 

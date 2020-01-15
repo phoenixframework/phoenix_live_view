@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.Socket do
             socket "/live", Phoenix.LiveView.Socket,
               websocket: [connect_info: [session: @session_options]]
 
-        4) Define the CSRF meta tag inside the in <head> in your layout:
+        4) Define the CSRF meta tag inside the `<head>` tag in your layout:
 
             <%= csrf_meta_tag() %>
 

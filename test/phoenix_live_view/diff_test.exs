@@ -1,8 +1,7 @@
 defmodule Phoenix.LiveView.DiffTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView,
-    only: [sigil_L: 2, live_component: 2, live_component: 3, live_component: 4]
+  import Phoenix.LiveView.Helpers
 
   alias Phoenix.LiveView.{Socket, Diff, Rendered, Component}
 
@@ -431,6 +430,19 @@ defmodule Phoenix.LiveView.DiffTest do
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
+    end
+
+    test "raises on duplicate component IDs" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~L"""
+      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      """
+
+      assert_raise RuntimeError,
+                   "found duplicate ID \"SAME\" for component Phoenix.LiveView.DiffTest.RenderOnlyComponent when rendering template",
+                   fn -> render(rendered) end
     end
 
     test "on update without render" do
