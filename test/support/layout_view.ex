@@ -11,6 +11,12 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     LIVELAYOUTSTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVELAYOUTEND
     """
   end
+
+  def render("widget.html", assigns) do
+    ~L"""
+    WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ThermostatLive) %>
+    """
+  end
 end
 
 defmodule Phoenix.LiveViewTest.AlternativeLayout do

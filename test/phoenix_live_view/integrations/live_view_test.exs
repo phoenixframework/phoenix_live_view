@@ -265,6 +265,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render(view) =~ ~r/<\/p>/
     end
+
+    test "widget style live_render", %{conn: conn} do
+      conn = get(conn, "/widget")
+      assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*The temp is: 0/
+    end
   end
 
   describe "messaging callbacks" do
