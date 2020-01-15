@@ -1,3 +1,8 @@
+## 0.5.1 (2020-01-15)
+
+### Bug Fixes
+  - Fix phx-change bug causing phx-target to not be used
+
 ## 0.5.0 (2020-01-15)
 
 LiveView now makes the connection session automatically available in LiveViews. However, to do so, you need to configure your endpoint accordingly, **otherwise LiveView will fail to connect**.
