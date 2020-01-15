@@ -4,39 +4,47 @@ LiveView now makes all connection session automatically available in LiveViews. 
 
 The steps are:
 
-1) Find `plug Plug.Session, ...` in your endpoint.ex and move the options `...` to a module attribute:
+  1) Find `plug Plug.Session, ...` in your endpoint.ex and move the options `...` to a module attribute:
 
         @session_options [
           ...
         ]
 
-2) Change the `plug Plug.Session` to use said attribute:
+  2) Change the `plug Plug.Session` to use said attribute:
 
         plug Plug.Session, @session_options
 
-3) Also pass the `@session_options` to your LiveView socket:
+  3) Also pass the `@session_options` to your LiveView socket:
 
         socket "/live", Phoenix.LiveView.Socket,
           websocket: [connect_info: [session: @session_options]]
 
-4) You should define the CSRF meta tag inside the in <head> in your layout:
+  4) You should define the CSRF meta tag inside the in <head> in your layout:
 
         <%= csrf_meta_tag() %>
 
-5) Then in your app.js:
+  5) Then in your app.js:
 
         let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
         let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
 
-Also note that **the session from now on will have string keys**. LiveView will warn if atom keys will be used for the session in the future.
+Also note that **the session from now on will have string keys**. LiveView will warn if atom keys are used.
 
 ### Enhancements
-  - live links now respect new tab behavior
+  - Respect new tab behavior in `live_link`
+  - Add `beforeUpdate` and `beforeDestroy` JS hooks
+  - Make all assigns defined on the socket mount available on the layout on first render
+  - Detect duplicate IDs on the front-end when DEBUG mode is enabled
+  - Automatically forward all session to LiveView
+  - Support "live_socket_id" session key for identifying (and disconnecting) LiveView sockets
+  - Add support for `hibernate_after` on LiveView processes
+  - Support redirecting to full URLs on `live_redirect` and `redirect`
+  - Add `offsetX` and `offsetY` to click event metadata
+  - Allow `live_link` and `live_redirect` to exist anywhere in the page and it will always target the main LiveView (the one defined at the router)
 
 ### Backwards incompatible changes
-
-`phx-target="window"` has been removed in favor of `phx-window-keydown`, `phx-window-focus`, etc,
-and the `phx-target` binding has been repurposed for targetting LiveView and LiveComponent events from the client.
+  - `phx-target="window"` has been removed in favor of `phx-window-keydown`, `phx-window-focus`, etc, and the `phx-target` binding has been repurposed for targetting LiveView and LiveComponent events from the client
+  - `Phoenix.LiveView` no longer defined `live_render` and `live_link`. These functions have been moved to `Phoenix.LiveView.Helpers` which can now be fully imported in your views. In other words, replace `import Phoenix.LiveView, only: [live_render: ..., live_link: ...]` by `import Phoenix.LiveView.Helpers`
 
 ## 0.4.1 (2019-11-07)
 
