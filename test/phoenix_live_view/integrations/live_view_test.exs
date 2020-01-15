@@ -627,9 +627,5 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
       assert_receive {_ref, {:title, "New Title"}}
     end
-
-    test "raises when called outside of mount", %{conn: _conn} do
-      # TODO
-    end
   end
 end
