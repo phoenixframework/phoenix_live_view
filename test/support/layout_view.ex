@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
-  import Phoenix.LiveView, only: [sigil_L: 2]
+  import Phoenix.LiveView.Helpers
 
   def render("app.html", assigns) do
     ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
