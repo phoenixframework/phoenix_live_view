@@ -691,7 +691,7 @@ defmodule Phoenix.LiveView do
       </nav>
       <%= @live_view_module.render(assigns) %>
 
-  Finally, update your LiveView mount to call `put_layout/2` with the
+  Finally, update your LiveView mount to pass the `:layout` option with the
   live layout, which will be updated dynamically as relevant assigns
   are changed:
 
@@ -700,9 +700,11 @@ defmodule Phoenix.LiveView do
 
         def mount(_session, socket) do
           {:ok,
-           socket
-           |> put_layout(AppWeb.LayoutView, "live.html")
-           |> assign(new_message_count: 0)}
+           assign(socket
+             page_title: "Latest Posts",
+             new_message_count: 0,
+             ...
+          ), layout: {AppWeb.LayoutView, "live.html"}}
         end
 
         def handle_info({:new_messages, count}, socket) do
@@ -723,7 +725,7 @@ defmodule Phoenix.LiveView do
       def mount(_session, socket) do
         {:ok, assign(socket, page_title: "Hello World")}
       end
-  
+
   Then access `@page_title` in the app layout:
 
      <title><%= @page_title %></title>
@@ -1508,17 +1510,6 @@ defmodule Phoenix.LiveView do
   def put_flash(%Socket{private: private} = socket, kind, msg) do
     new_private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
     %Socket{socket | private: new_private}
-  end
-
-  @doc """
-  Adds the layout to the socket for the LiveView to be rendered within.
-
-  ## Examples
-
-      iex> put_layout(socket, MyAppWeb.LayoutView, "live.html")
-  """
-  def put_layout(%Socket{} = socket, layout_view, template) do
-    %Socket{socket | layout: {layout_view, template}}
   end
 
   @doc """

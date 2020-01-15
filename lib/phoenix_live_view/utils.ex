@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.Utils do
   alias Phoenix.LiveView.Socket
 
   # All available mount options
-  @mount_opts [:temporary_assigns]
+  @mount_opts [:temporary_assigns, :layout]
 
   @doc """
   Clears the changes from the socket assigns.
@@ -21,9 +21,11 @@ defmodule Phoenix.LiveView.Utils do
   Checks if the socket changed.
   """
   def changed?(%Socket{changed: changed}), do: changed != %{}
+
   def changed?(%Socket{changed: %{} = changed}, assign) do
     Map.has_key?(changed, assign)
   end
+
   def changed?(%Socket{}, _), do: false
 
   @doc """
@@ -68,7 +70,7 @@ defmodule Phoenix.LiveView.Utils do
   def to_rendered(socket, view) do
     assigns = Map.merge(socket.assigns, %{socket: socket, live_view_module: view})
 
-    case render_view(socket.layout, view, assigns) do
+    case render_view(socket, view, assigns) do
       %LiveView.Rendered{} = rendered ->
         rendered
 
@@ -244,6 +246,18 @@ defmodule Phoenix.LiveView.Utils do
     """
   end
 
+  defp do_mount_opt(socket, :layout, {mod, template}) when is_atom(mod) and is_binary(template) do
+    %Socket{socket | private: Map.put(socket.private, :layout, {mod, template})}
+  end
+
+  defp do_mount_opt(_socket, :layout, bad_layout) do
+    raise ArgumentError, """
+    :layout expects a tuple of the form {MyLayoutView, "my_template.html"}, got: #{
+      inspect(bad_layout)
+    }
+    """
+  end
+
   defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
     unless Keyword.keyword?(temp_assigns) do
       raise ":temporary_assigns must be keyword list"
@@ -262,11 +276,12 @@ defmodule Phoenix.LiveView.Utils do
     %Socket{socket | private: Map.drop(private, keys)}
   end
 
-  defp render_view({layout_mod, layout_template} = _layout, view, assigns) do
-    layout_mod.render(layout_template, Map.put(assigns, :live_view_module, view))
+  defp render_view(socket, view, assigns) do
+    case layout(socket) do
+      {layout_mod, layout_template} -> layout_mod.render(layout_template, assigns)
+      nil -> view.render(assigns)
+    end
   end
 
-  defp render_view(nil, view, assigns) do
-    view.render(assigns)
-  end
+  defp layout(socket), do: socket.private[:layout]
 end

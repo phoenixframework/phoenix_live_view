@@ -21,15 +21,17 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
-    {:ok,
-     assign(socket,
-       val: val,
-       nest: nest,
-       redir: session["redir"],
-       users: users,
-       greeting: nil
-     )
-     |> maybe_put_layout(session)}
+    maybe_put_layout(
+      {:ok,
+       assign(socket,
+         val: val,
+         nest: nest,
+         redir: session["redir"],
+         users: users,
+         greeting: nil
+       )},
+      session
+    )
   end
 
   @key_i 73
@@ -78,11 +80,11 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:reply, :ok, assign(socket, var, val)}
   end
 
-  defp maybe_put_layout(socket, %{"live_layout" => {mod, template}}) do
-    put_layout(socket, mod, template)
+  defp maybe_put_layout({:ok, socket}, %{"live_layout" => {mod, template}}) do
+    {:ok, socket, layout: {mod, template}}
   end
 
-  defp maybe_put_layout(socket, session), do: socket
+  defp maybe_put_layout({:ok, socket}, _session), do: {:ok, socket}
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
