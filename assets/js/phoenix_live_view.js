@@ -1269,6 +1269,7 @@ export class View {
   onLiveRedirect({to, kind}){
     this.href = to
     Browser.pushState(kind, {}, to)
+    this.liveSocket.registerNewLocation(window.location)
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }
