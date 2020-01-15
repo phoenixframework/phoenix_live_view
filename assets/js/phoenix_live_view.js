@@ -343,6 +343,7 @@ export class LiveSocket {
     let mainEl = this.main.el
     let mainID = this.main.id
     let wasLoading = this.main.isLoading()
+    this.destroyAllViews()
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
@@ -1149,6 +1150,7 @@ export class View {
     this.hideLoader()
     let patch = new DOMPatch(this, this.el, this.id, Rendered.toString(this.rendered))
     this.performPatch(patch)
+    this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
@@ -1200,7 +1202,7 @@ export class View {
   }
 
   joinNewChildren(){
-    DOM.all(document, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
+    DOM.all(this.el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewByEl(el)
       if(!child){
         this.liveSocket.joinView(el, this)
