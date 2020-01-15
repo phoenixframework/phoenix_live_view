@@ -641,7 +641,7 @@ defmodule Phoenix.LiveView do
     * `live_component` - compartmentalizes state, markup, and events
     * `live_render` - compartmentalizes state, markup, events, and error isolation
 
-  ## Layouts
+  ## Live Layouts
 
   Your LiveView will be rendered within the layout specified in
   your plug pipeline, such as the default app layout. Assigns from the
