@@ -1,6 +1,6 @@
-## 0.5.0-dev
+## 0.5.0 (2020-01-15)
 
-LiveView now makes all connection session automatically available in LiveViews. However, to do so, you need to configure your endpoint accordingly, **otherwise LiveView will fail to connect**.
+LiveView now makes the connection session automatically available in LiveViews. However, to do so, you need to configure your endpoint accordingly, **otherwise LiveView will fail to connect**.
 
 The steps are:
 
@@ -34,8 +34,9 @@ Also note that **the session from now on will have string keys**. LiveView will 
   - Respect new tab behavior in `live_link`
   - Add `beforeUpdate` and `beforeDestroy` JS hooks
   - Make all assigns defined on the socket mount available on the layout on first render
+  - Provide support for live layouts with new `:layout` option
   - Detect duplicate IDs on the front-end when DEBUG mode is enabled
-  - Automatically forward all session to LiveView
+  - Automatically forward the session to LiveView
   - Support "live_socket_id" session key for identifying (and disconnecting) LiveView sockets
   - Add support for `hibernate_after` on LiveView processes
   - Support redirecting to full URLs on `live_redirect` and `redirect`
