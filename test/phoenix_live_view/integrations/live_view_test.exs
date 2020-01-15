@@ -618,7 +618,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  describe "put_layout" do
+  describe "layout" do
     @tag session: %{live_layout: {LayoutView, "live.html"}}
     test "from root mount renders within the layout", %{conn: conn} do
       {:ok, view, html} = live(conn, "/thermo")
@@ -631,6 +631,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
       assert_receive {_ref, {:title, "New Title"}}
+    end
+
+    test "as argument to use", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/static-layout")
+
+      assert html =~
+               ~r|^LAYOUT<div[\S\s]*LIVELAYOUTSTART-123-The value is: 123[\S\s]*-LIVELAYOUTEND\n</div>$|
     end
   end
 end

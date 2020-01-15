@@ -272,11 +272,13 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp render_view(socket, view, assigns) do
-    case layout(socket) do
+    case layout(socket, view) do
       {layout_mod, layout_template} -> layout_mod.render(layout_template, assigns)
       nil -> view.render(assigns)
     end
   end
 
-  defp layout(socket), do: socket.private[:layout]
+  defp layout(socket, view) do
+    socket.private[:layout] || view.__live__()[:layout]
+  end
 end

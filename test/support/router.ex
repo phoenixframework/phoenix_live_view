@@ -63,5 +63,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
+    live "/static-layout", StaticLayoutLive
   end
 end

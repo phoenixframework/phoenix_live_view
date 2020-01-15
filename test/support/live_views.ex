@@ -1,5 +1,12 @@
 alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
+defmodule Phoenix.LiveViewTest.StaticLayoutLive do
+  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, "live.html"}
+
+  def render(assigns), do: ~L|The value is: <%= @val %>|
+  def mount(_session, socket), do: {:ok, assign(socket, val: 123)}
+end
+
 defmodule Phoenix.LiveViewTest.ThermostatLive do
   use Phoenix.LiveView, container: {:article, class: "thermo"}, namespace: Phoenix.LiveViewTest
 

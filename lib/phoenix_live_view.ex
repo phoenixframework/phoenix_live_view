@@ -692,12 +692,11 @@ defmodule Phoenix.LiveView do
       </nav>
       <%= @live_view_module.render(assigns) %>
 
-  Finally, update your LiveView mount to pass the `:layout` option with the
-  live layout, which will be updated dynamically as relevant assigns
-  are changed:
+  Finally, update your LiveView to pass the `:layout` option to `use Phoenix.LiveView`:
 
-      defmodule AppWeb.TimelineLive do
-        use Phoenix.LiveView
+      use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
+
+  Or alternatively, you can provide the `:layout` dynamically as an option in mount:
 
         def mount(_session, socket) do
           socket = assign(socket, new_message_count: 0)
@@ -1166,12 +1165,14 @@ defmodule Phoenix.LiveView do
 
       use Phoenix.LiveView,
         namespace: MyAppWeb,
-        container: {:tr, class: "colorized"}
+        container: {:tr, class: "colorized"},
+        container: {MyAppWeb.LayoutView, "live.html"}
 
   ## Options
 
     * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
+    * `:layout` - configures the layout the `LiveView` will be rendered in
 
   """
   defmacro __using__(opts) do
@@ -1192,7 +1193,21 @@ defmodule Phoenix.LiveView do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-    %{container: container, name: name, kind: :view, module: module}
+
+    layout =
+      case opts[:layout] do
+        {mod, template} when is_atom(mod) and is_binary(template) ->
+          {mod, template}
+
+        nil -> nil
+
+        other ->
+          raise ArgumentError,
+                ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
+                  "got: #{inspect(other)}"
+      end
+
+    %{container: container, name: name, kind: :view, module: module, layout: layout}
   end
 
   @doc """
