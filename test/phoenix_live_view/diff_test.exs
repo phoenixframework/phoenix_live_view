@@ -432,6 +432,19 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
+    test "raises on duplicate component IDs" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~L"""
+      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      """
+
+      assert_raise RuntimeError,
+                   "found duplicate ID \"SAME\" for component Phoenix.LiveView.DiffTest.RenderOnlyComponent when rendering template",
+                   fn -> render(rendered) end
+    end
+
     test "on update without render" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
