@@ -32,13 +32,13 @@ const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
+const PHX_TOUCH = "data-phx-touch"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_CHANGE = "phx-change"
-const PHX_TOUCHED = "phx-touch"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
 const LOADER_TIMEOUT = 1
@@ -1450,7 +1450,7 @@ export class View {
 
   submitForm(form, targetCtx, phxEvent){
     // touch all text areas to fix isEqualNode failing to use text area values
-    DOM.all(form, "textarea", el => el.setAttribute(PHX_TOUCHED, true))
+    DOM.all(form, "textarea", el => el.setAttribute(PHX_TOUCH, true))
     let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)
