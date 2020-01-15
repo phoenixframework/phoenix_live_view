@@ -248,11 +248,9 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp do_mount_opt(_socket, :layout, bad_layout) do
-    raise ArgumentError, """
-    :layout expects a tuple of the form {MyLayoutView, "my_template.html"}, got: #{
-      inspect(bad_layout)
-    }
-    """
+    raise ArgumentError,
+          ":layout expects a tuple of the form {MyLayoutView, "my_template.html"}, " <>
+            "got: #{inspect(bad_layout)}"
   end
 
   defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
