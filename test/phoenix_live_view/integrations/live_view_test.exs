@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.Helpers
+
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive}
 
@@ -558,7 +560,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "live_link" do
     test "forwards dom attribute options" do
       dom =
-        LiveView.live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
+        live_link("next", to: "/", class: "btn btn-large", data: [page_number: 2])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|class="btn btn-large"|
@@ -567,7 +569,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "overwrites reserved options" do
       dom =
-        LiveView.live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
+        live_link("next", to: "page-1", href: "page-2", data: [phx_live_link: "other"])
         |> Phoenix.HTML.safe_to_string()
 
       assert dom =~ ~s|href="page-1"|

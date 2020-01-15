@@ -358,6 +358,7 @@ defmodule Phoenix.LiveComponent do
   defmacro __using__(_) do
     quote do
       import Phoenix.LiveView
+      import Phoenix.LiveView.Helpers
       @behaviour unquote(__MODULE__)
 
       @doc false
