@@ -198,6 +198,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
     end
 
+    test "render_hook", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo")
+      assert render_hook(view, :save, %{temp: 20}) =~ "The temp is: 20"
+    end
+
     test "module DOM container", %{conn: conn} do
       conn =
         conn

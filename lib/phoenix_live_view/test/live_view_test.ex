@@ -480,6 +480,19 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :focus, event, value)
   end
 
+  @doc """
+  Sends a hook event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+      assert html =~ "The temp is: 30℉"
+      assert render_hook(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
+  """
+  def render_hook(view, event, value \\ %{}) do
+    render_event(view, :hook, event, value)
+  end
+
   defp render_event([%View{} = view | path], type, event, value) do
     case GenServer.call(
            proxy_pid(view),
