@@ -715,9 +715,9 @@ defmodule Phoenix.LiveView do
   Because the main layout from the Plug pipeline is rendered outside of LiveView,
   the contents cannot be dynamically changed. The one exception is the `<title>`
   of the HTML document. Phoenix LiveView special cases the `@page_title` assign
-  to allow dynamically updating the title of the page,  which is useful when
-  using live navigation, or annoting the browser tab with a notification.
-  For example, to update the user's notfication count in the brower's title bar,
+  to allow dynamically updating the title of the page, which is useful when
+  using live navigation, or annotating the browser tab with a notification.
+  For example, to update the user's notification count in the browser's title bar,
   first set the `page_title` assign on mount:
 
         def mount(_session, socket) do
@@ -740,7 +740,7 @@ defmodule Phoenix.LiveView do
   base layout, such as injecting new scripts or styles into the `<head>` during
   live navigation, *a true page navigation should be used instead*. Assigning
   the `@page_title` updates the `document.title` directly, and therefore cannot
-  be used to udpate any other part of the base layout, even if the base layout
+  be used to update any other part of the base layout, even if the base layout
   references the assign.
 
   ## Rate limiting events with Debounce and Throttle
@@ -1166,7 +1166,7 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        container: {MyAppWeb.LayoutView, "live.html"}
+        layout: {MyAppWeb.LayoutView, "live.html"}
 
   ## Options
 
