@@ -643,19 +643,16 @@ defmodule Phoenix.LiveView do
 
   ## Layouts
 
-  By default, your plug pipeline will rendered any layout specified using
-  `Plug.Conn.put_layout/2`, such as the default app layout. Assigns from the
+  Your LiveView will be rendered within the layout specified in
+  your plug pipeline, such as the default app layout. Assigns from the
   root LiveView will be accessible by the layout, but they will not be
   dynamically updated on change. For a live layout, you must specify an additional
-  layout with your LiveView. For example, your regular `app.html` template may display
+  layout to use with your LiveView. For example, your regular `app.html` template may display
   a `@new_message_count` notification, like this:
 
       <!DOCTYPE html>
       <html lang="en">
         <head>
-          <%= csrf_meta_tag() %>
-          <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
-          <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
           <title><%= @page_title %></title>
         </head>
         <body>
@@ -677,9 +674,6 @@ defmodule Phoenix.LiveView do
       <!DOCTYPE html>
       <html lang="en">
         <head>
-          <%= csrf_meta_tag() %>
-          <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
-          <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
           <title><%= @page_title %></title>
         </head>
         <body>
@@ -697,8 +691,8 @@ defmodule Phoenix.LiveView do
       </nav>
       <%= @live_view_module.render(assigns) %>
 
-  Now, your LiveView can leverage `put_layout/2` and the layout will render
-  dynamic updates:
+  Now, your LiveView mount can leverage `put_layout/2` and the layout will be
+  updated dynamically as relevant assigns are changed.
 
       defmodule AppWeb.TimelineLive do
         use Phoenix.LiveView
@@ -722,23 +716,22 @@ defmodule Phoenix.LiveView do
   ### Updating the HTML document title
 
   Because the main layout from the plug pipeline is rendered outside of LiveView,
-  the contents cannot be dynamically patched by LiveView. The one exception
-  is the `<title>` of the HTML document. Phoenix LiveView special cases the
-  `@page_title` assign to allow dynamically updating the title of the page,
-  which is useful when using live navigation, or annoting the browser tab
-  with a notification. For example, to show the user's notfication count in
-  the browers title bar:
+  the contents cannot be dynamically changed. The one exception is the `<title>`
+  of the HTML document. Phoenix LiveView special cases the `@page_title` assign
+  to allow dynamically updating the title of the page,  which is useful when
+  using live navigation, or annoting the browser tab with a notification.
+  For example, to update the user's notfication count in the brower's title bar:
 
       def handle_info({:new_messages, count}, socket) do
         {:noreply, assign(socket, page_title: "Latest Posts (#{count} new)")}
       end
 
   *Note*: If you find yourself needing to dynamically patch other parts of the
-  base layout, such as injecting new scripts and styles into the `<head>` during
-  live navigation, a true page navigation should be used instead. `@page_title`
-  updates the `document.title` directly, and therefore cannot be used to udpate
-  any other part of the plug layout, even if the plug layout references the
-  assign.
+  base layout, such as injecting new scripts or styles into the `<head>` during
+  live navigation, *a true page navigation should be used instead*. Assigning
+  the `@page_title` updates the `document.title` directly, and therefore cannot
+  be used to udpate any other part of the plug layout, even if the plug layout
+  references the assign.
 
   ## Rate limiting events with Debounce and Throttle
 
