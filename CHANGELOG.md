@@ -51,6 +51,7 @@ Also note that **the session from now on will have string keys**. LiveView will 
 ### Backwards incompatible changes
   - `phx-target="window"` has been removed in favor of `phx-window-keydown`, `phx-window-focus`, etc, and the `phx-target` binding has been repurposed for targetting LiveView and LiveComponent events from the client
   - `Phoenix.LiveView` no longer defined `live_render` and `live_link`. These functions have been moved to `Phoenix.LiveView.Helpers` which can now be fully imported in your views. In other words, replace `import Phoenix.LiveView, only: [live_render: ..., live_link: ...]` by `import Phoenix.LiveView.Helpers`
+  - Previously, events would be automatically directed to a LiveView component if an `id` was passed to it. Those events will now go to the root LiveView unless you use `phx-target` or `this.pushEventTo` to route the event accordingly.
 
 ## 0.4.1 (2019-11-07)
 
