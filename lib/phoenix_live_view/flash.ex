@@ -35,9 +35,6 @@ defmodule Phoenix.LiveView.Flash do
     opts
   end
 
-  @doc """
-  Fetches the live flash from a token passed via client cookies.
-  """
   @impl Plug
   def call(conn, opts) do
     case cookie_flash(conn, salt(conn, opts)) do
@@ -54,8 +51,11 @@ defmodule Phoenix.LiveView.Flash do
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn, salt) do
     flash =
       case Phoenix.Token.verify(conn, salt, token, max_age: 60_000) do
-        {:ok, json_flash} -> Phoenix.json_library().decode!(json_flash)
-        {:error, _reason} -> nil
+        {:ok, %{} = flash} ->
+          for {k, v} when is_binary(k) and is_binary(v) <- flash, into: %{}, do: {k, v}
+
+        _ ->
+          nil
       end
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
@@ -65,16 +65,11 @@ defmodule Phoenix.LiveView.Flash do
 
   defp salt(conn, opts) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    salt_base = opts[:signing_salt] || Phoenix.LiveView.Utils.salt!(endpoint)
-    computed_salt(salt_base)
+    opts[:signing_salt] || Phoenix.LiveView.Utils.salt!(endpoint)
   end
 
-  defp computed_salt(salt_base), do: salt_base <> "flash"
-
   @doc false
-  def sign_token(endpoint_mod, salt_base, %{} = flash) do
-    salt = computed_salt(salt_base)
-    Phoenix.Token.sign(endpoint_mod, salt, Phoenix.json_library().encode!(flash))
+  def sign(endpoint_mod, salt, %{} = flash) do
+    Phoenix.Token.sign(endpoint_mod, salt, flash)
   end
 end

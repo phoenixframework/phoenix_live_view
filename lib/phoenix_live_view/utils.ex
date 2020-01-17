@@ -26,13 +26,6 @@ defmodule Phoenix.LiveView.Utils do
   def changed?(%Socket{}, _), do: false
 
   @doc """
-  Returns the socket's flash messages.
-  """
-  def get_flash(%Socket{private: private}) do
-    private[:flash]
-  end
-
-  @doc """
   Configures the socket for use.
   """
   def configure_socket(%{id: nil} = socket, private) do
@@ -86,12 +79,26 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Returns the socket's flash messages.
+  """
+  def get_flash(%Socket{private: private}) do
+    private[:flash]
+  end
+
+  @doc """
+  Puts a flash message in the socket.
+  """
+  def put_flash(%Socket{private: private} = socket, kind, msg)
+      when is_atom(kind) and is_binary(msg) do
+    new_private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
+    %Socket{socket | private: new_private}
+  end
+
+  @doc """
   Signs the socket's flash into a token if it has been set.
   """
-  def sign_flash(%Socket{}, nil), do: nil
-
   def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do
-    LiveView.Flash.sign_token(endpoint, salt!(endpoint), flash)
+    LiveView.Flash.sign(endpoint, salt!(endpoint), flash)
   end
 
   @doc """

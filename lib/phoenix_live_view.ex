@@ -1357,10 +1357,7 @@ defmodule Phoenix.LiveView do
       iex> put_flash(socket, :info, "It worked!")
       iex> put_flash(socket, :error, "You can't access that page")
   """
-  def put_flash(%Socket{private: private} = socket, kind, msg) do
-    new_private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
-    %Socket{socket | private: new_private}
-  end
+  defdelegate put_flash(socket, kind, msg), to: Phoenix.LiveView.Utils
 
   @doc """
   Annotates the socket for redirect to a destination path.

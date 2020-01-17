@@ -191,7 +191,7 @@ defmodule Phoenix.LiveView.Channel do
         {:ok, diff, redir, new_state}
 
       {:redirect, %{to: _to} = opts} ->
-        {:redirect, put_flash(new_state, opts), new_state}
+        {:redirect, copy_flash(new_state, opts), new_state}
 
       {:live_redirect, {:internal, params}, %{to: to} = opts} ->
         new_state = drop_redirect(new_state)
@@ -202,7 +202,7 @@ defmodule Phoenix.LiveView.Channel do
 
       {:live_redirect, :external, %{to: to} = opts} ->
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:external_live_redirect, put_flash(new_state, opts), new_state}
+        {:external_live_redirect, copy_flash(new_state, opts), new_state}
     end
   end
 
@@ -360,7 +360,7 @@ defmodule Phoenix.LiveView.Channel do
         |> sync_handle_params_with_live_redirect(params, opts, ref)
 
       {:live_redirect, :external, %{to: to} = opts} ->
-        new_state = push_external_live_redirect(new_state, put_flash(new_state, opts), ref)
+        new_state = push_external_live_redirect(new_state, opts, ref)
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
         {:stop, {:shutdown, {:redirect, to}}, new_state}
     end
@@ -388,18 +388,24 @@ defmodule Phoenix.LiveView.Channel do
 
   defp push_internal_live_redirect(state, nil), do: state
 
-  defp push_internal_live_redirect(state, %{to: to, kind: kind}) do
-    push(state, "live_redirect", %{to: to, kind: kind})
+  defp push_internal_live_redirect(state, opts) do
+    push(state, "live_redirect", opts)
   end
 
-  defp push_redirect(state, %{to: to}, nil = _ref) do
-    flash = Utils.get_flash(state.socket)
-    push(state, "redirect", %{to: to, flash: Utils.sign_flash(state.socket, flash)})
+  defp push_redirect(state, opts, nil = _ref) do
+    push(state, "redirect", copy_flash(state, opts))
   end
 
-  defp push_redirect(state, %{to: to}, ref) do
-    flash = Utils.get_flash(state.socket)
-    reply(state, ref, :ok, %{redirect: %{to: to, flash: Utils.sign_flash(state.socket, flash)}})
+  defp push_redirect(state, opts, ref) do
+    reply(state, ref, :ok, %{redirect: copy_flash(state, opts)})
+  end
+
+  defp push_external_live_redirect(state, opts, nil = _ref) do
+    push(state, "external_live_redirect", copy_flash(state, opts))
+  end
+
+  defp push_external_live_redirect(state, opts, ref) do
+    reply(state, ref, :ok, %{external_live_redirect: copy_flash(state, opts)})
   end
 
   defp push_noop(state, nil = _ref), do: state
@@ -408,17 +414,15 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
 
-  defp push_external_live_redirect(state, %{to: _, kind: _} = opts, nil = _ref) do
-    push(state, "external_live_redirect", opts)
-  end
-
-  defp push_external_live_redirect(state, %{to: _, kind: _} = opts, ref) do
-    reply(state, ref, :ok, %{external_live_redirect: opts})
+  defp copy_flash(%{socket: socket}, opts) do
+    if flash = Utils.get_flash(socket) do
+      Map.put(opts, :flash, Utils.sign_flash(socket, flash))
+    else
+      opts
+    end
   end
 
   defp maybe_changed(%{socket: socket} = state) do
-    # For now, we only track content changes.
-    # But in the future, we may want to sync other properties.
     case socket.redirected do
       {:live, %{to: to} = opts} ->
         {:live_redirect, Utils.live_link_info!(state.router, socket.view, to), opts}
@@ -575,10 +579,6 @@ defmodule Phoenix.LiveView.Channel do
   defp sync_with_parent(parent, assigned_new) do
     _ref = Process.monitor(parent)
     GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
-  end
-
-  defp put_flash(%{socket: socket}, opts) do
-    Map.put(opts, :flash, Utils.sign_flash(socket, Utils.get_flash(socket)))
   end
 
   defp parse_uri(url) do
