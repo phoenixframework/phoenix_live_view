@@ -1,3 +1,8 @@
+## 0.5.2 (2020-01-17)
+
+### Bug Fixes
+  - Fix optimization bug causing some DOM nodes to be removed on updates
+
 ## 0.5.1 (2020-01-15)
 
 ### Bug Fixes
