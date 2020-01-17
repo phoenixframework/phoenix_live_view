@@ -32,7 +32,6 @@ const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
-const PHX_TOUCH = "data-phx-touch"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
@@ -960,8 +959,6 @@ class DOMPatch {
       },
       onElUpdated: (el) => { updates.push(el) },
       onBeforeElUpdated: (fromEl, toEl) => {
-        if(fromEl.isEqualNode(toEl)){ return false }
-
         if(fromEl.getAttribute(phxUpdate) === "ignore"){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeAttrs(fromEl, toEl)
@@ -1164,6 +1161,7 @@ export class View {
   performPatch(patch){
     let destroyedCIDs = []
     let phxChildrenAdded = false
+    let updatedHookIds = new Set()
 
     patch.after("added", el => {
       let newHook = this.addHook(el)
@@ -1174,12 +1172,15 @@ export class View {
 
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.getHook(fromEl)
-      if(hook){ hook.__trigger__("beforeUpdate") }
+      if(hook && !fromEl.isEqualNode(toEl)){
+        updatedHookIds.add(fromEl.id)
+        hook.__trigger__("beforeUpdate")
+      }
     })
 
     patch.after("updated", el => {
       let hook = this.getHook(el)
-      if(hook){ hook.__trigger__("updated") }
+      if(hook && updatedHookIds.has(el.id)){ hook.__trigger__("updated") }
     })
 
     patch.before("discarded", (el) => {
@@ -1452,8 +1453,6 @@ export class View {
   }
 
   submitForm(form, targetCtx, phxEvent){
-    // touch all text areas to fix isEqualNode failing to use text area values
-    DOM.all(form, "textarea", el => el.setAttribute(PHX_TOUCH, true))
     let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     DOM.disableForm(form, prefix)
