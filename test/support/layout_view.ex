@@ -12,6 +12,12 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     """
   end
 
+  def render("live-override.html", assigns) do
+    ~L"""
+    LIVEOVERRIDESTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVEOVERRIDEEND
+    """
+  end
+
   def render("widget.html", assigns) do
     ~L"""
     WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ThermostatLive) %>

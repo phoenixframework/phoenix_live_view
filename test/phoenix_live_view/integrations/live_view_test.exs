@@ -619,25 +619,29 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "layout" do
-    @tag session: %{live_layout: {LayoutView, "live.html"}}
-    test "from root mount renders within the layout", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/thermo")
+    test "is picked from config on use", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/layout")
+      assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
 
-      assert html =~
-               ~r|^LAYOUT<article[\S\s]*LIVELAYOUTSTART-1-The temp is: 1[\S\s]*-LIVELAYOUTEND\n</article>$|
-
-      assert render_click(view, :save, "22") =~
-               ~r|^LIVELAYOUTSTART-22-The temp is: 22[\S\s]*-LIVELAYOUTEND\n$|
-
-      GenServer.call(view.pid, {:set, :page_title, "New Title"})
-      assert_receive {_ref, {:title, "New Title"}}
+      assert render_click(view, :double, "") =~
+               "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
     end
 
-    test "as argument to use", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/static-layout")
+    @tag session: %{live_layout: {LayoutView, "live-override.html"}}
+    test "is picked from config on mount", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/layout")
+      assert html =~ ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
-      assert html =~
-               ~r|^LAYOUT<div[\S\s]*LIVELAYOUTSTART-123-The value is: 123[\S\s]*-LIVELAYOUTEND\n</div>$|
+      assert render_click(view, :double, "") =~
+               "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"
+    end
+  end
+
+  describe "title" do
+    test "sends page title updates", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/thermo")
+      GenServer.call(view.pid, {:set, :page_title, "New Title"})
+      assert_receive {_ref, {:title, "New Title"}}
     end
   end
 end

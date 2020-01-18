@@ -1,12 +1,5 @@
 alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 
-defmodule Phoenix.LiveViewTest.StaticLayoutLive do
-  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, "live.html"}
-
-  def render(assigns), do: ~L|The value is: <%= @val %>|
-  def mount(_session, socket), do: {:ok, assign(socket, val: 123)}
-end
-
 defmodule Phoenix.LiveViewTest.ThermostatLive do
   use Phoenix.LiveView, container: {:article, class: "thermo"}, namespace: Phoenix.LiveViewTest
 
@@ -28,7 +21,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
-    maybe_put_layout(
+
       {:ok,
        assign(socket,
          val: val,
@@ -36,9 +29,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
          redir: session["redir"],
          users: users,
          greeting: nil
-       )},
-      session
-    )
+       )}
   end
 
   @key_i 73
@@ -86,12 +77,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_call({:set, var, val}, _, socket) do
     {:reply, :ok, assign(socket, var, val)}
   end
-
-  defp maybe_put_layout({:ok, socket}, %{"live_layout" => {mod, template}}) do
-    {:ok, socket, layout: {mod, template}}
-  end
-
-  defp maybe_put_layout({:ok, socket}, _session), do: {:ok, socket}
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
