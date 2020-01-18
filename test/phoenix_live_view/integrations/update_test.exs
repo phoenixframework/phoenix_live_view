@@ -18,27 +18,27 @@ defmodule Phoenix.LiveView.UpdateTest do
     test "static mount followed by connected mount", %{conn: conn} do
       conn = get(conn, "/time-zones")
       html = html_response(conn, 200)
-      assert [{"section", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
+      assert [{"div", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
 
       {:ok, view, _html} = live(conn)
       html = render(view)
-      assert [{"section", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
+      assert [{"div", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
 
       html = render_click(view, "add-tz", %{id: "tokyo", name: "Tokyo"})
 
       assert [
-               {"section", _, ["time: 12:00 NY\n" | _]},
-               {"section", _, ["time: 12:00 Tokyo\n" | _]}
+               {"div", _, ["time: 12:00 NY\n" | _]},
+               {"div", _, ["time: 12:00 Tokyo\n" | _]}
              ] = find_time_zones(html, ["ny", "tokyo"])
 
       _html = render_click(view, "add-tz", %{id: "la", name: "LA"})
       html = render_click(view, "add-tz", %{id: "sf", name: "SF"})
 
       assert [
-               {"section", _, ["time: 12:00 NY\n" | _]},
-               {"section", _, ["time: 12:00 Tokyo\n" | _]},
-               {"section", _, ["time: 12:00 LA\n" | _]},
-               {"section", _, ["time: 12:00 SF\n" | _]}
+               {"div", _, ["time: 12:00 NY\n" | _]},
+               {"div", _, ["time: 12:00 Tokyo\n" | _]},
+               {"div", _, ["time: 12:00 LA\n" | _]},
+               {"div", _, ["time: 12:00 SF\n" | _]}
              ] = find_time_zones(html, ["ny", "tokyo", "la", "sf"])
     end
 
@@ -65,27 +65,27 @@ defmodule Phoenix.LiveView.UpdateTest do
     test "static mount followed by connected mount", %{conn: conn} do
       conn = get(conn, "/time-zones")
       html = html_response(conn, 200)
-      assert [{"section", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
+      assert [{"div", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
 
       {:ok, view, _html} = live(conn)
       html = render(view)
-      assert [{"section", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
+      assert [{"div", _, ["time: 12:00 NY\n" | _]}] = find_time_zones(html, ["ny", "tokyo"])
 
       html = render_click(view, "add-tz", %{id: "tokyo", name: "Tokyo"})
 
       assert [
-               {"section", _, ["time: 12:00 Tokyo\n" | _]},
-               {"section", _, ["time: 12:00 NY\n" | _]}
+               {"div", _, ["time: 12:00 Tokyo\n" | _]},
+               {"div", _, ["time: 12:00 NY\n" | _]}
              ] = find_time_zones(html, ["ny", "tokyo"])
 
       _html = render_click(view, "add-tz", %{id: "la", name: "LA"})
       html = render_click(view, "add-tz", %{id: "sf", name: "SF"})
 
       assert [
-               {"section", _, ["time: 12:00 SF\n" | _]},
-               {"section", _, ["time: 12:00 LA\n" | _]},
-               {"section", _, ["time: 12:00 Tokyo\n" | _]},
-               {"section", _, ["time: 12:00 NY\n" | _]}
+               {"div", _, ["time: 12:00 SF\n" | _]},
+               {"div", _, ["time: 12:00 LA\n" | _]},
+               {"div", _, ["time: 12:00 Tokyo\n" | _]},
+               {"div", _, ["time: 12:00 NY\n" | _]}
              ] = find_time_zones(html, ["ny", "tokyo", "la", "sf"])
     end
 
@@ -115,8 +115,8 @@ defmodule Phoenix.LiveView.UpdateTest do
       {:ok, view, html} = live(conn, "/shuffle")
 
       assert [
-               {"section", _, ["time: 12:00 NY\n" | _]},
-               {"section", _, ["time: 12:00 SF\n" | _]}
+               {"div", _, ["time: 12:00 NY\n" | _]},
+               {"div", _, ["time: 12:00 SF\n" | _]}
              ] = find_time_zones(html, ["ny", "sf"])
 
       children_pids_before = for child <- children(view), do: child.pid
@@ -124,8 +124,8 @@ defmodule Phoenix.LiveView.UpdateTest do
       children_pids_after = for child <- children(view), do: child.pid
 
       assert [
-               {"section", _, ["time: 12:00 SF\n" | _]},
-               {"section", _, ["time: 12:00 NY\n" | _]}
+               {"div", _, ["time: 12:00 SF\n" | _]},
+               {"div", _, ["time: 12:00 NY\n" | _]}
              ] = find_time_zones(html, ["ny", "sf"])
 
       assert children_pids_after == children_pids_before
