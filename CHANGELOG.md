@@ -29,9 +29,10 @@ The steps are:
         socket "/live", Phoenix.LiveView.Socket,
           websocket: [connect_info: [session: @session_options]]
 
-  4) You should define the CSRF meta tag inside the in <head> in your layout:
+  4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
         <%= csrf_meta_tag() %>
+        <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 
   5) Then in your app.js:
 

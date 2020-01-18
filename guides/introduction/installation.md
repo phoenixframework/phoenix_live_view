@@ -136,10 +136,11 @@ latest javascript, then force an install.
 (cd assets && npm install --force phoenix_live_view)
 ```
 
-Ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`) like so:
+Ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`), before `app.js` is included like so:
 
 ```html
 <%= csrf_meta_tag() %>
+<script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 ```
 
 Enable connecting to a LiveView socket in your `app.js` file.
