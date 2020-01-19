@@ -128,12 +128,12 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   def live_link_info!(router, view, uri) do
-    %URI{host: host, path: path, query: query} = URI.parse(uri)
+    %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     case Phoenix.Router.route_info(router, "GET", path, host) do
       %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
-        {:internal, Map.merge(query_params, path_params)}
+        {:internal, Map.merge(query_params, path_params), parsed_uri}
 
       %{} ->
         :external
@@ -172,11 +172,13 @@ defmodule Phoenix.LiveView.Utils do
   Calls the optional `mount/N` callback, otherwise returns the socket as is.
   """
   def maybe_call_mount!(socket, view, args) do
-    if function_exported?(view, :mount, length(args)) do
+    arity = length(args)
+
+    if function_exported?(view, :mount, arity) do
       socket =
         case apply(view, :mount, args) do
           {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-            Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val) end)
+            Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
 
           {:ok, %Socket{} = socket} ->
             socket
@@ -237,13 +239,13 @@ defmodule Phoenix.LiveView.Utils do
     Base.encode64(binary, padding: false)
   end
 
-  defp mount_opt(%Socket{} = socket, key, val) when key in @mount_opts do
+  defp mount_opt(%Socket{} = socket, key, val, _arity) when key in @mount_opts do
     do_mount_opt(socket, key, val)
   end
 
-  defp mount_opt(%Socket{view: view}, key, val) do
+  defp mount_opt(%Socket{view: view}, key, val, arity) do
     raise ArgumentError, """
-    invalid option returned from #{inspect(view)}.mount/2.
+    invalid option returned from #{inspect(view)}.mount/#{arity}.
 
     Expected keys to be one of #{inspect(@mount_opts)}
     got: #{inspect(key)}: #{inspect(val)}
@@ -256,13 +258,13 @@ defmodule Phoenix.LiveView.Utils do
 
   defp do_mount_opt(_socket, :layout, bad_layout) do
     raise ArgumentError,
-          ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
+          "the :layout mount option expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
             "got: #{inspect(bad_layout)}"
   end
 
   defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
     unless Keyword.keyword?(temp_assigns) do
-      raise ":temporary_assigns must be keyword list"
+      raise "the :temporary_assigns mount option must be keyword list"
     end
 
     temp_assigns = Map.new(temp_assigns)

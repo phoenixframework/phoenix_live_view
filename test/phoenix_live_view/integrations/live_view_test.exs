@@ -66,6 +66,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
         live(conn)
       end
     end
+
+    test "renders static container", %{conn: conn} do
+      assert conn
+             |> put_req_header("x-requested-with", "live-link")
+             |> get("/counter/123", query1: "query1", query2: "query2")
+             |> html_response(200) =~
+               ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
+    end
   end
 
   describe "live_isolated" do
@@ -609,10 +617,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "raises with invalid options", %{conn: conn} do
       assert_raise Plug.Conn.WrapperError,
-                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/2/,
+                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/3/,
                    fn ->
                      conn
-                     |> put_session(:opts, temporary_assignswhoops: [:description])
+                     |> put_session(:opts, oops: [:description])
                      |> live("/opts")
                    end
     end
@@ -630,7 +638,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     @tag session: %{live_layout: {LayoutView, "live-override.html"}}
     test "is picked from config on mount", %{conn: conn} do
       {:ok, view, html} = live(conn, "/layout")
-      assert html =~ ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+
+      assert html =~
+               ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
       assert render_click(view, :double, "") =~
                "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"

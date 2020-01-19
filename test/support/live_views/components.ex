@@ -74,7 +74,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     """
   end
 
-  def mount(%{"names" => names, "from" => from}, socket) do
+  def mount(_params, %{"names" => names, "from" => from}, socket) do
     {:ok, assign(socket, names: names, from: from)}
   end
 

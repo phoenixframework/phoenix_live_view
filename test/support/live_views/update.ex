@@ -7,7 +7,7 @@ defmodule Phoenix.LiveViewTest.TZLive do
     """
   end
 
-  def mount(session, socket) do
+  def mount(:unavailable, session, socket) do
     {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
 end
@@ -26,7 +26,7 @@ defmodule Phoenix.LiveViewTest.AppendLive do
     """
   end
 
-  def mount(%{"time_zones" => {update_type, time_zones}}, socket) do
+  def mount(_params, %{"time_zones" => {update_type, time_zones}}, socket) do
     {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
      temporary_assigns: [time_zones: []]}
   end
@@ -49,7 +49,7 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
     """
   end
 
-  def mount(%{"time_zones" => time_zones}, socket) do
+  def mount(_params, %{"time_zones" => time_zones}, socket) do
     {:ok, assign(socket, time_zones: time_zones)}
   end
 

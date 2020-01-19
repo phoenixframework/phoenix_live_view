@@ -23,20 +23,17 @@ defmodule Phoenix.LiveView.ParamsTest do
     put_session(conn, key, :erlang.term_to_binary(value))
   end
 
-  test "renders static container", %{conn: conn} do
-    assert conn
-           |> put_req_header("x-requested-with", "live-link")
-           |> get("/counter/123", query1: "query1", query2: "query2")
-           |> html_response(200) =~
-             ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
-  end
-
   describe "handle_params on disconnected mount" do
     test "is called with named and query string params", %{conn: conn} do
       conn = get(conn, "/counter/123", query1: "query1", query2: "query2")
 
-      assert html_response(conn, 200) =~
-               escape(~s|%{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
+      response = html_response(conn, 200)
+
+      assert response =~
+               escape(~s|params: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
+
+      assert response =~
+               escape(~s|mount: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
     end
 
     test "hard redirects", %{conn: conn} do
@@ -96,7 +93,8 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?q1=1", q2: "2")
         |> live()
 
-      assert html =~ escape(~s|%{"id" => "123", "q1" => "1"}|)
+      assert html =~ escape(~s|params: %{"id" => "123", "q1" => "1"}|)
+      assert html =~ escape(~s|mount: %{"id" => "123", "q1" => "1"}|)
     end
 
     test "is called on connected mount with query string params from live", %{conn: conn} do
@@ -134,7 +132,9 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
         |> live()
 
-      assert render(counter_live) =~ escape(~s|%{"from" => "rehandled_params", "id" => "123"}|)
+      response = render(counter_live)
+      assert response =~ escape(~s|params: %{"from" => "rehandled_params", "id" => "123"}|)
+      assert response =~ escape(~s|mount: %{"from" => "handle_params", "id" => "123"}|)
     end
 
     test "external live redirects", %{conn: conn} do
@@ -174,8 +174,16 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
   end
 
-  describe "handle_params on live_link" do
-    test "internal links invokes handle_params", %{conn: conn} do
+  describe "live_link" do
+    test "renders static container", %{conn: conn} do
+      assert conn
+             |> put_req_header("x-requested-with", "live-link")
+             |> get("/counter/123", query1: "query1", query2: "query2")
+             |> html_response(200) =~
+               ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
+    end
+
+    test "invokes handle_params", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       assert render_live_link(counter_live, "/counter/123?filter=true") =~
@@ -191,27 +199,6 @@ defmodule Phoenix.LiveView.ParamsTest do
         assert render_click(counter_live, :live_redirect, "/counter/123?from=event_ack") =~
                  escape(~s|%{"from" => "event_ack", "id" => "123"}|)
       end)
-    end
-
-    test "raises if stopping", %{conn: conn} do
-      {:ok, counter_live, _html} = live(conn, "/counter/123")
-
-      next = fn socket ->
-        {:stop, LiveView.live_redirect(socket, to: "/counter/123?from=handle_call")}
-      end
-
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
-    end
-
-    test "raises on stop without redirect", %{conn: conn} do
-      {:ok, counter_live, _html} = live(conn, "/counter/123")
-      next = fn socket -> {:stop, socket} end
-
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
-             end) =~ "attempted to stop socket without redirecting"
     end
 
     test "from handle_info", %{conn: conn} do
@@ -263,6 +250,27 @@ defmodule Phoenix.LiveView.ParamsTest do
                       %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
     end
 
+    test "raises if stopping", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+
+      next = fn socket ->
+        {:stop, LiveView.live_redirect(socket, to: "/counter/123?from=handle_call")}
+      end
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
+             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+    end
+
+    test "raises on stop without redirect", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+      next = fn socket -> {:stop, socket} end
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
+             end) =~ "attempted to stop socket without redirecting"
+    end
+
     test "raises if stopping from handle_params", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
@@ -295,18 +303,6 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_remove(counter_live, {:redirect, "/thermo/123"})
     end
 
-    test "raises if stopping", %{conn: conn} do
-      {:ok, counter_live, _html} = live(conn, "/counter/123")
-
-      next = fn socket ->
-        {:stop, LiveView.live_redirect(socket, to: "/thermo/123")}
-      end
-
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
-    end
-
     test "from handle_params", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
@@ -325,6 +321,18 @@ defmodule Phoenix.LiveView.ParamsTest do
                       %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
 
       assert_remove(counter_live, {:redirect, "/thermo/123"})
+    end
+
+    test "raises if stopping", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+
+      next = fn socket ->
+        {:stop, LiveView.live_redirect(socket, to: "/thermo/123")}
+      end
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
+             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
     end
 
     test "raises if stopping from handle_params", %{conn: conn} do

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveViewTest.LayoutLive do
 
   def render(assigns), do: ~L|The value is: <%= @val %>|
 
-  def mount(session, socket) do
+  def mount(_params, session, socket) do
     socket
     |> assign(val: 123)
     |> maybe_put_layout(session)

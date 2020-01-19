@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     """
   end
 
-  def mount(session, socket) do
+  def mount(_params, session, socket) do
     nest = Map.get(session, "nest", false)
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
@@ -89,7 +89,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     """
   end
 
-  def mount(session, socket) do
+  def mount(_params, session, socket) do
     {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
 
@@ -111,7 +111,7 @@ defmodule Phoenix.LiveViewTest.ClockControlsLive do
 
   def render(assigns), do: ~L|<button phx-click="snooze">+</button>|
 
-  def mount(_session, socket), do: {:ok, socket}
+  def mount(_params, _session, socket), do: {:ok, socket}
 
   def handle_event("snooze", _, socket) do
     send(socket.parent_pid, :snooze)
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
     """
   end
 
-  def mount(session, socket) do
+  def mount(_params, session, socket) do
     {:ok, assign(socket, %{session: session, title: "Dashboard"})}
   end
 end
@@ -152,7 +152,7 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
     """
   end
 
-  def mount(%{"dup" => dup}, socket) do
+  def mount(_params, %{"dup" => dup}, socket) do
     {:ok, assign(socket, count: 0, dup: dup, names: ~w(Tokyo Madrid Toronto))}
   end
 
@@ -175,7 +175,7 @@ defmodule Phoenix.LiveViewTest.RootLive do
     """
   end
 
-  def mount(%{"user_id" => user_id}, socket) do
+  def mount(_params, %{"user_id" => user_id}, socket) do
     {:ok,
      socket
      |> assign(:dynamic_child, nil)
@@ -199,7 +199,7 @@ defmodule Phoenix.LiveViewTest.ChildLive do
   end
 
   # The "user_id" is carried from the session to the child live view too
-  def mount(%{"user_id" => user_id, "child" => id}, socket) do
+  def mount(_params, %{"user_id" => user_id, "child" => id}, socket) do
     {:ok,
      socket
      |> assign(:id, id)
@@ -214,7 +214,7 @@ defmodule Phoenix.LiveViewTest.OptsLive do
 
   def render(assigns), do: ~L|<%= @description %>. <%= @canary %>|
 
-  def mount(%{"opts" => opts}, socket) do
+  def mount(_params, %{"opts" => opts}, socket) do
     {:ok, assign(socket, description: "long description", canary: "canary"), opts}
   end
 

@@ -58,7 +58,7 @@ defmodule Phoenix.LiveView.Channel do
     %{"url" => url} = msg.payload
 
     case Utils.live_link_info!(router, view, url) do
-      {:internal, params} ->
+      {:internal, params, _} ->
         params
         |> view.handle_params(url, socket)
         |> handle_result({:handle_params, 3, msg.ref}, state)
@@ -166,23 +166,26 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_call_mount_handle_params(%{socket: socket} = state, url) do
-    %{view: view, router: router} = socket
+  defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
+    %{view: view} = socket
 
-    if function_exported?(view, :handle_params, 3) do
-      case Utils.live_link_info!(router, view, url) do
-        {:internal, params} ->
-          params
-          |> view.handle_params(url, socket)
-          |> mount_handle_params_result(state, :mount)
+    cond do
+      not function_exported?(view, :handle_params, 3) ->
+        {diff, new_state} = render_diff(state, socket)
+        {:ok, diff, :mount, new_state}
 
-        :external ->
-          raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
+      is_nil(router) ->
+        # Let the callback fail for the usual reasons
+        Utils.live_link_info!(nil, view, url)
+
+      params == :unavailable ->
+        raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
                   "was not declared in the router with the live/3 macro under #{inspect(url)}"
-      end
-    else
-      {diff, new_state} = render_diff(state, socket)
-      {:ok, diff, :mount, new_state}
+
+      true ->
+        params
+        |> view.handle_params(url, socket)
+        |> mount_handle_params_result(state, :mount)
     end
   end
 
@@ -197,7 +200,7 @@ defmodule Phoenix.LiveView.Channel do
       {:redirect, %{to: _to} = opts} ->
         {:redirect, copy_flash(new_state, opts), new_state}
 
-      {:live_redirect, {:internal, params}, %{to: to} = opts} ->
+      {:live_redirect, {:internal, params, _}, %{to: to} = opts} ->
         %{socket: new_socket} = new_state = drop_redirect(new_state)
 
         params
@@ -356,7 +359,7 @@ defmodule Phoenix.LiveView.Channel do
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
         {:stop, {:shutdown, {:redirect, to}}, new_state}
 
-      {:live_redirect, {:internal, params}, %{to: _to, kind: _kind} = opts} ->
+      {:live_redirect, {:internal, params, _}, %{to: _to, kind: _kind} = opts} ->
         new_state
         |> drop_redirect()
         |> sync_handle_params_with_live_redirect(params, opts, ref)
@@ -498,6 +501,9 @@ defmodule Phoenix.LiveView.Channel do
       assigned_new: assigned_new
     } = verified
 
+    # Optional parts
+    router = verified[:router]
+
     %Phoenix.Socket{
       endpoint: endpoint,
       private: %{session: socket_session},
@@ -522,7 +528,7 @@ defmodule Phoenix.LiveView.Channel do
           parent_pid: parent,
           root_pid: root || self(),
           id: id,
-          router: verified[:router]
+          router: router
         },
         %{
           connect_params: connect_params,
@@ -530,10 +536,16 @@ defmodule Phoenix.LiveView.Channel do
         }
       )
 
+    {params, parsed_uri} =
+      case router && Utils.live_link_info!(router, view, url) do
+        {:internal, params, parsed_uri} -> {params, parsed_uri}
+        _ -> {:unavailable, :unavailable}
+      end
+
     socket
-    |> Utils.maybe_call_mount!(view, [Map.merge(socket_session, session), socket])
-    |> build_state(phx_socket, verified[:router], url)
-    |> maybe_call_mount_handle_params(url)
+    |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])
+    |> build_state(phx_socket, parsed_uri)
+    |> maybe_call_mount_handle_params(router, url, params)
     |> reply_mount(from)
   end
 
@@ -565,10 +577,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, router, url) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, parsed_uri) do
     %{
-      # There is no need to keep the uri if we don't have a router
-      uri: router && parse_uri(url),
+      uri: prune_uri(parsed_uri),
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,
@@ -585,8 +596,10 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
   end
 
-  defp parse_uri(url) do
-    %URI{host: host, port: port, scheme: scheme} = URI.parse(url)
+  defp prune_uri(:unavailable), do: :unavailable
+
+  defp prune_uri(url) do
+    %URI{host: host, port: port, scheme: scheme} = url
 
     if host == nil do
       raise "client did not send full URL, missing host in #{url}"

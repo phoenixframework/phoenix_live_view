@@ -124,27 +124,30 @@ defmodule Phoenix.LiveView do
   automatically re-rendered and the updates are pushed to the client.
 
   You begin by rendering a LiveView from your router, controller, or
-  view. When a view is first rendered, the `mount/2` callback is invoked
-  with the current session and the LiveView socket. The `mount/2`
-  callback wires up socket assigns necessary for rendering the view.
-  After mounting, `render/1` is invoked and the HTML is sent as a
-  regular HTML response to the client.
+  view. When a view is first rendered, the `mount/3` callback is invoked
+  with the current params, the current session and the LiveView socket.
+  As in a regular request, `params` contains public data that can be
+  modified by the user. The `session` always contains private data set
+  by the application itself. The `mount/3` callback wires up socket
+  assigns necessary for rendering the view. After mounting, `render/1`
+  is invoked and the HTML is sent as a regular HTML response to the
+  client.
 
   After rendering the static page, LiveView connects from the client
   where stateful views are spawned to push rendered updates to the
   browser, and receive client events via phx bindings. Just like
-  the first rendering, `mount/2` is invoked  with the session, and
-  socket state, where mount assigns values for rendering. However
+  the first rendering, `mount/3` is invoked  with params, session,
+  and socket state, where mount assigns values for rendering. However
   in the connected client case, a LiveView process is spawned on
   the server, pushes the result of `render/1` to the client and
   continues on for the duration of the connection. If at any point
   during the stateful life-cycle a crash is encountered, or the client
   connection drops, the client gracefully reconnects to the server,
-  calling `mount/2` once again.
+  calling `mount/3` once again.
 
   ## Example
 
-  First, a LiveView requires two callbacks: `mount/2` and `render/1`:
+  First, a LiveView requires two callbacks: `mount/3` and `render/1`:
 
       defmodule AppWeb.ThermostatLive do
         use Phoenix.LiveView
@@ -155,7 +158,7 @@ defmodule Phoenix.LiveView do
           "\""
         end
 
-        def mount(%{"current_user_id" => user_id}, socket) do
+        def mount(_params, %{"current_user_id" => user_id}, socket) do
           temperature = Thermostat.get_user_reading(user_id)
           {:ok, assign(socket, :temperature, temperature)}
         end
@@ -261,7 +264,7 @@ defmodule Phoenix.LiveView do
 
   *Note*: Comprehensive JavaScript client usage is covered in a later section.
 
-  After the client connects, `mount/2` will be invoked inside a spawned
+  After the client connects, `mount/3` will be invoked inside a spawned
   LiveView process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
   sending messages, etc. For example, you can periodically update a LiveView
@@ -271,7 +274,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
         ...
 
-        def mount(%{"current_user_id" => user_id}, socket) do
+        def mount(_params, %{"current_user_id" => user_id}, socket) do
           if connected?(socket), do: :timer.send_interval(30000, self(), :update)
 
           case Thermostat.get_user_reading(user_id) do
@@ -482,7 +485,7 @@ defmodule Phoenix.LiveView do
 
       def render(assigns) ...
 
-      def mount(_session, socket) do
+      def mount(_params, _session, socket) do
         {:ok, assign(socket, %{changeset: Accounts.change_user(%User{})})}
       end
 
@@ -700,7 +703,7 @@ defmodule Phoenix.LiveView do
 
   Or alternatively, you can provide the `:layout` dynamically as an option in mount:
 
-        def mount(_session, socket) do
+        def mount(_params, _session, socket) do
           socket = assign(socket, new_message_count: 0)
           {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
         end
@@ -722,7 +725,7 @@ defmodule Phoenix.LiveView do
   For example, to update the user's notification count in the browser's title bar,
   first set the `page_title` assign on mount:
 
-        def mount(_session, socket) do
+        def mount(_params, _session, socket) do
           socket = assign(socket, page_title: "Latest Posts")
           {:ok, socket}
         end
@@ -843,7 +846,7 @@ defmodule Phoenix.LiveView do
   To do so, the first step is to mark which assigns are temporary and
   what are the value they should be reset to on mount:
 
-      def mount(_session, socket) do
+      def mount(_params, _session, socket) do
         socket = assign(socket, :messages, load_last_20_messages())
         {:ok, socket, temporary_assigns: [messages: []]}
       end
@@ -906,9 +909,14 @@ defmodule Phoenix.LiveView do
 
   ### `handle_params/3`
 
-  The `c:handle_params/3` callback is invoked after `c:mount/2`. It receives the
-  request path parameters and the query parameters as first argument, the url as
-  second, and the socket as third. As any other `handle_*` callback, changes to
+  The `c:handle_params/3` callback is invoked after `c:mount/3`. It receives the
+  request parameters as first argument, the url as second, and the socket as third.
+
+  The parameters given to `c:handle_params/3` are the same as the one given to
+  `c:mount/3`. So how do you decide which callback to use to load data? Generally
+  speaking, data should always be loaded on `c:mount/3`. Only the params that
+  can be changed via `live_link/3` or `live_redirect/2` must be loaded on
+  `c:handle_params/3`. As any other `handle_*` callback, changes to
   the state inside `c:handle_params/3` will trigger a server render.
 
   To avoid building a new LiveView whenever a live link is clicked or whenever
@@ -1135,7 +1143,31 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.Socket
 
-  @callback mount(session :: map, socket :: Socket.t()) ::
+  @doc """
+  The LiveView entry-point.
+
+  For each LiveView in the root of a template, `c:mount/3` is invoked twice:
+  once to do the initial page load and another to establish the live socket.
+
+  It expects three parameters:
+
+    * `params` - a map of string keys which contain public information that
+      can be set by the user. It contains the query params as well as any
+      router path parameter. `params` is only available for LiveViews mounted
+      at the router, otherwise it is the atom `:unavailable`
+    * `session` - the connection session
+    * `socket` - the LiveView socket
+
+  It must return either `{:ok, socket}` or `{:ok, socket, options}`, where
+  `options` is one of:
+
+    * `:temporary_assigns` - a keyword list of assigns that are temporary
+      and must be reset to their value after every render
+
+    * `:layout` - the optional layout to be used by the LiveView
+
+  """
+  @callback mount(Socket.unsigned_params() | :unavailable, session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
@@ -1155,7 +1187,7 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:stop, Socket.t()}
 
-  @optional_callbacks mount: 2,
+  @optional_callbacks mount: 3,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
@@ -1183,10 +1215,28 @@ defmodule Phoenix.LiveView do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveView
+      @before_compile Phoenix.LiveView
 
       @doc false
       @__live__ Phoenix.LiveView.__live__(__MODULE__, opts)
       def __live__, do: @__live__
+    end
+  end
+
+  # TODO: Remove once the deprecation period is over
+  @doc false
+  defmacro __before_compile__(env) do
+    if Module.defines?(env.module, {:mount, 3}) do
+      :ok
+    else
+      IO.warn(
+        "mount(session, socket) is deprecated, please define mount(params, session, socket) instead",
+        Macro.Env.stacktrace(env)
+      )
+
+      quote do
+        def mount(_params, session, socket), do: mount(session, socket)
+      end
     end
   end
 
@@ -1229,7 +1279,7 @@ defmodule Phoenix.LiveView do
       defmodule DemoWeb.ClockLive do
         use Phoenix.LiveView
         ...
-        def mount(_session, socket) do
+        def mount(_params, _session, socket) do
           if connected?(socket), do: :timer.send_interval(1000, self(), :tick)
 
           {:ok, assign(socket, date: :calendar.local_time())}
@@ -1265,7 +1315,7 @@ defmodule Phoenix.LiveView do
       |> LiveView.Controller.live_render(MyLive, session: %{"user_id" => user.id})
 
       # LiveView mount
-      def mount(%{"user_id" => user_id}, socket) do
+      def mount(_params, %{"user_id" => user_id}, socket) do
         {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
@@ -1465,7 +1515,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def mount(_session, socket) do
+      def mount(_params, _session, socket) do
         {:ok, assign(socket, width: get_connect_params(socket)["width"] || @width)}
       end
   """
@@ -1483,7 +1533,7 @@ defmodule Phoenix.LiveView do
 
       true ->
         raise RuntimeError, """
-        attempted to read connect_params outside of #{inspect(socket.view)}.mount/2.
+        attempted to read connect_params outside of #{inspect(socket.view)}.mount/3.
 
         connect_params only exist while mounting. If you require access to this information
         after mount, store the state in socket assigns.

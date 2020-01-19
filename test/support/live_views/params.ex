@@ -4,18 +4,20 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   def render(assigns) do
     ~L"""
     The value is: <%= @val %>
-    <%= if map_size(@params) > 0, do: inspect(@params) %>
     connect: <%= inspect(@connect_params) %>
+    mount: <%= inspect(@mount_params) %>
+    params: <%= inspect(@params) %>
     """
   end
 
-  def mount(session, socket) do
+  def mount(params, session, socket) do
     on_handle_params = session["on_handle_params"]
 
     {:ok,
      assign(
        socket,
        val: 1,
+       mount_params: params,
        connect_params: get_connect_params(socket) || %{},
        test_pid: session["test_pid"],
        on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
