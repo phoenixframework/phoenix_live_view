@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView.Channel do
         # Let the callback fail for the usual reasons
         Utils.live_link_info!(nil, view, url)
 
-      params == :unavailable ->
+      params == :not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
                   "was not declared in the router with the live/3 macro under #{inspect(url)}"
 
@@ -539,7 +539,7 @@ defmodule Phoenix.LiveView.Channel do
     {params, parsed_uri} =
       case router && Utils.live_link_info!(router, view, url) do
         {:internal, params, parsed_uri} -> {params, parsed_uri}
-        _ -> {:unavailable, :unavailable}
+        _ -> {:not_mounted_at_router, :not_mounted_at_router}
       end
 
     socket
@@ -596,7 +596,7 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
   end
 
-  defp prune_uri(:unavailable), do: :unavailable
+  defp prune_uri(:not_mounted_at_router), do: :not_mounted_at_router
 
   defp prune_uri(url) do
     %URI{host: host, port: port, scheme: scheme} = url

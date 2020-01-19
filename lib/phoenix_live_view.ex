@@ -1154,7 +1154,7 @@ defmodule Phoenix.LiveView do
     * `params` - a map of string keys which contain public information that
       can be set by the user. It contains the query params as well as any
       router path parameter. `params` is only available for LiveViews mounted
-      at the router, otherwise it is the atom `:unavailable`
+      at the router, otherwise it is the atom `:not_mounted_at_router`
     * `session` - the connection session
     * `socket` - the LiveView socket
 
@@ -1167,7 +1167,7 @@ defmodule Phoenix.LiveView do
     * `:layout` - the optional layout to be used by the LiveView
 
   """
-  @callback mount(Socket.unsigned_params() | :unavailable, session :: map, socket :: Socket.t()) ::
+  @callback mount(Socket.unsigned_params() | :not_mounted_at_router, session :: map, socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()

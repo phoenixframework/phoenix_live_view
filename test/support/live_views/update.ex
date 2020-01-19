@@ -7,7 +7,7 @@ defmodule Phoenix.LiveViewTest.TZLive do
     """
   end
 
-  def mount(:unavailable, session, socket) do
+  def mount(:not_mounted_at_router, session, socket) do
     {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
 end

@@ -209,7 +209,7 @@ defmodule Phoenix.LiveView.Static do
     {tag, extended_attrs} = container
 
     socket = put_in(socket.private[:conn_session], conn_session)
-    socket = Utils.maybe_call_mount!(socket, view, [:unavailable, mount_session, socket])
+    socket = Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
@@ -260,7 +260,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
-    mount_params = if router, do: params, else: :unavailable
+    mount_params = if router, do: params, else: :not_mounted_at_router
 
     socket
     |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
