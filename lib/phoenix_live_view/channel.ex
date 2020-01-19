@@ -53,13 +53,14 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
-    %{router: router, socket: %{view: view}} = state
+    %{socket: socket} = state
+    %{view: view, router: router} = socket
     %{"url" => url} = msg.payload
 
     case Utils.live_link_info!(router, view, url) do
       {:internal, params} ->
         params
-        |> state.socket.view.handle_params(url, state.socket)
+        |> view.handle_params(url, socket)
         |> handle_result({:handle_params, 3, msg.ref}, state)
 
       :external ->
@@ -85,8 +86,10 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, component_handle_event(state, cid, event, val, msg.ref)}
 
       :error ->
+        %{socket: socket} = state
+
         event
-        |> view_module(state).handle_event(val, state.socket)
+        |> socket.view.handle_event(val, socket)
         |> handle_result({:handle_event, 3, msg.ref}, state)
     end
   end
@@ -103,7 +106,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(msg, %{socket: socket} = state) do
     msg
-    |> view_module(state).handle_info(socket)
+    |> socket.view.handle_info(socket)
     |> handle_result({:handle_info, 2, nil}, state)
   end
 
@@ -118,7 +121,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
-    case view_module(state).handle_call(msg, from, socket) do
+    case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
         case handle_changed(state, new_socket, nil) do
           {:ok, _changed, new_state} -> {:reply, reply, new_state}
@@ -133,13 +136,13 @@ defmodule Phoenix.LiveView.Channel do
   @impl true
   def handle_cast(msg, %{socket: socket} = state) do
     msg
-    |> view_module(state).handle_cast(socket)
+    |> socket.view.handle_cast(socket)
     |> handle_result({:handle_cast, 2, nil}, state)
   end
 
   @impl true
-  def terminate(reason, %{socket: socket} = state) do
-    view = view_module(state)
+  def terminate(reason, %{socket: socket}) do
+    %{view: view} = socket
 
     if function_exported?(view, :terminate, 2) do
       view.terminate(reason, socket)
@@ -154,7 +157,7 @@ defmodule Phoenix.LiveView.Channel do
 
   @impl true
   def code_change(old, %{socket: socket} = state, extra) do
-    view = view_module(state)
+    %{view: view} = socket
 
     if function_exported?(view, :code_change, 3) do
       view.code_change(old, socket, extra)
@@ -164,17 +167,18 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, url) do
-    if function_exported?(socket.view, :handle_params, 3) do
-      case Utils.live_link_info!(state.router, socket.view, url) do
+    %{view: view, router: router} = socket
+
+    if function_exported?(view, :handle_params, 3) do
+      case Utils.live_link_info!(router, view, url) do
         {:internal, params} ->
           params
-          |> view_module(state).handle_params(url, socket)
+          |> view.handle_params(url, socket)
           |> mount_handle_params_result(state, :mount)
 
         :external ->
-          raise "cannot invoke handle_params/3 for #{inspect(socket.view)} " <>
-                  "because #{inspect(socket.view)} was not declared in the router with " <>
-                  "the live/3 macro under #{inspect(url)}"
+          raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
+                  "was not declared in the router with the live/3 macro under #{inspect(url)}"
       end
     else
       {diff, new_state} = render_diff(state, socket)
@@ -194,10 +198,10 @@ defmodule Phoenix.LiveView.Channel do
         {:redirect, copy_flash(new_state, opts), new_state}
 
       {:live_redirect, {:internal, params}, %{to: to} = opts} ->
-        new_state = drop_redirect(new_state)
+        %{socket: new_socket} = new_state = drop_redirect(new_state)
 
         params
-        |> view_module(new_state).handle_params(build_uri(new_state, to), new_state.socket)
+        |> new_socket.view.handle_params(build_uri(new_state, to), new_socket)
         |> mount_handle_params_result(new_state, {:live_redirect, opts})
 
       {:live_redirect, :external, %{to: to} = opts} ->
@@ -247,7 +251,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp handle_result(result, {:handle_call, 3, _ref}, state) do
     raise ArgumentError, """
-    invalid noreply from #{inspect(view_module(state))}.handle_call/3 callback.
+    invalid noreply from #{inspect(state.socket.view)}.handle_call/3 callback.
 
     Expected one of:
 
@@ -261,7 +265,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp handle_result(result, {name, arity, _ref}, state) do
     raise ArgumentError, """
-    invalid noreply from #{inspect(view_module(state))}.#{name}/#{arity} callback.
+    invalid noreply from #{inspect(state.socket.view)}.#{name}/#{arity} callback.
 
     Expected one of:
 
@@ -300,8 +304,6 @@ defmodule Phoenix.LiveView.Channel do
 
     push_render(%{state | components: new_components}, diff, ref)
   end
-
-  defp view_module(%{socket: %Socket{view: view}}), do: view
 
   defp decode_event_type("form", url_encoded) do
     url_encoded
@@ -371,7 +373,9 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp sync_handle_params_with_live_redirect(state, params, %{to: to} = opts, ref) do
-    case view_module(state).handle_params(params, build_uri(state, to), state.socket) do
+    %{socket: socket} = state
+
+    case socket.view.handle_params(params, build_uri(state, to), socket) do
       {:noreply, %Socket{} = new_socket} ->
         handle_changed(state, new_socket, ref, opts)
 
@@ -422,10 +426,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_changed(%{socket: socket} = state) do
+  defp maybe_changed(%{socket: socket}) do
     case socket.redirected do
       {:live, %{to: to} = opts} ->
-        {:live_redirect, Utils.live_link_info!(state.router, socket.view, to), opts}
+        {:live_redirect, Utils.live_link_info!(socket.router, socket.view, to), opts}
 
       {:redirect, opts} ->
         {:redirect, opts}
@@ -440,7 +444,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(%{components: components} = state, socket) do
-    rendered = Utils.to_rendered(socket, view_module(state))
+    rendered = Utils.to_rendered(socket, socket.view)
     {socket, diff, new_components} = Diff.render(socket, rendered, components)
     {diff, %{state | socket: Utils.clear_changed(socket), components: new_components}}
   end
@@ -517,7 +521,8 @@ defmodule Phoenix.LiveView.Channel do
           connected?: true,
           parent_pid: parent,
           root_pid: root || self(),
-          id: id
+          id: id,
+          router: verified[:router]
         },
         %{
           connect_params: connect_params,
@@ -564,7 +569,6 @@ defmodule Phoenix.LiveView.Channel do
     %{
       # There is no need to keep the uri if we don't have a router
       uri: router && parse_uri(url),
-      router: router,
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,
