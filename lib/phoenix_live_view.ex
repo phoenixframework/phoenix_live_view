@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView do
-  @moduledoc ~S"""
+  @moduledoc ~S'''
   LiveView provides rich, real-time user experiences with
   server-rendered HTML.
 
@@ -153,9 +153,9 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          ~L"\""
+          ~L"""
           Current temperature: <%= @temperature %>
-          "\""
+          """
         end
 
         def mount(_params, %{"current_user_id" => user_id}, socket) do
@@ -369,7 +369,7 @@ defmodule Phoenix.LiveView do
   Another limitation of changing tracking is that it does not work across regular
   function calls. For example, imagine the following template that renders a `div`:
 
-      <%= content_tag :div, id: ""user_#\{@id}" do %>
+      <%= content_tag :div, id: "user_#{@id}" do %>
         <%= @name %>
         <%= @description %>
       <% end %>
@@ -573,11 +573,11 @@ defmodule Phoenix.LiveView do
   for example:
 
       def render(assigns) do
-        ~L"\""
+        ~L"""
         <div id="thermostat" phx-window-keyup="update_temp">
           Current temperature: <%= @temperature %>
         </div>
-        "\""
+        """
       end
 
       def handle_event("update_temp", %{"code" => "ArrowUp"}, socket) do
@@ -1115,7 +1115,7 @@ defmodule Phoenix.LiveView do
       Hooks.PhoneNumber = {
         mounted() {
           this.el.addEventListener("input", e => {
-            let match = this.el.value.replace(/\\D/g, "").match(/^(\\d{3})(\\d{3})(\\d{4})$/)
+            let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
             if(match) {
               this.el.value = `${match[1]}-${match[2]}-${match[3]}`
             }
@@ -1139,7 +1139,7 @@ defmodule Phoenix.LiveView do
     * `:hibernate_after` (optional) - the amount of time in miliseconds
       of inactivity inside the LiveView so it hibernates (i.e. it
       compresses its own memory and state). Defaults to 15000ms (15 seconds)
-  """
+  '''
 
   alias Phoenix.LiveView.Socket
 
