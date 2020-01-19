@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
                <button phx-click="inc">+</button>
                """)
 
-      assert DOM.child_nodes(DOM.parse(render(view))) ==
+      assert DOM.child_nodes(hd(DOM.parse(render(view)))) ==
                DOM.parse("""
                The temp is: 3
                <button phx-click="dec">-</button>
@@ -379,15 +379,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
       assert controls_view = find_child(clock_view, "NY-controls")
-
       refute render(thermo_view) == html_without_nesting
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
-
       assert_remove(clock_view, {:shutdown, :removed})
       assert_remove(controls_view, {:shutdown, :removed})
-
-      assert DOM.child_nodes(DOM.parse(render(thermo_view))) == html_without_nesting
+      assert [{_, _, ^html_without_nesting}] = DOM.parse(render(thermo_view))
 
       refute find_child(thermo_view, "clock")
     end

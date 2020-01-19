@@ -23,14 +23,14 @@ defmodule Phoenix.LiveView.ComponentTest do
   test "renders successfully when connected", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
-    assert {"div", _,
+    assert [{"div", _,
             [
               {"div", [], ["\n  unknown says hi with socket: true\n"]},
               {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
                ["\n  chris says hi with socket: true\n"]},
               {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
                ["\n  jose says hi with socket: true\n"]}
-            ]} = DOM.parse(render(view))
+            ]}] = DOM.parse(render(view))
   end
 
   test "tracks removals", %{conn: conn} do
@@ -202,11 +202,11 @@ defmodule Phoenix.LiveView.ComponentTest do
       refute_receive {:updated, _}
       refute_receive {:preload, _}
 
-      assert {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
-              ["\n  NEW-chris says hi with socket: true\n"]} == DOM.parse(render([view, "chris"]))
+      assert [{"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+              ["\n  NEW-chris says hi with socket: true\n"]}] == DOM.parse(render([view, "chris"]))
 
-      assert {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
-              ["\n  NEW-jose says hi with socket: true\n"]} == DOM.parse(render([view, "jose"]))
+      assert [{"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+              ["\n  NEW-jose says hi with socket: true\n"]}] == DOM.parse(render([view, "jose"]))
     end
 
     test "updates without :id raise", %{conn: conn} do
