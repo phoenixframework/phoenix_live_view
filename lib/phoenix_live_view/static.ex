@@ -62,10 +62,12 @@ defmodule Phoenix.LiveView.Static do
     {user_session, Map.merge(conn_or_socket_session, user_session)}
   end
 
-  # Validate user-supplied session data uses string keys
-  defp validate_session(session) when is_map(session) do
-    for {key, _value} when not is_binary(key) <- session do
-      IO.warn("Phoenix.LiveView sessions require string keys, got: #{inspect(key)}")
+  defp validate_session(session) do
+    if is_map(session) and Enum.all?(session, fn {k, _} -> is_binary(k) end) do
+      :ok
+    else
+      raise ArgumentError,
+            "LiveView :session must be a map with string keys, got: #{inspect(session)}"
     end
   end
 

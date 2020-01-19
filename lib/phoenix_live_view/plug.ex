@@ -2,7 +2,6 @@ defmodule Phoenix.LiveView.Plug do
   @moduledoc false
 
   alias Phoenix.LiveView.Controller
-  alias Plug.Conn
 
   @behaviour Plug
 
@@ -26,13 +25,7 @@ defmodule Phoenix.LiveView.Plug do
   end
 
   defp do_call(conn, view, opts) do
-    # TODO: Deprecate atom entries in :session
-    session_keys = Keyword.get(opts, :session, [])
-
-    render_opts =
-      opts
-      |> Keyword.take([:container, :router])
-      |> Keyword.put(:session, session(conn, session_keys))
+    render_opts = Keyword.take(opts, [:container, :router, :session])
 
     if live_link?(conn) do
       html = Phoenix.LiveView.Static.container_render(conn, view, render_opts)
@@ -56,16 +49,6 @@ defmodule Phoenix.LiveView.Plug do
       "cache-control",
       "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0"
     )
-  end
-
-  defp session(conn, session_keys) do
-    for key_or_pair <- session_keys, into: %{} do
-      case key_or_pair do
-        key when is_atom(key) -> {key, Conn.get_session(conn, key)}
-        key when is_binary(key) -> {key, Conn.get_session(conn, key)}
-        {key, value} -> {key, value}
-      end
-    end
   end
 
   defp put_new_layout_from_router(conn, opts) do

@@ -20,15 +20,8 @@ defmodule Phoenix.LiveView.ControllerTest do
     assert html_response(conn, 200) =~ "session: %{\"custom\" => :session}"
   end
 
-  test "when session data has atom keys, warns on live render", %{conn: conn} do
-    assert ExUnit.CaptureIO.capture_io(:stderr, fn ->
-             conn = get(conn, "/controller/live-render-4")
-             assert html_response(conn, 200) =~ "session: %{custom: :session}"
-           end) =~ "Phoenix.LiveView sessions require string keys, got: :custom"
-  end
-
   test "live renders from controller with merged assigns", %{conn: conn} do
-    conn = get(conn, "/controller/live-render-5")
+    conn = get(conn, "/controller/live-render-4")
     assert html_response(conn, 200) =~ "title: Dashboard"
   end
 end

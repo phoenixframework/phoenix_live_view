@@ -14,18 +14,7 @@ defmodule Phoenix.LiveView.Router do
 
   ## Options
 
-    * `:session` - the optional list of keys to pull out of the Plug
-      connection session and into the LiveView session.
-      For example, the following would copy Plug's session current
-      user ID and the `remember_me` value into the LiveView session:
-
-          [:user_id, :remember_me]
-
-      This also accepts key/value entries which are mapped directly into the
-      LiveView session.  This is useful for identifying which `live` macro was
-      matched.
-
-          [action: :index]
+    * `:session` - a map of strings keys and values to be merged into the session
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
@@ -47,7 +36,7 @@ defmodule Phoenix.LiveView.Router do
           pipe_through [:browser]
 
           live "/thermostat", ThermostatLive
-          live "/clock", ClockLive, session: [:user_id]
+          live "/clock", ClockLive
           live "/dashboard", DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
         end
       end

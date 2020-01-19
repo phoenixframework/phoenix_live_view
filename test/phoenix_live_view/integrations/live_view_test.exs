@@ -66,14 +66,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
         live(conn)
       end
     end
-
-    test "renders static container", %{conn: conn} do
-      assert conn
-             |> put_req_header("x-requested-with", "live-link")
-             |> get("/counter/123", query1: "query1", query2: "query2")
-             |> html_response(200) =~
-               ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
-    end
   end
 
   describe "live_isolated" do
@@ -99,15 +91,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
 
-    test "warns when session contains atom keys" do
-      assert ExUnit.CaptureIO.capture_io(:stderr, fn ->
-               {:ok, view, _} =
-                 live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
-                   session: %{hello: "world"}
-                 )
-
-               assert render(view) =~ "session: %{hello: &quot;world&quot;}"
-             end) =~ "Phoenix.LiveView sessions require string keys, got: :hello"
+    test "raises on session with atom keys" do
+      assert_raise ArgumentError, ~r"LiveView :session must be a map with string keys,", fn ->
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+          session: %{hello: "world"}
+        )
+      end
     end
   end
 

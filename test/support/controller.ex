@@ -19,10 +19,6 @@ defmodule Phoenix.LiveViewTest.Controller do
   end
 
   def incoming(conn, %{"type" => "live-render-4"}) do
-    live_render(conn, Phoenix.LiveViewTest.DashboardLive, session: %{custom: :session})
-  end
-
-  def incoming(conn, %{"type" => "live-render-5"}) do
     conn
     |> put_layout({Phoenix.LiveViewTest.AssignsLayoutView, :app})
     |> live_render(Phoenix.LiveViewTest.DashboardLive)
