@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.Channel do
 
       params == :not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
-                "was not declared in the router with the live/3 macro under #{inspect(url)}"
+                "was not mounted at the router with the live/3 macro under URL #{inspect(url)}"
 
       true ->
         params
@@ -540,7 +540,7 @@ defmodule Phoenix.LiveView.Channel do
       )
 
     {params, parsed_uri} =
-      case router && Utils.live_link_info!(router, view, url) do
+      case router && url && Utils.live_link_info!(router, view, url) do
         {:internal, params, parsed_uri} -> {params, parsed_uri}
         _ -> {:not_mounted_at_router, :not_mounted_at_router}
       end
