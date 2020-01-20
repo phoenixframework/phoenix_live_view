@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.Channel do
 
       params == :not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
-                  "was not declared in the router with the live/3 macro under #{inspect(url)}"
+                "was not declared in the router with the live/3 macro under #{inspect(url)}"
 
       true ->
         params
@@ -501,7 +501,7 @@ defmodule Phoenix.LiveView.Channel do
       assigned_new: assigned_new
     } = verified
 
-    # Optional parts
+    # Optional verified parts
     router = verified[:router]
 
     %Phoenix.Socket{
@@ -513,7 +513,10 @@ defmodule Phoenix.LiveView.Channel do
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
     parent_assigns = sync_with_parent(parent, assigned_new)
-    %{"url" => url, "params" => connect_params} = params
+
+    # Optional parameter handling
+    url = params["url"]
+    connect_params = params["params"]
 
     with %{"caller" => {pid, _}} when is_pid(pid) <- params do
       Process.put(:"$callers", [pid])
