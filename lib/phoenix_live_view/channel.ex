@@ -55,7 +55,8 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{view: view, router: router} = socket
-    %{"url" => url} = msg.payload
+    %{"url" => encoded_url} = msg.payload
+    url = URI.decode(encoded_url)
 
     case Utils.live_link_info!(router, view, url) do
       {:internal, params, _} ->
@@ -515,7 +516,7 @@ defmodule Phoenix.LiveView.Channel do
     parent_assigns = sync_with_parent(parent, assigned_new)
 
     # Optional parameter handling
-    url = params["url"]
+    url = params["url"] && URI.decode(params["url"])
     connect_params = params["params"]
 
     with %{"caller" => {pid, _}} when is_pid(pid) <- params do

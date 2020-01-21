@@ -20,6 +20,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
        mount_params: params,
        connect_params: get_connect_params(socket) || %{},
        test_pid: session["test_pid"],
+       connected?: connected?(socket),
        on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
      )}
   end

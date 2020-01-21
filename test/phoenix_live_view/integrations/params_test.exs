@@ -84,6 +84,11 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
       end
     end
+
+    test "with encoded URL", %{conn: conn} do
+      assert conn = get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
+      assert_receive {:handle_params, uri, _assigns, %{"id" => "Wm9uZTozNzYxOA=="}}
+    end
   end
 
   describe "handle_params on connected mount" do
@@ -172,6 +177,12 @@ defmodule Phoenix.LiveView.ParamsTest do
                assert_receive {:DOWN, ^ref, :process, _, _}
              end) =~ ~r"attempted to stop socket without redirecting"
     end
+
+    test "with encoded URL", %{conn: conn} do
+      {:ok, _counter_live, _html} = live(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
+
+      assert_receive {:handle_params, uri, %{connected?: true}, %{"id" => "Wm9uZTozNzYxOA=="}}
+    end
   end
 
   describe "live_link" do
@@ -188,6 +199,13 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert render_live_link(counter_live, "/counter/123?filter=true") =~
                escape(~s|%{"filter" => "true", "id" => "123"}|)
+    end
+
+    test "with encoded URL", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+
+      assert render_live_link(counter_live, "/counter/Wm9uZTozNzYxOa%3d%3d") =~
+               escape(~s|%{"id" => "Wm9uZTozNzYxOa=="}|)
     end
   end
 
