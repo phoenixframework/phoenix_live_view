@@ -1,3 +1,8 @@
+## 0.6-dev
+
+### Bug Fixes
+  - Fix handle_params not decoding URL path parameters properly
+
 ## 0.5.2 (2020-01-17)
 
 ### Bug Fixes
