@@ -633,7 +633,7 @@ export class LiveSocket {
         this.prevInput = input
         this.prevValue = value
         this.debounce(input, e, () => {
-          this.withinOwners(input, (view, targetCtx) => {
+          this.withinOwners(input.form, (view, targetCtx) => {
             if(DOM.isTextualInput(input)){
               DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             } else {
