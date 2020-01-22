@@ -264,7 +264,7 @@ export class LiveSocket {
       }
       this.unloaded = false
     })
-    window.addEventListener("beforeunload", e => {
+    window.addEventListener("unload", e => {
       this.unloaded = true
     })
     this.bindTopLevelEvents()
