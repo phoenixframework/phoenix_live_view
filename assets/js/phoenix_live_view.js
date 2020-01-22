@@ -702,7 +702,16 @@ export let Browser = {
 
   pushState(kind, meta, to){
     if(this.canPushState()){
-      if(to !== window.location.href){ history[kind + "State"](meta, "", to) }
+      if(to !== window.location.href){
+        history[kind + "State"](meta, "", to)
+        let hashEl = this.getHashTargetEl(window.location.hash)
+
+        if(hashEl) {
+          hashEl.scrollIntoView()
+        } else {
+          window.scroll(0, 0)
+        }
+      }
     } else {
       this.redirect(to)
     }
@@ -721,7 +730,12 @@ export let Browser = {
     window.location = toURL
   },
 
-  localKey(namespace, subkey){ return `${namespace}-${subkey}` }
+  localKey(namespace, subkey){ return `${namespace}-${subkey}` },
+
+  getHashTargetEl(hash){
+    if(hash.toString() === ""){ return }
+    return document.getElementById(hash) || document.querySelector(`a[name="${hash.substring(1)}"]`)
+  }
 }
 
 export let DOM = {
