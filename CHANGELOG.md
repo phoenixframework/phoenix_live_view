@@ -1,8 +1,21 @@
-## 0.6-dev
+## 0.6.0 (2020-01-22)
+
+### Deprecations
+
+LiveView `mount/2` has been deprecated in favor of `mount/3`. The params are now passed as the first argument to `mount/3`, followed by the session and socket.
+
+### Backwards incompatible changes
+  - The socket session now accepts only string keys
+
+### Enhancements
+  - Allow window beforeunload to be cancelled without losing websocket connection
 
 ### Bug Fixes
   - Fix handle_params not decoding URL path parameters properly
   - Fix LiveViewTest error when routing at root path
+  - Fix URI encoded params failing to be decoded in `handle_params`
+  - Fix component target failing to locate correct component when the target is on an input tag
+
 
 ## 0.5.2 (2020-01-17)
 
