@@ -119,13 +119,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     params = %{
       "session" => view.session_token,
       "static" => view.static_token,
-      "url" => Path.join(view.endpoint.url(), view.mount_path),
+      "url" => mount_url(view),
       "params" => view.connect_params,
       "caller" => state.caller
     }
 
     spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
     DynamicSupervisor.start_child(Phoenix.LiveView.DynamicSupervisor, spec)
+  end
+
+  defp mount_url(view) do
+    case view.mount_path do
+      "/" -> view.endpoint.url()
+      path -> Path.join(view.endpoint.url(), path)
+    end
   end
 
   def handle_info({:sync_children, topic, from}, state) do

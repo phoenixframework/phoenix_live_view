@@ -24,6 +24,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/thermo", ThermostatLive
     live "/thermo/:id", ThermostatLive
     live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
+    live "/", ThermostatLive, as: :live_root
 
     live "/same-child", SameChildLive
     live "/root", RootLive

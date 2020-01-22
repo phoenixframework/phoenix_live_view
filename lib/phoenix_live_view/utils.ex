@@ -131,7 +131,7 @@ defmodule Phoenix.LiveView.Utils do
     %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
-    case Phoenix.Router.route_info(router, "GET", path, host) do
+    case Phoenix.Router.route_info(router, "GET", path || "", host) do
       %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
         {:internal, Map.merge(query_params, path_params), parsed_uri}
 

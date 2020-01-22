@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.RouterTest do
   use ExUnit.Case, async: true
   use Phoenix.ConnTest
+  import Phoenix.LiveViewTest
 
   alias Phoenix.LiveViewTest.{Endpoint, ThermostatLive}
 
@@ -47,5 +48,10 @@ defmodule Phoenix.LiveView.RouterTest do
 
   test "live_path helper", %{conn: conn} do
     assert Phoenix.LiveViewTest.Router.Helpers.live_path(conn, ThermostatLive) == "/thermo"
+  end
+
+  test "routing at root", %{conn: conn} do
+    {:ok, _view, html} = live(conn, "/")
+    assert html =~ ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
   end
 end
