@@ -22,28 +22,38 @@ The steps are:
 
   1) Find `plug Plug.Session, ...` in your endpoint.ex and move the options `...` to a module attribute:
 
-        @session_options [
-          ...
-        ]
+      ```elixir
+      @session_options [
+        ...
+      ]
+      ```
 
   2) Change the `plug Plug.Session` to use said attribute:
 
-        plug Plug.Session, @session_options
+      ```elixir
+      plug Plug.Session, @session_options
+      ```
 
   3) Also pass the `@session_options` to your LiveView socket:
 
-        socket "/live", Phoenix.LiveView.Socket,
-          websocket: [connect_info: [session: @session_options]]
+      ```elixir
+      socket "/live", Phoenix.LiveView.Socket,
+        websocket: [connect_info: [session: @session_options]]
+      ```
 
   4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
-        <%= csrf_meta_tag() %>
-        <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+      ```html
+      <%= csrf_meta_tag() %>
+      <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+      ```
 
   5) Then in your app.js:
 
-        let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-        let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
+      ```javascript
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
+      ```
 
 Also note that **the session from now on will have string keys**. LiveView will warn if atom keys are used.
 
