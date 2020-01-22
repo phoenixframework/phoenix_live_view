@@ -2,6 +2,7 @@
 
 ### Bug Fixes
   - Fix handle_params not decoding URL path parameters properly
+  - Fix LiveViewTest error when routing at root path
 
 ## 0.5.2 (2020-01-17)
 
