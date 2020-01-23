@@ -1234,8 +1234,14 @@ defmodule Phoenix.LiveView do
         Macro.Env.stacktrace(env)
       )
 
-      quote do
-        def mount(_params, session, socket), do: mount(session, socket)
+      if Module.defines?(env.module, {:mount, 2}) do
+        quote do
+          def mount(_params, session, socket), do: mount(session, socket)
+        end
+      else
+        quote do
+          def mount(_params, _session, socket), do: {:ok, socket}
+        end
       end
     end
   end
