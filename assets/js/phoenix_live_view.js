@@ -145,8 +145,14 @@ export let Rendered = {
           logError(`only HTML element tags are allowed at the root of components.\n\n` +
                    `got: "${child.nodeValue.trim()}"\n\n` +
                    `within:\n`, template.innerHTML.trim())
+
+          let span = document.createElement("span")
+          span.innerText = child.nodeValue
+          span.setAttribute(PHX_COMPONENT, cid)
+          child.replaceWith(span)
+        } else {
+          child.remove()
         }
-        child.remove()
       }
     })
 
