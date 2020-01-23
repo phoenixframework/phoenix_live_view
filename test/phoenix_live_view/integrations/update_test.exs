@@ -58,6 +58,46 @@ defmodule Phoenix.LiveView.UpdateTest do
                {"h1", [{"id", "title-sf"}], ["SanFran"]}
              ] = find_time_titles(html, ["ny", "sf"])
     end
+
+    @tag session: %{time_zones: {:append, [%{id: "nested-append", name: "NestedAppend"}]}}
+    test "with nested append child", %{conn: conn} do
+      conn = get(conn, "/time-zones")
+      html = html_response(conn, 200)
+
+      assert [
+               {"div", _,
+                [
+                  "time: 12:00 NestedAppend\n",
+                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}], []}
+                ]}
+             ] = find_time_zones(html, ["nested-append", "tokyo"])
+
+      {:ok, view, _html} = live(conn)
+      assert nested_view = find_child(view, "tz-nested-append")
+
+      GenServer.call(nested_view.pid, {:append, ["item1"]})
+      GenServer.call(nested_view.pid, {:append, ["item2"]})
+
+      html = render(view)
+      assert [
+               {"div", _,
+                [
+                  "time: 12:00 NestedAppend\n",
+                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}], [
+                    {"div", [{"id", "item-item1"}], ["item1"]},
+                    {"div", [{"id", "item-item2"}], ["item2"]}
+                  ]}
+                ]}
+             ] = find_time_zones(html, ["nested-append", "tokyo"])
+
+      html = render_click(view, "add-tz", %{id: "tokyo", name: "Tokyo"})
+
+      assert [
+               {"div", _, ["time: 12:00 NestedAppend\n", _]},
+               {"div", _, ["time: 12:00 Tokyo\n" | _]}
+             ] = find_time_zones(html, ["nested-append", "tokyo"])
+
+    end
   end
 
   describe "phx-update=prepend" do

@@ -181,7 +181,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
        when type in ["append", "prepend"] do
-    children_before = phx_update_children(html, attrs(node, "id"))
+    children_before = phx_update_children(html, attrs(node, "id"), appended_children)
     existing_ids = all_attributes(children_before, "id")
     new_ids = all_attributes(appended_children, "id")
     content_changed? = new_ids !== existing_ids
@@ -231,10 +231,17 @@ defmodule Phoenix.LiveViewTest.DOM do
     """
   end
 
-  def phx_update_children(html, id) do
+  def phx_update_children(html, id, appended_children) do
     case by_id(html, id) do
-      {_, _, children_before} -> children_before
-      nil -> raise ArgumentError, "phx-update append/prepend containers require an ID"
+      {_, _, children_before} ->
+        children_before
+
+      nil ->
+        if Enum.empty?(appended_children) do
+          []
+        else
+          raise ArgumentError, "phx-update append/prepend containers require an ID (#{id})"
+        end
     end
   end
 

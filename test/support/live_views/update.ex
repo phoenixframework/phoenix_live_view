@@ -1,6 +1,15 @@
 defmodule Phoenix.LiveViewTest.TZLive do
   use Phoenix.LiveView
 
+  def render(%{name: "NestedAppend"} = assigns) do
+    ~L"""
+    time: <%= @time %> <%= @name %>
+    <div id="append-<%= @name %>" phx-update="append"><%= for item <- @items do %>
+      <div id="item-<%= item %>"><%= item %></div>
+    <% end %></div>
+    """
+  end
+
   def render(assigns) do
     ~L"""
     time: <%= @time %> <%= @name %>
@@ -8,8 +17,10 @@ defmodule Phoenix.LiveViewTest.TZLive do
   end
 
   def mount(:not_mounted_at_router, session, socket) do
-    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
+    {:ok, assign(socket, time: "12:00", items: [], name: session["name"] || "NY")}
   end
+
+  def handle_call({:append, items}, _, socket), do: {:reply, :ok, assign(socket, items: items)}
 end
 
 defmodule Phoenix.LiveViewTest.AppendLive do
