@@ -5,6 +5,7 @@
 
 ### Bug Fixes
   - Send `phx-value-*` on key events
+  - Trigger `updated` hook callbacks oh `phx-update="ignore"` container when the container's attributes have changed
 
 ## 0.6.0 (2020-01-22)
 

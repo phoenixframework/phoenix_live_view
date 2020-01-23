@@ -982,6 +982,7 @@ class DOMPatch {
         if(fromEl.getAttribute(phxUpdate) === "ignore"){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeAttrs(fromEl, toEl)
+          updates.push(fromEl)
           return false
         }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
