@@ -1,3 +1,11 @@
+## 0.7.0-dev
+
+### Enhancements
+  - Scroll to top of page while respecting anchor hash targets on live_link's
+
+### Bug Fixes
+  - Send `phx-value-*` on key events
+
 ## 0.6.0 (2020-01-22)
 
 ### Deprecations

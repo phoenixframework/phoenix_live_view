@@ -1383,7 +1383,7 @@ export class View {
     })
   }
 
-  pushEvent(type, el, targetCtx, phxEvent, meta){
+  extractMeta(el, meta){
     let prefix = this.binding("value-")
     for (let i = 0; i < el.attributes.length; i++){
       let name = el.attributes[i].name
@@ -1396,22 +1396,23 @@ export class View {
         delete meta.value
       }
     }
+    return meta
+  }
 
+  pushEvent(type, el, targetCtx, phxEvent, meta){
     this.pushWithReply("event", {
       type: type,
       event: phxEvent,
-      value: meta,
+      value: this.extractMeta(el, meta),
       cid: this.targetComponentID(el, targetCtx)
     })
   }
 
   pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    if(keyElement.value !== undefined){ meta.value = keyElement.value }
-
     this.pushWithReply("event", {
       type: kind,
       event: phxEvent,
-      value: meta,
+      value: this.extractMeta(keyElement, meta),
       cid: this.targetComponentID(keyElement, targetCtx)
     })
   }
