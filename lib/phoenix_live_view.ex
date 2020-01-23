@@ -1226,7 +1226,7 @@ defmodule Phoenix.LiveView do
   # TODO: Remove once the deprecation period is over
   @doc false
   defmacro __before_compile__(env) do
-    if Module.defines?(env.module, {:mount, 3}) do
+    if Module.defines?(env.module, {:mount, 3}) or not Module.defines?(env.module, {:mount, 2}) do
       :ok
     else
       IO.warn(
