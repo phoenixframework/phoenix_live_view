@@ -97,6 +97,34 @@ end
 
 Where `@session_options` are the options given to `plug Plug.Session` extracted to a module attribute.
 
+Here are the steps to update your existing endpoint module.
+
+1. Find plug Plug.Session in your endpoint.ex
+```elixir
+# lib/my_app_web/endpoint.ex
+...
+plug Plug.Session
+  store: :cookie,
+  key: "_my_app_key",
+  signing_salt: "somesigningsalt"
+```
+
+2. Move the options to a module attribute at the top of your file:
+```elixir
+# lib/my_app_web/endpoint.ex
+  @session_options [
+    store: :cookie,
+    key: "_my_app_key",
+    signing_salt: "somesigningsalt"
+  ]
+```
+
+3. Change the plug Plug.Session to use the attribute:
+```elixir
+# lib/my_app_web/endpoint.ex
+  plug Plug.Session, @session_options
+```
+
 Add LiveView NPM dependencies in your `assets/package.json`. For a regular project, do:
 
 ```json
