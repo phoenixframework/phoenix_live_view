@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.PlugTest do
 
   defp call(conn, view, opts \\ []) do
     opts = Keyword.merge([router: __MODULE__, layout: false], opts)
-    LiveViewPlug.call(conn, LiveViewPlug.init({view, opts}))
+    LiveViewPlug.call(conn, LiveViewPlug.init([view: view] ++ opts))
   end
 
   setup config do

@@ -11,8 +11,9 @@ defmodule Phoenix.LiveView.Plug do
   @impl Plug
   def init(view) when is_atom(view), do: view
 
-  def init({view, opts}) when is_atom(view) and is_list(opts) do
-    {view, __live_opts__(opts)}
+  def init(opts) when is_list(opts) do
+    view = Keyword.fetch!(opts, :view)
+    %{view: view, opts: __live_opts__(opts)}
   end
 
   @impl Plug
@@ -20,7 +21,7 @@ defmodule Phoenix.LiveView.Plug do
     do_call(conn, view, opts)
   end
 
-  def call(%Plug.Conn{} = conn, {view, opts}) when is_atom(view) and is_list(opts) do
+  def call(%Plug.Conn{} = conn, %{view: view, opts: opts}) when is_atom(view) and is_list(opts) do
     do_call(conn, view, opts)
   end
 
