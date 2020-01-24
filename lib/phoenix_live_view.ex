@@ -1093,6 +1093,8 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
+  To forgo automatic form recovery, `phx-auto-recovery="ignore"` may be provided.
+
   ### Loading state and errors
 
   By default, the following classes are applied to the LiveView's parent
