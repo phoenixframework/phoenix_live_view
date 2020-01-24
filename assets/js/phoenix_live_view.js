@@ -947,6 +947,7 @@ class DOMPatch {
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let added = []
     let updates = []
     let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
 
@@ -966,7 +967,7 @@ class DOMPatch {
         if(DOM.isPhxChild(el) && view.ownsElement(el)){
           this.trackAfter("phxChildAdded", el)
         }
-        this.trackAfter("added", el)
+        added.push(el)
       },
       onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
       onBeforeNodeDiscarded: (el) => {
@@ -1014,6 +1015,7 @@ class DOMPatch {
       detectDuplicateIds()
     }
 
+    added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
