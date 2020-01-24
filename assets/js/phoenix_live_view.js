@@ -628,15 +628,13 @@ export class LiveSocket {
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
-        let force = (e.detail && e.detail["force"]) || false
         let input = e.target
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
 
         let value = JSON.stringify((new FormData(input.form)).getAll(input.name))
-        if(this.prevInput === input && this.prevValue === value && !force){ return }
+        if(this.prevInput === input && this.prevValue === value){ return }
         if(input.type === "number" && input.validity && input.validity.badInput){ return }
-
 
         this.prevInput = input
         this.prevValue = value
