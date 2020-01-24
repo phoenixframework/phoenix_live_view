@@ -1071,7 +1071,7 @@ defmodule Phoenix.LiveView do
   this is all you need and form recovery will happen without consideration. In some cases,
   where forms are built step-by-step in a stateful fashion may require extra recovery
   handling on the server outside of your existing `phx-change` callback code. To enable
-  specialized recovery, the `phx-auto-recovery` binding may be provided on the form to
+  specialized recovery, provide a `phx-auto-recovery` binding on the form to
   specify a different event to trigger for recovery, which will receive the form params
   as usual. For example, imagine a LiveView wizard form where the form is stateful and
   built based on what step the user is on and by prior selections:
