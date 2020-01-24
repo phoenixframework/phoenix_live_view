@@ -1062,6 +1062,37 @@ defmodule Phoenix.LiveView do
 
       <button type="submit" phx-disable-with="Saving...">Save</button>
 
+  #### Form Recovery following crashes or disconnects
+
+  By default, all forms marked with `phx-change` will recovery input values
+  automatically after the user has reconnected or the LiveView has remounted
+  after a crash. This is achieved by the client triggering the same `phx-change`
+  to the server as soon as the mount has been completed. For the majority of usecases,
+  this is all you need and form recovery will happen without consideration, but some cases
+  where forms are built step-by-step in a stateful fashion may require extra recovery
+  handling on the server outside of your existing `phx-change` callback code. To enable
+  specialized recovery, the `phx-auto-recovery` binding may be provided on the form to
+  specify a different event to trigger for recovery, which will receive the form params
+  as usual. For example, imagine a LiveView wizard form where the form is stateful and
+  built based on what step the user is on and by prior selections:
+
+      <form phx-change="validate_wizard_step" phx-auto-recovery="recover_wizard">
+
+  On the server, the `"validate_wizard_step"` event is only concerned with the current client
+  form data, but the server maintains the entire state of the wizard. To recover in this
+  scenario, you can specify a recovery event, such as `"recover_wizard"` above, which
+  would wire up to the following server callbacks in your LiveView:
+
+      def handle_event("validate_wizard_step", params, socket) do
+        # regular validations for current step
+        {:noreply, socket}
+      end
+
+      def handle_event("recover_wizard", params, socket) do
+        # rebuild state based on client input data up to the current step
+        {:noreply, socket}
+      end
+
   ### Loading state and errors
 
   By default, the following classes are applied to the LiveView's parent
