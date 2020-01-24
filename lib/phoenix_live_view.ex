@@ -1064,7 +1064,7 @@ defmodule Phoenix.LiveView do
 
   #### Form Recovery following crashes or disconnects
 
-  By default, all forms marked with `phx-change` will recovery input values
+  By default, all forms marked with `phx-change` will recover input values
   automatically after the user has reconnected or the LiveView has remounted
   after a crash. This is achieved by the client triggering the same `phx-change`
   to the server as soon as the mount has been completed. For the majority of usecases,
