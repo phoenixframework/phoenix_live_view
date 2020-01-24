@@ -1176,13 +1176,10 @@ export class View {
 
     if(this.joinCount > 1 && forms.length > 0){
       forms.forEach((form, i) => {
-        this.liveSocket.withinOwners(form, (view, targetCtx) => {
-          let input = form.elements[0]
-          view.pushInput(input, targetCtx, form.getAttribute(this.binding("change")), input, resp => {
-            if(i === forms.length - 1){
-              this.onJoinComplete(resp, html)
-            }
-          })
+        this.pushFormRecovery(form, resp => {
+          if(i === forms.length - 1){
+            this.onJoinComplete(resp, html)
+          }
         })
       })
     } else {
@@ -1204,7 +1201,6 @@ export class View {
 
   onJoinComplete({live_patch}, html){
     this.joinPending = false
-
     let patch = new DOMPatch(this, this.el, this.id, html)
     this.performPatch(patch)
     this.joinNewChildren()
@@ -1374,6 +1370,7 @@ export class View {
   }
 
   onError(reason){
+    if(this.joinPending){ this.joinCount = 0 }
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
@@ -1485,6 +1482,13 @@ export class View {
     }, onReply)
   }
 
+  pushFormRecovery(form, callback){
+    this.liveSocket.withinOwners(form, (view, targetCtx) => {
+      let input = form.elements[0]
+      view.pushInput(input, targetCtx, form.getAttribute(this.binding("change")), input, callback)
+    })
+  }
+
   pushInternalLink(href, callback){
     if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
     let linkRef = this.liveSocket.setPendingLink(href)
@@ -1498,6 +1502,18 @@ export class View {
         callback && callback()
       }
     }).receive("timeout", () => Browser.redirect(window.location.href))
+  }
+
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){
