@@ -1062,7 +1062,7 @@ defmodule Phoenix.LiveView do
 
       <button type="submit" phx-disable-with="Saving...">Save</button>
 
-  #### Form Recovery following crashes or disconnects
+  ### Form Recovery following crashes or disconnects
 
   By default, all forms marked with `phx-change` will recover input values
   automatically after the user has reconnected or the LiveView has remounted
