@@ -1071,12 +1071,12 @@ defmodule Phoenix.LiveView do
   this is all you need and form recovery will happen without consideration. In some cases,
   where forms are built step-by-step in a stateful fashion may require extra recovery
   handling on the server outside of your existing `phx-change` callback code. To enable
-  specialized recovery, provide a `phx-auto-recovery` binding on the form to
+  specialized recovery, provide a `phx-auto-recover` binding on the form to
   specify a different event to trigger for recovery, which will receive the form params
   as usual. For example, imagine a LiveView wizard form where the form is stateful and
   built based on what step the user is on and by prior selections:
 
-      <form phx-change="validate_wizard_step" phx-auto-recovery="recover_wizard">
+      <form phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
 
   On the server, the `"validate_wizard_step"` event is only concerned with the current client
   form data, but the server maintains the entire state of the wizard. To recover in this
@@ -1093,7 +1093,7 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
-  To forgo automatic form recovery, set `phx-auto-recovery="ignore"`.
+  To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
   ### Loading state and errors
 
