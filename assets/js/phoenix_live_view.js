@@ -1173,7 +1173,6 @@ export class View {
     let html = Rendered.toString(this.rendered)
     let forms = this.formsForRecovery(html)
 
-    console.log(this.joinCount, forms)
     if(this.joinCount > 1 && forms.length > 0){
       forms.forEach((form, i) => {
         this.pushFormRecovery(form, resp => {
@@ -1488,7 +1487,6 @@ export class View {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
-      console.log(phxEvent, input)
       view.pushInput(input, targetCtx, phxEvent, input, callback)
     })
   }
