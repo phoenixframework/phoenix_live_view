@@ -1093,7 +1093,7 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
 
-  To forgo automatic form recovery, `phx-auto-recovery="ignore"` may be provided.
+  To forgo automatic form recovery, set `phx-auto-recovery="ignore"`.
 
   ### Loading state and errors
 
