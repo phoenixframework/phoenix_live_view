@@ -1069,7 +1069,7 @@ defmodule Phoenix.LiveView do
   after a crash. This is achieved by the client triggering the same `phx-change`
   to the server as soon as the mount has been completed. For most use cases,
   this is all you need and form recovery will happen without consideration. In some cases,
-  where forms are built step-by-step in a stateful fashion may require extra recovery
+  where forms are built step-by-step in a stateful fashion, it may require extra recovery
   handling on the server outside of your existing `phx-change` callback code. To enable
   specialized recovery, provide a `phx-auto-recover` binding on the form to
   specify a different event to trigger for recovery, which will receive the form params
