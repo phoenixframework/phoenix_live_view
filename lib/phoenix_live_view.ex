@@ -1068,7 +1068,7 @@ defmodule Phoenix.LiveView do
   automatically after the user has reconnected or the LiveView has remounted
   after a crash. This is achieved by the client triggering the same `phx-change`
   to the server as soon as the mount has been completed. For most use cases,
-  this is all you need and form recovery will happen without consideration, but some cases
+  this is all you need and form recovery will happen without consideration. In some cases,
   where forms are built step-by-step in a stateful fashion may require extra recovery
   handling on the server outside of your existing `phx-change` callback code. To enable
   specialized recovery, the `phx-auto-recovery` binding may be provided on the form to
