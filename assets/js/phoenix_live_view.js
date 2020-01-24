@@ -647,7 +647,7 @@ export class LiveSocket {
             } else {
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, phxEvent, e)
+            view.pushInput(input, targetCtx, phxEvent, e.target)
           })
         })
       }, false)
@@ -903,30 +903,6 @@ export let DOM = {
       target.setAttribute("readonly", true)
     } else {
       target.removeAttribute("readonly")
-    }
-  },
-
-  recoverInput(fromEl, toEl){
-    let isInput = (toEl instanceof HTMLInputElement) || (toEl instanceof HTMLTextAreaElement)
-    let type = isInput && toEl.type.toLowerCase()
-    if(isInput && toEl.name === "_csrf_token"){ return false }
-
-    // textual inputs
-    if(isInput && DOM.isTextualInput(toEl) && toEl.value !== fromEl.value){
-      toEl.value = fromEl.value
-      return true
-    }
-    // selects
-    else if(toEl instanceof HTMLSelectElement && toEl.value !== fromEl.value){
-      toEl.value = fromEl.value
-      return true
-    }
-    // checkboxes
-    else if(isInput && type === "checkbox" && toEl.checked !== fromEl.checked){
-      toEl.checked = fromEl.checked
-      return true
-    } else {
-      return false
     }
   },
 
@@ -1196,20 +1172,13 @@ export class View {
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     let html = Rendered.toString(this.rendered)
+    let forms = this.formsForRecovery(html)
 
-    let template = document.createElement("template")
-    template.innerHTML = html
-    let phxChange = this.binding("change")
-    let forms =
-      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
-         .filter(form => this.ownsElement(form))
-         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
-
-    if(forms.length > 0 && this.joinCount > 1){
+    if(this.joinCount > 1 && forms.length > 0){
       forms.forEach((form, i) => {
         this.liveSocket.withinOwners(form, (view, targetCtx) => {
           let input = form.elements[0]
-          view.pushInput(input, targetCtx, form.getAttribute(phxChange), {target: input}, resp => {
+          view.pushInput(input, targetCtx, form.getAttribute(this.binding("change")), input, resp => {
             if(i === forms.length - 1){
               this.onJoinComplete(resp, html)
             }
@@ -1221,8 +1190,19 @@ export class View {
     }
   }
 
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
+  }
+
   onJoinComplete({live_patch}, html){
-    console.log("complete", this.joinPending)
     this.joinPending = false
 
     let patch = new DOMPatch(this, this.el, this.id, html)
@@ -1486,12 +1466,12 @@ export class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, phxEvent, e, callback){
+  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form, {_target: e.target.name}),
+      value: serializeForm(inputEl.form, {_target: eventTarget.name}),
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }, callback)
   }
