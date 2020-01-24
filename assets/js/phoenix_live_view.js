@@ -37,9 +37,10 @@ const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
-const PHX_CHANGE = "phx-change"
+const PHX_CHANGE_EVENT = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
+const PHX_AUTO_RECOVER = "auto-recover"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -793,20 +794,20 @@ export let DOM = {
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
         let clearTimer = (e) => {
-          if(throttle && e.type === PHX_CHANGE && e.detail.triggeredBy.name === el.name){ return }
+          if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
           if(el.form){
-            el.form.removeEventListener(PHX_CHANGE, clearTimer)
+            el.form.removeEventListener(PHX_CHANGE_EVENT, clearTimer)
             el.form.removeEventListener("submit", clearTimer)
           }
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
         }, timeout))
         if(el.form){
-          el.form.addEventListener(PHX_CHANGE, clearTimer)
+          el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
           el.form.addEventListener("submit", clearTimer)
         }
         if(throttle){ callback() }
@@ -1464,7 +1465,7 @@ export class View {
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
@@ -1485,7 +1486,9 @@ export class View {
   pushFormRecovery(form, callback){
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
-      view.pushInput(input, targetCtx, form.getAttribute(this.binding("change")), input, callback)
+      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
+      console.log(phxEvent, input)
+      view.pushInput(input, targetCtx, phxEvent, input, callback)
     })
   }
 
@@ -1510,8 +1513,9 @@ export class View {
     template.innerHTML = html
 
     return(
-      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
+      DOM.all(this.el, `form[${phxChange}]`)
          .filter(form => this.ownsElement(form))
+         .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
          .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
     )
   }
