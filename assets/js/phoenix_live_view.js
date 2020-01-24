@@ -1089,7 +1089,7 @@ export class View {
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
-    this.joinCount = 0
+    this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
@@ -1173,6 +1173,7 @@ export class View {
     let html = Rendered.toString(this.rendered)
     let forms = this.formsForRecovery(html)
 
+    console.log(this.joinCount, forms)
     if(this.joinCount > 1 && forms.length > 0){
       forms.forEach((form, i) => {
         this.pushFormRecovery(form, resp => {
