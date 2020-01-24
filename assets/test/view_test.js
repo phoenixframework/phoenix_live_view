@@ -36,6 +36,7 @@ describe('View + DOM', function() {
     }
 
     let view = new View(el, liveSocket)
+    view.joinPending = false
 
     view.update(updatedEl)
 
@@ -221,7 +222,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushInput(input, el, 'validate', { target: input })
+    view.pushInput(input, el, 'validate', input)
   })
 
   test('submitForm', function() {
@@ -386,7 +387,7 @@ describe('View Hooks', function() {
     view.showLoader()
     expect(view.el.firstChild.innerHTML).toBe('disconnected')
 
-    view.hideLoader()
+    view.triggerReconnected()
     expect(view.el.firstChild.innerHTML).toBe('connected')
 
     view.update({s: ['<div></div>'], fingerprint: 123})

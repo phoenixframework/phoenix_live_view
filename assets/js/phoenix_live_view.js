@@ -1156,8 +1156,11 @@ export class View {
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
+  }
+
+  triggerReconnected(){
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
   }
 
   log(kind, msgCallback){
@@ -1215,6 +1218,7 @@ export class View {
       Browser.pushState(kind, {}, to)
     }
     this.hideLoader()
+    if(this.joinCount > 1){ this.triggerReconnected() }
   }
 
   performPatch(patch){
@@ -1501,6 +1505,7 @@ export class View {
         this.href = href
         this.applyPendingUpdates()
         this.hideLoader()
+        this.triggerReconnected()
         callback && callback()
       }
     }).receive("timeout", () => Browser.redirect(window.location.href))
