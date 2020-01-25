@@ -409,7 +409,7 @@ defmodule Phoenix.LiveView do
   | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `data-phx-error-for`, `phx-disable-with` |
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
-  | [Custom DOM Patching](#module-custom-dom-patching) | `phx-update` |
+  | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
   | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
 
   ### Click Events
