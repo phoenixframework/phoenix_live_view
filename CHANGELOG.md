@@ -5,7 +5,7 @@
 
 ### Bug Fixes
   - Send `phx-value-*` on key events
-  - Trigger `updated` hook callbacks oh `phx-update="ignore"` container when the container's attributes have changed
+  - Trigger `updated` hook callbacks on `phx-update="ignore"` container when the container's attributes have changed
   - Fix nested `phx-update="append"` raising ArgumentError in LiveViewTest
 
 ## 0.6.0 (2020-01-22)
