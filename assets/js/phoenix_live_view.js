@@ -906,7 +906,7 @@ export let DOM = {
 
   restoreFocus(focused, selectionStart, selectionEnd){
     if(!DOM.isTextualInput(focused)){ return }
-    if(focused.value === "" || focused.readOnly){ focused.blur()}
+    if(focused.readOnly){ focused.blur()}
     focused.focus()
     if(focused.setSelectionRange && focused.type === "text" || focused.type === "textarea"){
       focused.setSelectionRange(selectionStart, selectionEnd)
