@@ -397,7 +397,7 @@ defmodule Phoenix.LiveView.Channel do
   defp push_internal_live_redirect(state, nil), do: state
 
   defp push_internal_live_redirect(state, opts) do
-    push(state, "live_redirect", opts)
+    push(state, "live_patch", opts)
   end
 
   defp push_redirect(state, opts, nil = _ref) do
@@ -409,11 +409,11 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_external_live_redirect(state, opts, nil = _ref) do
-    push(state, "external_live_redirect", copy_flash(state, opts))
+    push(state, "live_redirect", copy_flash(state, opts))
   end
 
   defp push_external_live_redirect(state, opts, ref) do
-    reply(state, ref, :ok, %{external_live_redirect: copy_flash(state, opts)})
+    reply(state, ref, :ok, %{live_redirect: copy_flash(state, opts)})
   end
 
   defp push_noop(state, nil = _ref), do: state
@@ -568,11 +568,11 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, post_mount_prune(new_state)}
 
       {:ok, diff, {:live_redirect, opts}, new_state} ->
-        GenServer.reply(from, {:ok, %{rendered: diff, live_redirect: opts}})
+        GenServer.reply(from, {:ok, %{rendered: diff, live_patch: opts}})
         {:noreply, post_mount_prune(new_state)}
 
       {:external_live_redirect, opts, new_state} ->
-        GenServer.reply(from, {:error, %{external_live_redirect: opts}})
+        GenServer.reply(from, {:error, %{live_redirect: opts}})
         {:stop, :shutdown, new_state}
 
       {:redirect, opts, new_state} ->

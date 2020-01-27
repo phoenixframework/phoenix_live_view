@@ -170,7 +170,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(
         %Phoenix.Socket.Message{
-          event: "live_redirect",
+          event: "live_patch",
           topic: topic,
           payload: %{to: to}
         },
@@ -182,7 +182,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(
         %Phoenix.Socket.Message{
-          event: "external_live_redirect",
+          event: "live_redirect",
           topic: topic,
           payload: %{to: to}
         },
@@ -209,12 +209,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     state = drop_reply(state, ref)
 
     case payload do
-      %{external_live_redirect: %{to: to}} ->
+      %{live_redirect: %{to: to}} ->
         send_redirect(state, topic, to)
-        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+        GenServer.reply(from, {:error, {:live_redirect, %{to: to}}})
         {:noreply, state}
 
-      %{live_redirect: %{to: to}} ->
+      %{live_patch: %{to: to}} ->
         send_redirect(state, topic, to)
         {:noreply, render_reply(reply, from, state)}
 
@@ -507,9 +507,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               |> put_view(child_view, pid, rendered)
               |> put_child(view, id, child_view.session_token)
               |> recursive_detect_added_or_removed_children(child_view, acc.html)
-
-            {:error, %{redirect: to}} ->
-              throw({:stop, {:redirect, child_view, to}, acc})
 
             {:error, reason} ->
               raise "failed to mount view: #{Exception.format_exit(reason)}"

@@ -1162,7 +1162,7 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({rendered, live_redirect}){
+  onJoin({rendered, live_patch}){
     this.log("join", () => ["", JSON.stringify(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
@@ -1175,8 +1175,8 @@ export class View {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
     })
-    if(live_redirect){
-      let {kind, to} = live_redirect
+    if(live_patch){
+      let {kind, to} = live_patch
       Browser.pushState(kind, {}, to)
     }
   }
@@ -1278,8 +1278,8 @@ export class View {
   bindChannel(){
     this.channel.on("diff", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.channel.on("live_patch", ({to, kind}) => this.onLivePatch({to, kind}))
     this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
-    this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect({to, kind}))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -1290,7 +1290,7 @@ export class View {
     this.liveSocket.destroyViewById(this.id)
   }
 
-  onExternalLiveRedirect({to, kind}){
+  onLiveRedirect({to, kind}){
     let url = window.location.protocol + '//' + window.location.host + to
     this.liveSocket.replaceMain(url, () => {
       Browser.pushState(kind, {}, to)
@@ -1298,7 +1298,7 @@ export class View {
     })
   }
 
-  onLiveRedirect({to, kind}){
+  onLivePatch({to, kind}){
     this.href = to
     Browser.pushState(kind, {}, to)
     this.liveSocket.registerNewLocation(window.location)
@@ -1326,9 +1326,9 @@ export class View {
   onJoinError(resp){
     if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.reason === JOIN_CRASHED){ return this.liveSocket.reloadWithJitter(this) }
-    if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
+    if(resp.redirect || resp.live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
-    if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
+    if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }
@@ -1355,8 +1355,8 @@ export class View {
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff, payload.cid) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
+        if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-        if(resp.external_live_redirect){ this.onExternalLiveRedirect(resp.external_live_redirect) }
         onReply(resp)
       })
     )

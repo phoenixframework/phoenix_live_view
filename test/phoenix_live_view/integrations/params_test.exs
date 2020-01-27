@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "external live redirects", %{conn: conn} do
-      {:error, %{redirect: %{to: "/thermo/456"}}} =
+      {:error, %{live_redirect: %{to: "/thermo/456"}}} =
         conn
         |> put_serialized_session(:on_handle_params, fn socket ->
           if LiveView.connected?(socket) do
@@ -315,7 +315,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert_redirect(counter_live, "/thermo/123", fn ->
         assert render_click(counter_live, :live_redirect, "/thermo/123") ==
-                 {:error, {:redirect, %{to: "/thermo/123"}}}
+                 {:error, {:live_redirect, %{to: "/thermo/123"}}}
       end)
 
       assert_remove(counter_live, {:redirect, "/thermo/123"})
