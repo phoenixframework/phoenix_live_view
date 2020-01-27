@@ -1,6 +1,8 @@
 ## 0.7.0-dev
 
 ### Enhancements
+  - Recovery form input data automatically on disconnects or crash recovery
+  - Add `phx-auto-recovery` form binding for specialized recovery
   - Scroll to top of page while respecting anchor hash targets on live_link's
 
 ### Bug Fixes
