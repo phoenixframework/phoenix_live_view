@@ -37,9 +37,10 @@ const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
-const PHX_CHANGE = "phx-change"
+const PHX_CHANGE_EVENT = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
+const PHX_AUTO_RECOVER = "auto-recover"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -645,7 +646,7 @@ export class LiveSocket {
             } else {
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, phxEvent, e)
+            view.pushInput(input, targetCtx, phxEvent, e.target)
           })
         })
       }, false)
@@ -793,20 +794,20 @@ export let DOM = {
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
         let clearTimer = (e) => {
-          if(throttle && e.type === PHX_CHANGE && e.detail.triggeredBy.name === el.name){ return }
+          if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
           if(el.form){
-            el.form.removeEventListener(PHX_CHANGE, clearTimer)
+            el.form.removeEventListener(PHX_CHANGE_EVENT, clearTimer)
             el.form.removeEventListener("submit", clearTimer)
           }
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
         }, timeout))
         if(el.form){
-          el.form.addEventListener(PHX_CHANGE, clearTimer)
+          el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
           el.form.addEventListener("submit", clearTimer)
         }
         if(throttle){ callback() }
@@ -1088,7 +1089,8 @@ export class View {
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
-    this.joinedOnce = false
+    this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
+    this.joinPending = true
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
@@ -1154,31 +1156,69 @@ export class View {
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
+  }
+
+  triggerReconnected(){
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
   }
 
   log(kind, msgCallback){
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({rendered, live_patch}){
+  onJoin(resp){
+    let {rendered, live_patch} = resp
     this.log("join", () => ["", JSON.stringify(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
-    this.hideLoader()
-    let patch = new DOMPatch(this, this.el, this.id, Rendered.toString(this.rendered))
+    let html = Rendered.toString(this.rendered)
+    let forms = this.formsForRecovery(html)
+
+    if(this.joinCount > 1 && forms.length > 0){
+      forms.forEach((form, i) => {
+        this.pushFormRecovery(form, resp => {
+          if(i === forms.length - 1){
+            this.onJoinComplete(resp, html)
+          }
+        })
+      })
+    } else {
+      this.onJoinComplete(resp, html)
+    }
+  }
+
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
+  }
+
+  onJoinComplete({live_patch}, html){
+    this.joinPending = false
+    let patch = new DOMPatch(this, this.el, this.id, html)
     this.performPatch(patch)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
     })
+
+    this.applyPendingUpdates()
+
     if(live_patch){
       let {kind, to} = live_patch
       Browser.pushState(kind, {}, to)
     }
+    this.hideLoader()
+    if(this.joinCount > 1){ this.triggerReconnected() }
   }
 
   performPatch(patch){
@@ -1237,7 +1277,7 @@ export class View {
   update(diff, cid){
     if(isEmpty(diff)){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
+    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
@@ -1315,8 +1355,9 @@ export class View {
     }
     this.channel.join()
       .receive("ok", data => {
-        if(!this.joinedOnce){ callback && callback(this) }
-        this.joinedOnce = true
+        if(this.joinCount === 0){ callback && callback(this) }
+        this.joinCount++
+        this.joinPending = true
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
@@ -1334,6 +1375,7 @@ export class View {
   }
 
   onError(reason){
+    if(this.joinPending){ return this.liveSocket.reloadWithJitter(this) }
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
@@ -1426,14 +1468,14 @@ export class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, phxEvent, e){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
+  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form, {_target: e.target.name}),
+      value: serializeForm(inputEl.form, {_target: eventTarget.name}),
       cid: this.targetComponentID(inputEl.form, targetCtx)
-    })
+    }, callback)
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -1443,6 +1485,14 @@ export class View {
       value: serializeForm(formEl),
       cid: this.targetComponentID(formEl, targetCtx)
     }, onReply)
+  }
+
+  pushFormRecovery(form, callback){
+    this.liveSocket.withinOwners(form, (view, targetCtx) => {
+      let input = form.elements[0]
+      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
+      view.pushInput(input, targetCtx, phxEvent, input, callback)
+    })
   }
 
   pushInternalLink(href, callback){
@@ -1455,9 +1505,23 @@ export class View {
         this.href = href
         this.applyPendingUpdates()
         this.hideLoader()
+        this.triggerReconnected()
         callback && callback()
       }
     }).receive("timeout", () => Browser.redirect(window.location.href))
+  }
+
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){
