@@ -601,6 +601,8 @@ export class LiveSocket {
       if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
       e.preventDefault()
+      if(this.pendingLink === href){ return }
+
       this.main.pushInternalLink(href, () => {
         Browser.pushState(phxEvent, {}, href)
         this.registerNewLocation(window.location)
