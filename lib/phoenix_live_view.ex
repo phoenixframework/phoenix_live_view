@@ -806,7 +806,9 @@ defmodule Phoenix.LiveView do
   LiveView is shutdown, and an Ajax request is made to request the necessary
   information about the new LiveView, without performing a full static render
   (which reduces latency and improves performance). Once information is
-  retrieved, the new LiveView is mounted.
+  retrieved, the new LiveView is mounted. While redirecting, a `phx-disconnected`
+  class is added to the root LiveView, which can be used to indicate to the
+  user a new page is being loaded.
 
   `live_patch/3`, `live_redirect/3`, `push_redirect/2`, and `push_patch/2`
   only work for LiveViews defined at the router with the `live/3` macro.
