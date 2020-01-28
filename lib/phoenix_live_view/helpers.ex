@@ -73,6 +73,18 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
 
   """
+  # TODO: Remove once the deprecation period is over
+  def live_redirect(%Socket{}, _) do
+    raise """
+    you are invoking live_redirect/2 with a socket but live_redirect/2 \
+    inside a LiveView is deprecated.
+
+    Instead you must use push_patch/2 to update the same LiveView or \
+    push_redirect/2 if you want to mount another LiveView in place of \
+    the current one.
+    """
+  end
+
   def live_redirect(opts, do: block) when is_list(opts) do
     live_link("redirect", block, opts)
   end
