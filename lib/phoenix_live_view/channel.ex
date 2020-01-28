@@ -201,26 +201,26 @@ defmodule Phoenix.LiveView.Channel do
       {:redirect, %{to: _to} = opts} ->
         {:redirect, copy_flash(new_state, opts), new_state}
 
-      {:live_redirect, {:internal, params, _}, %{to: to} = opts} ->
+      {:live, :redirect, %{to: to} = opts} ->
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        {:live_redirect, copy_flash(new_state, opts), new_state}
+
+      {:live, %{} = params, %{to: to} = opts} ->
         %{socket: new_socket} = new_state = drop_redirect(new_state)
 
         params
         |> new_socket.view.handle_params(build_uri(new_state, to), new_socket)
-        |> mount_handle_params_result(new_state, {:live_redirect, opts})
-
-      {:live_redirect, :external, %{to: to} = opts} ->
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:external_live_redirect, copy_flash(new_state, opts), new_state}
+        |> mount_handle_params_result(new_state, {:live_patch, opts})
     end
   end
 
   defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _redir) do
     case new_socket.redirected do
-      {:live, _} ->
+      {:live, _, _} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
       {:redirect, opts} ->
-        {:redirect, opts, %{state | socket: new_socket}}
+        {:redirect, copy_flash(state, opts), %{state | socket: new_socket}}
 
       nil ->
         Utils.raise_bad_stop_and_no_redirect!()
@@ -238,7 +238,7 @@ defmodule Phoenix.LiveView.Channel do
     Utils.raise_bad_stop_and_no_redirect!()
   end
 
-  defp handle_result({:stop, %Socket{redirected: {:live, _}}}, {_, _, _}, _) do
+  defp handle_result({:stop, %Socket{redirected: {:live, _, _}}}, {_, _, _}, _) do
     Utils.raise_bad_stop_and_live_redirect!()
   end
 
@@ -337,7 +337,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp gather_keys(nil, acc), do: acc
 
-  defp handle_changed(state, %Socket{} = new_socket, ref, pending_internal_live_redirect \\ nil) do
+  defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do
     new_state = %{state | socket: new_socket}
 
     case maybe_changed(new_state) do
@@ -346,13 +346,13 @@ defmodule Phoenix.LiveView.Channel do
 
         {:ok, :diff,
          new_state
-         |> push_internal_live_redirect(pending_internal_live_redirect)
+         |> push_live_patch(pending_live_patch)
          |> push_render(diff, ref)}
 
       :noop ->
         {:ok, :noop,
          new_state
-         |> push_internal_live_redirect(pending_internal_live_redirect)
+         |> push_live_patch(pending_live_patch)
          |> push_noop(ref)}
 
       {:redirect, %{to: to} = opts} ->
@@ -360,15 +360,15 @@ defmodule Phoenix.LiveView.Channel do
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
         {:stop, {:shutdown, {:redirect, to}}, new_state}
 
-      {:live_redirect, {:internal, params, _}, %{to: _to, kind: _kind} = opts} ->
+      {:live, :redirect, %{to: to} = opts} ->
+        new_state = push_live_redirect(new_state, opts, ref)
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        {:stop, {:shutdown, {:redirect, to}}, new_state}
+
+      {:live, %{} = params, %{to: _to, kind: _kind} = opts} ->
         new_state
         |> drop_redirect()
         |> sync_handle_params_with_live_redirect(params, opts, ref)
-
-      {:live_redirect, :external, %{to: to} = opts} ->
-        new_state = push_external_live_redirect(new_state, opts, ref)
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:stop, {:shutdown, {:redirect, to}}, new_state}
     end
   end
 
@@ -383,7 +383,7 @@ defmodule Phoenix.LiveView.Channel do
       {:noreply, %Socket{} = new_socket} ->
         handle_changed(state, new_socket, ref, opts)
 
-      {:stop, %Socket{redirected: {:live, _}}} ->
+      {:stop, %Socket{redirected: {:live, _, _}}} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{} = new_socket} ->
@@ -394,9 +394,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp push_internal_live_redirect(state, nil), do: state
+  defp push_live_patch(state, nil), do: state
 
-  defp push_internal_live_redirect(state, opts) do
+  defp push_live_patch(state, opts) do
     push(state, "live_patch", opts)
   end
 
@@ -408,11 +408,11 @@ defmodule Phoenix.LiveView.Channel do
     reply(state, ref, :ok, %{redirect: copy_flash(state, opts)})
   end
 
-  defp push_external_live_redirect(state, opts, nil = _ref) do
+  defp push_live_redirect(state, opts, nil = _ref) do
     push(state, "live_redirect", copy_flash(state, opts))
   end
 
-  defp push_external_live_redirect(state, opts, ref) do
+  defp push_live_redirect(state, opts, ref) do
     reply(state, ref, :ok, %{live_redirect: copy_flash(state, opts)})
   end
 
@@ -431,20 +431,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_changed(%{socket: socket}) do
-    case socket.redirected do
-      {:live, %{to: to} = opts} ->
-        {:live_redirect, Utils.live_link_info!(socket.router, socket.view, to), opts}
-
-      {:redirect, opts} ->
-        {:redirect, opts}
-
-      nil ->
-        if Utils.changed?(socket) do
-          :diff
-        else
-          :noop
-        end
-    end
+    socket.redirected ||
+      if Utils.changed?(socket) do
+        :diff
+      else
+        :noop
+      end
   end
 
   defp render_diff(%{components: components} = state, socket) do
@@ -567,11 +559,11 @@ defmodule Phoenix.LiveView.Channel do
         GenServer.reply(from, {:ok, %{rendered: diff}})
         {:noreply, post_mount_prune(new_state)}
 
-      {:ok, diff, {:live_redirect, opts}, new_state} ->
+      {:ok, diff, {:live_patch, opts}, new_state} ->
         GenServer.reply(from, {:ok, %{rendered: diff, live_patch: opts}})
         {:noreply, post_mount_prune(new_state)}
 
-      {:external_live_redirect, opts, new_state} ->
+      {:live_redirect, opts, new_state} ->
         GenServer.reply(from, {:error, %{live_redirect: opts}})
         {:stop, :shutdown, new_state}
 

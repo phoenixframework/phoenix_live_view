@@ -6,7 +6,10 @@ defmodule Phoenix.LiveViewUnitTest do
   alias Phoenix.LiveView.{Utils, Socket}
   alias Phoenix.LiveViewTest.Endpoint
 
-  @socket Utils.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
+  @socket Utils.configure_socket(
+            %Socket{endpoint: Endpoint, router: Phoenix.LiveViewTest.Router},
+            %{connect_params: %{}}
+          )
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
@@ -92,7 +95,8 @@ defmodule Phoenix.LiveViewUnitTest do
         live_redirect(@socket, to: "//foo.com")
       end
 
-      assert live_redirect(@socket, to: "/foo").redirected == {:live, %{to: "/foo", kind: :push}}
+      assert live_redirect(@socket, to: "/counter/123").redirected ==
+               {:live, :redirect, %{kind: :push, to: "/counter/123"}}
     end
   end
 end

@@ -150,9 +150,9 @@ defmodule Phoenix.LiveView.Utils do
   """
   def raise_bad_stop_and_live_redirect!() do
     raise RuntimeError, """
-    attempted to live redirect while stopping.
+    attempted to live patch/redirect while stopping.
 
-    a LiveView cannot be stopped while issuing a live redirect to the client. \
+    a LiveView cannot be stopped while issuing a live patch/redirect to the client. \
     Use redirect/2 instead if you wish to stop and redirect.
     """
   end

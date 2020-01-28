@@ -277,7 +277,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
     end
 
     test "raises on stop without redirect", %{conn: conn} do
@@ -305,7 +305,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
                ref = Process.monitor(counter_live.pid)
                assert_receive {:DOWN, ^ref, _, _, _}
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
     end
   end
 
@@ -350,7 +350,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
     end
 
     test "raises if stopping from handle_params", %{conn: conn} do
@@ -369,7 +369,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                catch_exit(GenServer.call(counter_live.pid, {:live_redirect, next}))
                ref = Process.monitor(counter_live.pid)
                assert_receive {:DOWN, ^ref, _, _, _}
-             end) =~ "a LiveView cannot be stopped while issuing a live redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
     end
   end
 

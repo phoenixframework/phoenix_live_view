@@ -43,13 +43,13 @@ defmodule Phoenix.LiveView.Controller do
           Map.merge(socket_assigns, %{content: content})
         )
 
-      {:stop, %Socket{redirected: {:redirect, opts}} = socket} ->
+      {:stop, %Socket{redirected: {:redirect, %{to: to}}} = socket} ->
         conn
         |> put_flash(LiveView.Utils.get_flash(socket))
-        |> Phoenix.Controller.redirect(to: Map.fetch!(opts, :to))
+        |> Phoenix.Controller.redirect(to: to)
 
-      {:stop, %Socket{redirected: {:live, opts}}} ->
-        Phoenix.Controller.redirect(conn, to: Map.fetch!(opts, :to))
+      {:stop, %Socket{redirected: {:live, _, %{to: to}}}} ->
+        Phoenix.Controller.redirect(conn, to: to)
     end
   end
 

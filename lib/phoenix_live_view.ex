@@ -1200,7 +1200,11 @@ defmodule Phoenix.LiveView do
     * `:layout` - the optional layout to be used by the LiveView
 
   """
-  @callback mount(Socket.unsigned_params() | :not_mounted_at_router, session :: map, socket :: Socket.t()) ::
+  @callback mount(
+              Socket.unsigned_params() | :not_mounted_at_router,
+              session :: map,
+              socket :: Socket.t()
+            ) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
@@ -1464,7 +1468,7 @@ defmodule Phoenix.LiveView do
         true -> raise ArgumentError, "expected :to or :external option in redirect/2"
       end
 
-    put_redirect(socket, :redirect, %{to: url})
+    put_redirect(socket, {:redirect, %{to: url}})
   end
 
   @doc """
@@ -1488,30 +1492,37 @@ defmodule Phoenix.LiveView do
   """
   def live_redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "live_redirect/2")
-    kind = if opts[:replace], do: :replace, else: :push
     to = Keyword.fetch!(opts, :to)
     validate_local_url!(to, "live_redirect/2")
-    put_redirect(socket, :live, %{to: to, kind: kind})
+    kind = if opts[:replace], do: :replace, else: :push
+
+    params =
+      case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.view, to) do
+        {:internal, params, _parsed_uri} -> params
+        :external -> :redirect
+      end
+
+    put_redirect(socket, {:live, params, %{to: to, kind: kind}})
   end
 
-  defp put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
-    %Socket{socket | redirected: {:redirect, opts}}
+  defp put_redirect(%Socket{redirected: nil} = socket, {:redirect, _} = command) do
+    %Socket{socket | redirected: command}
   end
 
-  defp put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
+  defp put_redirect(%Socket{redirected: nil} = socket, {:live, _params, %{kind: kind}} = command)
        when kind in [:push, :replace] do
     if child?(socket) do
       raise ArgumentError, """
-      attempted to live_redirect from a nested child socket.
+      attempted to live_patch/live_redirect from a nested child socket.
 
-      Only the root parent LiveView can issue live redirects.
+      Only the root parent LiveView can issue live patches and live redirects.
       """
     else
-      %Socket{socket | redirected: {:live, opts}}
+      %Socket{socket | redirected: command}
     end
   end
 
-  defp put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
+  defp put_redirect(%Socket{redirected: to} = _socket, _command) do
     raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
   end
 
