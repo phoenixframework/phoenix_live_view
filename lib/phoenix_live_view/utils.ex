@@ -231,8 +231,8 @@ defmodule Phoenix.LiveView.Utils do
 
   defp random_encoded_bytes do
     binary = <<
-      System.system_time(:nanosecond)::32,
-      :erlang.phash2({node(), self()}, 16_777_216)::16,
+      System.system_time(:microsecond)::48,
+      :erlang.phash2({node(), self()})::16,
       :erlang.unique_integer()::16
     >>
 
