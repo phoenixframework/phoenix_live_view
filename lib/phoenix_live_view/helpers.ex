@@ -5,8 +5,19 @@ defmodule Phoenix.LiveView.Helpers do
 
   alias Phoenix.LiveView.{Component, Socket, Static}
 
+  @doc false
+  def live_patch(opts) when is_list(opts) do
+    live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
+  end
+
   @doc """
-  Generates a live link for HTML5 pushState based navigation without page reloads.
+  Generates a link that will patch the current LiveView.
+
+  When navigating to the current LiveView, `c:handle_params/3` is
+  immediately invoked to handle the change of params and URL state.
+  Then the new state is pushed to the client, without reloading the
+  whole page. For live redirects to another LiveView, use
+  `live_redirect/2`.
 
   ## Options
 
@@ -18,29 +29,71 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
-      <%= live_link to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
+      <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_patch to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
         Sort By Price
       <% end %>
 
   """
-  def live_link(opts) when is_list(opts), do: live_link(opts, do: Keyword.fetch!(opts, :do))
+  def live_patch(opts, do: block) when is_list(opts) do
+    live_link("patch", block, opts)
+  end
 
-  def live_link(opts, do: block) when is_list(opts) do
+  def live_patch(text, opts) when is_binary(text) and is_list(opts) do
+    live_link("patch", text, opts)
+  end
+
+  @doc false
+  def live_redirect(opts) when is_list(opts) do
+    live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
+  end
+
+  @doc """
+  Generates a link that will redirect to a new LiveView.
+
+  The current LiveView will be shutdown and a new one will be mounted
+  in its place LiveView, without reloading the whole page. This can
+  also be use to remount the same LiveView, in case you want to start
+  fresh. If you want to navigate to the same LiveView without remounting
+  it, use `live_patch/2` instead.
+
+  ## Options
+
+    * `:to` - the required path to link to.
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  All other options are forwarded to the anchor tag.
+
+  ## Examples
+
+      <%= live_redirect "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_redirect to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
+        Sort By Price
+      <% end %>
+
+  """
+  def live_redirect(opts, do: block) when is_list(opts) do
+    live_link("redirect", block, opts)
+  end
+
+  def live_redirect(text, opts) when is_binary(text) and is_list(opts) do
+    live_link("redirect", text, opts)
+  end
+
+  defp live_link(type, block_or_text, opts) do
     uri = Keyword.fetch!(opts, :to)
     replace = Keyword.get(opts, :replace, false)
     kind = if replace, do: "replace", else: "push"
 
+    data = [phx_link: type, phx_link_state: kind]
+
     opts =
       opts
-      |> Keyword.update(:data, [phx_live_link: kind], &Keyword.merge(&1, phx_live_link: kind))
+      |> Keyword.update(:data, data, &Keyword.merge(&1, data))
       |> Keyword.put(:href, uri)
 
-    Phoenix.HTML.Tag.content_tag(:a, opts, do: block)
-  end
-
-  def live_link(text, opts) when is_list(opts) do
-    live_link(opts, do: text)
+    Phoenix.HTML.Tag.content_tag(:a, opts, do: block_or_text)
   end
 
   @doc """
@@ -64,11 +117,9 @@ defmodule Phoenix.LiveView.Helpers do
       One `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
     * `:router` - an optional router that enables this LiveView to
-      perform `live_link` and `live_redirect`. Only a single LiveView
-      in a page may have the `:router` set and it will effectively
-      become the view responsible for handling `live_link` and `live_redirect`.
-      LiveViews defined at the router with the `live` macro automatically
-      have the `:router` option set.
+      perform live navigation. Only a single LiveView in a page may
+      have the `:router` set. LiveViews defined at the router with
+      the `live` macro automatically have the `:router` option set.
 
   ## Examples
 
