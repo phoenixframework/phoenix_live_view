@@ -37,19 +37,35 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
 
   def handle_info({:set, var, val}, socket), do: {:noreply, assign(socket, var, val)}
 
-  def handle_info({:live_redirect, to}, socket) do
-    {:noreply, live_redirect(socket, to: to)}
+  def handle_info({:push_patch, to}, socket) do
+    {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_call({:live_redirect, func}, _from, socket) do
+  def handle_info({:push_redirect, to}, socket) do
+    {:noreply, push_redirect(socket, to: to)}
+  end
+
+  def handle_call({:push_patch, func}, _from, socket) do
     func.(socket)
   end
 
-  def handle_cast({:live_redirect, to}, socket) do
-    {:noreply, live_redirect(socket, to: to)}
+  def handle_call({:push_redirect, func}, _from, socket) do
+    func.(socket)
   end
 
-  def handle_event("live_redirect", to, socket) do
-    {:noreply, live_redirect(socket, to: to)}
+  def handle_cast({:push_patch, to}, socket) do
+    {:noreply, push_patch(socket, to: to)}
+  end
+
+  def handle_cast({:push_redirect, to}, socket) do
+    {:noreply, push_redirect(socket, to: to)}
+  end
+
+  def handle_event("push_patch", to, socket) do
+    {:noreply, push_patch(socket, to: to)}
+  end
+
+  def handle_event("push_redirect", to, socket) do
+    {:noreply, push_redirect(socket, to: to)}
   end
 end

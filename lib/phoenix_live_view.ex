@@ -1451,7 +1451,8 @@ defmodule Phoenix.LiveView do
 
   *Note*: LiveView redirects rely on instructing client
   to perform a `window.location` update on the provided
-  redirect location.
+  redirect location. The whole page will be reloaded and
+  all state will be discarded.
 
   ## Options
 
@@ -1471,25 +1472,8 @@ defmodule Phoenix.LiveView do
     put_redirect(socket, {:redirect, %{to: url}})
   end
 
-  @doc """
-  Annotates the socket for navigation without a page refresh.
-
-  When navigating to a path which routes to your existing LiveView,
-  the `handle_params/3` callback is immediately invoked in your existing
-  LiveView process to handle the change of URL state. For live redirects
-  to external LiveViews, the existing LiveView is shutdown.
-
-  ## Options
-
-    * `:to` - the required path to link to. It must always be a local path
-    * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
-
-  ## Examples
-
-      {:noreply, live_redirect(socket, to: "/")}
-      {:noreply, live_redirect(socket, to: "/", replace: true)}
-  """
+  @doc false
+  @deprecated "Use push_patch to stay within the same LiveView or use push_redirect to move to another one"
   def live_redirect(%Socket{} = socket, opts) do
     assert_root_live_view!(socket, "live_redirect/2")
     to = Keyword.fetch!(opts, :to)
@@ -1505,28 +1489,82 @@ defmodule Phoenix.LiveView do
     put_redirect(socket, {:live, params, %{to: to, kind: kind}})
   end
 
-  defp put_redirect(%Socket{redirected: nil} = socket, {:redirect, _} = command) do
-    %Socket{socket | redirected: command}
+  @doc """
+  Annotates the socket for navigation within the current LiveView.
+
+  When navigating to the current LiveView, `c:handle_params/3` is
+  immediately invoked to handle the change of params and URL state.
+  Then the new state is pushed to the client, without reloading the
+  whole page. For live redirects to another LiveView, use
+  `push_redirect/2`.
+
+  ## Options
+
+    * `:to` - the required path to link to. It must always be a local path
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, push_patch(socket, to: "/")}
+      {:noreply, push_patch(socket, to: "/", replace: true)}
+
+  """
+  def push_patch(%Socket{} = socket, opts) do
+    %{to: to} = opts = push_opts!(socket, opts, "push_patch/2")
+
+    case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.view, to) do
+      {:internal, params, _parsed_uri} ->
+        put_redirect(socket, {:live, params, opts})
+
+      :external ->
+        raise ArgumentError,
+              "cannot push_patch/2 to #{inspect(to)} because the given path " <>
+                "does not point to the current view #{inspect(socket.view)}"
+    end
   end
 
-  defp put_redirect(%Socket{redirected: nil} = socket, {:live, _params, %{kind: kind}} = command)
-       when kind in [:push, :replace] do
-    if child?(socket) do
-      raise ArgumentError, """
-      attempted to live_patch/live_redirect from a nested child socket.
+  @doc """
+  Annotates the socket for navigation to another LiveView.
 
-      Only the root parent LiveView can issue live patches and live redirects.
-      """
-    else
-      %Socket{socket | redirected: command}
-    end
+  The current LiveView will be shutdown and a new one will be mounted
+  in its place LiveView, without reloading the whole page. This can
+  also be use to remount the same LiveView, in case you want to start
+  fresh. If you want to navigate to the same LiveView without remounting
+  it, use `push_patch/2` instead.
+
+  ## Options
+
+    * `:to` - the required path to link to. It must always be a local path
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, push_redirect(socket, to: "/")}
+      {:noreply, push_redirect(socket, to: "/", replace: true)}
+
+  """
+  def push_redirect(%Socket{} = socket, opts) do
+    opts = push_opts!(socket, opts, "push_redirect/2")
+    put_redirect(socket, {:live, :redirect, opts})
+  end
+
+  defp push_opts!(socket, opts, context) do
+    assert_root_live_view!(socket, context)
+    to = Keyword.fetch!(opts, :to)
+    validate_local_url!(to, context)
+    kind = if opts[:replace], do: :replace, else: :push
+    %{to: to, kind: kind}
+  end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, command) do
+    %Socket{socket | redirected: command}
   end
 
   defp put_redirect(%Socket{redirected: to} = _socket, _command) do
     raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
   end
-
-  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   @invalid_local_url_chars ["\\"]
 
@@ -1615,6 +1653,8 @@ defmodule Phoenix.LiveView do
 
     Phoenix.LiveView.Channel.send_update(module, id, assigns)
   end
+
+  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp assert_root_live_view!(%{parent_pid: nil}, _context),
     do: :ok
