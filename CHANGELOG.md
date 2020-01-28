@@ -1,5 +1,9 @@
 ## 0.7.0-dev
 
+### Backwards incompatible changes
+  - `live_redirect` was removed in favor of `push_patch` (for updating the URL and params of the current LiveView) and `push_redirect` (for updating the URL to another LiveView)
+  - `live_link` was removed in favor of  `live_patch` (for updating the URL and params of the current LiveView) and `live_redirect` (for updating the URL to another LiveView)
+
 ### Enhancements
   - Recovery form input data automatically on disconnects or crash recovery
   - Add `phx-auto-recovery` form binding for specialized recovery
@@ -13,8 +17,7 @@
 ## 0.6.0 (2020-01-22)
 
 ### Deprecations
-
-LiveView `mount/2` has been deprecated in favor of `mount/3`. The params are now passed as the first argument to `mount/3`, followed by the session and socket.
+  - LiveView `mount/2` has been deprecated in favor of `mount/3`. The params are now passed as the first argument to `mount/3`, followed by the session and socket.
 
 ### Backwards incompatible changes
   - The socket session now accepts only string keys

@@ -782,14 +782,15 @@ defmodule Phoenix.LiveView do
   You can trigger live navigation in two ways:
 
     * From the client - this is done by replacing `Phoenix.HTML.link/3`
-      calls by `Phoenix.LiveView.Helpers.live_link/3`
+      by `Phoenix.LiveView.Helpers.live_patch/3` or
+      `Phoenix.LiveView.Helpers.live_redirect/3`
 
     * From the server - this is done by replacing `redirect/2` calls
       by `push_patch/2` or `push_redirect/2`.
 
   For example, in a template you may write:
 
-      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
 
   or in a LiveView:
 
@@ -807,8 +808,8 @@ defmodule Phoenix.LiveView do
   (which reduces latency and improves performance). Once information is
   retrieved, the new LiveView is mounted.
 
-  `live_link/3`, `push_redirect/2`, and `push_patch/2` only works for LiveViews
-  defined at the router with the `live/3` macro.
+  `live_patch/3`, `live_redirect/3`, `push_redirect/2`, and `push_patch/2`
+  only work for LiveViews defined at the router with the `live/3` macro.
 
   ### `handle_params/3`
 
@@ -829,7 +830,7 @@ defmodule Phoenix.LiveView do
 
   Now to add live sorting, you could do:
 
-      <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+      <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
   will be invoked. Remember you should never trust received params, so you must use
@@ -1435,23 +1436,6 @@ defmodule Phoenix.LiveView do
       end
 
     put_redirect(socket, {:redirect, %{to: url}})
-  end
-
-  @doc false
-  @deprecated "Use push_patch to stay within the same LiveView or use push_redirect to move to another one"
-  def live_redirect(%Socket{} = socket, opts) do
-    assert_root_live_view!(socket, "live_redirect/2")
-    to = Keyword.fetch!(opts, :to)
-    validate_local_url!(to, "live_redirect/2")
-    kind = if opts[:replace], do: :replace, else: :push
-
-    params =
-      case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.view, to) do
-        {:internal, params, _parsed_uri} -> params
-        :external -> :redirect
-      end
-
-    put_redirect(socket, {:live, params, %{to: to, kind: kind}})
   end
 
   @doc """
