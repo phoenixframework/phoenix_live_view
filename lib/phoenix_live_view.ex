@@ -1102,12 +1102,12 @@ defmodule Phoenix.LiveView do
     * `pushEventTo(selector, event, payload)` - method to push targeted events from the client
       to LiveViews and LiveComponents.
 
-  For example, a controlled input for phone-number formatting would annotate their
-  markup:
+  For example, the markup for a controlled input for phone-number formatting could be written
+  like this:
 
       <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
 
-  Then a hook callback object can be defined and passed to the socket:
+  Then a hook callback object could be defined and passed to the socket:
 
       let Hooks = {}
       Hooks.PhoneNumber = {
