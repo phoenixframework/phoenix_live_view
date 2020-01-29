@@ -948,22 +948,18 @@ defmodule Phoenix.LiveView do
   ### Replace page address
 
   LiveView also allows the current browser URL to be replaced. This is useful when you
-  want certain events to change the URL but without polluting the browser's history.
+  want certain events to change the URL without polluting the browser's history.
+
   For example, imagine there is a form that changes some page state when submitted.
-  If those changes are not persisted in a database or similar, as soon as the user
-  refreshes the page, navigates away, or shares the URL with someone else, said changes
-  will be lost.
+  If those changes are not persisted outside of a LiveView, they will be lost as soon
+  as the user refreshes the page, navigates away, or shares the URL with someone else.
 
-  To address this, users can invoke `live_redirect/2`. The idea is, once the form
-  data is received, we do not change the state, instead we perform a live redirect to
-  ourselves with the new URL. Since we are navigating to ourselves, `c:handle_params/3`
-  will be called with the new parameters, which we can then use to compute state and
-  re-render the page.
+  To avoid losing this transient state, users can call `live_redirect/2`, passing it
+  the socket and new URL. Doing this will cause `c:handle_params/3` to be called, in
+  turn making the new form-provided parameters available for the next render.
 
-  For example, let's change the "sort by" example from the previous page to perform
-  sorting through a form. In other words, instead of sorting by clicking a "Sort by
-  name" button, we will have a form with 2 radio buttons, that allows you to choose
-  between sorting by name or company.
+  To illustrate, let's adapt the UI for the previous user-sorting example to a form
+  with two radio buttons -- one to sort users by name, and the other by company.
 
   Once the form is submitted, we can compute the new URL:
 
@@ -972,7 +968,7 @@ defmodule Phoenix.LiveView do
       end
 
   Now with a `c:handle_params/3` implementation similar to the one in the previous
-  section, we will recompute the users based on the new `params` and perform a server
+  example, we will recompute the users based on the new `params` and perform a server
   render if there are any changes.
 
   Both `live_link/2` and `live_redirect/2` support the `replace: true` option. This
