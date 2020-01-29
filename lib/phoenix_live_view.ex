@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView do
   the browser.
 
   At the end of the day, a LiveView is nothing more than a
-  process, that receives events as messages and updates its
+  process that receives events as messages and updates its
   state. The state itself is nothing more than functional
   and immutable Elixir data structures. The events are either
   internal application messages (usually emitted by `Phoenix.PubSub`)
