@@ -1145,7 +1145,7 @@ defmodule Phoenix.LiveView do
   The LiveView entry-point.
 
   For each LiveView in the root of a template, `c:mount/3` is invoked twice:
-  once to do the initial page load and another to establish the live socket.
+  once to do the initial page load and again to establish the live socket.
 
   It expects three parameters:
 
