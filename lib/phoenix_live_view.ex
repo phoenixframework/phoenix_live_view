@@ -53,7 +53,7 @@ defmodule Phoenix.LiveView do
 
     * (Coming soon) LiveView includes a latency simulator,
       which allows you to simulate how your application
-      behaves on increased latency and guides you to provide
+      would behave with greater latency and guides you to provide
       meaningful feedback to users while they wait for events
       to be processed;
 
@@ -538,7 +538,7 @@ defmodule Phoenix.LiveView do
   some browsers will clear invalid inputs. So LiveView will not send change events
   from the client when an input is invalid, instead allowing the browser's native
   validation UI to drive user interaction. Once the input becomes valid, change and
-  submit events will be sent as normal.
+  submit events will be sent normally.
 
   ### Password inputs
 
@@ -848,7 +848,7 @@ defmodule Phoenix.LiveView do
         {:ok, socket, temporary_assigns: [messages: []]}
       end
 
-  On mount we also load the initial amount of messages we want to
+  On mount we also load the initial number of messages we want to
   send. After the initial render, the initial batch of messages will
   be reset back to an empty list.
 
@@ -913,7 +913,7 @@ defmodule Phoenix.LiveView do
   `c:mount/3`. So how do you decide which callback to use to load data? Generally
   speaking, data should always be loaded on `c:mount/3`. Only the params that
   can be changed via `live_link/3` or `live_redirect/2` must be loaded on
-  `c:handle_params/3`. As any other `handle_*` callback, changes to
+  `c:handle_params/3`. As with any other `handle_*` callback, changes to
   the state inside `c:handle_params/3` will trigger a server render.
 
   To avoid building a new LiveView whenever a live link is clicked or whenever
