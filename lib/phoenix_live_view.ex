@@ -1299,8 +1299,8 @@ defmodule Phoenix.LiveView do
 
   When a LiveView is mounted in a disconnected state, the Plug.Conn assigns
   will be available for reference via `assign_new/3`, allowing assigns to
-  be shared for the initial HTTP request. On connected mount, the `assign_new/3`
-  would be invoked, and the LiveView would use its session to rebuild the
+  be shared for the initial HTTP request. On connected mount, `assign_new/3`
+  will be invoked, and the LiveView will use its session to rebuild the
   originally shared assign. Likewise, nested LiveView children have access
   to their parent's assigns on mount using `assign_new`, which allows
   assigns to be shared down the nested LiveView tree.
