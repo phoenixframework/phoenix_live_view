@@ -1044,14 +1044,21 @@ defmodule Phoenix.LiveView do
 
       %{"_target" => ["user", "username"], "user" => %{"name" => "Name"}}
 
-  The `phx-submit` event is used for form submissions where major side-effects
+  The `phx-submit` event is used for form submissions where major side effects
   typically happen, such as rendering new containers, calling an external
-  service, or redirecting to a new page. For these use-cases, the form inputs
-  are set to `readonly` on submit, and any submit button is disabled until
-  the client gets an acknowledgment that the server has processed the
-  `phx-submit` event. Following an acknowledgment, any updates are patched
-  to the DOM as normal, and the last input with focus is restored if the
-  user has not otherwise focused on a new input during submission.
+  service, or redirecting to a new page.
+
+  On submission of a form bound with a `phx-submit` event:
+
+    1. The form's inputs are set to `readonly`
+    2. Any submit button on the form is disabled
+    3. The form receives the `"phx-loading"` class
+
+  On completion of server processing of the `phx-submit` event:
+
+    1. The submitted form is reactivated and loses the `"phx-loading"` class
+    2. The last input with focus is restored (unless another input has received focus)
+    3. Updates are patched to the DOM as usual
 
   To handle latent form submissions, any HTML tag can be annotated with
   `phx-disable-with`, which swaps the element's `innerText` with the provided
@@ -1070,9 +1077,6 @@ defmodule Phoenix.LiveView do
     - `"phx-error"` - applied when an error occurs on the server. Note, this
       class will be applied in conjunction with `"phx-disconnected"` if connection
       to the server is lost.
-
-  When a form bound with `phx-submit` is submitted, the `"phx-loading"` class
-  is applied to the form, which is removed on update.
 
   ### JS Interop and client-controlled DOM
 
