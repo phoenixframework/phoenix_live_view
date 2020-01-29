@@ -39,12 +39,12 @@ defmodule Phoenix.LiveView do
       This reduces latency and the amount of data sent over
       the wire;
 
-    * LiveView tracks static and dynamic contents. Any
+    * LiveView tracks static and dynamic content. Any
       server-rendered HTML is made of static parts (i.e.
       that never change) and dynamic ones. On the first
-      render, LiveView sends the static contents and in
-      future updates only the modified dynamic contents
-      are resent;
+      render, LiveView sends the static content and in
+      future updates only the modified dynamic content
+      is resent;
 
     * (Coming soon) LiveView uses the Erlang Term Format
       to send messages to the client. This binary-based
