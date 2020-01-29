@@ -345,7 +345,7 @@ defmodule Phoenix.LiveView do
 
   Generally speaking, **data loading should never happen inside the template**,
   regardless if you are using LiveView or not. The difference is that LiveView
-  enforces those as best practices.
+  enforces this best practice.
 
   ### Change tracking pitfalls
 
