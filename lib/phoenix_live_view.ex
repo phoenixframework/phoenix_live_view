@@ -837,8 +837,8 @@ defmodule Phoenix.LiveView do
   As you may suspect, keeping the whole chat conversation in memory
   and resending it on every update would be too expensive, even with
   LiveView smart change tracking. By using temporary assigns and phx-update,
-  we don't need to keep any message in memory and send messages to be
-  appended to the UI only when there are new messages.
+  we don't need to keep any messages in memory, and send messages to be
+  appended to the UI only when there are new ones.
 
   To do so, the first step is to mark which assigns are temporary and
   what values they should be reset to on mount:
@@ -869,8 +869,8 @@ defmodule Phoenix.LiveView do
         <% end %>
       </div>
 
-  And now, once the client receives new messages, it knows it shouldn't
-  replace the old content, but rather append to it.
+  When the client receives new messages, it now knows to append to the
+  old content rather than replace it.
 
   ## Live navigation
 
@@ -898,8 +898,8 @@ defmodule Phoenix.LiveView do
     * if the route belongs to a different LiveView than the currently running
       root, then the existing root LiveView is shut down, and an Ajax request is
       made to request the necessary information about the new LiveView, without
-      performing a full static render (which reduces latency and improves
-      performance). Once information is retrieved, the new LiveView is mounted.
+      performing a full static render. This reduces latency and improves
+      performance. Once information is retrieved, the new LiveView is mounted.
 
   `live_link/3` and `live_redirect/2` are by default only available in LiveViews
   defined at the router with the `live/3` macro.
