@@ -236,9 +236,8 @@ defmodule Phoenix.LiveView do
   connection session (see `Plug.Conn.get_session/1`) will be given to
   the LiveView.
 
-  It is also possible to pass extra session information besides the one
-  currently in the connection session to the LiveView, by passing a
-  session parameter:
+  It is also possible to pass additional session information to the LiveView
+  through a session parameter:
 
       # In the router
       live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
