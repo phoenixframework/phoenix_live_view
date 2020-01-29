@@ -304,11 +304,10 @@ defmodule Phoenix.LiveView do
   but they are most commonly accessed inside LiveView templates as
   `@name`.
 
-  `Phoenix.LiveView`'s built-in templates provided by the `.leex`
-  extension or `~L` sigil, stands for Live EEx. They are similar
-  to regular `.eex` templates except they are designed to minimize
-  the amount of data sent over the wire by splitting static from
-  dynamic parts and also tracking changes.
+  `Phoenix.LiveView`'s built-in templates are identified by the `.leex`
+  extension (Live EEx) or `~L` sigil. They are similar to regular `.eex`
+  templates except they are designed to minimize the amount of data sent
+  over the wire by splitting static and dynamic parts and tracking changes.
 
   When you first render a `.leex` template, it will send all of the
   static and dynamic parts of the template to the client. After that,
