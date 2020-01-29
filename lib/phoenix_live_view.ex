@@ -451,7 +451,7 @@ defmodule Phoenix.LiveView do
         ...
       </div>
 
-  The following window level bindings are supported:
+  The following window-level bindings are supported:
 
     * `phx-window-focus`
     * `phx-window-blur`
