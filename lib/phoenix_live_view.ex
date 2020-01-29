@@ -352,7 +352,7 @@ defmodule Phoenix.LiveView do
   Although change tracking can considerably reduce the amount of data sent
   over the wire, there are some pitfalls users should be aware of.
 
-  First of all, change tracking can only track assigns directly. So for example,
+  First of all, change tracking can only track assigns. So for example,
   if you do something such as:
 
       <%= @post.the_whole_content %>
