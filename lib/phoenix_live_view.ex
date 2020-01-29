@@ -897,7 +897,7 @@ defmodule Phoenix.LiveView do
       is invoked without mounting a new LiveView. See the next section.
 
     * if the route belongs to a different LiveView than the currently running
-      root, then the existing root LiveView is shutdown, and an Ajax request is
+      root, then the existing root LiveView is shut down, and an Ajax request is
       made to request the necessary information about the new LiveView, without
       performing a full static render (which reduces latency and improves
       performance). Once information is retrieved, the new LiveView is mounted.
@@ -1438,7 +1438,7 @@ defmodule Phoenix.LiveView do
   When navigating to a path which routes to your existing LiveView,
   the `handle_params/3` callback is immediately invoked in your existing
   LiveView process to handle the change of URL state. For live redirects
-  to external LiveViews, the existing LiveView is shutdown.
+  to external LiveViews, the existing LiveView is shut down.
 
   ## Options
 
