@@ -31,8 +31,8 @@ defmodule Phoenix.LiveView do
 
     * LiveView is first rendered statically as part of
       regular HTTP requests, which provides quick times
-      for "First Meaningful Paint" and also help search
-      and indexing engines;
+      for "First Meaningful Paint", in addition to helping
+      search and indexing engines;
 
     * LiveView performs diff tracking. If the LiveView
       state changes, it won't re-render the whole template,
