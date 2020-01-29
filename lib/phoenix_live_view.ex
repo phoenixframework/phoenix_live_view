@@ -621,7 +621,7 @@ defmodule Phoenix.LiveView do
   re-mount or a connection drop and recovery. To force a child to re-mount with
   new session data, a new ID must be provided.
 
-  Given a LiveView runs on its own process, it is an excellent tool for creating
+  Given that a LiveView runs on its own process, it is an excellent tool for creating
   completely isolated UI elements, but it is a slightly expensive abstraction if
   all you want is to compartmentalize markup and events. For example, if you are
   showing a table with all users in the system, and you want to compartmentalize
@@ -821,7 +821,7 @@ defmodule Phoenix.LiveView do
   By default, all LiveView assigns are stateful, which enables change
   tracking and stateful interactions. In some cases, it's useful to mark
   assigns as temporary, meaning they will be reset to a default value after
-  each update, allowing otherwise large, but infrequently updated values
+  each update. This allows otherwise large but infrequently updated values
   to be discarded after the client has been patched.
 
   Imagine you want to implement a chat application with LiveView. You
