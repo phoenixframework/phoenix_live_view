@@ -17,7 +17,8 @@ const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
-const PHX_LIVE_LINK = "data-phx-live-link"
+const PHX_LIVE_LINK = "data-phx-link"
+const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -340,9 +341,11 @@ export class LiveSocket {
 
   detectMainView(){
     DOM.all(document, `${PHX_MAIN_VIEW_SELECTOR}`, el => {
+      let hasPreviousMain = !!this.main
       let main = this.getViewByEl(el)
       if(main) {
         this.main = main
+        if(!hasPreviousMain){ this.replaceRootHistory() }
       }
     })
   }
@@ -359,20 +362,24 @@ export class LiveSocket {
 
       let template = document.createElement("template")
       template.innerHTML = html
+      let el = template.content.childNodes[0]
+      if(!el || !this.isPhxView(el)){ return Browser.redirect(href) }
 
-      this.joinView(template.content.childNodes[0], null, href, newMain => {
+      this.joinView(el, null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
         }
-        callback && callback()
         this.destroyViewById(mainID)
         mainEl.replaceWith(newMain.el)
         this.main = newMain
         if(wasLoading){ this.main.showLoader() }
+        callback && callback()
       })
     })
   }
+
+  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
   joinView(el, parentView, href, callback){
     if(this.getViewByEl(el)){ return }
@@ -588,29 +595,53 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       if(!this.registerNewLocation(window.location)){ return }
-
+      let {type, id, root} = event.state || {}
       let href = window.location.href
 
-      if(this.main.isConnected()) {
-        this.main.pushInternalLink(href)
+      if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
+        this.main.pushLinkPatch(href)
       } else {
-        this.replaceMain(href)
+        this.replaceMain(href, () => {
+          if(root){ this.replaceRootHistory() }
+        })
       }
     }
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
-      let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
+      let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
-      if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
+      if(!type || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
+      let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
       if(this.pendingLink === href){ return }
 
-      this.main.pushInternalLink(href, () => {
-        Browser.pushState(phxEvent, {}, href)
-        this.registerNewLocation(window.location)
-      })
+      if(type === "patch"){
+        this.historyPatch(href, linkState)
+      } else if(type === "redirect") {
+        this.historyRedirect(href, linkState)
+      } else {
+        throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`)
+      }
     }, false)
+  }
+
+  historyPatch(href, linkState){
+    this.main.pushLinkPatch(href, () => {
+      Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
+      this.registerNewLocation(window.location)
+    })
+  }
+
+  historyRedirect(href, linkState){
+    this.replaceMain(href, () => {
+      Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
+      this.registerNewLocation(window.location)
+    })
+  }
+
+  replaceRootHistory(){
+    Browser.pushState("replace", {root: true, type: "patch", id: this.main.id})
   }
 
   registerNewLocation(newLocation){
@@ -720,7 +751,7 @@ export let Browser = {
 
         if(hashEl) {
           hashEl.scrollIntoView()
-        } else {
+        } else if(meta.type === "redirect"){
           window.scroll(0, 0)
         }
       }
@@ -1220,7 +1251,7 @@ export class View {
 
     if(live_patch){
       let {kind, to} = live_patch
-      Browser.pushState(kind, {}, to)
+      this.liveSocket.historyPatch(to, kind)
     }
     this.hideLoader()
     if(this.joinCount > 1){ this.triggerReconnected() }
@@ -1336,17 +1367,13 @@ export class View {
   }
 
   onLiveRedirect({to, kind}){
-    let url = window.location.protocol + '//' + window.location.host + to
-    this.liveSocket.replaceMain(url, () => {
-      Browser.pushState(kind, {}, to)
-      this.liveSocket.registerNewLocation(window.location)
-    })
+    let url = `${window.location.protocol}//${window.location.host}${to}`
+    this.liveSocket.historyRedirect(url, kind)
   }
 
   onLivePatch({to, kind}){
     this.href = to
-    Browser.pushState(kind, {}, to)
-    this.liveSocket.registerNewLocation(window.location)
+    this.liveSocket.historyPatch(to, kind)
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }
@@ -1500,7 +1527,7 @@ export class View {
     })
   }
 
-  pushInternalLink(href, callback){
+  pushLinkPatch(href, callback){
     if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {

@@ -781,9 +781,9 @@ defmodule Phoenix.LiveView do
 
   You can trigger live navigation in two ways:
 
-    * From the client - this is done by replacing `Phoenix.HTML.link/3`
-      by `Phoenix.LiveView.Helpers.live_patch/3` or
-      `Phoenix.LiveView.Helpers.live_redirect/3`
+    * From the client - this is done by replacing `Phoenix.HTML.link/2`
+      by `Phoenix.LiveView.Helpers.live_patch/2` or
+      `Phoenix.LiveView.Helpers.live_redirect/2`
 
     * From the server - this is done by replacing `redirect/2` calls
       by `push_patch/2` or `push_redirect/2`.
@@ -810,7 +810,7 @@ defmodule Phoenix.LiveView do
   class is added to the root LiveView, which can be used to indicate to the
   user a new page is being loaded.
 
-  `live_patch/3`, `live_redirect/3`, `push_redirect/2`, and `push_patch/2`
+  `live_patch/2`, `live_redirect/2`, `push_redirect/2`, and `push_patch/2`
   only work for LiveViews defined at the router with the `live/3` macro.
 
   ### `handle_params/3`
