@@ -1090,7 +1090,7 @@ defmodule Phoenix.LiveView do
       *Note*: any call here must be synchronous as the operation cannot
       be deferred or cancelled.
     * `destroyed` - the element has been removed from the page, either
-      by a parent update, or the parent being removed entirely
+      by a parent update, or by the parent being removed entirely
     * `disconnected` - the element's parent LiveView has disconnected from the server
     * `reconnected` - the element's parent LiveView has reconnected to the server
 
