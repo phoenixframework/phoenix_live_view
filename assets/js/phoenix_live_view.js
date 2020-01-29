@@ -229,6 +229,8 @@ export let Rendered = {
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
  * @param {string} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+ * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
+ * loading states.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -263,6 +265,7 @@ export class LiveSocket {
     this.pendingLink = null
     this.currentLocation = clone(window.location)
     this.hooks = opts.hooks || {}
+    this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
@@ -348,7 +351,7 @@ export class LiveSocket {
   }
 
   replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
-    this.main.showLoader(LOADER_TIMEOUT)
+    this.main.showLoader(this.loaderTimeout)
     let mainEl = this.main.el
     let mainID = this.main.id
     let wasLoading = this.main.isLoading()
@@ -1133,7 +1136,7 @@ export class View {
         static: this.getStatic()
       }
     })
-    this.showLoader(LOADER_TIMEOUT)
+    this.showLoader(this.liveSocket.loaderTimeout)
     this.bindChannel()
   }
 
@@ -1525,7 +1528,7 @@ export class View {
   }
 
   pushLinkPatch(href, callback){
-    if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
+    if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
