@@ -357,8 +357,8 @@ defmodule Phoenix.LiveView do
 
       <%= @post.the_whole_content %>
 
-  If any of other field besides `the_whole_content` in `@post` change for any
-  reason, the `the_whole_content` will be sent downstream. Although this is not
+  If any other field besides `the_whole_content` in `@post` changes for any
+  reason, `the_whole_content` will be sent downstream. Although this is not
   generally a problem, if you have large fields that you don't want to resend
   or if you have one field in particular that changes all the time while others
   do not, you may want to track them as their own assign.
