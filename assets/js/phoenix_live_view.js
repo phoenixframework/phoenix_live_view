@@ -360,7 +360,6 @@ export class LiveSocket {
       let template = document.createElement("template")
       template.innerHTML = html
       let el = template.content.childNodes[0]
-      console.log(el)
       if(!el || !this.isPhxView(el)){ return Browser.redirect(href) }
 
       this.joinView(el, null, href, newMain => {
