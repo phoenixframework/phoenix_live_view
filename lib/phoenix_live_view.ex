@@ -35,8 +35,7 @@ defmodule Phoenix.LiveView do
       search and indexing engines;
 
     * LiveView performs diff tracking. If the LiveView
-      state changes, it won't re-render the whole template,
-      but only the parts affected by the changed state.
+      state changes, it will only re-render those changes.
       This reduces latency and the amount of data sent over
       the wire;
 
