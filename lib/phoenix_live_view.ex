@@ -841,7 +841,7 @@ defmodule Phoenix.LiveView do
   appended to the UI only when there are new messages.
 
   To do so, the first step is to mark which assigns are temporary and
-  what are the value they should be reset to on mount:
+  what values they should be reset to on mount:
 
       def mount(_params, _session, socket) do
         socket = assign(socket, :messages, load_last_20_messages())
@@ -858,7 +858,7 @@ defmodule Phoenix.LiveView do
       socket = assign(socket, :messages, new_messages)
 
   In the template, we want to wrap all of the messages in a container
-  and tag this content with phx-update. Remember must also add an ID
+  and tag this content with phx-update. Remember, we must add an ID
   to the container as well as to each child:
 
       <div id="chat-messages" phx-update="append">
@@ -909,7 +909,7 @@ defmodule Phoenix.LiveView do
   The `c:handle_params/3` callback is invoked after `c:mount/3`. It receives the
   request parameters as first argument, the url as second, and the socket as third.
 
-  The parameters given to `c:handle_params/3` are the same as the one given to
+  The parameters given to `c:handle_params/3` are the same as the ones given to
   `c:mount/3`. So how do you decide which callback to use to load data? Generally
   speaking, data should always be loaded on `c:mount/3`. Only the params that
   can be changed via `live_link/3` or `live_redirect/2` must be loaded on
@@ -920,7 +920,7 @@ defmodule Phoenix.LiveView do
   a live redirect happens, LiveView also invokes `c:handle_params/3` on an
   existing LiveView when performing live navigation as long as:
 
-    1. you are navigating to the same root live view you are currently on
+    1. you are navigating to the same root LiveView you are currently on
     2. said LiveView is defined in your router
 
   For example, imagine you have a `UserTable` LiveView to show all users in
@@ -1031,7 +1031,7 @@ defmodule Phoenix.LiveView do
   major side effects are not expected, such as form validation errors,
   or additive UX around the user's input values as they fill out a form.
   For these use cases, the `phx-change` input does not concern itself
-  with disabling input editing while an event to the server is inflight.
+  with disabling input editing while an event to the server is in flight.
   When a `phx-change` event is sent to the server, a `"_target"` param
   will be in the root payload containing the keyspace of the input name
   which triggered the change event. For example, if the following input
@@ -1079,7 +1079,7 @@ defmodule Phoenix.LiveView do
 
   ### JS Interop and client-controlled DOM
 
-  To handle custom client-side javascript when an element is added, updated,
+  To handle custom client-side JavaScript when an element is added, updated,
   or removed by the server, a hook object may be provided with the following
   life-cycle callbacks:
 
