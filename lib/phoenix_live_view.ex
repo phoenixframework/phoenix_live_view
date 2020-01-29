@@ -104,7 +104,7 @@ defmodule Phoenix.LiveView do
       while the server is unavailable, complete support for
       Optimistic UIs cannot be achieved without also writing
       JavaScript for the cases the server is not available.
-      See  "JS Interop and client controlled DOM" on how to
+      See  "JS Interop and client-controlled DOM" on how to
       integrate JS hooks;
 
   There are also use cases which are a bad fit for LiveView:
@@ -409,7 +409,7 @@ defmodule Phoenix.LiveView do
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [Custom DOM Patching](#module-custom-dom-patching) | `phx-update` |
-  | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
+  | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
 
   ### Click Events
 
@@ -1075,7 +1075,7 @@ defmodule Phoenix.LiveView do
   When a form bound with `phx-submit` is submitted, the `"phx-loading"` class
   is applied to the form, which is removed on update.
 
-  ### JS Interop and client controlled DOM
+  ### JS Interop and client-controlled DOM
 
   To handle custom client-side javascript when an element is added, updated,
   or removed by the server, a hook object may be provided with the following
