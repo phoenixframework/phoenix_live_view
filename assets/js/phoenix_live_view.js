@@ -598,7 +598,7 @@ export class LiveSocket {
       let {type, id, root} = event.state || {}
       let href = window.location.href
 
-      if(this.main.isConnected() && (type === "patch" &&  id  === this.main.id)){
+      if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
         this.main.pushLinkPatch(href)
       } else {
         this.replaceMain(href, () => {
