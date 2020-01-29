@@ -933,8 +933,8 @@ defmodule Phoenix.LiveView do
       <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
-  will be invoked. Remember you should never trust received params, so we can use
-  the callback to validate the user input and change the state accordingly:
+  will be invoked. Remembering that we should never trust unvalidated received params,
+  we can use the callback to validate the user input and change the state accordingly:
 
       def handle_params(params, _uri, socket) do
         case params["sort_by"] do
