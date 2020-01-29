@@ -1150,9 +1150,9 @@ defmodule Phoenix.LiveView do
   It expects three parameters:
 
     * `params` - a map of string keys which contain public information that
-      can be set by the user. It contains the query params as well as any
-      router path parameter. `params` is only available for LiveViews mounted
-      at the router, otherwise it is the atom `:not_mounted_at_router`
+      can be set by the user. The map contains the query params as well as any
+      router path parameter. If the LiveView was not mounted at the router,
+      this argument is the atom `:not_mounted_at_router`
     * `session` - the connection session
     * `socket` - the LiveView socket
 
