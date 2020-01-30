@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView do
   the browser.
 
   At the end of the day, a LiveView is nothing more than a
-  process, that receives events as messages and updates its
+  process that receives events as messages and updates its
   state. The state itself is nothing more than functional
   and immutable Elixir data structures. The events are either
   internal application messages (usually emitted by `Phoenix.PubSub`)
@@ -31,21 +31,20 @@ defmodule Phoenix.LiveView do
 
     * LiveView is first rendered statically as part of
       regular HTTP requests, which provides quick times
-      for "First Meaningful Paint" and also help search
-      and indexing engines;
+      for "First Meaningful Paint", in addition to helping
+      search and indexing engines;
 
     * LiveView performs diff tracking. If the LiveView
-      state changes, it won't re-render the whole template,
-      but only the parts affected by the changed state.
+      state changes, it will only re-render those changes.
       This reduces latency and the amount of data sent over
       the wire;
 
-    * LiveView tracks static and dynamic contents. Any
+    * LiveView tracks static and dynamic content. Any
       server-rendered HTML is made of static parts (i.e.
       that never change) and dynamic ones. On the first
-      render, LiveView sends the static contents and in
-      future updates only the modified dynamic contents
-      are resent;
+      render, LiveView sends the static content and in
+      future updates only the modified dynamic content
+      is resent;
 
     * (Coming soon) LiveView uses the Erlang Term Format
       to send messages to the client. This binary-based
@@ -54,7 +53,7 @@ defmodule Phoenix.LiveView do
 
     * (Coming soon) LiveView includes a latency simulator,
       which allows you to simulate how your application
-      behaves on increased latency and guides you to provide
+      would behave with greater latency and guides you to provide
       meaningful feedback to users while they wait for events
       to be processed;
 
@@ -105,7 +104,7 @@ defmodule Phoenix.LiveView do
       while the server is unavailable, complete support for
       Optimistic UIs cannot be achieved without also writing
       JavaScript for the cases the server is not available.
-      See  "JS Interop and client controlled DOM" on how to
+      See  "JS Interop and client-controlled DOM" on how to
       integrate JS hooks;
 
   There are also use cases which are a bad fit for LiveView:
@@ -237,9 +236,8 @@ defmodule Phoenix.LiveView do
   connection session (see `Plug.Conn.get_session/1`) will be given to
   the LiveView.
 
-  It is also possible to pass extra session information besides the one
-  currently in the connection session to the LiveView, by passing a
-  session parameter:
+  It is also possible to pass additional session information to the LiveView
+  through a session parameter:
 
       # In the router
       live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
@@ -306,11 +304,10 @@ defmodule Phoenix.LiveView do
   but they are most commonly accessed inside LiveView templates as
   `@name`.
 
-  `Phoenix.LiveView`'s built-in templates provided by the `.leex`
-  extension or `~L` sigil, stands for Live EEx. They are similar
-  to regular `.eex` templates except they are designed to minimize
-  the amount of data sent over the wire by splitting static from
-  dynamic parts and also tracking changes.
+  `Phoenix.LiveView`'s built-in templates are identified by the `.leex`
+  extension (Live EEx) or `~L` sigil. They are similar to regular `.eex`
+  templates except they are designed to minimize the amount of data sent
+  over the wire by splitting static and dynamic parts and tracking changes.
 
   When you first render a `.leex` template, it will send all of the
   static and dynamic parts of the template to the client. After that,
@@ -348,20 +345,20 @@ defmodule Phoenix.LiveView do
 
   Generally speaking, **data loading should never happen inside the template**,
   regardless if you are using LiveView or not. The difference is that LiveView
-  enforces those as best practices.
+  enforces this best practice.
 
   ### Change tracking pitfalls
 
   Although change tracking can considerably reduce the amount of data sent
   over the wire, there are some pitfalls users should be aware of.
 
-  First of all, change tracking can only track assigns directly. So for example,
+  First of all, change tracking can only track assigns. So for example,
   if you do something such as:
 
       <%= @post.the_whole_content %>
 
-  If any of other field besides `the_whole_content` in `@post` change for any
-  reason, the `the_whole_content` will be sent downstream. Although this is not
+  If any other field besides `the_whole_content` in `@post` changes for any
+  reason, `the_whole_content` will be sent downstream. Although this is not
   generally a problem, if you have large fields that you don't want to resend
   or if you have one field in particular that changes all the time while others
   do not, you may want to track them as their own assign.
@@ -410,7 +407,7 @@ defmodule Phoenix.LiveView do
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
-  | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
+  | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
 
   ### Click Events
 
@@ -454,7 +451,7 @@ defmodule Phoenix.LiveView do
         ...
       </div>
 
-  The following window level bindings are supported:
+  The following window-level bindings are supported:
 
     * `phx-window-focus`
     * `phx-window-blur`
@@ -541,7 +538,7 @@ defmodule Phoenix.LiveView do
   some browsers will clear invalid inputs. So LiveView will not send change events
   from the client when an input is invalid, instead allowing the browser's native
   validation UI to drive user interaction. Once the input becomes valid, change and
-  submit events will be sent as normal.
+  submit events will be sent normally.
 
   ### Password inputs
 
@@ -624,7 +621,7 @@ defmodule Phoenix.LiveView do
   re-mount or a connection drop and recovery. To force a child to re-mount with
   new session data, a new ID must be provided.
 
-  Given a LiveView runs on its own process, it is an excellent tool for creating
+  Given that a LiveView runs on its own process, it is an excellent tool for creating
   completely isolated UI elements, but it is a slightly expensive abstraction if
   all you want is to compartmentalize markup and events. For example, if you are
   showing a table with all users in the system, and you want to compartmentalize
@@ -722,7 +719,7 @@ defmodule Phoenix.LiveView do
   By default, all LiveView assigns are stateful, which enables change
   tracking and stateful interactions. In some cases, it's useful to mark
   assigns as temporary, meaning they will be reset to a default value after
-  each update, allowing otherwise large, but infrequently updated values
+  each update. This allows otherwise large but infrequently updated values
   to be discarded after the client has been patched.
 
   Imagine you want to implement a chat application with LiveView. You
@@ -738,18 +735,18 @@ defmodule Phoenix.LiveView do
   As you may suspect, keeping the whole chat conversation in memory
   and resending it on every update would be too expensive, even with
   LiveView smart change tracking. By using temporary assigns and phx-update,
-  we don't need to keep any message in memory and send messages to be
-  appended to the UI only when there are new messages.
+  we don't need to keep any messages in memory, and send messages to be
+  appended to the UI only when there are new ones.
 
   To do so, the first step is to mark which assigns are temporary and
-  what are the value they should be reset to on mount:
+  what values they should be reset to on mount:
 
       def mount(_params, _session, socket) do
         socket = assign(socket, :messages, load_last_20_messages())
         {:ok, socket, temporary_assigns: [messages: []]}
       end
 
-  On mount we also load the initial amount of messages we want to
+  On mount we also load the initial number of messages we want to
   send. After the initial render, the initial batch of messages will
   be reset back to an empty list.
 
@@ -759,7 +756,7 @@ defmodule Phoenix.LiveView do
       socket = assign(socket, :messages, new_messages)
 
   In the template, we want to wrap all of the messages in a container
-  and tag this content with phx-update. Remember must also add an ID
+  and tag this content with phx-update. Remember, we must add an ID
   to the container as well as to each child:
 
       <div id="chat-messages" phx-update="append">
@@ -770,8 +767,8 @@ defmodule Phoenix.LiveView do
         <% end %>
       </div>
 
-  And now, once the client receives new messages, it knows it shouldn't
-  replace the old content, but rather append to it.
+  When the client receives new messages, it now knows to append to the
+  old content rather than replace it.
 
   ## Live navigation
 
@@ -818,12 +815,13 @@ defmodule Phoenix.LiveView do
   The `c:handle_params/3` callback is invoked after `c:mount/3`. It receives the
   request parameters as first argument, the url as second, and the socket as third.
 
-  The parameters given to `c:handle_params/3` are the same as the one given to
+  The parameters given to `c:handle_params/3` are the same as the ones given to
   `c:mount/3`. So how do you decide which callback to use to load data? Generally
   speaking, data should always be loaded on `c:mount/3`. Only the params that
-  can be changed via `live_link/3` or `push_patch/2` must be loaded on
-  `c:handle_params/3`. As any other `handle_*` callback, changes to the state
-  inside `c:handle_params/3` will trigger a server render.
+  are changed via `live_patch/2` or `push_patch/2` must be loaded on `c:handle_params/3`.
+
+  As with other `handle_*` callback, changes to the state inside `c:handle_params/3`
+  will trigger a server render.
 
   For example, imagine you have a `UserTable` LiveView to show all users in
   the system and you define it in the router as:
@@ -835,7 +833,7 @@ defmodule Phoenix.LiveView do
       <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
-  will be invoked. Remember you should never trust received params, so you must use
+  will be invoked. Remember you should never trust the received params, so you must use
   the callback to validate the user input and change the state accordingly:
 
       def handle_params(params, _uri, socket) do
@@ -921,6 +919,7 @@ defmodule Phoenix.LiveView do
       end
 
   *Note*: The layout will be wrapped by the LiveView's `:container` tag.
+>>>>>>> master
 
   ### Updating the HTML document title
 
@@ -1002,7 +1001,7 @@ defmodule Phoenix.LiveView do
   major side effects are not expected, such as form validation errors,
   or additive UX around the user's input values as they fill out a form.
   For these use cases, the `phx-change` input does not concern itself
-  with disabling input editing while an event to the server is inflight.
+  with disabling input editing while an event to the server is in flight.
   When a `phx-change` event is sent to the server, a `"_target"` param
   will be in the root payload containing the keyspace of the input name
   which triggered the change event. For example, if the following input
@@ -1014,14 +1013,21 @@ defmodule Phoenix.LiveView do
 
       %{"_target" => ["user", "username"], "user" => %{"name" => "Name"}}
 
-  The `phx-submit` event is used for form submissions where major side-effects
+  The `phx-submit` event is used for form submissions where major side effects
   typically happen, such as rendering new containers, calling an external
-  service, or redirecting to a new page. For these use-cases, the form inputs
-  are set to `readonly` on submit, and any submit button is disabled until
-  the client gets an acknowledgment that the server has processed the
-  `phx-submit` event. Following an acknowledgment, any updates are patched
-  to the DOM as normal, and the last input with focus is restored if the
-  user has not otherwise focused on a new input during submission.
+  service, or redirecting to a new page.
+
+  On submission of a form bound with a `phx-submit` event:
+
+    1. The form's inputs are set to `readonly`
+    2. Any submit button on the form is disabled
+    3. The form receives the `"phx-loading"` class
+
+  On completion of server processing of the `phx-submit` event:
+
+    1. The submitted form is reactivated and loses the `"phx-loading"` class
+    2. The last input with focus is restored (unless another input has received focus)
+    3. Updates are patched to the DOM as usual
 
   To handle latent form submissions, any HTML tag can be annotated with
   `phx-disable-with`, which swaps the element's `innerText` with the provided
@@ -1074,12 +1080,9 @@ defmodule Phoenix.LiveView do
       class will be applied in conjunction with `"phx-disconnected"` if connection
       to the server is lost.
 
-  When a form bound with `phx-submit` is submitted, the `"phx-loading"` class
-  is applied to the form, which is removed on update.
+  ### JS Interop and client-controlled DOM
 
-  ### JS Interop and client controlled DOM
-
-  To handle custom client-side javascript when an element is added, updated,
+  To handle custom client-side JavaScript when an element is added, updated,
   or removed by the server, a hook object may be provided with the following
   life-cycle callbacks:
 
@@ -1093,11 +1096,11 @@ defmodule Phoenix.LiveView do
       *Note*: any call here must be synchronous as the operation cannot
       be deferred or cancelled.
     * `destroyed` - the element has been removed from the page, either
-      by a parent update, or the parent being removed entirely
+      by a parent update, or by the parent being removed entirely
     * `disconnected` - the element's parent LiveView has disconnected from the server
     * `reconnected` - the element's parent LiveView has reconnected to the server
 
-  In addition to the callbacks, the callbacks contain the following attributes in scope:
+  The above life-cycle callbacks have in-scope access to the following attributes:
 
     * `el` - attribute referencing the bound DOM node,
     * `viewName` - attribute matching the dom node's phx-view value
@@ -1105,12 +1108,12 @@ defmodule Phoenix.LiveView do
     * `pushEventTo(selector, event, payload)` - method to push targeted events from the client
       to LiveViews and LiveComponents.
 
-  For example, a controlled input for phone-number formatting would annotate their
-  markup:
+  For example, the markup for a controlled input for phone-number formatting could be written
+  like this:
 
       <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
 
-  Then a hook callback object can be defined and passed to the socket:
+  Then a hook callback object could be defined and passed to the socket:
 
       let Hooks = {}
       Hooks.PhoneNumber = {
@@ -1137,9 +1140,9 @@ defmodule Phoenix.LiveView do
     * `:signing_salt` (required) - the salt used to sign data sent
       to the client
 
-    * `:hibernate_after` (optional) - the amount of time in miliseconds
-      of inactivity inside the LiveView so it hibernates (i.e. it
-      compresses its own memory and state). Defaults to 15000ms (15 seconds)
+    * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
+    the LiveView before compressing its own memory and state.
+    Defaults to 15000ms (15 seconds)
   '''
 
   alias Phoenix.LiveView.Socket
@@ -1148,14 +1151,14 @@ defmodule Phoenix.LiveView do
   The LiveView entry-point.
 
   For each LiveView in the root of a template, `c:mount/3` is invoked twice:
-  once to do the initial page load and another to establish the live socket.
+  once to do the initial page load and again to establish the live socket.
 
   It expects three parameters:
 
     * `params` - a map of string keys which contain public information that
-      can be set by the user. It contains the query params as well as any
-      router path parameter. `params` is only available for LiveViews mounted
-      at the router, otherwise it is the atom `:not_mounted_at_router`
+      can be set by the user. The map contains the query params as well as any
+      router path parameter. If the LiveView was not mounted at the router,
+      this argument is the atom `:not_mounted_at_router`
     * `session` - the connection session
     * `socket` - the LiveView socket
 
@@ -1306,8 +1309,8 @@ defmodule Phoenix.LiveView do
 
   When a LiveView is mounted in a disconnected state, the Plug.Conn assigns
   will be available for reference via `assign_new/3`, allowing assigns to
-  be shared for the initial HTTP request. On connected mount, the `assign_new/3`
-  would be invoked, and the LiveView would use its session to rebuild the
+  be shared for the initial HTTP request. On connected mount, `assign_new/3`
+  will be invoked, and the LiveView will use its session to rebuild the
   originally shared assign. Likewise, nested LiveView children have access
   to their parent's assigns on mount using `assign_new`, which allows
   assigns to be shared down the nested LiveView tree.
