@@ -150,9 +150,9 @@ defmodule Phoenix.LiveView.Utils do
   """
   def raise_bad_stop_and_live_redirect!() do
     raise RuntimeError, """
-    attempted to live redirect while stopping.
+    attempted to live patch/redirect while stopping.
 
-    a LiveView cannot be stopped while issuing a live redirect to the client. \
+    a LiveView cannot be stopped while issuing a live patch/redirect to the client. \
     Use redirect/2 instead if you wish to stop and redirect.
     """
   end
@@ -231,12 +231,12 @@ defmodule Phoenix.LiveView.Utils do
 
   defp random_encoded_bytes do
     binary = <<
-      System.system_time(:nanosecond)::32,
-      :erlang.phash2({node(), self()}, 16_777_216)::16,
+      System.system_time(:nanosecond)::64,
+      :erlang.phash2({node(), self()})::16,
       :erlang.unique_integer()::16
     >>
 
-    Base.encode64(binary, padding: false)
+    Base.url_encode64(binary)
   end
 
   defp mount_opt(%Socket{} = socket, key, val, _arity) when key in @mount_opts do

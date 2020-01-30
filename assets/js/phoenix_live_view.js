@@ -17,7 +17,8 @@ const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
-const PHX_LIVE_LINK = "data-phx-live-link"
+const PHX_LIVE_LINK = "data-phx-link"
+const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -37,9 +38,10 @@ const PHX_DISABLE_WITH = "disable-with"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
-const PHX_CHANGE = "phx-change"
+const PHX_CHANGE_EVENT = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_PRIVATE = "phxPrivate"
+const PHX_AUTO_RECOVER = "auto-recover"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -227,6 +229,8 @@ export let Rendered = {
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
  * @param {string} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+ * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
+ * loading states.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -261,6 +265,7 @@ export class LiveSocket {
     this.pendingLink = null
     this.currentLocation = clone(window.location)
     this.hooks = opts.hooks || {}
+    this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
 
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
@@ -336,15 +341,17 @@ export class LiveSocket {
 
   detectMainView(){
     DOM.all(document, `${PHX_MAIN_VIEW_SELECTOR}`, el => {
+      let hasPreviousMain = !!this.main
       let main = this.getViewByEl(el)
       if(main) {
         this.main = main
+        if(!hasPreviousMain){ this.replaceRootHistory() }
       }
     })
   }
 
   replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
-    this.main.showLoader(LOADER_TIMEOUT)
+    this.main.showLoader(this.loaderTimeout)
     let mainEl = this.main.el
     let mainID = this.main.id
     let wasLoading = this.main.isLoading()
@@ -355,20 +362,24 @@ export class LiveSocket {
 
       let template = document.createElement("template")
       template.innerHTML = html
+      let el = template.content.childNodes[0]
+      if(!el || !this.isPhxView(el)){ return Browser.redirect(href) }
 
-      this.joinView(template.content.childNodes[0], null, href, newMain => {
+      this.joinView(el, null, href, newMain => {
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
         }
-        callback && callback()
         this.destroyViewById(mainID)
         mainEl.replaceWith(newMain.el)
         this.main = newMain
         if(wasLoading){ this.main.showLoader() }
+        callback && callback()
       })
     })
   }
+
+  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
   joinView(el, parentView, href, callback){
     if(this.getViewByEl(el)){ return }
@@ -584,27 +595,53 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.onpopstate = (event) => {
       if(!this.registerNewLocation(window.location)){ return }
-
+      let {type, id, root} = event.state || {}
       let href = window.location.href
 
-      if(this.main.isConnected()) {
-        this.main.pushInternalLink(href)
+      if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
+        this.main.pushLinkPatch(href)
       } else {
-        this.replaceMain(href)
+        this.replaceMain(href, () => {
+          if(root){ this.replaceRootHistory() }
+        })
       }
     }
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
-      let phxEvent = target && target.getAttribute(PHX_LIVE_LINK)
+      let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
-      if(!phxEvent || !this.isConnected() || wantsNewTab){ return }
+      if(!type || !this.isConnected() || wantsNewTab){ return }
       let href = target.href
+      let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
-      this.main.pushInternalLink(href, () => {
-        Browser.pushState(phxEvent, {}, href)
-        this.registerNewLocation(window.location)
-      })
+      if(this.pendingLink === href){ return }
+
+      if(type === "patch"){
+        this.historyPatch(href, linkState)
+      } else if(type === "redirect") {
+        this.historyRedirect(href, linkState)
+      } else {
+        throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`)
+      }
     }, false)
+  }
+
+  historyPatch(href, linkState){
+    this.main.pushLinkPatch(href, () => {
+      Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
+      this.registerNewLocation(window.location)
+    })
+  }
+
+  historyRedirect(href, linkState){
+    this.replaceMain(href, () => {
+      Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
+      this.registerNewLocation(window.location)
+    })
+  }
+
+  replaceRootHistory(){
+    Browser.pushState("replace", {root: true, type: "patch", id: this.main.id})
   }
 
   registerNewLocation(newLocation){
@@ -645,7 +682,7 @@ export class LiveSocket {
             } else {
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, phxEvent, e)
+            view.pushInput(input, targetCtx, phxEvent, e.target)
           })
         })
       }, false)
@@ -714,7 +751,7 @@ export let Browser = {
 
         if(hashEl) {
           hashEl.scrollIntoView()
-        } else {
+        } else if(meta.type === "redirect"){
           window.scroll(0, 0)
         }
       }
@@ -793,20 +830,20 @@ export let DOM = {
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
         let clearTimer = (e) => {
-          if(throttle && e.type === PHX_CHANGE && e.detail.triggeredBy.name === el.name){ return }
+          if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
           if(el.form){
-            el.form.removeEventListener(PHX_CHANGE, clearTimer)
+            el.form.removeEventListener(PHX_CHANGE_EVENT, clearTimer)
             el.form.removeEventListener("submit", clearTimer)
           }
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
         }, timeout))
         if(el.form){
-          el.form.addEventListener(PHX_CHANGE, clearTimer)
+          el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
           el.form.addEventListener("submit", clearTimer)
         }
         if(throttle){ callback() }
@@ -906,7 +943,7 @@ export let DOM = {
 
   restoreFocus(focused, selectionStart, selectionEnd){
     if(!DOM.isTextualInput(focused)){ return }
-    if(focused.value === "" || focused.readOnly){ focused.blur()}
+    if(focused.readOnly){ focused.blur()}
     focused.focus()
     if(focused.setSelectionRange && focused.type === "text" || focused.type === "textarea"){
       focused.setSelectionRange(selectionStart, selectionEnd)
@@ -1088,7 +1125,8 @@ export class View {
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
-    this.joinedOnce = false
+    this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
+    this.joinPending = true
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
@@ -1098,7 +1136,7 @@ export class View {
         static: this.getStatic()
       }
     })
-    this.showLoader(LOADER_TIMEOUT)
+    this.showLoader(this.liveSocket.loaderTimeout)
     this.bindChannel()
   }
 
@@ -1154,31 +1192,69 @@ export class View {
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
     this.setContainerClasses(PHX_CONNECTED_CLASS)
+  }
+
+  triggerReconnected(){
+    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
   }
 
   log(kind, msgCallback){
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  onJoin({rendered, live_redirect}){
+  onJoin(resp){
+    let {rendered, live_patch} = resp
     this.log("join", () => ["", JSON.stringify(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
-    this.hideLoader()
-    let patch = new DOMPatch(this, this.el, this.id, Rendered.toString(this.rendered))
+    let html = Rendered.toString(this.rendered)
+    let forms = this.formsForRecovery(html)
+
+    if(this.joinCount > 1 && forms.length > 0){
+      forms.forEach((form, i) => {
+        this.pushFormRecovery(form, resp => {
+          if(i === forms.length - 1){
+            this.onJoinComplete(resp, html)
+          }
+        })
+      })
+    } else {
+      this.onJoinComplete(resp, html)
+    }
+  }
+
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
+  }
+
+  onJoinComplete({live_patch}, html){
+    this.joinPending = false
+    let patch = new DOMPatch(this, this.el, this.id, html)
     this.performPatch(patch)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
     })
-    if(live_redirect){
-      let {kind, to} = live_redirect
-      Browser.pushState(kind, {}, to)
+
+    this.applyPendingUpdates()
+
+    if(live_patch){
+      let {kind, to} = live_patch
+      this.liveSocket.historyPatch(to, kind)
     }
+    this.hideLoader()
+    if(this.joinCount > 1){ this.triggerReconnected() }
   }
 
   performPatch(patch){
@@ -1237,7 +1313,7 @@ export class View {
   update(diff, cid){
     if(isEmpty(diff)){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
+    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
@@ -1278,8 +1354,8 @@ export class View {
   bindChannel(){
     this.channel.on("diff", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.channel.on("live_patch", ({to, kind}) => this.onLivePatch({to, kind}))
     this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
-    this.channel.on("external_live_redirect", ({to, kind}) => this.onExternalLiveRedirect({to, kind}))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -1290,18 +1366,14 @@ export class View {
     this.liveSocket.destroyViewById(this.id)
   }
 
-  onExternalLiveRedirect({to, kind}){
-    let url = window.location.protocol + '//' + window.location.host + to
-    this.liveSocket.replaceMain(url, () => {
-      Browser.pushState(kind, {}, to)
-      this.liveSocket.registerNewLocation(window.location)
-    })
+  onLiveRedirect({to, kind}){
+    let url = `${window.location.protocol}//${window.location.host}${to}`
+    this.liveSocket.historyRedirect(url, kind)
   }
 
-  onLiveRedirect({to, kind}){
+  onLivePatch({to, kind}){
     this.href = to
-    Browser.pushState(kind, {}, to)
-    this.liveSocket.registerNewLocation(window.location)
+    this.liveSocket.historyPatch(to, kind)
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }
@@ -1315,8 +1387,9 @@ export class View {
     }
     this.channel.join()
       .receive("ok", data => {
-        if(!this.joinedOnce){ callback && callback(this) }
-        this.joinedOnce = true
+        if(this.joinCount === 0){ callback && callback(this) }
+        this.joinCount++
+        this.joinPending = true
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
@@ -1326,14 +1399,15 @@ export class View {
   onJoinError(resp){
     if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.reason === JOIN_CRASHED){ return this.liveSocket.reloadWithJitter(this) }
-    if(resp.redirect || resp.external_live_redirect){ this.channel.leave() }
+    if(resp.redirect || resp.live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
-    if(resp.external_live_redirect){ return this.onExternalLiveRedirect(resp.external_live_redirect) }
+    if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }
 
   onError(reason){
+    if(this.joinPending){ return this.liveSocket.reloadWithJitter(this) }
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
@@ -1355,8 +1429,8 @@ export class View {
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
         if(resp.diff){ this.update(resp.diff, payload.cid) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
+        if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-        if(resp.external_live_redirect){ this.onExternalLiveRedirect(resp.external_live_redirect) }
         onReply(resp)
       })
     )
@@ -1426,14 +1500,14 @@ export class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, phxEvent, e){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE, {triggeredBy: inputEl})
+  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
     this.pushWithReply("event", {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form, {_target: e.target.name}),
+      value: serializeForm(inputEl.form, {_target: eventTarget.name}),
       cid: this.targetComponentID(inputEl.form, targetCtx)
-    })
+    }, callback)
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -1445,8 +1519,16 @@ export class View {
     }, onReply)
   }
 
-  pushInternalLink(href, callback){
-    if(!this.isLoading()){ this.showLoader(LOADER_TIMEOUT) }
+  pushFormRecovery(form, callback){
+    this.liveSocket.withinOwners(form, (view, targetCtx) => {
+      let input = form.elements[0]
+      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
+      view.pushInput(input, targetCtx, phxEvent, input, callback)
+    })
+  }
+
+  pushLinkPatch(href, callback){
+    if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
@@ -1455,9 +1537,23 @@ export class View {
         this.href = href
         this.applyPendingUpdates()
         this.hideLoader()
+        this.triggerReconnected()
         callback && callback()
       }
     }).receive("timeout", () => Browser.redirect(window.location.href))
+  }
+
+  formsForRecovery(html){
+    let phxChange = this.binding("change")
+    let template = document.createElement("template")
+    template.innerHTML = html
+
+    return(
+      DOM.all(this.el, `form[${phxChange}]`)
+         .filter(form => this.ownsElement(form))
+         .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
+         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+    )
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){

@@ -101,18 +101,11 @@ defmodule Phoenix.LiveView.Static do
 
     socket =
       Utils.configure_socket(
-        %Socket{endpoint: endpoint, view: view},
+        %Socket{endpoint: endpoint, view: view, router: router},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session}
       )
 
-    case call_mount_and_handle_params!(
-           socket,
-           router,
-           view,
-           mount_session,
-           conn.params,
-           request_url
-         ) do
+    case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
         data_attrs = [
           phx_view: config.name,
@@ -259,12 +252,12 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp call_mount_and_handle_params!(socket, router, view, session, params, uri) do
-    mount_params = if router, do: params, else: :not_mounted_at_router
+  defp call_mount_and_handle_params!(socket, view, session, params, uri) do
+    mount_params = if socket.router, do: params, else: :not_mounted_at_router
 
     socket
     |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
-    |> mount_handle_params(router, view, params, uri)
+    |> mount_handle_params(view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
@@ -275,7 +268,7 @@ defmodule Phoenix.LiveView.Static do
       {:stop, %Socket{redirected: nil}} ->
         Utils.raise_bad_stop_and_no_redirect!()
 
-      {:stop, %Socket{redirected: {:live, _}}} ->
+      {:stop, %Socket{redirected: {:live, _, _}}} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{} = new_socket} ->
@@ -283,14 +276,14 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp mount_handle_params(socket, router, view, params, uri) do
+  defp mount_handle_params(socket, view, params, uri) do
     cond do
       not exports_handle_params?(view) ->
         {:noreply, socket}
 
-      is_nil(router) ->
+      is_nil(socket.router) ->
         # Let the callback fail for the usual reasons
-        Utils.live_link_info!(router, view, uri)
+        Utils.live_link_info!(nil, view, uri)
 
       true ->
         view.handle_params(params, uri, socket)

@@ -6,7 +6,10 @@ defmodule Phoenix.LiveViewUnitTest do
   alias Phoenix.LiveView.{Utils, Socket}
   alias Phoenix.LiveViewTest.Endpoint
 
-  @socket Utils.configure_socket(%Socket{endpoint: Endpoint}, %{connect_params: %{}})
+  @socket Utils.configure_socket(
+            %Socket{endpoint: Endpoint, router: Phoenix.LiveViewTest.Router},
+            %{connect_params: %{}}
+          )
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
@@ -82,17 +85,41 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
-  describe "live_redirect/2" do
+  describe "push_redirect/2" do
     test "requires local path on to" do
-      assert_raise ArgumentError, ~r"the :to option in live_redirect/2 expects a path", fn ->
-        live_redirect(@socket, to: "http://foo.com")
+      assert_raise ArgumentError, ~r"the :to option in push_redirect/2 expects a path", fn ->
+        push_redirect(@socket, to: "http://foo.com")
       end
 
-      assert_raise ArgumentError, ~r"the :to option in live_redirect/2 expects a path", fn ->
-        live_redirect(@socket, to: "//foo.com")
+      assert_raise ArgumentError, ~r"the :to option in push_redirect/2 expects a path", fn ->
+        push_redirect(@socket, to: "//foo.com")
       end
 
-      assert live_redirect(@socket, to: "/foo").redirected == {:live, %{to: "/foo", kind: :push}}
+      assert push_redirect(@socket, to: "/counter/123").redirected ==
+               {:live, :redirect, %{kind: :push, to: "/counter/123"}}
+    end
+  end
+
+  describe "push_patch/2" do
+    test "requires local path on to pointing to the same LiveView" do
+      assert_raise ArgumentError, ~r"the :to option in push_patch/2 expects a path", fn ->
+        push_patch(@socket, to: "http://foo.com")
+      end
+
+      assert_raise ArgumentError, ~r"the :to option in push_patch/2 expects a path", fn ->
+        push_patch(@socket, to: "//foo.com")
+      end
+
+      assert_raise ArgumentError,
+                   ~r"cannot push_patch/2 to \"/counter/123\" because the given path does not point to the current view",
+                   fn ->
+                     push_patch(@socket, to: "/counter/123")
+                   end
+
+      socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
+
+      assert push_patch(socket, to: "/counter/123").redirected ==
+               {:live, %{"id" => "123"}, %{kind: :push, to: "/counter/123"}}
     end
   end
 end

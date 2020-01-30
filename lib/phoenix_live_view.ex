@@ -406,8 +406,7 @@ defmodule Phoenix.LiveView do
   | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `data-phx-error-for`, `phx-disable-with` |
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
-  | [Custom DOM Patching](#module-custom-dom-patching) | `phx-update` |
-  | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
+
 
   ### Click Events
 
@@ -643,108 +642,6 @@ defmodule Phoenix.LiveView do
     * `live_component` - compartmentalizes state, markup, and events
     * `live_render` - compartmentalizes state, markup, events, and error isolation
 
-  ## Live Layouts
-
-  Your LiveView will be rendered within the layout specified in your Plug pipeline,
-  such as the default app layout. Assigns defined during `mount` of the root LiveView
-  are accessible in the layout, but the app layout is never updated after the initial
-  render. For a live layout, you must specify an additional layout to use with your
-  LiveView. For example, your regular `app.html` template may display a `@new_message_count`
-  notification, like this:
-
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <title><%= @page_title %></title>
-        </head>
-        <body>
-          <div>
-            <nav>
-              ...
-              Messages (<%= @new_message_count %>)
-            </nav>
-            <%= render @view_module, @view_template, assigns %>
-          </div>
-        </body>
-      </html>
-
-  To allow the `@new_message_count` to be be updated by your LiveView, you can
-  move the dynamic content inside a sub-layout, such as `app_web/templates/layout/live.html.leex`.
-
-  First, you would update your `app.html` layout to keep only the barebones HTML
-  structure:
-
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <title>...</title>
-          <script>...</script>
-        </head>
-        <body>
-          <%= render @view_module, @view_template, assigns %>
-        </body>
-      </html>
-
-  Next, define a new `live.html.leex` layout with the dynamic content,
-  followed by a render of the inner `@live_view_module`:
-
-      <nav>
-        ...
-        Messages (<%= @new_message_count %>)
-      </nav>
-      <%= @live_view_module.render(assigns) %>
-
-  Finally, update your LiveView to pass the `:layout` option to `use Phoenix.LiveView`:
-
-      use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
-
-  Or alternatively, you can provide the `:layout` dynamically as an option in mount:
-
-        def mount(_params, _session, socket) do
-          socket = assign(socket, new_message_count: 0)
-          {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
-        end
-
-        def handle_info({:new_messages, count}, socket) do
-          {:noreply, assign(socket, new_message_count: count)}
-        end
-      end
-
-  *Note*: The layout will be wrapped by the LiveView's `:container` tag.
-
-  ### Updating the HTML document title
-
-  Because the main layout from the Plug pipeline is rendered outside of LiveView,
-  the contents cannot be dynamically changed. The one exception is the `<title>`
-  of the HTML document. Phoenix LiveView special cases the `@page_title` assign
-  to allow dynamically updating the title of the page, which is useful when
-  using live navigation, or annotating the browser tab with a notification.
-  For example, to update the user's notification count in the browser's title bar,
-  first set the `page_title` assign on mount:
-
-        def mount(_params, _session, socket) do
-          socket = assign(socket, page_title: "Latest Posts")
-          {:ok, socket}
-        end
-
-  Then access `@page_title` in the app layout:
-
-      <title><%= @page_title %></title>
-
-  Now, although the app layout is not updated by LiveView, by simply assigning
-  to `page_title`, LiveView knows you want the title to be updated:
-
-      def handle_info({:new_messages, count}, socket) do
-        {:noreply, assign(socket, page_title: "Latest Posts (#{count} new)")}
-      end
-
-  *Note*: If you find yourself needing to dynamically patch other parts of the
-  base layout, such as injecting new scripts or styles into the `<head>` during
-  live navigation, *a true page navigation should be used instead*. Assigning
-  the `@page_title` updates the `document.title` directly, and therefore cannot
-  be used to update any other part of the base layout, even if the base layout
-  references the assign.
-
   ## Rate limiting events with Debounce and Throttle
 
   All events can be rate-limited on the client by using the
@@ -874,35 +771,36 @@ defmodule Phoenix.LiveView do
 
   ## Live navigation
 
-  The `live_link/2` and `live_redirect/2` functions allow page navigation
-  using the [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
+  LiveView provides functionality to allow page navitation using the
+  [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
   With live navigation, the page is updated without a full page reload.
 
-  To use live navigation, simply replace your existing `Phoenix.HTML.link/3`
-  and `Phoenix.LiveView.redirect/2` calls with their `live` counterparts.
+  You can trigger live navigation in two ways:
+
+    * From the client - this is done by replacing `Phoenix.HTML.link/2`
+      by `Phoenix.LiveView.Helpers.live_patch/2` or
+      `Phoenix.LiveView.Helpers.live_redirect/2`
+
+    * From the server - this is done by replacing `redirect/2` calls
+      by `push_patch/2` or `push_redirect/2`.
 
   For example, in a template you may write:
 
-      <%= live_link "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+      <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
 
   or in a LiveView:
 
-      {:noreply, live_redirect(socket, to: Routes.live_path(socket, MyLive, page + 1))}
+      {:noreply, push_redirect(socket, to: Routes.live_path(socket, MyLive, page + 1))}
 
-  When a live link is clicked, the following control flow occurs:
+  The "patch" operations must be used when you want to navigate to the
+  current LiveView, simply updating the URL and the current parameters,
+  without mounting a new LiveView. When patch is used, the `c:handle_params/3`
+  callback is invoked. See the next section for more information.
 
-    * if the route belongs to the existing root LiveView and the LiveView is
-      defined in your application's router, the `c:handle_params/3` callback
-      is invoked without mounting a new LiveView. See the next section.
 
-    * if the route belongs to a different LiveView than the currently running
-      root, then the existing root LiveView is shut down, and an Ajax request is
-      made to request the necessary information about the new LiveView, without
-      performing a full static render. This reduces latency and improves
-      performance. Once information is retrieved, the new LiveView is mounted.
 
-  `live_link/3` and `live_redirect/2` are by default only available in LiveViews
-  defined at the router with the `live/3` macro.
+  `live_patch/2`, `live_redirect/2`, `push_redirect/2`, and `push_patch/2`
+  only work for LiveViews defined at the router with the `live/3` macro.
 
   ### `handle_params/3`
 
@@ -912,16 +810,7 @@ defmodule Phoenix.LiveView do
   The parameters given to `c:handle_params/3` are the same as the ones given to
   `c:mount/3`. So how do you decide which callback to use to load data? Generally
   speaking, data should always be loaded on `c:mount/3`. Only the params that
-  can be changed via `live_link/3` or `live_redirect/2` must be loaded on
-  `c:handle_params/3`. As with any other `handle_*` callback, changes to
-  the state inside `c:handle_params/3` will trigger a server render.
 
-  To avoid building a new LiveView whenever a live link is clicked or whenever
-  a live redirect happens, LiveView also invokes `c:handle_params/3` on an
-  existing LiveView when performing live navigation as long as:
-
-    1. you are navigating to the same root LiveView you are currently on
-    2. said LiveView is defined in your router
 
   For example, imagine you have a `UserTable` LiveView to show all users in
   the system and you define it in the router as:
@@ -930,11 +819,10 @@ defmodule Phoenix.LiveView do
 
   Now to add live sorting, you could do:
 
-      <%= live_link "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+      <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
-  will be invoked. Remembering that we should never trust unvalidated received params,
-  we can use the callback to validate the user input and change the state accordingly:
+
 
       def handle_params(params, _uri, socket) do
         case params["sort_by"] do
@@ -948,36 +836,38 @@ defmodule Phoenix.LiveView do
   ### Replace page address
 
   LiveView also allows the current browser URL to be replaced. This is useful when you
-  want certain events to change the URL without polluting the browser's history.
 
-  For example, imagine there is a form that changes some page state when submitted.
-  If those changes are not persisted outside of a LiveView, they will be lost as soon
-  as the user refreshes the page, navigates away, or shares the URL with someone else.
+  ### Updating the HTML document title
 
-  To avoid losing this transient state, users can call `live_redirect/2`, passing it
-  the socket and new URL. Doing this will cause `c:handle_params/3` to be called, in
-  turn making the new form-provided parameters available for the next render.
+  Because the main layout from the Plug pipeline is rendered outside of LiveView,
+  the contents cannot be dynamically changed. The one exception is the `<title>`
+  of the HTML document. Phoenix LiveView special cases the `@page_title` assign
+  to allow dynamically updating the title of the page, which is useful when
+  using live navigation, or annotating the browser tab with a notification.
+  For example, to update the user's notification count in the browser's title bar,
+  first set the `page_title` assign on mount:
 
-  To illustrate, let's adapt the UI for the previous user-sorting example to a form
-  with two radio buttons -- one to sort users by name, and the other by company.
+        def mount(_params, _session, socket) do
+          socket = assign(socket, page_title: "Latest Posts")
+          {:ok, socket}
+        end
 
-  Once the form is submitted, we can compute the new URL:
+  Then access `@page_title` in the app layout:
 
-      def handle_event("sorting", params, socket) do
-        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params))}
+      <title><%= @page_title %></title>
+
+  Now, although the app layout is not updated by LiveView, by simply assigning
+  to `page_title`, LiveView knows you want the title to be updated:
+
+      def handle_info({:new_messages, count}, socket) do
+        {:noreply, assign(socket, page_title: "Latest Posts (#{count} new)")}
       end
 
-  Now with a `c:handle_params/3` implementation similar to the one in the previous
-  example, we will recompute the users based on the new `params` and perform a server
-  render if there are any changes.
-
-  Both `live_link/2` and `live_redirect/2` support the `replace: true` option. This
-  option can be used when you want to change the current url without polluting the
-  browser's history:
-
-      def handle_event("sorting", params, socket) do
-        {:noreply, live_redirect(socket, to: Routes.live_path(socket, __MODULE__, params), replace: true)}
-      end
+  *Note*: If you find yourself needing to dynamically patch other parts of the
+  base layout, such as injecting new scripts or styles into the `<head>` during
+  live navigation, *then a regular, non-live, page navigation should be used
+  instead*. Assigning the `@page_title` updates the `document.title` directly,
+  and therefore cannot be used to update any other part of the base layout.
 
   ## Disconnecting all instances of a given live user
 
@@ -1061,6 +951,39 @@ defmodule Phoenix.LiveView do
   the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 
       <button type="submit" phx-disable-with="Saving...">Save</button>
+
+  ### Form Recovery following crashes or disconnects
+
+  By default, all forms marked with `phx-change` will recover input values
+  automatically after the user has reconnected or the LiveView has remounted
+  after a crash. This is achieved by the client triggering the same `phx-change`
+  to the server as soon as the mount has been completed. For most use cases,
+  this is all you need and form recovery will happen without consideration. In some cases,
+  where forms are built step-by-step in a stateful fashion, it may require extra recovery
+  handling on the server outside of your existing `phx-change` callback code. To enable
+  specialized recovery, provide a `phx-auto-recover` binding on the form to
+  specify a different event to trigger for recovery, which will receive the form params
+  as usual. For example, imagine a LiveView wizard form where the form is stateful and
+  built based on what step the user is on and by prior selections:
+
+      <form phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+
+  On the server, the `"validate_wizard_step"` event is only concerned with the current client
+  form data, but the server maintains the entire state of the wizard. To recover in this
+  scenario, you can specify a recovery event, such as `"recover_wizard"` above, which
+  would wire up to the following server callbacks in your LiveView:
+
+      def handle_event("validate_wizard_step", params, socket) do
+        # regular validations for current step
+        {:noreply, socket}
+      end
+
+      def handle_event("recover_wizard", params, socket) do
+        # rebuild state based on client input data up to the current step
+        {:noreply, socket}
+      end
+
+  To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
   ### Loading state and errors
 
@@ -1164,7 +1087,11 @@ defmodule Phoenix.LiveView do
     * `:layout` - the optional layout to be used by the LiveView
 
   """
-  @callback mount(Socket.unsigned_params() | :not_mounted_at_router, session :: map, socket :: Socket.t()) ::
+  @callback mount(
+              Socket.unsigned_params() | :not_mounted_at_router,
+              session :: map,
+              socket :: Socket.t()
+            ) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
@@ -1411,7 +1338,8 @@ defmodule Phoenix.LiveView do
 
   *Note*: LiveView redirects rely on instructing client
   to perform a `window.location` update on the provided
-  redirect location.
+  redirect location. The whole page will be reloaded and
+  all state will be discarded.
 
   ## Options
 
@@ -1428,16 +1356,13 @@ defmodule Phoenix.LiveView do
         true -> raise ArgumentError, "expected :to or :external option in redirect/2"
       end
 
-    put_redirect(socket, :redirect, %{to: url})
+    put_redirect(socket, {:redirect, %{to: url}})
   end
 
   @doc """
-  Annotates the socket for navigation without a page refresh.
+  Annotates the socket for navigation within the current LiveView.
 
-  When navigating to a path which routes to your existing LiveView,
-  the `handle_params/3` callback is immediately invoked in your existing
-  LiveView process to handle the change of URL state. For live redirects
-  to external LiveViews, the existing LiveView is shut down.
+
 
   ## Options
 
@@ -1447,39 +1372,65 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      {:noreply, live_redirect(socket, to: "/")}
-      {:noreply, live_redirect(socket, to: "/", replace: true)}
+      {:noreply, push_patch(socket, to: "/")}
+      {:noreply, push_patch(socket, to: "/", replace: true)}
+
   """
-  def live_redirect(%Socket{} = socket, opts) do
-    assert_root_live_view!(socket, "live_redirect/2")
-    kind = if opts[:replace], do: :replace, else: :push
-    to = Keyword.fetch!(opts, :to)
-    validate_local_url!(to, "live_redirect/2")
-    put_redirect(socket, :live, %{to: to, kind: kind})
-  end
+  def push_patch(%Socket{} = socket, opts) do
+    %{to: to} = opts = push_opts!(socket, opts, "push_patch/2")
 
-  defp put_redirect(%Socket{redirected: nil} = socket, :redirect, %{to: _} = opts) do
-    %Socket{socket | redirected: {:redirect, opts}}
-  end
+    case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.view, to) do
+      {:internal, params, _parsed_uri} ->
+        put_redirect(socket, {:live, params, opts})
 
-  defp put_redirect(%Socket{redirected: nil} = socket, :live, %{to: _, kind: kind} = opts)
-       when kind in [:push, :replace] do
-    if child?(socket) do
-      raise ArgumentError, """
-      attempted to live_redirect from a nested child socket.
-
-      Only the root parent LiveView can issue live redirects.
-      """
-    else
-      %Socket{socket | redirected: {:live, opts}}
+      :external ->
+        raise ArgumentError,
+              "cannot push_patch/2 to #{inspect(to)} because the given path " <>
+                "does not point to the current view #{inspect(socket.view)}"
     end
   end
 
-  defp put_redirect(%Socket{redirected: to} = _socket, _kind, _opts) do
-    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
+  @doc """
+  Annotates the socket for navigation to another LiveView.
+
+  The current LiveView will be shutdown and a new one will be mounted
+  in its place LiveView, without reloading the whole page. This can
+  also be use to remount the same LiveView, in case you want to start
+  fresh. If you want to navigate to the same LiveView without remounting
+  it, use `push_patch/2` instead.
+
+  ## Options
+
+    * `:to` - the required path to link to. It must always be a local path
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
+      {:noreply, push_redirect(socket, to: "/")}
+      {:noreply, push_redirect(socket, to: "/", replace: true)}
+
+  """
+  def push_redirect(%Socket{} = socket, opts) do
+    opts = push_opts!(socket, opts, "push_redirect/2")
+    put_redirect(socket, {:live, :redirect, opts})
   end
 
-  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+  defp push_opts!(socket, opts, context) do
+    assert_root_live_view!(socket, context)
+    to = Keyword.fetch!(opts, :to)
+    validate_local_url!(to, context)
+    kind = if opts[:replace], do: :replace, else: :push
+    %{to: to, kind: kind}
+  end
+
+  defp put_redirect(%Socket{redirected: nil} = socket, command) do
+    %Socket{socket | redirected: command}
+  end
+
+  defp put_redirect(%Socket{redirected: to} = _socket, _command) do
+    raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
+  end
 
   @invalid_local_url_chars ["\\"]
 
@@ -1568,6 +1519,8 @@ defmodule Phoenix.LiveView do
 
     Phoenix.LiveView.Channel.send_update(module, id, assigns)
   end
+
+  defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp assert_root_live_view!(%{parent_pid: nil}, _context),
     do: :ok
