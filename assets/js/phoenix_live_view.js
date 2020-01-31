@@ -682,6 +682,7 @@ export class LiveSocket {
             } else {
               this.setActiveElement(input)
             }
+            if(!DOM.isTextualInput(input)){ input.blur() }
             view.pushInput(input, targetCtx, phxEvent, e.target)
           })
         })
@@ -1037,7 +1038,7 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
-        if(DOM.isTextualInput(fromEl) && fromEl === focused){
+        if(fromEl.isSameNode(focused)){
           this.trackBefore("updated", fromEl, fromEl)
           DOM.mergeInputs(fromEl, toEl)
           return false
