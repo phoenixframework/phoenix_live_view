@@ -921,7 +921,7 @@ export let DOM = {
 
   cloneNode(node, html){
     let cloned = node.cloneNode()
-    cloned.innerHTML = html || node.innerHTML
+    cloned.innerHTML = typeof(html) === "undefined" ? node.innerHTML : html
     return cloned
   },
 

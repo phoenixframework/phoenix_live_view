@@ -13,6 +13,7 @@
   - Send `phx-value-*` on key events
   - Trigger `updated` hook callbacks on `phx-update="ignore"` container when the container's attributes have changed
   - Fix nested `phx-update="append"` raising ArgumentError in LiveViewTest
+  - Fix updates not being applied in rare cases where an leex template is wrapped in an if expression
 
 ## 0.6.0 (2020-01-22)
 
