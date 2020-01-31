@@ -521,6 +521,10 @@ defmodule Phoenix.LiveView do
 
   *Note*: For proper form error tag updates, the error tag must specify which
   input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
+  Failing to add the `data-phx-error-for` attribute will result in displaying error
+  messages for form fields that the user has not changed yet (e.g. required
+  fields further down on the page.)
+  
   For example, your `AppWeb.ErrorHelpers` may use this function:
 
       def error_tag(form, field) do
