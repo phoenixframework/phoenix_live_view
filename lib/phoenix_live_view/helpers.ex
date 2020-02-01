@@ -51,9 +51,9 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Generates a link that will redirect to a new LiveView.
 
-  The current LiveView will be shutdown and a new one will be mounted
-  in its place LiveView, without reloading the whole page. This can
-  also be use to remount the same LiveView, in case you want to start
+  The current LiveView will be shut down and a new one will be mounted
+  in its place, without reloading the whole page. This can
+  also be used to remount the same LiveView, in case you want to start
   fresh. If you want to navigate to the same LiveView without remounting
   it, use `live_patch/2` instead.
 
