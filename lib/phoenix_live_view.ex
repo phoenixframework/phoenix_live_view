@@ -923,7 +923,6 @@ defmodule Phoenix.LiveView do
       end
 
   *Note*: The layout will be wrapped by the LiveView's `:container` tag.
->>>>>>> master
 
   ### Updating the HTML document title
 
