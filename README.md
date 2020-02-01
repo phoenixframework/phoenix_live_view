@@ -29,7 +29,7 @@ All current Chrome, Safari, Firefox, and MS Edge are supported.
 IE11 support is available with the following polyfills:
 
 ```console
-$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill shim-keyboard-event-key
 ```
 
 ```javascript
@@ -44,6 +44,7 @@ import "child-replace-with-polyfill"
 import "url-search-params-polyfill"
 import "formdata-polyfill"
 import "classlist-polyfill"
+import "shim-keyboard-event-key"
 
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
