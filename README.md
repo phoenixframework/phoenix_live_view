@@ -32,6 +32,8 @@ IE11 support is available with the following polyfills:
 $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill shim-keyboard-event-key
 ```
 
+Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18](https://caniuse.com/#feat=keyboardevent-key).
+
 ```javascript
 // assets/js/app.js
 import "mdn-polyfills/CustomEvent"
