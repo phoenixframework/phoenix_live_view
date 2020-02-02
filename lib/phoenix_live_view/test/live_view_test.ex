@@ -33,7 +33,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
   Here, we start by using the familiar `Phoenix.ConnTest` function, `get/2` to
-  test the regular HTTP get request which invokes mount with a disconnect socket.
+  test the regular HTTP GET request which invokes mount with a disconnected socket.
   Next, `live/1` is called with our sent connection to mount the view in a connected
   state, which starts our stateful LiveView process.
 
@@ -43,7 +43,7 @@ defmodule Phoenix.LiveViewTest do
   `get` step for us:
 
       test "connected mount", %{conn: conn} do
-        {:ok, view, html} = live(conn, "/my-path")
+        {:ok, _view, html} = live(conn, "/my-path")
         assert html =~ "<h1>My Connected View</h1>"
       end
 
@@ -51,7 +51,7 @@ defmodule Phoenix.LiveViewTest do
 
   The browser can send a variety of events to a live view via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
-  browser and assert on the rendered side-effect of the event, use the
+  browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
 
     * `render_click/3` - sends a phx-click event and value and
@@ -155,7 +155,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
-    * `:connect_params` - the map of params available in the socket connected
+    * `:connect_params` - the map of params available in the socket-connected
       mount. See `Phoenix.LiveView.get_connect_params/1` for more information.
 
   ## Examples
@@ -207,7 +207,7 @@ defmodule Phoenix.LiveViewTest do
     * `:session` - the session to be given to the LiveView
 
   All other options are forwarded to the live view for rendering. Refer to
-  `Phoenix.LiveView.live_render/3` for list of supported render options.
+  `Phoenix.LiveView.live_render/3` for a list of supported render options.
 
   ## Examples
 
@@ -247,7 +247,7 @@ defmodule Phoenix.LiveViewTest do
 
         live/1 must use a connection with a sent response. Either call get/2
         prior to live/1, or use live/2 while providing a path to have a get
-        request issues for you. For example issuing a get yourself:
+        request issued for you. For example issuing a get yourself:
 
             {:ok, view, _html} =
               conn
@@ -520,7 +520,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Returns the current list of children of the parent live view.
 
-  Children are return in the order they appear in the rendered HTML.
+  Children are returned in the order they appear in the rendered HTML.
 
   ## Examples
 
@@ -601,7 +601,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       [child1, child2] = children(parent_view)
-      send(parent_view.pid, :msg_that_removes_child)
+      send(parent_view.pid, :msg_that_removes_children)
 
       assert_remove child1, _
       assert_remove child2, {:shutdown, :removed}
