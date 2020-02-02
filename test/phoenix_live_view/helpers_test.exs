@@ -37,6 +37,10 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert dom =~ ~s|data-phx-link-state="replace"|
       refute dom =~ ~s|data-phx-link="other"|
     end
+
+    test "uses HTML safe protocol" do
+      assert live_patch(123, to: "page") |> safe_to_string() =~ "123</a>"
+    end
   end
 
   describe "live_redirect" do
@@ -63,7 +67,12 @@ defmodule Phoenix.LiveView.HelpersTest do
 
     test "overwrites reserved options" do
       dom =
-        live_redirect("next", to: "page-1", href: "page-2", data: [phx_link: "other"], replace: true)
+        live_redirect("next",
+          to: "page-1",
+          href: "page-2",
+          data: [phx_link: "other"],
+          replace: true
+        )
         |> safe_to_string()
 
       assert dom =~ ~s|href="page-1"|
@@ -71,6 +80,10 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert dom =~ ~s|data-phx-link="redirect"|
       assert dom =~ ~s|data-phx-link-state="replace"|
       refute dom =~ ~s|data-phx-link="other"|
+    end
+
+    test "uses HTML safe protocol" do
+      assert live_redirect(123, to: "page") |> safe_to_string() =~ "123</a>"
     end
   end
 end

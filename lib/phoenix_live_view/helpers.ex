@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("patch", block, opts)
   end
 
-  def live_patch(text, opts) when is_binary(text) and is_list(opts) do
+  def live_patch(text, opts) when is_list(opts) do
     live_link("patch", text, opts)
   end
 
@@ -89,7 +89,7 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("redirect", block, opts)
   end
 
-  def live_redirect(text, opts) when is_binary(text) and is_list(opts) do
+  def live_redirect(text, opts) when is_list(opts) do
     live_link("redirect", text, opts)
   end
 
