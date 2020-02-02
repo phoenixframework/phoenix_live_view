@@ -951,9 +951,9 @@ export let DOM = {
     }
   },
 
-  isTextualInput(el){
-    return FOCUSABLE_INPUTS.indexOf(el.type) >= 0
-  }
+  isFormInput(el){ return /^(?:input|select|textarea|button)$/i.test(el.tagName) },
+
+  isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 }
 }
 
 class DOMPatch {
@@ -1038,7 +1038,7 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
-        if(fromEl.isSameNode(focused)){
+        if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
           this.trackBefore("updated", fromEl, fromEl)
           DOM.mergeInputs(fromEl, toEl)
           return false
