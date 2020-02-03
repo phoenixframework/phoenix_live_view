@@ -35,12 +35,11 @@ defmodule Phoenix.LiveView.Controller do
     case LiveView.Static.render(conn, view, opts) do
       {:ok, content, socket_assigns} ->
         conn
-        |> Plug.Conn.assign(:live_view_module, view)
         |> Phoenix.Controller.put_view(LiveView.Static)
         |> LiveView.Plug.put_cache_headers()
         |> Phoenix.Controller.render(
           "template.html",
-          Map.merge(socket_assigns, %{content: content})
+          Map.put(socket_assigns, :content, content)
         )
 
       {:stop, %Socket{redirected: {:redirect, %{to: to}}} = socket} ->

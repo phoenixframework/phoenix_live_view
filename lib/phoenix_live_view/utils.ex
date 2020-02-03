@@ -28,12 +28,17 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%{id: nil} = socket, private) do
-    %{socket | id: random_id(), private: private}
+  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private) do
+    %{
+      socket
+      | id: random_id(),
+        private: private,
+        assigns: Map.put(assigns, :live_view_module, view)
+    }
   end
 
-  def configure_socket(socket, private) do
-    %{socket | private: private}
+  def configure_socket(%{assigns: assigns, view: view} = socket, private) do
+    %{socket | private: private, assigns: Map.put(assigns, :live_view_module, view)}
   end
 
   @doc """
@@ -58,7 +63,7 @@ defmodule Phoenix.LiveView.Utils do
   Renders the view with socket into a rendered struct.
   """
   def to_rendered(socket, view) do
-    assigns = Map.merge(socket.assigns, %{socket: socket, live_view_module: view})
+    assigns = Map.put(socket.assigns, :socket, socket)
 
     case render_view(socket, view, assigns) do
       %LiveView.Rendered{} = rendered ->

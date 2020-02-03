@@ -47,7 +47,11 @@ defmodule Phoenix.LiveViewUnitTest do
         |> assign_new(:existing, fn -> "new-existing" end)
         |> assign_new(:notexisting, fn -> "new-notexisting" end)
 
-      assert socket.assigns == %{existing: "existing", notexisting: "new-notexisting"}
+      assert socket.assigns == %{
+               existing: "existing",
+               notexisting: "new-notexisting",
+               live_view_module: nil
+             }
     end
 
     test "uses parent assigns when present and falls back to socket assigns" do
@@ -61,7 +65,8 @@ defmodule Phoenix.LiveViewUnitTest do
       assert socket.assigns == %{
                existing: "existing-parent",
                existing2: "existing2",
-               notexisting: "new-notexisting"
+               notexisting: "new-notexisting",
+               live_view_module: nil
              }
     end
   end

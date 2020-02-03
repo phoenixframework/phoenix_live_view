@@ -47,16 +47,31 @@ defmodule Phoenix.LiveView.Router do
   """
   defmacro live(path, live_view, opts \\ []) do
     quote bind_quoted: binding() do
-      live_opts = Keyword.put(opts, :router, __MODULE__)
-
-      Phoenix.Router.get(
-        path,
-        Phoenix.LiveView.Plug,
-        Phoenix.Router.scoped_alias(__MODULE__, live_view),
-        private: %{phoenix_live_view: Phoenix.LiveView.Plug.__live_opts__(live_opts)},
-        as: opts[:as] || :live,
-        alias: false
-      )
+      {action, router_options} = Phoenix.LiveView.Router.__live__(__MODULE__, live_view, opts)
+      Phoenix.Router.get(path, Phoenix.LiveView.Plug, action, router_options)
     end
+  end
+
+  @doc false
+  def __live__(router, live_view, opts) do
+    live_view = Phoenix.Router.scoped_alias(router, live_view)
+
+    opts =
+      opts
+      |> Keyword.put(:router, router)
+      |> Keyword.put_new_lazy(:layout, fn ->
+        layout_view =
+          router
+          |> Atom.to_string()
+          |> String.split(".")
+          |> Enum.drop(-1)
+          |> Kernel.++(["LayoutView"])
+          |> Module.concat()
+
+        {layout_view, :app}
+      end)
+
+    {live_view,
+     as: opts[:as] || :live, private: %{phoenix_live_view: {live_view, nil, opts}}, alias: false}
   end
 end

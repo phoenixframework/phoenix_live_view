@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.PlugTest do
     opts = Keyword.merge([router: __MODULE__, layout: false], opts)
 
     conn
-    |> put_private(:phoenix_live_view, opts)
+    |> put_private(:phoenix_live_view, {view, nil, opts})
     |> LiveViewPlug.call(view)
   end
 

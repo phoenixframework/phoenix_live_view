@@ -11,13 +11,8 @@ defmodule Phoenix.LiveView.Plug do
   @impl Plug
   def init(view) when is_atom(view), do: view
 
-  def init(opts) when is_list(opts) do
-    view = Keyword.fetch!(opts, :view)
-    %{view: view, opts: __live_opts__(opts)}
-  end
-
   @impl Plug
-  def call(%Plug.Conn{private: %{phoenix_live_view: opts}} = conn, view) when is_atom(view) do
+  def call(%{private: %{phoenix_live_view: {view, _action, opts}}} = conn, _) do
     render_opts = Keyword.take(opts, [:container, :router, :session])
 
     if live_link?(conn) do
@@ -54,25 +49,5 @@ defmodule Phoenix.LiveView.Plug do
 
   defp live_link?(%Plug.Conn{} = conn) do
     Plug.Conn.get_req_header(conn, @link_header) == ["live-link"]
-  end
-
-  def __live_opts__(opts) do
-    router = Keyword.fetch!(opts, :router)
-
-    new_opts =
-      opts
-      |> Keyword.put_new_lazy(:layout, fn ->
-        layout_view =
-          router
-          |> Atom.to_string()
-          |> String.split(".")
-          |> Enum.drop(-1)
-          |> Kernel.++(["LayoutView"])
-          |> Module.concat()
-
-        {layout_view, :app}
-      end)
-
-    new_opts
   end
 end
