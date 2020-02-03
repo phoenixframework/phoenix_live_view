@@ -204,7 +204,7 @@ defmodule Phoenix.LiveView.Helpers do
     quote do
       Phoenix.LiveView.Helpers.__live_component__(
         unquote(socket),
-        unquote(component).__live__,
+        unquote(component).__live__(),
         unquote(assigns)
       )
     end
