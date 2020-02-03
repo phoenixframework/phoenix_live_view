@@ -7,7 +7,10 @@ defmodule Phoenix.LiveView.PlugTest do
 
   defp call(conn, view, opts \\ []) do
     opts = Keyword.merge([router: __MODULE__, layout: false], opts)
-    LiveViewPlug.call(conn, LiveViewPlug.init([view: view] ++ opts))
+
+    conn
+    |> put_private(:phoenix_live_view, opts)
+    |> LiveViewPlug.call(view)
   end
 
   setup config do

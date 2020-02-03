@@ -18,14 +18,6 @@ defmodule Phoenix.LiveView.Plug do
 
   @impl Plug
   def call(%Plug.Conn{private: %{phoenix_live_view: opts}} = conn, view) when is_atom(view) do
-    do_call(conn, view, opts)
-  end
-
-  def call(%Plug.Conn{} = conn, %{view: view, opts: opts}) when is_atom(view) and is_list(opts) do
-    do_call(conn, view, opts)
-  end
-
-  defp do_call(conn, view, opts) do
     render_opts = Keyword.take(opts, [:container, :router, :session])
 
     if live_link?(conn) do
