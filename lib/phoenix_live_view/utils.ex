@@ -28,17 +28,21 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private) do
+  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action) do
     %{
       socket
       | id: random_id(),
         private: private,
-        assigns: Map.put(assigns, :live_view_module, view)
+        assigns: configure_assigns(assigns, view, action)
     }
   end
 
-  def configure_socket(%{assigns: assigns, view: view} = socket, private) do
-    %{socket | private: private, assigns: Map.put(assigns, :live_view_module, view)}
+  def configure_socket(%{assigns: assigns, view: view} = socket, private, action) do
+    %{socket | private: private, assigns: configure_assigns(assigns, view, action)}
+  end
+
+  defp configure_assigns(assigns, view, action) do
+    assigns |> Map.put(:live_view_module, view) |> Map.put(:live_view_action, action)
   end
 
   @doc """
@@ -137,8 +141,8 @@ defmodule Phoenix.LiveView.Utils do
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     case Phoenix.Router.route_info(router, "GET", path || "", host) do
-      %{plug: Phoenix.LiveView.Plug, plug_opts: ^view, path_params: path_params} ->
-        {:internal, Map.merge(query_params, path_params), parsed_uri}
+      %{plug: Phoenix.LiveView.Plug, phoenix_live_view: {^view, action}, path_params: path_params} ->
+        {:internal, Map.merge(query_params, path_params), action, parsed_uri}
 
       %{} ->
         :external

@@ -55,10 +55,12 @@ defmodule Phoenix.LiveView.Router do
   @doc false
   def __live__(router, live_view, opts) do
     live_view = Phoenix.Router.scoped_alias(router, live_view)
+    action = nil
 
     opts =
       opts
       |> Keyword.put(:router, router)
+      |> Keyword.put(:action, action)
       |> Keyword.put_new_lazy(:layout, fn ->
         layout_view =
           router
@@ -72,6 +74,9 @@ defmodule Phoenix.LiveView.Router do
       end)
 
     {live_view,
-     as: opts[:as] || :live, private: %{phoenix_live_view: {live_view, nil, opts}}, alias: false}
+     as: opts[:as] || :live,
+     private: %{phoenix_live_view: {live_view, opts}},
+     alias: false,
+     metadata: %{phoenix_live_view: {live_view, action}}}
   end
 end

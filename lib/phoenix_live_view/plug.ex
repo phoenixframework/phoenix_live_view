@@ -12,11 +12,9 @@ defmodule Phoenix.LiveView.Plug do
   def init(view) when is_atom(view), do: view
 
   @impl Plug
-  def call(%{private: %{phoenix_live_view: {view, _action, opts}}} = conn, _) do
-    render_opts = Keyword.take(opts, [:container, :router, :session])
-
+  def call(%{private: %{phoenix_live_view: {view, opts}}} = conn, _) do
     if live_link?(conn) do
-      html = Phoenix.LiveView.Static.container_render(conn, view, render_opts)
+      html = Phoenix.LiveView.Static.container_render(conn, view, opts)
 
       conn
       |> put_cache_headers()
@@ -25,7 +23,7 @@ defmodule Phoenix.LiveView.Plug do
     else
       conn
       |> put_new_layout_from_router(opts)
-      |> Controller.live_render(view, render_opts)
+      |> Controller.live_render(view, opts)
     end
   end
 

@@ -524,7 +524,7 @@ defmodule Phoenix.LiveView do
   Failing to add the `data-phx-error-for` attribute will result in displaying error
   messages for form fields that the user has not changed yet (e.g. required
   fields further down on the page.)
-  
+
   For example, your `AppWeb.ErrorHelpers` may use this function:
 
       def error_tag(form, field) do
@@ -1471,8 +1471,8 @@ defmodule Phoenix.LiveView do
     %{to: to} = opts = push_opts!(socket, opts, "push_patch/2")
 
     case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.view, to) do
-      {:internal, params, _parsed_uri} ->
-        put_redirect(socket, {:live, params, opts})
+      {:internal, params, action, _parsed_uri} ->
+        put_redirect(socket, {:live, {params, action}, opts})
 
       :external ->
         raise ArgumentError,

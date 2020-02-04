@@ -61,8 +61,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "push_patch", %{conn: conn} do
       assert conn
              |> put_serialized_session(:on_handle_params, fn socket ->
-               {:noreply,
-                LiveView.push_patch(socket, to: "/counter/123?from=rehandled_params")}
+               {:noreply, LiveView.push_patch(socket, to: "/counter/123?from=rehandled_params")}
              end)
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/counter/123?from=rehandled_params"

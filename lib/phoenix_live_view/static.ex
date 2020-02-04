@@ -86,6 +86,7 @@ defmodule Phoenix.LiveView.Static do
   ## Options
 
     * `:router` - the router the live view was built at
+    * `:action` - the router action
     * `:session` - the required map of session data
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
@@ -96,13 +97,15 @@ defmodule Phoenix.LiveView.Static do
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
+    action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
     request_url = Plug.Conn.request_url(conn)
 
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, router: router},
-        %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session}
+        %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
+        action
       )
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
@@ -130,7 +133,7 @@ defmodule Phoenix.LiveView.Static do
   @doc """
   Renders only the static container of the LiveView.
 
-  Accepts same options as `static_render/3`.
+  Accepts same options as `render/3`.
 
   This is called by external live links.
   """
@@ -139,12 +142,14 @@ defmodule Phoenix.LiveView.Static do
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
+    action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view},
-        %{assigned_new: {conn.assigns, []}, connect_params: %{}}
+        %{assigned_new: {conn.assigns, []}, connect_params: %{}},
+        action
       )
 
     session_token = sign_root_session(socket, router, view, to_sign_session)
@@ -166,7 +171,7 @@ defmodule Phoenix.LiveView.Static do
     * `parent` - the parent `%Phoenix.LiveView.Socket{}`
     * `view` - the child LiveView module
 
-  Accepts the same options as `static_render/3`.
+  Accepts the same options as `render/3`.
   """
   def nested_render(%Socket{endpoint: endpoint, connected?: connected?} = parent, view, opts) do
     config = load_live!(view, :view)
@@ -186,7 +191,8 @@ defmodule Phoenix.LiveView.Static do
           root_pid: parent.root_pid,
           parent_pid: self()
         },
-        %{assigned_new: {parent.assigns, []}}
+        %{assigned_new: {parent.assigns, []}},
+        nil
       )
 
     if connected? do
@@ -202,7 +208,9 @@ defmodule Phoenix.LiveView.Static do
     {tag, extended_attrs} = container
 
     socket = put_in(socket.private[:conn_session], conn_session)
-    socket = Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
+
+    socket =
+      Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"

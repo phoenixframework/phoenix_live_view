@@ -59,9 +59,9 @@ defmodule Phoenix.LiveView.Channel do
     url = URI.decode(encoded_url)
 
     case Utils.live_link_info!(router, view, url) do
-      {:internal, params, _} ->
+      {:internal, params, action, _} ->
         params
-        |> view.handle_params(url, socket)
+        |> view.handle_params(url, assign_action(socket, action))
         |> handle_result({:handle_params, 3, msg.ref}, state)
 
       :external ->
@@ -205,11 +205,12 @@ defmodule Phoenix.LiveView.Channel do
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
         {:live_redirect, copy_flash(new_state, opts), new_state}
 
-      {:live, %{} = params, %{to: to} = opts} ->
+      {:live, {params, action}, %{to: to} = opts} ->
         %{socket: new_socket} = new_state = drop_redirect(new_state)
+        uri = build_uri(new_state, to)
 
         params
-        |> new_socket.view.handle_params(build_uri(new_state, to), new_socket)
+        |> new_socket.view.handle_params(uri, assign_action(new_socket, action))
         |> mount_handle_params_result(new_state, {:live_patch, opts})
     end
   end
@@ -365,10 +366,10 @@ defmodule Phoenix.LiveView.Channel do
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
         {:stop, {:shutdown, {:redirect, to}}, new_state}
 
-      {:live, %{} = params, %{to: _to, kind: _kind} = opts} ->
+      {:live, {params, action}, %{to: _to, kind: _kind} = opts} ->
         new_state
         |> drop_redirect()
-        |> sync_handle_params_with_live_redirect(params, opts, ref)
+        |> sync_handle_params_with_live_redirect(params, action, opts, ref)
     end
   end
 
@@ -376,10 +377,10 @@ defmodule Phoenix.LiveView.Channel do
     put_in(state.socket.redirected, nil)
   end
 
-  defp sync_handle_params_with_live_redirect(state, params, %{to: to} = opts, ref) do
+  defp sync_handle_params_with_live_redirect(state, params, action, %{to: to} = opts, ref) do
     %{socket: socket} = state
 
-    case socket.view.handle_params(params, build_uri(state, to), socket) do
+    case socket.view.handle_params(params, build_uri(state, to), assign_action(socket, action)) do
       {:noreply, %Socket{} = new_socket} ->
         handle_changed(state, new_socket, ref, opts)
 
@@ -515,6 +516,12 @@ defmodule Phoenix.LiveView.Channel do
       Process.put(:"$callers", [pid])
     end
 
+    {params, parsed_uri, action} =
+      case router && url && Utils.live_link_info!(router, view, url) do
+        {:internal, params, action, parsed_uri} -> {params, parsed_uri, action}
+        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil}
+      end
+
     socket =
       Utils.configure_socket(
         %Socket{
@@ -529,14 +536,9 @@ defmodule Phoenix.LiveView.Channel do
         %{
           connect_params: connect_params,
           assigned_new: {parent_assigns, assigned_new}
-        }
+        },
+        action
       )
-
-    {params, parsed_uri} =
-      case router && url && Utils.live_link_info!(router, view, url) do
-        {:internal, params, parsed_uri} -> {params, parsed_uri}
-        _ -> {:not_mounted_at_router, :not_mounted_at_router}
-      end
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])
@@ -610,5 +612,9 @@ defmodule Phoenix.LiveView.Channel do
 
   defp post_mount_prune(%{socket: socket} = state) do
     %{state | socket: Utils.post_mount_prune(socket)}
+  end
+
+  defp assign_action(socket, action) do
+    Phoenix.LiveView.assign(socket, :live_view_action, action)
   end
 end

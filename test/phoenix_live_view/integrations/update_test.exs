@@ -79,14 +79,16 @@ defmodule Phoenix.LiveView.UpdateTest do
       GenServer.call(nested_view.pid, {:append, ["item2"]})
 
       html = render(view)
+
       assert [
                {"div", _,
                 [
                   "time: 12:00 NestedAppend\n",
-                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}], [
-                    {"div", [{"id", "item-item1"}], ["item1"]},
-                    {"div", [{"id", "item-item2"}], ["item2"]}
-                  ]}
+                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}],
+                   [
+                     {"div", [{"id", "item-item1"}], ["item1"]},
+                     {"div", [{"id", "item-item2"}], ["item2"]}
+                   ]}
                 ]}
              ] = find_time_zones(html, ["nested-append", "tokyo"])
 
@@ -96,7 +98,6 @@ defmodule Phoenix.LiveView.UpdateTest do
                {"div", _, ["time: 12:00 NestedAppend\n", _]},
                {"div", _, ["time: 12:00 Tokyo\n" | _]}
              ] = find_time_zones(html, ["nested-append", "tokyo"])
-
     end
   end
 

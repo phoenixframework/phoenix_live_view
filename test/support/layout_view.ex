@@ -3,6 +3,10 @@ defmodule Phoenix.LiveViewTest.LayoutView do
   import Phoenix.LiveView.Helpers
 
   def render("app.html", assigns) do
+    # Assert those assigns are always available
+    _ = assigns.live_view_module
+    _ = assigns.live_view_action
+
     ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
   end
 

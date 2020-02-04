@@ -8,7 +8,8 @@ defmodule Phoenix.LiveViewUnitTest do
 
   @socket Utils.configure_socket(
             %Socket{endpoint: Endpoint, router: Phoenix.LiveViewTest.Router},
-            %{connect_params: %{}}
+            %{connect_params: %{}},
+            nil
           )
 
   describe "get_connect_params" do
@@ -50,7 +51,8 @@ defmodule Phoenix.LiveViewUnitTest do
       assert socket.assigns == %{
                existing: "existing",
                notexisting: "new-notexisting",
-               live_view_module: nil
+               live_view_module: nil,
+               live_view_action: nil
              }
     end
 
@@ -66,7 +68,8 @@ defmodule Phoenix.LiveViewUnitTest do
                existing: "existing-parent",
                existing2: "existing2",
                notexisting: "new-notexisting",
-               live_view_module: nil
+               live_view_module: nil,
+               live_view_action: nil
              }
     end
   end
@@ -124,7 +127,7 @@ defmodule Phoenix.LiveViewUnitTest do
       socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
 
       assert push_patch(socket, to: "/counter/123").redirected ==
-               {:live, %{"id" => "123"}, %{kind: :push, to: "/counter/123"}}
+               {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
     end
   end
 end

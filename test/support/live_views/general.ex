@@ -21,15 +21,14 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
-
-      {:ok,
-       assign(socket,
-         val: val,
-         nest: nest,
-         redir: session["redir"],
-         users: users,
-         greeting: nil
-       )}
+    {:ok,
+     assign(socket,
+       val: val,
+       nest: nest,
+       redir: session["redir"],
+       users: users,
+       greeting: nil
+     )}
   end
 
   @key_i 73
