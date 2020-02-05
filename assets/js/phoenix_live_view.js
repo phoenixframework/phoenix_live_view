@@ -563,7 +563,7 @@ export class LiveSocket {
   bindClicks(){
     window.addEventListener("click", e => {
       let click = this.binding("click")
-      let target = closestPhxBinding(e.target, click)
+      let target = e.target
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
