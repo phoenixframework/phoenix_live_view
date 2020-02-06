@@ -858,13 +858,21 @@ defmodule Phoenix.LiveView do
         # do something with org_id
       end
 
-      def handle_params(%{"organization_id" => org_id}, url, socket) do
-        # do something with org_id
+      def handle_params(%{"organization_id" => org_id, "sort_by" => sort_by}, url, socket) do
+        # do something with org_id and sort_by
       end
 
   If you do that, because `c:mount/3` is called once and `c:handle_params/3` multiple
   times, your state can get out of sync. So once a parameter is read on mount, it
-  should not be read elsewhere.
+  should not be read elsewhere. Instead, do this:
+
+      def mount(%{"organization_id" => org_id}, session, socket) do
+        # do something with org_id
+      end
+
+      def handle_params(%{"sort_by" => sort_by}, url, socket) do
+        # do something with sort_by
+      end
 
   ### Replace page address
 
