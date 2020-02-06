@@ -819,14 +819,6 @@ defmodule Phoenix.LiveView do
   The `c:handle_params/3` callback is invoked after `c:mount/3`. It receives the
   request parameters as first argument, the url as second, and the socket as third.
 
-  The parameters given to `c:handle_params/3` are the same as the ones given to
-  `c:mount/3`. So how do you decide which callback to use to load data? Generally
-  speaking, data should always be loaded on `c:mount/3`. Only the params that
-  are changed via `live_patch/2` or `push_patch/2` must be loaded on `c:handle_params/3`.
-
-  As with other `handle_*` callback, changes to the state inside `c:handle_params/3`
-  will trigger a server render.
-
   For example, imagine you have a `UserTable` LiveView to show all users in
   the system and you define it in the router as:
 
@@ -849,6 +841,30 @@ defmodule Phoenix.LiveView do
 
         {:noreply, load_users(socket)}
       end
+
+  As with other `handle_*` callback, changes to the state inside `c:handle_params/3`
+  will trigger a server render.
+
+  Note the parameters given to `c:handle_params/3` are the same as the ones given
+  to `c:mount/3`. So how do you decide which callback to use to load data?
+  Generally speaking, data should always be loaded on `c:mount/3`, since `c:mount/3`
+  is invoked once per LiveView life-cycle. Only the params you expect to be changed
+  via `live_patch/2` or `push_patch/2` must be loaded on `c:handle_params/3`.
+
+  Furthermore, it is very important to not access the same parameters on both
+  `c:mount/3` and `c:handle_params/3`. For example, do NOT do this:
+
+      def mount(%{"organization_id" => org_id}, session, socket) do
+        # do something with org_id
+      end
+
+      def handle_params(%{"organization_id" => org_id}, url, socket) do
+        # do something with org_id
+      end
+
+  If you do that, because `c:mount/3` is called once and `c:handle_params/3` multiple
+  times, your state can get out of sync. So once a parameter is read on mount, it
+  should not be read elsewhere.
 
   ### Replace page address
 
