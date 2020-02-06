@@ -6,6 +6,10 @@ defmodule Phoenix.LiveViewTest.Router do
     plug :accepts, ["html"]
   end
 
+  pipeline :layout do
+    plug :put_layout, {Phoenix.LiveViewTest.LayoutView, :app}
+  end
+
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
@@ -34,5 +38,14 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
     live "/layout", LayoutLive
+  end
+
+  scope "/alt", Phoenix.LiveViewTest do
+    pipe_through [:browser, :layout]
+
+    live "/router/thermo/:id", DashboardLive,
+      layout: {Phoenix.LiveViewTest.AlternativeLayout, :layout}
+
+    live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.AlternativeLayout, :layout}
   end
 end

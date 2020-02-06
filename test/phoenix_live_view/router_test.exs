@@ -46,6 +46,17 @@ defmodule Phoenix.LiveView.RouterTest do
     assert conn.resp_body =~ "ALTERNATIVE"
   end
 
+  test "routing with custom layout overrides pipeline", %{conn: conn} do
+    conn = get(conn, "/alt/router/thermo/123")
+    assert conn.resp_body =~ "ALTERNATIVE"
+  end
+
+  test "routing with custom layout and live layout", %{conn: conn} do
+    conn = get(conn, "/alt/layout")
+    assert conn.resp_body =~ "ALTERNATIVE"
+    assert conn.resp_body =~ "LIVELAYOUTSTART"
+  end
+
   test "live_path helper", %{conn: conn} do
     assert Phoenix.LiveViewTest.Router.Helpers.live_path(conn, ThermostatLive) == "/thermo"
   end

@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.Plug do
   defp put_new_layout_from_router(conn, opts) do
     cond do
       live_link?(conn) -> Phoenix.Controller.put_layout(conn, false)
-      layout = opts[:layout] -> Phoenix.Controller.put_new_layout(conn, layout)
+      layout = opts[:layout] -> Phoenix.Controller.put_layout(conn, layout)
       true -> conn
     end
   end
