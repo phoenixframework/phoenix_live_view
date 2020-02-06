@@ -42,6 +42,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
 
+    # integration layout
     scope "/" do
       pipe_through [:bad_layout]
 
@@ -49,5 +50,11 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/bad_layout", LayoutLive
       live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
     end
+
+    # integration params
+    live "/counter/:id", ParamCounterLive
+    live "/action", ActionLive
+    live "/action/index", ActionLive, :index
+    live "/action/:id/edit", ActionLive, :edit
   end
 end

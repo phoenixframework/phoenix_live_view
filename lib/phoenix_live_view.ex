@@ -805,7 +805,7 @@ defmodule Phoenix.LiveView do
   The "redirect" operations must be used when you want to dismount the
   current LiveView and mount a new one. In those cases, the existing root
   LiveView is shutdown, and an Ajax request is made to request the necessary
-  information about the new LiveView, without performing a full static render
+  information about the new LiveView without performing a full static render
   (which reduces latency and improves performance). Once information is
   retrieved, the new LiveView is mounted. While redirecting, a `phx-disconnected`
   class is added to the root LiveView, which can be used to indicate to the
@@ -837,16 +837,17 @@ defmodule Phoenix.LiveView do
       <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 
   When clicked, since we are navigating to the current LiveView, `c:handle_params/3`
-  will be invoked. Remember you should never trust the received params, so you must use
-  the callback to validate the user input and change the state accordingly:
+  will be invoked. Remember you should never trust the received params, so you must
+  use the callback to validate the user input and change the state accordingly:
 
       def handle_params(params, _uri, socket) do
-        case params["sort_by"] do
-          sort_by when sort_by in ~w(name company) ->
-            {:noreply, socket |> assign(:sort_by, sort) |> recompute_users()}
-          _ ->
-            {:noreply, socket}
-        end
+        socket =
+          case params["sort_by"] do
+            sort_by when sort_by in ~w(name company) -> assign(socket, sort_by: sort)
+            _ -> socket
+          end
+
+        {:noreply, load_users(socket)}
       end
 
   ### Replace page address

@@ -69,3 +69,30 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_redirect(socket, to: to)}
   end
 end
+
+defmodule Phoenix.LiveViewTest.ActionLive do
+  use Phoenix.LiveView
+
+  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
+
+  def render(assigns) do
+    ~L"""
+    LiveView module: <%= inspect @live_view_module %>
+    LiveView action: <%= inspect @live_view_action %>
+    Mount action: <%= inspect @mount_action %>
+    Params: <%= inspect @params %>
+    """
+  end
+
+  def mount(params, session, socket) do
+    {:ok, assign(socket, mount_action: socket.assigns.live_view_action)}
+  end
+
+  def handle_params(params, _url, socket) do
+    {:noreply, assign(socket, params: params)}
+  end
+
+  def handle_event("push_patch", to, socket) do
+    {:noreply, push_patch(socket, to: to)}
+  end
+end

@@ -508,10 +508,10 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Simulates a live_link click to the view and returns the rendered result.
+  Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
-  def render_live_link(view, path) do
-    case GenServer.call(proxy_pid(view), {:render_live_link, proxy_topic(view), path}) do
+  def render_patch(view, path) do
+    case GenServer.call(proxy_pid(view), {:render_patch, proxy_topic(view), path}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
     end

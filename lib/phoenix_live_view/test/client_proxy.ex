@@ -281,7 +281,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, push_with_reply(state, from, view, "event", payload)}
   end
 
-  def handle_call({:render_live_link, topic, path}, from, state) do
+  def handle_call({:render_patch, topic, path}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
     ref = to_string(state.ref + 1)
 

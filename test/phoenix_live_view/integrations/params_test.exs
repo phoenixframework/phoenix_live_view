@@ -85,8 +85,8 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "with encoded URL", %{conn: conn} do
-      assert conn = get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
-      assert_receive {:handle_params, uri, _assigns, %{"id" => "Wm9uZTozNzYxOA=="}}
+      assert get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
+      assert_receive {:handle_params, _uri, _assigns, %{"id" => "Wm9uZTozNzYxOA=="}}
     end
   end
 
@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "with encoded URL", %{conn: conn} do
       {:ok, _counter_live, _html} = live(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
 
-      assert_receive {:handle_params, uri, %{connected?: true}, %{"id" => "Wm9uZTozNzYxOA=="}}
+      assert_receive {:handle_params, _uri, %{connected?: true}, %{"id" => "Wm9uZTozNzYxOA=="}}
     end
   end
 
@@ -196,14 +196,14 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "invokes handle_params", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
-      assert render_live_link(counter_live, "/counter/123?filter=true") =~
+      assert render_patch(counter_live, "/counter/123?filter=true") =~
                escape(~s|%{"filter" => "true", "id" => "123"}|)
     end
 
     test "with encoded URL", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
-      assert render_live_link(counter_live, "/counter/Wm9uZTozNzYxOa%3d%3d") =~
+      assert render_patch(counter_live, "/counter/Wm9uZTozNzYxOa%3d%3d") =~
                escape(~s|%{"id" => "Wm9uZTozNzYxOa=="}|)
     end
   end
@@ -378,6 +378,48 @@ defmodule Phoenix.LiveView.ParamsTest do
         live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
 
       assert render(counter_live) =~ escape(~s|connect: %{"connect1" => "1"}|)
+    end
+  end
+
+  describe "@live_view_action" do
+    test "when initially set to nil", %{conn: conn} do
+      {:ok, live, html} = live(conn, "/action")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: nil"
+      assert html =~ "Mount action: nil"
+      assert html =~ "Params: %{}"
+
+      html = render_patch(live, "/action/index")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: :index"
+      assert html =~ "Mount action: nil"
+      assert html =~ "Params: %{}"
+
+      html = render_patch(live, "/action/1/edit")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: :edit"
+      assert html =~ "Mount action: nil"
+      assert html =~ "Params: %{&quot;id&quot; =&gt; &quot;1&quot;}"
+    end
+
+    test "when initially set to action", %{conn: conn} do
+      {:ok, live, html} = live(conn, "/action/index")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: :index"
+      assert html =~ "Mount action: :index"
+      assert html =~ "Params: %{}"
+
+      html = render_patch(live, "/action")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: nil"
+      assert html =~ "Mount action: :index"
+      assert html =~ "Params: %{}"
+
+      html = render_patch(live, "/action/1/edit")
+      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
+      assert html =~ "LiveView action: :edit"
+      assert html =~ "Mount action: :index"
+      assert html =~ "Params: %{&quot;id&quot; =&gt; &quot;1&quot;}"
     end
   end
 

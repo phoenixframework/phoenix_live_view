@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.Router do
 
   The current action will always be available inside the LiveView as
   the `@live_view_action` assign. `@live_view_action` will be `nil`
-  if no action is given on the route generation.
+  if no action is given on the route definition.
 
   ## Layout
 
