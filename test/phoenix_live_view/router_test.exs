@@ -3,7 +3,8 @@ defmodule Phoenix.LiveView.RouterTest do
   use Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.{Endpoint, ThermostatLive}
+  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive}
+  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -11,6 +12,11 @@ defmodule Phoenix.LiveView.RouterTest do
   setup config do
     conn = Plug.Test.init_test_session(build_conn(), config[:plug_session] || %{})
     {:ok, conn: conn}
+  end
+
+  test "routing at root", %{conn: conn} do
+    {:ok, _view, html} = live(conn, "/")
+    assert html =~ ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
   end
 
   test "routing with empty session", %{conn: conn} do
@@ -36,22 +42,22 @@ defmodule Phoenix.LiveView.RouterTest do
              ~r/<span[^>]*data-phx-view="LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
   end
 
-  test "default layout is inflected", %{conn: conn} do
+  test "routing with default layout", %{conn: conn} do
     conn = get(conn, "/router/thermo_session/123")
     assert conn.resp_body =~ "LAYOUT"
   end
 
-  test "routing with custom layout", %{conn: conn} do
-    conn = get(conn, "/router/thermo_layout/123")
-    assert conn.resp_body =~ "ALTERNATIVE"
+  test "live non-action helpers", %{conn: conn} do
+    assert Routes.live_path(conn, DashboardLive, 1) == "/router/thermo_defaults/1"
+    assert Routes.custom_live_path(conn, DashboardLive, 1) == "/router/thermo_session/custom/1"
   end
 
-  test "live_path helper", %{conn: conn} do
-    assert Phoenix.LiveViewTest.Router.Helpers.live_path(conn, ThermostatLive) == "/thermo"
-  end
-
-  test "routing at root", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/")
-    assert html =~ ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
+  test "live action helpers", %{conn: conn} do
+    assert Routes.foo_bar_path(conn, :index) == "/router/foobarbaz"
+    assert Routes.foo_bar_index_path(conn, :index) == "/router/foobarbaz/index"
+    assert Routes.foo_bar_index_path(conn, :show) == "/router/foobarbaz/show"
+    assert Routes.foo_bar_nested_index_path(conn, :index) == "/router/foobarbaz/nested/index"
+    assert Routes.foo_bar_nested_index_path(conn, :show) == "/router/foobarbaz/nested/show"
+    assert Routes.custom_foo_bar_path(conn, :index) == "/router/foobarbaz/custom"
   end
 end

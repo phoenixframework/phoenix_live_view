@@ -21,9 +21,13 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/thermo_defaults/:id", DashboardLive
     live "/router/thermo_session/:id", DashboardLive
     live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
-
-    live "/router/thermo_layout/:id", DashboardLive,
-      layout: {Phoenix.LiveViewTest.AlternativeLayout, :layout}
+    live "/router/thermo_session/custom/:id", DashboardLive, as: :custom_live
+    live "/router/foobarbaz", FooBarLive, :index
+    live "/router/foobarbaz/index", FooBarLive.Index, :index
+    live "/router/foobarbaz/show", FooBarLive.Index, :show
+    live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
+    live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
+    live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
 
     live "/thermo", ThermostatLive
     live "/thermo/:id", ThermostatLive
