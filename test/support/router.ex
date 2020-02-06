@@ -6,6 +6,10 @@ defmodule Phoenix.LiveViewTest.Router do
     plug :accepts, ["html"]
   end
 
+  pipeline :bad_layout do
+    plug :put_layout, {UnknownView, :unknown_template}
+  end
+
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
@@ -33,6 +37,13 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
-    live "/layout", LayoutLive
+
+    scope "/" do
+      pipe_through [:bad_layout]
+
+      # The layout option needs to have higher precedence than bad layout
+      live "/bad_layout", LayoutLive
+      live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
+    end
   end
 end

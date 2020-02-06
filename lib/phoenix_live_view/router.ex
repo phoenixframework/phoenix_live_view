@@ -61,22 +61,24 @@ defmodule Phoenix.LiveView.Router do
       opts
       |> Keyword.put(:router, router)
       |> Keyword.put(:action, action)
-      |> Keyword.put_new_lazy(:layout, fn ->
-        layout_view =
-          router
-          |> Atom.to_string()
-          |> String.split(".")
-          |> Enum.drop(-1)
-          |> Kernel.++(["LayoutView"])
-          |> Module.concat()
-
-        {layout_view, :app}
-      end)
+      |> Keyword.put(:inferred_layout, inferred_layout(router))
 
     {live_view,
      as: opts[:as] || :live,
      private: %{phoenix_live_view: {live_view, opts}},
      alias: false,
      metadata: %{phoenix_live_view: {live_view, action}}}
+  end
+
+  defp inferred_layout(router) do
+    layout_view =
+      router
+      |> Atom.to_string()
+      |> String.split(".")
+      |> Enum.drop(-1)
+      |> Kernel.++(["LayoutView"])
+      |> Module.concat()
+
+    {layout_view, :app}
   end
 end

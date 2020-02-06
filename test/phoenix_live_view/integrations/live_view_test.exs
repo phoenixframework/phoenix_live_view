@@ -551,6 +551,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
   end
 
   describe "layout" do
+    test "uses dead layout from router", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError,
+                   ~r"\(UndefinedFunctionError\) function UnknownView.render/2",
+                   fn -> live(conn, "/bad_layout") end
+
+      {:ok, _, _} = live(conn, "/layout")
+    end
+
     test "is picked from config on use", %{conn: conn} do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
