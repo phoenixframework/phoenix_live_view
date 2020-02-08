@@ -73,8 +73,6 @@ end
 defmodule Phoenix.LiveViewTest.ActionLive do
   use Phoenix.LiveView
 
-  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
-
   def render(assigns) do
     ~L"""
     LiveView module: <%= inspect @live_view_module %>
@@ -84,7 +82,7 @@ defmodule Phoenix.LiveViewTest.ActionLive do
     """
   end
 
-  def mount(params, session, socket) do
+  def mount(_params, _session, socket) do
     {:ok, assign(socket, mount_action: socket.assigns.live_view_action)}
   end
 
