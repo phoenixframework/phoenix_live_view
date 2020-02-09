@@ -105,6 +105,18 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  def handle_info({@prefix, :redirect, {:redirect, opts}}, state) do
+    {:noreply, push_redirect(state, opts, nil)}
+  end
+
+  def handle_info({@prefix, :redirect, {:live, :redirect, opts}}, state) do
+    {:noreply, push_live_redirect(state, opts, nil)}
+  end
+
+  def handle_info({@prefix, :redirect, {:live, _patch, opts}}, state) do
+    {:noreply, push_live_patch(state, opts)}
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> socket.view.handle_info(socket)
@@ -294,8 +306,9 @@ defmodule Phoenix.LiveView.Channel do
           {:noreply, %Socket{redirected: nil} = component_socket} ->
             component_socket
 
-          {:noreply, _} ->
-            raise ArgumentError, "cannot redirect from from #{inspect(component)}.handle_event/3"
+          {:noreply, %Socket{redirected: redirected} = component_socket} ->
+            send(self(), {@prefix, :redirect, redirected})
+            component_socket
 
           other ->
             raise ArgumentError, """

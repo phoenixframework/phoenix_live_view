@@ -58,6 +58,15 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
       "dup" ->
         {:noreply, assign(socket, :dup_name, socket.assigns.name <> "-dup")}
+
+      "push_redirect" ->
+        {:noreply, push_redirect(socket, to: "/components?redirect=push")}
+
+      "push_patch" ->
+        {:noreply, push_patch(socket, to: "/components?redirect=patch")}
+
+      "redirect" ->
+        {:noreply, redirect(socket, to: "/components?redirect=redirect")}
     end
   end
 end

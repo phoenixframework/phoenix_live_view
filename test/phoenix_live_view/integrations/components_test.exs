@@ -224,4 +224,30 @@ defmodule Phoenix.LiveView.ComponentTest do
              end) =~ "** (ArgumentError) missing required :id in send_update"
     end
   end
+
+  describe "redirects" do
+    test "push_redirect", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      assert_redirect view, "/components?redirect=push", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
+      end
+    end
+
+    test "push_patch", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      assert_redirect view, "/components?redirect=patch", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "push_patch"})
+      end
+    end
+
+    test "redirect", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      assert_redirect view, "/components?redirect=redirect", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "redirect"})
+      end
+    end
+  end
 end
