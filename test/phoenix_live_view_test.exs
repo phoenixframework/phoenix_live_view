@@ -7,7 +7,12 @@ defmodule Phoenix.LiveViewUnitTest do
   alias Phoenix.LiveViewTest.Endpoint
 
   @socket Utils.configure_socket(
-            %Socket{endpoint: Endpoint, router: Phoenix.LiveViewTest.Router},
+            %Socket{
+              endpoint: Endpoint,
+              router: Phoenix.LiveViewTest.Router,
+              view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.ParamCounterLive
+            },
             %{connect_params: %{}},
             nil
           )
@@ -51,7 +56,7 @@ defmodule Phoenix.LiveViewUnitTest do
       assert socket.assigns == %{
                existing: "existing",
                notexisting: "new-notexisting",
-               live_view_module: nil,
+               live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
                live_view_action: nil
              }
     end
@@ -68,7 +73,7 @@ defmodule Phoenix.LiveViewUnitTest do
                existing: "existing-parent",
                existing2: "existing2",
                notexisting: "new-notexisting",
-               live_view_module: nil,
+               live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
                live_view_action: nil
              }
     end
@@ -85,6 +90,14 @@ defmodule Phoenix.LiveViewUnitTest do
       end
 
       assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo"}}
+    end
+
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke redirect/2 from a disconnected child LiveView",
+                   fn -> redirect(socket, to: "/counter/123") end
     end
 
     test "allows external paths" do
@@ -106,6 +119,14 @@ defmodule Phoenix.LiveViewUnitTest do
       assert push_redirect(@socket, to: "/counter/123").redirected ==
                {:live, :redirect, %{kind: :push, to: "/counter/123"}}
     end
+
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke push_redirect/2 from a disconnected child LiveView",
+                   fn -> push_redirect(socket, to: "/counter/123") end
+    end
   end
 
   describe "push_patch/2" do
@@ -119,15 +140,23 @@ defmodule Phoenix.LiveViewUnitTest do
       end
 
       assert_raise ArgumentError,
-                   ~r"cannot push_patch/2 to \"/counter/123\" because the given path does not point to the current view",
+                   ~r"cannot push_patch/2 to \"/counter/123\" because the given path does not point to the current root view",
                    fn ->
-                     push_patch(@socket, to: "/counter/123")
+                     push_patch(%{@socket | root_view: __MODULE__}, to: "/counter/123")
                    end
 
       socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
 
       assert push_patch(socket, to: "/counter/123").redirected ==
                {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
+    end
+
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke push_patch/2 from a disconnected child LiveView",
+                   fn -> push_patch(socket, to: "/counter/123") end
     end
   end
 end

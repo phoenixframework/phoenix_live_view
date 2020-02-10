@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.Static do
   alias Phoenix.LiveView.{Socket, Utils, Diff}
 
   # Token version. Should be changed whenever new data is stored.
-  @token_vsn 2
+  @token_vsn 3
 
   def token_vsn, do: @token_vsn
 
@@ -103,7 +103,7 @@ defmodule Phoenix.LiveView.Static do
 
     socket =
       Utils.configure_socket(
-        %Socket{endpoint: endpoint, view: view, router: router},
+        %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
         action
       )
@@ -147,7 +147,7 @@ defmodule Phoenix.LiveView.Static do
 
     socket =
       Utils.configure_socket(
-        %Socket{endpoint: endpoint, view: view},
+        %Socket{endpoint: endpoint, view: view, root_view: view},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}},
         action
       )
@@ -187,6 +187,8 @@ defmodule Phoenix.LiveView.Static do
       Utils.configure_socket(
         %Socket{
           id: to_string(child_id),
+          root_view: parent.root_view,
+          view: view,
           endpoint: endpoint,
           root_pid: parent.root_pid,
           parent_pid: self()
@@ -305,6 +307,7 @@ defmodule Phoenix.LiveView.Static do
     sign_token(endpoint, %{
       id: id,
       view: view,
+      root_view: view,
       router: router,
       parent_pid: nil,
       root_pid: nil,
@@ -317,6 +320,8 @@ defmodule Phoenix.LiveView.Static do
     sign_token(parent.endpoint, %{
       id: child.id,
       view: view,
+      root_view: parent.root_view,
+      router: parent.router,
       parent_pid: self(),
       root_pid: parent.root_pid,
       session: session

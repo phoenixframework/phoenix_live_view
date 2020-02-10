@@ -105,6 +105,20 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  def handle_info({@prefix, :redirect, {:redirect, opts}}, state) do
+    state
+    |> push_redirect(opts, nil)
+    |> stop_shutdown_redirect(opts.to)
+  end
+
+  def handle_info({@prefix, :redirect, {:live, :redirect, opts}}, state) do
+    {:noreply, push_live_redirect(state, opts, nil)}
+  end
+
+  def handle_info({@prefix, :redirect, {:live, _patch, opts}}, state) do
+    {:noreply, push_live_patch(state, opts)}
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> socket.view.handle_info(socket)
@@ -175,7 +189,7 @@ defmodule Phoenix.LiveView.Channel do
         {diff, new_state} = render_diff(state, socket)
         {:ok, diff, :mount, new_state}
 
-      is_nil(router) ->
+      socket.root_pid != self() or is_nil(router) ->
         # Let the callback fail for the usual reasons
         Utils.live_link_info!(nil, view, url)
 
@@ -243,7 +257,7 @@ defmodule Phoenix.LiveView.Channel do
     Utils.raise_bad_stop_and_live_redirect!()
   end
 
-  defp handle_result({:stop, %Socket{} = new_socket}, {_, _, ref}, state) do
+  defp handle_result({:stop, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
     case handle_changed(state, new_socket, ref) do
       {:ok, _changed, new_state} ->
         send(new_state.transport_pid, {:socket_close, self(), :shutdown})
@@ -294,8 +308,9 @@ defmodule Phoenix.LiveView.Channel do
           {:noreply, %Socket{redirected: nil} = component_socket} ->
             component_socket
 
-          {:noreply, _} ->
-            raise ArgumentError, "cannot redirect from from #{inspect(component)}.handle_event/3"
+          {:noreply, %Socket{redirected: redirected} = component_socket} ->
+            send_redirect(component_socket, redirected)
+            component_socket
 
           other ->
             raise ArgumentError, """
@@ -340,6 +355,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do
     new_state = %{state | socket: new_socket}
+    root_pid = new_socket.root_pid
 
     case maybe_changed(new_state) do
       :diff ->
@@ -357,20 +373,34 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       {:redirect, %{to: to} = opts} ->
-        new_state = push_redirect(new_state, opts, ref)
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:stop, {:shutdown, {:redirect, to}}, new_state}
+        new_state
+        |> push_redirect(opts, ref)
+        |> stop_shutdown_redirect(to)
 
       {:live, :redirect, %{to: to} = opts} ->
-        new_state = push_live_redirect(new_state, opts, ref)
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:stop, {:shutdown, {:redirect, to}}, new_state}
+        new_state
+        |> push_live_redirect(opts, ref)
+        |> stop_shutdown_redirect(to)
 
-      {:live, {params, action}, %{to: _to, kind: _kind} = opts} ->
+      {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         new_state
         |> drop_redirect()
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
+
+      {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
+        send_redirect(new_state.socket, patch)
+        {diff, new_state} = render_diff(new_state, new_socket)
+
+        {:ok, :diff,
+         new_state
+         |> drop_redirect()
+         |> push_render(diff, ref)}
     end
+  end
+
+  defp stop_shutdown_redirect(state, to) do
+    send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
+    {:stop, {:shutdown, {:redirect, to}}, state}
   end
 
   defp drop_redirect(state) do
@@ -489,6 +519,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       id: id,
       view: view,
+      root_view: root_view,
       parent_pid: parent,
       root_pid: root,
       session: session,
@@ -527,6 +558,7 @@ defmodule Phoenix.LiveView.Channel do
         %Socket{
           endpoint: endpoint,
           view: view,
+          root_view: root_view,
           connected?: true,
           parent_pid: parent,
           root_pid: root || self(),
@@ -616,5 +648,9 @@ defmodule Phoenix.LiveView.Channel do
 
   defp assign_action(socket, action) do
     Phoenix.LiveView.assign(socket, :live_view_action, action)
+  end
+
+  defp send_redirect(socket, command) do
+    send(socket.root_pid, {@prefix, :redirect, command})
   end
 end

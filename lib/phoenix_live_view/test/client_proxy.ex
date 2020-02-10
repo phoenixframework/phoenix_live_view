@@ -159,36 +159,36 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_info(
         %Phoenix.Socket.Message{
           event: "redirect",
-          topic: topic,
+          topic: _topic,
           payload: %{to: to}
         },
         state
       ) do
-    send_redirect(state, topic, to)
+    send_redirect(state, state.root_view.topic, to)
     {:noreply, state}
   end
 
   def handle_info(
         %Phoenix.Socket.Message{
           event: "live_patch",
-          topic: topic,
+          topic: _topic,
           payload: %{to: to}
         },
         state
       ) do
-    send_redirect(state, topic, to)
+    send_redirect(state, state.root_view.topic, to)
     {:noreply, state}
   end
 
   def handle_info(
         %Phoenix.Socket.Message{
           event: "live_redirect",
-          topic: topic,
+          topic: _topic,
           payload: %{to: to}
         },
         state
       ) do
-    send_redirect(state, topic, to)
+    send_redirect(state, state.root_view.topic, to)
     {:noreply, state}
   end
 
