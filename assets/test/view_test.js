@@ -460,3 +460,43 @@ describe('View + Component', function() {
     view.pushEvent('keyup', input, targetCtx, "click", {})
   })
 });
+
+describe('DOM', function() {
+  it('mergeAttrs attributes', function() {
+    const target = document.createElement('target')
+    target.type = 'checkbox'
+    target.id = 'foo'
+    target.setAttribute('checked', 'true')
+
+    const source = document.createElement('source')
+    source.type = 'checkbox'
+    source.id = 'bar'
+
+    expect(target.getAttribute('checked')).toEqual('true')
+    expect(target.id).toEqual('foo')
+
+    DOM.mergeAttrs(target, source);
+
+    expect(target.getAttribute('checked')).toEqual(null)
+    expect(target.id).toEqual('bar')
+  })
+
+  it('mergeAttrs with properties', function() {
+    const target = document.createElement('target')
+    target.type = 'checkbox'
+    target.id = 'foo'
+    target.checked = true;
+
+    const source = document.createElement('source')
+    source.type = 'checkbox'
+    source.id = 'bar'
+
+    expect(target.checked).toEqual(true)
+    expect(target.id).toEqual('foo')
+
+    DOM.mergeAttrs(target, source);
+
+    expect(target.checked).toEqual(true)
+    expect(target.id).toEqual('bar')
+  })
+});
