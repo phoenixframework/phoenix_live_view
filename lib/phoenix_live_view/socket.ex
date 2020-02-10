@@ -12,6 +12,7 @@ defmodule Phoenix.LiveView.Socket do
   defstruct id: nil,
             endpoint: nil,
             view: nil,
+            root_view: nil,
             parent_pid: nil,
             root_pid: nil,
             router: nil,

@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView}
 
   @endpoint Endpoint
@@ -521,6 +522,45 @@ defmodule Phoenix.LiveView.LiveViewTest do
                :ok = GenServer.call(view.pid, {:dynamic_child, :static})
                catch_exit(render(view))
              end) =~ "duplicate LiveView id: \"static\""
+    end
+
+    @tag session: %{nest: []}
+    test "push_redirect", %{conn: conn} do
+      {:ok, thermo_view, _} = live(conn, "/thermo")
+
+      assert clock_view = find_child(thermo_view, "clock")
+
+      assert_redirect thermo_view, "/thermo?redirect=push", fn ->
+        send(clock_view.pid, {:run, fn socket ->
+          {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
+        end})
+      end
+    end
+
+    @tag session: %{nest: []}
+    test "push_patch", %{conn: conn} do
+      {:ok, thermo_view, _} = live(conn, "/thermo")
+
+      assert clock_view = find_child(thermo_view, "clock")
+
+      assert_redirect thermo_view, "/thermo?redirect=push", fn ->
+        send(clock_view.pid, {:run, fn socket ->
+          {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=push")}
+        end})
+      end
+    end
+
+    @tag session: %{nest: []}
+    test "redirect", %{conn: conn} do
+      {:ok, thermo_view, _} = live(conn, "/thermo")
+
+      assert clock_view = find_child(thermo_view, "clock")
+
+      assert_redirect thermo_view, "/thermo?redirect=redirect", fn ->
+        send(clock_view.pid, {:run, fn socket ->
+          {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
+        end})
+      end
     end
   end
 

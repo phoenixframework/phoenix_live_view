@@ -106,15 +106,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :redirect, {:redirect, opts}}, state) do
-    {:noreply, push_redirect(state, opts, nil)}
+    state
+    |> push_redirect(opts, {:handle_info, 2}, nil)
+    |> stop_shutdown_redirect(opts.to)
   end
 
   def handle_info({@prefix, :redirect, {:live, :redirect, opts}}, state) do
-    {:noreply, push_live_redirect(state, opts, nil)}
+    {:noreply, push_live_redirect(state, opts, {:handle_info, 2}, nil)}
   end
 
   def handle_info({@prefix, :redirect, {:live, _patch, opts}}, state) do
-    {:noreply, push_live_patch(state, opts)}
+    {:noreply, push_live_patch(state, opts, {:handle_info, 2})}
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -136,7 +138,7 @@ defmodule Phoenix.LiveView.Channel do
   def handle_call(msg, from, %{socket: socket} = state) do
     case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
-        case handle_changed(state, new_socket, nil) do
+        case handle_changed(state, new_socket, {:handle_call, 3}, nil) do
           {:ok, _changed, new_state} -> {:reply, reply, new_state}
           {:stop, reason, new_state} -> {:stop, reason, reply, new_state}
         end
@@ -179,7 +181,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
+  defp maybe_call_mount_handle_params(%{socket: socket} = state, url, params) do
     %{view: view} = socket
 
     cond do
@@ -187,7 +189,7 @@ defmodule Phoenix.LiveView.Channel do
         {diff, new_state} = render_diff(state, socket)
         {:ok, diff, :mount, new_state}
 
-      is_nil(router) ->
+      socket.root_pid != self() ->
         # Let the callback fail for the usual reasons
         Utils.live_link_info!(nil, view, url)
 
@@ -240,8 +242,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp handle_result({:noreply, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
-    case handle_changed(state, new_socket, ref) do
+  defp handle_result({:noreply, %Socket{} = new_socket}, {from, arity, ref}, state) do
+    case handle_changed(state, new_socket, {from, arity}, ref) do
       {:ok, _changed, new_state} -> {:noreply, new_state}
       {:stop, reason, new_state} -> {:stop, reason, new_state}
     end
@@ -255,8 +257,8 @@ defmodule Phoenix.LiveView.Channel do
     Utils.raise_bad_stop_and_live_redirect!()
   end
 
-  defp handle_result({:stop, %Socket{} = new_socket}, {_, _, ref}, state) do
-    case handle_changed(state, new_socket, ref) do
+  defp handle_result({:stop, %Socket{} = new_socket}, {from, arity, ref}, state) do
+    case handle_changed(state, new_socket, {from, arity}, ref) do
       {:ok, _changed, new_state} ->
         send(new_state.transport_pid, {:socket_close, self(), :shutdown})
         {:stop, :shutdown, new_state}
@@ -307,7 +309,7 @@ defmodule Phoenix.LiveView.Channel do
             component_socket
 
           {:noreply, %Socket{redirected: redirected} = component_socket} ->
-            send(self(), {@prefix, :redirect, redirected})
+            send_redirect(component_socket, redirected, {:handle_event, 3})
             component_socket
 
           other ->
@@ -351,8 +353,15 @@ defmodule Phoenix.LiveView.Channel do
 
   defp gather_keys(nil, acc), do: acc
 
-  defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do
+  defp handle_changed(
+         state,
+         %Socket{} = new_socket,
+         {from, arity},
+         ref,
+         pending_live_patch \\ nil
+       ) do
     new_state = %{state | socket: new_socket}
+    root_pid = new_socket.root_pid
 
     case maybe_changed(new_state) do
       :diff ->
@@ -360,30 +369,45 @@ defmodule Phoenix.LiveView.Channel do
 
         {:ok, :diff,
          new_state
-         |> push_live_patch(pending_live_patch)
+         |> push_live_patch(pending_live_patch, {from, arity})
          |> push_render(diff, ref)}
 
       :noop ->
         {:ok, :noop,
          new_state
-         |> push_live_patch(pending_live_patch)
+         |> push_live_patch(pending_live_patch, {from, arity})
          |> push_noop(ref)}
 
       {:redirect, %{to: to} = opts} ->
-        new_state = push_redirect(new_state, opts, ref)
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:stop, {:shutdown, {:redirect, to}}, new_state}
+        new_state
+        |> push_redirect(opts, {from, arity}, ref)
+        |> stop_shutdown_redirect(to)
 
       {:live, :redirect, %{to: to} = opts} ->
-        new_state = push_live_redirect(new_state, opts, ref)
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:stop, {:shutdown, {:redirect, to}}, new_state}
-
-      {:live, {params, action}, %{to: _to, kind: _kind} = opts} ->
         new_state
-        |> drop_redirect()
-        |> sync_handle_params_with_live_redirect(params, action, opts, ref)
+        |> push_live_redirect(opts, {from, arity}, ref)
+        |> stop_shutdown_redirect(to)
+
+      {:live, {params, action}, %{to: _to, kind: _kind} = opts} = patch ->
+        if root_pid == self() do
+          new_state
+          |> drop_redirect()
+          |> sync_handle_params_with_live_redirect(params, action, opts, ref)
+        else
+          send_redirect(new_state.socket, patch, {from, arity})
+          {diff, new_state} = render_diff(new_state, new_socket)
+
+          {:ok, :diff,
+           new_state
+           |> drop_redirect()
+           |> push_render(diff, ref)}
+        end
     end
+  end
+
+  defp stop_shutdown_redirect(state, to) do
+    send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
+    {:stop, {:shutdown, {:redirect, to}}, state}
   end
 
   defp drop_redirect(state) do
@@ -395,38 +419,43 @@ defmodule Phoenix.LiveView.Channel do
 
     case socket.view.handle_params(params, build_uri(state, to), assign_action(socket, action)) do
       {:noreply, %Socket{} = new_socket} ->
-        handle_changed(state, new_socket, ref, opts)
+        handle_changed(state, new_socket, {:handle_params, 3}, ref, opts)
 
       {:stop, %Socket{redirected: {:live, _, _}}} ->
         Utils.raise_bad_stop_and_live_redirect!()
 
       {:stop, %Socket{} = new_socket} ->
-        case handle_changed(state, new_socket, ref, opts) do
+        case handle_changed(state, new_socket, {:handle_parmas, 3}, ref, opts) do
           {:ok, _changed, state} -> {:stop, :shutdown, state}
           {:stop, reason, state} -> {:stop, reason, state}
         end
     end
   end
 
-  defp push_live_patch(state, nil), do: state
+  defp push_live_patch(state, nil, {_from, _arity}), do: state
 
-  defp push_live_patch(state, opts) do
+  defp push_live_patch(state, opts, {from, arity}) do
+    validate_redirect!(state.socket, opts.to, {:push_patch, 2}, {from, arity})
     push(state, "live_patch", opts)
   end
 
-  defp push_redirect(state, opts, nil = _ref) do
+  defp push_redirect(state, opts, {from, arity}, nil = _ref) do
+    validate_redirect!(state.socket, opts.to, {:redirect, 2}, {from, arity})
     push(state, "redirect", copy_flash(state, opts))
   end
 
-  defp push_redirect(state, opts, ref) do
+  defp push_redirect(state, opts, {from, arity}, ref) do
+    validate_redirect!(state.socket, opts.to, {:redirect, 2}, {from, arity})
     reply(state, ref, :ok, %{redirect: copy_flash(state, opts)})
   end
 
-  defp push_live_redirect(state, opts, nil = _ref) do
+  defp push_live_redirect(state, opts, {from, arity}, nil = _ref) do
+    validate_redirect!(state.socket, opts.to, {:push_redirect, 2}, {from, arity})
     push(state, "live_redirect", copy_flash(state, opts))
   end
 
-  defp push_live_redirect(state, opts, ref) do
+  defp push_live_redirect(state, opts, {from, arity}, ref) do
+    validate_redirect!(state.socket, opts.to, {:push_redirect, 2}, {from, arity})
     reply(state, ref, :ok, %{live_redirect: copy_flash(state, opts)})
   end
 
@@ -502,6 +531,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       id: id,
       view: view,
+      root_view: root_view,
       parent_pid: parent,
       root_pid: root,
       session: session,
@@ -540,6 +570,7 @@ defmodule Phoenix.LiveView.Channel do
         %Socket{
           endpoint: endpoint,
           view: view,
+          root_view: root_view,
           connected?: true,
           parent_pid: parent,
           root_pid: root || self(),
@@ -556,7 +587,7 @@ defmodule Phoenix.LiveView.Channel do
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])
     |> build_state(phx_socket, parsed_uri)
-    |> maybe_call_mount_handle_params(router, url, params)
+    |> maybe_call_mount_handle_params(url, params)
     |> reply_mount(from)
   end
 
@@ -629,5 +660,32 @@ defmodule Phoenix.LiveView.Channel do
 
   defp assign_action(socket, action) do
     Phoenix.LiveView.assign(socket, :live_view_action, action)
+  end
+
+  defp send_redirect(socket, {:redirect, %{to: to}} = redirected, {from, arity}) do
+    validate_redirect!(socket, to, {:redirect, 2}, {from, arity})
+    send(socket.root_pid, {@prefix, :redirect, redirected})
+  end
+
+  defp send_redirect(socket, {:live, :redirect, %{to: to}} = redirected, {from, arity}) do
+    validate_redirect!(socket, to, {:push_redirect, 2}, {from, arity})
+    send(socket.root_pid, {@prefix, :redirect, redirected})
+  end
+
+  defp send_redirect(socket, {:live, {_params, _action}, %{to: to}} = patch, {from, arity}) do
+    validate_redirect!(socket, to, {:push_patch, 2}, {from, arity})
+    send(socket.root_pid, {@prefix, :redirect, patch})
+  end
+
+  @valid_child_redirects [:handle_event, :handle_call, :handle_cast, :handle_info]
+  defp validate_redirect!(%Socket{} = socket, url, {kind, kind_arity}, {from, from_arity}) do
+    if socket.root_pid != self() and from not in @valid_child_redirects do
+      raise """
+      cannot invoke #{kind}/#{kind_arity} for #{inspect(socket.view)}.#{from}/#{from_arity} to #{
+        inspect(url)
+      }.
+      Child LiveViews may only #{kind} from #{Enum.join(@valid_child_redirects, ", ")}.
+      """
+    end
   end
 end
