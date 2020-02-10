@@ -92,6 +92,14 @@ defmodule Phoenix.LiveViewUnitTest do
       assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo"}}
     end
 
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke redirect/2 from a disconnected child LiveView",
+                   fn -> redirect(socket, to: "/counter/123") end
+    end
+
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
                {:redirect, %{to: "http://foo.com/bar"}}
@@ -110,6 +118,14 @@ defmodule Phoenix.LiveViewUnitTest do
 
       assert push_redirect(@socket, to: "/counter/123").redirected ==
                {:live, :redirect, %{kind: :push, to: "/counter/123"}}
+    end
+
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke push_redirect/2 from a disconnected child LiveView",
+                   fn -> push_redirect(socket, to: "/counter/123") end
     end
   end
 
@@ -133,6 +149,14 @@ defmodule Phoenix.LiveViewUnitTest do
 
       assert push_patch(socket, to: "/counter/123").redirected ==
                {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
+    end
+
+    test "errors on disconnected child render" do
+      socket = %{@socket | connected?: false, parent_pid: self()}
+
+      assert_raise ArgumentError,
+                   ~r"cannot invoke push_patch/2 from a disconnected child LiveView",
+                   fn -> push_patch(socket, to: "/counter/123") end
     end
   end
 end
