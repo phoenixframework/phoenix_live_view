@@ -926,10 +926,16 @@ export let DOM = {
   },
 
   mergeAttrs(target, source, exclude = []){
-    var attrs = source.attributes
-    for (let i = 0, length = attrs.length; i < length; i++){
-      let name = attrs[i].name
+    let sourceAttrs = source.attributes
+    for (let i = sourceAttrs.length - 1; i >= 0; i--){
+      let name = sourceAttrs[i].name
       if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
+    }
+
+    let targetAttrs = target.attributes
+    for (let i = targetAttrs.length - 1; i >= 0; i--){
+      let name = targetAttrs[i].name
+      if(!source.hasAttribute(name)){ target.removeAttribute(name) }
     }
   },
 
