@@ -5,9 +5,11 @@
   - `live_link` was removed in favor of  `live_patch` (for updating the URL and params of the current LiveView) and `live_redirect` (for updating the URL to another LiveView)
 
 ### Enhancements
+  - Support `@live_view_action` in LiveViews to simplify tracking of URL state
   - Recovery form input data automatically on disconnects or crash recovery
-  - Add `phx-auto-recovery` form binding for specialized recovery
-  - Scroll to top of page while respecting anchor hash targets on live_link's
+  - Add `phx-auto-recover` form binding for specialized recovery
+  - Scroll to top of page while respecting anchor hash targets on `live_patch` and `live_redirect`
+  - Make `phx-click` be direct and apply to the clicked target
 
 ### Bug Fixes
   - Send `phx-value-*` on key events
