@@ -678,12 +678,10 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   @valid_child_redirects [:handle_event, :handle_call, :handle_cast, :handle_info]
-  defp validate_redirect!(%Socket{} = socket, url, {kind, kind_arity}, {from, from_arity}) do
+  defp validate_redirect!(%Socket{} = socket, url, {kind, ka}, {from, fa}) do
     if socket.root_pid != self() and from not in @valid_child_redirects do
       raise """
-      cannot invoke #{kind}/#{kind_arity} for #{inspect(socket.view)}.#{from}/#{from_arity} to #{
-        inspect(url)
-      }.
+      cannot invoke #{kind}/#{ka} for #{inspect(socket.view)}.#{from}/#{fa} to #{inspect(url)}.
       Child LiveViews may only #{kind} from #{Enum.join(@valid_child_redirects, ", ")}.
       """
     end
