@@ -9,7 +9,7 @@
   - Recovery form input data automatically on disconnects or crash recovery
   - Add `phx-auto-recover` form binding for specialized recovery
   - Scroll to top of page while respecting anchor hash targets on `live_patch` and `live_redirect`
-  - Make `phx-click` be direct and apply to the clicked target
+  - Add `phx-capture-click` to use event capturing to bind a click event as it propagates inwards from the target
 
 ### Bug Fixes
   - Send `phx-value-*` on key events

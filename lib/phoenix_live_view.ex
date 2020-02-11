@@ -401,7 +401,7 @@ defmodule Phoenix.LiveView do
   | Binding                | Attributes |
   |------------------------|------------|
   | [Params](#module-click-events) | `phx-value-*` |
-  | [Click Events](#module-click-events) | `phx-click`, `phx-target` |
+  | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` | `phx-target` |
   | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-target` |
   | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `data-phx-error-for`, `phx-disable-with` |
   | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
@@ -429,6 +429,11 @@ defmodule Phoenix.LiveView do
     * When receiving a map on the server, the payload will also contain metadata of the
       client event, containing all literal keys of the event object, such as a click event's
       `clientX`, a keydown event's `keyCode`, etc.
+
+  The `phx-capture-click` event is just like `phx-click`, but instead of the click event
+  bubbling up to the closest `phx-click` element, event capturing is used, where the
+  events propagate inwards from the clicked element. This is useful when wanting to bind a click
+  events without receiving bubbled events from child UI elements.
 
   ### Focus and Blur Events
 
