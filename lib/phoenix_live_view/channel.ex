@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :redirect, command}, state) do
-    handle_redirect(command, state, state.socket, nil)
+    handle_redirect(state, command, state.socket, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -301,12 +301,12 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    new_state = %{state | components: new_components}
+    new_state = push_render(%{state | components: new_components}, diff, ref)
 
     if redirected do
-      handle_redirect(redirected, new_state, socket, ref)
+      handle_redirect(new_state, redirected, socket, nil)
     else
-      {:noreply, push_render(new_state, diff, ref)}
+      {:noreply, new_state}
     end
   end
 
@@ -357,11 +357,11 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       result ->
-        handle_redirect(result, new_state, new_socket, ref)
+        handle_redirect(new_state, result, new_socket, ref)
     end
   end
 
-  defp handle_redirect(result, new_state, new_socket, ref) do
+  defp handle_redirect(new_state, result, new_socket, ref) do
     root_pid = new_socket.root_pid
 
     case result do

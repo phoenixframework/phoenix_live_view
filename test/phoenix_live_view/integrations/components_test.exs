@@ -235,36 +235,27 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      result =
-        assert_redirect(view, "/components?redirect=push", fn ->
-          render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
-        end)
-
-      assert result == {:error, {:live_redirect, %{to: "/components?redirect=push"}}}
+      assert_redirect(view, "/components?redirect=push", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
+      end)
     end
 
     test "push_patch", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      result =
-        assert_redirect(view, "/components?redirect=patch", fn ->
-          render_click([view, "chris"], "transform", %{"op" => "push_patch"})
-        end)
-
-      assert result =~ "Redirect: patch"
+      assert_redirect(view, "/components?redirect=patch", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "push_patch"})
+      end)
     end
 
     test "redirect", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      result =
-        assert_redirect(view, "/components?redirect=redirect", fn ->
-          render_click([view, "chris"], "transform", %{"op" => "redirect"})
-        end)
-
-      assert result == {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
+      assert_redirect(view, "/components?redirect=redirect", fn ->
+        render_click([view, "chris"], "transform", %{"op" => "redirect"})
+      end)
     end
   end
 end
