@@ -287,6 +287,7 @@ defmodule Phoenix.LiveView.Channel do
 
     {diff, new_components, redirected} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
+        socket_before = component_socket
         case component.handle_event(event, val, component_socket) do
           {:noreply, %Socket{redirected: redirected} = component_socket} ->
             {component_socket, redirected}
@@ -425,7 +426,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_redirect(state, opts, nil = _ref) do
-    push(state, "redirect", copy_flash(state, opts))
+    push(state, "redirect", IO.inspect(copy_flash(state, opts)))
   end
 
   defp push_redirect(state, opts, ref) do
@@ -445,6 +446,11 @@ defmodule Phoenix.LiveView.Channel do
 
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
+
+  defp maybe_put_flash(%{socket: socket} = state, %{} = flash) do
+    %{state | socket: Utils.merge_flash(socket, flash)}
+  end
+  defp maybe_put_flash(%{socket: _socket} = state, nil = _flash), do: state
 
   defp copy_flash(%{socket: socket}, opts) do
     if flash = Utils.get_flash(socket) do
@@ -508,6 +514,11 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
+  defp verify_flash!(endpoint, %{"flash" => flash_token}) when is_binary(flash_token) do
+    Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
+  end
+  defp verify_flash!(_endpoint, %{}), do: %{}
+
   defp verified_mount(verified, params, from, phx_socket) do
     %{
       id: id,
@@ -527,6 +538,8 @@ defmodule Phoenix.LiveView.Channel do
       private: %{session: socket_session},
       transport_pid: transport_pid
     } = phx_socket
+
+    flash = verify_flash!(endpoint, params)
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -564,6 +577,7 @@ defmodule Phoenix.LiveView.Channel do
         },
         action
       )
+      |> Utils.merge_flash(flash)
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])

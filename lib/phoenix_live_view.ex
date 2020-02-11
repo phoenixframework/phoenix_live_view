@@ -1450,6 +1450,12 @@ defmodule Phoenix.LiveView do
   defdelegate put_flash(socket, kind, msg), to: Phoenix.LiveView.Utils
 
   @doc """
+  TODO
+  """
+  defdelegate clear_flash(socket), to: Phoenix.LiveView.Utils
+  defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
+
+  @doc """
   Annotates the socket for redirect to a destination path.
 
   *Note*: LiveView redirects rely on instructing client

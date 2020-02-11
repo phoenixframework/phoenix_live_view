@@ -22,6 +22,8 @@ defmodule Phoenix.LiveView.Flash do
 
   @cookie_key "__phoenix_flash__"
 
+  @max_age :timer.seconds(60)
+
   @impl Plug
   def init(opts) do
     if Keyword.keys(opts) -- @valid_keys != [] do
@@ -44,13 +46,11 @@ defmodule Phoenix.LiveView.Flash do
   # run after the original fetch_flash code.
   def call(conn, opts) do
     case cookie_flash(conn, salt(conn, opts)) do
-      {conn, nil} ->
-        Phoenix.Controller.fetch_flash(conn, [])
-
+      {conn, nil} -> conn
       {conn, flash} ->
-        conn
-        |> Plug.Conn.put_session("phoenix_flash", flash)
-        |> Phoenix.Controller.fetch_flash([])
+        Enum.reduce(flash, conn, fn {kind, msg}, acc ->
+          Phoenix.Controller.put_flash(acc, kind, msg, persist: false)
+        end)
     end
   end
 
@@ -75,5 +75,15 @@ defmodule Phoenix.LiveView.Flash do
   @doc false
   def sign(endpoint_mod, salt, %{} = flash) do
     Phoenix.Token.sign(endpoint_mod, salt, flash)
+  end
+
+  @doc false
+  def verify!(endpoint, flash_token) do
+    salt = Phoenix.LiveView.Utils.salt!(endpoint)
+    case Phoenix.Token.verify(endpoint, salt, flash_token, max_age: @max_age) do
+      {:ok, flash} -> flash
+      {:error, :expired} -> nil
+      {:error, :invalid} -> raise "invalid flash token"
+    end
   end
 end

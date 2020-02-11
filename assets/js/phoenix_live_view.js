@@ -351,7 +351,7 @@ export class LiveSocket {
     })
   }
 
-  replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
+  replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let mainEl = this.main.el
     let mainID = this.main.id
     this.destroyAllViews()
@@ -365,7 +365,7 @@ export class LiveSocket {
       let el = template.content.childNodes[0]
       if(!el || !this.isPhxView(el)){ return Browser.redirect(href) }
 
-      this.joinView(el, null, href, newMain => {
+      this.joinView(el, null, href, flash, newMain => {
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
@@ -381,10 +381,10 @@ export class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
-  joinView(el, parentView, href, callback){
+  joinView(el, parentView, href, flash, callback){
     if(this.getViewByEl(el)){ return }
 
-    let view = new View(el, this, parentView, href)
+    let view = new View(el, this, parentView, href, flash)
     this.views[view.id] = view
     view.join(callback)
     return view
@@ -611,7 +611,7 @@ export class LiveSocket {
       if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
         this.main.pushLinkPatch(href)
       } else {
-        this.replaceMain(href, () => {
+        this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
         })
       }
@@ -645,8 +645,8 @@ export class LiveSocket {
     this.registerNewLocation(window.location)
   }
 
-  historyRedirect(href, linkState){
-    this.replaceMain(href, () => {
+  historyRedirect(href, linkState, flash){
+    this.replaceMain(href, flash, () => {
       Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
       this.registerNewLocation(window.location)
     })
@@ -1134,8 +1134,9 @@ class DOMPatch {
 }
 
 export class View {
-  constructor(el, liveSocket, parentView, href){
+  constructor(el, liveSocket, parentView, href, flash){
     this.liveSocket = liveSocket
+    this.flash = flash
     this.parent = parentView
     this.gracefullyClosed = false
     this.el = el
@@ -1152,7 +1153,8 @@ export class View {
         url: this.href,
         params: this.liveSocket.params(this.view),
         session: this.getSession(),
-        static: this.getStatic()
+        static: this.getStatic(),
+        flash: this.flash
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
@@ -1373,8 +1375,8 @@ export class View {
   bindChannel(){
     this.channel.on("diff", (diff) => this.update(diff))
     this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
-    this.channel.on("live_patch", ({to, kind}) => this.onLivePatch({to, kind}))
-    this.channel.on("live_redirect", ({to, kind}) => this.onLiveRedirect({to, kind}))
+    this.channel.on("live_patch", (redir) => this.onLivePatch(redir))
+    this.channel.on("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
@@ -1385,12 +1387,14 @@ export class View {
     this.liveSocket.destroyViewById(this.id)
   }
 
-  onLiveRedirect({to, kind}){
+  onLiveRedirect(redir){
+    let {to, kind, flash} = redir
     let url = `${window.location.protocol}//${window.location.host}${to}`
-    this.liveSocket.historyRedirect(url, kind)
+    this.liveSocket.historyRedirect(url, kind, flash)
   }
 
-  onLivePatch({to, kind}){
+  onLivePatch(redir){
+    let {to, kind} = redir
     this.href = to
     this.liveSocket.historyPatch(to, kind)
   }
@@ -1409,6 +1413,7 @@ export class View {
         if(this.joinCount === 0){ callback && callback(this) }
         this.joinCount++
         this.joinPending = true
+        this.flash = null
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
@@ -1551,7 +1556,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     this.pushWithReply("link", {url: href}, resp => {
       if(resp.link_redirect){
-        this.liveSocket.replaceMain(href, callback, linkRef)
+        this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
