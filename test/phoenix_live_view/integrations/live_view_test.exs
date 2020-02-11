@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
 
       assert children == [
-               "The temp is: 1\n",
+               "Redirect: none\nThe temp is: 1\n",
                {"button", [{"phx-click", "dec"}], ["-"]},
                {"button", [{"phx-click", "inc"}], ["+"]}
              ]
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "widget style live_render", %{conn: conn} do
       conn = get(conn, "/widget")
-      assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*The temp is: 0/
+      assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*time: 12:00 NY/
     end
   end
 
@@ -285,21 +285,21 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert DOM.parse(render_click(view, :inc)) ==
                DOM.parse("""
-               The temp is: 4
+               Redirect: none\nThe temp is: 4
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
 
       assert DOM.parse(render_click(view, :dec)) ==
                DOM.parse("""
-               The temp is: 3
+               Redirect: none\nThe temp is: 3
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
 
       assert DOM.child_nodes(hd(DOM.parse(render(view)))) ==
                DOM.parse("""
-               The temp is: 3
+               Redirect: none\nThe temp is: 3
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
@@ -368,7 +368,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "nested children are removed and killed", %{conn: conn} do
       html_without_nesting =
         DOM.parse("""
-        The temp is: 1
+        Redirect: none\nThe temp is: 1
         <button phx-click="dec">-</button>
         <button phx-click="inc">+</button>
         """)
@@ -526,7 +526,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag session: %{nest: []}
     test "push_redirect", %{conn: conn} do
-      {:ok, thermo_view, _} = live(conn, "/thermo")
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
 
       assert clock_view = find_child(thermo_view, "clock")
 
@@ -539,20 +540,23 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag session: %{nest: []}
     test "push_patch", %{conn: conn} do
-      {:ok, thermo_view, _} = live(conn, "/thermo")
-
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=push", fn ->
+      assert_redirect thermo_view, "/thermo?redirect=patch", fn ->
         send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=push")}
+          {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
         end})
       end
+
+      assert render(thermo_view) =~ "Redirect: patch"
     end
 
     @tag session: %{nest: []}
     test "redirect", %{conn: conn} do
-      {:ok, thermo_view, _} = live(conn, "/thermo")
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
 
       assert clock_view = find_child(thermo_view, "clock")
 

@@ -26,6 +26,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              {"div", _,
               [
+                _,
                 {"div", [], ["\n  unknown says hi with socket: true\n"]},
                 {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
                  ["\n  chris says hi with socket: true\n"]},
@@ -70,6 +71,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     html = render_click([view, "chris"], "transform", %{"op" => "upcase"})
 
     assert [
+             _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
@@ -80,6 +82,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
 
     assert [
+             _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
@@ -90,6 +93,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     html = render_click([view, "jose"], "transform", %{"op" => "dup"})
 
     assert [
+             _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
@@ -104,6 +108,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     html = render_click([view, "jose", "Jose-dup"], "transform", %{"op" => "upcase"})
 
     assert [
+             _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
@@ -227,27 +232,39 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   describe "redirects" do
     test "push_redirect", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/components")
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
 
-      assert_redirect view, "/components?redirect=push", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
-      end
+      result =
+        assert_redirect(view, "/components?redirect=push", fn ->
+          render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
+        end)
+
+      assert result == {:error, {:live_redirect, %{to: "/components?redirect=push"}}}
     end
 
     test "push_patch", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/components")
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
 
-      assert_redirect view, "/components?redirect=patch", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "push_patch"})
-      end
+      result =
+        assert_redirect(view, "/components?redirect=patch", fn ->
+          render_click([view, "chris"], "transform", %{"op" => "push_patch"})
+        end)
+
+      assert result =~ "Redirect: patch"
     end
 
     test "redirect", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/components")
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
 
-      assert_redirect view, "/components?redirect=redirect", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "redirect"})
-      end
+      result =
+        assert_redirect(view, "/components?redirect=redirect", fn ->
+          render_click([view, "chris"], "transform", %{"op" => "redirect"})
+        end)
+
+      assert result == {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
     end
   end
 end

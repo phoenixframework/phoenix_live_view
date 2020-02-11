@@ -108,16 +108,6 @@ defmodule Phoenix.LiveView.Diff do
 
   It returns the updated `component_diffs` and the updated `components` or
   `:error` if the component cid does not exist.
-
-  ## Example
-
-      {component_diffs, components} =
-        with_component(socket, cid, %{}, state.components, fn socket, component ->
-          case component.handle_event("...", ..., socket) do
-            {:noreply, socket} -> socket
-          end
-        end)
-
   """
   def with_component(socket, cid, component_diffs, components, fun) when is_integer(cid) do
     {id_to_components, cid_to_ids, _} = components
@@ -126,16 +116,18 @@ defmodule Phoenix.LiveView.Diff do
       %{^cid => {component, _} = id} ->
         {^cid, assigns, private, fingerprints} = Map.fetch!(id_to_components, id)
 
-        {pending_components, component_diffs, components} =
+        {component_socket, extra} =
           socket
           |> configure_socket_for_component(assigns, private, fingerprints)
           |> fun.(component)
-          |> render_component(id, cid, false, %{}, component_diffs, components)
+
+        {pending_components, component_diffs, components} =
+          render_component(component_socket, id, cid, false, %{}, component_diffs, components)
 
         {component_diffs, components} =
           render_pending_components(socket, pending_components, %{}, component_diffs, components)
 
-        {%{@components => component_diffs}, components}
+        {%{@components => component_diffs}, components, extra}
 
       %{} ->
         :error
@@ -162,12 +154,12 @@ defmodule Phoenix.LiveView.Diff do
       {:ok, cid} ->
         updated_assigns = maybe_call_preload!(module, updated_assigns)
 
-        {diff, new_components} =
+        {diff, new_components, :noop} =
           with_component(socket, cid, %{}, components, fn component_socket, component ->
-            Utils.maybe_call_update!(component_socket, component, updated_assigns)
+            {Utils.maybe_call_update!(component_socket, component, updated_assigns), :noop}
           end)
 
-        {:diff, diff, new_components}
+        {diff, new_components}
 
       :error ->
         :noop

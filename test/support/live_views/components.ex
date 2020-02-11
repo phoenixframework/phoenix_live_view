@@ -76,6 +76,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
 
   def render(assigns) do
     ~L"""
+    Redirect: <%= @redirect %>
     <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent %>
     <%= for name <- @names do %>
       <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent, id: name, name: name, from: @from %>
@@ -85,6 +86,10 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
 
   def mount(_params, %{"names" => names, "from" => from}, socket) do
     {:ok, assign(socket, names: names, from: from)}
+  end
+
+  def handle_params(params, _url, socket) do
+    {:noreply, assign(socket, redirect: params["redirect"] || "none")}
   end
 
   def handle_info({:send_update, updates}, socket) do

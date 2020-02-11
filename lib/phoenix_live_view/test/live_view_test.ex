@@ -581,17 +581,24 @@ defmodule Phoenix.LiveViewTest do
   Asserts a redirect was peformed after execution of the provided
   function.
 
+  Returns the result of the funtion.
+
   ## Examples
 
-      assert_redirect view, "/path", fn ->
-        assert render_click(view, :event_that_triggers_redirect)
-      end
+      result =
+        assert_redirect view, "/path", fn ->
+          render_click(view, :event_that_triggers_redirect)
+        end
+
+
+      assert result =~ "some new state from push patch"
   """
   defmacro assert_redirect(view, to, func) do
     quote do
       %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      unquote(func).()
+      result = unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
+      result
     end
   end
 

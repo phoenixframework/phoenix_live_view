@@ -5,6 +5,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   def render(assigns) do
     ~L"""
+    Redirect: <%= @redirect %>
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button><%= if @nest do %>
@@ -29,6 +30,10 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
        users: users,
        greeting: nil
      )}
+  end
+
+  def handle_params(params, _url, socket) do
+    {:noreply, assign(socket, redirect: params["redirect"] || "none")}
   end
 
   @key_i 73

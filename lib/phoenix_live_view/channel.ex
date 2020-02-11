@@ -84,7 +84,7 @@ defmodule Phoenix.LiveView.Channel do
 
     case Map.fetch(msg.payload, "cid") do
       {:ok, cid} ->
-        {:noreply, component_handle_event(state, cid, event, val, msg.ref)}
+        component_handle_event(state, cid, event, val, msg.ref)
 
       :error ->
         %{socket: socket} = state
@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({@prefix, :send_update, update}, state) do
     case Diff.update_component(state.socket, state.components, update) do
-      {:diff, diff, new_components} ->
+      {diff, new_components} ->
         {:noreply, push_render(%{state | components: new_components}, diff, nil)}
 
       :noop ->
@@ -105,18 +105,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :redirect, {:redirect, opts}}, state) do
-    state
-    |> push_redirect(opts, nil)
-    |> stop_shutdown_redirect(opts.to)
-  end
-
-  def handle_info({@prefix, :redirect, {:live, :redirect, opts}}, state) do
-    {:noreply, push_live_redirect(state, opts, nil)}
-  end
-
-  def handle_info({@prefix, :redirect, {:live, _patch, opts}}, state) do
-    {:noreply, push_live_patch(state, opts)}
+  def handle_info({@prefix, :redirect, command}, state) do
+    handle_redirect(command, state, state.socket, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -139,7 +129,7 @@ defmodule Phoenix.LiveView.Channel do
     case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
         case handle_changed(state, new_socket, nil) do
-          {:ok, _changed, new_state} -> {:reply, reply, new_state}
+          {:noreply, new_state} -> {:reply, reply, new_state}
           {:stop, reason, new_state} -> {:stop, reason, reply, new_state}
         end
 
@@ -243,10 +233,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp handle_result({:noreply, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
-    case handle_changed(state, new_socket, ref) do
-      {:ok, _changed, new_state} -> {:noreply, new_state}
-      {:stop, reason, new_state} -> {:stop, reason, new_state}
-    end
+    handle_changed(state, new_socket, ref)
   end
 
   defp handle_result({:stop, %Socket{redirected: nil}}, {_, _, _}, _) do
@@ -295,22 +282,14 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp component_handle_event(
-         %{socket: socket, components: components} = state,
-         cid,
-         event,
-         val,
-         ref
-       ) do
-    {diff, new_components} =
+  defp component_handle_event(state, cid, event, val, ref) do
+    %{socket: socket, components: components} = state
+
+    {diff, new_components, redirected} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
-          {:noreply, %Socket{redirected: nil} = component_socket} ->
-            component_socket
-
           {:noreply, %Socket{redirected: redirected} = component_socket} ->
-            send_redirect(component_socket, redirected)
-            component_socket
+            {component_socket, redirected}
 
           other ->
             raise ArgumentError, """
@@ -322,7 +301,13 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    push_render(%{state | components: new_components}, diff, ref)
+    new_state = %{state | components: new_components}
+
+    if redirected do
+      handle_redirect(redirected, new_state, socket, ref)
+    else
+      {:noreply, push_render(new_state, diff, ref)}
+    end
   end
 
   defp decode_event_type("form", url_encoded) do
@@ -355,23 +340,31 @@ defmodule Phoenix.LiveView.Channel do
 
   defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do
     new_state = %{state | socket: new_socket}
-    root_pid = new_socket.root_pid
 
     case maybe_changed(new_state) do
       :diff ->
         {diff, new_state} = render_diff(new_state, new_socket)
 
-        {:ok, :diff,
+        {:noreply,
          new_state
          |> push_live_patch(pending_live_patch)
          |> push_render(diff, ref)}
 
       :noop ->
-        {:ok, :noop,
+        {:noreply,
          new_state
          |> push_live_patch(pending_live_patch)
          |> push_noop(ref)}
 
+      result ->
+        handle_redirect(result, new_state, new_socket, ref)
+    end
+  end
+
+  defp handle_redirect(result, new_state, new_socket, ref) do
+    root_pid = new_socket.root_pid
+
+    case result do
       {:redirect, %{to: to} = opts} ->
         new_state
         |> push_redirect(opts, ref)
@@ -388,10 +381,10 @@ defmodule Phoenix.LiveView.Channel do
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
-        send_redirect(new_state.socket, patch)
+        send(new_socket.root_pid, {@prefix, :redirect, patch})
         {diff, new_state} = render_diff(new_state, new_socket)
 
-        {:ok, :diff,
+        {:noreply,
          new_state
          |> drop_redirect()
          |> push_render(diff, ref)}
@@ -419,7 +412,7 @@ defmodule Phoenix.LiveView.Channel do
 
       {:stop, %Socket{} = new_socket} ->
         case handle_changed(state, new_socket, ref, opts) do
-          {:ok, _changed, state} -> {:stop, :shutdown, state}
+          {:noreply, state} -> {:stop, :shutdown, state}
           {:stop, reason, state} -> {:stop, reason, state}
         end
     end
@@ -648,9 +641,5 @@ defmodule Phoenix.LiveView.Channel do
 
   defp assign_action(socket, action) do
     Phoenix.LiveView.assign(socket, :live_view_action, action)
-  end
-
-  defp send_redirect(socket, command) do
-    send(socket.root_pid, {@prefix, :redirect, command})
   end
 end

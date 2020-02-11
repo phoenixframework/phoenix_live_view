@@ -24,7 +24,7 @@ defmodule Phoenix.LiveViewTest.LayoutView do
 
   def render("widget.html", assigns) do
     ~L"""
-    WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ThermostatLive) %>
+    WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ClockLive) %>
     """
   end
 end
