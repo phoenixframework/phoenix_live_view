@@ -36,6 +36,12 @@ defmodule Phoenix.LiveView.Flash do
   end
 
   @impl Plug
+  # TODO: We are overriding the session, which overrides all previous
+  # flash in there. We need a public API for this. Maybe fetch_flash
+  # shouldn't even execute again if the flash was already loaded.
+  # Finally, there is a mismatch between string/atom keys in flash
+  # that we may need to address. Also, make it official this has to
+  # run after the original fetch_flash code.
   def call(conn, opts) do
     case cookie_flash(conn, salt(conn, opts)) do
       {conn, nil} ->

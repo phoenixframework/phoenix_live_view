@@ -1432,10 +1432,9 @@ defmodule Phoenix.LiveView do
   your browser's pipeline for flash to be supported, for example:
 
       pipeline :browser do
-        plug :accepts, ["html"]
-        plug :fetch_session
-        plug Phoenix.LiveView.Flash
         ...
+        plug :fetch_flash
+        plug Phoenix.LiveView.Flash
       end
 
   ## Examples
