@@ -564,34 +564,41 @@ export class LiveSocket {
   }
 
   bindClicks(){
-    window.addEventListener("click", e => {
-      let click = this.binding("click")
-      let target = e.target
-      let phxEvent = target && target.getAttribute(click)
-      if(!phxEvent){ return }
-      if(target.getAttribute("href") === "#"){ e.preventDefault() }
+    [true, false].forEach(capture => {
+      let click = capture ? this.binding("capture-click") : this.binding("click")
+      window.addEventListener("click", e => {
+        let target = null
+        if(capture){
+          target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
+        } else {
+          target = closestPhxBinding(e.target, click)
+        }
+        let phxEvent = target && target.getAttribute(click)
+        if(!phxEvent){ return }
+        if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
-      let meta = {
-        altKey: e.altKey,
-        shiftKey: e.shiftKey,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey,
-        x: e.x || e.clientX,
-        y: e.y || e.clientY,
-        pageX: e.pageX,
-        pageY: e.pageY,
-        screenX: e.screenX,
-        screenY: e.screenY,
-        offsetX: e.offsetX,
-        offsetY: e.offsetY,
-      }
+        let meta = {
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          x: e.x || e.clientX,
+          y: e.y || e.clientY,
+          pageX: e.pageX,
+          pageY: e.pageY,
+          screenX: e.screenX,
+          screenY: e.screenY,
+          offsetX: e.offsetX,
+          offsetY: e.offsetY,
+        }
 
-      this.debounce(target, e, () => {
-        this.withinOwners(target, (view, targetCtx) => {
-          view.pushEvent("click", target, targetCtx, phxEvent, meta)
+        this.debounce(target, e, () => {
+          this.withinOwners(target, (view, targetCtx) => {
+            view.pushEvent("click", target, targetCtx, phxEvent, meta)
+          })
         })
-      })
-    }, false)
+      }, capture)
+    })
   }
 
   bindNav(){
