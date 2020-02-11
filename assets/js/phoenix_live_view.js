@@ -620,7 +620,7 @@ export class LiveSocket {
       if(this.pendingLink === href){ return }
 
       if(type === "patch"){
-        this.historyPatch(href, linkState)
+        this.pushHistoryPatch(href, linkState)
       } else if(type === "redirect") {
         this.historyRedirect(href, linkState)
       } else {
@@ -629,11 +629,13 @@ export class LiveSocket {
     }, false)
   }
 
+  pushHistoryPatch(href, linkState){
+    this.main.pushLinkPatch(href, () => this.historyPatch(href, linkState))
+  }
+
   historyPatch(href, linkState){
-    this.main.pushLinkPatch(href, () => {
-      Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
-      this.registerNewLocation(window.location)
-    })
+    Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
+    this.registerNewLocation(window.location)
   }
 
   historyRedirect(href, linkState){
