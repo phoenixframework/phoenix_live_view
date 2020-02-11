@@ -61,8 +61,9 @@ defmodule Phoenix.LiveView.Flash do
   defp cookie_flash(%Plug.Conn{} = conn, _salt), do: {conn, nil}
 
   defp salt(conn, opts) do
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-    opts[:signing_salt] || Phoenix.LiveView.Utils.salt!(endpoint)
+    "flash:" <>
+      (opts[:signing_salt] ||
+         conn |> Phoenix.Controller.endpoint_module() |> Phoenix.LiveView.Utils.salt!())
   end
 
   @doc false
