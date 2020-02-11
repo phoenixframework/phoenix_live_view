@@ -51,11 +51,8 @@ defmodule Phoenix.LiveView.Flash do
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn, salt) do
     flash =
       case Phoenix.Token.verify(conn, salt, token, max_age: 60_000) do
-        {:ok, %{} = flash} ->
-          for {k, v} when is_binary(k) and is_binary(v) <- flash, into: %{}, do: {k, v}
-
-        _ ->
-          nil
+        {:ok, %{} = flash} -> flash
+        _ -> nil
       end
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}

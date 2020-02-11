@@ -97,11 +97,14 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Puts a flash message in the socket.
   """
-  def put_flash(%Socket{private: private} = socket, kind, msg)
-      when is_atom(kind) and is_binary(msg) do
-    new_private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
-    %Socket{socket | private: new_private}
+  def put_flash(%Socket{private: private} = socket, kind, msg) do
+    kind = flash_key(kind)
+    private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
+    %Socket{socket | private: private}
   end
+
+  defp flash_key(binary) when is_binary(binary), do: binary
+  defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
   @doc """
   Signs the socket's flash into a token if it has been set.

@@ -17,6 +17,13 @@ defmodule Phoenix.LiveViewUnitTest do
             nil
           )
 
+  describe "flash" do
+    test "get and put" do
+      assert put_flash(@socket, :hello, "world").private.flash == %{"hello" => "world"}
+      assert put_flash(@socket, :hello, :world).private.flash == %{"hello" => :world}
+    end
+  end
+
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
       socket = Utils.post_mount_prune(%{@socket | connected?: true})
