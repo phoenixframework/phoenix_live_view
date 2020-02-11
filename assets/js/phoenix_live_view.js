@@ -40,6 +40,7 @@ const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_CHANGE_EVENT = "phx-change"
 const PHX_UPDATE = "update"
+const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
 const PHX_AUTO_RECOVER = "auto-recover"
 const LOADER_TIMEOUT = 1
@@ -480,6 +481,9 @@ export class LiveSocket {
     this.bindNav()
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
+      let matchKey = target.getAttribute(this.binding(PHX_KEY))
+      if(matchKey && matchKey.toLowerCase() !== e.key.toLowerCase()){ return }
+
       view.pushKey(target, targetCtx, type, phxEvent, {
         altGraphKey: e.altGraphKey,
         altKey: e.altKey,
