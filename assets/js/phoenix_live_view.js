@@ -352,11 +352,10 @@ export class LiveSocket {
   }
 
   replaceMain(href, callback = null, linkRef = this.setPendingLink(href)){
-    this.main.showLoader(this.loaderTimeout)
     let mainEl = this.main.el
     let mainID = this.main.id
-    let wasLoading = this.main.isLoading()
     this.destroyAllViews()
+    this.main.showLoader(this.loaderTimeout)
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return Browser.redirect(href) }
@@ -374,7 +373,7 @@ export class LiveSocket {
         this.destroyViewById(mainID)
         mainEl.replaceWith(newMain.el)
         this.main = newMain
-        if(wasLoading){ this.main.showLoader() }
+        this.main.showLoader()
         callback && callback()
       })
     })
