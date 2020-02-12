@@ -1057,8 +1057,9 @@ class DOMPatch {
         DOM.discardError(targetContainer, toEl)
 
         if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
-          this.trackBefore("updated", fromEl, fromEl)
+          this.trackBefore("updated", fromEl, toEl)
           DOM.mergeInputs(fromEl, toEl)
+          updates.push(fromEl)
           return false
         } else {
           this.trackBefore("updated", fromEl, toEl)
