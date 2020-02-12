@@ -88,7 +88,8 @@ defmodule Phoenix.LiveViewTest.ClockLive do
 
   def render(assigns) do
     ~L"""
-    time: <%= @time %> <%= @name %>
+
+    <%= live_flash(@flash, :info) %>time: <%= @time %> <%= @name %>
     <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls") %>
     """
   end

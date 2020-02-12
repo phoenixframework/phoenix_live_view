@@ -1,11 +1,16 @@
 defmodule Phoenix.LiveViewTest.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
-  import Plug.Test, only: [init_test_session: 2]
 
   pipeline :browser do
     plug :accepts, ["html"]
-    plug :init_test_session, %{}
+
+    plug Plug.Session,
+      store: :cookie,
+      key: "_live_view_key",
+      signing_salt: "/VEDsdfsffMnp5"
+
+    plug :fetch_session
     plug Phoenix.LiveView.Flash
   end
 
@@ -30,12 +35,13 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/show", FooBarLive.Index, :show
     live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
     live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
-    live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
+    live("/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar)
 
     live "/thermo", ThermostatLive
     live "/thermo/:id", ThermostatLive
     live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
     live "/", ThermostatLive, as: :live_root
+    live "/clock", ClockLive
 
     live "/same-child", SameChildLive
     live "/root", RootLive

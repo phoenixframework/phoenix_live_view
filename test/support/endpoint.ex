@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.Endpoint do
   def url(), do: "http://localhost:4000"
   def instrument(_, _, _, func), do: func.()
   def config(:live_view), do: [signing_salt: "112345678212345678312345678412"]
-  def config(:secret_key_base), do: "5678567899556789656789756789856789956789"
+  def config(:secret_key_base), do: String.duplicate("57689", 50)
 
   def init(opts), do: opts
 
@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewTest.Endpoint do
            )
 
   def call(conn, _) do
-    conn
+    %{conn | secret_key_base: config(:secret_key_base)}
     |> Plug.Parsers.call(@parsers)
     |> Plug.Conn.put_private(:phoenix_endpoint, __MODULE__)
     |> Phoenix.LiveViewTest.Router.call([])

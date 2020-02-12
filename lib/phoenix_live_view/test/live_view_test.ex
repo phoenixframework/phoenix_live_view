@@ -288,13 +288,16 @@ defmodule Phoenix.LiveViewTest do
     end
 
     case DOM.find_live_views(html) do
-      [{id, session_token, _static} | _] -> do_connect(conn, path, html, session_token, id, opts)
-      [] -> {:error, :nosession}
+      [{id, session_token, static_token} | _] ->
+        do_connect(conn, path, html, session_token, static_token, id, opts)
+
+      [] ->
+        {:error, :nosession}
     end
   end
 
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
-    child_statics = DOM.find_static_views(html)
+  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id, opts) do
+    child_statics = Map.delete(DOM.find_static_views(html), id)
     timeout = opts[:timeout] || 5000
 
     %ClientProxy{ref: ref} =
@@ -304,6 +307,7 @@ defmodule Phoenix.LiveViewTest do
         mount_path: path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
+        static_token: static_token,
         module: conn.assigns.live_view_module,
         endpoint: Phoenix.Controller.endpoint_module(conn),
         child_statics: child_statics
@@ -593,6 +597,14 @@ defmodule Phoenix.LiveViewTest do
 
 
       assert result =~ "some new state from push patch"
+
+  The flash may also be provided to match against:
+
+        assert_redirect view, "/path", %{"info" => "it worked!"}, fn ->
+          render_click(view, :event_that_triggers_redirect)
+        end
+
+  *Note*: the flash will container string keys.
   """
   defmacro assert_redirect(view, to, func) do
     quote do
@@ -600,6 +612,15 @@ defmodule Phoenix.LiveViewTest do
       result = unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
       result
+    end
+  end
+
+  defmacro assert_redirect(view, to, flash, func) do
+    quote do
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
+      result = unquote(func).()
+      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
+      assert unquote(flash) = Phoenix.LiveView.Flash.verify!(@endpoint, opts[:flash])
     end
   end
 
