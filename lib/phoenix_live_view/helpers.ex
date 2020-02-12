@@ -211,7 +211,12 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  TODO
+  Returns the flash message from the LiveView flash assign.
+
+  ## Examples
+
+      <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
+      <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
   """
   def live_flash(%_struct{} = other, _key) do
     raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"

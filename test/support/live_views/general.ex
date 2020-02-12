@@ -110,7 +110,6 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   end
 end
 
-
 defmodule Phoenix.LiveViewTest.ClockControlsLive do
   use Phoenix.LiveView
 
