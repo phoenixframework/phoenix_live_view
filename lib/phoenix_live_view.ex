@@ -409,6 +409,7 @@ defmodule Phoenix.LiveView do
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
   | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
 
+
   ### Click Events
 
   The `phx-click` binding is used to send click events to the server.
@@ -599,6 +600,21 @@ defmodule Phoenix.LiveView do
       def handle_event("update_temp", _key, socket) do
         {:noreply, socket}
       end
+
+  ### LiveView Specific Events
+
+  The `lv:` event prefix supports LiveView specific features that are handled
+  by LiveView without calling the user's `handle_event/3` callbacks. Today,
+  the follow events are supported:
+
+    - `lv:clear-flash` – clears the flash when send to the server. If a
+    `phx-value-key` is provided, the specific key will be removed from the flash.
+
+  For example:
+
+      <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
+        <%= live_flash(@flash, :info) %>
+      </p>
 
   ## Compartmentalizing markup and events with `render`, `live_render`, and `live_component`
 

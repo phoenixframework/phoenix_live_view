@@ -233,7 +233,8 @@ defmodule Phoenix.LiveViewTest.FlashLive do
   def render(assigns) do
     ~L"""
     uri[<%= @uri %>]
-    root[<%= live_flash(@flash, :info) %>]
+    root[<%= live_flash(@flash, :info) %>]:info
+    root[<%= live_flash(@flash, :error) %>]:error
     <%= live_component @socket, Phoenix.LiveViewTest.FlashComponent, id: "flash-component" %>
     child[<%= live_render @socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child" %>]
     """
@@ -253,6 +254,10 @@ defmodule Phoenix.LiveViewTest.FlashLive do
 
   def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
+  end
+
+  def handle_event("push_patch", %{"to" => to, "error" => error}, socket) do
+    {:noreply, socket |> put_flash(:error, error) |> push_patch(to: to)}
   end
 end
 

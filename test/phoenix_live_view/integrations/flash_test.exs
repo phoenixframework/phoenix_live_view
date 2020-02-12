@@ -117,4 +117,23 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert html =~ "flash from the dead"
     end
   end
+
+  test "lv:clear-flash", %{conn: conn} do
+    {:ok, flash_live, _} = live(conn, "/flash-root")
+
+    render_click(flash_live, "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
+    render_click(flash_live, "push_patch", %{"to" => "/flash-root?patch", "error" => "no!"})
+    result = render(flash_live)
+    assert result =~ "uri[http://localhost:4000/flash-root?patch]"
+    assert result =~ "root[ok!]:info"
+    assert result =~ "root[no!]:error"
+
+    result = render_click(flash_live, "lv:clear-flash", %{key: "info"})
+    assert result =~ "root[]:info"
+    assert result =~ "root[no!]:error"
+
+    result = render_click(flash_live, "lv:clear-flash", %{})
+    assert result =~ "root[]:info"
+    assert result =~ "root[]:error"
+  end
 end
