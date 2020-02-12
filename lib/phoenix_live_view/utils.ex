@@ -42,7 +42,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp configure_assigns(assigns, view, action, flash) do
-    Map.merge(assigns, %{live_view_module: view, live_view_action: action, flash: flash || %{}})
+    Map.merge(assigns, %{live_view_module: view, live_view_action: action, flash: flash})
   end
 
   @doc """
@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView.Utils do
   def get_flash(%{} = flash, key), do: flash[key]
 
   def merge_flash(%Socket{} = socket, %{} = new_flash) do
-    current_flash = get_flash(socket) || %{}
+    current_flash = get_flash(socket)
     LiveView.assign(socket, :flash, Map.merge(current_flash, new_flash))
   end
 

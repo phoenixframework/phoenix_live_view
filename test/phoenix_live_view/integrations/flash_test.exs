@@ -1,5 +1,5 @@
-defmodule Phoenix.LiveView.FlashTest do
-  use ExUnit.Case, async: true
+defmodule Phoenix.LiveView.FlashIntegrationTest do
+  use ExUnit.Case, async: false
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest

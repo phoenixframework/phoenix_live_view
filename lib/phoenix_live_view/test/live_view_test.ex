@@ -604,7 +604,7 @@ defmodule Phoenix.LiveViewTest do
 
       if flash do
         assert unquote(flash) =
-                (opts[:flash] && Phoenix.LiveView.Flash.verify(@endpoint, opts[:flash])) || %{}
+                (opts[:flash] && Phoenix.LiveView.Flash.verify(@endpoint, opts[:flash]))
       end
     end
   end

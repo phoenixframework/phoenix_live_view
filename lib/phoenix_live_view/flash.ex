@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.Flash do
   @moduledoc """
   Fetches Phoenix LiveView flash messages from cookie token.
-  
+
   This Plug can be used in place of Phoenix' `fetch_flash`.
 
   ## Examples
@@ -74,8 +74,8 @@ defmodule Phoenix.LiveView.Flash do
     salt = salt(endpoint_mod)
     case Phoenix.Token.verify(endpoint_mod, salt, flash_token, max_age: @max_age) do
       {:ok, flash} -> flash
-      {:error, :expired} -> nil
-      {:error, :invalid} -> nil
+      {:error, :expired} -> %{}
+      {:error, :invalid} -> %{}
     end
   end
 end
