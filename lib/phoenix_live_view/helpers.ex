@@ -210,6 +210,14 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc """
+  TODO
+  """
+  def live_flash(%_struct{} = other, _key) do
+    raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
+  end
+  def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
+
   defp maybe_do(value) do
     if Keyword.keyword?(value), do: value[:do]
   end

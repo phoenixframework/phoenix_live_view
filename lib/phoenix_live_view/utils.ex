@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Puts a flash message in the socket.
   """
-  def put_flash(%Socket{assigns: assigns} = socket, kind, msg)
+  def put_flash(%Socket{assigns: assigns} = socket, kind, msg) do
     kind = flash_key(kind)
     new_flash = Map.put(assigns[:flash] || %{}, kind, msg)
     LiveView.assign(socket, flash: new_flash)
@@ -121,7 +121,7 @@ defmodule Phoenix.LiveView.Utils do
   Signs the socket's flash into a token if it has been set.
   """
   def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do
-    LiveView.Flash.sign(endpoint, salt!(endpoint), flash)
+    LiveView.Flash.sign(endpoint, flash)
   end
 
   @doc """

@@ -6,17 +6,13 @@ defmodule Phoenix.LiveView.Flash do
 
       plug Phoenix.LiveView.Flash
 
-  By default, the signing salt for the token is pulled from
+  The signing salt for the token is pulled from
   your endpoint's LiveView config, for example:
 
       config :my_app, MyAppWeb.Endpoint,
         ...,
         live_view: [signing_salt: ...]
-
-  The `:signing_salt` option may also be passed directly to the plug.
   """
-
-  @valid_keys [:signing_salt]
 
   @behaviour Plug
 
@@ -25,17 +21,7 @@ defmodule Phoenix.LiveView.Flash do
   @max_age :timer.seconds(60)
 
   @impl Plug
-  def init(opts) do
-    if Keyword.keys(opts) -- @valid_keys != [] do
-      raise ArgumentError, """
-      invalid options passed to #{inspect(__MODULE__)}.
-
-      Valid options include #{inspect(@valid_keys)}, got: #{inspect(opts)}
-      """
-    end
-
-    opts
-  end
+  def init(opts), do: opts
 
   @impl Plug
   # TODO: We are overriding the session, which overrides all previous
@@ -44,43 +30,49 @@ defmodule Phoenix.LiveView.Flash do
   # Finally, there is a mismatch between string/atom keys in flash
   # that we may need to address. Also, make it official this has to
   # run after the original fetch_flash code.
-  def call(conn, opts) do
-    case cookie_flash(conn, salt(conn, opts)) do
-      {conn, nil} -> conn
+  def call(conn, _opts) do
+    case cookie_flash(conn) do
+      {conn, nil} ->
+        Phoenix.Controller.fetch_flash(conn, [])
+
       {conn, flash} ->
-        Enum.reduce(flash, conn, fn {kind, msg}, acc ->
-          Phoenix.Controller.put_flash(acc, kind, msg, persist: false)
-        end)
+        conn
+        |> Plug.Conn.put_session("phoenix_flash", flash)
+        |> Phoenix.Controller.fetch_flash([])
     end
   end
 
-  defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn, salt) do
+  defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do
+    salt = salt(conn)
     flash =
-      case Phoenix.Token.verify(conn, salt, token, max_age: 60_000) do
+      case Phoenix.Token.verify(conn, salt, token, max_age: @max_age) do
         {:ok, %{} = flash} -> flash
-        _ -> nil
+        other ->
+          IO.inspect(other)
+          nil
       end
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
   end
 
-  defp cookie_flash(%Plug.Conn{} = conn, _salt), do: {conn, nil}
+  defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
 
-  defp salt(conn, opts) do
-    "flash:" <>
-      (opts[:signing_salt] ||
-         conn |> Phoenix.Controller.endpoint_module() |> Phoenix.LiveView.Utils.salt!())
+  defp salt(%Plug.Conn{} = conn) do
+    conn |> Phoenix.Controller.endpoint_module() |> salt()
+  end
+  defp salt(endpoint_mod) when is_atom(endpoint_mod) do
+    "flash:" <> Phoenix.LiveView.Utils.salt!(endpoint_mod)
   end
 
   @doc false
-  def sign(endpoint_mod, salt, %{} = flash) do
-    Phoenix.Token.sign(endpoint_mod, salt, flash)
+  def sign(endpoint_mod, %{} = flash) do
+    Phoenix.Token.sign(endpoint_mod, salt(endpoint_mod), flash)
   end
 
   @doc false
-  def verify!(endpoint, flash_token) do
-    salt = Phoenix.LiveView.Utils.salt!(endpoint)
-    case Phoenix.Token.verify(endpoint, salt, flash_token, max_age: @max_age) do
+  def verify!(endpoint_mod, flash_token) do
+    salt = salt(endpoint_mod)
+    case Phoenix.Token.verify(endpoint_mod, salt, flash_token, max_age: @max_age) do
       {:ok, flash} -> flash
       {:error, :expired} -> nil
       {:error, :invalid} -> raise "invalid flash token"

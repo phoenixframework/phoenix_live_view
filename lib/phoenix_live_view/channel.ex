@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :redirect, command}, state) do
-    handle_redirect(state, command, state.socket, nil)
+    handle_redirect(state, command, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -285,12 +285,11 @@ defmodule Phoenix.LiveView.Channel do
   defp component_handle_event(state, cid, event, val, ref) do
     %{socket: socket, components: components} = state
 
-    {diff, new_components, redirected} =
+    {diff, new_components, {redirected, flash}} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
-        socket_before = component_socket
         case component.handle_event(event, val, component_socket) do
-          {:noreply, %Socket{redirected: redirected} = component_socket} ->
-            {component_socket, redirected}
+          {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
+            {component_socket, {redirected, assigns.flash}}
 
           other ->
             raise ArgumentError, """
@@ -302,10 +301,11 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    new_state = push_render(%{state | components: new_components}, diff, ref)
+    new_socket = Utils.merge_flash(socket, flash)
+    new_state = push_render(%{state | socket: new_socket, components: new_components}, diff, ref)
 
     if redirected do
-      handle_redirect(new_state, redirected, socket, nil)
+      handle_redirect(new_state, redirected, nil)
     else
       {:noreply, new_state}
     end
@@ -358,11 +358,11 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       result ->
-        handle_redirect(new_state, result, new_socket, ref)
+        handle_redirect(new_state, result, ref)
     end
   end
 
-  defp handle_redirect(new_state, result, new_socket, ref) do
+  defp handle_redirect(%{socket: new_socket} = new_state, result, ref) do
     root_pid = new_socket.root_pid
 
     case result do
@@ -447,11 +447,6 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
 
-  defp maybe_put_flash(%{socket: socket} = state, %{} = flash) do
-    %{state | socket: Utils.merge_flash(socket, flash)}
-  end
-  defp maybe_put_flash(%{socket: _socket} = state, nil = _flash), do: state
-
   defp copy_flash(%{socket: socket}, opts) do
     if flash = Utils.get_flash(socket) do
       Map.put(opts, :flash, Utils.sign_flash(socket, flash))
@@ -517,7 +512,7 @@ defmodule Phoenix.LiveView.Channel do
   defp verify_flash!(endpoint, %{"flash" => flash_token}) when is_binary(flash_token) do
     Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
   end
-  defp verify_flash!(_endpoint, %{}), do: %{}
+  defp verify_flash!(_endpoint, %{}), do: nil
 
   defp verified_mount(verified, params, from, phx_socket) do
     %{
@@ -527,7 +522,7 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root,
       session: session,
-      assigned_new: assigned_new
+      assigned_new: assigned_new,
     } = verified
 
     # Optional verified parts
@@ -539,7 +534,12 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
-    flash = verify_flash!(endpoint, params)
+    flash =
+      cond do
+        param_flash = verify_flash!(endpoint, params) -> param_flash
+        params["joins"] == 0 && verified[:flash] -> verified[:flash]
+        true -> %{}
+      end
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -578,6 +578,8 @@ defmodule Phoenix.LiveView.Channel do
         action
       )
       |> Utils.merge_flash(flash)
+
+    IO.inspect({:flash, socket.assigns.flash})
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])

@@ -1154,7 +1154,8 @@ export class View {
         params: this.liveSocket.params(this.view),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
+        joins: this.joinCount
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
@@ -1389,14 +1390,18 @@ export class View {
 
   onLiveRedirect(redir){
     let {to, kind, flash} = redir
-    let url = `${window.location.protocol}//${window.location.host}${to}`
+    let url = this.expandURL(to)
     this.liveSocket.historyRedirect(url, kind, flash)
   }
 
   onLivePatch(redir){
     let {to, kind} = redir
-    this.href = to
+    this.href = this.expandURL(to)
     this.liveSocket.historyPatch(to, kind)
+  }
+
+  expandURL(to){
+    return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
   onRedirect({to, flash}){ Browser.redirect(to, flash) }

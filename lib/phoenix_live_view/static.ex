@@ -99,6 +99,7 @@ defmodule Phoenix.LiveView.Static do
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
+    flash = Phoenix.Controller.get_flash(conn)
     request_url = Plug.Conn.request_url(conn)
 
     socket =
@@ -107,12 +108,14 @@ defmodule Phoenix.LiveView.Static do
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
         action
       )
+      |> Utils.merge_flash(flash)
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
         data_attrs = [
           phx_view: config.name,
-          phx_session: sign_root_session(socket, router, view, to_sign_session)
+          phx_session: sign_root_session(socket, router, view, to_sign_session),
+          phx_static: sign_static_token(socket),
         ]
 
         data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
@@ -335,6 +338,7 @@ defmodule Phoenix.LiveView.Static do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(endpoint, %{
       id: id,
+      flash: socket.assigns.flash,
       assigned_new: assigned_new_keys(socket)
     })
   end
