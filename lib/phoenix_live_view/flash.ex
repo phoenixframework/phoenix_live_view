@@ -76,6 +76,7 @@ defmodule Phoenix.LiveView.Flash do
       {:ok, flash} -> flash
       {:error, :expired} -> nil
       {:error, :invalid} -> raise "invalid flash token"
+      other -> raise inspect(other)
     end
   end
 end

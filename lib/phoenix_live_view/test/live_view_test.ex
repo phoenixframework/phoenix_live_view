@@ -620,7 +620,9 @@ defmodule Phoenix.LiveViewTest do
       %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       result = unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
-      assert unquote(flash) = Phoenix.LiveView.Flash.verify!(@endpoint, opts[:flash])
+
+      assert unquote(flash) =
+               (opts[:flash] && Phoenix.LiveView.Flash.verify!(@endpoint, opts[:flash])) || %{}
     end
   end
 

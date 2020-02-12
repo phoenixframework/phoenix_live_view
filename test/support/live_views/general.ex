@@ -5,6 +5,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   def render(assigns) do
     ~L"""
+    Flash: <%= live_flash(@flash, :info) %>
     Redirect: <%= @redirect %>
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
@@ -88,7 +89,6 @@ defmodule Phoenix.LiveViewTest.ClockLive do
 
   def render(assigns) do
     ~L"""
-
     <%= live_flash(@flash, :info) %>time: <%= @time %> <%= @name %>
     <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls") %>
     """
@@ -97,6 +97,8 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def mount(_params, session, socket) do
     {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   def handle_info(:snooze, socket) do
     {:noreply, assign(socket, :time, "12:05")}

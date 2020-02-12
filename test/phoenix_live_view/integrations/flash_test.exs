@@ -25,12 +25,33 @@ defmodule Phoenix.LiveView.FlashTest do
 
   describe "LiveView <=> LiveView" do
     test "redirect with flash", %{conn: conn} do
+      {:ok, clock_live, _} = live(conn, "/clock")
+
+      assert_redirect(clock_live, "/thermo", %{"info" => "ok!"}, fn ->
+        run(clock_live, fn socket ->
+          {:noreply, socket |> LiveView.put_flash(:info, "ok!") |> LiveView.redirect(to: "/thermo")}
+        end)
+      end)
     end
 
     test "push_redirect with flash", %{conn: conn} do
+      {:ok, clock_live, _} = live(conn, "/clock")
+
+      assert_redirect(clock_live, "/thermo", %{"info" => "ok!"}, fn ->
+        run(clock_live, fn socket ->
+          {:noreply, socket |> LiveView.put_flash(:info, "ok!") |> LiveView.push_redirect(to: "/thermo")}
+        end)
+      end)
     end
 
     test "push_patch with flash", %{conn: conn} do
+      {:ok, clock_live, _} = live(conn, "/clock")
+
+      assert_redirect(clock_live, "/clock?foo", %{"info" => "ok!"}, fn ->
+        run(clock_live, fn socket ->
+          {:noreply, socket |> LiveView.put_flash(:info, "ok!") |> LiveView.push_patch(to: "/clock?foo")}
+        end)
+      end)
     end
   end
 
