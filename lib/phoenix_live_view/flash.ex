@@ -74,8 +74,7 @@ defmodule Phoenix.LiveView.Flash do
     salt = salt(endpoint_mod)
     case Phoenix.Token.verify(endpoint_mod, salt, flash_token, max_age: @max_age) do
       {:ok, flash} -> flash
-      {:error, :expired} -> %{}
-      {:error, :invalid} -> %{}
+      {:error, _reason} -> %{}
     end
   end
 end

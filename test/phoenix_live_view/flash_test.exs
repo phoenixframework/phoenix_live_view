@@ -15,5 +15,6 @@ defmodule Phoenix.LiveView.FlashTest do
 
   test "verify with invalid flash token" do
     assert Flash.verify(Endpoint, "bad") == %{}
+    assert Flash.verify(Endpoint, nil) == %{}
   end
 end
