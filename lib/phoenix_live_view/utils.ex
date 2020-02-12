@@ -106,6 +106,9 @@ defmodule Phoenix.LiveView.Utils do
   """
   def clear_flash(%Socket{} = socket), do: LiveView.assign(socket, :flash, %{})
 
+  @doc """
+  Clears the key from the flash.
+  """
   def clear_flash(%Socket{} = socket, key) do
     new_flash = Map.delete(socket.assigns.flash, key)
     LiveView.assign(socket, flash: new_flash)

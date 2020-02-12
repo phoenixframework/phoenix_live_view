@@ -1467,14 +1467,19 @@ defmodule Phoenix.LiveView do
   @doc """
   Clears the flash.
 
-  A single flash key may be provided to clear only one message.
-
   ## Examples
 
       iex> clear_flash(socket)
-      iex> clear_flash(socket, :info)
   """
   defdelegate clear_flash(socket), to: Phoenix.LiveView.Utils
+
+  @doc """
+  Clears a key from the flash.
+
+  ## Examples
+
+      iex> clear_flash(socket, :info)
+  """
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
   @doc """

@@ -83,8 +83,12 @@ defmodule Phoenix.LiveView.Channel do
     val = decode_event_type(type, raw_val)
 
     case Map.fetch(msg.payload, "cid") do
-      {:ok, cid} -> component_handle_event(state, cid, event, val, msg.ref)
-      :error -> view_handle_event(state, event, val, msg.ref)
+      {:ok, cid} ->
+        component_handle_event(state, cid, event, val, msg.ref)
+      :error ->
+        state
+        |> view_handle_event(event, val)
+        |> handle_result({:handle_event, 3, msg.ref}, state)
     end
   end
 
@@ -165,27 +169,22 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp view_handle_event(%{socket: socket} = state, "lv:clear-flash", val, ref) do
-    new_socket =
-      case val do
-        %{"key" => key} -> Utils.clear_flash(socket, key)
-        _ -> Utils.clear_flash(socket)
-      end
-
-    handle_result({:noreply, new_socket}, {:handle_event, 3, ref}, state)
+  defp view_handle_event(%{socket: socket} = _state, "lv:clear-flash", val) do
+    case val do
+      %{"key" => key} -> {:noreply, Utils.clear_flash(socket, key)}
+      _ -> {:noreply, Utils.clear_flash(socket)}
+    end
   end
 
-  defp view_handle_event(%{socket: _socket} = _state, "lv:" <> _ = bad_event, _val, _ref) do
+  defp view_handle_event(%{socket: _socket} = _state, "lv:" <> _ = bad_event, _val) do
     raise ArgumentError, """
     received unknown LiveView event #{inspect(bad_event)}.
-    The follow LiveView events are suppported: lv:clear-flash.
+    The following LiveView events are suppported: lv:clear-flash.
     """
   end
 
-  defp view_handle_event(%{socket: socket} = state, event, val, ref) do
-    event
-    |> socket.view.handle_event(val, socket)
-    |> handle_result({:handle_event, 3, ref}, state)
+  defp view_handle_event(%{socket: socket} = _state, event, val) do
+    socket.view.handle_event(event, val, socket)
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
