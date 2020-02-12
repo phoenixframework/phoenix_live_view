@@ -28,21 +28,21 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action) do
+  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action, flash) do
     %{
       socket
       | id: random_id(),
         private: private,
-        assigns: configure_assigns(assigns, view, action)
+        assigns: configure_assigns(assigns, view, action, flash)
     }
   end
 
-  def configure_socket(%{assigns: assigns, view: view} = socket, private, action) do
-    %{socket | private: private, assigns: configure_assigns(assigns, view, action)}
+  def configure_socket(%{assigns: assigns, view: view} = socket, private, action, flash) do
+    %{socket | private: private, assigns: configure_assigns(assigns, view, action, flash)}
   end
 
-  defp configure_assigns(assigns, view, action) do
-    assigns |> Map.put(:live_view_module, view) |> Map.put(:live_view_action, action)
+  defp configure_assigns(assigns, view, action, flash) do
+    Map.merge(assigns, %{live_view_module: view, live_view_action: action, flash: flash})
   end
 
   @doc """
@@ -90,17 +90,37 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Returns the socket's flash messages.
   """
-  def get_flash(%Socket{private: private}) do
-    private[:flash]
+  def get_flash(%Socket{assigns: assigns}), do: assigns.flash
+  def get_flash(%{} = flash, key), do: flash[key]
+
+  @doc """
+  Merges a new flash with the socket's flash messages.
+  """
+  def merge_flash(%Socket{} = socket, %{} = new_flash) do
+    current_flash = get_flash(socket)
+    LiveView.assign(socket, :flash, Map.merge(current_flash, new_flash))
+  end
+
+  @doc """
+  Clears the flash.
+  """
+  def clear_flash(%Socket{} = socket), do: LiveView.assign(socket, :flash, %{})
+
+  @doc """
+  Clears the key from the flash.
+  """
+  def clear_flash(%Socket{} = socket, key) do
+    new_flash = Map.delete(socket.assigns.flash, key)
+    LiveView.assign(socket, flash: new_flash)
   end
 
   @doc """
   Puts a flash message in the socket.
   """
-  def put_flash(%Socket{private: private} = socket, kind, msg) do
+  def put_flash(%Socket{assigns: assigns} = socket, kind, msg) do
     kind = flash_key(kind)
-    private = Map.update(private, :flash, %{kind => msg}, &Map.put(&1, kind, msg))
-    %Socket{socket | private: private}
+    new_flash = Map.put(assigns.flash, kind, msg)
+    LiveView.assign(socket, flash: new_flash)
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
@@ -110,7 +130,7 @@ defmodule Phoenix.LiveView.Utils do
   Signs the socket's flash into a token if it has been set.
   """
   def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do
-    LiveView.Flash.sign(endpoint, salt!(endpoint), flash)
+    LiveView.Flash.sign(endpoint, flash)
   end
 
   @doc """

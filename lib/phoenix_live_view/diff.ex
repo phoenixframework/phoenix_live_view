@@ -343,7 +343,7 @@ defmodule Phoenix.LiveView.Diff do
   defp configure_socket_for_component(socket, assigns, private, prints) do
     %{
       socket
-      | assigns: assigns,
+      | assigns: Map.put(assigns, :flash, %{}),
         private: private,
         fingerprints: prints
     }

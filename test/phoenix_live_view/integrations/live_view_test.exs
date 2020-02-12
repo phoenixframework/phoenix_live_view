@@ -16,13 +16,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_bad_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
+    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
   defp simulate_outdated_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
+    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_expired_token_on_page(conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, nil} | _] = html |> DOM.parse() |> DOM.find_live_views()
+    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
 
     expired_token =
@@ -531,11 +531,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=push", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
-        end})
-      end
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=push"
     end
 
     @tag session: %{nest: []}
@@ -544,12 +543,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "Redirect: none"
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=patch", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
-        end})
-      end
-
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=patch"
       assert render(thermo_view) =~ "Redirect: patch"
     end
 
@@ -560,11 +557,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=redirect", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
-        end})
-      end
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=redirect"
     end
   end
 

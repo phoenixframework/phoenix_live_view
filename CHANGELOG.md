@@ -3,6 +3,8 @@
 ### Backwards incompatible changes
   - `live_redirect` was removed in favor of `push_patch` (for updating the URL and params of the current LiveView) and `push_redirect` (for updating the URL to another LiveView)
   - `live_link` was removed in favor of  `live_patch` (for updating the URL and params of the current LiveView) and `live_redirect` (for updating the URL to another LiveView)
+  - `Phoenix.LiveViewTest.assert_redirect` no longer accepts an anonymous function in favor of executing the code
+  prior to asserting the redirects, just like `assert_receive`.
 
 ### Enhancements
   - Support `@live_view_action` in LiveViews to simplify tracking of URL state
@@ -10,6 +12,7 @@
   - Add `phx-auto-recover` form binding for specialized recovery
   - Scroll to top of page while respecting anchor hash targets on `live_patch` and `live_redirect`
   - Add `phx-capture-click` to use event capturing to bind a click event as it propagates inwards from the target
+  - Revamp flash support so it works between static views, live views, and components.
 
 ### Bug Fixes
   - Send `phx-value-*` on key events

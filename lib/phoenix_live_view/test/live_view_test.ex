@@ -226,6 +226,7 @@ defmodule Phoenix.LiveViewTest do
 
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Plug.Test.init_test_session(%{})
+    |> Phoenix.LiveView.Flash.call(Phoenix.LiveView.Flash.init([]))
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(mount_opts)
   end
@@ -287,13 +288,16 @@ defmodule Phoenix.LiveViewTest do
     end
 
     case DOM.find_live_views(html) do
-      [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
-      [] -> {:error, :nosession}
+      [{id, session_token, static_token} | _] ->
+        do_connect(conn, path, html, session_token, static_token, id, opts)
+
+      [] ->
+        {:error, :nosession}
     end
   end
 
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, id, opts) do
-    child_statics = DOM.find_static_views(html)
+  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id, opts) do
+    child_statics = Map.delete(DOM.find_static_views(html), id)
     timeout = opts[:timeout] || 5000
 
     %ClientProxy{ref: ref} =
@@ -303,6 +307,7 @@ defmodule Phoenix.LiveViewTest do
         mount_path: path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
+        static_token: static_token,
         module: conn.assigns.live_view_module,
         endpoint: Phoenix.Controller.endpoint_module(conn),
         child_statics: child_statics
@@ -578,27 +583,28 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was peformed after execution of the provided
-  function.
-
-  Returns the result of the funtion.
+  Asserts a redirect was peformed with optional flash.
 
   ## Examples
 
-      result =
-        assert_redirect view, "/path", fn ->
-          render_click(view, :event_that_triggers_redirect)
-        end
+      render_click(view, :event_that_triggers_redirect)
+      assert_redirect view, "/path"
 
+  The flash may also be provided to match against:
 
-      assert result =~ "some new state from push patch"
+      assert_redirect view, "/path", %{"info" => "it worked!"}
+
+  *Note*: the flash will contain string keys.
   """
-  defmacro assert_redirect(view, to, func) do
+  defmacro assert_redirect(view, to, flash \\ nil) do
     quote do
+      flash = unquote(flash)
       %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      result = unquote(func).()
-      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
-      result
+      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
+
+      if flash do
+        assert unquote(flash) = Phoenix.LiveView.Flash.verify(@endpoint, opts[:flash])
+      end
     end
   end
 

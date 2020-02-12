@@ -4,6 +4,14 @@ defmodule Phoenix.LiveViewTest.Router do
 
   pipeline :browser do
     plug :accepts, ["html"]
+
+    plug Plug.Session,
+      store: :cookie,
+      key: "_live_view_key",
+      signing_salt: "/VEDsdfsffMnp5"
+
+    plug :fetch_session
+    plug Phoenix.LiveView.Flash
   end
 
   pipeline :bad_layout do
@@ -33,6 +41,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/thermo/:id", ThermostatLive
     live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
     live "/", ThermostatLive, as: :live_root
+    live "/clock", ClockLive
 
     live "/same-child", SameChildLive
     live "/root", RootLive
@@ -55,5 +64,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/action", ActionLive
     live "/action/index", ActionLive, :index
     live "/action/:id/edit", ActionLive, :edit
+
+    # integration flash
+    live "/flash-root", FlashLive
+    live "/flash-child", FlashChildLive
   end
 end

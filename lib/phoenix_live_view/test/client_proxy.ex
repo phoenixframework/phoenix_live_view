@@ -121,7 +121,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "static" => view.static_token,
       "url" => mount_url(view),
       "params" => view.connect_params,
-      "caller" => state.caller
+      "caller" => state.caller,
+      "joins" => 0,
     }
 
     spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
@@ -160,11 +161,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "redirect",
           topic: _topic,
-          payload: %{to: to}
+          payload: %{to: _to} = opts
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, to)
+    send_redirect(state, state.root_view.topic, opts)
     {:noreply, state}
   end
 
@@ -172,11 +173,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "live_patch",
           topic: _topic,
-          payload: %{to: to}
+          payload: %{to: _to} = opts
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, to)
+    send_redirect(state, state.root_view.topic, opts)
     {:noreply, state}
   end
 
@@ -184,11 +185,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "live_redirect",
           topic: _topic,
-          payload: %{to: to}
+          payload: %{to: _to} = opts
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, to)
+    send_redirect(state, state.root_view.topic, opts)
     {:noreply, state}
   end
 
@@ -209,18 +210,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     state = drop_reply(state, ref)
 
     case payload do
-      %{live_redirect: %{to: to}} ->
-        send_redirect(state, topic, to)
-        GenServer.reply(from, {:error, {:live_redirect, %{to: to}}})
+      %{live_redirect: %{to: _to} = opts} ->
+        send_redirect(state, topic, opts)
+        GenServer.reply(from, {:error, {:live_redirect, opts}})
         {:noreply, state}
 
-      %{live_patch: %{to: to}} ->
-        send_redirect(state, topic, to)
+      %{live_patch: %{to: _to} = opts} ->
+        send_redirect(state, topic, opts)
         {:noreply, render_reply(reply, from, state)}
 
-      %{redirect: %{to: to}} ->
-        send_redirect(state, topic, to)
-        GenServer.reply(from, {:error, {:redirect, %{to: to}}})
+      %{redirect: %{to: _to} = opts} ->
+        send_redirect(state, topic, opts)
+        GenServer.reply(from, {:error, {:redirect, opts}})
         {:noreply, state}
 
       %{} ->
@@ -456,7 +457,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       recursive_detect_added_or_removed_children(state, view, html_before)
     catch
       :throw, {:stop, {:redirect, view, to}, new_state} ->
-        send_redirect(new_state, view.topic, to)
+        send_redirect(new_state, view.topic, %{to: to})
         drop_all_views(new_state, :redirected)
     else
       new_state ->
@@ -524,8 +525,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     send(pid, {ref, msg})
   end
 
-  defp send_redirect(state, topic, to) do
-    send_caller(state, {:redirect, topic, %{to: to}})
+  defp send_redirect(state, topic, %{to: _to} = opts) do
+    send_caller(state, {:redirect, topic, opts})
   end
 
   defp push(state, view, event, payload) do

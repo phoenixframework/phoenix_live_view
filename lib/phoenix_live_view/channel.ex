@@ -85,12 +85,9 @@ defmodule Phoenix.LiveView.Channel do
     case Map.fetch(msg.payload, "cid") do
       {:ok, cid} ->
         component_handle_event(state, cid, event, val, msg.ref)
-
       :error ->
-        %{socket: socket} = state
-
-        event
-        |> socket.view.handle_event(val, socket)
+        state.socket
+        |> view_handle_event(event, val)
         |> handle_result({:handle_event, 3, msg.ref}, state)
     end
   end
@@ -105,8 +102,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :redirect, command}, state) do
-    handle_redirect(state, command, state.socket, nil)
+  def handle_info({@prefix, :redirect, command, flash}, state) do
+    new_state = %{state | socket: Utils.merge_flash(state.socket, flash)}
+    handle_redirect(new_state, command, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -169,6 +167,24 @@ defmodule Phoenix.LiveView.Channel do
     else
       {:ok, state}
     end
+  end
+
+  defp view_handle_event(%Socket{} = socket, "lv:clear-flash", val) do
+    case val do
+      %{"key" => key} -> {:noreply, Utils.clear_flash(socket, key)}
+      _ -> {:noreply, Utils.clear_flash(socket)}
+    end
+  end
+
+  defp view_handle_event(%Socket{}, "lv:" <> _ = bad_event, _val) do
+    raise ArgumentError, """
+    received unknown LiveView event #{inspect(bad_event)}.
+    The following LiveView events are suppported: lv:clear-flash.
+    """
+  end
+
+  defp view_handle_event(%Socket{} = socket, event, val) do
+    socket.view.handle_event(event, val, socket)
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
@@ -285,11 +301,11 @@ defmodule Phoenix.LiveView.Channel do
   defp component_handle_event(state, cid, event, val, ref) do
     %{socket: socket, components: components} = state
 
-    {diff, new_components, redirected} =
+    {diff, new_components, {redirected, flash}} =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
-          {:noreply, %Socket{redirected: redirected} = component_socket} ->
-            {component_socket, redirected}
+          {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
+            {component_socket, {redirected, assigns.flash}}
 
           other ->
             raise ArgumentError, """
@@ -301,10 +317,11 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    new_state = push_render(%{state | components: new_components}, diff, ref)
+    new_socket = Utils.merge_flash(socket, flash)
+    new_state = push_render(%{state | socket: new_socket, components: new_components}, diff, ref)
 
     if redirected do
-      handle_redirect(new_state, redirected, socket, nil)
+      handle_redirect(new_state, redirected, nil)
     else
       {:noreply, new_state}
     end
@@ -357,11 +374,11 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       result ->
-        handle_redirect(new_state, result, new_socket, ref)
+        handle_redirect(new_state, result, ref)
     end
   end
 
-  defp handle_redirect(new_state, result, new_socket, ref) do
+  defp handle_redirect(%{socket: new_socket} = new_state, result, ref) do
     root_pid = new_socket.root_pid
 
     case result do
@@ -381,7 +398,7 @@ defmodule Phoenix.LiveView.Channel do
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
-        send(new_socket.root_pid, {@prefix, :redirect, patch})
+        send(new_socket.root_pid, {@prefix, :redirect, patch, Utils.get_flash(new_socket)})
         {diff, new_state} = render_diff(new_state, new_socket)
 
         {:noreply,
@@ -508,6 +525,19 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
+  defp verify_flash(endpoint, verified, params) do
+    flash_token = params["flash"]
+    verified_flash = verified[:flash]
+
+    # verified_flash is fetched from the disconnected render.
+    # params["flash"] is sent on live redirects and therefore has higher priority.
+    cond do
+      flash_token -> Phoenix.LiveView.Flash.verify(endpoint, flash_token)
+      params["joins"] == 0 && verified_flash -> verified_flash
+      true -> %{}
+    end
+  end
+
   defp verified_mount(verified, params, from, phx_socket) do
     %{
       id: id,
@@ -527,6 +557,8 @@ defmodule Phoenix.LiveView.Channel do
       private: %{session: socket_session},
       transport_pid: transport_pid
     } = phx_socket
+
+    flash = verify_flash(endpoint, verified, params)
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -562,7 +594,8 @@ defmodule Phoenix.LiveView.Channel do
           connect_params: connect_params,
           assigned_new: {parent_assigns, assigned_new}
         },
-        action
+        action,
+        flash
       )
 
     socket
