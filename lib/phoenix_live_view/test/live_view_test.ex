@@ -604,7 +604,7 @@ defmodule Phoenix.LiveViewTest do
           render_click(view, :event_that_triggers_redirect)
         end
 
-  *Note*: the flash will container string keys.
+  *Note*: the flash will contain string keys.
   """
   defmacro assert_redirect(view, to, func) do
     quote do
