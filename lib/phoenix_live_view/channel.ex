@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, cid} ->
         component_handle_event(state, cid, event, val, msg.ref)
       :error ->
-        state
+        state.socket
         |> view_handle_event(event, val)
         |> handle_result({:handle_event, 3, msg.ref}, state)
     end
@@ -169,21 +169,21 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp view_handle_event(%{socket: socket} = _state, "lv:clear-flash", val) do
+  defp view_handle_event(%Socket{} = socket, "lv:clear-flash", val) do
     case val do
       %{"key" => key} -> {:noreply, Utils.clear_flash(socket, key)}
       _ -> {:noreply, Utils.clear_flash(socket)}
     end
   end
 
-  defp view_handle_event(%{socket: _socket} = _state, "lv:" <> _ = bad_event, _val) do
+  defp view_handle_event(%Socket{}, "lv:" <> _ = bad_event, _val) do
     raise ArgumentError, """
     received unknown LiveView event #{inspect(bad_event)}.
     The following LiveView events are suppported: lv:clear-flash.
     """
   end
 
-  defp view_handle_event(%{socket: socket} = _state, event, val) do
+  defp view_handle_event(%Socket{} = socket, event, val) do
     socket.view.handle_event(event, val, socket)
   end
 
