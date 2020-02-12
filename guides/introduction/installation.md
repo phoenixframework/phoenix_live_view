@@ -41,14 +41,14 @@ config :my_app, MyAppWeb.Endpoint,
    ]
 ```
 
-Next, add the LiveView flash plug to your browser pipeline, after `:fetch_flash`:
+Next, add the LiveView flash plug to your browser pipeline, in place of `:fetch_flash`:
 
 ```elixir
 # lib/my_app_web/router.ex
 
 pipeline :browser do
   ...
-  plug :fetch_flash
+  plug :fetch_session
   plug Phoenix.LiveView.Flash
 end
 ```

@@ -1434,11 +1434,12 @@ defmodule Phoenix.LiveView do
   Adds a flash message to the socket to be displayed on redirect.
 
   *Note*: the `Phoenix.LiveView.Flash` plug must be plugged in
-  your browser's pipeline for flash to be supported, for example:
+  your browser's pipeline in place of `fetch_flash to be supported,
+  for example:
 
       pipeline :browser do
         ...
-        plug :fetch_flash
+        plug :fetch_session
         plug Phoenix.LiveView.Flash
       end
 
