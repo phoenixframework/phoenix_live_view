@@ -34,7 +34,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.4.12", github: "phoenixframework/phoenix", branch: "v1.4"},
+      {:phoenix, "~> 1.4.13"},
       {:phoenix_html, "~> 2.14"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.20", only: :docs},
