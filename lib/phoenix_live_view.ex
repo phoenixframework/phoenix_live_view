@@ -569,10 +569,8 @@ defmodule Phoenix.LiveView do
   object's metadata. For example, pressing the Escape key looks like this:
 
       %{
-        "altKey" => false, "charCode" => 0, "code" => "Escape",
-        "ctrlKey" => false, "key" => "Escape", "keyCode" => 27,
-        "location" => 0, "metaKey" => false, "repeat" => false,
-        "shiftKey" => false, "which" => 27
+        "altKey" => false, "code" => "Escape", "ctrlKey" => false, "key" => "Escape",
+        "location" => 0, "metaKey" => false, "repeat" => false, "shiftKey" => false
       }
 
   By default, the bound element will be the event listener, but a

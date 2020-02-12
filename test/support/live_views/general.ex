@@ -36,13 +36,11 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, assign(socket, redirect: params["redirect"] || "none")}
   end
 
-  @key_i 73
-  @key_d 68
-  def handle_event("key", @key_i, socket) do
+  def handle_event("key", %{"key" => "i"}, socket) do
     {:noreply, update(socket, :val, &(&1 + 1))}
   end
 
-  def handle_event("key", @key_d, socket) do
+  def handle_event("key", %{"key" => "d"}, socket) do
     {:noreply, update(socket, :val, &(&1 - 1))}
   end
 
