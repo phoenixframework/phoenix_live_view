@@ -426,7 +426,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_redirect(state, opts, nil = _ref) do
-    push(state, "redirect", IO.inspect(copy_flash(state, opts)))
+    push(state, "redirect", copy_flash(state, opts))
   end
 
   defp push_redirect(state, opts, ref) do
@@ -509,10 +509,16 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verify_flash!(endpoint, %{"flash" => flash_token}) when is_binary(flash_token) do
-    Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
+  defp verify_flash(endpoint, verified, params) do
+    flash_token = params["flash"]
+    verified_flash = verified[:flash]
+
+    cond do
+      flash_token -> Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
+      params["joins"] == 0 && verified_flash -> verified_flash
+      true -> %{}
+    end
   end
-  defp verify_flash!(_endpoint, %{}), do: nil
 
   defp verified_mount(verified, params, from, phx_socket) do
     %{
@@ -522,7 +528,7 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root,
       session: session,
-      assigned_new: assigned_new,
+      assigned_new: assigned_new
     } = verified
 
     # Optional verified parts
@@ -534,12 +540,7 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
-    flash =
-      cond do
-        param_flash = verify_flash!(endpoint, params) -> param_flash
-        params["joins"] == 0 && verified[:flash] -> verified[:flash]
-        true -> %{}
-      end
+    flash = verify_flash(endpoint, verified, params)
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -578,8 +579,6 @@ defmodule Phoenix.LiveView.Channel do
         action
       )
       |> Utils.merge_flash(flash)
-
-    IO.inspect({:flash, socket.assigns.flash})
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])

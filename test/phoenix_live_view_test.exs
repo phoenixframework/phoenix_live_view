@@ -19,8 +19,8 @@ defmodule Phoenix.LiveViewUnitTest do
 
   describe "flash" do
     test "get and put" do
-      assert put_flash(@socket, :hello, "world").private.flash == %{"hello" => "world"}
-      assert put_flash(@socket, :hello, :world).private.flash == %{"hello" => :world}
+      assert put_flash(@socket, :hello, "world").assigns.flash == %{"hello" => "world"}
+      assert put_flash(@socket, :hello, :world).assigns.flash == %{"hello" => :world}
     end
   end
 
@@ -64,7 +64,8 @@ defmodule Phoenix.LiveViewUnitTest do
                existing: "existing",
                notexisting: "new-notexisting",
                live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
-               live_view_action: nil
+               live_view_action: nil,
+               flash: %{}
              }
     end
 
@@ -81,7 +82,8 @@ defmodule Phoenix.LiveViewUnitTest do
                existing2: "existing2",
                notexisting: "new-notexisting",
                live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
-               live_view_action: nil
+               live_view_action: nil,
+               flash: %{}
              }
     end
   end

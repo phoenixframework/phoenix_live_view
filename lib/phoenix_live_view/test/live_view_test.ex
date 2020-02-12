@@ -226,6 +226,7 @@ defmodule Phoenix.LiveViewTest do
 
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Plug.Test.init_test_session(%{})
+    |> Phoenix.LiveView.Flash.call(Phoenix.LiveView.Flash.init([]))
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(mount_opts)
   end
@@ -287,7 +288,7 @@ defmodule Phoenix.LiveViewTest do
     end
 
     case DOM.find_live_views(html) do
-      [{id, session_token, nil} | _] -> do_connect(conn, path, html, session_token, id, opts)
+      [{id, session_token, _static} | _] -> do_connect(conn, path, html, session_token, id, opts)
       [] -> {:error, :nosession}
     end
   end

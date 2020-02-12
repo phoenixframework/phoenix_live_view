@@ -1,9 +1,12 @@
 defmodule Phoenix.LiveViewTest.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
+  import Plug.Test, only: [init_test_session: 2]
 
   pipeline :browser do
     plug :accepts, ["html"]
+    plug :init_test_session, %{}
+    plug Phoenix.LiveView.Flash
   end
 
   pipeline :bad_layout do

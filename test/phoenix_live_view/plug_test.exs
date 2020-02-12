@@ -9,6 +9,8 @@ defmodule Phoenix.LiveView.PlugTest do
     opts = Keyword.merge([router: __MODULE__, layout: false], opts)
 
     conn
+    |> Plug.Test.init_test_session(%{})
+    |> Phoenix.LiveView.Flash.call(Phoenix.LiveView.Flash.init([]))
     |> put_private(:phoenix_live_view, {view, opts})
     |> LiveViewPlug.call(view)
   end
