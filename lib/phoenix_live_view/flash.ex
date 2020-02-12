@@ -47,9 +47,7 @@ defmodule Phoenix.LiveView.Flash do
     flash =
       case Phoenix.Token.verify(conn, salt, token, max_age: @max_age) do
         {:ok, %{} = flash} -> flash
-        other ->
-          IO.inspect(other)
-          nil
+        _ -> nil
       end
 
     {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
@@ -76,7 +74,6 @@ defmodule Phoenix.LiveView.Flash do
       {:ok, flash} -> flash
       {:error, :expired} -> nil
       {:error, :invalid} -> raise "invalid flash token"
-      other -> raise inspect(other)
     end
   end
 end
