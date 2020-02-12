@@ -513,6 +513,8 @@ defmodule Phoenix.LiveView.Channel do
     flash_token = params["flash"]
     verified_flash = verified[:flash]
 
+    # verified_flash is fetched from the disconnected render.
+    # params["flash"] is sent on live redirects and therefore has higher priority.
     cond do
       flash_token -> Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
       params["joins"] == 0 && verified_flash -> verified_flash
