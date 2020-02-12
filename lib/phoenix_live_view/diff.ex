@@ -341,12 +341,12 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
-    %{
+    Utils.clear_flash(%{
       socket
       | assigns: assigns,
         private: private,
         fingerprints: prints
-    }
+    })
   end
 
   defp dump_component(socket, cid) do
