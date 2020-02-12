@@ -5,7 +5,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   def render(assigns) do
     ~L"""
-    Flash: <%= live_flash(@flash, :info) %>
     Redirect: <%= @redirect %>
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
@@ -89,7 +88,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
 
   def render(assigns) do
     ~L"""
-    <%= live_flash(@flash, :info) %>time: <%= @time %> <%= @name %>
+    time: <%= @time %> <%= @name %>
     <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls") %>
     """
   end
@@ -97,8 +96,6 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def mount(_params, session, socket) do
     {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
   end
-
-  def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   def handle_info(:snooze, socket) do
     {:noreply, assign(socket, :time, "12:05")}
@@ -112,6 +109,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     {:reply, :ok, assign(socket, :time, new_time)}
   end
 end
+
 
 defmodule Phoenix.LiveViewTest.ClockControlsLive do
   use Phoenix.LiveView
@@ -229,3 +227,80 @@ defmodule Phoenix.LiveViewTest.OptsLive do
     func.(socket)
   end
 end
+
+defmodule Phoenix.LiveViewTest.FlashLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    uri[<%= @uri %>]
+    root[<%= live_flash(@flash, :info) %>]
+    <%= live_component @socket, Phoenix.LiveViewTest.FlashComponent, id: "flash-component" %>
+    child[<%= live_render @socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child" %>]
+    """
+  end
+
+  def handle_params(_params, uri, socket), do: {:noreply, assign(socket, :uri, uri)}
+
+  def mount(_params, _session, socket), do: {:ok, assign(socket, uri: nil)}
+
+  def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
+  end
+
+  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  end
+
+  def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.FlashComponent do
+  use Phoenix.LiveComponent
+
+  def render(assigns) do
+    ~L"""
+    <div id="<%= @id %>">component[<%= live_flash(@flash, :info) %>]</div>
+    """
+  end
+
+  def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
+  end
+
+  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  end
+
+  def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.FlashChildLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    <%= live_flash(@flash, :info) %>
+    """
+  end
+
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
+  end
+
+  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  end
+
+  def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
+  end
+end
+
+

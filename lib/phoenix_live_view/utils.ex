@@ -28,21 +28,21 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action) do
+  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action, flash) do
     %{
       socket
       | id: random_id(),
         private: private,
-        assigns: configure_assigns(assigns, view, action)
+        assigns: configure_assigns(assigns, view, action, flash)
     }
   end
 
-  def configure_socket(%{assigns: assigns, view: view} = socket, private, action) do
-    %{socket | private: private, assigns: configure_assigns(assigns, view, action)}
+  def configure_socket(%{assigns: assigns, view: view} = socket, private, action, flash) do
+    %{socket | private: private, assigns: configure_assigns(assigns, view, action, flash)}
   end
 
-  defp configure_assigns(assigns, view, action) do
-    Map.merge(assigns, %{live_view_module: view, live_view_action: action, flash: %{}})
+  defp configure_assigns(assigns, view, action, flash) do
+    Map.merge(assigns, %{live_view_module: view, live_view_action: action, flash: flash || %{}})
   end
 
   @doc """
@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.Utils do
   def clear_flash(%Socket{} = socket), do: LiveView.assign(socket, :flash, %{})
 
   def clear_flash(%Socket{} = socket, key) do
-    new_flash = Map.delete(socket.assigns[:flash] || %{}, key)
+    new_flash = Map.delete(socket.assigns.flash, key)
     LiveView.assign(socket, flash: new_flash)
   end
 
@@ -110,7 +110,7 @@ defmodule Phoenix.LiveView.Utils do
   """
   def put_flash(%Socket{assigns: assigns} = socket, kind, msg) do
     kind = flash_key(kind)
-    new_flash = Map.put(assigns[:flash] || %{}, kind, msg)
+    new_flash = Map.put(assigns.flash, kind, msg)
     LiveView.assign(socket, flash: new_flash)
   end
 

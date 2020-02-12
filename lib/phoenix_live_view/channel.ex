@@ -105,8 +105,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :redirect, command}, state) do
-    handle_redirect(state, command, nil)
+  def handle_info({@prefix, :redirect, command, flash}, state) do
+    new_state = %{state | socket: Utils.merge_flash(state.socket, flash)}
+    handle_redirect(new_state, command, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -382,7 +383,7 @@ defmodule Phoenix.LiveView.Channel do
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
-        send(new_socket.root_pid, {@prefix, :redirect, patch})
+        send(new_socket.root_pid, {@prefix, :redirect, patch, Utils.get_flash(new_socket)})
         {diff, new_state} = render_diff(new_state, new_socket)
 
         {:noreply,
@@ -516,7 +517,7 @@ defmodule Phoenix.LiveView.Channel do
     # verified_flash is fetched from the disconnected render.
     # params["flash"] is sent on live redirects and therefore has higher priority.
     cond do
-      flash_token -> Phoenix.LiveView.Flash.verify!(endpoint, flash_token)
+      flash_token -> Phoenix.LiveView.Flash.verify(endpoint, flash_token)
       params["joins"] == 0 && verified_flash -> verified_flash
       true -> %{}
     end
@@ -578,9 +579,9 @@ defmodule Phoenix.LiveView.Channel do
           connect_params: connect_params,
           assigned_new: {parent_assigns, assigned_new}
         },
-        action
+        action,
+        flash
       )
-      |> Utils.merge_flash(flash)
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])

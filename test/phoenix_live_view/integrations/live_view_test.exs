@@ -531,11 +531,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=push", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
-        end})
-      end
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=push"
     end
 
     @tag session: %{nest: []}
@@ -544,12 +543,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "Redirect: none"
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=patch", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
-        end})
-      end
-
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=patch"
       assert render(thermo_view) =~ "Redirect: patch"
     end
 
@@ -560,11 +557,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      assert_redirect thermo_view, "/thermo?redirect=redirect", fn ->
-        send(clock_view.pid, {:run, fn socket ->
-          {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
-        end})
-      end
+      send(clock_view.pid, {:run, fn socket ->
+        {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
+      end})
+      assert_redirect thermo_view, "/thermo?redirect=redirect"
     end
   end
 

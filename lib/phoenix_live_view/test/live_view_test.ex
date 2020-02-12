@@ -583,46 +583,29 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was peformed after execution of the provided
-  function.
-
-  Returns the result of the funtion.
+  Asserts a redirect was peformed with optional flash.
 
   ## Examples
 
-      result =
-        assert_redirect view, "/path", fn ->
-          render_click(view, :event_that_triggers_redirect)
-        end
-
-
-      assert result =~ "some new state from push patch"
+      render_click(view, :event_that_triggers_redirect)
+      assert_redirect view, "/path"
 
   The flash may also be provided to match against:
 
-        assert_redirect view, "/path", %{"info" => "it worked!"}, fn ->
-          render_click(view, :event_that_triggers_redirect)
-        end
+      assert_redirect view, "/path", %{"info" => "it worked!"}
 
   *Note*: the flash will contain string keys.
   """
-  defmacro assert_redirect(view, to, func) do
+  defmacro assert_redirect(view, to, flash \\ nil) do
     quote do
+      flash = unquote(flash)
       %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      result = unquote(func).()
-      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)}}}
-      result
-    end
-  end
-
-  defmacro assert_redirect(view, to, flash, func) do
-    quote do
-      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      result = unquote(func).()
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
 
-      assert unquote(flash) =
-               (opts[:flash] && Phoenix.LiveView.Flash.verify!(@endpoint, opts[:flash])) || %{}
+      if flash do
+        assert unquote(flash) =
+                (opts[:flash] && Phoenix.LiveView.Flash.verify(@endpoint, opts[:flash])) || %{}
+      end
     end
   end
 

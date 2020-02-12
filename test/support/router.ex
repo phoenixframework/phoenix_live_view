@@ -64,5 +64,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/action", ActionLive
     live "/action/index", ActionLive, :index
     live "/action/:id/edit", ActionLive, :edit
+
+    # integration flash
+    live "/flash-root", FlashLive
+    live "/flash-child", FlashChildLive
   end
 end

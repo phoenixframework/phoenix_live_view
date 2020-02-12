@@ -161,7 +161,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "redirect",
           topic: _topic,
-          payload: %{to: to} = opts
+          payload: %{to: _to} = opts
         },
         state
       ) do
@@ -173,7 +173,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "live_patch",
           topic: _topic,
-          payload: %{to: to} = opts
+          payload: %{to: _to} = opts
         },
         state
       ) do
@@ -185,7 +185,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         %Phoenix.Socket.Message{
           event: "live_redirect",
           topic: _topic,
-          payload: %{to: to} = opts
+          payload: %{to: _to} = opts
         },
         state
       ) do

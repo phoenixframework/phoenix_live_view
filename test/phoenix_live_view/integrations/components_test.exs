@@ -235,27 +235,24 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert_redirect(view, "/components?redirect=push", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
-      end)
+      render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
+      assert_redirect(view, "/components?redirect=push")
     end
 
     test "push_patch", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert_redirect(view, "/components?redirect=patch", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "push_patch"})
-      end)
+      render_click([view, "chris"], "transform", %{"op" => "push_patch"})
+      assert_redirect(view, "/components?redirect=patch")
     end
 
     test "redirect", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert_redirect(view, "/components?redirect=redirect", fn ->
-        render_click([view, "chris"], "transform", %{"op" => "redirect"})
-      end)
+      render_click([view, "chris"], "transform", %{"op" => "redirect"})
+      assert_redirect(view, "/components?redirect=redirect")
     end
   end
 end

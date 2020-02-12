@@ -106,9 +106,9 @@ defmodule Phoenix.LiveView.Static do
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
-        action
+        action,
+        flash
       )
-      |> Utils.merge_flash(flash)
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
@@ -147,12 +147,14 @@ defmodule Phoenix.LiveView.Static do
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
+    flash = Phoenix.Controller.get_flash(conn)
 
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view},
         %{assigned_new: {conn.assigns, []}, connect_params: %{}},
-        action
+        action,
+        flash
       )
 
     session_token = sign_root_session(socket, router, view, to_sign_session)
@@ -179,6 +181,7 @@ defmodule Phoenix.LiveView.Static do
   def nested_render(%Socket{endpoint: endpoint, connected?: connected?} = parent, view, opts) do
     config = load_live!(view, :view)
     container = container(config, opts)
+    flash = Utils.get_flash(parent)
 
     child_id =
       opts[:id] ||
@@ -197,7 +200,8 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self()
         },
         %{assigned_new: {parent.assigns, []}},
-        nil
+        nil,
+        flash
       )
 
     if connected? do
