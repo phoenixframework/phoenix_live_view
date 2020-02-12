@@ -67,7 +67,7 @@ defmodule Phoenix.LiveView.Utils do
   Renders the view with socket into a rendered struct.
   """
   def to_rendered(socket, view) do
-    assigns = Map.merge(socket.assigns, %{socket: socket})
+    assigns = Map.put(socket.assigns, :socket, socket)
 
     case render_view(socket, view, assigns) do
       %LiveView.Rendered{} = rendered ->
