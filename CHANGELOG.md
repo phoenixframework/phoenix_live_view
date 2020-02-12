@@ -1,4 +1,4 @@
-## 0.7.0-dev
+## 0.7.0 (2020-02-12)
 
 ### Backwards incompatible changes
   - `live_redirect` was removed in favor of `push_patch` (for updating the URL and params of the current LiveView) and `push_redirect` (for updating the URL to another LiveView)
@@ -12,7 +12,8 @@
   - Add `phx-auto-recover` form binding for specialized recovery
   - Scroll to top of page while respecting anchor hash targets on `live_patch` and `live_redirect`
   - Add `phx-capture-click` to use event capturing to bind a click event as it propagates inwards from the target
-  - Revamp flash support so it works between static views, live views, and components.
+  - Revamp flash support so it works between static views, live views, and components
+  - Add `phx-key` binding to scope `phx-window-keydown` and `phx-window-keyup` events
 
 ### Bug Fixes
   - Send `phx-value-*` on key events
