@@ -1059,7 +1059,12 @@ class DOMPatch {
         if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
           this.trackBefore("updated", fromEl, fromEl)
           DOM.mergeInputs(fromEl, toEl)
-          return false
+
+          if(fromEl.getAttribute(phxUpdate) === "force"){
+            return true
+          } else {
+            return false
+          }
         } else {
           this.trackBefore("updated", fromEl, toEl)
           return true
