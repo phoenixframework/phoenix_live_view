@@ -269,7 +269,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
       when is_list(assigns) or is_map(assigns) do
-    assigns = assigns |> Map.new() |> Map.put_new(:id, nil) |> Map.put_new(:flash, %{})
+    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     id = assigns[:id]
 
     if is_nil(id) and
