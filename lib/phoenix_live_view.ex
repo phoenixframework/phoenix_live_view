@@ -1433,12 +1433,11 @@ defmodule Phoenix.LiveView do
   @doc """
   Adds a flash message to the socket to be displayed on redirect.
 
-  *Note*: the `Phoenix.LiveView.Flash` plug must be plugged in
-  your browser's pipeline for flash to be supported, for example:
+  *Note*: the `Phoenix.LiveView.Flash` plug must replace your `:fetch_flash`
+  plug in your browser's pipeline for flash to be supported, for example:
 
       pipeline :browser do
         ...
-        plug :fetch_flash
         plug Phoenix.LiveView.Flash
       end
 
@@ -1450,7 +1449,14 @@ defmodule Phoenix.LiveView do
   defdelegate put_flash(socket, kind, msg), to: Phoenix.LiveView.Utils
 
   @doc """
-  TODO
+  Clears the flash.
+
+  A single flash key may be provided to clear only one message.
+
+  ## Examples
+
+      iex> clear_flash(socket)
+      iex> clear_flash(socket, :info)
   """
   defdelegate clear_flash(socket), to: Phoenix.LiveView.Utils
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
