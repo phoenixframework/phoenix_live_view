@@ -1056,15 +1056,16 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
+        if(fromEl.getAttribute(phxUpdate) === "force"){
+          this.trackBefore("updated", fromEl, toEl)
+          DOM.mergeAttrs(fromEl, toEl)
+          return true
+        }
+
         if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
           this.trackBefore("updated", fromEl, fromEl)
           DOM.mergeInputs(fromEl, toEl)
-
-          if(fromEl.getAttribute(phxUpdate) === "force"){
-            return true
-          } else {
-            return false
-          }
+          return false
         } else {
           this.trackBefore("updated", fromEl, toEl)
           return true
