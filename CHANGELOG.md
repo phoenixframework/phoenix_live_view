@@ -12,7 +12,7 @@
   - Add `phx-auto-recover` form binding for specialized recovery
   - Scroll to top of page while respecting anchor hash targets on `live_patch` and `live_redirect`
   - Add `phx-capture-click` to use event capturing to bind a click event as it propagates inwards from the target
-  - Add complete flash support for flash suppot across static, live, and component pages.
+  - Revamp flash support so it works between static views, live views, and components.
 
 ### Bug Fixes
   - Send `phx-value-*` on key events
