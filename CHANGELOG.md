@@ -1,3 +1,10 @@
+## 0.7.1 (2020-02-13)
+
+### Bug Fixes
+  - Fix checkbox bug failing to send phx-change event to the server in certain cases
+  - Fix checkbox bug failing to maintain checked state when a checkbox is programmatically updated by the server
+  - Fix select bug in Firefox causing the highlighted index to jump when a patch is applied during hover state
+
 ## 0.7.0 (2020-02-12)
 
 ### Backwards incompatible changes
