@@ -29,6 +29,7 @@ const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
+const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
@@ -971,7 +972,7 @@ export let DOM = {
   isFormInput(el){ return /^(?:input|select|textarea|button)$/i.test(el.tagName) },
 
   syncAttrsToProps(el){
-    if(el instanceof HTMLInputElement && el.type.toLocaleLowerCase() === "checkbox"){
+    if(el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0){
       el.checked = el.getAttribute("checked") !== null
     }
   },
@@ -1512,7 +1513,7 @@ export class View {
     if(el.value !== undefined){
       meta.value = el.value
 
-      if (el.tagName === "INPUT" && el.type === "checkbox" && !el.checked) {
+      if (el.tagName === "INPUT" && CHECKABLE_INPUTS.indexOf(el.type) >= 0 && !el.checked) {
         delete meta.value
       }
     }
