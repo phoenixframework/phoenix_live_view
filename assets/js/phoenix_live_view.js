@@ -317,7 +317,13 @@ export class LiveSocket {
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
       afterMs = FAILSAFE_JITTER
     }
-    setTimeout(() => window.location.reload(), afterMs)
+    setTimeout(() => {
+      if(this.hasPendingLink()){
+        window.location = this.pendingLink
+      } else {
+        window.location.reload()
+      }
+    }, afterMs)
   }
 
   getHookCallbacks(hookName){ return this.hooks[hookName] }
