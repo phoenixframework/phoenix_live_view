@@ -29,6 +29,7 @@ const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
+const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
 const PHX_STATIC = "data-phx-static"
@@ -256,8 +257,6 @@ export class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
-    this.prevInput = null
-    this.prevValue = null
     this.silenced = false
     this.root = null
     this.main = null
@@ -664,6 +663,7 @@ export class LiveSocket {
   }
 
   bindForms(){
+    let iterations = 0
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
       if(!phxEvent){ return }
@@ -677,21 +677,23 @@ export class LiveSocket {
         let input = e.target
         let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
         if(!phxEvent){ return }
-
-        let value = JSON.stringify((new FormData(input.form)).getAll(input.name))
-        if(this.prevInput === input && this.prevValue === value){ return }
         if(input.type === "number" && input.validity && input.validity.badInput){ return }
+        let currentIterations = iterations
+        iterations++
+        let {at: at, type: lastType} = DOM.private(input, "prev-iteration") || {}
+        // detect dup because some browsers dispatch both "input" and "change"
+        if(at === currentIterations - 1 && type !== lastType){ return }
 
-        this.prevInput = input
-        this.prevValue = value
+        DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
+
         this.debounce(input, e, () => {
           this.withinOwners(input.form, (view, targetCtx) => {
             if(DOM.isTextualInput(input)){
               DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             } else {
-              this.setActiveElement(input)
+              if(!(input instanceof HTMLSelectElement)){ this.setActiveElement(input) }
+              input.blur()
             }
-            if(!DOM.isTextualInput(input)){ input.blur() }
             view.pushInput(input, targetCtx, phxEvent, e.target)
           })
         })
@@ -948,8 +950,9 @@ export let DOM = {
     }
   },
 
-  mergeInputs(target, source){
-    DOM.mergeAttrs(target, source, ["value"])
+  mergeFocusedInput(target, source){
+    // skip selects because FF will reset highlighted index for any setAttribute
+    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, ["value"]) }
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {
@@ -967,6 +970,12 @@ export let DOM = {
   },
 
   isFormInput(el){ return /^(?:input|select|textarea|button)$/i.test(el.tagName) },
+
+  syncAttrsToProps(el){
+    if(el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0){
+      el.checked = el.getAttribute("checked") !== null
+    }
+  },
 
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 }
 }
@@ -1055,10 +1064,12 @@ class DOMPatch {
 
         if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
           this.trackBefore("updated", fromEl, toEl)
-          DOM.mergeInputs(fromEl, toEl)
+          DOM.mergeFocusedInput(fromEl, toEl)
+          DOM.syncAttrsToProps(fromEl)
           updates.push(fromEl)
           return false
         } else {
+          DOM.syncAttrsToProps(toEl)
           this.trackBefore("updated", fromEl, toEl)
           return true
         }
@@ -1502,7 +1513,7 @@ export class View {
     if(el.value !== undefined){
       meta.value = el.value
 
-      if (el.tagName === "INPUT" && el.type === "checkbox" && !el.checked) {
+      if (el.tagName === "INPUT" && CHECKABLE_INPUTS.indexOf(el.type) >= 0 && !el.checked) {
         delete meta.value
       }
     }
