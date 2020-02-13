@@ -78,9 +78,11 @@ defmodule Phoenix.LiveView do
 
     * Page and data navigation - such as navigating between
       pages, pagination, etc can be built with LiveView
-      but currently you will lose the back/forward button,
-      and the ability to link to pages as you navigate.
-      Support for `pushState` is on the roadmap;
+      using the excellent live navigation feature set.
+      This reduces the amount of data sent over the wire,
+      gives developers full control over the LiveView
+      life-cycle, while controlling how the browser
+      tracks those changes in state;
 
   There are other cases that have limited support but
   will become first-class as we further develop LiveView:
