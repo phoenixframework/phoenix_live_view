@@ -573,7 +573,6 @@ defmodule Phoenix.LiveView.Channel do
       _ -> Process.put(:"$callers", [transport_pid])
     end
 
-    IO.inspect({:transport, transport_pid})
     {params, parsed_uri, action} =
       case router && url && Utils.live_link_info!(router, view, url) do
         {:internal, params, action, parsed_uri} -> {params, parsed_uri, action}
