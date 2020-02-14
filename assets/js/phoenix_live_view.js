@@ -25,6 +25,7 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
+const PHX_OWNER_SELECTOR= `[${PHX_COMPONENT}], [${PHX_VIEW}]`
 const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
@@ -577,7 +578,7 @@ export class LiveSocket {
         }
         let phxEvent = target && target.getAttribute(click)
         if(!phxEvent){ return }
-        if(target.getAttribute("href") === "#"){ e.preventDefault() }
+        e.preventDefault()
 
         let meta = {
           altKey: e.altKey,
@@ -1489,7 +1490,7 @@ export class View {
     if(target.getAttribute(this.binding("target"))){
       return this.closestComponentID(targetCtx)
     } else {
-      return null
+      return this.closestComponentID(targetCtx)
     }
   }
 
