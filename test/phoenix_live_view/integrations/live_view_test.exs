@@ -624,4 +624,24 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_receive {_ref, {:title, "New Title"}}
     end
   end
+
+  describe "transport_pid/1" do
+    test "raises when not connected" do
+      assert_raise ArgumentError, ~r/may only be called when the socket is connected/, fn ->
+        LiveView.transport_pid(%LiveView.Socket{})
+      end
+    end
+
+    test "return the transport pid when connected", %{conn: conn} do
+      {:ok, clock_view, _html} = live(conn, "/clock")
+      parent = self()
+      ref = make_ref()
+      send(clock_view.pid, {:run, fn socket ->
+        send(parent, {ref, LiveView.transport_pid(socket)})
+      end})
+
+      assert_receive {^ref, transport_pid}
+      assert transport_pid == self()
+    end
+  end
 end

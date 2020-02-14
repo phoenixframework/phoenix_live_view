@@ -568,10 +568,12 @@ defmodule Phoenix.LiveView.Channel do
     url = params["url"] && URI.decode(params["url"])
     connect_params = params["params"]
 
-    with %{"caller" => {pid, _}} when is_pid(pid) <- params do
-      Process.put(:"$callers", [pid])
+    case params do
+      %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])
+      _ -> Process.put(:"$callers", [transport_pid])
     end
 
+    IO.inspect({:transport, transport_pid})
     {params, parsed_uri, action} =
       case router && url && Utils.live_link_info!(router, view, url) do
         {:internal, params, action, parsed_uri} -> {params, parsed_uri, action}

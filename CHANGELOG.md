@@ -1,3 +1,11 @@
+## 0.8-dev
+
+### Enhancements
+  - Add `transport_pid/1` to return the websocket transport pid when the socket is connected
+
+### Bug Fixes
+  - Fix issue where a failed mount from a `live_redirect` would reload the current URL instead of the attempted new URL
+
 ## 0.7.1 (2020-02-13)
 
 ### Bug Fixes

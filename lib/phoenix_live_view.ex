@@ -1679,6 +1679,23 @@ defmodule Phoenix.LiveView do
     Phoenix.LiveView.Channel.send_update(module, id, assigns)
   end
 
+  @doc """
+  Returns the transport pid of the socket.
+
+  Raises `ArgumentError` if the socket is not connected.
+
+  ## Examples
+
+      iex> transport_pid(socket)
+      #PID<0.107.0>
+  """
+  def transport_pid(%Socket{}) do
+    case Process.get(:"$callers") do
+      [transport_pid | _] -> transport_pid
+      _ -> raise ArgumentError, "transport_pid/1 may only be called when the socket is connected."
+    end
+  end
+
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   defp assert_not_disconnected_child!(%Socket{connected?: connected?, parent_pid: pid}, context)
