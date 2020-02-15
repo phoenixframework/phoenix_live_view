@@ -61,7 +61,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
+    view.pushWithReply({ target: el.querySelector('form') }, null, { value: 'increment=1' })
   })
 
   test('pushWithReply with update', function() {
@@ -85,7 +85,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
+    view.pushWithReply({ target: el.querySelector('form') }, null, { value: 'increment=1' })
 
     expect(view.el.querySelector('form')).toBeTruthy()
   })
