@@ -17,6 +17,7 @@ const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
+const PHX_STATEFUL = "data-phx-stateful"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_CONNECTED_CLASS = "phx-connected"
@@ -25,7 +26,6 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
-const PHX_OWNER_SELECTOR= `[${PHX_COMPONENT}], [${PHX_VIEW}]`
 const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
@@ -54,9 +54,11 @@ const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
 const DEBOUNCE_PREV_KEY = "debounce-prev-key"
 // Rendered
-const DYNAMICS = "d"
-const STATIC = "s"
-const COMPONENTS = "c"
+const DYNAMICS    = "d"
+const STATIC      = "s"
+const COMPONENTS  = "c"
+const INFO        = "i"
+const STATEFUL    = "s"
 
 let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
@@ -139,12 +141,17 @@ export let Rendered = {
 
   componentToString(components, cid){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
+    let info      = component[INFO]
+    let stateful  = info ? !!info[STATEFUL] : false
     let template = document.createElement("template")
     template.innerHTML = this.toString(component, components)
     let container = template.content
     Array.from(container.childNodes).forEach(child => {
       if(child.nodeType === Node.ELEMENT_NODE){
         child.setAttribute(PHX_COMPONENT, cid)
+        if(stateful){
+          child.setAttribute(PHX_STATEFUL, "")
+        }
       } else {
         if(child.nodeValue.trim() !== ""){
           logError(`only HTML element tags are allowed at the root of components.\n\n` +
@@ -1487,16 +1494,28 @@ export class View {
   }
 
   targetComponentID(target, targetCtx){
-    if(target.getAttribute(this.binding("target"))){
+    if(target.hasAttribute(this.binding("target-parent"))) {
+      return null
+    } else if(target.getAttribute(this.binding("target"))){
       return this.closestComponentID(targetCtx)
     } else {
-      return this.closestComponentID(targetCtx)
+      return this.closestStatefulComponentID(targetCtx)
     }
   }
 
   closestComponentID(targetCtx){
     if(targetCtx){
       return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
+    } else {
+      return null
+    }
+  }
+
+  closestStatefulComponentID(targetCtx) {
+    if(targetCtx){
+      return maybe(targetCtx.closest(`[${PHX_STATEFUL}]`), el => {
+        return this.ownsElement(el) && this.componentID(el)
+      })
     } else {
       return null
     }

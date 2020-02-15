@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Diff do
   @components :c
   @static :s
   @dynamics :d
+  @info :i
 
   @doc """
   Returns the diff component state.
@@ -222,7 +223,11 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     rendered = component_to_rendered(socket, component, assigns)
-    traverse(socket, rendered, fingerprints_tree, pending_components, components)
+    {diff, {fingerprint, children}, pending_components, components} =
+      traverse(socket, rendered, fingerprints_tree, pending_components, components)
+    {Map.put(diff, @info, %{
+      s: function_exported?(component, :handle_event, 3)
+    }), {fingerprint, children}, pending_components, components}
   end
 
   defp traverse(
@@ -442,7 +447,9 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
         socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-        {socket, pending_components, Map.put(component_diffs, cid, diff), components}
+        {socket, pending_components, Map.put(component_diffs, cid, Map.put(diff, @info, %{
+          s: function_exported?(component, :handle_event, 3)
+        })), components}
       else
         {socket, pending_components, component_diffs, components}
       end
