@@ -82,10 +82,13 @@ defmodule Phoenix.LiveComponent do
   ## Targeting Component Events
 
   Stateful components can also implement the `c:handle_event/3` callback
-  that works exactly the same as in LiveView. For a client event to
-  reach a component, the tag must be annotated with a `phx-target`
-  annotation which must be a query selector to an element inside the
-  component. For example, if the `UserComponent` above is started with
+  that works exactly the same as in LiveView. By default, events emitted inside
+  a stateful component's markup will be sent to that component for handling.
+  For a client event to reach a different component, the tag must be annotated
+  with a `phx-target` annotation which must be a query selector to an element
+  inside the target component.
+
+  For example, if the `UserComponent` above is started with
   the `:id` of `13`, it will have the DOM ID of `user-13`. Using a query
   selector, we can sent an event to it with:
 
@@ -104,6 +107,12 @@ defmodule Phoenix.LiveComponent do
       <a href="#" phx-click="close" phx-target="#modal, #sidebar">
         Dismiss
       </a>
+
+  Events emitted from inside a stateless component will bubble up the DOM
+  to the next stateful component or live view. To target an event at the
+  parent live view explicitly, set the `phx-target-parent` attribute; no
+  DOM ID is required, the parent live view of the target element will receive
+  the event.
 
   ### Preloading and update
 

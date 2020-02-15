@@ -403,10 +403,10 @@ defmodule Phoenix.LiveView do
   | Binding                | Attributes |
   |------------------------|------------|
   | [Params](#module-click-events) | `phx-value-*` |
-  | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` | `phx-target` |
-  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-target` |
-  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `data-phx-error-for`, `phx-disable-with` |
-  | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target` |
+  | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` | `phx-target`, `phx-target-parent` |
+  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-target`, `phx-target-parent` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-target`, `phx-target-parent`, `data-phx-error-for`, `phx-disable-with` |
+  | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-target`, `phx-target-parent` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
   | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
