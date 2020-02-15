@@ -65,3 +65,14 @@
   background: #ffe6f0!important;
 }
 
+/* Loading states */
+.phx-loading[phx-click] {
+  opacity: 0.5;
+  transition: opacity 1s ease-out;
+}
+
+.phx-loading-show { display: none; }
+.phx-loading-hide { display: block; }
+.phx-loading > .phx-loading-show { display: block; }
+.phx-loading > .phx-loading-hide { display: none; }
+

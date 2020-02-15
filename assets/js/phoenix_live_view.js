@@ -74,7 +74,7 @@ function detectDuplicateIds() {
 }
 
 export let debug = (view, kind, msg, obj) => {
-  if (DEBUG) {
+  if(DEBUG){
     console.log(`${view.id} ${kind}: ${msg} - `, obj)
   }
 }
@@ -871,7 +871,6 @@ export let DOM = {
 
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.add(PHX_LOADING_CLASS)
     DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(disableWith)
       el.setAttribute(`${disableWith}-restore`, el.innerText)
@@ -889,7 +888,6 @@ export let DOM = {
 
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.remove(PHX_LOADING_CLASS)
 
     DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
@@ -1155,6 +1153,7 @@ class DOMPatch {
     let fromRef = parseInt(fromRefAttr)
     if(this.ref !== null && this.ref >= fromRef){
       fromEl.removeAttribute(PHX_REF)
+      fromEl.classList.remove(PHX_LOADING_CLASS)
       return true
     } else {
       return false
@@ -1366,7 +1365,7 @@ export class View {
   }
 
   update(diff, cid, ref){
-    if(isEmpty(diff)){ return }
+    if(isEmpty(diff) && ref === null){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
 
@@ -1489,7 +1488,7 @@ export class View {
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.diff){ this.update(resp.diff, payload.cid, ref) }
+        if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
@@ -1500,6 +1499,7 @@ export class View {
 
   putRef(el){
     let newRef = this.ref++
+    el.classList.add(PHX_LOADING_CLASS)
     el.setAttribute(PHX_REF, newRef)
     return newRef
   }
