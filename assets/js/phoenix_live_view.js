@@ -19,6 +19,7 @@ const PHX_VIEW = "data-phx-view"
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
+const PHX_REF = "data-phx-ref"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -987,12 +988,13 @@ export let DOM = {
 }
 
 class DOMPatch {
-  constructor(view, container, id, html, targetCID){
+  constructor(view, container, id, html, targetCID, ref){
     this.view = view,
     this.container = container
     this.id = id
     this.html = html
     this.targetCID = targetCID
+    this.ref = ref
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
@@ -1055,6 +1057,7 @@ class DOMPatch {
           return false
         }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+        if(!this.syncPendingRef(fromEl)){ return false }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -1082,9 +1085,7 @@ class DOMPatch {
       }
     })
 
-    if (DEBUG) {
-      detectDuplicateIds()
-    }
+    if(DEBUG){ detectDuplicateIds() }
 
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
@@ -1146,6 +1147,19 @@ class DOMPatch {
 
     return [diffContainer, targetContainer]
   }
+
+  syncPendingRef(fromEl){
+    let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
+    if(fromRefAttr === null){ return true }
+
+    let fromRef = parseInt(fromRefAttr)
+    if(this.ref !== null && this.ref >= fromRef){
+      fromEl.removeAttribute(PHX_REF)
+      return true
+    } else {
+      return false
+    }
+  }
 }
 
 export class View {
@@ -1157,6 +1171,7 @@ export class View {
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
+    this.ref = 0
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
@@ -1276,7 +1291,7 @@ export class View {
 
   onJoinComplete({live_patch}, html){
     this.joinPending = false
-    let patch = new DOMPatch(this, this.el, this.id, html)
+    let patch = new DOMPatch(this, this.el, this.id, html, null)
     this.performPatch(patch)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
@@ -1347,10 +1362,10 @@ export class View {
     })
   }
 
-  update(diff, cid){
+  update(diff, cid, ref){
     if(isEmpty(diff)){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
+    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
@@ -1358,7 +1373,7 @@ export class View {
       Rendered.componentToString(this.rendered[COMPONENTS], cid) :
       Rendered.toString(this.rendered)
 
-    let patch = new DOMPatch(this, this.el, this.id, html, cid)
+    let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
     this.performPatch(patch)
   }
 
@@ -1384,7 +1399,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, cid}) => this.update(diff, cid))
+    this.pendingDiffs.forEach(({diff, cid, ref}) => this.update(diff, cid, ref))
     this.pendingDiffs = []
   }
 
@@ -1467,17 +1482,25 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(event, payload, onReply = function(){ }){
+  pushWithReply(event, ref, payload, onReply = function(){ }){
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.diff){ this.update(resp.diff, payload.cid) }
-        if(resp.redirect){ this.onRedirect(resp.redirect) }
-        if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
-        if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-        onReply(resp)
+        setTimeout(() => {
+          if(resp.diff){ this.update(resp.diff, payload.cid, ref) }
+          if(resp.redirect){ this.onRedirect(resp.redirect) }
+          if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
+          if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+          onReply(resp)
+        }, 5000)
       })
     )
+  }
+
+  putRef(el){
+    let newRef = this.ref++
+    el.setAttribute(PHX_REF, newRef)
+    return newRef
   }
 
   componentID(el){
@@ -1502,7 +1525,7 @@ export class View {
   }
 
   pushHookEvent(targetCtx, event, payload){
-    this.pushWithReply("event", {
+    this.pushWithReply("event", null, {
       type: "hook",
       event: event,
       value: payload,
@@ -1527,7 +1550,7 @@ export class View {
   }
 
   pushEvent(type, el, targetCtx, phxEvent, meta){
-    this.pushWithReply("event", {
+    this.pushWithReply("event", this.putRef(el), {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
@@ -1536,7 +1559,7 @@ export class View {
   }
 
   pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    this.pushWithReply("event", {
+    this.pushWithReply("event", this.putRef(keyElement), {
       type: kind,
       event: phxEvent,
       value: this.extractMeta(keyElement, meta),
@@ -1546,7 +1569,7 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
-    this.pushWithReply("event", {
+    this.pushWithReply("event", this.putRef(inputEl), {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
@@ -1555,7 +1578,7 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
-    this.pushWithReply("event", {
+    this.pushWithReply("event", this.putRef(formEl), {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
@@ -1574,7 +1597,7 @@ export class View {
   pushLinkPatch(href, callback){
     if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    this.pushWithReply("link", {url: href}, resp => {
+    this.pushWithReply("link", null, {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
@@ -1605,7 +1628,7 @@ export class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
     if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
+      this.pushWithReply("cids_destroyed", null, {cids: completelyDestroyedCIDs}, () => {
         this.rendered = Rendered.pruneCIDs(this.rendered, completelyDestroyedCIDs)
       })
     }
