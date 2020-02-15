@@ -1262,6 +1262,7 @@ export class View {
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     let html = Rendered.toString(this.rendered)
+    this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
 
     if(this.joinCount > 1 && forms.length > 0){
@@ -1276,6 +1277,8 @@ export class View {
       this.onJoinComplete(resp, html)
     }
   }
+
+  dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
 
   formsForRecovery(html){
     let phxChange = this.binding("change")
