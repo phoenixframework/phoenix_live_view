@@ -1486,13 +1486,11 @@ export class View {
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        setTimeout(() => {
-          if(resp.diff){ this.update(resp.diff, payload.cid, ref) }
-          if(resp.redirect){ this.onRedirect(resp.redirect) }
-          if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
-          if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-          onReply(resp)
-        }, 5000)
+        if(resp.diff){ this.update(resp.diff, payload.cid, ref) }
+        if(resp.redirect){ this.onRedirect(resp.redirect) }
+        if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
+        if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+        onReply(resp)
       })
     )
   }
