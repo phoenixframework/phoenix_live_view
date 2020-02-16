@@ -1,4 +1,7 @@
-## 0.8-dev
+## 0.8.0-dev
+
+### Backwards incompatible changes
+  - Layout must now access the child contents with `@inner_content` instead of invoking the LiveView directly
 
 ### Enhancements
   - Add `transport_pid/1` to return the websocket transport pid when the socket is connected

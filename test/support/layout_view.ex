@@ -12,13 +12,13 @@ defmodule Phoenix.LiveViewTest.LayoutView do
 
   def render("live.html", assigns) do
     ~L"""
-    LIVELAYOUTSTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVELAYOUTEND
+    LIVELAYOUTSTART-<%= @val %>-<%= @inner_content %>-LIVELAYOUTEND
     """
   end
 
   def render("live-override.html", assigns) do
     ~L"""
-    LIVEOVERRIDESTART-<%= @val %>-<%= @live_view_module.render(assigns) %>-LIVEOVERRIDEEND
+    LIVEOVERRIDESTART-<%= @val %>-<%= @inner_content %>-LIVEOVERRIDEEND
     """
   end
 
