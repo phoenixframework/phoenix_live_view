@@ -20,8 +20,11 @@ const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
+const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_LOADING_CLASS = "phx-loading"
+const PHX_LOADING_CLASS_SUBMIT = "phx-loading-submit"
+const PHX_LOADING_CLASS_CHANGE = "phx-loading-change"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
@@ -639,8 +642,19 @@ export class LiveSocket {
     }, false)
   }
 
+  withPageLoading(info, callback){
+    DOM.dispatchEvent(window, "phx:page-loading-start", info)
+    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", info)
+    return callback ? callback(done) : done
+  }
+
   pushHistoryPatch(href, linkState){
-    this.main.pushLinkPatch(href, () => this.historyPatch(href, linkState))
+    this.withPageLoading({to: href, kind: "patch"}, done => {
+      this.main.pushLinkPatch(href, () => {
+        this.historyPatch(href, linkState)
+        done()
+      })
+    })
   }
 
   historyPatch(href, linkState){
@@ -649,9 +663,12 @@ export class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
-    this.replaceMain(href, flash, () => {
-      Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
-      this.registerNewLocation(window.location)
+    this.withPageLoading({to: href, kind: "redirect"}, done => {
+      this.replaceMain(href, flash, () => {
+        Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
+        this.registerNewLocation(window.location)
+        done()
+      })
     })
   }
 
@@ -871,6 +888,7 @@ export let DOM = {
 
   disableForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.classList.add(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT)
     DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(disableWith)
       el.setAttribute(`${disableWith}-restore`, el.innerText)
@@ -888,6 +906,7 @@ export let DOM = {
 
   restoreDisabledForm(form, prefix){
     let disableWith = `${prefix}${PHX_DISABLE_WITH}`
+    form.classList.remove(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT)
 
     DOM.all(form, `[${disableWith}]`, el => {
       let value = el.getAttribute(`${disableWith}-restore`)
@@ -1153,7 +1172,7 @@ class DOMPatch {
     let fromRef = parseInt(fromRefAttr)
     if(this.ref !== null && this.ref >= fromRef){
       fromEl.removeAttribute(PHX_REF)
-      fromEl.classList.remove(PHX_LOADING_CLASS)
+      fromEl.classList.remove(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT, PHX_LOADING_CLASS_CHANGE)
       return true
     } else {
       return false
@@ -1441,9 +1460,12 @@ export class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
+    let onLoadingDone = function(){}
     if(this.parent){
       this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
+    } else {
+      onLoadingDone = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
     this.channel.join()
       .receive("ok", data => {
@@ -1451,6 +1473,9 @@ export class View {
         this.joinCount++
         this.joinPending = true
         this.flash = null
+        if(!this.parent){
+          onLoadingDone()
+        }
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
@@ -1484,7 +1509,13 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(event, ref, payload, onReply = function(){ }){
+  pushWithReply(el, event, payload, onReply = function(){ }){
+    let ref = el ? this.putRef(el) : null
+    let onLoadingDone = function(){}
+    if(el && el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null){
+      onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
+    }
+
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
@@ -1492,6 +1523,7 @@ export class View {
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+        onLoadingDone()
         onReply(resp)
       })
     )
@@ -1526,7 +1558,7 @@ export class View {
   }
 
   pushHookEvent(targetCtx, event, payload){
-    this.pushWithReply("event", null, {
+    this.pushWithReply(null, "event", {
       type: "hook",
       event: event,
       value: payload,
@@ -1551,7 +1583,7 @@ export class View {
   }
 
   pushEvent(type, el, targetCtx, phxEvent, meta){
-    this.pushWithReply("event", this.putRef(el), {
+    this.pushWithReply(el, "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
@@ -1560,7 +1592,7 @@ export class View {
   }
 
   pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    this.pushWithReply("event", this.putRef(keyElement), {
+    this.pushWithReply(keyElement, "event", {
       type: kind,
       event: phxEvent,
       value: this.extractMeta(keyElement, meta),
@@ -1570,7 +1602,9 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
-    this.pushWithReply("event", this.putRef(inputEl), {
+    inputEl.form.classList.add(PHX_LOADING_CLASS_CHANGE)
+    inputEl.classList.add(PHX_LOADING_CLASS_CHANGE)
+    this.pushWithReply(inputEl, "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
@@ -1579,7 +1613,7 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
-    this.pushWithReply("event", this.putRef(formEl), {
+    this.pushWithReply(formEl, "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
@@ -1598,7 +1632,7 @@ export class View {
   pushLinkPatch(href, callback){
     if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    this.pushWithReply("link", null, {url: href}, resp => {
+    this.pushWithReply(null, "link", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
@@ -1629,7 +1663,7 @@ export class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
     if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply("cids_destroyed", null, {cids: completelyDestroyedCIDs}, () => {
+      this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
         this.rendered = Rendered.pruneCIDs(this.rendered, completelyDestroyedCIDs)
       })
     }
