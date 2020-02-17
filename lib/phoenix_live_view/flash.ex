@@ -26,12 +26,6 @@ defmodule Phoenix.LiveView.Flash do
   def init(opts), do: opts
 
   @impl Plug
-  # TODO: We are overriding the session, which overrides all previous
-  # flash in there. We need a public API for this. Maybe fetch_flash
-  # shouldn't even execute again if the flash was already loaded.
-  # Finally, there is a mismatch between string/atom keys in flash
-  # that we may need to address. Also, make it official this can replace
-  # the original fetch_flash plug.
   def call(conn, _opts) do
     case cookie_flash(conn) do
       {conn, nil} ->
@@ -39,13 +33,14 @@ defmodule Phoenix.LiveView.Flash do
 
       {conn, flash} ->
         conn
-        |> Plug.Conn.put_session("phoenix_flash", flash)
         |> Phoenix.Controller.fetch_flash([])
+        |> Phoenix.Controller.merge_flash(flash)
     end
   end
 
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do
     salt = salt(conn)
+
     flash =
       case Phoenix.Token.verify(conn, salt, token, max_age: @max_age) do
         {:ok, %{} = flash} -> flash
@@ -60,6 +55,7 @@ defmodule Phoenix.LiveView.Flash do
   defp salt(%Plug.Conn{} = conn) do
     conn |> Phoenix.Controller.endpoint_module() |> salt()
   end
+
   defp salt(endpoint_mod) when is_atom(endpoint_mod) do
     "flash:" <> Phoenix.LiveView.Utils.salt!(endpoint_mod)
   end
@@ -72,6 +68,7 @@ defmodule Phoenix.LiveView.Flash do
   @doc false
   def verify(endpoint_mod, flash_token) do
     salt = salt(endpoint_mod)
+
     case Phoenix.Token.verify(endpoint_mod, salt, flash_token, max_age: @max_age) do
       {:ok, flash} -> flash
       {:error, _reason} -> %{}
