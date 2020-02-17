@@ -975,7 +975,7 @@ export let DOM = {
     }
   },
 
-  isFormInput(el){ return /^(?:input|select|textarea|button)$/i.test(el.tagName) },
+  isFormInput(el){ return /^(?:input|select|textarea)$/i.test(el.tagName) },
 
   syncAttrsToProps(el){
     if(el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0){
