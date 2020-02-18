@@ -1157,11 +1157,11 @@ defmodule Phoenix.LiveView do
     - `phx-window-keydown` - `phx-keydown-loading`
     - `phx-window-keyup` - `phx-keyup-loading`
 
-  For live page navigation via `live_redirect` and `live_patch`, the JavaScript
-  events `"phx:page-loading-start"` and `"phx:page-loading-stop"` are dispatched
-  on the window. Additionally, any `phx-` event may dispatch page loading events
-  by annotating the DOM element with `phx-page-loading`.
-  This is useful for showing main page loading status, for example:
+  For live page navigation via `live_redirect` and `live_patch`, as well as form
+  submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
+  `"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
+  event may dispatch page loading events by annotating the DOM element with
+  `phx-page-loading`. This is useful for showing main page loading status, for example:
 
       // app.js
       import NProgress from "nprogress"
