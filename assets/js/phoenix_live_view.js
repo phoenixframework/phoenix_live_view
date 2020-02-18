@@ -1060,11 +1060,11 @@ class DOMPatch {
 
     if(DEBUG){ detectDuplicateIds() }
 
+    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
+    DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
 
-    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
-    DOM.dispatchEvent(document, "phx:update")
     return true
   }
 
