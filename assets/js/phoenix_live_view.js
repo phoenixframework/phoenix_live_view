@@ -16,15 +16,16 @@ const MAX_RELOADS = 10
 const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
+const PHX_EVENT_CLASSES = [
+  "phx-click-loading", "phx-change-loading", "phx-submit-loading",
+  "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading"
+]
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
-const PHX_LOADING_CLASS = "phx-loading"
-const PHX_LOADING_CLASS_SUBMIT = "phx-loading-submit"
-const PHX_LOADING_CLASS_CHANGE = "phx-loading-change"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
@@ -887,52 +888,7 @@ export let DOM = {
   },
 
   disableForm(form, prefix){
-    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.add(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT)
-    DOM.all(form, `[${disableWith}]`, el => {
-      let value = el.getAttribute(disableWith)
-      el.setAttribute(`${disableWith}-restore`, el.innerText)
-      el.innerText = value
-    })
-    DOM.all(form, "button", button => {
-      button.setAttribute(PHX_DISABLED, button.disabled)
-      button.disabled = true
-    })
-    DOM.all(form, "input", input => {
-      input.setAttribute(PHX_READONLY, input.readOnly)
-      input.readOnly = true
-    })
-  },
 
-  restoreDisabledForm(form, prefix){
-    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.remove(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT)
-
-    DOM.all(form, `[${disableWith}]`, el => {
-      let value = el.getAttribute(`${disableWith}-restore`)
-      if(value){
-        if(el.nodeName === "INPUT") {
-          el.setAttribute("value", value)
-        } else {
-          el.innerText = value
-        }
-        el.removeAttribute(`${disableWith}-restore`)
-      }
-    })
-    DOM.all(form, "button", button => {
-      let prev = button.getAttribute(PHX_DISABLED)
-      if(prev){
-        button.disabled = prev === "true"
-        button.removeAttribute(PHX_DISABLED)
-      }
-    })
-    DOM.all(form, "input", input => {
-      let prev = input.getAttribute(PHX_READONLY)
-      if(prev){
-        input.readOnly = prev === "true"
-        input.removeAttribute(PHX_READONLY)
-      }
-    })
   },
 
   discardError(container, el){
@@ -993,7 +949,7 @@ export let DOM = {
     }
   },
 
-  isFormInput(el){ return /^(?:input|select|textarea|button)$/i.test(el.tagName) },
+  isFormInput(el){ return /^(?:input|select|textarea)$/i.test(el.tagName) },
 
   syncAttrsToProps(el){
     if(el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0){
@@ -1074,7 +1030,7 @@ class DOMPatch {
           return false
         }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-        if(!this.syncPendingRef(fromEl)){ return false }
+        if(!this.syncPendingRef(fromEl, toEl)){ return false }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -1165,17 +1121,25 @@ class DOMPatch {
     return [diffContainer, targetContainer]
   }
 
-  syncPendingRef(fromEl){
+  syncPendingRef(fromEl, toEl){
     let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
     if(fromRefAttr === null){ return true }
 
     let fromRef = parseInt(fromRefAttr)
     if(this.ref !== null && this.ref >= fromRef){
       fromEl.removeAttribute(PHX_REF)
-      fromEl.classList.remove(PHX_LOADING_CLASS, PHX_LOADING_CLASS_SUBMIT, PHX_LOADING_CLASS_CHANGE)
+      PHX_EVENT_CLASSES.forEach(className => fromEl.classList.remove(className))
       return true
     } else {
-      return false
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.contains(className) && toEl.classList.add(className)
+      })
+      toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
+      if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+        return false
+      } else {
+        return true
+      }
     }
   }
 }
@@ -1509,10 +1473,10 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(el, event, payload, onReply = function(){ }){
-    let ref = el ? this.putRef(el) : null
+  pushWithReply(refGenerator, event, payload, onReply = function(){ }){
+    let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
     let onLoadingDone = function(){}
-    if(el && el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null){
+    if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
@@ -1529,11 +1493,14 @@ export class View {
     )
   }
 
-  putRef(el){
+  putRef(elements, event){
     let newRef = this.ref++
-    el.classList.add(PHX_LOADING_CLASS)
-    el.setAttribute(PHX_REF, newRef)
-    return newRef
+
+    elements.forEach(el => {
+      el.classList.add(`phx-${event}-loading`)
+      el.setAttribute(PHX_REF, newRef)
+    })
+    return [newRef, elements]
   }
 
   componentID(el){
@@ -1583,7 +1550,7 @@ export class View {
   }
 
   pushEvent(type, el, targetCtx, phxEvent, meta){
-    this.pushWithReply(el, "event", {
+    this.pushWithReply(() => this.putRef([el], type), "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
@@ -1592,7 +1559,7 @@ export class View {
   }
 
   pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    this.pushWithReply(keyElement, "event", {
+    this.pushWithReply(() => this.putRef([keyElement], kind), "event", {
       type: kind,
       event: phxEvent,
       value: this.extractMeta(keyElement, meta),
@@ -1602,9 +1569,7 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
-    inputEl.form.classList.add(PHX_LOADING_CLASS_CHANGE)
-    inputEl.classList.add(PHX_LOADING_CLASS_CHANGE)
-    this.pushWithReply(inputEl, "event", {
+    this.pushWithReply(() => this.putRef([inputEl, inputEl.form], "change"), "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
@@ -1613,7 +1578,24 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
-    this.pushWithReply(formEl, "event", {
+    let refGenerator = () => {
+      let disableWith = this.binding(PHX_DISABLE_WITH)
+      let disables = DOM.all(formEl, `[${disableWith}]`)
+      let buttons = DOM.all(formEl, "button")
+      let inputs = DOM.all(formEl, "input")
+      buttons.forEach(button => {
+        button.setAttribute(PHX_DISABLED, button.disabled)
+        button.disabled = true
+      })
+      inputs.forEach(input => {
+        input.setAttribute(PHX_READONLY, input.readOnly)
+        input.readOnly = true
+      })
+      disables.forEach(disableEl => disableEl.innerText = disableEl.getAttribute(disableWith))
+      formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
+      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
+    }
+    this.pushWithReply(refGenerator, "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
@@ -1675,12 +1657,9 @@ export class View {
   }
 
   submitForm(form, targetCtx, phxEvent){
-    let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
-    DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, targetCtx, phxEvent, () => {
-      DOM.restoreDisabledForm(form, prefix)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
