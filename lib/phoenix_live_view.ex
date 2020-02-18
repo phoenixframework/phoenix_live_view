@@ -1157,6 +1157,30 @@ defmodule Phoenix.LiveView do
     - `phx-window-keydown` - `phx-keydown-loading`
     - `phx-window-keyup` - `phx-keyup-loading`
 
+  For live page navigation via `live_redirect` and `live_patch`, the JavaScript
+  events `"phx:page-loading-start"` and `"phx:page-loading-stop"` are dispatched
+  on the window. Additionally, any `phx-` event may dispatch page loading events
+  by annotating the DOM element with `phx-page-loading`.
+  This is useful for showing main page loading status, for example:
+
+      // app.js
+      import NProgress from "nprogress"
+      window.addEventListener("phx:page-loading-start", info => NProgress.start())
+      window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+
+  The `info` object will contain a `kind` key, with values one of:
+
+    - `"redirect"` - the event was triggered by a redirect
+    - `"patch"` - the event was triggered by a patch
+    - `"initial"` - the event was triggered by initial page load
+    - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
+
+  For all kinds of page loading events, all but `"element"` will receive an additional `to`
+  key in the info metadata pointing to the href associated with the page load.
+
+  In the case of an `"element"` page loading, the info will contain a `"target"` key containing
+  the DOM element which triggered the page loading state.
+
   ### JS Interop and client-controlled DOM
 
   To handle custom client-side JavaScript when an element is added, updated,
