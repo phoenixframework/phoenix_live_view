@@ -305,7 +305,11 @@ defmodule Phoenix.LiveView.Channel do
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
           {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
-            {component_socket, {redirected, assigns.flash}}
+            if redirected do
+              {Utils.clear_flash(component_socket), {redirected, assigns.flash}}
+            else
+              {component_socket, {redirected, assigns.flash}}
+            end
 
           other ->
             raise ArgumentError, """
@@ -317,7 +321,7 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    new_socket = Utils.merge_flash(socket, flash)
+    new_socket = if redirected, do: Utils.merge_flash(socket, flash), else: socket
     new_state = push_render(%{state | socket: new_socket, components: new_components}, diff, ref)
 
     if redirected do

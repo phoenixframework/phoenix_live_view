@@ -16,11 +16,16 @@ const MAX_RELOADS = 10
 const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
 const PHX_VIEW = "data-phx-view"
+const PHX_EVENT_CLASSES = [
+  "phx-click-loading", "phx-change-loading", "phx-submit-loading",
+  "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading"
+]
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
+const PHX_REF = "data-phx-ref"
+const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
-const PHX_LOADING_CLASS = "phx-loading"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
@@ -73,7 +78,7 @@ function detectDuplicateIds() {
 }
 
 export let debug = (view, kind, msg, obj) => {
-  if (DEBUG) {
+  if(DEBUG){
     console.log(`${view.id} ${kind}: ${msg} - `, obj)
   }
 }
@@ -638,8 +643,19 @@ export class LiveSocket {
     }, false)
   }
 
+  withPageLoading(info, callback){
+    DOM.dispatchEvent(window, "phx:page-loading-start", info)
+    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", info)
+    return callback ? callback(done) : done
+  }
+
   pushHistoryPatch(href, linkState){
-    this.main.pushLinkPatch(href, () => this.historyPatch(href, linkState))
+    this.withPageLoading({to: href, kind: "patch"}, done => {
+      this.main.pushLinkPatch(href, () => {
+        this.historyPatch(href, linkState)
+        done()
+      })
+    })
   }
 
   historyPatch(href, linkState){
@@ -648,9 +664,12 @@ export class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
-    this.replaceMain(href, flash, () => {
-      Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
-      this.registerNewLocation(window.location)
+    this.withPageLoading({to: href, kind: "redirect"}, done => {
+      this.replaceMain(href, flash, () => {
+        Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
+        this.registerNewLocation(window.location)
+        done()
+      })
     })
   }
 
@@ -869,52 +888,7 @@ export let DOM = {
   },
 
   disableForm(form, prefix){
-    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.add(PHX_LOADING_CLASS)
-    DOM.all(form, `[${disableWith}]`, el => {
-      let value = el.getAttribute(disableWith)
-      el.setAttribute(`${disableWith}-restore`, el.innerText)
-      el.innerText = value
-    })
-    DOM.all(form, "button", button => {
-      button.setAttribute(PHX_DISABLED, button.disabled)
-      button.disabled = true
-    })
-    DOM.all(form, "input", input => {
-      input.setAttribute(PHX_READONLY, input.readOnly)
-      input.readOnly = true
-    })
-  },
 
-  restoreDisabledForm(form, prefix){
-    let disableWith = `${prefix}${PHX_DISABLE_WITH}`
-    form.classList.remove(PHX_LOADING_CLASS)
-
-    DOM.all(form, `[${disableWith}]`, el => {
-      let value = el.getAttribute(`${disableWith}-restore`)
-      if(value){
-        if(el.nodeName === "INPUT") {
-          el.setAttribute("value", value)
-        } else {
-          el.innerText = value
-        }
-        el.removeAttribute(`${disableWith}-restore`)
-      }
-    })
-    DOM.all(form, "button", button => {
-      let prev = button.getAttribute(PHX_DISABLED)
-      if(prev){
-        button.disabled = prev === "true"
-        button.removeAttribute(PHX_DISABLED)
-      }
-    })
-    DOM.all(form, "input", input => {
-      let prev = input.getAttribute(PHX_READONLY)
-      if(prev){
-        input.readOnly = prev === "true"
-        input.removeAttribute(PHX_READONLY)
-      }
-    })
   },
 
   discardError(container, el){
@@ -987,12 +961,13 @@ export let DOM = {
 }
 
 class DOMPatch {
-  constructor(view, container, id, html, targetCID){
+  constructor(view, container, id, html, targetCID, ref){
     this.view = view,
     this.container = container
     this.id = id
     this.html = html
     this.targetCID = targetCID
+    this.ref = ref
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
@@ -1055,6 +1030,7 @@ class DOMPatch {
           return false
         }
         if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+        if(!this.syncPendingRef(fromEl, toEl)){ return false }
 
         // nested view handling
         if(DOM.isPhxChild(toEl)){
@@ -1082,9 +1058,7 @@ class DOMPatch {
       }
     })
 
-    if (DEBUG) {
-      detectDuplicateIds()
-    }
+    if(DEBUG){ detectDuplicateIds() }
 
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
@@ -1146,6 +1120,28 @@ class DOMPatch {
 
     return [diffContainer, targetContainer]
   }
+
+  syncPendingRef(fromEl, toEl){
+    let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
+    if(fromRefAttr === null){ return true }
+
+    let fromRef = parseInt(fromRefAttr)
+    if(this.ref !== null && this.ref >= fromRef){
+      fromEl.removeAttribute(PHX_REF)
+      PHX_EVENT_CLASSES.forEach(className => fromEl.classList.remove(className))
+      return true
+    } else {
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.contains(className) && toEl.classList.add(className)
+      })
+      toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
+      if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+        return false
+      } else {
+        return true
+      }
+    }
+  }
 }
 
 export class View {
@@ -1157,6 +1153,7 @@ export class View {
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
+    this.ref = 0
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
@@ -1247,6 +1244,7 @@ export class View {
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
     let html = Rendered.toString(this.rendered)
+    this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
 
     if(this.joinCount > 1 && forms.length > 0){
@@ -1262,6 +1260,8 @@ export class View {
     }
   }
 
+  dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
+
   formsForRecovery(html){
     let phxChange = this.binding("change")
     let template = document.createElement("template")
@@ -1276,7 +1276,7 @@ export class View {
 
   onJoinComplete({live_patch}, html){
     this.joinPending = false
-    let patch = new DOMPatch(this, this.el, this.id, html)
+    let patch = new DOMPatch(this, this.el, this.id, html, null)
     this.performPatch(patch)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
@@ -1347,10 +1347,10 @@ export class View {
     })
   }
 
-  update(diff, cid){
-    if(isEmpty(diff)){ return }
+  update(diff, cid, ref){
+    if(isEmpty(diff) && ref === null){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid}) }
+    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
 
     this.log("update", () => ["", JSON.stringify(diff)])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
@@ -1358,7 +1358,7 @@ export class View {
       Rendered.componentToString(this.rendered[COMPONENTS], cid) :
       Rendered.toString(this.rendered)
 
-    let patch = new DOMPatch(this, this.el, this.id, html, cid)
+    let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
     this.performPatch(patch)
   }
 
@@ -1384,7 +1384,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, cid}) => this.update(diff, cid))
+    this.pendingDiffs.forEach(({diff, cid, ref}) => this.update(diff, cid, ref))
     this.pendingDiffs = []
   }
 
@@ -1424,9 +1424,12 @@ export class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
+    let onLoadingDone = function(){}
     if(this.parent){
       this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
+    } else {
+      onLoadingDone = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
     this.channel.join()
       .receive("ok", data => {
@@ -1434,6 +1437,9 @@ export class View {
         this.joinCount++
         this.joinPending = true
         this.flash = null
+        if(!this.parent){
+          onLoadingDone()
+        }
         this.onJoin(data)
       })
       .receive("error", resp => this.onJoinError(resp))
@@ -1467,17 +1473,34 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(event, payload, onReply = function(){ }){
+  pushWithReply(refGenerator, event, payload, onReply = function(){ }){
+    let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
+    let onLoadingDone = function(){}
+    if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){
+      onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
+    }
+
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
       this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.diff){ this.update(resp.diff, payload.cid) }
+        if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
         if(resp.redirect){ this.onRedirect(resp.redirect) }
         if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
         if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+        onLoadingDone()
         onReply(resp)
       })
     )
+  }
+
+  putRef(elements, event){
+    let newRef = this.ref++
+
+    elements.forEach(el => {
+      el.classList.add(`phx-${event}-loading`)
+      el.setAttribute(PHX_REF, newRef)
+    })
+    return [newRef, elements]
   }
 
   componentID(el){
@@ -1502,7 +1525,7 @@ export class View {
   }
 
   pushHookEvent(targetCtx, event, payload){
-    this.pushWithReply("event", {
+    this.pushWithReply(null, "event", {
       type: "hook",
       event: event,
       value: payload,
@@ -1527,7 +1550,7 @@ export class View {
   }
 
   pushEvent(type, el, targetCtx, phxEvent, meta){
-    this.pushWithReply("event", {
+    this.pushWithReply(() => this.putRef([el], type), "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
@@ -1536,7 +1559,7 @@ export class View {
   }
 
   pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    this.pushWithReply("event", {
+    this.pushWithReply(() => this.putRef([keyElement], kind), "event", {
       type: kind,
       event: phxEvent,
       value: this.extractMeta(keyElement, meta),
@@ -1546,7 +1569,7 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
-    this.pushWithReply("event", {
+    this.pushWithReply(() => this.putRef([inputEl, inputEl.form], "change"), "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
@@ -1555,7 +1578,24 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
-    this.pushWithReply("event", {
+    let refGenerator = () => {
+      let disableWith = this.binding(PHX_DISABLE_WITH)
+      let disables = DOM.all(formEl, `[${disableWith}]`)
+      let buttons = DOM.all(formEl, "button")
+      let inputs = DOM.all(formEl, "input")
+      buttons.forEach(button => {
+        button.setAttribute(PHX_DISABLED, button.disabled)
+        button.disabled = true
+      })
+      inputs.forEach(input => {
+        input.setAttribute(PHX_READONLY, input.readOnly)
+        input.readOnly = true
+      })
+      disables.forEach(disableEl => disableEl.innerText = disableEl.getAttribute(disableWith))
+      formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
+      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
+    }
+    this.pushWithReply(refGenerator, "event", {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
@@ -1574,7 +1614,7 @@ export class View {
   pushLinkPatch(href, callback){
     if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    this.pushWithReply("link", {url: href}, resp => {
+    this.pushWithReply(null, "link", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
@@ -1605,7 +1645,7 @@ export class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
     if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply("cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
+      this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
         this.rendered = Rendered.pruneCIDs(this.rendered, completelyDestroyedCIDs)
       })
     }
@@ -1617,12 +1657,9 @@ export class View {
   }
 
   submitForm(form, targetCtx, phxEvent){
-    let prefix = this.liveSocket.getBindingPrefix()
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
-    DOM.disableForm(form, prefix)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, targetCtx, phxEvent, () => {
-      DOM.restoreDisabledForm(form, prefix)
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }

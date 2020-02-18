@@ -61,7 +61,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
+    view.pushWithReply(null, { target: el.querySelector('form') }, { value: 'increment=1' })
   })
 
   test('pushWithReply with update', function() {
@@ -85,7 +85,7 @@ describe('View + DOM', function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply({ target: el.querySelector('form') }, { value: 'increment=1' })
+    view.pushWithReply(null, { target: el.querySelector('form') }, { value: 'increment=1' })
 
     expect(view.el.querySelector('form')).toBeTruthy()
   })
@@ -247,7 +247,7 @@ describe('View + DOM', function() {
 
     view.submitForm(form, form, { target: form })
     expect(DOM.private(form, 'phx-has-submitted')).toBeTruthy()
-    expect(form.classList.contains('phx-loading')).toBeTruthy()
+    expect(form.classList.contains('phx-submit-loading')).toBeTruthy()
     expect(form.querySelector('button').dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector('input').dataset.phxReadonly).toBeTruthy()
   })

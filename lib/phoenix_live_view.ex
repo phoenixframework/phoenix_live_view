@@ -1056,10 +1056,11 @@ defmodule Phoenix.LiveView do
   or additive UX around the user's input values as they fill out a form.
   For these use cases, the `phx-change` input does not concern itself
   with disabling input editing while an event to the server is in flight.
-  When a `phx-change` event is sent to the server, a `"_target"` param
-  will be in the root payload containing the keyspace of the input name
-  which triggered the change event. For example, if the following input
-  triggered a change event:
+  When a `phx-change` event is sent to the server the input tag and parent
+  form tag receive the `phx-change-loading` css class, then the payload is
+  pushed to the server with a `"_target"` param in the root payload
+  containing the keyspace of the input name which triggered the change event.
+  For example, if the following input triggered a change event:
 
       <input name="user[username]"/>
 
@@ -1075,11 +1076,11 @@ defmodule Phoenix.LiveView do
 
     1. The form's inputs are set to `readonly`
     2. Any submit button on the form is disabled
-    3. The form receives the `"phx-loading"` class
+    3. The form receives the `"phx-submit-loading"` class
 
   On completion of server processing of the `phx-submit` event:
 
-    1. The submitted form is reactivated and loses the `"phx-loading"` class
+    1. The submitted form is reactivated and loses the `"phx-submit-loading"` class
     2. The last input with focus is restored (unless another input has received focus)
     3. Updates are patched to the DOM as usual
 
@@ -1133,6 +1134,52 @@ defmodule Phoenix.LiveView do
     - `"phx-error"` - applied when an error occurs on the server. Note, this
       class will be applied in conjunction with `"phx-disconnected"` if connection
       to the server is lost.
+
+  All `phx-` event bindings apply their own css classes when pushed. For example
+  the following markup:
+
+      <button phx-click="clicked" phx-window-keydown="key">...</button>
+
+  In the case of forms, when a `phx-change` is sent to the server, the input element
+  which emitted the change receives the `phx-change-loading` class, along wiht the
+  parent form tag.
+
+  On click, would receive the `phx-click-loading` class, and on keydown would receive
+  the `phx-keydown-loading` class. The css loading classes are maintained until an
+  acknowledgement is received on the client for the pushed event. The following events
+  receive css loadng classes:
+
+    - `phx-click` - `phx-click-loading`
+    - `phx-change` - `phx-change-loading`
+    - `phx-submit` - `phx-submit-loading`
+    - `phx-focus` - `phx-focus-loading`
+    - `phx-blur` - `phx-blur-loading`
+    - `phx-window-keydown` - `phx-keydown-loading`
+    - `phx-window-keyup` - `phx-keyup-loading`
+
+  For live page navigation via `live_redirect` and `live_patch`, as well as form
+  submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
+  `"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
+  event may dispatch page loading events by annotating the DOM element with
+  `phx-page-loading`. This is useful for showing main page loading status, for example:
+
+      // app.js
+      import NProgress from "nprogress"
+      window.addEventListener("phx:page-loading-start", info => NProgress.start())
+      window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+
+  The `info` object will contain a `kind` key, with values one of:
+
+    - `"redirect"` - the event was triggered by a redirect
+    - `"patch"` - the event was triggered by a patch
+    - `"initial"` - the event was triggered by initial page load
+    - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
+
+  For all kinds of page loading events, all but `"element"` will receive an additional `to`
+  key in the info metadata pointing to the href associated with the page load.
+
+  In the case of an `"element"` page loading, the info will contain a `"target"` key containing
+  the DOM element which triggered the page loading state.
 
   ### JS Interop and client-controlled DOM
 
