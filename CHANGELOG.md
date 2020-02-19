@@ -5,7 +5,7 @@
   - All LiveView callbacks which previously supported returning a `:stop` tuple are no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements
-  - Allow `rediret` and `push_rediret` from mount
+  - Allow `redirect` and `push_redirect` from mount
   - Add `transport_pid/1` to return the websocket transport pid when the socket is connected
 
 ### Bug Fixes
