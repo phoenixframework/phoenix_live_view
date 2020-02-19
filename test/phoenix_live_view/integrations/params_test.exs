@@ -270,7 +270,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_remove(counter_live, {:redirect, "/thermo/123"})
     end
 
-    test "allows stopping with push_redirect", %{conn: conn} do
+    test "shuts down with push_redirect", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       next = fn socket ->
@@ -279,21 +279,6 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert {{:shutdown, {:redirect, "/thermo/123"}}, _} =
                catch_exit(GenServer.call(counter_live.pid, {:push_redirect, next}))
-    end
-
-    test "allows stopping from handle_params with push_redirect", %{conn: conn} do
-      {:ok, counter_live, _html} = live(conn, "/counter/123")
-
-      next = fn socket ->
-        new_socket =
-          LiveView.assign(socket, :on_handle_params, fn socket ->
-            {:noreply, LiveView.push_redirect(socket, to: "/thermo/123")}
-          end)
-
-        {:reply, :ok, LiveView.push_patch(new_socket, to: "/counter/123?from=handle_params")}
-      end
-
-      assert :ok = GenServer.call(counter_live.pid, {:push_patch, next})
     end
   end
 
