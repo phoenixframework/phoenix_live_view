@@ -227,7 +227,7 @@ defmodule Phoenix.LiveView.Static do
       Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
     if socket.redirected do
-      throw {:phoenix, :child_redirect, Utils.redirect_opts(socket), Utils.get_flash(socket)}
+      throw {:phoenix, :child_redirect, redirect_opts(socket), Utils.get_flash(socket)}
     end
 
     if exports_handle_params?(view) do
@@ -308,6 +308,11 @@ defmodule Phoenix.LiveView.Static do
   defp rewrite_redir(%Socket{} = socket, live_redir_opts) do
     %Socket{socket | redirected: {:redirect, live_redir_opts}}
   end
+
+  defp redirect_opts(%Socket{redirected: {:redirect, opts}}), do: opts
+  defp redirect_opts(%Socket{redirected: {:live, :redirect, opts}}), do: opts
+  defp redirect_opts(%Socket{redirected: {:live, {_, _} = _patch, opts}}), do: opts
+  defp redirect_opts(%Socket{}), do: raise(ArgumentError, "no redirect present")
 
   defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
     cond do

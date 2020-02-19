@@ -212,18 +212,18 @@ defmodule Phoenix.LiveView.Utils do
         {:ok, %Socket{redirected: nil} = socket} ->
           socket
 
-        {:stop, %Socket{redirected: redir} = socket} when not is_nil(redir) ->
-          socket
+        {:ok, %Socket{redirected: redir}} when not is_nil(redir) ->
+          raise ArgumentError, """
+          attempted to redirect from mount without stopping in #{inspect(view)}.mount/#{arity}.
+
+          A redirect from mount/#{arity} must issue a stop by returning: {:stop, socket}
+          """
 
         {:stop, %Socket{redirected: nil}} ->
           raise_bad_stop_and_no_redirect!()
 
-        {:ok, %Socket{redirected: redir}} when not is_nil(redir) ->
-          raise ArgumentError, """
-          attempted to redirect from mount without stopping in #{inspect(view)}.mount/#{length(args)}.
-
-          A redirect from mount/#{length(args)} must issue a stop by returning: {:stop, socket}
-          """
+        {:stop, %Socket{redirected: _} = socket} ->
+          socket
 
         other ->
           raise ArgumentError, """
@@ -264,16 +264,6 @@ defmodule Phoenix.LiveView.Utils do
       LiveView.assign(socket, assigns)
     end
   end
-
-  @doc """
-  Returns the redirect opts for all types of redirects.
-
-  Raises when no redirect is present.
-  """
-  def redirect_opts(%Socket{redirected: {:redirect, opts}}), do: opts
-  def redirect_opts(%Socket{redirected: {:live, :redirect, opts}}), do: opts
-  def redirect_opts(%Socket{redirected: {:live, {_, _} = _patch, opts}}), do: opts
-  def redirect_opts(%Socket{}), do: raise ArgumentError, "no redirect present"
 
   defp random_encoded_bytes do
     binary = <<

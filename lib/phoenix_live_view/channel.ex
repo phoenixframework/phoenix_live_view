@@ -193,18 +193,7 @@ defmodule Phoenix.LiveView.Channel do
 
     cond do
       mount_redirect ->
-        case mount_redirect do
-          {:redirect, %{to: _to} = opts} ->
-            {:redirect, copy_flash(state, opts), state}
-
-          {:live, :redirect, %{to: to} = opts} ->
-            send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
-            {:live_redirect, copy_flash(state, opts), state}
-
-          {:live, {_params, _action} = _patch, %{to: _to}} ->
-            raise "cannot invoke push_patch/3 for mount/3 in #{inspect(view)}." <>
-                  "Only push_redirect/2 and redirect/2 are supported when mounting."
-        end
+        mount_handle_params_result({:stop, socket}, state, :mount)
 
       not function_exported?(view, :handle_params, 3) ->
         {diff, new_state} = render_diff(state, socket)
@@ -254,6 +243,10 @@ defmodule Phoenix.LiveView.Channel do
     case new_socket.redirected do
       {:live, {_, _}, _} ->
         Utils.raise_bad_stop_and_live_patch!()
+
+      {:live, :redirect, %{to: to} = opts} ->
+        send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
+        {:live_redirect, copy_flash(state, opts), %{state | socket: new_socket}}
 
       {:redirect, opts} ->
         {:redirect, copy_flash(state, opts), %{state | socket: new_socket}}
