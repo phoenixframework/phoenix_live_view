@@ -285,23 +285,24 @@ defmodule Phoenix.LiveView.Static do
     |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
     |> mount_handle_params(view, params, uri)
     |> case do
+      {:noreply, %Socket{redirected: {:live, :redirect, opts}} = socket} ->
+        {:stop, rewrite_redir(socket, opts)}
+
+      {:noreply, %Socket{redirected: {:live, {_, _} = _patch, opts}}} ->
+        {:stop, rewrite_redir(socket, opts)}
+
+      {:noreply, %Socket{redirected: {:redirect, _opts}} = new_socket} ->
+        {:stop, new_socket}
+
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
 
-      {:noreply, %Socket{} = new_socket} ->
-        {:stop, new_socket}
+      other ->
+        raise ArgumentError, """
+        invalid result returned from #{inspect(view)}.handle_params/3.
 
-      {:stop, %Socket{redirected: nil}} ->
-        Utils.raise_bad_stop_and_no_redirect!()
-
-      {:stop, %Socket{redirected: {:live, :redirect, opts}} = socket} ->
-        {:stop, rewrite_redir(socket, opts)}
-
-      {:stop, %Socket{redirected: {:live, {_, _}, _opts}}} ->
-        Utils.raise_bad_stop_and_live_patch!()
-
-      {:stop, %Socket{} = new_socket} ->
-        {:stop, new_socket}
+        Expected {:noreply, socket}, got: #{inspect(other)}
+        """
     end
   end
 
@@ -317,7 +318,7 @@ defmodule Phoenix.LiveView.Static do
   defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
     cond do
       mount_redir ->
-        {:stop, socket}
+        {:noreply, socket}
 
       not exports_handle_params?(view) ->
         {:noreply, socket}

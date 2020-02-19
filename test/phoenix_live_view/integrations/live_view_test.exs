@@ -127,7 +127,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                live(conn)
-             end) =~ "attempted to live patch while stopping"
+             end) =~ "a LiveView cannot be mounted while issuing a live patch to the client"
     end
 
     test "child redirect when disconnected", %{conn: conn} do

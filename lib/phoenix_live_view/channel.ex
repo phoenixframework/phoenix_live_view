@@ -132,6 +132,12 @@ defmodule Phoenix.LiveView.Channel do
           {:stop, reason, new_state} -> {:stop, reason, reply, new_state}
         end
 
+      {:noreply, %Socket{} = new_socket} ->
+        case handle_changed(state, new_socket, nil) do
+          {:noreply, new_state} -> {:noreply, new_state}
+          {:stop, reason, new_state} -> {:stop, reason, new_state}
+        end
+
       other ->
         handle_result(other, {:handle_call, 3, nil}, state)
     end
@@ -193,7 +199,7 @@ defmodule Phoenix.LiveView.Channel do
 
     cond do
       mount_redirect ->
-        mount_handle_params_result({:stop, socket}, state, :mount)
+        mount_handle_params_result({:noreply, socket}, state, :mount)
 
       not function_exported?(view, :handle_params, 3) ->
         {diff, new_state} = render_diff(state, socket)
@@ -239,44 +245,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _redir) do
-    case new_socket.redirected do
-      {:live, {_, _}, _} ->
-        Utils.raise_bad_stop_and_live_patch!()
-
-      {:live, :redirect, %{to: to} = opts} ->
-        send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:live_redirect, copy_flash(state, opts), %{state | socket: new_socket}}
-
-      {:redirect, opts} ->
-        {:redirect, copy_flash(state, opts), %{state | socket: new_socket}}
-
-      nil ->
-        Utils.raise_bad_stop_and_no_redirect!()
-    end
-  end
-
   defp handle_result({:noreply, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
     handle_changed(state, new_socket, ref)
-  end
-
-  defp handle_result({:stop, %Socket{redirected: nil}}, {_, _, _}, _) do
-    Utils.raise_bad_stop_and_no_redirect!()
-  end
-
-  defp handle_result({:stop, %Socket{redirected: {:live, {_, _}, _}}}, {_, _, _}, _) do
-    Utils.raise_bad_stop_and_live_patch!()
-  end
-
-  defp handle_result({:stop, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
-    case handle_changed(state, new_socket, ref) do
-      {:ok, _changed, new_state} ->
-        send(new_state.transport_pid, {:socket_close, self(), :shutdown})
-        {:stop, :shutdown, new_state}
-
-      {:stop, reason, new_state} ->
-        {:stop, reason, new_state}
-    end
   end
 
   defp handle_result(result, {:handle_call, 3, _ref}, state) do
@@ -287,7 +257,6 @@ defmodule Phoenix.LiveView.Channel do
 
         {:noreply, %Socket{}}
         {:reply, reply, %Socket}
-        {:stop, %Socket{}}
 
     Got: #{inspect(result)}
     """
@@ -300,7 +269,6 @@ defmodule Phoenix.LiveView.Channel do
     Expected one of:
 
         {:noreply, %Socket{}}
-        {:stop, %Socket{}}
 
     Got: #{inspect(result)}
     """
@@ -432,14 +400,16 @@ defmodule Phoenix.LiveView.Channel do
       {:noreply, %Socket{} = new_socket} ->
         handle_changed(state, new_socket, ref, opts)
 
-      {:stop, %Socket{redirected: {:live, {_, _}, _}}} ->
-        Utils.raise_bad_stop_and_live_patch!()
+      other ->
+        raise ArgumentError, """
+        invalid return from #{inspect(socket.view)}.handle_params/3 callback.
 
-      {:stop, %Socket{} = new_socket} ->
-        case handle_changed(state, new_socket, ref, opts) do
-          {:noreply, state} -> {:stop, :shutdown, state}
-          {:stop, reason, state} -> {:stop, reason, state}
-        end
+        Expected one of:
+
+            {:noreply, %Socket{}}
+
+        Got: #{inspect(other)}
+        """
     end
   end
 

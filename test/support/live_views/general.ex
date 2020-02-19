@@ -53,7 +53,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   end
 
   def handle_event("redir", to, socket) do
-    {:stop, redirect(socket, to: to)}
+    {:noreply, redirect(socket, to: to)}
   end
 
   def handle_event("inactive", msg, socket) do
@@ -73,7 +73,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_info(:noop, socket), do: {:noreply, socket}
 
   def handle_info({:redir, to}, socket) do
-    {:stop, redirect(socket, to: to)}
+    {:noreply, redirect(socket, to: to)}
   end
 
   def handle_call({:set, var, val}, _, socket) do
@@ -321,10 +321,10 @@ defmodule Phoenix.LiveViewTest.RedirLive do
   def mount(%{"to" => to, "kind" => kind, "during" => during}, _session, socket) do
     cond do
       during == "connected" and connected?(socket) ->
-        {:stop, do_redirect(socket, kind, to: to)}
+        {:ok, do_redirect(socket, kind, to: to)}
 
       during == "disconnected" and not connected?(socket) ->
-        {:stop, do_redirect(socket, kind, to: to)}
+        {:ok, do_redirect(socket, kind, to: to)}
 
       during == "connected" -> {:ok, assign(socket, title: "parent_content", child_params: nil)}
     end
@@ -341,10 +341,10 @@ defmodule Phoenix.LiveViewTest.RedirLive do
   def mount(_params, %{"child_redir" => %{"to" => to, "kind" => kind, "during" => during}}, socket) do
     cond do
       during == "connected" and connected?(socket) ->
-        {:stop, do_redirect(socket, kind, to: to)}
+        {:ok, do_redirect(socket, kind, to: to)}
 
       during == "disconnected" and not connected?(socket) ->
-        {:stop, do_redirect(socket, kind, to: to)}
+        {:ok, do_redirect(socket, kind, to: to)}
 
       during == "connected" -> {:ok, assign(socket, title: "child_content", child_params: nil)}
     end

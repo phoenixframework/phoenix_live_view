@@ -506,7 +506,7 @@ defmodule Phoenix.LiveView do
       def handle_event("save", %{"user" => user_params}, socket) do
         case Accounts.create_user(user_params) do
           {:ok, user} ->
-            {:stop,
+            {:noreply,
              socket
              |> put_flash(:info, "user created")
              |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))}
@@ -522,7 +522,7 @@ defmodule Phoenix.LiveView do
   the form is re-rendered.
 
   Likewise for `phx-submit` bindings, the same callback is invoked and
-  persistence is attempted. On success, a `:stop` tuple is returned and the
+  persistence is attempted. On success, a `:noreply` tuple is returned and the
   socket is annotated for redirect with `Phoenix.LiveView.redirect/2` to
   the new user page, otherwise the socket assigns are updated with the errored
   changeset to be re-rendered for the client.
@@ -1277,7 +1277,7 @@ defmodule Phoenix.LiveView do
               session :: map,
               socket :: Socket.t()
             ) ::
-              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()} | {:stop, Socket.t()}
+              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -1285,16 +1285,16 @@ defmodule Phoenix.LiveView do
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
   @callback handle_params(Socket.unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @callback handle_event(event :: binary, Socket.unsigned_params(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()}
 
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
                       terminate: 2,
