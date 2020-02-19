@@ -716,8 +716,7 @@ export class LiveSocket {
             if(DOM.isTextualInput(input)){
               DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             } else {
-              if(!(input instanceof HTMLSelectElement)){ this.setActiveElement(input) }
-              input.blur()
+              this.setActiveElement(input)
             }
             view.pushInput(input, targetCtx, phxEvent, e.target)
           })
