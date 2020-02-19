@@ -336,6 +336,9 @@ defmodule Phoenix.LiveViewTest do
             end
         end
 
+      {:error, reason} ->
+        {:error, reason}
+
       :ignore ->
         receive do
           {^ref, {%_{} = exception, [_ | _] = stack}} -> reraise(exception, stack)

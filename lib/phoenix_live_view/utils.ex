@@ -176,25 +176,14 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Raises error message for bad live redirect.
+  Raises error message for bad live patch on mount.
   """
-  def raise_bad_stop_and_live_redirect!() do
+  def raise_bad_mount_and_live_patch!() do
     raise RuntimeError, """
-    attempted to live patch/redirect while stopping.
+    attempted to live patch while mounting.
 
-    a LiveView cannot be stopped while issuing a live patch/redirect to the client. \
-    Use redirect/2 instead if you wish to stop and redirect.
-    """
-  end
-
-  @doc """
-  Raises error message for bad stop with no redirect.
-  """
-  def raise_bad_stop_and_no_redirect!() do
-    raise RuntimeError, """
-    attempted to stop socket without redirecting.
-
-    you must always redirect when stopping a socket, see redirect/2.
+    a LiveView cannot be mounted while issuing a live patch to the client. \
+    Use push_redirect/2 or redirect/2 instead if you wish to mount and redirect.
     """
   end
 
@@ -205,27 +194,23 @@ defmodule Phoenix.LiveView.Utils do
     arity = length(args)
 
     if function_exported?(view, :mount, arity) do
-      socket =
-        case apply(view, :mount, args) do
-          {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-            Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+      case apply(view, :mount, args) do
+        {:ok, %Socket{redirected: nil} = socket, opts} when is_list(opts) ->
+          Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
 
-          {:ok, %Socket{} = socket} ->
-            socket
+        {:ok, %Socket{redirected: {:live, {_, _} = _patch, _opts}}} ->
+          raise_bad_mount_and_live_patch!()
 
-          other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+        {:ok, %Socket{} = socket} ->
+          socket
 
-            Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-            """
-        end
+        other ->
+          raise ArgumentError, """
+          invalid result returned from #{inspect(view)}.mount/#{length(args)}.
 
-      if socket.redirected do
-        raise "cannot redirect socket on mount/#{length(args)}"
+          Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
+          """
       end
-
-      socket
     else
       socket
     end

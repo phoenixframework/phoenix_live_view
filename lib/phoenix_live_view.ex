@@ -506,7 +506,7 @@ defmodule Phoenix.LiveView do
       def handle_event("save", %{"user" => user_params}, socket) do
         case Accounts.create_user(user_params) do
           {:ok, user} ->
-            {:stop,
+            {:noreply,
              socket
              |> put_flash(:info, "user created")
              |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))}
@@ -522,7 +522,7 @@ defmodule Phoenix.LiveView do
   the form is re-rendered.
 
   Likewise for `phx-submit` bindings, the same callback is invoked and
-  persistence is attempted. On success, a `:stop` tuple is returned and the
+  persistence is attempted. On success, a `:noreply` tuple is returned and the
   socket is annotated for redirect with `Phoenix.LiveView.redirect/2` to
   the new user page, otherwise the socket assigns are updated with the errored
   changeset to be re-rendered for the client.
@@ -1285,16 +1285,16 @@ defmodule Phoenix.LiveView do
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
   @callback handle_params(Socket.unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @callback handle_event(event :: binary, Socket.unsigned_params(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:reply, term, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()} | {:reply, term, Socket.t()}
 
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:stop, Socket.t()}
+              {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
                       terminate: 2,
@@ -1549,8 +1549,6 @@ defmodule Phoenix.LiveView do
     * `:external` - an external path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    assert_not_disconnected_child!(socket, "redirect/2")
-
     url =
       cond do
         to = opts[:to] -> validate_local_url!(to, "redirect/2")
@@ -1583,7 +1581,7 @@ defmodule Phoenix.LiveView do
 
   """
   def push_patch(%Socket{} = socket, opts) do
-    %{to: to} = opts = push_opts!(socket, opts, "push_patch/2")
+    %{to: to} = opts = push_opts!(opts, "push_patch/2")
 
     case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.root_view, to) do
       {:internal, params, action, _parsed_uri} ->
@@ -1618,12 +1616,11 @@ defmodule Phoenix.LiveView do
 
   """
   def push_redirect(%Socket{} = socket, opts) do
-    opts = push_opts!(socket, opts, "push_redirect/2")
+    opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})
   end
 
-  defp push_opts!(socket, opts, context) do
-    assert_not_disconnected_child!(socket, context)
+  defp push_opts!(opts, context) do
     to = Keyword.fetch!(opts, :to)
     validate_local_url!(to, context)
     kind = if opts[:replace], do: :replace, else: :push
@@ -1744,11 +1741,4 @@ defmodule Phoenix.LiveView do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
-
-  defp assert_not_disconnected_child!(%Socket{connected?: connected?, parent_pid: pid}, context)
-       when not connected? and is_pid(pid) do
-    raise ArgumentError, "cannot invoke #{context} from a disconnected child LiveView"
-  end
-
-  defp assert_not_disconnected_child!(_, _), do: :ok
 end

@@ -126,7 +126,12 @@ defmodule Phoenix.LiveView.Static do
           | extended_attrs
         ]
 
-        {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
+        try do
+          {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
+        catch
+          :throw, {:phoenix, :child_redirect, redir_opts, flash} ->
+            {:stop, socket |> rewrite_redir(redir_opts) |> Utils.merge_flash(flash)}
+        end
 
       {:stop, socket} ->
         {:stop, socket}
@@ -221,6 +226,10 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
+    if socket.redirected do
+      throw {:phoenix, :child_redirect, redirect_opts(socket), Utils.get_flash(socket)}
+    end
+
     if exports_handle_params?(view) do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
     end
@@ -276,25 +285,41 @@ defmodule Phoenix.LiveView.Static do
     |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
     |> mount_handle_params(view, params, uri)
     |> case do
+      {:noreply, %Socket{redirected: {:live, :redirect, opts}} = socket} ->
+        {:stop, rewrite_redir(socket, opts)}
+
+      {:noreply, %Socket{redirected: {:live, {_, _} = _patch, opts}}} ->
+        {:stop, rewrite_redir(socket, opts)}
+
+      {:noreply, %Socket{redirected: {:redirect, _opts}} = new_socket} ->
+        {:stop, new_socket}
+
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
 
-      {:noreply, %Socket{} = new_socket} ->
-        {:stop, new_socket}
+      other ->
+        raise ArgumentError, """
+        invalid result returned from #{inspect(view)}.handle_params/3.
 
-      {:stop, %Socket{redirected: nil}} ->
-        Utils.raise_bad_stop_and_no_redirect!()
-
-      {:stop, %Socket{redirected: {:live, _, _}}} ->
-        Utils.raise_bad_stop_and_live_redirect!()
-
-      {:stop, %Socket{} = new_socket} ->
-        {:stop, new_socket}
+        Expected {:noreply, socket}, got: #{inspect(other)}
+        """
     end
   end
 
-  defp mount_handle_params(socket, view, params, uri) do
+  defp rewrite_redir(%Socket{} = socket, live_redir_opts) do
+    %Socket{socket | redirected: {:redirect, live_redir_opts}}
+  end
+
+  defp redirect_opts(%Socket{redirected: {:redirect, opts}}), do: opts
+  defp redirect_opts(%Socket{redirected: {:live, :redirect, opts}}), do: opts
+  defp redirect_opts(%Socket{redirected: {:live, {_, _} = _patch, opts}}), do: opts
+  defp redirect_opts(%Socket{}), do: raise(ArgumentError, "no redirect present")
+
+  defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
     cond do
+      mount_redir ->
+        {:noreply, socket}
+
       not exports_handle_params?(view) ->
         {:noreply, socket}
 

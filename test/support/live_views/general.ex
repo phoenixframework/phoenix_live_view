@@ -53,7 +53,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   end
 
   def handle_event("redir", to, socket) do
-    {:stop, redirect(socket, to: to)}
+    {:noreply, redirect(socket, to: to)}
   end
 
   def handle_event("inactive", msg, socket) do
@@ -73,7 +73,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_info(:noop, socket), do: {:noreply, socket}
 
   def handle_info({:redir, to}, socket) do
-    {:stop, redirect(socket, to: to)}
+    {:noreply, redirect(socket, to: to)}
   end
 
   def handle_call({:set, var, val}, _, socket) do
@@ -306,3 +306,51 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
 end
 
 
+defmodule Phoenix.LiveViewTest.RedirLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~L"""
+    Title: <%= @title %>
+    <%= if @child_params do %>
+      <%= live_render(@socket, __MODULE__, id: :child, session: %{"child_redir" => @child_params}) %>
+    <% end %>
+    """
+  end
+
+  def mount(%{"to" => to, "kind" => kind, "during" => during}, _session, socket) do
+    cond do
+      during == "connected" and connected?(socket) ->
+        {:ok, do_redirect(socket, kind, to: to)}
+
+      during == "disconnected" and not connected?(socket) ->
+        {:ok, do_redirect(socket, kind, to: to)}
+
+      during == "connected" -> {:ok, assign(socket, title: "parent_content", child_params: nil)}
+    end
+  end
+
+  def mount(%{"child_to" => to, "kind" => kind, "during" => during}, session, socket) when session == %{} do
+    if socket.parent_pid == nil do
+      {:ok, assign(socket, title: "parent_content", child_params: %{"to" => to, "kind" => kind, "during" => during})}
+    else
+      raise "cannot nest"
+    end
+  end
+
+  def mount(_params, %{"child_redir" => %{"to" => to, "kind" => kind, "during" => during}}, socket) do
+    cond do
+      during == "connected" and connected?(socket) ->
+        {:ok, do_redirect(socket, kind, to: to)}
+
+      during == "disconnected" and not connected?(socket) ->
+        {:ok, do_redirect(socket, kind, to: to)}
+
+      during == "connected" -> {:ok, assign(socket, title: "child_content", child_params: nil)}
+    end
+  end
+
+  defp do_redirect(socket, "push_redirect", opts), do: push_redirect(socket, opts)
+  defp do_redirect(socket, "redirect", opts), do: redirect(socket, opts)
+  defp do_redirect(socket, "push_patch", opts), do: push_patch(socket, opts)
+end
