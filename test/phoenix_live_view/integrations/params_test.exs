@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                       %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
     end
 
-    test "raises if stopping", %{conn: conn} do
+    test "raises if stopping with push_patch", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       next = fn socket ->
@@ -276,7 +276,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                catch_exit(GenServer.call(counter_live.pid, {:push_patch, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch"
     end
 
     test "raises on stop without redirect", %{conn: conn} do
@@ -304,7 +304,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                catch_exit(GenServer.call(counter_live.pid, {:push_patch, next}))
                ref = Process.monitor(counter_live.pid)
                assert_receive {:DOWN, ^ref, _, _, _}
-             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
+             end) =~ "a LiveView cannot be stopped while issuing a live patch"
     end
   end
 
@@ -340,19 +340,18 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_remove(counter_live, {:redirect, "/thermo/123"})
     end
 
-    test "raises if stopping", %{conn: conn} do
+    test "allows stopping with push_redirect", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       next = fn socket ->
         {:stop, LiveView.push_redirect(socket, to: "/thermo/123")}
       end
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
+      assert {{:shutdown, {:redirect, "/thermo/123"}}, _} =
                catch_exit(GenServer.call(counter_live.pid, {:push_redirect, next}))
-             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
     end
 
-    test "raises if stopping from handle_params", %{conn: conn} do
+    test "allows stopping from handle_params with push_redirect", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       next = fn socket ->
@@ -364,11 +363,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         {:reply, :ok, LiveView.push_patch(new_socket, to: "/counter/123?from=handle_params")}
       end
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               catch_exit(GenServer.call(counter_live.pid, {:push_patch, next}))
-               ref = Process.monitor(counter_live.pid)
-               assert_receive {:DOWN, ^ref, _, _, _}
-             end) =~ "a LiveView cannot be stopped while issuing a live patch/redirect"
+      assert :ok = GenServer.call(counter_live.pid, {:push_patch, next})
     end
   end
 
