@@ -133,10 +133,7 @@ defmodule Phoenix.LiveView.Channel do
         end
 
       {:noreply, %Socket{} = new_socket} ->
-        case handle_changed(state, new_socket, nil) do
-          {:noreply, new_state} -> {:noreply, new_state}
-          {:stop, reason, new_state} -> {:stop, reason, new_state}
-        end
+        handle_changed(state, new_socket, nil) do
 
       other ->
         handle_result(other, {:handle_call, 3, nil}, state)
