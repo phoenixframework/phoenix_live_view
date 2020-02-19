@@ -1277,7 +1277,7 @@ defmodule Phoenix.LiveView do
               session :: map,
               socket :: Socket.t()
             ) ::
-              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
+              {:ok, Socket.t()} | {:ok, Socket.t(), keyword()} | {:stop, Socket.t()}
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -1549,8 +1549,6 @@ defmodule Phoenix.LiveView do
     * `:external` - an external path to redirect to
   """
   def redirect(%Socket{} = socket, opts) do
-    assert_not_disconnected_child!(socket, "redirect/2")
-
     url =
       cond do
         to = opts[:to] -> validate_local_url!(to, "redirect/2")
@@ -1583,7 +1581,7 @@ defmodule Phoenix.LiveView do
 
   """
   def push_patch(%Socket{} = socket, opts) do
-    %{to: to} = opts = push_opts!(socket, opts, "push_patch/2")
+    %{to: to} = opts = push_opts!(opts, "push_patch/2")
 
     case Phoenix.LiveView.Utils.live_link_info!(socket.router, socket.root_view, to) do
       {:internal, params, action, _parsed_uri} ->
@@ -1618,12 +1616,11 @@ defmodule Phoenix.LiveView do
 
   """
   def push_redirect(%Socket{} = socket, opts) do
-    opts = push_opts!(socket, opts, "push_redirect/2")
+    opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})
   end
 
-  defp push_opts!(socket, opts, context) do
-    assert_not_disconnected_child!(socket, context)
+  defp push_opts!(opts, context) do
     to = Keyword.fetch!(opts, :to)
     validate_local_url!(to, context)
     kind = if opts[:replace], do: :replace, else: :push
@@ -1744,11 +1741,4 @@ defmodule Phoenix.LiveView do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
-
-  defp assert_not_disconnected_child!(%Socket{connected?: connected?, parent_pid: pid}, context)
-       when not connected? and is_pid(pid) do
-    raise ArgumentError, "cannot invoke #{context} from a disconnected child LiveView"
-  end
-
-  defp assert_not_disconnected_child!(_, _), do: :ok
 end

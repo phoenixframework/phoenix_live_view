@@ -85,6 +85,7 @@ defmodule Phoenix.LiveView.Channel do
     case Map.fetch(msg.payload, "cid") do
       {:ok, cid} ->
         component_handle_event(state, cid, event, val, msg.ref)
+
       :error ->
         state.socket
         |> view_handle_event(event, val)
@@ -188,9 +189,23 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
-    %{view: view} = socket
+    %{view: view, redirected: mount_redirect} = socket
 
     cond do
+      mount_redirect ->
+        case mount_redirect do
+          {:redirect, %{to: _to} = opts} ->
+            {:redirect, copy_flash(state, opts), state}
+
+          {:live, :redirect, %{to: to} = opts} ->
+            send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
+            {:live_redirect, copy_flash(state, opts), state}
+
+          {:live, {_params, _action} = _patch, %{to: _to}} ->
+            raise "cannot invoke push_patch/3 for mount/3 in #{inspect(view)}." <>
+                  "Only push_redirect/2 and redirect/2 are supported when mounting."
+        end
+
       not function_exported?(view, :handle_params, 3) ->
         {diff, new_state} = render_diff(state, socket)
         {:ok, diff, :mount, new_state}
@@ -237,8 +252,8 @@ defmodule Phoenix.LiveView.Channel do
 
   defp mount_handle_params_result({:stop, %Socket{} = new_socket}, state, _redir) do
     case new_socket.redirected do
-      {:live, _, _} ->
-        Utils.raise_bad_stop_and_live_redirect!()
+      {:live, {_, _}, _} ->
+        Utils.raise_bad_stop_and_live_patch!()
 
       {:redirect, opts} ->
         {:redirect, copy_flash(state, opts), %{state | socket: new_socket}}
@@ -256,8 +271,8 @@ defmodule Phoenix.LiveView.Channel do
     Utils.raise_bad_stop_and_no_redirect!()
   end
 
-  defp handle_result({:stop, %Socket{redirected: {:live, _, _}}}, {_, _, _}, _) do
-    Utils.raise_bad_stop_and_live_redirect!()
+  defp handle_result({:stop, %Socket{redirected: {:live, {_, _}, _}}}, {_, _, _}, _) do
+    Utils.raise_bad_stop_and_live_patch!()
   end
 
   defp handle_result({:stop, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
@@ -424,8 +439,8 @@ defmodule Phoenix.LiveView.Channel do
       {:noreply, %Socket{} = new_socket} ->
         handle_changed(state, new_socket, ref, opts)
 
-      {:stop, %Socket{redirected: {:live, _, _}}} ->
-        Utils.raise_bad_stop_and_live_redirect!()
+      {:stop, %Socket{redirected: {:live, {_, _}, _}}} ->
+        Utils.raise_bad_stop_and_live_patch!()
 
       {:stop, %Socket{} = new_socket} ->
         case handle_changed(state, new_socket, ref, opts) do

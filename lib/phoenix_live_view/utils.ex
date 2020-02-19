@@ -178,12 +178,12 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Raises error message for bad live redirect.
   """
-  def raise_bad_stop_and_live_redirect!() do
+  def raise_bad_stop_and_live_patch!() do
     raise RuntimeError, """
-    attempted to live patch/redirect while stopping.
+    attempted to live patch while stopping.
 
-    a LiveView cannot be stopped while issuing a live patch/redirect to the client. \
-    Use redirect/2 instead if you wish to stop and redirect.
+    a LiveView cannot be stopped while issuing a live patch to the client. \
+    Use push_redirect/2 or redirect/2 instead if you wish to stop and redirect.
     """
   end
 
@@ -205,27 +205,33 @@ defmodule Phoenix.LiveView.Utils do
     arity = length(args)
 
     if function_exported?(view, :mount, arity) do
-      socket =
-        case apply(view, :mount, args) do
-          {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-            Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+      case apply(view, :mount, args) do
+        {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+          Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
 
-          {:ok, %Socket{} = socket} ->
-            socket
+        {:ok, %Socket{redirected: nil} = socket} ->
+          socket
 
-          other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+        {:stop, %Socket{redirected: redir} = socket} when not is_nil(redir) ->
+          socket
 
-            Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-            """
-        end
+        {:stop, %Socket{redirected: nil}} ->
+          raise_bad_stop_and_no_redirect!()
 
-      if socket.redirected do
-        raise "cannot redirect socket on mount/#{length(args)}"
+        {:ok, %Socket{redirected: redir}} when not is_nil(redir) ->
+          raise ArgumentError, """
+          attempted to redirect from mount without stopping in #{inspect(view)}.mount/#{length(args)}.
+
+          A redirect from mount/#{length(args)} must issue a stop by returning: {:stop, socket}
+          """
+
+        other ->
+          raise ArgumentError, """
+          invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+
+          Expected {:ok, socket} | {:ok, socket, opts}, {:stop, socket}, got: #{inspect(other)}
+          """
       end
-
-      socket
     else
       socket
     end
@@ -258,6 +264,16 @@ defmodule Phoenix.LiveView.Utils do
       LiveView.assign(socket, assigns)
     end
   end
+
+  @doc """
+  Returns the redirect opts for all types of redirects.
+
+  Raises when no redirect is present.
+  """
+  def redirect_opts(%Socket{redirected: {:redirect, opts}}), do: opts
+  def redirect_opts(%Socket{redirected: {:live, :redirect, opts}}), do: opts
+  def redirect_opts(%Socket{redirected: {:live, {_, _} = _patch, opts}}), do: opts
+  def redirect_opts(%Socket{}), do: raise ArgumentError, "no redirect present"
 
   defp random_encoded_bytes do
     binary = <<
