@@ -2,7 +2,7 @@
 
 ### Backwards incompatible changes
   - Layout must now access the child contents with `@inner_content` instead of invoking the LiveView directly
-  - All LiveView callbacks which previously supported returning a `:stop` tuple are no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
+  - Returnign `:stop` tuples from LiveView `mount` or `handle_[params|call|cast|info]` is no longer supporte. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements
   - Allow `redirect` and `push_redirect` from mount
