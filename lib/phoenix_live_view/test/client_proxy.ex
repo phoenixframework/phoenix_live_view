@@ -122,7 +122,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "url" => mount_url(view),
       "params" => view.connect_params,
       "caller" => state.caller,
-      "joins" => 0,
+      "joins" => 0
     }
 
     spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
@@ -508,6 +508,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               |> put_view(child_view, pid, rendered)
               |> put_child(view, id, child_view.session_token)
               |> recursive_detect_added_or_removed_children(child_view, acc.html)
+
+            {:error, %{live_redirect: %{to: to}}} ->
+              throw({:stop, {:redirect, view, to}, acc})
+
+            {:error, %{redirect: %{to: to}}} ->
+              throw({:stop, {:redirect, view, to}, acc})
 
             {:error, reason} ->
               raise "failed to mount view: #{Exception.format_exit(reason)}"

@@ -64,6 +64,82 @@ defmodule Phoenix.LiveView.LiveViewTest do
         live(conn)
       end
     end
+
+    test "push_redirect when disconnected", %{conn: conn} do
+      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
+      assert redirected_to(conn) == "/thermo"
+    end
+
+    test "push_redirect when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=push_redirect&to=/thermo")
+      assert html_response(conn, 200) =~ "parent_content"
+      assert {:error, %{live_redirect: %{kind: :push, to: "/thermo"}}} = live(conn)
+    end
+
+    test "push_patch when disconnected", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r/attempted to live patch while/, fn ->
+        get(conn, "/redir?during=disconnected&kind=push_patch&to=/redir?patched=true")
+      end
+    end
+
+    test "push_patch when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=push_patch&to=/redir?patched=true")
+      assert html_response(conn, 200) =~ "parent_content"
+
+      assert_raise RuntimeError, ~r/attempted to live patch while/, fn ->
+        live(conn)
+      end
+    end
+
+    test "redirect when disconnected", %{conn: conn} do
+      conn = get(conn, "/redir?during=disconnected&kind=redirect&to=/thermo")
+      assert redirected_to(conn) == "/thermo"
+    end
+
+    test "redirect when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=redirect&to=/thermo")
+      assert html_response(conn, 200) =~ "parent_content"
+      assert {:error, %{redirect: %{to: "/thermo"}}} = live(conn)
+    end
+
+    test "child push_redirect when disconnected", %{conn: conn} do
+      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&child_to=/thermo")
+      assert redirected_to(conn) == "/thermo"
+    end
+
+    test "child push_redirect when connected", %{conn: conn} do
+      conn =
+        get(conn, "/redir?during=connected&kind=push_redirect&child_to=/thermo?from_child=true")
+
+      assert html_response(conn, 200) =~ "child_content"
+      assert {:error, %{redirect: "/thermo?from_child=true"}} = live(conn)
+    end
+
+    test "child push_patch when disconnected", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r/cannot invoke handle_params/, fn ->
+        get(conn, "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true")
+      end
+    end
+
+    test "child push_patch when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=push_patch&child_to=/redir?patched=true")
+      assert html_response(conn, 200) =~ "child_content"
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               live(conn)
+             end) =~ "attempted to live patch while stopping"
+    end
+
+    test "child redirect when disconnected", %{conn: conn} do
+      conn = get(conn, "/redir?during=disconnected&kind=redirect&child_to=/thermo?from_child=true")
+      assert redirected_to(conn) == "/thermo?from_child=true"
+    end
+
+    test "child redirect when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=redirect&child_to=/thermo?from_child=true")
+      assert html_response(conn, 200) =~ "parent_content"
+      assert {:error, %{redirect: "/thermo?from_child=true"}} = live(conn)
+    end
   end
 
   describe "live_isolated" do
@@ -529,10 +605,15 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      send(clock_view.pid, {:run, fn socket ->
-        {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
-      end})
-      assert_redirect thermo_view, "/thermo?redirect=push"
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
+         end}
+      )
+
+      assert_redirect(thermo_view, "/thermo?redirect=push")
     end
 
     @tag session: %{nest: []}
@@ -541,10 +622,15 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "Redirect: none"
       assert clock_view = find_child(thermo_view, "clock")
 
-      send(clock_view.pid, {:run, fn socket ->
-        {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
-      end})
-      assert_redirect thermo_view, "/thermo?redirect=patch"
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
+         end}
+      )
+
+      assert_redirect(thermo_view, "/thermo?redirect=patch")
       assert render(thermo_view) =~ "Redirect: patch"
     end
 
@@ -555,10 +641,15 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert clock_view = find_child(thermo_view, "clock")
 
-      send(clock_view.pid, {:run, fn socket ->
-        {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
-      end})
-      assert_redirect thermo_view, "/thermo?redirect=redirect"
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
+         end}
+      )
+
+      assert_redirect(thermo_view, "/thermo?redirect=redirect")
     end
   end
 
@@ -636,9 +727,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, clock_view, _html} = live(conn, "/clock")
       parent = self()
       ref = make_ref()
-      send(clock_view.pid, {:run, fn socket ->
-        send(parent, {ref, LiveView.transport_pid(socket)})
-      end})
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           send(parent, {ref, LiveView.transport_pid(socket)})
+         end}
+      )
 
       assert_receive {^ref, transport_pid}
       assert transport_pid == self()
