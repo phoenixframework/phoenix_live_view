@@ -1029,9 +1029,9 @@ defmodule Phoenix.LiveView do
     * `hooks` – a reference to a user-defined hooks namespace, containing client
       callbacks for server/client interop. See the interop section below for details.
 
-  ### Debuggin Client Events
+  ### Debugging Client Events
 
-  To aid debugging on the client when troubleshooting an issue, the `enableDebug()`
+  To aid debugging on the client when troubleshooting issues, the `enableDebug()`
   and `disableDebug()` functions are exposed on the `LiveSocket` JavaScript instance.
   Calling `enableDebug()` turns on debug logging which includes LiveView life-cycle and
   payload events as they come and go from client to server. In pracitce, you can expose
@@ -1045,7 +1045,7 @@ defmodule Phoenix.LiveView do
       // in the browser's web console
       >> liveSocket.enableDebug()
 
-  The debug state uses the browser's built-in `sessionStorage`, so it remains in effect
+  The debug state uses the browser's built-in `sessionStorage`, so it will remain in effect
   for as long as your browser session lasts.
 
   ### Simulating Latency
