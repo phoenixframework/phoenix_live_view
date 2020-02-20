@@ -1053,7 +1053,7 @@ defmodule Phoenix.LiveView do
   Proper handling of latency is critical for good UX. LiveView's CSS loading states allow
   the client to provide user feedback while awaiting a server response. In development,
   near zero latency on localhost does not allow latency to be easily represented or tested,
-  so LiveView includes a latency simulating with the JavaScript client to ensure your
+  so LiveView includes a latency simulator with the JavaScript client to ensure your
   application provides a pleasant experience. Like the `enableDebug()` function above,
   the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
   functions which apply throughout the current browser sesssion. The `enableLatencySim` function
