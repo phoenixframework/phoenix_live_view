@@ -291,12 +291,13 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     new_socket = Utils.merge_flash(socket, flash)
-    new_state = push_render(%{state | socket: new_socket, components: new_components}, diff, ref)
+    new_state = %{state | socket: new_socket, components: new_components}
 
     if redirected do
-      handle_redirect(new_state, redirected, nil)
+
+      handle_redirect(new_state, redirected, nil, {diff, ref})
     else
-      {:noreply, new_state}
+      {:noreply, push_render(new_state, diff, ref)}
     end
   end
 
@@ -351,7 +352,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp handle_redirect(%{socket: new_socket} = new_state, result, ref) do
+  defp maybe_push_pending_diff_ack(state, nil), do: state
+  defp maybe_push_pending_diff_ack(state, {diff, ref}), do: push_render(state, diff, ref)
+
+  defp handle_redirect(%{socket: new_socket} = new_state, result, ref, pending_diff_ack \\ nil) do
     root_pid = new_socket.root_pid
 
     case result do
@@ -368,6 +372,7 @@ defmodule Phoenix.LiveView.Channel do
       {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         new_state
         |> drop_redirect()
+        |> maybe_push_pending_diff_ack(pending_diff_ack)
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
@@ -377,6 +382,7 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply,
          new_state
          |> drop_redirect()
+         |> maybe_push_pending_diff_ack(pending_diff_ack)
          |> push_render(diff, ref)}
     end
   end
