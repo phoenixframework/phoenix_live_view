@@ -49,6 +49,8 @@ const PHX_UPDATE = "update"
 const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
 const PHX_AUTO_RECOVER = "auto-recover"
+const PHX_LV_DEBUG = "phx:live-socket:debug"
+const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -62,7 +64,6 @@ const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
 
-let DEBUG = process.env.NODE_ENV !== 'production';
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
 function detectDuplicateIds() {
@@ -78,7 +79,7 @@ function detectDuplicateIds() {
 }
 
 export let debug = (view, kind, msg, obj) => {
-  if(DEBUG){
+  if(view.liveSocket.isDebugEnabled()){
     console.log(`${view.id} ${kind}: ${msg} - `, obj)
   }
 }
@@ -286,14 +287,28 @@ export class LiveSocket {
     this.bindTopLevelEvents()
   }
 
-  getSocket(){ return this.socket }
+  // public
 
-  log(view, kind, msgCallback){
-    if(this.viewLogger){
-      let [msg, obj] = msgCallback()
-      this.viewLogger(view, kind, msg, obj)
-    }
+  isDebugEnabled(){ return sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
+
+  enableDebug(){ sessionStorage.setItem(PHX_LV_DEBUG, "true") }
+
+  disableDebug(){ sessionStorage.removeItem(PHX_LV_DEBUG) }
+
+  enableLatencySim(upperBoundMs){
+    this.enableDebug()
+    console.log("latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable")
+    sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs)
   }
+
+  disableLatencySim(){ sessionStorage.removeItem(PHX_LV_LATENCY_SIM) }
+
+  getLatencySim(){
+    let str = sessionStorage.getItem(PHX_LV_LATENCY_SIM)
+    return str ? parseInt(str) : null
+  }
+
+  getSocket(){ return this.socket }
 
   connect(){
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
@@ -311,6 +326,43 @@ export class LiveSocket {
   disconnect(){ this.socket.disconnect() }
 
   // private
+
+  log(view, kind, msgCallback){
+    if(this.viewLogger){
+      let [msg, obj] = msgCallback()
+      this.viewLogger(view, kind, msg, obj)
+    } else if(this.isDebugEnabled()){
+      let [msg, obj] = msgCallback()
+      debug(view, kind, msg, obj)
+    }
+  }
+
+  onChannel(channel, event, cb){
+    channel.on(event, data => {
+      let latency = this.getLatencySim()
+      if(!latency){
+        cb(data)
+      } else {
+        console.log(`simulating ${latency}ms of latency from server to client`)
+        setTimeout(() => cb(data), latency)
+      }
+    })
+  }
+
+  wrapPush(push){
+    let latency = this.getLatencySim()
+    if(!latency){ return push() }
+
+    console.log(`simulating ${latency}ms of latency from client to server`)
+    let fakePush = {
+      receives: [],
+      receive(kind, cb){ this.receives.push([kind, cb])}
+    }
+    setTimeout(() => {
+      fakePush.receives.reduce((acc, [kind, cb]) => acc.receive(kind, cb), push())
+    }, latency)
+    return fakePush
+  }
 
   reloadWithJitter(view){
     this.disconnect()
@@ -1057,7 +1109,7 @@ class DOMPatch {
       }
     })
 
-    if(DEBUG){ detectDuplicateIds() }
+    if(view.liveSocket.isDebugEnabled()){ detectDuplicateIds() }
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
@@ -1238,7 +1290,7 @@ export class View {
 
   onJoin(resp){
     let {rendered, live_patch} = resp
-    this.log("join", () => ["", JSON.stringify(rendered)])
+    this.log("join", () => ["", rendered])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = rendered
@@ -1351,7 +1403,7 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
 
-    this.log("update", () => ["", JSON.stringify(diff)])
+    this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = typeof(cid) === "number" ?
       Rendered.componentToString(this.rendered[COMPONENTS], cid) :
@@ -1387,12 +1439,14 @@ export class View {
     this.pendingDiffs = []
   }
 
+  onChannel(event, cb){ this.liveSocket.onChannel(this.channel, event, cb) }
+
   bindChannel(){
-    this.channel.on("diff", (diff) => this.update(diff))
-    this.channel.on("redirect", ({to, flash}) => this.onRedirect({to, flash}))
-    this.channel.on("live_patch", (redir) => this.onLivePatch(redir))
-    this.channel.on("live_redirect", (redir) => this.onLiveRedirect(redir))
-    this.channel.on("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
+    this.onChannel("diff", (diff) => this.update(diff))
+    this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
+    this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
+    this.onChannel("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onGracefulClose())
   }
@@ -1430,19 +1484,21 @@ export class View {
     } else {
       onLoadingDone = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
-    this.channel.join()
-      .receive("ok", data => {
-        if(this.joinCount === 0){ callback && callback(this) }
-        this.joinCount++
-        this.joinPending = true
-        this.flash = null
-        if(!this.parent){
-          onLoadingDone()
-        }
-        this.onJoin(data)
-      })
-      .receive("error", resp => this.onJoinError(resp))
-      .receive("timeout", () => this.onJoinError({reason: "timeout"}))
+    this.liveSocket.wrapPush(() => {
+      return this.channel.join()
+        .receive("ok", data => {
+          if(this.joinCount === 0){ callback && callback(this) }
+          this.joinCount++
+          this.joinPending = true
+          this.flash = null
+          if(!this.parent){
+            onLoadingDone()
+          }
+          this.onJoin(data)
+        })
+        .receive("error", resp => this.onJoinError(resp))
+        .receive("timeout", () => this.onJoinError({reason: "timeout"}))
+    })
   }
 
   onJoinError(resp){
@@ -1481,13 +1537,15 @@ export class View {
 
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
-      this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-        if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
-        if(resp.redirect){ this.onRedirect(resp.redirect) }
-        if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
-        if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-        onLoadingDone()
-        onReply(resp)
+      this.liveSocket.wrapPush(() => {
+        return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+          if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
+          if(resp.redirect){ this.onRedirect(resp.redirect) }
+          if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
+          if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+          onLoadingDone()
+          onReply(resp)
+        })
       })
     )
   }

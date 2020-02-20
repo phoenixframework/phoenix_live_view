@@ -5,6 +5,7 @@
   - Returning `:stop` tuples from LiveView `mount` or `handle_[params|call|cast|info]` is no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements
+  - Use acknowledgement tracking to avoid patching inputs until the server has processed the form event
   - Add css loading states to all phx bound elements with event specfic css classes
   - Dispatch `phx:page-loading-start` and `phx:page-loading-stop` on window for live navigation, initial page loads, and form submits, for user controlled page loading integration
   - Allow any phx bound element to specify `phx-page-loading` to dispatch loading events above when the event is pushed

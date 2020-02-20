@@ -51,12 +51,6 @@ defmodule Phoenix.LiveView do
       format is quite efficient on the server and uses
       less data over the wire;
 
-    * (Coming soon) LiveView includes a latency simulator,
-      which allows you to simulate how your application
-      would behave with greater latency and guides you to provide
-      meaningful feedback to users while they wait for events
-      to be processed;
-
   Furthermore, by keeping a persistent connection between client
   and server, LiveView applications can react faster to user events
   as there is less work to be done and less data to be sent compared
@@ -87,21 +81,9 @@ defmodule Phoenix.LiveView do
   There are other cases that have limited support but
   will become first-class as we further develop LiveView:
 
-    * Transitions and loading states - the LiveView
-      programming model provides a good foundation for
-      transitions and loading states since any UI change
-      done after a user action is undone once the server
-      sends the update for said action. For example, it is
-      relatively straight-forward to click a button that
-      changes itself in a way that is automatically undone
-      when the update arrives. This is especially important
-      as user feedback when latency is involved. A complete
-      feature set for modelling those states is coming in
-      future versions;
-
-    * Optimistic UIs - once we add transitions and loading
+    * Optimistic UIs - with transitions and loading
       states, many of the building blocks necessary for
-      building optimistic UIs will be part of LiveView, but
+      building optimistic UIs are already part of LiveView, but
       since optimistic UIs are about doing work on the client
       while the server is unavailable, complete support for
       Optimistic UIs cannot be achieved without also writing
@@ -258,8 +240,8 @@ defmodule Phoenix.LiveView do
       import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"
 
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", {params: {_csrf_token: csrfToken}});
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+      let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
 
   *Note*: Comprehensive JavaScript client usage is covered in a later section.
@@ -1033,7 +1015,8 @@ defmodule Phoenix.LiveView do
       import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"
 
-      let liveSocket = new LiveSocket("/live", Socket)
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+      let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
 
   All options are passed directly to the `Phoenix.Socket` constructor,
@@ -1045,6 +1028,46 @@ defmodule Phoenix.LiveView do
       the function receives the view's phx-view name.
     * `hooks` – a reference to a user-defined hooks namespace, containing client
       callbacks for server/client interop. See the interop section below for details.
+
+  ### Debuggin Client Events
+
+  To aid debugging on the client when troubleshooting an issue, the `enableDebug()`
+  and `disableDebug()` functions are exposed on the `LiveSocket` JavaScript instance.
+  Calling `enableDebug()` turns on debug logging which includes LiveView life-cycle and
+  payload events as they come and go from client to server. In pracitce, you can expose
+  your instance on `window` for quick access in the browser's web console, for example:
+
+      // app.js
+      let liveSocket = new LiveSocket(...)
+      liveSocket.connect()
+      window.liveSocket = liveSocket
+
+      // in the browser's web console
+      >> liveSocket.enableDebug()
+
+  The debug state uses the browser's built-in `sessionStorage`, so it remains in effect
+  for as long as your browser session lasts.
+
+  ### Simulating Latency
+
+  Proper handling of latency is critical for good UX. LiveView's CSS loading states allow
+  the client to provide user feedback while awaiting a server response. In development,
+  near zero latency on localhost does not allow latency to be easily represented or tested,
+  so LiveView includes a latency simulating with the JavaScript client to ensure your
+  application provides a pleasant experience. Like the `enableDebug()` function above,
+  the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
+  functions which apply throughout the current browser sesssion. The `enableLatencySim` function
+  accepts an integer in milliseconds for the round-trip-time to the server. For example:
+
+      // app.js
+      let liveSocket = new LiveSocket(...)
+      liveSocket.connect()
+      window.liveSocket = liveSocket
+
+      // in the browser's web console
+      >> liveSocket.enableLatencySim(1000)
+      [Log] latency simulator enabled for the duration of this browser session.
+            Call disableLatencySim() to disable
 
   ### Forms and input handling
 
@@ -1228,7 +1251,7 @@ defmodule Phoenix.LiveView do
         }
       }
 
-      let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+      let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
       ...
 
   *Note*: when using `phx-hook`, a unique DOM ID must always be set.
