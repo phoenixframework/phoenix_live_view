@@ -5,6 +5,9 @@
   - Returning `:stop` tuples from LiveView `mount` or `handle_[params|call|cast|info]` is no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements
+  - Add css loading states to all phx bound elements with event specfic css classes
+  - Dispatch `phx:page-loading-start` and `phx:page-loading-stop` on window for live navigation, initial page loads, and form submits, for user controlled page loading integration
+  - Allow any phx bound element to specify `phx-page-loading` to dispatch loading events above when the event is pushed
   - Allow `redirect` and `push_redirect` from mount
   - Add `transport_pid/1` to return the websocket transport pid when the socket is connected
 
