@@ -100,7 +100,20 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  TODO
+  Configures the layout to use for `live` routes.
+
+  ## Examples
+
+      defmodule AppWeb.Router do
+        use LiveGenWeb, :router
+        import Phoenix.LiveView.Router
+
+        pipeline :browser do
+          ...
+          plug :put_live_layout, {AppWeb.LayoutView, "root.html"}
+        end
+        ...
+      end
   """
   def put_live_layout(%Plug.Conn{} = conn, {layout_mod, template})
       when is_atom(layout_mod) and is_binary(template) do
@@ -108,7 +121,22 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  TODO
+  Fetches the LiveView and merges with the controller flash.
+
+  Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
+
+  ## Examples
+
+      defmodule AppWeb.Router do
+        use LiveGenWeb, :router
+        import Phoenix.LiveView.Router
+
+        pipeline :browser do
+          ...
+          plug :fetch_live_flash
+        end
+        ...
+      end
   """
   def fetch_live_flash(%Plug.Conn{} = conn, _) do
     case cookie_flash(conn) do

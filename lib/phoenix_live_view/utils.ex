@@ -246,7 +246,9 @@ defmodule Phoenix.LiveView.Utils do
     Phoenix.Token.sign(endpoint_mod, flash_salt(endpoint_mod), flash)
   end
 
-  @doc false
+  @doc """
+  Verifies the socket's flash token.
+  """
   def verify_flash(endpoint_mod, flash_token) do
     salt = flash_salt(endpoint_mod)
 
