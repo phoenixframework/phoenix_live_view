@@ -1,4 +1,4 @@
-## 0.8.0-dev
+## 0.8.0 (2020-02-22)
 
 ### Backwards incompatible changes
   - Remove `Phoenix.LiveView.Flash` in favor of `:fetch_live_flash` imported by `Phoenix.LiveView.Router`
