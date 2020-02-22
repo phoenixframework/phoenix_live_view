@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Utils do
   # Shared helpers used mostly by Channel and Diff,
-  # but also Static, Flash, and LiveViewTest.
+  # but also Static, and LiveViewTest.
   @moduledoc false
 
   alias Phoenix.LiveView
