@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.Static do
   alias Phoenix.LiveView.{Socket, Utils, Diff}
 
   # Token version. Should be changed whenever new data is stored.
-  @token_vsn 5
+  @token_vsn 4
 
   def token_vsn, do: @token_vsn
 
