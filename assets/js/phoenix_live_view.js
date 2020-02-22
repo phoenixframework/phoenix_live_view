@@ -311,16 +311,16 @@ export class LiveSocket {
   getSocket(){ return this.socket }
 
   connect(){
-    if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
+    let doConnect = () => {
       this.joinRootViews()
       this.detectMainView()
-    } else {
-      document.addEventListener("DOMContentLoaded", () => {
-        this.joinRootViews()
-        this.detectMainView()
-      })
+      if(this.root){ this.socket.connect() }
     }
-    return this.socket.connect()
+    if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
+      doConnect()
+    } else {
+      document.addEventListener("DOMContentLoaded", () => doConnect())
+    }
   }
 
   disconnect(){ this.socket.disconnect() }
@@ -679,7 +679,7 @@ export class LiveSocket {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
-      if(!type || !this.isConnected() || wantsNewTab){ return }
+      if(!type || !this.isConnected() || !this.main || wantsNewTab){ return }
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
