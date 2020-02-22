@@ -70,8 +70,6 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/live-layout", LayoutLive
     end
 
-
-
     # integration params
     live "/counter/:id", ParamCounterLive
     live "/action", ActionLive
