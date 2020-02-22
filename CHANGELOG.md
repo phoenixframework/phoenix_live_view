@@ -14,6 +14,7 @@
   - Allow any phx bound element to specify `phx-page-loading` to dispatch loading events above when the event is pushed
   - Add client side latency simulator with new `enableLatencySim(milliseconds)` and `disableLatencySim()`
   - Add `enableDebug()` and `disableDebug()` to `LiveSocket` for ondemand browser debugging from the web console
+  - Do not connect LiveSocket WebSocket or bind client events unless a LiveView is found on the page
   - Add `transport_pid/1` to return the websocket transport pid when the socket is connected
 
 ### Bug Fixes

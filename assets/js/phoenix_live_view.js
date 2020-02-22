@@ -284,7 +284,6 @@ export class LiveSocket {
     window.addEventListener("unload", e => {
       this.unloaded = true
     })
-    this.bindTopLevelEvents()
   }
 
   // public
@@ -314,7 +313,10 @@ export class LiveSocket {
     let doConnect = () => {
       this.joinRootViews()
       this.detectMainView()
-      if(this.root){ this.socket.connect() }
+      if(this.root){
+        this.bindTopLevelEvents()
+        this.socket.connect()
+      }
     }
     if(["complete", "loaded","interactive"].indexOf(document.readyState) >= 0){
       doConnect()
