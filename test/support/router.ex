@@ -11,11 +11,15 @@ defmodule Phoenix.LiveViewTest.Router do
       signing_salt: "/VEDsdfsffMnp5"
 
     plug :fetch_session
-    plug Phoenix.LiveView.Flash
+    plug :fetch_live_flash
   end
 
   pipeline :bad_layout do
     plug :put_layout, {UnknownView, :unknown_template}
+  end
+
+  pipeline :live_layout do
+    plug :put_live_layout, {Phoenix.LiveViewTest.LayoutView , "root.html"}
   end
 
   scope "/", Phoenix.LiveViewTest do
@@ -58,6 +62,12 @@ defmodule Phoenix.LiveViewTest.Router do
       # The layout option needs to have higher precedence than bad layout
       live "/bad_layout", LayoutLive
       live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
+    end
+
+    scope "/" do
+      pipe_through [:live_layout]
+
+      live "/live-layout", LayoutLive
     end
 
     # integration params

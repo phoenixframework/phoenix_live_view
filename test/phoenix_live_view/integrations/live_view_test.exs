@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.LiveViewTest do
   use ExUnit.Case, async: false
-  use Phoenix.ConnTest
+
+  import Plug.Conn
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
@@ -705,6 +707,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert render_click(view, :double, "") =~
                "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"
+    end
+
+    test "uses layout from put_live_layout plug", %{conn: conn} do
+      {:ok, _, html} = live(conn, "/live-layout")
+
+      assert html =~
+               ~r|^ROOTSTART\-123\-<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND\n</div>-ROOTEND|
     end
   end
 

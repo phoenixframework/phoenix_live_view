@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.Router do
   Provides LiveView routing for Phoenix routers.
   """
 
+  @cookie_key "__phoenix_flash__"
+
   @doc """
   Defines a LiveView route.
 
@@ -97,6 +99,57 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
+  @doc """
+  Configures the layout to use for `live` routes.
+
+  ## Examples
+
+      defmodule AppWeb.Router do
+        use LiveGenWeb, :router
+        import Phoenix.LiveView.Router
+
+        pipeline :browser do
+          ...
+          plug :put_live_layout, {AppWeb.LayoutView, "root.html"}
+        end
+        ...
+      end
+  """
+  def put_live_layout(%Plug.Conn{} = conn, {layout_mod, template})
+      when is_atom(layout_mod) and is_binary(template) do
+    Plug.Conn.put_private(conn, :phoenix_live_layout, {layout_mod, template})
+  end
+
+  @doc """
+  Fetches the LiveView and merges with the controller flash.
+
+  Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
+
+  ## Examples
+
+      defmodule AppWeb.Router do
+        use LiveGenWeb, :router
+        import Phoenix.LiveView.Router
+
+        pipeline :browser do
+          ...
+          plug :fetch_live_flash
+        end
+        ...
+      end
+  """
+  def fetch_live_flash(%Plug.Conn{} = conn, _) do
+    case cookie_flash(conn) do
+      {conn, nil} ->
+        Phoenix.Controller.fetch_flash(conn, [])
+
+      {conn, flash} ->
+        conn
+        |> Phoenix.Controller.fetch_flash([])
+        |> Phoenix.Controller.merge_flash(flash)
+    end
+  end
+
   @doc false
   def __live__(router, live_view, action, opts) when is_list(action) and is_list(opts) do
     __live__(router, live_view, nil, Keyword.merge(action, opts))
@@ -126,14 +179,14 @@ defmodule Phoenix.LiveView.Router do
     live_view
     |> Module.split()
     |> Enum.drop_while(&(not String.ends_with?(&1, "Live")))
-    |> Enum.map(& &1 |> String.replace_suffix("Live", "") |> Macro.underscore)
+    |> Enum.map(&(&1 |> String.replace_suffix("Live", "") |> Macro.underscore()))
     |> Enum.join("_")
     |> case do
       "" ->
         raise ArgumentError,
               "could not infer :as option because a live action was given and the LiveView " <>
-              "does not have a \"Live\" suffix. Please pass :as explicitly or make sure your " <>
-              "LiveView is named like \"FooLive\" or \"FooLive.Index\""
+                "does not have a \"Live\" suffix. Please pass :as explicitly or make sure your " <>
+                "LiveView is named like \"FooLive\" or \"FooLive.Index\""
 
       as ->
         {String.to_atom(as), action}
@@ -151,4 +204,18 @@ defmodule Phoenix.LiveView.Router do
 
     {layout_view, :app}
   end
+
+  defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+
+    flash =
+      case Phoenix.LiveView.Utils.verify_flash(endpoint, token) do
+        %{} = flash when flash != %{} -> flash
+        %{} -> nil
+      end
+
+    {Plug.Conn.delete_resp_cookie(conn, @cookie_key), flash}
+  end
+
+  defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
 end

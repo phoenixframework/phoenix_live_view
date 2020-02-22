@@ -39,14 +39,20 @@ defmodule Phoenix.LiveView.Static do
       {:error, :expired}
   """
   def verify_session(endpoint, session_token, static_token) do
-    with {:ok, session} <- verify_token(endpoint, session_token),
-         {:ok, static} <- verify_static_token(endpoint, static_token) do
+    with {:ok, %{id: id} = session} <- verify_token(endpoint, session_token),
+         {:ok, static} <- verify_static_token(endpoint, id, static_token) do
       {:ok, Map.merge(session, static)}
     end
   end
 
-  defp verify_static_token(_endpoint, nil), do: {:ok, %{assigned_new: []}}
-  defp verify_static_token(endpoint, token), do: verify_token(endpoint, token)
+  defp verify_static_token(_endpoint, _id, nil), do: {:ok, %{assigned_new: []}}
+  defp verify_static_token(endpoint, id, token) do
+    case verify_token(endpoint, token) do
+      {:ok, %{id: ^id}} = ok -> ok
+      {:ok, _} -> {:error, :invalid}
+      {:error, _} = error -> error
+    end
+  end
 
   defp verify_token(endpoint, token) do
     case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do

@@ -41,6 +41,7 @@ defmodule Phoenix.LiveView.Plug do
     cond do
       live_link?(conn) -> Phoenix.Controller.put_layout(conn, false)
       layout = opts[:layout] -> Phoenix.Controller.put_layout(conn, layout)
+      layout = conn.private[:phoenix_live_layout] -> Phoenix.Controller.put_layout(conn, layout)
       layout = opts[:inferred_layout] -> Phoenix.Controller.put_new_layout(conn, layout)
       true -> conn
     end

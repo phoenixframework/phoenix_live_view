@@ -9,6 +9,8 @@ defmodule Phoenix.LiveView.Utils do
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
 
+  @max_flash_age :timer.seconds(60)
+
   @doc """
   Clears the changes from the socket assigns.
   """
@@ -125,13 +127,6 @@ defmodule Phoenix.LiveView.Utils do
   defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
   @doc """
-  Signs the socket's flash into a token if it has been set.
-  """
-  def sign_flash(%Socket{endpoint: endpoint}, %{} = flash) do
-    LiveView.Flash.sign(endpoint, flash)
-  end
-
-  @doc """
   Returns the configured signing salt for the endpoint.
   """
   def salt!(endpoint) when is_atom(endpoint) do
@@ -244,6 +239,25 @@ defmodule Phoenix.LiveView.Utils do
     end
   end
 
+  @doc """
+  Signs the socket's flash into a token if it has been set.
+  """
+  def sign_flash(endpoint_mod, %{} = flash) do
+    Phoenix.Token.sign(endpoint_mod, flash_salt(endpoint_mod), flash)
+  end
+
+  @doc """
+  Verifies the socket's flash token.
+  """
+  def verify_flash(endpoint_mod, flash_token) do
+    salt = flash_salt(endpoint_mod)
+
+    case Phoenix.Token.verify(endpoint_mod, salt, flash_token, max_age: @max_flash_age) do
+      {:ok, flash} -> flash
+      {:error, _reason} -> %{}
+    end
+  end
+
   defp random_encoded_bytes do
     binary = <<
       System.system_time(:nanosecond)::64,
@@ -314,5 +328,9 @@ defmodule Phoenix.LiveView.Utils do
 
   defp layout(socket, view) do
     socket.private[:layout] || view.__live__()[:layout]
+  end
+
+  defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do
+    "flash:" <> salt!(endpoint_mod)
   end
 end

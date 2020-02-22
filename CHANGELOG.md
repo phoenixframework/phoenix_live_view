@@ -1,10 +1,12 @@
 ## 0.8.0-dev
 
 ### Backwards incompatible changes
-  - Layout must now access the child contents with `@inner_content` instead of invoking the LiveView directly
+  - Remove `Phoenix.LiveView.Flash` in favor of `:fetch_live_flash` imported by `Phoenix.LiveView.Router`
+  - Live layout must now access the child contents with `@inner_content` instead of invoking the LiveView directly
   - Returning `:stop` tuples from LiveView `mount` or `handle_[params|call|cast|info]` is no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements
+  - Add `put_live_layout` plug to put the root layout used for live routes
   - Allow `redirect` and `push_redirect` from mount
   - Use acknowledgement tracking to avoid patching inputs until the server has processed the form event
   - Add css loading states to all phx bound elements with event specfic css classes
