@@ -11,7 +11,7 @@ defmodule Phoenix.LiveViewTest.Router do
       signing_salt: "/VEDsdfsffMnp5"
 
     plug :fetch_session
-    plug Phoenix.LiveView.Flash
+    plug :fetch_live_flash
   end
 
   pipeline :bad_layout do

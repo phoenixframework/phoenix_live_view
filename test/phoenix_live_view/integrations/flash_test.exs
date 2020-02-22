@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash from DeadView to LiveView", %{conn: conn} do
       conn =
         conn
-        |> LiveView.Flash.call(LiveView.Flash.init([]))
+        |> LiveView.Router.fetch_live_flash([])
         |> Phoenix.Controller.put_flash(:info, "flash from the dead")
         |> Phoenix.Controller.redirect(to: "/flash-root")
         |> recycle()

@@ -226,7 +226,7 @@ defmodule Phoenix.LiveViewTest do
 
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Plug.Test.init_test_session(%{})
-    |> Phoenix.LiveView.Flash.call(Phoenix.LiveView.Flash.init([]))
+    |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
     |> __live__(mount_opts)
   end
@@ -606,7 +606,7 @@ defmodule Phoenix.LiveViewTest do
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
 
       if flash do
-        assert unquote(flash) = Phoenix.LiveView.Flash.verify(@endpoint, opts[:flash])
+        assert unquote(flash) = Phoenix.LiveView.Utils.verify_flash(@endpoint, opts[:flash])
       end
     end
   end

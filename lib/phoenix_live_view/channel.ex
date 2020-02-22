@@ -446,7 +446,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp copy_flash(%{socket: socket}, opts) do
     if flash = Utils.get_flash(socket) do
-      Map.put(opts, :flash, Utils.sign_flash(socket, flash))
+      Map.put(opts, :flash, Utils.sign_flash(socket.endpoint, flash))
     else
       opts
     end
@@ -513,7 +513,7 @@ defmodule Phoenix.LiveView.Channel do
     # verified_flash is fetched from the disconnected render.
     # params["flash"] is sent on live redirects and therefore has higher priority.
     cond do
-      flash_token -> Phoenix.LiveView.Flash.verify(endpoint, flash_token)
+      flash_token -> Utils.verify_flash(endpoint, flash_token)
       params["joins"] == 0 && verified_flash -> verified_flash
       true -> %{}
     end

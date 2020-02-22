@@ -10,7 +10,7 @@ defmodule Phoenix.LiveView.PlugTest do
 
     conn
     |> Plug.Test.init_test_session(%{})
-    |> Phoenix.LiveView.Flash.call(Phoenix.LiveView.Flash.init([]))
+    |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> put_private(:phoenix_live_view, {view, opts})
     |> LiveViewPlug.call(view)
   end
