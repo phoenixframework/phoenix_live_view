@@ -593,7 +593,7 @@ defmodule Phoenix.LiveView do
   by LiveView without calling the user's `handle_event/3` callbacks. Today,
   the follow events are supported:
 
-    - `lv:clear-flash` – clears the flash when send to the server. If a
+    - `lv:clear-flash` – clears the flash when sent to the server. If a
     `phx-value-key` is provided, the specific key will be removed from the flash.
 
   For example:
@@ -1088,7 +1088,7 @@ defmodule Phoenix.LiveView do
 
   The server's `handle_event/3` would receive a payload:
 
-      %{"_target" => ["user", "username"], "user" => %{"name" => "Name"}}
+      %{"_target" => ["user", "username"], "user" => %{"username" => "Name"}}
 
   The `phx-submit` event is used for form submissions where major side effects
   typically happen, such as rendering new containers, calling an external
