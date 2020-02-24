@@ -33,17 +33,17 @@ defmodule Phoenix.LiveView.Router do
   LiveView is on, you can pass the action option when defining LiveViews
   too:
 
-      live "/articles", ArticleLive.Index, :index
-      live "/articles/new", ArticleLive.Index, :new
-      live "/articles/1/edit", ArticleLive.Index, :edit
+      live "/articles", ArticleLive, :index
+      live "/articles/new", ArticleLive, :new
+      live "/articles/1/edit", ArticleLive, :edit
 
   When an action is given, the generated route helpers are named after
   the LiveView itself (the same as in a controller). For the example
   above, we will have:
 
-      article_index_path(@socket, :index)
-      article_index_path(@socket, :new)
-      article_index_path(@socket, :edit, 123)
+      article_path(@socket, :index)
+      article_path(@socket, :new)
+      article_path(@socket, :edit, 123)
 
   The current action will always be available inside the LiveView as
   the `@live_view_action` assign. `@live_view_action` will be `nil`
