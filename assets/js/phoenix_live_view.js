@@ -33,7 +33,7 @@ const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
-const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url"]
+const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
