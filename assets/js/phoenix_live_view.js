@@ -415,6 +415,11 @@ export class LiveSocket {
     })
   }
 
+  redirect(to, flash){
+    this.unloaded = true
+    Browser.redirect(to, flash)
+  }
+
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let mainEl = this.main.el
     let mainID = this.main.id
@@ -422,12 +427,12 @@ export class LiveSocket {
     this.main.showLoader(this.loaderTimeout)
 
     Browser.fetchPage(href, (status, html) => {
-      if(status !== 200){ return Browser.redirect(href) }
+      if(status !== 200){ return this.redirect(href) }
 
       let template = document.createElement("template")
       template.innerHTML = html
       let el = template.content.childNodes[0]
-      if(!el || !this.isPhxView(el)){ return Browser.redirect(href) }
+      if(!el || !this.isPhxView(el)){ return this.redirect(href) }
 
       this.joinView(el, null, href, flash, newMain => {
         if(!this.commitPendingLink(linkRef)){
@@ -1470,7 +1475,7 @@ export class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash}){ Browser.redirect(to, flash) }
+  onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
 
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
@@ -1556,7 +1561,6 @@ export class View {
       el.classList.add(`phx-${event}-loading`)
       el.setAttribute(PHX_REF, newRef)
       let disableText = el.getAttribute(disableWith)
-      console.log(el, disableText)
       if(disableText !== null){ el.innerText = disableText }
     })
     return [newRef, elements]
@@ -1683,7 +1687,7 @@ export class View {
         this.triggerReconnected()
         callback && callback()
       }
-    }).receive("timeout", () => Browser.redirect(window.location.href))
+    }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
   }
 
   formsForRecovery(html){

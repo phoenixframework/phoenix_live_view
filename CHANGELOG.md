@@ -5,6 +5,7 @@
 
 ### Bug Fixes
   - Fix focus issue on date and time inputs
+  - Fix LiveViews failing to mount when page restored from back/forward cache following a `redirect` on the server
 
 ## 0.8.0 (2020-02-22)
 
