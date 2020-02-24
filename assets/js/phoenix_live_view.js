@@ -985,7 +985,7 @@ export let DOM = {
 
   mergeFocusedInput(target, source){
     // skip selects because FF will reset highlighted index for any setAttribute
-    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, ["value"]) }
+    if(!(target instanceof HTMLSelectElement && target.multiple !== true)){ DOM.mergeAttrs(target, source, ["value"]) }
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {
@@ -1097,7 +1097,7 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
-        if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)){
+        if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl) && !(fromEl.multiple === true)){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeFocusedInput(fromEl, toEl)
           DOM.syncAttrsToProps(fromEl)
