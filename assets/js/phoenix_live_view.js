@@ -670,7 +670,7 @@ export class LiveSocket {
       let href = window.location.href
 
       if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
-        this.main.pushLinkPatch(href)
+        this.main.pushLinkPatch(href, null)
       } else {
         this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
@@ -688,7 +688,7 @@ export class LiveSocket {
       if(this.pendingLink === href){ return }
 
       if(type === "patch"){
-        this.pushHistoryPatch(href, linkState)
+        this.pushHistoryPatch(href, linkState, target)
       } else if(type === "redirect") {
         this.historyRedirect(href, linkState)
       } else {
@@ -703,9 +703,9 @@ export class LiveSocket {
     return callback ? callback(done) : done
   }
 
-  pushHistoryPatch(href, linkState){
+  pushHistoryPatch(href, linkState, targetEl){
     this.withPageLoading({to: href, kind: "patch"}, done => {
-      this.main.pushLinkPatch(href, () => {
+      this.main.pushLinkPatch(href, targetEl, () => {
         this.historyPatch(href, linkState)
         done()
       })
@@ -938,10 +938,6 @@ export let DOM = {
         }
         if(throttle){ callback() }
     }
-  },
-
-  disableForm(form, prefix){
-
   },
 
   discardError(container, el){
@@ -1554,10 +1550,14 @@ export class View {
 
   putRef(elements, event){
     let newRef = this.ref++
+    let disableWith = this.binding(PHX_DISABLE_WITH)
 
     elements.forEach(el => {
       el.classList.add(`phx-${event}-loading`)
       el.setAttribute(PHX_REF, newRef)
+      let disableText = el.getAttribute(disableWith)
+      console.log(el, disableText)
+      if(disableText !== null){ el.innerText = disableText }
     })
     return [newRef, elements]
   }
@@ -1638,8 +1638,7 @@ export class View {
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
     let refGenerator = () => {
-      let disableWith = this.binding(PHX_DISABLE_WITH)
-      let disables = DOM.all(formEl, `[${disableWith}]`)
+      let disables = DOM.all(formEl, `[${this.binding(PHX_DISABLE_WITH)}]`)
       let buttons = DOM.all(formEl, "button")
       let inputs = DOM.all(formEl, "input")
       buttons.forEach(button => {
@@ -1650,7 +1649,6 @@ export class View {
         input.setAttribute(PHX_READONLY, input.readOnly)
         input.readOnly = true
       })
-      disables.forEach(disableEl => disableEl.innerText = disableEl.getAttribute(disableWith))
       formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
       return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
     }
@@ -1670,10 +1668,12 @@ export class View {
     })
   }
 
-  pushLinkPatch(href, callback){
+  pushLinkPatch(href, targetEl, callback){
     if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
-    this.pushWithReply(null, "link", {url: href}, resp => {
+    let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
+
+    this.pushWithReply(refGen, "link", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else if(this.liveSocket.commitPendingLink(linkRef)){
