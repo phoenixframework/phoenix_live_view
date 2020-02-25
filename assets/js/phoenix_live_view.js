@@ -841,7 +841,7 @@ export let Browser = {
   pushState(kind, meta, to){
     if(this.canPushState()){
       if(to !== window.location.href){
-        history[kind + "State"](meta, "", to)
+        history[kind + "State"](meta, "", to !== undefined ? to : null)
         let hashEl = this.getHashTargetEl(window.location.hash)
 
         if(hashEl) {
