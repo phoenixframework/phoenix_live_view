@@ -78,6 +78,15 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Renders a diff for the rendered struct in regards to the given socket.
   """
+  def render(
+        %{fingerprints: {expected, _}} = socket,
+        %Rendered{fingerprint: actual} = rendered,
+        _components
+      )
+      when expected != nil and expected != actual do
+    render(%{socket | fingerprints: new_fingerprints()}, rendered, new_components())
+  end
+
   def render(%{fingerprints: prints} = socket, %Rendered{} = rendered, components) do
     {diff, prints, pending_components, components} =
       traverse(socket, rendered, prints, %{}, components)

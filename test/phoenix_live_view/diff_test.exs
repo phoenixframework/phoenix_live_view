@@ -284,6 +284,14 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
+  def another_component_template(assigns) do
+    ~L"""
+    <span>
+      <%= @component %>
+    </span>
+    """
+  end
+
   describe "stateless components" do
     test "on mount" do
       component = %Component{assigns: %{from: :component}, component: MyComponent}
@@ -430,6 +438,23 @@ defmodule Phoenix.LiveView.DiffTest do
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received _
+    end
+
+    test "on root fingerprint change" do
+      component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
+      rendered = component_template(%{component: component})
+      {socket, full_render, components} = render(rendered)
+      assert socket.fingerprints == {rendered.fingerprint, %{}}
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received :render
+
+      another_rendered = another_component_template(%{component: component})
+      {another_socket, another_full_render, _} = render(another_rendered, socket.fingerprints, components)
+      assert another_socket.fingerprints == {another_rendered.fingerprint, %{}}
+      assert socket.fingerprints != another_socket.fingerprints
+      assert full_render[:c] == another_full_render[:c]
+      assert_received {:mount, %Socket{endpoint: __MODULE__}}
+      assert_received :render
     end
 
     test "raises on duplicate component IDs" do
