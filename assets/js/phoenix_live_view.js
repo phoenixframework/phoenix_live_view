@@ -1098,7 +1098,7 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
-        if(fromEl.isSameNode(focused) && DOM.isFormInput(fromEl) && !(fromEl.multiple === true)){
+        if(focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl) && !(fromEl.multiple === true)){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeFocusedInput(fromEl, toEl)
           DOM.syncAttrsToProps(fromEl)
