@@ -1051,7 +1051,7 @@ class DOMPatch {
   perform(){
     let {view, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer() : container
-    if(this.isCIDPatch && !targetContainer){ return }
+    if(this.isCIDPatch() && !targetContainer){ return }
 
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
