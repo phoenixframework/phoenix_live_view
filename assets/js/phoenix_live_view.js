@@ -131,50 +131,36 @@ let recursiveMerge = (target, source) => {
 }
 
 export let Rendered = {
-  mergeDiff(source, diff){
-    if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
-      return diff
-    } else {
-      recursiveMerge(source, diff)
-      return source
-    }
+  build(rendered){
+    rendered[COMPONENTS] = rendered[COMPONENTS] || {}
+    return rendered
   },
-
-  isNewFingerprint(diff = {}){ return !!diff[STATIC] },
-
-  componentToString(components, cid){
-    let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let template = document.createElement("template")
-    template.innerHTML = this.toString(component, components)
-    let container = template.content
-    Array.from(container.childNodes).forEach(child => {
-      if(child.nodeType === Node.ELEMENT_NODE){
-        child.setAttribute(PHX_COMPONENT, cid)
-      } else {
-        if(child.nodeValue.trim() !== ""){
-          logError(`only HTML element tags are allowed at the root of components.\n\n` +
-                   `got: "${child.nodeValue.trim()}"\n\n` +
-                   `within:\n`, template.innerHTML.trim())
-
-          let span = document.createElement("span")
-          span.innerText = child.nodeValue
-          span.setAttribute(PHX_COMPONENT, cid)
-          child.replaceWith(span)
-        } else {
-          child.remove()
-        }
-      }
-    })
-
-    return template.innerHTML
-  },
-
 
   toString(rendered, components = rendered[COMPONENTS] || {}){
     let output = {buffer: "", components: components}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
+
+  mergeDiff(source, diff){
+    if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
+      return this.build(diff)
+    } else {
+      recursiveMerge(source, diff)
+      return source
+    }
+  },
+
+  componentToString(rendered, cid){ return this.recursiveCIDToString(rendered[COMPONENTS], cid)},
+
+  pruneCIDs(rendered, cids){
+    cids.forEach(cid => delete rendered[COMPONENTS][cid])
+    return rendered
+  },
+
+  // private
+
+  isNewFingerprint(diff = {}){ return !!diff[STATIC] },
 
   toOutputBuffer(rendered, output){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, output) }
@@ -202,7 +188,7 @@ export let Rendered = {
 
   dynamicToBuffer(rendered, output){
     if(typeof(rendered) === "number"){
-      output.buffer += this.componentToString(output.components, rendered)
+      output.buffer += this.recursiveCIDToString(output.components, rendered)
    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
@@ -210,9 +196,31 @@ export let Rendered = {
     }
   },
 
-  pruneCIDs(rendered, cids){
-    cids.forEach(cid => delete rendered[COMPONENTS][cid])
-    return rendered
+  recursiveCIDToString(components, cid){
+    let component = components[cid] || logError(`no component for CID ${cid}`, components)
+    let template = document.createElement("template")
+    template.innerHTML = this.toString(component, components)
+    let container = template.content
+    Array.from(container.childNodes).forEach(child => {
+      if(child.nodeType === Node.ELEMENT_NODE){
+        child.setAttribute(PHX_COMPONENT, cid)
+      } else {
+        if(child.nodeValue.trim() !== ""){
+          logError(`only HTML element tags are allowed at the root of components.\n\n` +
+                   `got: "${child.nodeValue.trim()}"\n\n` +
+                   `within:\n`, template.innerHTML.trim())
+
+          let span = document.createElement("span")
+          span.innerText = child.nodeValue
+          span.setAttribute(PHX_COMPONENT, cid)
+          child.replaceWith(span)
+        } else {
+          child.remove()
+        }
+      }
+    })
+
+    return template.innerHTML
   }
 }
 
@@ -1297,7 +1305,7 @@ export class View {
     this.log("join", () => ["", rendered])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
-    this.rendered = rendered
+    this.rendered = Rendered.build(rendered)
     let html = Rendered.toString(this.rendered)
     this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
@@ -1410,7 +1418,7 @@ export class View {
     this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let html = typeof(cid) === "number" ?
-      Rendered.componentToString(this.rendered[COMPONENTS], cid) :
+      Rendered.componentToString(this.rendered, cid) :
       Rendered.toString(this.rendered)
 
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
