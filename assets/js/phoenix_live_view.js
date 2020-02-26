@@ -1049,13 +1049,16 @@ class DOMPatch {
   }
 
   perform(){
-    let {view, container, id, html, targetCID} = this
+    let {view, container, html} = this
+    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer() : container
+    if(this.isCIDPatch && !targetContainer){ return }
+
     let focused = view.liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
     let added = []
     let updates = []
-    let [diffContainer, targetContainer] = this.buildDiffContainer(container, html, phxUpdate, targetCID)
+    let diffContainer = this.buildDiffContainer(container, html, phxUpdate, targetContainer)
 
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
@@ -1131,20 +1134,25 @@ class DOMPatch {
     return true
   }
 
+  isCIDPatch(){ return typeof(this.targetCID) === "number" }
+
+  targetCIDContainer(){ if(!this.isCIDPatch()){ return }
+    let first = this.container.querySelector(`[${PHX_COMPONENT}="${this.targetCID}"]`)
+    return first && first.parentNode
+  }
+
   // builds container for morphdom patch
   // - precomputes append/prepend content in diff node to make it appear as if
   //   the contents had been appended/prepended on full child node list
   // - precomputes updates on existing child ids within a prepend/append child list
   //   to allow existing nodes to be updated in place rather than reordered
-  buildDiffContainer(container, html, phxUpdate, targetCID){
-    let targetContainer = container
+  buildDiffContainer(container, html, phxUpdate, targetContainer){
     let diffContainer = null
     let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
     let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
-    if(typeof(targetCID) === "number"){
-      targetContainer = container.querySelector(`[${PHX_COMPONENT}="${targetCID}"]`).parentNode
+    if(this.isCIDPatch()){
       diffContainer = DOM.cloneNode(targetContainer)
-      let componentNodes = DOM.findComponentNodeList(diffContainer, targetCID)
+      let componentNodes = DOM.findComponentNodeList(diffContainer, this.targetCID)
       let prevSibling = componentNodes[0].previousSibling
       componentNodes.forEach(c => c.remove())
       let nextSibling = prevSibling && prevSibling.nextSibling
@@ -1181,7 +1189,7 @@ class DOMPatch {
       }
     })
 
-    return [diffContainer, targetContainer]
+    return diffContainer
   }
 
   syncPendingRef(fromEl, toEl){

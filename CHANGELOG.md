@@ -9,6 +9,7 @@
   - Fix IE coercing `undefined` to string when issuing pushState
   - Fix IE error when focused element is null
   - Fix client error when using components and live navigation where a dynamic template is rendered
+  - Fix latent component diff causing error when component removed from DOM before patch arrives
 
 ## 0.8.0 (2020-02-22)
 
