@@ -29,7 +29,7 @@ All current Chrome, Safari, Firefox, and MS Edge are supported.
 IE11 support is available with the following polyfills:
 
 ```console
-$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill shim-keyboard-event-key
+$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill @webcomponents/template shim-keyboard-event-key
 ```
 
 Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18](https://caniuse.com/#feat=keyboardevent-key).
@@ -46,6 +46,7 @@ import "child-replace-with-polyfill"
 import "url-search-params-polyfill"
 import "formdata-polyfill"
 import "classlist-polyfill"
+import "@webcomponents/template"
 import "shim-keyboard-event-key"
 
 import {Socket} from "phoenix"
