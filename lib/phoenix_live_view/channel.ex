@@ -274,7 +274,7 @@ defmodule Phoenix.LiveView.Channel do
   defp component_handle_event(state, cid, event, val, ref) do
     %{socket: socket, components: components} = state
 
-    {diff, new_components, {redirected, flash}} =
+    result =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
         case component.handle_event(event, val, component_socket) do
           {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
@@ -290,14 +290,22 @@ defmodule Phoenix.LiveView.Channel do
         end
       end)
 
-    new_socket = Utils.merge_flash(socket, flash)
-    new_state = %{state | socket: new_socket, components: new_components}
+    # Due to race conditions, the browser can send a request for a
+    # component ID that no longer exists. So we need to check for
+    # the :error case accordingly.
+    case result do
+      {diff, new_components, {redirected, flash}} ->
+        new_socket = Utils.merge_flash(socket, flash)
+        new_state = %{state | socket: new_socket, components: new_components}
 
-    if redirected do
+        if redirected do
+          handle_redirect(new_state, redirected, nil, {diff, ref})
+        else
+          {:noreply, push_render(new_state, diff, ref)}
+        end
 
-      handle_redirect(new_state, redirected, nil, {diff, ref})
-    else
-      {:noreply, push_render(new_state, diff, ref)}
+      :error ->
+        {:noreply, state}
     end
   end
 
