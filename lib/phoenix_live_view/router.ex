@@ -158,11 +158,7 @@ defmodule Phoenix.LiveView.Router do
   def __live__(router, live_view, action, opts) when is_atom(action) and is_list(opts) do
     live_view = Phoenix.Router.scoped_alias(router, live_view)
 
-    {metadata, opts} = case opts[:metadata] do
-      nil -> {%{}, opts}
-      metadata ->
-        {metadata, Keyword.delete(opts, :metadata)}
-    end
+    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
 
     opts =
       opts
