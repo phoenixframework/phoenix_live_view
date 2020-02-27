@@ -60,4 +60,14 @@ defmodule Phoenix.LiveView.RouterTest do
     assert Routes.foo_bar_nested_index_path(conn, :show) == "/router/foobarbaz/nested/show"
     assert Routes.custom_foo_bar_path(conn, :index) == "/router/foobarbaz/custom"
   end
+
+  test "user-defined metadata is available inside of metadata key" do
+    routes_with_metadata = Phoenix.LiveViewTest.Router.__routes__()
+      |> Enum.filter(fn r -> Regex.match?(~r/user_defined_metadata*/, r.helper) end)
+
+    assert length(routes_with_metadata) == 2
+
+    route = List.first(routes_with_metadata)
+    assert Map.has_key?(route.metadata, :route_name)
+  end
 end

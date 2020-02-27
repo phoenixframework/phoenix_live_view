@@ -80,4 +80,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/flash-root", FlashLive
     live "/flash-child", FlashChildLive
   end
+
+  scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
+    get "/widget-with-metadata", Controller, :widget, metadata: %{route_name: "widget"}
+    live "/opts-with-metadata", OptsLive,  metadata: %{route_name: "opts"}
+  end
 end

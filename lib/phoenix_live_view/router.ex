@@ -158,6 +158,12 @@ defmodule Phoenix.LiveView.Router do
   def __live__(router, live_view, action, opts) when is_atom(action) and is_list(opts) do
     live_view = Phoenix.Router.scoped_alias(router, live_view)
 
+    {metadata, opts} = case opts[:metadata] do
+      nil -> {%{}, opts}
+      metadata ->
+        {metadata, Keyword.delete(opts, :metadata)}
+    end
+
     opts =
       opts
       |> Keyword.put(:router, router)
@@ -170,7 +176,7 @@ defmodule Phoenix.LiveView.Router do
      as: opts[:as] || as_helper,
      private: %{phoenix_live_view: {live_view, opts}},
      alias: false,
-     metadata: %{phoenix_live_view: {live_view, action}}}
+     metadata: Map.merge(%{phoenix_live_view: {live_view, action}}, metadata)}
   end
 
   defp inferred_as(live_view, nil), do: {:live, live_view}
