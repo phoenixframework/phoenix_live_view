@@ -305,7 +305,7 @@ defmodule Phoenix.LiveView.Channel do
         end
 
       :error ->
-        {:noreply, state}
+        {:noreply, push_noop(state, ref)}
     end
   end
 

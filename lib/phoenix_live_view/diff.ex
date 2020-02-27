@@ -13,8 +13,8 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Returns the diff component state.
   """
-  def new_components do
-    {_ids_to_state = %{}, _cids_to_id = %{}, _uuids = 0}
+  def new_components(uuids \\ 0) do
+    {_ids_to_state = %{}, _cids_to_id = %{}, uuids}
   end
 
   @doc """
@@ -81,10 +81,10 @@ defmodule Phoenix.LiveView.Diff do
   def render(
         %{fingerprints: {expected, _}} = socket,
         %Rendered{fingerprint: actual} = rendered,
-        _components
+        {_, _, uuids}
       )
       when expected != nil and expected != actual do
-    render(%{socket | fingerprints: new_fingerprints()}, rendered, new_components())
+    render(%{socket | fingerprints: new_fingerprints()}, rendered, new_components(uuids))
   end
 
   def render(%{fingerprints: prints} = socket, %Rendered{} = rendered, components) do

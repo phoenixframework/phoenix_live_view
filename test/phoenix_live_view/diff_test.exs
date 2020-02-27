@@ -444,15 +444,42 @@ defmodule Phoenix.LiveView.DiffTest do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
       {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => 0,
+               :c => %{
+                 0 => %{
+                   0 => "component",
+                   1 => "world",
+                   :s => ["FROM ", " ", "\n"]
+                 }
+               },
+               :s => ["<div>\n  ", "\n</div>\n"]
+             }
+
       assert socket.fingerprints == {rendered.fingerprint, %{}}
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received :render
 
       another_rendered = another_component_template(%{component: component})
-      {another_socket, another_full_render, _} = render(another_rendered, socket.fingerprints, components)
+
+      {another_socket, another_full_render, _} =
+        render(another_rendered, socket.fingerprints, components)
+
+      assert another_full_render == %{
+               0 => 1,
+               :c => %{
+                 1 => %{
+                   0 => "component",
+                   1 => "world",
+                   :s => ["FROM ", " ", "\n"]
+                 }
+               },
+               :s => ["<span>\n  ", "\n</span>\n"]
+             }
+
       assert another_socket.fingerprints == {another_rendered.fingerprint, %{}}
       assert socket.fingerprints != another_socket.fingerprints
-      assert full_render[:c] == another_full_render[:c]
       assert_received {:mount, %Socket{endpoint: __MODULE__}}
       assert_received :render
     end
