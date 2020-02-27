@@ -62,12 +62,18 @@ defmodule Phoenix.LiveView.RouterTest do
   end
 
   test "user-defined metadata is available inside of metadata key" do
-    routes_with_metadata = Phoenix.LiveViewTest.Router.__routes__()
-      |> Enum.filter(fn r -> Regex.match?(~r/user_defined_metadata*/, r.helper) end)
-
-    assert length(routes_with_metadata) == 2
-
-    route = List.first(routes_with_metadata)
-    assert Map.has_key?(route.metadata, :route_name)
+    assert Phoenix.Router.route_info(Phoenix.LiveViewTest.Router, "GET", "/opts-with-metadata", nil) == %{
+      log: :debug,
+      path_params: %{},
+      phoenix_live_view: {Phoenix.LiveViewTest.OptsLive, nil},
+      pipe_through: [],
+      plug: Phoenix.LiveView.Plug,
+      plug_opts: Phoenix.LiveViewTest.OptsLive,
+      route: "/opts-with-metadata",
+      route_name: "opts"
+    }
+    assert Phoenix.LiveViewTest.Router
+      |> Phoenix.Router.route_info("GET", "/widget-with-metadata", nil)
+      |> Map.has_key?(:route_name)
   end
 end
