@@ -71,6 +71,9 @@ defmodule Phoenix.LiveView.Router do
       using a LiveView without actions or default to the LiveView name when using
       actions.
 
+    * `:metadata` - a map to optional feed metadata used on telemetry events and route info
+      for example: `%{route_name: :foo, access: :user}`
+
   ## Examples
 
       defmodule MyApp.Router
@@ -158,6 +161,8 @@ defmodule Phoenix.LiveView.Router do
   def __live__(router, live_view, action, opts) when is_atom(action) and is_list(opts) do
     live_view = Phoenix.Router.scoped_alias(router, live_view)
 
+    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
+
     opts =
       opts
       |> Keyword.put(:router, router)
@@ -170,7 +175,7 @@ defmodule Phoenix.LiveView.Router do
      as: opts[:as] || as_helper,
      private: %{phoenix_live_view: {live_view, opts}},
      alias: false,
-     metadata: %{phoenix_live_view: {live_view, action}}}
+     metadata: Map.put(metadata, :phoenix_live_view, {live_view, action})}
   end
 
   defp inferred_as(live_view, nil), do: {:live, live_view}
