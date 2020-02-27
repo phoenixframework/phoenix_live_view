@@ -175,7 +175,7 @@ defmodule Phoenix.LiveView.Router do
      as: opts[:as] || as_helper,
      private: %{phoenix_live_view: {live_view, opts}},
      alias: false,
-     metadata: Map.merge(%{phoenix_live_view: {live_view, action}}, metadata)}
+     metadata: Map.put(metadata, :phoenix_live_view, {live_view, action})}
   end
 
   defp inferred_as(live_view, nil), do: {:live, live_view}
