@@ -71,6 +71,9 @@ defmodule Phoenix.LiveView.Router do
       using a LiveView without actions or default to the LiveView name when using
       actions.
 
+    * `:metadata` - a map to optional feed metadata used on telemetry events and route info
+      for example: `%{route_name: :foo, access: :user}`
+
   ## Examples
 
       defmodule MyApp.Router
