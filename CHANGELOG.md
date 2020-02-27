@@ -10,6 +10,7 @@
   - Fix IE error when focused element is null
   - Fix client error when using components and live navigation where a dynamic template is rendered
   - Fix latent component diff causing error when component removed from DOM before patch arrives
+  - Fix race condition where a component event received on the server for a component already removed by the server raised a match error
 
 ## 0.8.0 (2020-02-22)
 
