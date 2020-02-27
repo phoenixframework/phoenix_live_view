@@ -1,4 +1,4 @@
-## 0.9.0-dev
+## 0.8.1 (2020-02-27)
 
 ### Enhancements
   - Support `phx-disable-with` on live redirect and live patch links
