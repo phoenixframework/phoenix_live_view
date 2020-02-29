@@ -483,8 +483,8 @@ export class LiveSocket {
     }
   }
 
-  withinOwners(childEl, callback){
-    let phxTarget = childEl.getAttribute(this.binding("target"))
+  withinOwners(childEl, type, callback){
+    let phxTarget = childEl.getAttribute(this.binding(`${type}-target`)) || childEl.getAttribute(this.binding("target"))
     if(phxTarget === null){
       this.owner(childEl, view => callback(view, childEl))
     } else {
@@ -619,7 +619,7 @@ export class LiveSocket {
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent){
           this.debounce(e.target, e, () => {
-            this.withinOwners(e.target, (view, targetCtx) => {
+            this.withinOwners(e.target, event, (view, targetCtx) => {
               callback(e, event, view, e.target, targetCtx, targetPhxEvent, null)
             })
           })
@@ -627,7 +627,7 @@ export class LiveSocket {
           DOM.all(document, `[${windowBinding}]`, el => {
             let phxEvent = el.getAttribute(windowBinding)
             this.debounce(el, e, () => {
-              this.withinOwners(el, (view, targetCtx) => {
+              this.withinOwners(el, event, (view, targetCtx) => {
                 callback(e, event, view, el, targetCtx, phxEvent, "window")
               })
             })
@@ -667,7 +667,7 @@ export class LiveSocket {
         }
 
         this.debounce(target, e, () => {
-          this.withinOwners(target, (view, targetCtx) => {
+          this.withinOwners(target, 'click', (view, targetCtx) => {
             view.pushEvent("click", target, targetCtx, phxEvent, meta)
           })
         })
@@ -761,7 +761,7 @@ export class LiveSocket {
       if(!phxEvent){ return }
       e.preventDefault()
       e.target.disabled = true
-      this.withinOwners(e.target, (view, targetCtx) => view.submitForm(e.target, targetCtx, phxEvent))
+      this.withinOwners(e.target, 'submit', (view, targetCtx) => view.submitForm(e.target, targetCtx, phxEvent))
     }, false)
 
     for(let type of ["change", "input"]){
@@ -779,7 +779,7 @@ export class LiveSocket {
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
         this.debounce(input, e, () => {
-          this.withinOwners(input.form, (view, targetCtx) => {
+          this.withinOwners(input.form, type, (view, targetCtx) => {
             if(DOM.isTextualInput(input)){
               DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             } else {
@@ -1682,7 +1682,7 @@ export class View {
   }
 
   pushFormRecovery(form, callback){
-    this.liveSocket.withinOwners(form, (view, targetCtx) => {
+    this.liveSocket.withinOwners(form, PHX_AUTO_RECOVER, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
       view.pushInput(input, targetCtx, phxEvent, input, callback)
