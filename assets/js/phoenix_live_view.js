@@ -1588,8 +1588,8 @@ export class View {
     return cid ? parseInt(cid) : null
   }
 
-  targetComponentID(target, targetCtx){
-    if(target.getAttribute(this.binding("target"))){
+  targetComponentID(target, targetCtx, type){
+    if(target.getAttribute(this.binding("target")) || target.getAttribute(this.binding(`${type}-target`))){
       return this.closestComponentID(targetCtx)
     } else {
       return null
@@ -1634,7 +1634,7 @@ export class View {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
-      cid: this.targetComponentID(el, targetCtx)
+      cid: this.targetComponentID(el, targetCtx, type)
     })
   }
 
@@ -1643,7 +1643,7 @@ export class View {
       type: kind,
       event: phxEvent,
       value: this.extractMeta(keyElement, meta),
-      cid: this.targetComponentID(keyElement, targetCtx)
+      cid: this.targetComponentID(keyElement, targetCtx, kind)
     })
   }
 
@@ -1653,7 +1653,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(inputEl.form, {_target: eventTarget.name}),
-      cid: this.targetComponentID(inputEl.form, targetCtx)
+      cid: this.targetComponentID(inputEl.form, targetCtx, "change")
     }, callback)
   }
 
@@ -1677,7 +1677,7 @@ export class View {
       type: "form",
       event: phxEvent,
       value: serializeForm(formEl),
-      cid: this.targetComponentID(formEl, targetCtx)
+      cid: this.targetComponentID(formEl, targetCtx, "submit")
     }, onReply)
   }
 
