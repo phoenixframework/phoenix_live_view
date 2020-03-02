@@ -133,7 +133,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child redirect when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=redirect&child_to=/thermo?from_child=true")
+      conn =
+        get(conn, "/redir?during=disconnected&kind=redirect&child_to=/thermo?from_child=true")
+
       assert redirected_to(conn) == "/thermo?from_child=true"
     end
 

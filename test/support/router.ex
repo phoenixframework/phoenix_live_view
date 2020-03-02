@@ -19,7 +19,7 @@ defmodule Phoenix.LiveViewTest.Router do
   end
 
   pipeline :live_layout do
-    plug :put_live_layout, {Phoenix.LiveViewTest.LayoutView , "root.html"}
+    plug :put_live_layout, {Phoenix.LiveViewTest.LayoutView, "root.html"}
   end
 
   scope "/", Phoenix.LiveViewTest do

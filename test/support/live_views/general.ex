@@ -305,7 +305,6 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
   end
 end
 
-
 defmodule Phoenix.LiveViewTest.RedirLive do
   use Phoenix.LiveView
 
@@ -326,19 +325,29 @@ defmodule Phoenix.LiveViewTest.RedirLive do
       during == "disconnected" and not connected?(socket) ->
         {:ok, do_redirect(socket, kind, to: to)}
 
-      during == "connected" -> {:ok, assign(socket, title: "parent_content", child_params: nil)}
+      during == "connected" ->
+        {:ok, assign(socket, title: "parent_content", child_params: nil)}
     end
   end
 
-  def mount(%{"child_to" => to, "kind" => kind, "during" => during}, session, socket) when session == %{} do
+  def mount(%{"child_to" => to, "kind" => kind, "during" => during}, session, socket)
+      when session == %{} do
     if socket.parent_pid == nil do
-      {:ok, assign(socket, title: "parent_content", child_params: %{"to" => to, "kind" => kind, "during" => during})}
+      {:ok,
+       assign(socket,
+         title: "parent_content",
+         child_params: %{"to" => to, "kind" => kind, "during" => during}
+       )}
     else
       raise "cannot nest"
     end
   end
 
-  def mount(_params, %{"child_redir" => %{"to" => to, "kind" => kind, "during" => during}}, socket) do
+  def mount(
+        _params,
+        %{"child_redir" => %{"to" => to, "kind" => kind, "during" => during}},
+        socket
+      ) do
     cond do
       during == "connected" and connected?(socket) ->
         {:ok, do_redirect(socket, kind, to: to)}
@@ -346,7 +355,8 @@ defmodule Phoenix.LiveViewTest.RedirLive do
       during == "disconnected" and not connected?(socket) ->
         {:ok, do_redirect(socket, kind, to: to)}
 
-      during == "connected" -> {:ok, assign(socket, title: "child_content", child_params: nil)}
+      during == "connected" ->
+        {:ok, assign(socket, title: "child_content", child_params: nil)}
     end
   end
 

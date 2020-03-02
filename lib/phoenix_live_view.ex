@@ -1452,18 +1452,20 @@ defmodule Phoenix.LiveView do
 
   """
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
+    validate_assign_key!(key)
+
     case socket do
       %{assigns: %{^key => _}} ->
         socket
 
-      %{private: %{assigned_new: {assigns, keys}} = private} ->
+      %{private: %{assigned_new: {assigns, keys}}} ->
         # It is important to store the keys even if they are not in assigns
         # because maybe the controller doesn't have it but the view does.
-        private = put_in(private.assigned_new, {assigns, [key | keys]})
-        assign_each(%{socket | private: private}, key, Map.get_lazy(assigns, key, func))
+        socket = put_in(socket.private.assigned_new, {assigns, [key | keys]})
+        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, func))
 
       %{} ->
-        assign_each(socket, key, func.())
+        Phoenix.LiveView.Utils.force_assign(socket, key, func.())
     end
   end
 
@@ -1480,27 +1482,27 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, name: "Elixir", logo: "💧")
   """
   def assign(%Socket{} = socket, key, value) do
-    assign(socket, [{key, value}])
+    validate_assign_key!(key)
+    Phoenix.LiveView.Utils.assign(socket, key, value)
   end
 
   @doc """
   See `assign/3`.
   """
   def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
-    Enum.reduce(attrs, socket, fn {key, val}, acc ->
-      case Map.fetch(acc.assigns, key) do
-        {:ok, ^val} -> acc
-        {:ok, _old_val} -> assign_each(acc, key, val)
-        :error -> assign_each(acc, key, val)
-      end
+    Enum.reduce(attrs, socket, fn {key, value}, acc ->
+      validate_assign_key!(key)
+      Phoenix.LiveView.Utils.assign(acc, key, value)
     end)
   end
 
-  defp assign_each(%Socket{assigns: assigns, changed: changed} = acc, key, val) do
-    new_changed = Map.put(changed, key, true)
-    new_assigns = Map.put(assigns, key, val)
-    %Socket{acc | assigns: new_assigns, changed: new_changed}
+  defp validate_assign_key!(:flash) do
+    raise ArgumentError,
+          ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
+            "Use the appropriate flash functions instead."
   end
+
+  defp validate_assign_key!(_key), do: :ok
 
   @doc """
   Updates an existing key in the socket assigns.

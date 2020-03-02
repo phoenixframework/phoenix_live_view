@@ -46,6 +46,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp verify_static_token(_endpoint, _id, nil), do: {:ok, %{assigned_new: []}}
+
   defp verify_static_token(endpoint, id, token) do
     case verify_token(endpoint, token) do
       {:ok, %{id: ^id}} = ok -> ok
@@ -121,7 +122,7 @@ defmodule Phoenix.LiveView.Static do
         data_attrs = [
           phx_view: config.name,
           phx_session: sign_root_session(socket, router, view, to_sign_session),
-          phx_static: sign_static_token(socket),
+          phx_static: sign_static_token(socket)
         ]
 
         data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
@@ -233,7 +234,7 @@ defmodule Phoenix.LiveView.Static do
       Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
     if socket.redirected do
-      throw {:phoenix, :child_redirect, redirect_opts(socket), Utils.get_flash(socket)}
+      throw({:phoenix, :child_redirect, redirect_opts(socket), Utils.get_flash(socket)})
     end
 
     if exports_handle_params?(view) do

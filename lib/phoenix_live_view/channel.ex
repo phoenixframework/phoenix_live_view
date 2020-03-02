@@ -452,6 +452,7 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(state, diff, ref) when diff == %{} do
     push_noop(state, ref)
   end
+
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
 

@@ -37,7 +37,9 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_patch with flash", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      result = render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
+      result =
+        render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
+
       assert result =~ "uri[http://localhost:4000/flash-root?foo]"
       assert result =~ "root[ok!]"
     end
@@ -74,21 +76,33 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "flash-component"], "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      render_click([flash_live, "flash-component"], "redirect", %{
+        "to" => "/flash-root",
+        "info" => "ok!"
+      })
+
       assert_redirect(flash_live, "/flash-root", %{"info" => "ok!"})
     end
 
     test "push_redirect with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "flash-component"], "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      render_click([flash_live, "flash-component"], "push_redirect", %{
+        "to" => "/flash-root",
+        "info" => "ok!"
+      })
+
       assert_redirect(flash_live, "/flash-root", %{"info" => "ok!"})
     end
 
     test "push_patch with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "flash-component"], "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
+      render_click([flash_live, "flash-component"], "push_patch", %{
+        "to" => "/flash-root?patch",
+        "info" => "ok!"
+      })
+
       result = render(flash_live)
       assert result =~ "uri[http://localhost:4000/flash-root?patch]"
       assert result =~ "root[ok!]"

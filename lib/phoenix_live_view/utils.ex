@@ -3,13 +3,32 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView
+  alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
 
   @max_flash_age :timer.seconds(60)
+
+  @doc """
+  Assigns a value if it changed change.
+  """
+  def assign(%Socket{} = socket, key, value) do
+    case socket do
+      %{assigns: %{^key => ^value}} -> socket
+      %{} -> force_assign(socket, key, value)
+    end
+  end
+
+  @doc """
+  Forces an assign.
+  """
+  def force_assign(%Socket{assigns: assigns, changed: changed} = socket, key, val) do
+    new_changed = Map.put(changed, key, true)
+    new_assigns = Map.put(assigns, key, val)
+    %{socket | assigns: new_assigns, changed: new_changed}
+  end
 
   @doc """
   Clears the changes from the socket assigns.
@@ -70,7 +89,7 @@ defmodule Phoenix.LiveView.Utils do
   """
   def to_rendered(socket, view) do
     case render_view(socket, view) do
-      %LiveView.Rendered{} = rendered ->
+      %Rendered{} = rendered ->
         rendered
 
       other ->
@@ -98,20 +117,20 @@ defmodule Phoenix.LiveView.Utils do
   """
   def merge_flash(%Socket{} = socket, %{} = new_flash) do
     current_flash = get_flash(socket)
-    LiveView.assign(socket, :flash, Map.merge(current_flash, new_flash))
+    assign(socket, :flash, Map.merge(current_flash, new_flash))
   end
 
   @doc """
   Clears the flash.
   """
-  def clear_flash(%Socket{} = socket), do: LiveView.assign(socket, :flash, %{})
+  def clear_flash(%Socket{} = socket), do: assign(socket, :flash, %{})
 
   @doc """
   Clears the key from the flash.
   """
   def clear_flash(%Socket{} = socket, key) do
     new_flash = Map.delete(socket.assigns.flash, key)
-    LiveView.assign(socket, flash: new_flash)
+    assign(socket, :flash, new_flash)
   end
 
   @doc """
@@ -120,7 +139,7 @@ defmodule Phoenix.LiveView.Utils do
   def put_flash(%Socket{assigns: assigns} = socket, kind, msg) do
     kind = flash_key(kind)
     new_flash = Map.put(assigns.flash, kind, msg)
-    LiveView.assign(socket, flash: new_flash)
+    assign(socket, :flash, new_flash)
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
@@ -235,7 +254,7 @@ defmodule Phoenix.LiveView.Utils do
 
       socket
     else
-      LiveView.assign(socket, assigns)
+      Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
     end
   end
 
@@ -314,7 +333,7 @@ defmodule Phoenix.LiveView.Utils do
 
     case layout(socket, view) do
       {layout_mod, layout_template} ->
-        socket = LiveView.assign(socket, :inner_content, inner_content)
+        socket = assign(socket, :inner_content, inner_content)
         layout_mod.render(layout_template, render_assigns(socket))
 
       nil ->
