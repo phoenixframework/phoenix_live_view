@@ -89,11 +89,11 @@ let closure = (val) => typeof val === "function" ? val : function(){ return val 
 
 let clone = (obj) => { return JSON.parse(JSON.stringify(obj)) }
 
-let closestPhxBinding = (el, binding) => {
+let closestPhxBinding = (el, binding, borderEl) => {
   do {
     if(el.matches(`[${binding}]`)){ return el }
     el = el.parentElement || el.parentNode
-  } while(el !== null && el.nodeType === 1 && !el.matches(PHX_VIEW_SELECTOR))
+  } while(el !== null && el.nodeType === 1 && !((borderEl && borderEl.isSameNode(el)) || el.matches(PHX_VIEW_SELECTOR)))
   return null
 }
 
@@ -1658,10 +1658,12 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
+    let filterIgnored = el => !closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form)
     let refGenerator = () => {
       let disables = DOM.all(formEl, `[${this.binding(PHX_DISABLE_WITH)}]`)
-      let buttons = DOM.all(formEl, "button")
-      let inputs = DOM.all(formEl, "input")
+      let buttons = DOM.all(formEl, "button").filter(filterIgnored)
+      let inputs = DOM.all(formEl, "input").filter(filterIgnored)
+
       buttons.forEach(button => {
         button.setAttribute(PHX_DISABLED, button.disabled)
         button.disabled = true
