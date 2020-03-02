@@ -77,8 +77,8 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "with encoded URL", %{conn: conn} do
-      assert get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
-      assert_receive {:handle_params, _uri, _assigns, %{"id" => "Wm9uZTozNzYxOA=="}}
+      assert get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D?foo=bar+15%26")
+      assert_receive {:handle_params, _uri, _assigns, %{"id" => "Wm9uZTozNzYxOA==", "foo" => "bar 15&"}}
     end
   end
 
@@ -148,9 +148,9 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "with encoded URL", %{conn: conn} do
-      {:ok, _counter_live, _html} = live(conn, "/counter/Wm9uZTozNzYxOA%3D%3D")
+      {:ok, _counter_live, _html} = live(conn, "/counter/Wm9uZTozNzYxOA%3D%3D?foo=bar+15%26")
 
-      assert_receive {:handle_params, _uri, %{connected?: true}, %{"id" => "Wm9uZTozNzYxOA=="}}
+      assert_receive {:handle_params, _uri, %{connected?: true}, %{"id" => "Wm9uZTozNzYxOA==", "foo" => "bar 15&"}}
     end
   end
 
@@ -173,8 +173,8 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "with encoded URL", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
-      assert render_patch(counter_live, "/counter/Wm9uZTozNzYxOa%3d%3d") =~
-               escape(~s|%{"id" => "Wm9uZTozNzYxOa=="}|)
+      assert render_patch(counter_live, "/counter/Wm9uZTozNzYxOa%3d%3d?foo=bar+15%26") =~
+               escape(~s|%{"foo" => "bar 15&", "id" => "Wm9uZTozNzYxOa=="}|)
     end
   end
 
