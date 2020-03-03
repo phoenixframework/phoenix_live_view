@@ -58,6 +58,8 @@ defmodule Phoenix.LiveView.Router do
   ## Options
 
     * `:session` - a map of strings keys and values to be merged into the session.
+      Maybe also be a "MFArgs" tuple that will receive the connection to compute
+      the session.
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
@@ -72,7 +74,7 @@ defmodule Phoenix.LiveView.Router do
       actions.
 
     * `:metadata` - a map to optional feed metadata used on telemetry events and route info
-      for example: `%{route_name: :foo, access: :user}`
+      for example: `%{route_name: :foo, access: :user}`.
 
   ## Examples
 

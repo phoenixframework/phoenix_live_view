@@ -13,6 +13,8 @@ defmodule Phoenix.LiveView.Plug do
 
   @impl Plug
   def call(%{private: %{phoenix_live_view: {view, opts}}} = conn, _) do
+    opts = maybe_dispatch_session(conn, opts)
+
     if live_link?(conn) do
       html = Phoenix.LiveView.Static.container_render(conn, view, opts)
 
@@ -35,6 +37,16 @@ defmodule Phoenix.LiveView.Plug do
       "cache-control",
       "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0"
     )
+  end
+
+  defp maybe_dispatch_session(conn, opts) do
+    case opts[:session] do
+      {mod, fun, args} when is_atom(mod) and is_atom(fun) and is_list(args) ->
+        Keyword.put(opts, :session, apply(mod, fun, [conn | args]))
+
+      _ ->
+        opts
+    end
   end
 
   defp put_new_layout_from_router(conn, opts) do

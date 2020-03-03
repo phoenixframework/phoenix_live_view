@@ -26,10 +26,29 @@ defmodule Phoenix.LiveView.PlugTest do
     {:ok, conn: conn}
   end
 
-  test "with no session opts", %{conn: conn} do
-    conn = call(conn, DashboardLive)
+  def with_session(%Plug.Conn{}, key, value) do
+    %{key => value}
+  end
 
+  test "without session opts", %{conn: conn} do
+    conn = call(conn, DashboardLive)
     assert conn.resp_body =~ ~s(session: %{})
+  end
+
+  test "with session opts as a map", %{conn: conn} do
+    conn = call(conn, DashboardLive, session: %{"hello" => "world"})
+    assert conn.resp_body =~ ~s(session: %{"hello" => "world"})
+  end
+
+  test "with session opts as a mfargs", %{conn: conn} do
+    conn = call(conn, DashboardLive, session: {__MODULE__, :with_session, ["hello", "world"]})
+    assert conn.resp_body =~ ~s(session: %{"hello" => "world"})
+  end
+
+  @tag plug_session: %{user_id: "alex"}
+  test "with user session", %{conn: conn} do
+    conn = call(conn, DashboardLive)
+    assert conn.resp_body =~ ~s(session: %{"user_id" => "alex"})
   end
 
   test "with existing #{LiveViewPlug.link_header()} header", %{conn: conn} do
@@ -41,11 +60,6 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{})
   end
 
-  @tag plug_session: %{user_id: "alex"}
-  test "with session opts", %{conn: conn} do
-    conn = call(conn, DashboardLive)
-    assert conn.resp_body =~ ~s(session: %{"user_id" => "alex"})
-  end
 
   test "with a module container", %{conn: conn} do
     conn = call(conn, ThermostatLive)
