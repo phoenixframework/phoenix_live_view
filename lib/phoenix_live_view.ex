@@ -1035,7 +1035,7 @@ defmodule Phoenix.LiveView do
   To aid debugging on the client when troubleshooting issues, the `enableDebug()`
   and `disableDebug()` functions are exposed on the `LiveSocket` JavaScript instance.
   Calling `enableDebug()` turns on debug logging which includes LiveView life-cycle and
-  payload events as they come and go from client to server. In pracitce, you can expose
+  payload events as they come and go from client to server. In practice, you can expose
   your instance on `window` for quick access in the browser's web console, for example:
 
       // app.js
