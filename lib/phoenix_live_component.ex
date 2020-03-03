@@ -4,7 +4,7 @@ defmodule Phoenix.LiveComponent do
   events in LiveView.
 
   Components are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.live_component/3` in a parent LiveView.
+  by calling `Phoenix.LiveView.Helpers.live_component/3` in a parent LiveView.
   Components run inside the LiveView process, but may have their own
   state and event handling.
 
