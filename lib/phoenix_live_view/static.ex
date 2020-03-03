@@ -209,7 +209,8 @@ defmodule Phoenix.LiveView.Static do
           view: view,
           endpoint: endpoint,
           root_pid: parent.root_pid,
-          parent_pid: self()
+          parent_pid: self(),
+          router: parent.router
         },
         %{assigned_new: {parent.assigns, []}},
         nil,

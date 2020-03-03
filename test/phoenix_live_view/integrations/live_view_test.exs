@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child push_patch when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/cannot invoke handle_params/, fn ->
+      assert_raise Plug.Conn.WrapperError, ~r/a LiveView cannot be mounted while issuing a live patch to the client/, fn ->
         get(conn, "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true")
       end
     end
