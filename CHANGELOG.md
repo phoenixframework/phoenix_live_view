@@ -1,3 +1,16 @@
+## 0.8.2-dev
+
+### Backwards incompatible changes
+  - `put_live_layout` is deprecated in favor of `put_root_layout` (Phoenix v1.5)
+
+### Bug fixes
+  - Do not set ignored inputs and buttons as readonly
+  - Only decode paths in URIs and double decode query strings twice
+
+### Enhancements
+  - Raise if `:flash` is given as an assign
+  - Support user-defined metadata in router
+
 ## 0.8.1 (2020-02-27)
 
 ### Enhancements
