@@ -103,27 +103,6 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  Configures the layout to use for `live` routes.
-
-  ## Examples
-
-      defmodule AppWeb.Router do
-        use LiveGenWeb, :router
-        import Phoenix.LiveView.Router
-
-        pipeline :browser do
-          ...
-          plug :put_live_layout, {AppWeb.LayoutView, "root.html"}
-        end
-        ...
-      end
-  """
-  def put_live_layout(%Plug.Conn{} = conn, {layout_mod, template})
-      when is_atom(layout_mod) and is_binary(template) do
-    Plug.Conn.put_private(conn, :phoenix_live_layout, {layout_mod, template})
-  end
-
-  @doc """
   Fetches the LiveView and merges with the controller flash.
 
   Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
@@ -161,6 +140,7 @@ defmodule Phoenix.LiveView.Router do
   def __live__(router, live_view, action, opts) when is_atom(action) and is_list(opts) do
     live_view = Phoenix.Router.scoped_alias(router, live_view)
 
+    {private, opts} = Keyword.pop(opts, :private, %{})
     {metadata, opts} = Keyword.pop(opts, :metadata, %{})
 
     opts =
@@ -172,9 +152,9 @@ defmodule Phoenix.LiveView.Router do
     {as_helper, as_action} = inferred_as(live_view, action)
 
     {as_action,
-     as: opts[:as] || as_helper,
-     private: %{phoenix_live_view: {live_view, opts}},
      alias: false,
+     as: opts[:as] || as_helper,
+     private: Map.put(private, :phoenix_live_view, {live_view, opts}),
      metadata: Map.put(metadata, :phoenix_live_view, {live_view, action})}
   end
 

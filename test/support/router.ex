@@ -18,10 +18,6 @@ defmodule Phoenix.LiveViewTest.Router do
     plug :put_layout, {UnknownView, :unknown_template}
   end
 
-  pipeline :live_layout do
-    plug :put_live_layout, {Phoenix.LiveViewTest.LayoutView, "root.html"}
-  end
-
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
@@ -65,9 +61,8 @@ defmodule Phoenix.LiveViewTest.Router do
     end
 
     scope "/" do
-      pipe_through [:live_layout]
-
-      live "/live-layout", LayoutLive
+      live "/root-layout", LayoutLive,
+        private: %{phoenix_root_layout: {Phoenix.LiveViewTest.LayoutView, "root.html"}}
     end
 
     # integration params
