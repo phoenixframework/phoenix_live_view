@@ -431,7 +431,7 @@ export class LiveSocket {
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let mainEl = this.main.el
     let mainID = this.main.id
-    this.destroyAllViews()
+    this.destroyMain()
     this.main.showLoader(this.loaderTimeout)
 
     Browser.fetchPage(href, (status, html) => {
@@ -502,6 +502,14 @@ export class LiveSocket {
 
   destroyAllViews(){
     for(let id in this.views){ this.destroyViewById(id) }
+  }
+
+  destroyMain(){
+    for(let id in this.views){
+      let view = this.getViewById(id)
+      if(view.isDescendentOf(this.main)){ this.destroyViewById(id) }
+    }
+    this.destroyViewById(this.main.id)
   }
 
   destroyViewByEl(el){ return this.destroyViewById(el.id) }
@@ -1220,6 +1228,7 @@ export class View {
     this.liveSocket = liveSocket
     this.flash = flash
     this.parent = parentView
+    this.root = parentView ? parentView.root : this
     this.gracefullyClosed = false
     this.el = el
     this.id = this.el.id
@@ -1244,6 +1253,10 @@ export class View {
     this.showLoader(this.liveSocket.loaderTimeout)
     this.bindChannel()
   }
+
+  isMain(){ return this.liveSocket.main === this }
+
+  isDescendentOf(rootView){ return this.root.id === rootView.id && this.root.id !== this.id }
 
   name(){ return this.view }
 
