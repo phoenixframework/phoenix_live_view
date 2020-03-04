@@ -21,40 +21,13 @@ defmodule Phoenix.LiveView do
   internal application messages (usually emitted by `Phoenix.PubSub`)
   or sent by the client/browser.
 
-  LiveView provides many features that make it excellent
-  to build rich, real-time user experiences:
-
-    * By building on top of Elixir processes and
-      `Phoenix.Channels`, LiveView scales well vertically
-      (from small to large instances) and horizontally
-      (by adding more instances);
-
-    * LiveView is first rendered statically as part of
-      regular HTTP requests, which provides quick times
-      for "First Meaningful Paint", in addition to helping
-      search and indexing engines;
-
-    * LiveView performs diff tracking. If the LiveView
-      state changes, it will only re-render those changes.
-      This reduces latency and the amount of data sent over
-      the wire;
-
-    * LiveView tracks static and dynamic content. Any
-      server-rendered HTML is made of static parts (i.e.
-      that never change) and dynamic ones. On the first
-      render, LiveView sends the static content and in
-      future updates only the modified dynamic content
-      is resent;
-
-    * (Coming soon) LiveView uses the Erlang Term Format
-      to send messages to the client. This binary-based
-      format is quite efficient on the server and uses
-      less data over the wire;
-
-  Furthermore, by keeping a persistent connection between client
-  and server, LiveView applications can react faster to user events
-  as there is less work to be done and less data to be sent compared
-  to stateless requests that have to authenticate, decode, load,
+  LiveView is first rendered statically as part of regular
+  HTTP requests, which provides quick times for "First Meaningful
+  Paint", in addition to helping search and indexing engines.
+  Then a persistent connection is established between client and
+  server. This allows LiveView applications to react faster to user
+  events as there is less work to be done and less data to be sent
+  compared to stateless requests that have to authenticate, decode, load,
   and encode data on every request. The flipside is that LiveView
   uses more memory on the server compared to stateless requests.
 
@@ -78,19 +51,6 @@ defmodule Phoenix.LiveView do
       life-cycle, while controlling how the browser
       tracks those changes in state;
 
-  There are other cases that have limited support but
-  will become first-class as we further develop LiveView:
-
-    * Optimistic UIs - with transitions and loading
-      states, many of the building blocks necessary for
-      building optimistic UIs are already part of LiveView, but
-      since optimistic UIs are about doing work on the client
-      while the server is unavailable, complete support for
-      Optimistic UIs cannot be achieved without also writing
-      JavaScript for the cases the server is not available.
-      See  "JS Interop and client-controlled DOM" on how to
-      integrate JS hooks;
-
   There are also use cases which are a bad fit for LiveView:
 
     * Animations - animations, menus, and general events
@@ -106,8 +66,8 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  You begin by rendering a LiveView from your router, controller, or
-  view. When a view is first rendered, the `mount/3` callback is invoked
+  You begin by rendering a LiveView typically from your router.
+  When LiveView is first rendered, the `mount/3` callback is invoked
   with the current params, the current session and the LiveView socket.
   As in a regular request, `params` contains public data that can be
   modified by the user. The `session` always contains private data set

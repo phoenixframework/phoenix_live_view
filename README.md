@@ -2,17 +2,15 @@
 
 ![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)
 
-Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML. For more information, [see the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
-
-**Note**: Currently LiveView is under active development and we are focused on getting a stable and solid initial version out. For this reason, we will be accepting only bug reports in the issues tracker for now. We will open the issues tracker for features after the current milestone is ironed out.
+Phoenix LiveView enables rich, real-time user experiences
+with server-rendered HTML. [See the initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript).
 
 ## Learning
 
-As official guides are being developed, see our existing
-comprehensive docs and examples to get up to speed:
+See our existing comprehensive docs and examples to get up to speed:
 
   * [Phoenix.LiveView docs for Elixir and JavaScript usage](https://hexdocs.pm/phoenix_live_view)
-  * [Phoenix.LiveViewTest for testing docs](https://github.com/phoenixframework/phoenix_live_view/blob/master/lib/phoenix_live_view/test/live_view_test.ex)
+  * [Phoenix.LiveViewTest for testing docs](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html)
   * [LiveView example repo](https://github.com/chrismccord/phoenix_live_view_example) with a handful of examples from Weather widgets, autocomplete search, and games like Snake or Pacman
 
 ## Installation
@@ -22,6 +20,78 @@ require more stability, it is recommended that you install using the
 [installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
 If you want to use the latest features, you should follow the instructions
 given in the markdown file [here](guides/introduction/installation.md).
+
+## What makes LiveView unique?
+
+LiveView is server centric. You no longer have to worry about managing
+both client and server to keep things in sync. LiveView automatically
+updates the client as changes happen on the server.
+
+LiveView is first rendered statically as part of regular HTTP requests,
+which provides quick times for "First Meaningful Paint", in addition to
+helping search and indexing engines.
+
+Then LiveView uses a persistent connection between client and server.
+This allows LiveView applications to react faster to user events as
+there is less work to be done and less data to be sent compared to
+stateless requests that have to authenticate, decode, load, and encode
+data on every request.
+
+When LiveView was first announced, many developers from different
+backgrounds got inspired about the potential unlocked by LiveView to
+build rich, real-time user experiences. We believe LiveView is built
+on top of a solid foundation that makes LiveView hard to replicate
+anywhere else:
+
+  * LiveView is built on top of the Elixir programming language and
+    functional programming, which provides a great model for reasoning
+    about your code and how your LiveView changes over time.
+
+  * By building on top of a [scalable platform](https://dockyard.com/blog/2016/08/09/phoenix-channels-vs-rails-action-cable),
+    LiveView scales well vertically (from small to large instances)
+    and horizontally (by adding more instances). This allows you to
+    continue shipping features when more and more users join your
+    application, instead of dealing with performance issues.
+
+  * LiveView applications are *distributed and real-time*. A LiveView
+    app can push events to users as those events happen anywhere in
+    the system. Do you want to notify a user that their best friend
+    just connected? This is easily done without a single-line of
+    JavaScript and with no extra external dependencies.
+
+  * LiveView performs diff tracking: whenever you change a value on
+    the server, LiveView will send to the client only the values that
+    changed, drastically reducing the latency and the amount of data
+    sent over the wire. This is achievable thanks to Elixir's
+    immutability and its ability to treat code as data.
+
+  * LiveView separates the static and dynamic parts of your templates.
+    When you first render a page, Phoenix LiveView renders and sends
+    the whole template to the browser. Then, for any new update, only
+    the modified dynamic content is resent. This alongside diff tracking
+    makes it so LiveView only sends a few bytes on every update, instead
+    of sending kilobytes on every other user interaction - which would
+    be detrimental to the user experience;
+
+Finally, LiveView has been used by many developers and companies around
+the world, which helped us close the gaps in our feature set and make
+sure LiveView is ready for prime time. For example, you will find:
+
+  * a latency simulator allows developers to simulate how their
+    application behave under slow connections
+
+  * `LiveComponent`s help developers compartmentalize their templates,
+    state, and event handling into reusable bits, which is essential
+    in large applications
+
+  * Live navigation enriches links and redirects to only load the
+    minimum amount of content as users navigate between pages
+
+  * Fine grainted control for handling client events, DOM patching,
+    rate limitting, and more
+
+In other words, LiveView provides a rich feature set for great
+developer and user experiences.
 
 ## Browser Support
 
