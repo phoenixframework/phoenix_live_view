@@ -1544,6 +1544,7 @@ export class View {
   }
 
   displayError(){
+    if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {to: this.href, kind: "error"}) }
     this.showLoader()
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
