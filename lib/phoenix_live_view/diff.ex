@@ -205,7 +205,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {_counter, diff, children, pending_components, components} =
-      traverse_dynamic(socket, dynamic, children, pending_components, components)
+      traverse_dynamic(socket, dynamic.(true), children, pending_components, components)
 
     {diff, {fingerprint, children}, pending_components, components}
   end
@@ -218,7 +218,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {_counter, diff, children, pending_components, components} =
-      traverse_dynamic(socket, dynamic, %{}, pending_components, components)
+      traverse_dynamic(socket, dynamic.(false), %{}, pending_components, components)
 
     {Map.put(diff, @static, static), {fingerprint, children}, pending_components, components}
   end
@@ -354,7 +354,8 @@ defmodule Phoenix.LiveView.Diff do
       socket
       | assigns: Map.put(assigns, :flash, %{}),
         private: private,
-        fingerprints: prints
+        fingerprints: prints,
+        changed: %{}
     }
   end
 

@@ -34,30 +34,35 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  @nested %Rendered{
-    static: ["<h2>", "</h2>", "<span>", "</span>"],
-    dynamic: [
-      "hi",
-      %Rendered{
-        static: ["s1", "s2", "s3"],
-        dynamic: ["abc", "efg"],
-        fingerprint: 456
-      },
-      %Rendered{
-        static: ["s1", "s2"],
-        dynamic: ["efg"],
-        fingerprint: 789
-      }
-    ],
-    fingerprint: 123
-  }
+  defp nested_rendered do
+    %Rendered{
+      static: ["<h2>", "</h2>", "<span>", "</span>"],
+      dynamic: fn _ ->
+        [
+          "hi",
+          %Rendered{
+            static: ["s1", "s2", "s3"],
+            dynamic: fn _ -> ["abc", "efg"] end,
+            fingerprint: 456
+          },
+          %Rendered{
+            static: ["s1", "s2"],
+            dynamic: fn _ -> ["efg"] end,
+            fingerprint: 789
+          }
+        ]
+      end,
+      fingerprint: 123
+    }
+  end
 
   defp render(
          rendered,
          fingerprints \\ Diff.new_fingerprints(),
          components \\ Diff.new_components()
        ) do
-    Diff.render(%Socket{endpoint: __MODULE__, fingerprints: fingerprints}, rendered, components)
+    socket = %Socket{endpoint: __MODULE__, fingerprints: fingerprints}
+    Diff.render(socket, rendered, components)
   end
 
   defp rendered_to_binary(map) do
@@ -95,7 +100,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "nested %Renderered{}'s" do
-      {socket, full_render, _} = render(@nested)
+      {socket, full_render, _} = render(nested_rendered())
 
       assert full_render ==
                %{
@@ -146,7 +151,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "renders nested %Rendered{}'s" do
       tree = {123, %{2 => {789, %{}}, 1 => {456, %{}}}}
-      {socket, diffed_render, _} = render(@nested, tree)
+      {socket, diffed_render, _} = render(nested_rendered(), tree)
 
       assert diffed_render == %{0 => "hi", 1 => %{0 => "abc", 1 => "efg"}, 2 => %{0 => "efg"}}
       assert socket.fingerprints == tree
@@ -154,7 +159,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "detects change in nested fingerprint" do
       old_tree = {123, %{2 => {789, %{}}, 1 => {100_001, %{}}}}
-      {socket, diffed_render, _} = render(@nested, old_tree)
+      {socket, diffed_render, _} = render(nested_rendered(), old_tree)
 
       assert diffed_render ==
                %{
@@ -172,7 +177,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "detects change in root fingerprint" do
       old_tree = {99999, %{}}
-      {socket, diffed_render, _} = render(@nested, old_tree)
+      {socket, diffed_render, _} = render(nested_rendered(), old_tree)
 
       assert diffed_render == %{
                0 => "hi",
@@ -355,7 +360,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "block tracking" do
-      assigns = %{socket: %Socket{}}
+      assigns = %{socket: %Socket{changed: nil}}
 
       rendered = ~L"""
       <%= live_component @socket, BlockComponent, id: "WORLD" do %>

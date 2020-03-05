@@ -79,19 +79,21 @@ defmodule Phoenix.LiveView.Rendered do
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamic: [
-            nil
-            | iodata()
-            | Phoenix.LiveView.Rendered.t()
-            | Phoenix.LiveView.Comprehension.t()
-            | Phoenix.LiveView.Component.t()
-          ],
+          dynamic:
+            (map | nil ->
+               [
+                 nil
+                 | iodata()
+                 | Phoenix.LiveView.Rendered.t()
+                 | Phoenix.LiveView.Comprehension.t()
+                 | Phoenix.LiveView.Component.t()
+               ]),
           fingerprint: integer()
         }
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.Rendered{static: static, dynamic: dynamic}) do
-      to_iodata(static, dynamic, [])
+      to_iodata(static, dynamic.(false), [])
     end
 
     def to_iodata(%_{} = struct) do
@@ -168,10 +170,8 @@ defmodule Phoenix.LiveView.Engine do
   ## Tracking changes
 
   By default, a `.leex` template does not track changes.
-  Change tracking can be enabled by passing a `socket`
-  with two keys `:fingerprints` and `:changed`. If
-  the `:fingerprints` matches the template fingerprint,
-  then the `:changed` map is used. The map should
+  Change tracking can be enabled by passing a changed
+  map when invoking the dynamic parts. The map should
   contain the name of any changed field as key and the
   boolean true as value. If a field is not listed in
   `:changed`, then it is always considered unchanged.
@@ -251,7 +251,6 @@ defmodule Phoenix.LiveView.Engine do
   """
 
   @behaviour Phoenix.Template.Engine
-  @pdict_key {__MODULE__, :fingerprint}
 
   @impl true
   def compile(path, _name) do
@@ -283,29 +282,11 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state) do
-    {fingerprint, entries} = to_rendered_struct(handle_end(state), true, {:untainted, %{}}, %{})
+    {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{})
 
     quote do
       require Phoenix.LiveView.Engine
-
-      {fingerprint, prints} =
-        Process.get(unquote(@pdict_key)) ||
-          case var!(assigns) do
-            %{socket: %{fingerprints: fingerprints}} -> fingerprints
-            _ -> {nil, %{}}
-          end
-
-      changed =
-        case var!(assigns) do
-          %{socket: %{changed: changed}} when unquote(fingerprint) == fingerprint -> changed
-          _ -> nil
-        end
-
-      try do
-        unquote({:__block__, [], entries})
-      after
-        Process.delete(unquote(@pdict_key))
-      end
+      unquote(rendered)
     end
   end
 
@@ -334,22 +315,31 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Entry point for rendered structs
 
-  defp to_rendered_struct(expr, check_prints?, vars, assigns) do
+  defp to_rendered_struct(expr, vars, assigns) do
     with {:__block__, [live_rendered: true], entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, check_prints?, vars, assigns)
+        analyze_static_and_dynamic(static, dynamic, vars, assigns)
 
-      rendered =
-        quote do
-          %Phoenix.LiveView.Rendered{
-            static: unquote(static),
-            dynamic: unquote(dynamic),
-            fingerprint: unquote(fingerprint)
-          }
-        end
+      {:ok,
+       quote do
+         dynamic = fn track_changes? ->
+           changed =
+             case var!(assigns) do
+               %{socket: %{changed: changed}} when track_changes? -> changed
+               _ -> nil
+             end
 
-      {fingerprint, block ++ [rendered]}
+           unquote({:__block__, [], block})
+           unquote(dynamic)
+         end
+
+         %Phoenix.LiveView.Rendered{
+           static: unquote(static),
+           dynamic: dynamic,
+           fingerprint: unquote(fingerprint)
+         }
+       end}
     else
       _ -> :error
     end
@@ -365,15 +355,14 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp analyze_static_and_dynamic(static, dynamic, check_prints?, initial_vars, assigns) do
+  defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns) do
     {block, _} =
       Enum.map_reduce(dynamic, {0, initial_vars}, fn
         to_safe_match(var, ast), {counter, vars} ->
           vars = reset_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns)
           live_struct = to_live_struct(ast, vars, assigns)
-          fingerprint_live_struct = maybe_pdict_fingerprint(live_struct, check_prints?, counter)
-          {to_conditional_var(keys, var, fingerprint_live_struct), {counter + 1, vars}}
+          {to_conditional_var(keys, var, live_struct), {counter + 1, vars}}
 
         ast, {counter, vars} ->
           vars = reset_vars(initial_vars, vars)
@@ -403,11 +392,8 @@ defmodule Phoenix.LiveView.Engine do
     with {:for, meta, [_ | _] = args} <- expr,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
-      # We never check prints and we always taint vars inside comprehensions.
-      # This is because it is hard to do diff tracking inside a comprehension
-      # as new elements are added and removed to the collection.
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, false, taint_vars(vars), assigns)
+        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), assigns)
 
       for = {:for, meta, filters ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
@@ -460,26 +446,9 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, vars, assigns) do
-    case to_rendered_struct(block, false, vars, assigns) do
-      {_fingerprint, rendered} -> {:__block__, [], rendered}
+    case to_rendered_struct(block, vars, assigns) do
+      {:ok, rendered} -> rendered
       :error -> block
-    end
-  end
-
-  ## Emit conditional variables for dirty assigns tracking.
-  #
-  # This is used so if we call render(...) from a LiveView
-  # to another LiveView, we can still perform diff tracking.
-  defp maybe_pdict_fingerprint(ast, false, _counter), do: ast
-
-  defp maybe_pdict_fingerprint(ast, true, counter) do
-    quote do
-      case prints do
-        %{unquote(counter) => {_, _} = print} -> Process.put(unquote(@pdict_key), print)
-        %{} -> :ok
-      end
-
-      unquote(ast)
     end
   end
 

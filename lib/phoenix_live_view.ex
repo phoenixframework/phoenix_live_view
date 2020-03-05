@@ -898,7 +898,7 @@ defmodule Phoenix.LiveView do
         ...
         Messages (<%= @new_message_count %>)
       </nav>
-      <%= @live_view_module.render(assigns) %>
+      <%= @inner_content %>
 
   Finally, update your LiveView to pass the `:layout` option to `use Phoenix.LiveView`:
 

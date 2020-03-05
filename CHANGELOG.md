@@ -1,8 +1,7 @@
-## 0.9.0-dev
+## 0.8.2-dev
 
 ### Backwards incompatible changes
-  - `put_live_layout` is deprecated in favor of `put_root_layout` (Phoenix v1.5)
-  - Live layout must now access the child contents with `@live_view_module.render(assigns)` as `@inner_content` no longer works
+  - `put_live_layout` was removed in favor of `put_root_layout` (Phoenix v1.5)
 
 ### Bug fixes
   - Do not set ignored inputs and buttons as readonly
@@ -30,6 +29,7 @@
 
 ### Backwards incompatible changes
   - Remove `Phoenix.LiveView.Flash` in favor of `:fetch_live_flash` imported by `Phoenix.LiveView.Router`
+  - Live layout must now access the child contents with `@inner_content` instead of invoking the LiveView directly
   - Returning `:stop` tuples from LiveView `mount` or `handle_[params|call|cast|info|event]` is no longer supported. LiveViews are stopped when issuing a `redirect` or `push_redirect`
 
 ### Enhancements

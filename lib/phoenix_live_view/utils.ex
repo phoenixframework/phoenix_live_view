@@ -88,22 +88,37 @@ defmodule Phoenix.LiveView.Utils do
   Renders the view with socket into a rendered struct.
   """
   def to_rendered(socket, view) do
-    case render_view(socket, view) do
-      %Rendered{} = rendered ->
-        rendered
+    inner_content =
+      render_assigns(socket)
+      |> view.render()
+      |> check_rendered!(view)
 
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(view)}.render/1 to return a %Phoenix.LiveView.Rendered{} struct
+    case layout(socket, view) do
+      {layout_mod, layout_template} ->
+        socket = assign(socket, :inner_content, inner_content)
 
-        Ensure your render function uses ~L, or your eex template uses the .leex extension.
+        layout_template
+        |> layout_mod.render(render_assigns(socket))
+        |> check_rendered!(layout_mod)
 
-        Got:
-
-            #{inspect(other)}
-
-        """
+      nil ->
+        inner_content
     end
+  end
+
+  defp check_rendered!(%Rendered{} = rendered, _view), do: rendered
+
+  defp check_rendered!(other, view) do
+    raise RuntimeError, """
+    expected #{inspect(view)} to return a %Phoenix.LiveView.Rendered{} struct
+
+    Ensure your render function uses ~L, or your eex template uses the .leex extension.
+
+    Got:
+
+        #{inspect(other)}
+
+    """
   end
 
   @doc """
@@ -330,13 +345,8 @@ defmodule Phoenix.LiveView.Utils do
     %Socket{socket | private: Map.drop(private, keys)}
   end
 
-  defp render_view(socket, view) do
-    assigns = Map.put(socket.assigns, :socket, socket)
-
-    case layout(socket, view) do
-      {layout_mod, layout_template} -> layout_mod.render(layout_template, assigns)
-      nil -> view.render(assigns)
-    end
+  defp render_assigns(socket) do
+    Map.put(socket.assigns, :socket, socket)
   end
 
   defp layout(socket, view) do
