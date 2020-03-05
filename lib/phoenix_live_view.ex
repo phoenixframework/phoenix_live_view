@@ -553,7 +553,7 @@ defmodule Phoenix.LiveView do
 
   The `lv:` event prefix supports LiveView specific features that are handled
   by LiveView without calling the user's `handle_event/3` callbacks. Today,
-  the follow events are supported:
+  the following events are supported:
 
     - `lv:clear-flash` – clears the flash when sent to the server. If a
     `phx-value-key` is provided, the specific key will be removed from the flash.
