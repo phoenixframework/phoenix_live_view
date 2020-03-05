@@ -467,7 +467,9 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   ## Emit conditional variables for dirty assigns tracking.
-
+  #
+  # This is used so if we call render(...) from a LiveView
+  # to another LiveView, we can still perform diff tracking.
   defp maybe_pdict_fingerprint(ast, false, _counter), do: ast
 
   defp maybe_pdict_fingerprint(ast, true, counter) do

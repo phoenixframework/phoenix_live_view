@@ -303,7 +303,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp do_mount_opt(socket, :layout, {mod, template}) when is_atom(mod) and is_binary(template) do
-    %Socket{socket | private: Map.put(socket.private, :layout, {mod, template})}
+    %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, {mod, template})}
   end
 
   defp do_mount_opt(_socket, :layout, bad_layout) do
@@ -331,24 +331,16 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp render_view(socket, view) do
-    inner_content = view.render(render_assigns(socket))
+    assigns = Map.put(socket.assigns, :socket, socket)
 
     case layout(socket, view) do
-      {layout_mod, layout_template} ->
-        socket = assign(socket, :inner_content, inner_content)
-        layout_mod.render(layout_template, render_assigns(socket))
-
-      nil ->
-        inner_content
+      {layout_mod, layout_template} -> layout_mod.render(layout_template, assigns)
+      nil -> view.render(assigns)
     end
   end
 
-  defp render_assigns(socket) do
-    Map.put(socket.assigns, :socket, socket)
-  end
-
   defp layout(socket, view) do
-    socket.private[:layout] || view.__live__()[:layout]
+    socket.private[:phoenix_live_layout] || view.__live__()[:layout]
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do
