@@ -209,13 +209,12 @@ defmodule Phoenix.LiveView.Utils do
 
     if function_exported?(view, :mount, arity) do
       case apply(view, :mount, args) do
-        {:ok, %Socket{redirected: nil} = socket, opts} when is_list(opts) ->
+        {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+          validate_mount_redirect!(socket.redirected)
           Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
 
-        {:ok, %Socket{redirected: {:live, {_, _} = _patch, _opts}}} ->
-          raise_bad_mount_and_live_patch!()
-
         {:ok, %Socket{} = socket} ->
+          validate_mount_redirect!(socket.redirected)
           socket
 
         other ->
@@ -229,6 +228,9 @@ defmodule Phoenix.LiveView.Utils do
       socket
     end
   end
+
+  defp validate_mount_redirect!({:live, {_, _}, _}), do: raise_bad_mount_and_live_patch!()
+  defp validate_mount_redirect!(_), do: :ok
 
   @doc """
   Calls the optional `update/2` callback, otherwise update the socket directly.
