@@ -7,6 +7,7 @@
   - Do not set ignored inputs and buttons as readonly
   - Only decode paths in URIs and double decode query strings twice
   - Only destroy main descendents when replacing main
+  - Fix sibling component patches when siblings at same root DOM tree
 
 ### Enhancements
   - Raise if `:flash` is given as an assign
