@@ -6,10 +6,14 @@
 ### Bug fixes
   - Do not set ignored inputs and buttons as readonly
   - Only decode paths in URIs and double decode query strings twice
+  - Only destroy main descendents when replacing main
 
 ### Enhancements
   - Raise if `:flash` is given as an assign
   - Support user-defined metadata in router
+  - Allow the router to be accessed as `socket.router`
+  - Allow `MFArgs` as the `:session` option in the `live` router macro
+  - Trigger page loading event when main LV errors
 
 ## 0.8.1 (2020-02-27)
 
