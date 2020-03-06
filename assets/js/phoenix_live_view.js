@@ -1039,6 +1039,7 @@ class DOMPatch {
     this.html = html
     this.targetCID = targetCID
     this.ref = ref
+    this.cidPatch = typeof(this.targetCID) === "number"
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
@@ -1144,7 +1145,7 @@ class DOMPatch {
     return true
   }
 
-  isCIDPatch(){ return typeof(this.targetCID) === "number" }
+  isCIDPatch(){ return this.cidPatch }
 
   skipCIDSibling(el){ if(!this.isCIDPatch()){ return false }
     return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
