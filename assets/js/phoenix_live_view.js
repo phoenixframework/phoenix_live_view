@@ -380,7 +380,7 @@ export class LiveSocket {
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
-    this.log(view, "join", () => [`ecountered ${tries} consecutive reloads`])
+    this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
       afterMs = FAILSAFE_JITTER
@@ -599,7 +599,6 @@ export class LiveSocket {
 
   setPendingLink(href){
     this.linkRef++
-    let ref = this.linkRef
     this.pendingLink = href
     return this.linkRef
   }
@@ -1034,7 +1033,7 @@ export let DOM = {
 
 class DOMPatch {
   constructor(view, container, id, html, targetCID, ref){
-    this.view = view,
+    this.view = view
     this.container = container
     this.id = id
     this.html = html
@@ -1327,7 +1326,7 @@ export class View {
   }
 
   onJoin(resp){
-    let {rendered, live_patch} = resp
+    let {rendered} = resp
     this.log("join", () => ["", rendered])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
