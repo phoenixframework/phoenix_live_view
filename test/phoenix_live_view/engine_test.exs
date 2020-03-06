@@ -650,14 +650,14 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders live engine with live engine to string" do
       assert Phoenix.View.render_to_string(View, "live_with_live.html", @assigns) ==
-               "pre: pre\nlive: innerpost: post"
+               "pre: pre\nlive: inner\npost: post"
     end
 
     test "renders live engine with comprehension to string" do
       assigns = Map.put(@assigns, :points, [%{x: 1, y: 2}, %{x: 3, y: 4}])
 
       assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
-               "pre: pre\n  x: 1\nlive: inner  y: 2\n  x: 3\nlive: inner  y: 4\npost: post"
+               "pre: pre\n\n  x: 1\nlive: inner\n  y: 2\n\n  x: 3\nlive: inner\n  y: 4\n\npost: post"
     end
 
     test "renders live engine as is" do
@@ -667,7 +667,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders live engine with nested live view" do
       assert %Rendered{
-               static: ["pre: ", "\n", "post: ", ""],
+               static: ["pre: ", "\n", "\npost: ", ""],
                dynamic: [
                  "pre",
                  %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
@@ -679,7 +679,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders live engine with nested dead view" do
       assert %Rendered{
-               static: ["pre: ", "\n", "post: ", ""],
+               static: ["pre: ", "\n", "\npost: ", ""],
                dynamic: ["pre", ["dead: ", "inner"], "post"]
              } =
                Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
@@ -687,7 +687,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders dead engine with nested live view" do
       assert Phoenix.View.render(View, "dead_with_live.html", @assigns) ==
-               {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "post: ", "post"]}
+               {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
     end
   end
 
