@@ -2,15 +2,17 @@ defmodule Phoenix.LiveViewTest.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
 
-  pipeline :browser do
-    plug :accepts, ["html"]
-
+  pipeline :setup_session do
     plug Plug.Session,
       store: :cookie,
       key: "_live_view_key",
       signing_salt: "/VEDsdfsffMnp5"
-
     plug :fetch_session
+  end
+
+  pipeline :browser do
+    plug :setup_session
+    plug :accepts, ["html"]
     plug :fetch_live_flash
   end
 
@@ -72,7 +74,7 @@ defmodule Phoenix.LiveViewTest.Router do
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
-    get "/widget-with-metadata", Controller, :widget, metadata: %{route_name: "widget"}
-    live "/opts-with-metadata", OptsLive,  metadata: %{route_name: "opts"}
+    pipe_through :setup_session
+    live "/thermo-with-metadata", ThermostatLive, metadata: %{route_name: "opts"}
   end
 end
