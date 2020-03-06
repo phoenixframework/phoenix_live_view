@@ -60,11 +60,6 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
     end
 
-    scope "/" do
-      live "/root-layout", LayoutLive,
-        private: %{phoenix_root_layout: {Phoenix.LiveViewTest.LayoutView, "root.html"}}
-    end
-
     # integration params
     live "/counter/:id", ParamCounterLive
     live "/action", ActionLive

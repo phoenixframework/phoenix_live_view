@@ -11,13 +11,6 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
   end
 
-  # TODO use @inner_content when we go phoenix ~> 1.5
-  def render("root.html", assigns) do
-    ~L"""
-    ROOTSTART-<%= @val %>-<%= render(@view_module, @view_template, assigns)%>-ROOTEND
-    """
-  end
-
   def render("live.html", assigns) do
     ~L"""
     LIVELAYOUTSTART-<%= @val %>-<%= @inner_content %>-LIVELAYOUTEND
