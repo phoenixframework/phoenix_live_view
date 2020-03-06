@@ -1002,7 +1002,7 @@ export let DOM = {
 
   mergeFocusedInput(target, source){
     // skip selects because FF will reset highlighted index for any setAttribute
-    if(!(target instanceof HTMLSelectElement && target.multiple !== true)){ DOM.mergeAttrs(target, source, ["value"]) }
+    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, ["value"]) }
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {
@@ -1121,7 +1121,8 @@ class DOMPatch {
         DOM.copyPrivates(toEl, fromEl)
         DOM.discardError(targetContainer, toEl)
 
-        if(focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl) && !(fromEl.multiple === true)){
+        let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
+        if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeFocusedInput(fromEl, toEl)
           DOM.syncAttrsToProps(fromEl)
@@ -1143,6 +1144,10 @@ class DOMPatch {
     updates.forEach(el => this.trackAfter("updated", el))
 
     return true
+  }
+
+  forceFocusedSelectUpdate(fromEl, toEl){
+    return fromEl.multiple === true || fromEl.innerHTML != toEl.innerHTML
   }
 
   isCIDPatch(){ return this.cidPatch }
