@@ -24,6 +24,7 @@ const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
+const PHX_SKIP = "data-phx-skip"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -1088,6 +1089,7 @@ class DOMPatch {
       },
       onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
       onBeforeNodeDiscarded: (el) => {
+        if(this.skipCIDSibling(el)){ return false }
         this.trackBefore("discarded", el)
         // nested view handling
         if(DOM.isPhxChild(el)){
@@ -1097,6 +1099,7 @@ class DOMPatch {
       },
       onElUpdated: (el) => { updates.push(el) },
       onBeforeElUpdated: (fromEl, toEl) => {
+        if(this.skipCIDSibling(toEl)){ return false }
         if(fromEl.getAttribute(phxUpdate) === "ignore"){
           this.trackBefore("updated", fromEl, toEl)
           DOM.mergeAttrs(fromEl, toEl)
@@ -1144,6 +1147,10 @@ class DOMPatch {
 
   isCIDPatch(){ return typeof(this.targetCID) === "number" }
 
+  skipCIDSibling(el){ if(!this.isCIDPatch()){ return false }
+    return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
+  }
+
   targetCIDContainer(){ if(!this.isCIDPatch()){ return }
     let first = this.container.querySelector(`[${PHX_COMPONENT}="${this.targetCID}"]`)
     return first && first.parentNode
@@ -1160,20 +1167,18 @@ class DOMPatch {
     let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
     if(this.isCIDPatch()){
       diffContainer = DOM.cloneNode(targetContainer)
-      let componentNodes = DOM.findComponentNodeList(diffContainer, this.targetCID)
-      let prevSibling = componentNodes[0].previousSibling
-      componentNodes.forEach(c => c.remove())
-      let nextSibling = prevSibling && prevSibling.nextSibling
-
-      if(prevSibling && nextSibling){
-        let template = document.createElement("template")
-        template.innerHTML = html
-        Array.from(template.content.childNodes).forEach(child => diffContainer.insertBefore(child, nextSibling))
-      } else if(prevSibling){
-        diffContainer.insertAdjacentHTML("beforeend", html)
-      } else {
-        diffContainer.insertAdjacentHTML("afterbegin", html)
-      }
+      let template = document.createElement("template")
+      template.innerHTML = html
+      let [firstComponent, ...rest] = DOM.findComponentNodeList(diffContainer, this.targetCID)
+      rest.forEach(el => el.remove())
+      Array.from(diffContainer.childNodes).forEach(child => {
+        if(child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+          child.setAttribute(PHX_SKIP, "")
+          child.innerHTML = ""
+        }
+      })
+      template.content.childNodes.forEach(el => diffContainer.insertBefore(el, firstComponent))
+      firstComponent.remove()
     } else {
       diffContainer = DOM.cloneNode(container, html)
     }
