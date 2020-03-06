@@ -51,9 +51,8 @@ defmodule Phoenix.LiveView.Router do
 
   ## Layout
 
-  When a layout isn't explicitly set, a default layout is inferred similar to
-  controllers. For example, the layout for the router `MyAppWeb.Router`
-  would be inferred as `MyAppWeb.LayoutView` and would use the `:app` template.
+  The layout must be explicitly given, either as an option or by calling
+  `put_live_layout`.
 
   ## Options
 
@@ -105,6 +104,27 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
+  Configures the layout to use for `live` routes.
+
+  ## Examples
+
+      defmodule AppWeb.Router do
+        use LiveGenWeb, :router
+        import Phoenix.LiveView.Router
+
+        pipeline :browser do
+          ...
+          plug :put_live_layout, {AppWeb.LayoutView, "app.html"}
+        end
+        ...
+      end
+  """
+  def put_live_layout(%Plug.Conn{} = conn, {layout_mod, template})
+      when is_atom(layout_mod) and (is_binary(template) or is_atom(template)) do
+    Plug.Conn.put_private(conn, :phoenix_live_layout, {layout_mod, template})
+  end
+
+  @doc """
   Fetches the LiveView and merges with the controller flash.
 
   Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
@@ -149,7 +169,6 @@ defmodule Phoenix.LiveView.Router do
       opts
       |> Keyword.put(:router, router)
       |> Keyword.put(:action, action)
-      |> Keyword.put(:inferred_layout, inferred_layout(router))
 
     {as_helper, as_action} = inferred_as(live_view, action)
 
@@ -178,18 +197,6 @@ defmodule Phoenix.LiveView.Router do
       as ->
         {String.to_atom(as), action}
     end
-  end
-
-  defp inferred_layout(router) do
-    layout_view =
-      router
-      |> Atom.to_string()
-      |> String.split(".")
-      |> Enum.drop(-1)
-      |> Kernel.++(["LayoutView"])
-      |> Module.concat()
-
-    {layout_view, :app}
   end
 
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do

@@ -1,7 +1,7 @@
 ## 0.8.2-dev
 
 ### Backwards incompatible changes
-  - `put_live_layout` was removed in favor of `put_root_layout` (Phoenix v1.5)
+  - LiveView no longer uses the default app layout. Use `put_live_layout` to explicitly choose which layout you want to use
 
 ### Bug fixes
   - Do not set ignored inputs and buttons as readonly
