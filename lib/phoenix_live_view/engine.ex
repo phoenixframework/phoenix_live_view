@@ -254,7 +254,8 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def compile(path, _name) do
-    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: true)
+    trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
+    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim)
   end
 
   @behaviour EEx.Engine
