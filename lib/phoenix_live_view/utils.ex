@@ -294,13 +294,6 @@ defmodule Phoenix.LiveView.Utils do
     end
   end
 
-  @doc """
-  Prepares socket assigns for rendering.
-  """
-  def render_assigns(socket) do
-    Map.put(socket.assigns, :socket, socket)
-  end
-
   defp random_encoded_bytes do
     binary = <<
       System.system_time(:nanosecond)::64,
@@ -350,6 +343,10 @@ defmodule Phoenix.LiveView.Utils do
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
+  end
+
+  defp render_assigns(socket) do
+    Map.put(socket.assigns, :socket, socket)
   end
 
   defp layout(socket, view) do

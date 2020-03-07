@@ -134,7 +134,7 @@ defmodule Phoenix.LiveView.Static do
         ]
 
         try do
-          {:ok, to_rendered_content_tag(socket, tag, view, attrs), Utils.render_assigns(socket)}
+          {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
         catch
           :throw, {:phoenix, :child_redirect, redir_opts, flash} ->
             {:stop, socket |> rewrite_redir(redir_opts) |> Utils.merge_flash(flash)}
