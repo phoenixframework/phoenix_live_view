@@ -212,7 +212,7 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{assign_new: {parent.assigns, []}},
+        %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
         flash
       )

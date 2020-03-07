@@ -724,12 +724,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "is not picked from config on use for child live views", %{conn: conn} do
+      assert get(conn, "/parent_layout") |> html_response(200) =~
+               "The value is: 123</div>"
+
       {:ok, _view, html} = live(conn, "/parent_layout")
       assert html =~ "The value is: 123</div>"
     end
 
     @tag session: %{live_layout: {LayoutView, "live-override.html"}}
     test "is picked from config on mount even on child live views", %{conn: conn} do
+      assert get(conn, "/parent_layout") |> html_response(200) =~
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+
       {:ok, _view, html} = live(conn, "/parent_layout")
 
       assert html =~
