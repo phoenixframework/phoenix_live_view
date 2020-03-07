@@ -782,6 +782,7 @@ defmodule Phoenix.LiveView do
 
   `live_patch/2`, `live_redirect/2`, `push_redirect/2`, and `push_patch/2`
   only work for LiveViews defined at the router with the `live/3` macro.
+  Once live navigation is triggered, the flash is automatically cleared.
 
   ### `handle_params/3`
 

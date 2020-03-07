@@ -128,11 +128,10 @@ defmodule Phoenix.LiveView.Utils do
   def get_flash(%{} = flash, key), do: flash[key]
 
   @doc """
-  Merges a new flash with the socket's flash messages.
+  Puts a new flash with the socket's flash messages.
   """
-  def merge_flash(%Socket{} = socket, %{} = new_flash) do
-    current_flash = get_flash(socket)
-    assign(socket, :flash, Map.merge(current_flash, new_flash))
+  def replace_flash(%Socket{} = socket, %{} = new_flash) do
+    assign(socket, :flash, new_flash)
   end
 
   @doc """

@@ -59,8 +59,10 @@ defmodule Phoenix.LiveView.Channel do
 
     case Utils.live_link_info!(router, view, url) do
       {:internal, params, action, _} ->
+        socket = socket |> assign_action(action) |> Utils.clear_flash()
+
         params
-        |> view.handle_params(url, assign_action(socket, action))
+        |> view.handle_params(url, socket)
         |> handle_result({:handle_params, 3, msg.ref}, state)
 
       :external ->
@@ -103,8 +105,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :redirect, command, flash}, state) do
-    new_state = %{state | socket: Utils.merge_flash(state.socket, flash)}
-    handle_redirect(new_state, command, nil)
+    handle_redirect(state, command, flash, nil)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -225,11 +226,11 @@ defmodule Phoenix.LiveView.Channel do
         {:ok, diff, redir, new_state}
 
       {:redirect, %{to: _to} = opts} ->
-        {:redirect, copy_flash(new_state, opts), new_state}
+        {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, :redirect, %{to: to} = opts} ->
         send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
-        {:live_redirect, copy_flash(new_state, opts), new_state}
+        {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, {params, action}, %{to: to} = opts} ->
         %{socket: new_socket} = new_state = drop_redirect(new_state)
@@ -294,11 +295,10 @@ defmodule Phoenix.LiveView.Channel do
     # the :error case accordingly.
     case result do
       {diff, new_components, {redirected, flash}} ->
-        new_socket = Utils.merge_flash(socket, flash)
-        new_state = %{state | socket: new_socket, components: new_components}
+        new_state = %{state | components: new_components}
 
         if redirected do
-          handle_redirect(new_state, redirected, nil, {diff, ref})
+          handle_redirect(new_state, redirected, flash, nil, {diff, ref})
         else
           {:noreply, push_render(new_state, diff, ref)}
         end
@@ -355,35 +355,37 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       result ->
-        handle_redirect(new_state, result, ref)
+        handle_redirect(new_state, result, flash_diff(new_socket, state.socket), ref)
     end
   end
 
   defp maybe_push_pending_diff_ack(state, nil), do: state
   defp maybe_push_pending_diff_ack(state, {diff, ref}), do: push_render(state, diff, ref)
 
-  defp handle_redirect(%{socket: new_socket} = new_state, result, ref, pending_diff_ack \\ nil) do
+  defp handle_redirect(new_state, result, flash, ref, pending_diff_ack \\ nil) do
+    %{socket: new_socket} = new_state
     root_pid = new_socket.root_pid
 
     case result do
       {:redirect, %{to: to} = opts} ->
         new_state
-        |> push_redirect(opts, ref)
+        |> push_redirect(flash, opts, ref)
         |> stop_shutdown_redirect(to)
 
       {:live, :redirect, %{to: to} = opts} ->
         new_state
-        |> push_live_redirect(opts, ref)
+        |> push_live_redirect(flash, opts, ref)
         |> stop_shutdown_redirect(to)
 
       {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         new_state
         |> drop_redirect()
         |> maybe_push_pending_diff_ack(pending_diff_ack)
+        |> Map.update!(:socket, &Utils.replace_flash(&1, flash))
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
-        send(new_socket.root_pid, {@prefix, :redirect, patch, Utils.get_flash(new_socket)})
+        send(new_socket.root_pid, {@prefix, :redirect, patch, flash})
         {diff, new_state} = render_diff(new_state, new_socket)
 
         {:noreply,
@@ -429,20 +431,20 @@ defmodule Phoenix.LiveView.Channel do
     push(state, "live_patch", opts)
   end
 
-  defp push_redirect(state, opts, nil = _ref) do
-    push(state, "redirect", copy_flash(state, opts))
+  defp push_redirect(state, flash, opts, nil = _ref) do
+    push(state, "redirect", copy_flash(state, flash, opts))
   end
 
-  defp push_redirect(state, opts, ref) do
-    reply(state, ref, :ok, %{redirect: copy_flash(state, opts)})
+  defp push_redirect(state, flash, opts, ref) do
+    reply(state, ref, :ok, %{redirect: copy_flash(state, flash, opts)})
   end
 
-  defp push_live_redirect(state, opts, nil = _ref) do
-    push(state, "live_redirect", copy_flash(state, opts))
+  defp push_live_redirect(state, flash, opts, nil = _ref) do
+    push(state, "live_redirect", copy_flash(state, flash, opts))
   end
 
-  defp push_live_redirect(state, opts, ref) do
-    reply(state, ref, :ok, %{live_redirect: copy_flash(state, opts)})
+  defp push_live_redirect(state, flash, opts, ref) do
+    reply(state, ref, :ok, %{live_redirect: copy_flash(state, flash, opts)})
   end
 
   defp push_noop(state, nil = _ref), do: state
@@ -455,13 +457,17 @@ defmodule Phoenix.LiveView.Channel do
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
 
-  defp copy_flash(%{socket: socket}, opts) do
-    if flash = Utils.get_flash(socket) do
-      Map.put(opts, :flash, Utils.sign_flash(socket.endpoint, flash))
-    else
-      opts
-    end
+  defp flash_diff(new_socket, old_socket) do
+    Enum.reduce(Utils.get_flash(old_socket), Utils.get_flash(new_socket), fn {k, _}, acc ->
+      Map.delete(acc, k)
+    end)
   end
+
+  defp copy_flash(_state, flash, opts) when flash == %{},
+    do: opts
+
+  defp copy_flash(state, flash, opts),
+    do: Map.put(opts, :flash, Utils.sign_flash(state.socket.endpoint, flash))
 
   defp maybe_changed(%{socket: socket}) do
     socket.redirected ||

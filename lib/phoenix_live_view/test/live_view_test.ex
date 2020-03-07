@@ -586,28 +586,36 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was peformed with optional flash.
+  Asserts a redirect was performed.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
       assert_redirect view, "/path"
 
-  The flash may also be provided to match against:
+  """
+  defmacro assert_redirect(view, to) do
+    quote do
+      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
+      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
+    end
+  end
+
+  @doc """
+  Asserts a redirect was performed flash.
+
+  *Note*: the flash will contain string keys.
+
+  ## Examples
 
       assert_redirect view, "/path", %{"info" => "it worked!"}
 
-  *Note*: the flash will contain string keys.
   """
-  defmacro assert_redirect(view, to, flash \\ nil) do
+  defmacro assert_redirect(view, to, flash) do
     quote do
-      flash = unquote(flash)
       %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
       assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
-
-      if flash do
-        assert unquote(flash) = Phoenix.LiveView.Utils.verify_flash(@endpoint, opts[:flash])
-      end
+      assert unquote(flash) = Phoenix.LiveView.Utils.verify_flash(@endpoint, opts[:flash])
     end
   end
 

@@ -15,6 +15,10 @@ defmodule Phoenix.LiveViewTest.FlashLive do
 
   def mount(_params, _session, socket), do: {:ok, assign(socket, uri: nil)}
 
+  def handle_event("set_error", %{"error" => error}, socket) do
+    {:noreply, socket |> put_flash(:error, error)}
+  end
+
   def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
   end
@@ -64,6 +68,10 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
   end
 
   def mount(_params, _session, socket), do: {:ok, socket}
+
+  def handle_event("set_error", %{"error" => error}, socket) do
+    {:noreply, socket |> put_flash(:error, error)}
+  end
 
   def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
