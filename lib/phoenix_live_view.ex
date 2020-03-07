@@ -745,7 +745,7 @@ defmodule Phoenix.LiveView do
 
   ## Live navigation
 
-  LiveView provides functionality to allow page navitation using the
+  LiveView provides functionality to allow page navigation using the
   [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
   With live navigation, the page is updated without a full page reload.
 
