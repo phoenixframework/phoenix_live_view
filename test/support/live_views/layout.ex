@@ -13,8 +13,8 @@ defmodule Phoenix.LiveViewTest.LayoutLive do
     {:noreply, update(socket, :val, &(&1 * 2))}
   end
 
-  defp maybe_put_layout(socket, %{"live_layout" => {mod, template}}) do
-    {:ok, socket, layout: {mod, template}}
+  defp maybe_put_layout(socket, %{"live_layout" => value}) do
+    {:ok, socket, layout: value}
   end
 
   defp maybe_put_layout(socket, _session), do: {:ok, socket}

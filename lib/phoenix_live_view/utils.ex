@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.Utils do
         |> layout_mod.render(render_assigns(socket))
         |> check_rendered!(layout_mod)
 
-      nil ->
+      false ->
         inner_content
     end
   end
@@ -321,6 +321,10 @@ defmodule Phoenix.LiveView.Utils do
     %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, {mod, template})}
   end
 
+  defp do_mount_opt(socket, :layout, false) do
+    %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, false)}
+  end
+
   defp do_mount_opt(_socket, :layout, bad_layout) do
     raise ArgumentError,
           "the :layout mount option expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
@@ -350,7 +354,10 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp layout(socket, view) do
-    socket.private[:phoenix_live_layout] || view.__live__()[:layout]
+    case socket.private do
+      %{phoenix_live_layout: layout} -> layout
+      %{} -> view.__live__()[:layout] || false
+    end
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do

@@ -696,19 +696,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
 
-      assert render_click(view, :double, "") =~
+      assert render_click(view, :double, "") ==
                "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
     end
 
     @tag session: %{live_layout: {LayoutView, "live-override.html"}}
-    test "is picked from config on mount", %{conn: conn} do
+    test "is picked from config on mount when given a layout", %{conn: conn} do
       {:ok, view, html} = live(conn, "/layout")
 
       assert html =~
                ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
-      assert render_click(view, :double, "") =~
+      assert render_click(view, :double, "") ==
                "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"
+    end
+
+    @tag session: %{live_layout: false}
+    test "is picked from config on mount when given false", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/layout")
+      assert html =~ "The value is: 123</div>"
+      assert render_click(view, :double, "") == "The value is: 246"
     end
   end
 
