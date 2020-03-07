@@ -1182,7 +1182,7 @@ class DOMPatch {
           child.innerHTML = ""
         }
       })
-      template.content.childNodes.forEach(el => diffContainer.insertBefore(el, firstComponent))
+      Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
       firstComponent.remove()
     } else {
       diffContainer = DOM.cloneNode(container, html)
