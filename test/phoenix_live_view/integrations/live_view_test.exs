@@ -118,9 +118,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child push_patch when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/a LiveView cannot be mounted while issuing a live patch to the client/, fn ->
-        get(conn, "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true")
-      end
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/a LiveView cannot be mounted while issuing a live patch to the client/,
+                   fn ->
+                     get(
+                       conn,
+                       "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true"
+                     )
+                   end
     end
 
     test "child push_patch when connected", %{conn: conn} do
@@ -716,6 +721,19 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ "The value is: 123</div>"
       assert render_click(view, :double, "") == "The value is: 246"
+    end
+
+    test "is not picked from config on use for child live views", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/parent_layout")
+      assert html =~ "The value is: 123</div>"
+    end
+
+    @tag session: %{live_layout: {LayoutView, "live-override.html"}}
+    test "is picked from config on mount even on child live views", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/parent_layout")
+
+      assert html =~
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
     end
   end
 

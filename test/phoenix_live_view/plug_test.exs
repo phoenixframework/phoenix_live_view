@@ -60,7 +60,6 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{})
   end
 
-
   test "with a module container", %{conn: conn} do
     conn = call(conn, ThermostatLive)
 

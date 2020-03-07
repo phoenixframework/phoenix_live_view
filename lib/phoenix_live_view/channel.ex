@@ -118,8 +118,8 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, :ok, state}
   end
 
-  def handle_call({@prefix, :child_mount, _child_pid, assigned_new}, _from, state) do
-    assigns = Map.take(state.socket.assigns, assigned_new)
+  def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
+    assigns = Map.take(state.socket.assigns, assign_new)
     {:reply, assigns, state}
   end
 
@@ -538,7 +538,7 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root,
       session: session,
-      assigned_new: assigned_new
+      assign_new: assign_new
     } = verified
 
     # Optional verified parts
@@ -554,7 +554,6 @@ defmodule Phoenix.LiveView.Channel do
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
-    parent_assigns = sync_with_parent(parent, assigned_new)
 
     # Optional parameter handling
     url = params["url"]
@@ -583,10 +582,7 @@ defmodule Phoenix.LiveView.Channel do
           id: id,
           router: router
         },
-        %{
-          connect_params: connect_params,
-          assigned_new: {parent_assigns, assigned_new}
-        },
+        mount_private(parent, assign_new, connect_params),
         action,
         flash
       )
@@ -604,6 +600,29 @@ defmodule Phoenix.LiveView.Channel do
       secret_key_base = endpoint.config(:secret_key_base)
       Plug.CSRFProtection.load_state(secret_key_base, state)
     end
+  end
+
+  defp mount_private(nil, assign_new, connect_params) do
+    %{
+      connect_params: connect_params,
+      assign_new: {%{}, assign_new}
+    }
+  end
+
+  defp mount_private(parent, assign_new, connect_params) do
+    parent_assigns = sync_with_parent(parent, assign_new)
+
+    # Child live views always ignore the layout on `:use`.
+    %{
+      connect_params: connect_params,
+      assign_new: {parent_assigns, assign_new},
+      phoenix_live_layout: false
+    }
+  end
+
+  defp sync_with_parent(parent, assign_new) do
+    _ref = Process.monitor(parent)
+    GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
   end
 
   defp reply_mount(result, from) do
@@ -636,13 +655,6 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: phx_socket.transport_pid,
       components: Diff.new_components()
     }
-  end
-
-  defp sync_with_parent(nil, _assigned_new), do: %{}
-
-  defp sync_with_parent(parent, assigned_new) do
-    _ref = Process.monitor(parent)
-    GenServer.call(parent, {@prefix, :child_mount, self(), assigned_new})
   end
 
   defp prune_uri(:not_mounted_at_router), do: :not_mounted_at_router

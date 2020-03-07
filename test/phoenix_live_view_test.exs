@@ -72,7 +72,7 @@ defmodule Phoenix.LiveViewUnitTest do
 
     test "uses parent assigns when present and falls back to socket assigns" do
       socket =
-        put_in(@socket.private[:assigned_new], {%{existing: "existing-parent"}, []})
+        put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})
         |> assign(existing2: "existing2")
         |> assign_new(:existing, fn -> "new-existing" end)
         |> assign_new(:existing2, fn -> "new-existing2" end)

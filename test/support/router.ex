@@ -7,6 +7,7 @@ defmodule Phoenix.LiveViewTest.Router do
       store: :cookie,
       key: "_live_view_key",
       signing_salt: "/VEDsdfsffMnp5"
+
     plug :fetch_session
   end
 
@@ -60,6 +61,7 @@ defmodule Phoenix.LiveViewTest.Router do
       # The layout option needs to have higher precedence than bad layout
       live "/bad_layout", LayoutLive
       live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
+      live "/parent_layout", ParentLayoutLive, layout: false
     end
 
     # integration params

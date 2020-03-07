@@ -851,70 +851,32 @@ defmodule Phoenix.LiveView do
 
   ## Live Layouts
 
-  Your LiveView will be rendered within the layout specified in your Plug pipeline,
-  such as the default app layout. Assigns defined during `mount` of the root LiveView
-  are accessible in the layout, but the app layout is never updated after the initial
-  render. For a live layout, you must specify an additional layout to use with your
-  LiveView. For example, your regular `app.html` template may display a `@new_message_count`
-  notification, like this:
+  Besides the application layout your LiveView is rendered within,
+  LiveView can also have live layouts, that are rendered within the
+  LiveView life-cycle, on every change.
 
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <title><%= @page_title %></title>
-        </head>
-        <body>
-          <div>
-            <nav>
-              ...
-              Messages (<%= @new_message_count %>)
-            </nav>
-            <%= render @view_module, @view_template, assigns %>
-          </div>
-        </body>
-      </html>
+  For example, you can define a new `live.html.leex` layout with the
+  dynamic content. You must use `@inner_content` where the output
+  of the actual template will be placed at:
 
-  To allow the `@new_message_count` to be be updated by your LiveView, you can
-  move the dynamic content inside a sub-layout, such as `app_web/templates/layout/live.html.leex`.
-
-  First, you would update your `app.html` layout to keep only the barebones HTML
-  structure:
-
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <title>...</title>
-          <script>...</script>
-        </head>
-        <body>
-          <%= render @view_module, @view_template, assigns %>
-        </body>
-      </html>
-
-  Next, define a new `live.html.leex` layout with the dynamic content,
-  followed by a render of the inner `@live_view_module`:
-
-      <nav>
-        ...
-        Messages (<%= @new_message_count %>)
-      </nav>
+      <p><%= live_flash(@flash, :notice) %></p>
+      <p><%= live_flash(@flash, :error) %></p>
       <%= @inner_content %>
 
-  Finally, update your LiveView to pass the `:layout` option to `use Phoenix.LiveView`:
+  Finally, update your LiveView to pass the `:layout` option to
+  `use Phoenix.LiveView`:
 
       use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
 
-  Or alternatively, you can provide the `:layout` dynamically as an option in mount:
+  The live layout given on `use` is only available for the root live
+  view. If you are rendering child live views or if you want to opt-in
+  to a layout only in certain occasions, you can provide the `:layout`
+  as an option in mount:
 
         def mount(_params, _session, socket) do
           socket = assign(socket, new_message_count: 0)
           {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
         end
-
-        def handle_info({:new_messages, count}, socket) do
-          {:noreply, assign(socket, new_message_count: count)}
-        end
-      end
 
   *Note*: The layout will be wrapped by the LiveView's `:container` tag.
 
@@ -1420,10 +1382,10 @@ defmodule Phoenix.LiveView do
       %{assigns: %{^key => _}} ->
         socket
 
-      %{private: %{assigned_new: {assigns, keys}}} ->
+      %{private: %{assign_new: {assigns, keys}}} ->
         # It is important to store the keys even if they are not in assigns
         # because maybe the controller doesn't have it but the view does.
-        socket = put_in(socket.private.assigned_new, {assigns, [key | keys]})
+        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
         Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, func))
 
       %{} ->

@@ -58,7 +58,7 @@ defmodule Phoenix.LiveView.RouterTest do
 
   test "user-defined metadata is available inside of metadata key" do
     assert Phoenix.LiveViewTest.Router
-      |> Phoenix.Router.route_info("GET", "/thermo-with-metadata", nil)
-      |> Map.get(:route_name) == "opts"
+           |> Phoenix.Router.route_info("GET", "/thermo-with-metadata", nil)
+           |> Map.get(:route_name) == "opts"
   end
 end
