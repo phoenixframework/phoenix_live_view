@@ -963,10 +963,10 @@ export let DOM = {
 
   discardError(container, el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
-    if(!field) { return }
-    let input = container.querySelector(`#${field}`)
+    let input = field && container.querySelector(`#${field}`)
+    if(!input){ return }
 
-    if(field && !(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
+    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
       el.style.display = "none"
     }
   },
