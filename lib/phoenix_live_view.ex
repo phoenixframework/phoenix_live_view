@@ -501,12 +501,14 @@ defmodule Phoenix.LiveView do
 
   This is known to have a plethora of problems including accessibility, large numbers
   are converted to exponential notation and scrolling can accidentally increase or
-  decrease the number.  For many cases you likely have a better option.
+  decrease the number.
 
-  As of 2019, the following setup will likely serve your application's needs and users
-  much better.
+  As of early 2020, the following avoids these pitfalls and will likely serve your
+  application's needs and users much better. According to https://caniuse.com/#search=inputmode,
+  the following is supported by 90% of the global mobile market with Firefox yet to implement.
 
     <input type="text" inputmode="numeric" pattern="[0-9]*">
+
 
   ### Password inputs
 
