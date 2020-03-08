@@ -1,4 +1,4 @@
-## 0.9.0-dev
+## 0.9.0 (2020-03-08)
 
 ### Backwards incompatible changes
   - LiveView no longer uses the default app layout. Use `put_live_layout` to explicitly choose which layout you want to use
