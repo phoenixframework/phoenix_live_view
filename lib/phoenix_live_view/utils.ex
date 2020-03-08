@@ -81,7 +81,7 @@ defmodule Phoenix.LiveView.Utils do
   def post_mount_prune(%Socket{} = socket) do
     socket
     |> clear_changed()
-    |> drop_private([:connect_params, :assigned_new])
+    |> drop_private([:connect_params, :assign_new])
   end
 
   @doc """
@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.Utils do
         |> layout_mod.render(render_assigns(socket))
         |> check_rendered!(layout_mod)
 
-      nil ->
+      false ->
         inner_content
     end
   end
@@ -128,11 +128,10 @@ defmodule Phoenix.LiveView.Utils do
   def get_flash(%{} = flash, key), do: flash[key]
 
   @doc """
-  Merges a new flash with the socket's flash messages.
+  Puts a new flash with the socket's flash messages.
   """
-  def merge_flash(%Socket{} = socket, %{} = new_flash) do
-    current_flash = get_flash(socket)
-    assign(socket, :flash, Map.merge(current_flash, new_flash))
+  def replace_flash(%Socket{} = socket, %{} = new_flash) do
+    assign(socket, :flash, new_flash)
   end
 
   @doc """
@@ -321,6 +320,10 @@ defmodule Phoenix.LiveView.Utils do
     %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, {mod, template})}
   end
 
+  defp do_mount_opt(socket, :layout, false) do
+    %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, false)}
+  end
+
   defp do_mount_opt(_socket, :layout, bad_layout) do
     raise ArgumentError,
           "the :layout mount option expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
@@ -350,7 +353,10 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp layout(socket, view) do
-    socket.private[:phoenix_live_layout] || view.__live__()[:layout]
+    case socket.private do
+      %{phoenix_live_layout: layout} -> layout
+      %{} -> view.__live__()[:layout] || false
+    end
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do

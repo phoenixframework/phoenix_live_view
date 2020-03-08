@@ -53,8 +53,12 @@ defmodule Phoenix.LiveView.Plug do
     if live_link?(conn) do
       Phoenix.Controller.put_layout(conn, false)
     else
-      layout = opts[:layout] || conn.private[:phoenix_live_layout] || false
-      Phoenix.Controller.put_layout(conn, layout)
+      with :error <- Keyword.fetch(opts, :layout),
+           :error <- Map.fetch(conn.private, :phoenix_live_layout) do
+        Phoenix.Controller.put_layout(conn, false)
+      else
+        {:ok, layout} -> Phoenix.Controller.put_layout(conn, layout)
+      end
     end
   end
 

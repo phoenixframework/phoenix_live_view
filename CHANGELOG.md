@@ -1,13 +1,17 @@
-## 0.8.2-dev
+## 0.9.0 (2020-03-08)
 
 ### Backwards incompatible changes
   - LiveView no longer uses the default app layout. Use `put_live_layout` to explicitly choose which layout you want to use
 
 ### Bug fixes
   - Do not set ignored inputs and buttons as readonly
-  - Only decode paths in URIs and double decode query strings twice
+  - Only decode paths in URIs
   - Only destroy main descendents when replacing main
   - Fix sibling component patches when siblings at same root DOM tree
+  - Do not pick the layout from `:use` on child LiveViews
+  - Respect when the layout is set to `false` in the router and on mount
+  - Fix sibling component patch when component siblings lack a container
+  - Make flash optional (i.e. LiveView will still work if you don't `fetch_flash` before)
 
 ### Enhancements
   - Raise if `:flash` is given as an assign
@@ -15,6 +19,7 @@
   - Allow the router to be accessed as `socket.router`
   - Allow `MFArgs` as the `:session` option in the `live` router macro
   - Trigger page loading event when main LV errors
+  - Automatially clear the flash on live navigation examples - only the newly assigned flash is persisted
 
 ## 0.8.1 (2020-02-27)
 

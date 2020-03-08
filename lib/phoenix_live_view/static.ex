@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp verify_static_token(_endpoint, _id, nil), do: {:ok, %{assigned_new: []}}
+  defp verify_static_token(_endpoint, _id, nil), do: {:ok, %{assign_new: []}}
 
   defp verify_static_token(endpoint, id, token) do
     case verify_token(endpoint, token) do
@@ -112,7 +112,7 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
-        %{assigned_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
+        %{assign_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
         action,
         flash
       )
@@ -137,7 +137,7 @@ defmodule Phoenix.LiveView.Static do
           {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
         catch
           :throw, {:phoenix, :child_redirect, redir_opts, flash} ->
-            {:stop, socket |> rewrite_redir(redir_opts) |> Utils.merge_flash(flash)}
+            {:stop, socket |> rewrite_redir(redir_opts) |> Utils.replace_flash(flash)}
         end
 
       {:stop, socket} ->
@@ -164,7 +164,7 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view},
-        %{assigned_new: {conn.assigns, []}, connect_params: %{}},
+        %{assign_new: {conn.assigns, []}, connect_params: %{}},
         action,
         flash
       )
@@ -212,7 +212,7 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{assigned_new: {parent.assigns, []}},
+        %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
         flash
       )
@@ -376,7 +376,7 @@ defmodule Phoenix.LiveView.Static do
     sign_token(endpoint, %{
       id: id,
       flash: socket.assigns.flash,
-      assigned_new: assigned_new_keys(socket)
+      assign_new: assign_new_keys(socket)
     })
   end
 
@@ -391,8 +391,8 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp assigned_new_keys(socket) do
-    {_, keys} = socket.private.assigned_new
+  defp assign_new_keys(socket) do
+    {_, keys} = socket.private.assign_new
     keys
   end
 end

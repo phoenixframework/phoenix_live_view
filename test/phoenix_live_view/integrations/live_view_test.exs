@@ -118,9 +118,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "child push_patch when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/a LiveView cannot be mounted while issuing a live patch to the client/, fn ->
-        get(conn, "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true")
-      end
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/a LiveView cannot be mounted while issuing a live patch to the client/,
+                   fn ->
+                     get(
+                       conn,
+                       "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true"
+                     )
+                   end
     end
 
     test "child push_patch when connected", %{conn: conn} do
@@ -696,19 +701,45 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
 
-      assert render_click(view, :double, "") =~
+      assert render_click(view, :double, "") ==
                "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
     end
 
     @tag session: %{live_layout: {LayoutView, "live-override.html"}}
-    test "is picked from config on mount", %{conn: conn} do
+    test "is picked from config on mount when given a layout", %{conn: conn} do
       {:ok, view, html} = live(conn, "/layout")
 
       assert html =~
                ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
-      assert render_click(view, :double, "") =~
+      assert render_click(view, :double, "") ==
                "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"
+    end
+
+    @tag session: %{live_layout: false}
+    test "is picked from config on mount when given false", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/layout")
+      assert html =~ "The value is: 123</div>"
+      assert render_click(view, :double, "") == "The value is: 246"
+    end
+
+    test "is not picked from config on use for child live views", %{conn: conn} do
+      assert get(conn, "/parent_layout") |> html_response(200) =~
+               "The value is: 123</div>"
+
+      {:ok, _view, html} = live(conn, "/parent_layout")
+      assert html =~ "The value is: 123</div>"
+    end
+
+    @tag session: %{live_layout: {LayoutView, "live-override.html"}}
+    test "is picked from config on mount even on child live views", %{conn: conn} do
+      assert get(conn, "/parent_layout") |> html_response(200) =~
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+
+      {:ok, _view, html} = live(conn, "/parent_layout")
+
+      assert html =~
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
     end
   end
 

@@ -443,7 +443,8 @@ export class LiveSocket {
       let el = template.content.childNodes[0]
       if(!el || !this.isPhxView(el)){ return this.redirect(href) }
 
-      this.joinView(el, null, href, flash, newMain => {
+      this.joinView(el, null, href, flash, (newMain, joinCount) => {
+        if(joinCount !== 1){ return }
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
@@ -451,7 +452,6 @@ export class LiveSocket {
         this.destroyViewById(mainID)
         mainEl.replaceWith(newMain.el)
         this.main = newMain
-        this.main.showLoader()
         callback && callback()
       })
     })
@@ -963,10 +963,10 @@ export let DOM = {
 
   discardError(container, el){
     let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
-    if(!field) { return }
-    let input = container.querySelector(`#${field}`)
+    let input = field && container.querySelector(`#${field}`)
+    if(!input){ return }
 
-    if(field && !(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
+    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
       el.style.display = "none"
     }
   },
@@ -1182,7 +1182,7 @@ class DOMPatch {
           child.innerHTML = ""
         }
       })
-      template.content.childNodes.forEach(el => diffContainer.insertBefore(el, firstComponent))
+      Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
       firstComponent.remove()
     } else {
       diffContainer = DOM.cloneNode(container, html)
@@ -1249,6 +1249,7 @@ export class View {
     this.href = href
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
+    this.joinCallback = null
     this.viewHooks = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
@@ -1372,7 +1373,9 @@ export class View {
     this.joinPending = false
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     this.performPatch(patch)
-    this.joinNewChildren()
+    if(!this.joinNewChildren()){
+      this.root.onAllChildJoinsComplete()
+    }
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
@@ -1424,21 +1427,23 @@ export class View {
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
-    patch.perform()
 
-    if(phxChildrenAdded){
-      this.joinNewChildren()
-    }
+    patch.perform()
     this.maybePushComponentsDestroyed(destroyedCIDs)
+
+    return phxChildrenAdded
   }
 
   joinNewChildren(){
+    let newChildren = false
     DOM.all(this.el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
       let child = this.liveSocket.getViewByEl(el)
       if(!child){
+        newChildren = true
         this.liveSocket.joinView(el, this)
       }
     })
+    return newChildren
   }
 
   update(diff, cid, ref){
@@ -1453,7 +1458,10 @@ export class View {
       Rendered.toString(this.rendered)
 
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
-    this.performPatch(patch)
+    let phxChildrenAdded = this.performPatch(patch)
+    if(phxChildrenAdded){
+      this.joinNewChildren()
+    }
   }
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
@@ -1520,28 +1528,33 @@ export class View {
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
-    let onLoadingDone = function(){}
     if(this.parent){
       this.parent.channel.onClose(() => this.onGracefulClose())
       this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
+      this.joinCallback = () => callback && callback(this, this.joinCount)
     } else {
-      onLoadingDone = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
+      let stopLoading = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
+      this.joinCallback = () => {
+        stopLoading()
+        callback && callback(this, this.joinCount)
+      }
     }
     this.liveSocket.wrapPush(() => {
       return this.channel.join()
         .receive("ok", data => {
-          if(this.joinCount === 0){ callback && callback(this) }
           this.joinCount++
           this.joinPending = true
           this.flash = null
-          if(!this.parent){
-            onLoadingDone()
-          }
           this.onJoin(data)
         })
         .receive("error", resp => this.onJoinError(resp))
         .receive("timeout", () => this.onJoinError({reason: "timeout"}))
     })
+  }
+
+  onAllChildJoinsComplete(){
+    this.joinCallback && this.joinCallback()
+    this.joinCalback = null
   }
 
   onJoinError(resp){
