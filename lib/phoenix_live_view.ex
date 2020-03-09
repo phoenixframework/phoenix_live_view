@@ -375,7 +375,7 @@ defmodule Phoenix.LiveView do
       `clientX`, a keydown event's `keyCode`, etc.
 
   The `phx-capture-click` event is just like `phx-click`, but instead of the click event
-  being displatched to the closest `phx-click` element as it bubbles up through the DOM, the event
+  being dispatched to the closest `phx-click` element as it bubbles up through the DOM, the event
   is dispatched as it propagates from the top of the DOM tree down to the target element. This is
   useful when wanting to bind click events without receiving bubbled events from child UI elements.
   Since capturing happens before bubbling, this can also be important for preparing or preventing
