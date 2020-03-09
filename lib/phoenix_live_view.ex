@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView do
   is invoked and the HTML is sent as a regular HTML response to the
   client.
 
-  After rendering the static page, LiveView connects from the client
+  After rendering the static page, LiveView connects from the client to the server
   where stateful views are spawned to push rendered updates to the
   browser, and receive client events via phx bindings. Just like
   the first rendering, `mount/3` is invoked  with params, session,
