@@ -159,6 +159,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
 
+    test "renders a live view with custom session and a router", %{conn: conn} do
+      {:ok, view, _} =
+        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"}, router: MyApp.Router)
+
+      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+    end
+
     test "raises if handle_params is implemented", %{conn: conn} do
       assert_raise ArgumentError,
                    ~r/it is not mounted nor accessed through the router live\/3 macro/,

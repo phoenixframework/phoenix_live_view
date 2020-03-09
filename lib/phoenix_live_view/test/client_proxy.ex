@@ -5,7 +5,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defstruct session_token: nil,
             static_token: nil,
             module: nil,
-            mount_path: nil,
             endpoint: nil,
             pid: nil,
             proxy: nil,
@@ -44,6 +43,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     root_view = Keyword.fetch!(opts, :view)
     timeout = Keyword.fetch!(opts, :timeout)
     session = Keyword.fetch!(opts, :session)
+    url = Keyword.fetch!(opts, :url)
 
     state = %{
       timeout: timeout,
@@ -59,7 +59,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session
     }
 
-    case mount_view(state, root_view, timeout) do
+    case mount_view(state, root_view, timeout, url) do
       {:ok, pid, rendered} ->
         new_state =
           state
@@ -75,10 +75,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp mount_view(state, view, timeout) do
+  defp mount_view(state, view, timeout, url) do
     ref = make_ref()
 
-    case start_supervised_channel(state, view, ref) do
+    case start_supervised_channel(state, view, ref, url) do
       {:ok, pid} ->
         mon_ref = Process.monitor(pid)
 
@@ -105,7 +105,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp start_supervised_channel(state, view, ref) do
+  defp start_supervised_channel(state, view, ref, url) do
     socket = %Phoenix.Socket{
       transport_pid: self(),
       serializer: __MODULE__,
@@ -119,7 +119,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     params = %{
       "session" => view.session_token,
       "static" => view.static_token,
-      "url" => mount_url(view),
+      "url" => url,
       "params" => view.connect_params,
       "caller" => state.caller,
       "joins" => 0
@@ -127,13 +127,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
     DynamicSupervisor.start_child(Phoenix.LiveView.DynamicSupervisor, spec)
-  end
-
-  defp mount_url(view) do
-    case view.mount_path do
-      "/" -> view.endpoint.url()
-      path -> Path.join(view.endpoint.url(), path)
-    end
   end
 
   def handle_info({:sync_children, topic, from}, state) do
@@ -501,7 +494,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
           acc
-          |> mount_view(child_view, acc.timeout)
+          |> mount_view(child_view, acc.timeout, nil)
           |> case do
             {:ok, pid, rendered} ->
               acc
@@ -571,8 +564,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> Keyword.merge(
       ref: ref,
       proxy: proxy,
-      endpoint: parent.endpoint,
-      mount_path: parent.mount_path
+      endpoint: parent.endpoint
     )
     |> build()
   end

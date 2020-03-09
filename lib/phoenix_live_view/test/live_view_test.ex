@@ -207,7 +207,8 @@ defmodule Phoenix.LiveViewTest do
     * `:session` - the session to be given to the LiveView
 
   All other options are forwarded to the live view for rendering. Refer to
-  `Phoenix.LiveView.live_render/3` for a list of supported render options.
+  `Phoenix.LiveView.Helpers.live_render/3` for a list of supported render
+  options.
 
   ## Examples
 
@@ -228,7 +229,7 @@ defmodule Phoenix.LiveViewTest do
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
-    |> __live__(mount_opts)
+    |> connect_from_static_token(nil, mount_opts)
   end
 
   @doc false
@@ -299,17 +300,17 @@ defmodule Phoenix.LiveViewTest do
   defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id, opts) do
     child_statics = Map.delete(DOM.find_static_views(html), id)
     timeout = opts[:timeout] || 5000
+    endpoint = Phoenix.Controller.endpoint_module(conn)
 
     %ClientProxy{ref: ref} =
       view =
       ClientProxy.build(
         id: id,
-        mount_path: path,
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         static_token: static_token,
         module: conn.assigns.live_view_module,
-        endpoint: Phoenix.Controller.endpoint_module(conn),
+        endpoint: endpoint,
         child_statics: child_statics
       )
 
@@ -318,7 +319,8 @@ defmodule Phoenix.LiveViewTest do
       html: html,
       view: view,
       timeout: timeout,
-      session: Plug.Conn.get_session(conn)
+      session: Plug.Conn.get_session(conn),
+      url: mount_url(endpoint, path)
     ]
 
     case ClientProxy.start_link(opts) do
@@ -346,6 +348,10 @@ defmodule Phoenix.LiveViewTest do
         end
     end
   end
+
+  defp mount_url(_endpoint, nil), do: nil
+  defp mount_url(endpoint, "/"), do: endpoint.url()
+  defp mount_url(endpoint, path), do: Path.join(endpoint.url(), path)
 
   defp build_test_view(%ClientProxy{id: id, ref: ref} = view, view_pid, proxy_pid) do
     %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
