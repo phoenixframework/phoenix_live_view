@@ -7,8 +7,7 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     _ = assigns.live_view_module
     _ = assigns.live_view_action
 
-    # TODO use assigns.inner_content when we go phoenix ~> 1.5
-    ["LAYOUT", render(assigns.view_module, assigns.view_template, assigns)]
+    ["LAYOUT", assigns.inner_content]
   end
 
   def render("live.html", assigns) do

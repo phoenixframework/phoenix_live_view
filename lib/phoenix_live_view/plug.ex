@@ -24,7 +24,8 @@ defmodule Phoenix.LiveView.Plug do
       |> Phoenix.Controller.html(html)
     else
       conn
-      |> put_new_layout_from_router(opts)
+      |> Phoenix.Controller.put_layout(false)
+      |> put_root_layout_from_router(opts)
       |> Controller.live_render(view, opts)
     end
   end
@@ -49,16 +50,10 @@ defmodule Phoenix.LiveView.Plug do
     end
   end
 
-  defp put_new_layout_from_router(conn, opts) do
-    if live_link?(conn) do
-      Phoenix.Controller.put_layout(conn, false)
-    else
-      with :error <- Keyword.fetch(opts, :layout),
-           :error <- Map.fetch(conn.private, :phoenix_live_layout) do
-        Phoenix.Controller.put_layout(conn, false)
-      else
-        {:ok, layout} -> Phoenix.Controller.put_layout(conn, layout)
-      end
+  defp put_root_layout_from_router(conn, opts) do
+    case Keyword.fetch(opts, :layout) do
+      {:ok, layout} -> Phoenix.Controller.put_root_layout(conn, layout)
+      :error -> conn
     end
   end
 

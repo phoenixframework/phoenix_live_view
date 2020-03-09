@@ -18,7 +18,7 @@ defmodule Phoenix.LiveViewTest.Router do
   end
 
   pipeline :bad_layout do
-    plug :put_live_layout, {UnknownView, :unknown_template}
+    plug :put_root_layout, {UnknownView, :unknown_template}
   end
 
   scope "/", Phoenix.LiveViewTest do

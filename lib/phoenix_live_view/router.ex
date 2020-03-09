@@ -48,12 +48,6 @@ defmodule Phoenix.LiveView.Router do
   The current action will always be available inside the LiveView as
   the `@live_view_action` assign. `@live_view_action` will be `nil`
   if no action is given on the route definition.
-
-  ## Layout
-
-  The layout must be explicitly given, either as an option or by calling
-  `put_live_layout`.
-
   ## Options
 
     * `:session` - a map of strings keys and values to be merged into the session.
@@ -61,8 +55,7 @@ defmodule Phoenix.LiveView.Router do
       the session.
 
     * `:layout` - the optional tuple for specifying a layout to render the
-      LiveView. Defaults to `{LayoutView, :app}` where LayoutView is relative to
-      your application's namespace.
+      LiveView. If set, this option will replace the current root layout.
 
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
@@ -101,27 +94,6 @@ defmodule Phoenix.LiveView.Router do
 
       Phoenix.Router.get(path, Phoenix.LiveView.Plug, action, router_options)
     end
-  end
-
-  @doc """
-  Configures the layout to use for `live` routes.
-
-  ## Examples
-
-      defmodule AppWeb.Router do
-        use LiveGenWeb, :router
-        import Phoenix.LiveView.Router
-
-        pipeline :browser do
-          ...
-          plug :put_live_layout, {AppWeb.LayoutView, "app.html"}
-        end
-        ...
-      end
-  """
-  def put_live_layout(%Plug.Conn{} = conn, {layout_mod, template})
-      when is_atom(layout_mod) and (is_binary(template) or is_atom(template)) do
-    Plug.Conn.put_private(conn, :phoenix_live_layout, {layout_mod, template})
   end
 
   @doc """
