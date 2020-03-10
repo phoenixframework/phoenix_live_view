@@ -1379,6 +1379,8 @@ export class View {
   }
 
   onJoinComplete({live_patch}, html){
+    if(this.joinCount > 1){ return this.applyJoinPatch(live_patch, html) }
+
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(c => this.joinChild(c))
     if(newChildren.length === 0){
       if(this.parent){
@@ -1393,13 +1395,13 @@ export class View {
     }
   }
 
-  applyJoinPatch(live_patch, html){
-    this.el = document.getElementById(this.id)
-    if(!this.el){
-      logError(`no id found on join for #${this.id}`)
-      return
-    }
+  attachTrueDocEl(){
+    this.el = document.getElementById(this.id) || logError(`no id found on join for #${this.id}`)
     DOM.putPrivate(this.el, "root-id", this.root.id)
+  }
+
+  applyJoinPatch(live_patch, html){
+    this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     this.joinPending = false
     this.performPatch(patch)
@@ -1468,7 +1470,13 @@ export class View {
 
   getChildById(id){ return this.root.children[this.id][id] }
 
-  getDescendentByEl(el){ return this.children[el.getAttribute(PHX_PARENT_ID)][el.id] }
+  getDescendentByEl(el){
+    if(el.id === this.id){
+      return this
+    } else {
+      return this.children[el.getAttribute(PHX_PARENT_ID)][el.id]
+    }
+  }
 
   destroyDescendent(id){
     for(let parentId in this.root.children){
