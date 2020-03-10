@@ -3,6 +3,9 @@
 ### Backwards incompatible changes
   - LiveView no longer uses the default app layout and `put_live_layout` is no longer supported. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Therefore, we recommend setting `put_root_layout` in a pipeline that is exclusive to LiveViews
 
+### Bug fixes
+  - Fix loading states causing nested LiveViews to be removed during live navigation
+
 ## 0.9.0 (2020-03-08)
 
 ### Bug fixes
