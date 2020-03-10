@@ -31,7 +31,8 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
-const PHX_MAIN_VIEW_SELECTOR = `[data-phx-main=true]`
+const PHX_MAIN = `data-phx-main`
+const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
@@ -267,15 +268,14 @@ export class LiveSocket {
     this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
-    this.views = {}
     this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
     this.activeElement = null
     this.prevActive = null
     this.silenced = false
-    this.root = null
     this.main = null
     this.linkRef = 0
+    this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
     this.currentLocation = clone(window.location)
@@ -286,7 +286,6 @@ export class LiveSocket {
       if(this.isUnloaded()){
         this.destroyAllViews()
         this.joinRootViews()
-        this.detectMainView()
       }
       this.unloaded = false
     })
@@ -320,9 +319,7 @@ export class LiveSocket {
 
   connect(){
     let doConnect = () => {
-      this.joinRootViews()
-      this.detectMainView()
-      if(this.root){
+      if(this.joinRootViews()){
         this.bindTopLevelEvents()
         this.socket.connect()
       }
@@ -407,21 +404,14 @@ export class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params) }
 
   joinRootViews(){
+    let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      let view = this.joinView(rootEl, null, this.getHref())
+      let view = this.joinRootView(rootEl, this.getHref())
       this.root = this.root || view
+      if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
+      rootsFound = true
     })
-  }
-
-  detectMainView(){
-    DOM.all(document, `${PHX_MAIN_VIEW_SELECTOR}`, el => {
-      let hasPreviousMain = !!this.main
-      let main = this.getViewByEl(el)
-      if(main) {
-        this.main = main
-        if(!hasPreviousMain){ this.replaceRootHistory() }
-      }
-    })
+    return rootsFound
   }
 
   redirect(to, flash){
@@ -431,8 +421,7 @@ export class LiveSocket {
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let mainEl = this.main.el
-    let mainID = this.main.id
-    this.destroyMain()
+    this.main.destroy()
     this.main.showLoader(this.loaderTimeout)
 
     Browser.fetchPage(href, (status, html) => {
@@ -443,13 +432,12 @@ export class LiveSocket {
       let el = template.content.childNodes[0]
       if(!el || !this.isPhxView(el)){ return this.redirect(href) }
 
-      this.joinView(el, null, href, flash, (newMain, joinCount) => {
+      this.joinRootView(el, href, flash, (newMain, joinCount) => {
         if(joinCount !== 1){ return }
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
           return
         }
-        this.destroyViewById(mainID)
         mainEl.replaceWith(newMain.el)
         this.main = newMain
         callback && callback()
@@ -459,11 +447,9 @@ export class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
-  joinView(el, parentView, href, flash, callback){
-    if(this.getViewByEl(el)){ return }
-
-    let view = new View(el, this, parentView, href, flash)
-    this.views[view.id] = view
+  joinRootView(el, href, flash, callback){
+    let view = new View(el, this, null, href, flash)
+    this.roots[view.id] = view
     view.join(callback)
     return view
   }
@@ -493,35 +479,28 @@ export class LiveSocket {
     }
   }
 
-  getViewByEl(el){ return this.getViewById(el.id) }
+  getViewByEl(el){
+    let rootId = el.getAttribute(PHX_ROOT_ID)
+    return this.getRootById(rootId).getDescendentByEl(el)
+  }
 
-  getViewById(id){ return this.views[id] }
+  getRootById(id){ return this.roots[id] }
 
   onViewError(view){
     this.dropActiveElement(view)
   }
 
   destroyAllViews(){
-    for(let id in this.views){ this.destroyViewById(id) }
+    for(let id in this.roots){
+      this.roots[id].destroy()
+      delete this.roots[id]
+    }
   }
 
-  destroyMain(){
-    for(let id in this.views){
-      let view = this.getViewById(id)
-      if(view.isDescendentOf(this.main)){ this.destroyViewById(id) }
-    }
-    this.destroyViewById(this.main.id)
-  }
-
-  destroyViewByEl(el){ return this.destroyViewById(el.id) }
-
-  destroyViewById(id){
-    let view = this.views[id]
-    if(view){
-      delete this.views[view.id]
-      if(this.root && view.id === this.root.id){ this.root = null }
-      view.destroy()
-    }
+  destroyViewByEl(el){
+    let rootEl = el.closest(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`)
+    let root = this.getRootById(rootEl.id)
+    root.destroyDescendent(el.id)
   }
 
   setActiveElement(target){
@@ -900,6 +879,16 @@ export let DOM = {
 
   findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
 
+  findPhxChildrenInFragment(html, parentId){
+    let template = document.createElement("template")
+    template.innerHTML = html
+    return this.findPhxChildren(template.content, parentId)
+  },
+
+  findPhxChildren(el, parentId){
+    return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
+  },
+
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
   deletePrivate(el, key){ el[PHX_PRIVATE] && delete(el[PHX_PRIVATE][key]) },
@@ -1036,6 +1025,7 @@ class DOMPatch {
     this.view = view
     this.container = container
     this.id = id
+    this.rootID = view.root.id
     this.html = html
     this.targetCID = targetCID
     this.ref = ref
@@ -1114,6 +1104,7 @@ class DOMPatch {
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
           DOM.mergeAttrs(fromEl, toEl)
           fromEl.setAttribute(PHX_STATIC, prevStatic)
+          fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
           return false
         }
 
@@ -1244,13 +1235,17 @@ export class View {
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
     this.ref = 0
+    this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
     this.href = href
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
-    this.joinCallback = null
+    this.destroyed = false
+    this.joinCallback = function(){}
+    this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
+    this.children = this.parent ? null : {[this.id]: {}}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href,
@@ -1267,8 +1262,6 @@ export class View {
 
   isMain(){ return this.liveSocket.main === this }
 
-  isDescendentOf(rootView){ return this.root.id === rootView.id && this.root.id !== this.id }
-
   name(){ return this.view }
 
   isConnected(){ return this.channel.canPush() }
@@ -1281,6 +1274,8 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    this.destroyed = true
+    if(this.parent){ delete this.root.children[this.parent.id][this.id] }
     clearTimeout(this.loaderTimer)
     let onFinished = () => {
       callback()
@@ -1334,6 +1329,11 @@ export class View {
 
   onJoin(resp){
     let {rendered} = resp
+    this.joinCount++
+    this.childJoins = 0
+    this.joinPending = true
+    this.flash = null
+
     this.log("join", () => ["", rendered])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
@@ -1370,12 +1370,33 @@ export class View {
   }
 
   onJoinComplete({live_patch}, html){
-    this.joinPending = false
-    let patch = new DOMPatch(this, this.el, this.id, html, null)
-    this.performPatch(patch)
-    if(!this.joinNewChildren()){
-      this.root.onAllChildJoinsComplete()
+    if(this.joinCount > 1){ return this.applyJoinPatch(live_patch, html) }
+
+    let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(c => this.joinChild(c))
+    if(newChildren.length === 0){
+      if(this.parent){
+        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
+        this.parent.ackJoin(this)
+      } else {
+        this.onAllChildJoinsComplete()
+        this.applyJoinPatch(live_patch, html)
+      }
+    } else {
+      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
     }
+  }
+
+  attachTrueDocEl(){
+    this.el = document.getElementById(this.id) || logError(`no id found on join for #${this.id}`)
+    this.el.setAttribute(PHX_ROOT_ID, this.root.id)
+  }
+
+  applyJoinPatch(live_patch, html){
+    this.attachTrueDocEl()
+    let patch = new DOMPatch(this, this.el, this.id, html, null)
+    this.joinPending = false
+    this.performPatch(patch)
+    this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
@@ -1435,21 +1456,66 @@ export class View {
   }
 
   joinNewChildren(){
-    let newChildren = false
-    DOM.all(this.el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${this.id}"]`, el => {
-      let child = this.liveSocket.getViewByEl(el)
-      if(!child){
-        newChildren = true
-        this.liveSocket.joinView(el, this)
+    DOM.findPhxChildren(this.el, this.id).forEach(el => this.joinChild(el))
+  }
+
+  getChildById(id){ return this.root.children[this.id][id] }
+
+  getDescendentByEl(el){
+    if(el.id === this.id){
+      return this
+    } else {
+      return this.children[el.getAttribute(PHX_PARENT_ID)][el.id]
+    }
+  }
+
+  destroyDescendent(id){
+    for(let parentId in this.root.children){
+      if(parentId === id){ return this.root.children[parentId].destroy() }
+      for(let childId in this.root.children[parentId]){
+        if(childId === id){ return this.root.children[parentId][childId].destroy() }
       }
+    }
+  }
+
+  joinChild(el){
+    let child = this.getChildById(el.id)
+    if(!child){
+      let view = new View(el, this.liveSocket, this)
+      this.root.children[this.id] = this.root.children[this.id] || {}
+      this.root.children[this.id][view.id] = view
+      view.join()
+      this.childJoins++
+      return true
+    }
+  }
+
+  isJoinPending(){ return this.joinPending }
+
+  ackJoin(child){
+    this.childJoins--
+
+    if(this.childJoins === 0){
+      if(this.parent){
+        this.parent.ackJoin(this)
+      } else {
+        this.onAllChildJoinsComplete()
+      }
+    }
+  }
+
+  onAllChildJoinsComplete(){
+    this.joinCallback()
+    this.pendingJoinOps.forEach(([view, op]) => {
+      if(!view.isDestroyed()){ op() }
     })
-    return newChildren
+    this.pendingJoinOps = []
   }
 
   update(diff, cid, ref){
     if(isEmpty(diff) && ref === null){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.joinPending || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
+    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
 
     this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
@@ -1490,7 +1556,15 @@ export class View {
     this.pendingDiffs = []
   }
 
-  onChannel(event, cb){ this.liveSocket.onChannel(this.channel, event, cb) }
+  onChannel(event, cb){
+    this.liveSocket.onChannel(this.channel, event, resp => {
+      if(this.isJoinPending()){
+        this.root.pendingJoinOps.push([this, () => cb(resp)])
+      } else {
+        cb(resp)
+      }
+    })
+  }
 
   bindChannel(){
     this.onChannel("diff", (diff) => this.update(diff))
@@ -1502,9 +1576,15 @@ export class View {
     this.channel.onClose(() => this.onGracefulClose())
   }
 
+  destroyAllChildren(){
+    for(let id in this.root.children[this.id]){
+      this.getChildById(id).destroy()
+    }
+  }
+
   onGracefulClose(){
     this.gracefullyClosed = true
-    this.liveSocket.destroyViewById(this.id)
+    this.destroyAllChildren()
   }
 
   onLiveRedirect(redir){
@@ -1525,12 +1605,12 @@ export class View {
 
   onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
 
+  isDestroyed(){ return this.destroyed }
+
   hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
     if(this.parent){
-      this.parent.channel.onClose(() => this.onGracefulClose())
-      this.parent.channel.onError(() => this.liveSocket.destroyViewById(this.id))
       this.joinCallback = () => callback && callback(this, this.joinCount)
     } else {
       let stopLoading = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
@@ -1541,20 +1621,10 @@ export class View {
     }
     this.liveSocket.wrapPush(() => {
       return this.channel.join()
-        .receive("ok", data => {
-          this.joinCount++
-          this.joinPending = true
-          this.flash = null
-          this.onJoin(data)
-        })
+        .receive("ok", data => this.onJoin(data))
         .receive("error", resp => this.onJoinError(resp))
         .receive("timeout", () => this.onJoinError({reason: "timeout"}))
     })
-  }
-
-  onAllChildJoinsComplete(){
-    this.joinCallback && this.joinCallback()
-    this.joinCalback = null
   }
 
   onJoinError(resp){
@@ -1563,12 +1633,14 @@ export class View {
     if(resp.redirect || resp.live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
+    this.parent && this.parent.ackJoin(this)
     this.displayError()
     this.log("error", () => ["unable to join", resp])
   }
 
   onError(reason){
-    if(this.joinPending){ return this.liveSocket.reloadWithJitter(this) }
+    if(this.isJoinPending()){ return this.liveSocket.reloadWithJitter(this) }
+    this.destroyAllChildren()
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
     document.activeElement.blur()
