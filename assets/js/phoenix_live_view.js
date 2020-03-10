@@ -405,7 +405,7 @@ export class LiveSocket {
   joinRootViews(){
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      let view = this.joinRootView(rootEl, null, this.getHref())
+      let view = this.joinRootView(rootEl, this.getHref())
       this.root = this.root || view
       if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
       rootsFound = true
@@ -424,8 +424,6 @@ export class LiveSocket {
     this.main.showLoader(this.loaderTimeout)
 
     Browser.fetchPage(href, (status, html) => {
-      // noop in flight fetch
-      // before buffer unrwap check vsn
       if(status !== 200){ return this.redirect(href) }
 
       let template = document.createElement("template")
@@ -433,7 +431,7 @@ export class LiveSocket {
       let el = template.content.childNodes[0]
       if(!el || !this.isPhxView(el)){ return this.redirect(href) }
 
-      this.joinRootView(el, null, href, flash, (newMain, joinCount) => {
+      this.joinRootView(el, href, flash, (newMain, joinCount) => {
         if(joinCount !== 1){ return }
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
@@ -448,8 +446,8 @@ export class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
-  joinRootView(el, parentView, href, flash, callback){
-    let view = new View(el, this, parentView, href, flash)
+  joinRootView(el, href, flash, callback){
+    let view = new View(el, this, null, href, flash)
     this.roots[view.id] = view
     view.join(callback)
     return view
@@ -485,9 +483,7 @@ export class LiveSocket {
     return this.getRootById(rootId).getDescendentByEl(el)
   }
 
-  getRootById(id){
-    return this.roots[id]
-  }
+  getRootById(id){ return this.roots[id] }
 
   onViewError(view){
     this.dropActiveElement(view)
@@ -502,12 +498,8 @@ export class LiveSocket {
 
   destroyViewByEl(el){
     let rootEl = el.closest(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`)
-    let root = rootEl && this.getRootById(rootEl.id)
-    if(root){
-      root.destroyDescendent(el.id)
-    } else {
-      logError(`no child LiveView found for #${el.id}`)
-    }
+    let root = this.getRootById(rootEl.id)
+    root.destroyDescendent(el.id)
   }
 
   setActiveElement(target){
@@ -885,10 +877,6 @@ export let DOM = {
   },
 
   findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
-
-  findPhxDescendents(el){
-    return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}]`)
-  },
 
   findPhxChildrenInFragment(html, parentId){
     let template = document.createElement("template")
@@ -1520,8 +1508,6 @@ export class View {
     })
     this.pendingJoinOps = []
   }
-
-  // attachEl(el){ this.el = el }
 
   update(diff, cid, ref){
     if(isEmpty(diff) && ref === null){ return }
