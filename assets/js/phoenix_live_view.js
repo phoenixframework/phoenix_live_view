@@ -32,6 +32,7 @@ const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN = `data-phx-main`
+const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_ERROR_FOR = "data-phx-error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
@@ -479,7 +480,7 @@ export class LiveSocket {
   }
 
   getViewByEl(el){
-    let rootId = DOM.private(el, "root-id")
+    let rootId = el.getAttribute(PHX_ROOT_ID)
     return this.getRootById(rootId).getDescendentByEl(el)
   }
 
@@ -1024,6 +1025,7 @@ class DOMPatch {
     this.view = view
     this.container = container
     this.id = id
+    this.rootID = view.root.id
     this.html = html
     this.targetCID = targetCID
     this.ref = ref
@@ -1102,6 +1104,7 @@ class DOMPatch {
           let prevStatic = fromEl.getAttribute(PHX_STATIC)
           DOM.mergeAttrs(fromEl, toEl)
           fromEl.setAttribute(PHX_STATIC, prevStatic)
+          fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
           return false
         }
 
@@ -1239,7 +1242,7 @@ export class View {
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
     this.destroyed = false
-    this.joinCallback = null
+    this.joinCallback = function(){}
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
     this.children = this.parent ? null : {[this.id]: {}}
@@ -1385,7 +1388,7 @@ export class View {
 
   attachTrueDocEl(){
     this.el = document.getElementById(this.id) || logError(`no id found on join for #${this.id}`)
-    DOM.putPrivate(this.el, "root-id", this.root.id)
+    this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
   applyJoinPatch(live_patch, html){
