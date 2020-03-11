@@ -22,10 +22,7 @@
   - Make flash optional (i.e. LiveView will still work if you don't `fetch_flash` before)
 
 ### Enhancements
-<<<<<<< HEAD
-=======
   - Add `live_title_tag/2` helper for automatic prefix/suffix on `@page_title` updates
->>>>>>> s/postfix/suffix
   - Raise if `:flash` is given as an assign
   - Support user-defined metadata in router
   - Allow the router to be accessed as `socket.router`
@@ -77,6 +74,13 @@
   - Fix select bug in Firefox causing the highlighted index to jump when a patch is applied during hover state
 
 ## 0.7.0 (2020-02-12)
+Enhancements
+<<<<<<< HEAD
+
+    Add live_title_tag/2 helper for automatic prefix/suffix on @page_title updates
+
+                            s/postfix/suffix
+
 
 ### Backwards incompatible changes
   - `live_redirect` was removed in favor of `push_patch` (for updating the URL and params of the current LiveView) and `push_redirect` (for updating the URL to another LiveView)
