@@ -86,4 +86,27 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert live_redirect(123, to: "page") |> safe_to_string() =~ "123</a>"
     end
   end
+
+  describe "live_title_tag/2" do
+    test "prefix only" do
+      assert safe_to_string(live_title_tag("My Title", prefix: "MyApp – ")) ==
+               ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
+    end
+
+    test "postfix only" do
+      assert safe_to_string(live_title_tag("My Title", postfix: " – MyApp")) ==
+               ~s|<title data-postfix=" – MyApp">My Title – MyApp</title>|
+    end
+
+    test "prefix and postfix" do
+      assert safe_to_string(live_title_tag("My Title", prefix: "Welcome: ", postfix: " – MyApp")) ==
+               ~s|<title data-postfix=" – MyApp" data-prefix="Welcome: ">Welcome: My Title – MyApp</title>|
+    end
+
+    test "bad options" do
+      assert_raise ArgumentError, ~r/expects a :prefix and\/or :postfix/, fn ->
+        live_title_tag("bad", bad: :bad)
+      end
+    end
+  end
 end

@@ -306,4 +306,34 @@ defmodule Phoenix.LiveView.Helpers do
 
     EEx.compile_string(expr, options)
   end
+
+  @doc """
+  Renders a title tag with automatic prefix/postfix on `@page_title` updates.
+
+  ## Examples
+
+      <%= live_title_tag @page_title, prefix: "MyApp – " %>
+
+      <%= live_title_tag @page_title, postfix: " – MyApp" %>
+  """
+  def live_title_tag(title, opts) do
+    title_tag(title, opts[:prefix], opts[:postfix], opts)
+  end
+
+  defp title_tag(title, nil = _prefix, "" <> postfix, _opts) do
+    Phoenix.HTML.Tag.content_tag(:title, title <> postfix, data: [postfix: postfix])
+  end
+
+  defp title_tag(title, "" <> prefix, nil = _postfix, _opts) do
+    Phoenix.HTML.Tag.content_tag(:title, prefix <> title, data: [prefix: prefix])
+  end
+
+  defp title_tag(title, "" <> pre, "" <> post, _opts) do
+    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, postfix: post])
+  end
+
+  defp title_tag(_title, _prefix = nil, _postfix = nil, opts) do
+    raise ArgumentError,
+          "live_title_tag/2 expects a :prefix and/or :postfix option, got: #{inspect(opts)}"
+  end
 end
