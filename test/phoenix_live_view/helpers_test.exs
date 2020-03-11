@@ -103,10 +103,9 @@ defmodule Phoenix.LiveView.HelpersTest do
                ~s|<title data-postfix=" – MyApp" data-prefix="Welcome: ">Welcome: My Title – MyApp</title>|
     end
 
-    test "bad options" do
-      assert_raise ArgumentError, ~r/expects a :prefix and\/or :postfix/, fn ->
-        live_title_tag("bad", bad: :bad)
-      end
+    test "without prefix or postfix" do
+      assert safe_to_string(live_title_tag("My Title")) ==
+               ~s|<title>My Title</title>|
     end
   end
 end

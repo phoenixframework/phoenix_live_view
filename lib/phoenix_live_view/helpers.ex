@@ -316,7 +316,7 @@ defmodule Phoenix.LiveView.Helpers do
 
       <%= live_title_tag @page_title, postfix: " – MyApp" %>
   """
-  def live_title_tag(title, opts) do
+  def live_title_tag(title, opts \\ []) do
     title_tag(title, opts[:prefix], opts[:postfix], opts)
   end
 
@@ -332,8 +332,7 @@ defmodule Phoenix.LiveView.Helpers do
     Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, postfix: post])
   end
 
-  defp title_tag(_title, _prefix = nil, _postfix = nil, opts) do
-    raise ArgumentError,
-          "live_title_tag/2 expects a :prefix and/or :postfix option, got: #{inspect(opts)}"
+  defp title_tag(title, _prefix = nil, _postfix = nil, _opts) do
+    Phoenix.HTML.Tag.content_tag(:title, title)
   end
 end
