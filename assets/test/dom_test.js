@@ -2,9 +2,9 @@ import {DOM} from "../js/phoenix_live_view"
 
 let appendTitle = opts => {
   let title = document.createElement("title")
-  let {prefix, postfix} = opts
+  let {prefix, suffix} = opts
   if(prefix){ title.setAttribute("data-prefix", prefix) }
-  if(postfix){ title.setAttribute("data-postfix", postfix) }
+  if(suffix){ title.setAttribute("data-suffix", suffix) }
   document.head.appendChild(title)
 }
 
@@ -27,14 +27,14 @@ describe("DOM", () => {
       expect(document.title).toBe("PRE My Title")
     })
 
-    test("with postfix", () => {
-      appendTitle({postfix: " POST"})
+    test("with suffix", () => {
+      appendTitle({suffix: " POST"})
       DOM.putTitle("My Title")
       expect(document.title).toBe("My Title POST")
     })
 
-    test("with prefix and postfix", () => {
-      appendTitle({prefix: "PRE ", postfix: " POST"})
+    test("with prefix and suffix", () => {
+      appendTitle({prefix: "PRE ", suffix: " POST"})
       DOM.putTitle("My Title")
       expect(document.title).toBe("PRE My Title POST")
     })

@@ -308,31 +308,42 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a title tag with automatic prefix/postfix on `@page_title` updates.
+  Renders a title tag with automatic prefix/suffix on `@page_title` updates.
 
   ## Examples
 
       <%= live_title_tag @page_title, prefix: "MyApp – " %>
 
-      <%= live_title_tag @page_title, postfix: " – MyApp" %>
+      <%= live_title_tag @page_title, suffix: " – MyApp" %>
   """
+<<<<<<< HEAD
   def live_title_tag(title, opts \\ []) do
     title_tag(title, opts[:prefix], opts[:postfix], opts)
+=======
+  def live_title_tag(title, opts) do
+    title_tag(title, opts[:prefix], opts[:suffix], opts)
+>>>>>>> s/postfix/suffix
   end
 
-  defp title_tag(title, nil = _prefix, "" <> postfix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, title <> postfix, data: [postfix: postfix])
+  defp title_tag(title, nil = _prefix, "" <> suffix, _opts) do
+    Phoenix.HTML.Tag.content_tag(:title, title <> suffix, data: [suffix: suffix])
   end
 
-  defp title_tag(title, "" <> prefix, nil = _postfix, _opts) do
+  defp title_tag(title, "" <> prefix, nil = _suffix, _opts) do
     Phoenix.HTML.Tag.content_tag(:title, prefix <> title, data: [prefix: prefix])
   end
 
   defp title_tag(title, "" <> pre, "" <> post, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, postfix: post])
+    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, suffix: post])
   end
 
+<<<<<<< HEAD
   defp title_tag(title, _prefix = nil, _postfix = nil, _opts) do
     Phoenix.HTML.Tag.content_tag(:title, title)
+=======
+  defp title_tag(_title, _prefix = nil, _suffix = nil, opts) do
+    raise ArgumentError,
+          "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
+>>>>>>> s/postfix/suffix
   end
 end

@@ -906,8 +906,8 @@ export let DOM = {
 
   putTitle(str){
     let titleEl = document.querySelector("title")
-    let {prefix, postfix} = titleEl.dataset
-    document.title = `${prefix || ""}${str}${postfix || ""}`
+    let {prefix, suffix} = titleEl.dataset
+    document.title = `${prefix || ""}${str}${suffix || ""}`
   },
 
   debounce(el, event, phxDebounce, phxThrottle, callback){
