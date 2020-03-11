@@ -22,7 +22,6 @@
   - Make flash optional (i.e. LiveView will still work if you don't `fetch_flash` before)
 
 ### Enhancements
-  - Add `live_title_tag/2` helper for automatic prefix/suffix on `@page_title` updates
   - Raise if `:flash` is given as an assign
   - Support user-defined metadata in router
   - Allow the router to be accessed as `socket.router`
