@@ -904,7 +904,11 @@ export let DOM = {
     }
   },
 
-  putTitle(title){ document.title = title },
+  putTitle(str){
+    let titleEl = document.querySelector("title")
+    let {prefix, postfix} = titleEl.dataset
+    document.title = `${prefix || ""}${str}${postfix || ""}`
+  },
 
   debounce(el, event, phxDebounce, phxThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
