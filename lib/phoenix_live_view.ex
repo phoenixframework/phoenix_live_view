@@ -1116,14 +1116,13 @@ defmodule Phoenix.LiveView do
 
       <button phx-click="clicked" phx-window-keydown="key">...</button>
 
-  In the case of forms, when a `phx-change` is sent to the server, the input element
-  which emitted the change receives the `phx-change-loading` class, along wiht the
-  parent form tag.
-
   On click, would receive the `phx-click-loading` class, and on keydown would receive
   the `phx-keydown-loading` class. The css loading classes are maintained until an
-  acknowledgement is received on the client for the pushed event. The following events
-  receive css loadng classes:
+  acknowledgement is received on the client for the pushed event.
+
+  In the case of forms, when a `phx-change` is sent to the server, the input element
+  which emitted the change receives the `phx-change-loading` class, along with the
+  parent form tag. The following events receive css loading classes:
 
     - `phx-click` - `phx-click-loading`
     - `phx-change` - `phx-change-loading`
