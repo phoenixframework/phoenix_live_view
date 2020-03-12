@@ -359,7 +359,8 @@ defmodule Phoenix.LiveComponent do
     quote do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
-      @behaviour unquote(__MODULE__)
+      @behaviour Phoenix.LiveComponent
+      @before_compile Phoenix.LiveView.Renderer
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}

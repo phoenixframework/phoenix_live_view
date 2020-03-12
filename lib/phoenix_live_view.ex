@@ -112,18 +112,6 @@ defmodule Phoenix.LiveView do
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
-  A separate `.leex` HTML template can also be rendered within
-  your `render/1` callback by delegating to an existing `Phoenix.View`
-  module in your application. For example:
-
-      defmodule AppWeb.ThermostatLive do
-        use Phoenix.LiveView
-
-        def render(assigns) do
-          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
-        end
-      end
-
   With a LiveView defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
@@ -239,6 +227,39 @@ defmodule Phoenix.LiveView do
   `handle_info` just like a GenServer, and update our socket assigns. Whenever
   a socket's assigns change, `render/1` is automatically invoked, and the
   updates are sent to the client.
+
+  ## Collocating templates
+
+  In the examples above, we have placed the template directly inside the
+  LiveView:
+
+      defmodule AppWeb.ThermostatLive do
+        use Phoenix.LiveView
+
+        def render(assigns) do
+          ~L"""
+          Current temperature: <%= @temperature %>
+          """
+        end
+
+  For larger templates, you can place them in a file in the same directory
+  and same name as the LiveView. For example, if the file above is placed
+  at `lib/my_app_web/live/thermostat_live.ex`, you can also remove the
+  `render/1` definition above and instead put the template code at
+  `lib/my_app_web/live/thermostat_live.html.leex`.
+
+  Alternatively, you can keep the `render/1` callback but delegate to an
+  existing `Phoenix.View` module in your application. For example:
+
+      defmodule AppWeb.ThermostatLive do
+        use Phoenix.LiveView
+
+        def render(assigns) do
+          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
+        end
+      end
+
+  In all cases, each assign in the template will be accessible as `@assign`.
 
   ## Assigns and LiveEEx Templates
 
@@ -1274,33 +1295,14 @@ defmodule Phoenix.LiveView do
 
   """
   defmacro __using__(opts) do
-    quote do
-      opts = unquote(opts)
+    quote bind_quoted: [opts: opts] do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveView
-      @before_compile Phoenix.LiveView
+      @before_compile Phoenix.LiveView.Renderer
 
       @doc false
-      @__live__ Phoenix.LiveView.__live__(__MODULE__, opts)
-      def __live__, do: @__live__
-    end
-  end
-
-  # TODO: Remove once the deprecation period is over
-  @doc false
-  defmacro __before_compile__(env) do
-    if Module.defines?(env.module, {:mount, 3}) or not Module.defines?(env.module, {:mount, 2}) do
-      :ok
-    else
-      IO.warn(
-        "mount(session, socket) is deprecated, please define mount(params, session, socket) instead",
-        Macro.Env.stacktrace(env)
-      )
-
-      quote do
-        def mount(_params, session, socket), do: mount(session, socket)
-      end
+      def __live__, do: unquote(Macro.escape(Phoenix.LiveView.__live__(__MODULE__, opts)))
     end
   end
 
