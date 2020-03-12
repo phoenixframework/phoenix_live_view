@@ -103,6 +103,8 @@ let isObject = (obj) => {
   return obj !== null && typeof obj === "object" && !(obj instanceof Array)
 }
 
+let isEqualObj = (obj1, obj2) =>  JSON.stringify(obj1) === JSON.stringify(obj2)
+
 let isEmpty = (obj) => {
   for (let x in obj){ return false }
   return true
@@ -1430,7 +1432,8 @@ export class View {
 
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.getHook(fromEl)
-      if(hook && !fromEl.isEqualNode(toEl)){
+      let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
+      if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
         updatedHookIds.add(fromEl.id)
         hook.__trigger__("beforeUpdate")
       }
