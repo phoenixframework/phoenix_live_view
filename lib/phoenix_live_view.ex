@@ -518,6 +518,19 @@ defmodule Phoenix.LiveView do
   validation UI to drive user interaction. Once the input becomes valid, change and
   submit events will be sent normally.
 
+    <input type="number">
+
+  This is known to have a plethora of problems including accessibility, large numbers
+  are converted to exponential notation and scrolling can accidentally increase or
+  decrease the number.
+
+  As of early 2020, the following avoids these pitfalls and will likely serve your
+  application's needs and users much better. According to https://caniuse.com/#search=inputmode,
+  the following is supported by 90% of the global mobile market with Firefox yet to implement.
+
+    <input type="text" inputmode="numeric" pattern="[0-9]*">
+
+
   ### Password inputs
 
   Password inputs are also special cased in `Phoenix.HTML`. For security reasons,
