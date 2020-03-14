@@ -372,7 +372,7 @@ defmodule Phoenix.LiveView.Engine do
       end)
 
     {static, dynamic} = bins_and_vars(static)
-    {block, static, dynamic, static_fingerprint(static)}
+    {block, static, dynamic, fingerprint(block, static)}
   end
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
@@ -661,11 +661,9 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Callbacks
 
-  defp static_fingerprint(static) do
-    # We compute the term to binary instead of passing all binaries
-    # because we need to take into account the positions of dynamics.
+  defp fingerprint(block, static) do
     <<fingerprint::8*16>> =
-      static
+      [block | static]
       |> :erlang.term_to_binary()
       |> :erlang.md5()
 
