@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.Renderer do
         end
 
       {false, false} ->
-        message = ~S'''
+        message = ~s'''
         render/1 was not implemented for #{inspect(env.module)}.
 
         Make sure to either explicitly define a render/1 clause with a LiveView template:
