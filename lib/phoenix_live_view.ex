@@ -907,23 +907,26 @@ defmodule Phoenix.LiveView do
       * app.html.eex
       * live.html.leex
 
-  The "root" layout is shared by both "app" and "live" layout. The
-  root layout must be defined in your router:
+  The "root" layout is shared by both "app" and "live" layout. It
+  is rendered only on the initial request and therefore it has
+  access to the `@conn` assign. The root layout must be defined
+  in your router:
 
       plug :put_root_layout, {MyApp.LayoutView, :root}
 
-  Alternatively, the layout can be passed to the `live` call:
+  Alternatively, the layout can be passed to the `live` macro
+  in the router:
 
       live "/dashboard", MyApp.Dashboard, layout: {MyApp.LayoutView, :root}
 
-  If you want the "root" layout to only apply to LiveView, you can
-  define it in a specific pipeline that is only used by LiveView
-  routes.
+  If you want the "root" layout to only apply to LiveViews, you
+  can pass it as a option or define it in a specific pipeline that
+  is only used by LiveView routes.
 
-  The "app" and "live" layout are often small and similar, but the
-  "app" layout uses the `@conn`, as part of the regular request
-  life-cycle, and the "live" layout is part of the LiveView and
-  therefore has direct access to the `@socket`.
+  The "app" and "live" layouts are often small and similar to each
+  other, but the "app" layout uses the `@conn` and used as part of
+  the regular request life-cycle, and the "live" layout is part of
+  the LiveView and therefore has direct access to the `@socket`.
 
   For example, you can define a new `live.html.leex` layout with
   dynamic content. You must use `@inner_content` where the output
