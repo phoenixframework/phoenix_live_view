@@ -46,7 +46,7 @@ defmodule Phoenix.LiveView.Router do
       article_index_path(@socket, :edit, 123)
 
   The current action will always be available inside the LiveView as
-  the `@live_view_action` assign. `@live_view_action` will be `nil`
+  the `@live_action` assign. `@live_action` will be `nil`
   if no action is given on the route definition.
   ## Options
 

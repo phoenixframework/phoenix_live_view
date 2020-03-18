@@ -1,3 +1,9 @@
+## 0.10
+
+### Backwards incompatible changes
+  - Rename socket assign `@live_view_module` to `@live_module`
+  - Rename socket assign `@live_view_action` to `@live_action`
+
 ## 0.9.1
 
 ### Backwards incompatible changes

@@ -75,15 +75,15 @@ defmodule Phoenix.LiveViewTest.ActionLive do
 
   def render(assigns) do
     ~L"""
-    LiveView module: <%= inspect @live_view_module %>
-    LiveView action: <%= inspect @live_view_action %>
+    LiveView module: <%= inspect @live_module %>
+    LiveView action: <%= inspect @live_action %>
     Mount action: <%= inspect @mount_action %>
     Params: <%= inspect @params %>
     """
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, mount_action: socket.assigns.live_view_action)}
+    {:ok, assign(socket, mount_action: socket.assigns.live_action)}
   end
 
   def handle_params(params, _url, socket) do

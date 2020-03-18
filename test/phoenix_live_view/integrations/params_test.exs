@@ -294,7 +294,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
   end
 
-  describe "@live_view_action" do
+  describe "@live_action" do
     test "when initially set to nil", %{conn: conn} do
       {:ok, live, html} = live(conn, "/action")
       assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"

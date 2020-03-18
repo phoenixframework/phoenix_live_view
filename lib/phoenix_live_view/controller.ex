@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Controller do
   @doc """
   Renders a live view from a Plug request and sends an HTML response.
 
-  Before render the `@live_view_module` assign will be added to the
+  Before render the `@live_module` assign will be added to the
   connection assigns for reference.
 
   ## Options

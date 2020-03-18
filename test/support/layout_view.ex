@@ -4,8 +4,8 @@ defmodule Phoenix.LiveViewTest.LayoutView do
 
   def render("app.html", assigns) do
     # Assert those assigns are always available
-    _ = assigns.live_view_module
-    _ = assigns.live_view_action
+    _ = assigns.live_module
+    _ = assigns.live_action
 
     ["LAYOUT", assigns.inner_content]
   end

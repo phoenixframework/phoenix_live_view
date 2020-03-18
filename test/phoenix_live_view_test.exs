@@ -64,8 +64,8 @@ defmodule Phoenix.LiveViewUnitTest do
       assert socket.assigns == %{
                existing: "existing",
                notexisting: "new-notexisting",
-               live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
-               live_view_action: nil,
+               live_module: Phoenix.LiveViewTest.ParamCounterLive,
+               live_action: nil,
                flash: %{}
              }
     end
@@ -82,8 +82,8 @@ defmodule Phoenix.LiveViewUnitTest do
                existing: "existing-parent",
                existing2: "existing2",
                notexisting: "new-notexisting",
-               live_view_module: Phoenix.LiveViewTest.ParamCounterLive,
-               live_view_action: nil,
+               live_module: Phoenix.LiveViewTest.ParamCounterLive,
+               live_action: nil,
                flash: %{}
              }
     end

@@ -684,6 +684,6 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp assign_action(socket, action) do
-    Phoenix.LiveView.assign(socket, :live_view_action, action)
+    Phoenix.LiveView.assign(socket, :live_action, action)
   end
 end

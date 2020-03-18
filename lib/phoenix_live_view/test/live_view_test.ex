@@ -309,7 +309,7 @@ defmodule Phoenix.LiveViewTest do
         connect_params: opts[:connect_params] || %{},
         session_token: session_token,
         static_token: static_token,
-        module: conn.assigns.live_view_module,
+        module: conn.assigns.live_module,
         endpoint: endpoint,
         child_statics: child_statics
       )
