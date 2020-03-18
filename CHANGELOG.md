@@ -1,19 +1,18 @@
-## 0.10
+## 0.10.0 (2020-03-18)
 
 ### Backwards incompatible changes
   - Rename socket assign `@live_view_module` to `@live_module`
   - Rename socket assign `@live_view_action` to `@live_action`
-
-## 0.9.1
-
-### Backwards incompatible changes
   - LiveView no longer uses the default app layout and `put_live_layout` is no longer supported. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Therefore, we recommend setting `put_root_layout` in a pipeline that is exclusive to LiveViews
 
 ### Bug fixes
   - Fix loading states causing nested LiveViews to be removed during live navigation
+  - Only trigger `phx-update=ignore` hook if data attributes have changed
+  - Fix LiveEEx fingerprint bug causing no diff to be sent in certain cases
 
 ### Enhancements
-  - Add `live_title_tag/2` helper for automatic prefix/postfix on `@page_title` updates
+  - Support collocated templates where an `.html.leex` template of the same basename of the LiveView will be automatically used for `render/1`
+  - Add `live_title_tag/2` helper for automatic prefix/suffix on `@page_title` updates
 
 ## 0.9.0 (2020-03-08)
 
