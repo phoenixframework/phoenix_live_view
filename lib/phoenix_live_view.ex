@@ -888,11 +888,44 @@ defmodule Phoenix.LiveView do
 
   ## Live Layouts
 
-  Besides the application layout your LiveView is rendered within,
-  LiveView can also have live layouts, that are rendered within the
-  LiveView life-cycle, on every change.
+  When working with LiveViews, there is usually three layouts to be
+  considered:
 
-  For example, you can define a new `live.html.leex` layout with the
+    * the root layout - this is a layout used by both LiveView and
+      regular views
+
+    * the app layout - this is the default application layout which
+      is not included or used by LiveViews;
+
+    * the live layout - this is the layout which wraps a LiveView and
+      is rendered as part of the LiveView life-cycle
+
+  Overall, those layouts are found in `templates/layouts` with the
+  following names:
+
+      * root.html.eex
+      * app.html.eex
+      * live.html.leex
+
+  The "root" layout is shared by both "app" and "live" layout. The
+  root layout must be defined in your router:
+
+      plug :put_root_layout, {MyApp.LayoutView, :root}
+
+  Alternatively, the layout can be passed to the `live` call:
+
+      live "/dashboard", MyApp.Dashboard, layout: {MyApp.LayoutView, :root}
+
+  If you want the "root" layout to only apply to LiveView, you can
+  define it in a specific pipeline that is only used by LiveView
+  routes.
+
+  The "app" and "live" layout are often small and similar, but the
+  "app" layout uses the `@conn`, as part of the regular request
+  life-cycle, and the "live" layout is part of the LiveView and
+  therefore has direct access to the `@socket`.
+
+  For example, you can define a new `live.html.leex` layout with
   dynamic content. You must use `@inner_content` where the output
   of the actual template will be placed at:
 
@@ -900,15 +933,15 @@ defmodule Phoenix.LiveView do
       <p><%= live_flash(@flash, :error) %></p>
       <%= @inner_content %>
 
-  Finally, update your LiveView to pass the `:layout` option to
-  `use Phoenix.LiveView`:
+  To use the live layout, update your LiveView to pass the `:layout`
+  option to `use Phoenix.LiveView`:
 
       use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
 
-  The live layout given on `use` is only available for the root live
-  view. If you are rendering child live views or if you want to opt-in
-  to a layout only in certain occasions, you can provide the `:layout`
-  as an option in mount:
+  The `:layout` option does not apply for LiveViews rendered within
+  other LiveViews. If you are rendering child live views or if you
+  want to opt-in to a layout only in certain occasions, use the
+  `:layout` as an option in mount:
 
         def mount(_params, _session, socket) do
           socket = assign(socket, new_message_count: 0)
