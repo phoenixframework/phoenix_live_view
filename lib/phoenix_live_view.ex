@@ -518,7 +518,7 @@ defmodule Phoenix.LiveView do
   validation UI to drive user interaction. Once the input becomes valid, change and
   submit events will be sent normally.
 
-    <input type="number">
+      <input type="number">
 
   This is known to have a plethora of problems including accessibility, large numbers
   are converted to exponential notation and scrolling can accidentally increase or
@@ -528,7 +528,7 @@ defmodule Phoenix.LiveView do
   application's needs and users much better. According to https://caniuse.com/#search=inputmode,
   the following is supported by 90% of the global mobile market with Firefox yet to implement.
 
-    <input type="text" inputmode="numeric" pattern="[0-9]*">
+      <input type="text" inputmode="numeric" pattern="[0-9]*">
 
 
   ### Password inputs
