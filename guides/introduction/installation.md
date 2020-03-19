@@ -72,7 +72,6 @@ Then add the `Phoenix.LiveView.Router.fetch_live_flash` plug to your browser pip
 
 ```diff
 # lib/my_app_web/router.ex
-import Phoenix.LiveView.Router
 
 pipeline :browser do
   ...
