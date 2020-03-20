@@ -13,6 +13,7 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert dom =~ ~s|data-phx-link="patch"|
       assert dom =~ ~s|data-phx-link-state="push"|
       assert dom =~ ~s|text</a>|
+      refute dom =~ ~s|to="/|
     end
 
     test "forwards dom attribute options" do
@@ -52,6 +53,7 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert dom =~ ~s|data-phx-link="redirect"|
       assert dom =~ ~s|data-phx-link-state="push"|
       assert dom =~ ~s|text</a>|
+      refute dom =~ ~s|to="/|
     end
 
     test "forwards dom attribute options" do

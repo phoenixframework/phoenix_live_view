@@ -105,7 +105,7 @@ defmodule Phoenix.LiveView.Helpers do
       |> Keyword.update(:data, data, &Keyword.merge(&1, data))
       |> Keyword.put(:href, uri)
 
-    Phoenix.HTML.Tag.content_tag(:a, opts, do: block_or_text)
+    Phoenix.HTML.Tag.content_tag(:a, Keyword.delete(opts, :to), do: block_or_text)
   end
 
   @doc """
