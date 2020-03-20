@@ -1,3 +1,8 @@
+## 0.10.1
+
+### Bug fixes
+  - Fix client issue with greater than two levels of LiveView nesting
+
 ## 0.10.0 (2020-03-18)
 
 ### Backwards incompatible changes

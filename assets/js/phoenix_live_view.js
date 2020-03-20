@@ -1251,7 +1251,8 @@ export class View {
     this.joinCallback = function(){}
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
-    this.children = this.parent ? null : {[this.id]: {}}
+    this.children = this.parent ? null : {}
+    this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href,
@@ -1489,7 +1490,6 @@ export class View {
     let child = this.getChildById(el.id)
     if(!child){
       let view = new View(el, this.liveSocket, this)
-      this.root.children[this.id] = this.root.children[this.id] || {}
       this.root.children[this.id][view.id] = view
       view.join()
       this.childJoins++
