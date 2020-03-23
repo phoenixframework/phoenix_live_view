@@ -87,8 +87,8 @@ sure LiveView is ready for prime time. For example, you will find:
   * Live navigation enriches links and redirects to only load the
     minimum amount of content as users navigate between pages
 
-  * Fine grainted control for handling client events, DOM patching,
-    rate limitting, and more
+  * Fine-grained control for handling client events, DOM patching,
+    rate limiting, and more
 
 In other words, LiveView provides a rich feature set for great
 developer and user experiences.
