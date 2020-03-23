@@ -500,8 +500,7 @@ export class LiveSocket {
   }
 
   destroyViewByEl(el){
-    let rootEl = el.closest(`${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`)
-    let root = this.getRootById(rootEl.id)
+    let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
     root.destroyDescendent(el.id)
   }
 
