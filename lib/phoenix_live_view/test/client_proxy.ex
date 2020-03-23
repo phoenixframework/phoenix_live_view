@@ -199,26 +199,31 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(%Phoenix.Socket.Reply{} = reply, state) do
     %{ref: ref, payload: payload, topic: topic} = reply
-    {:ok, {from, _pid}} = fetch_reply(state, ref)
-    state = drop_reply(state, ref)
 
-    case payload do
-      %{live_redirect: %{to: _to} = opts} ->
-        send_redirect(state, topic, opts)
-        GenServer.reply(from, {:error, {:live_redirect, opts}})
-        {:noreply, state}
+    case fetch_reply(state, ref) do
+      {:ok, {from, _pid}} ->
+        state = drop_reply(state, ref)
 
-      %{live_patch: %{to: _to} = opts} ->
-        send_redirect(state, topic, opts)
-        {:noreply, render_reply(reply, from, state)}
+        case payload do
+          %{live_redirect: %{to: _to} = opts} ->
+            send_redirect(state, topic, opts)
+            GenServer.reply(from, {:error, {:live_redirect, opts}})
+            {:noreply, state}
 
-      %{redirect: %{to: _to} = opts} ->
-        send_redirect(state, topic, opts)
-        GenServer.reply(from, {:error, {:redirect, opts}})
-        {:noreply, state}
+          %{live_patch: %{to: _to} = opts} ->
+            send_redirect(state, topic, opts)
+            {:noreply, render_reply(reply, from, state)}
 
-      %{} ->
-        {:noreply, render_reply(reply, from, state)}
+          %{redirect: %{to: _to} = opts} ->
+            send_redirect(state, topic, opts)
+            GenServer.reply(from, {:error, {:redirect, opts}})
+            {:noreply, state}
+
+          %{} ->
+            {:noreply, render_reply(reply, from, state)}
+        end
+
+      :error -> {:noreply, state}
     end
   end
 
