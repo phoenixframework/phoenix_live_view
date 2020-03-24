@@ -41,7 +41,10 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def render(assigns) do
     ~L"""
-    <div id="<%= @id %>">component[<%= live_flash(@flash, :info) %>]</div>
+    <div id="<%= @id %>">
+    component[<%= live_flash(@flash, :info) %>]:info
+    component[<%= live_flash(@flash, :error) %>]:error
+    </div>
     """
   end
 
@@ -55,6 +58,14 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
+  end
+
+  def handle_event("put_flash", %{"info" => value}, socket) do
+    {:noreply, socket |> put_flash(:info, value)}
+  end
+
+  def handle_event("put_flash", %{"error" => value}, socket) do
+    {:noreply, socket |> put_flash(:error, value)}
   end
 end
 

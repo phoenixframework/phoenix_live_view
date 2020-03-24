@@ -156,7 +156,7 @@ defmodule Phoenix.LiveView.Diff do
 
   ## Example
 
-      {:diff diff, new_components} = Diff.update_components(socket, state.components, update)
+      {:diff, diff, new_components} = Diff.update_components(socket, state.components, update)
   """
   def update_component(socket, components, {module, id, updated_assigns}) do
     case fetch_cid(module, id, components) do
@@ -345,14 +345,14 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component) do
-    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+    socket = configure_socket_for_component(socket, %{flash: %{}}, %{}, new_fingerprints())
     Utils.maybe_call_mount!(socket, component, [socket])
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do
     %{
       socket
-      | assigns: Map.put(assigns, :flash, %{}),
+      | assigns: assigns,
         private: private,
         fingerprints: prints,
         changed: %{}
