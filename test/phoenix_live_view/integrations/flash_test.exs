@@ -195,6 +195,16 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     assert result =~ "root[]:info"
   end
 
+  test "lv:clear-flash component", %{conn: conn} do
+    {:ok, flash_live, _} = live(conn, "/flash-root")
+
+    result = render_click([flash_live, "flash-component"], "put_flash", %{"info" => "ok!"})
+    assert result =~ "component[ok!]:info"
+
+    result = render_click([flash_live, "flash-component"], "lv:clear-flash")
+    assert result =~ "component[]"
+  end
+
   test "works without flash", %{conn: conn} do
     {:ok, live, html} = live(conn, "/thermo-with-metadata")
     assert html =~ "The temp is: 1"

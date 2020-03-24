@@ -271,41 +271,65 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
+  defp component_handle_event(state, cid, "lv:clear-flash", val, ref) do
+    %{socket: socket, components: components} = state
+
+    socket
+    |> Diff.with_component(cid, %{}, components, fn component_socket, _component ->
+      component_socket =
+        case val do
+          %{"key" => key} -> Utils.clear_flash(component_socket, key)
+          _ -> Utils.clear_flash(component_socket)
+        end
+
+      {component_socket, {component_socket.redirected, component_socket.assigns.flash}}
+    end)
+    |> do_component_handle_event_result(state, ref)
+  end
+
+  defp component_handle_event(_state, _cid, "lv:" <> _ = bad_event, _val, _ref) do
+    raise ArgumentError, """
+    received unknown LiveView event #{inspect(bad_event)}.
+    The following LiveView events are suppported: lv:clear-flash.
+    """
+  end
+
   defp component_handle_event(state, cid, event, val, ref) do
     %{socket: socket, components: components} = state
 
-    result =
-      Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
-        case component.handle_event(event, val, component_socket) do
-          {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
-            {component_socket, {redirected, assigns.flash}}
+    socket
+    |> Diff.with_component(cid, %{}, components, fn component_socket, component ->
+      case component.handle_event(event, val, component_socket) do
+        {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
+          {component_socket, {redirected, assigns.flash}}
 
-          other ->
-            raise ArgumentError, """
-            invalid return from #{inspect(component)}.handle_event/3 callback.
+        other ->
+          raise ArgumentError, """
+          invalid return from #{inspect(component)}.handle_event/3 callback.
 
-            Expected: {:noreply, %Socket{}}
-            Got: #{inspect(other)}
-            """
-        end
-      end)
+          Expected: {:noreply, %Socket{}}
+          Got: #{inspect(other)}
+          """
+      end
+    end)
+    |> do_component_handle_event_result(state, ref)
+  end
 
-    # Due to race conditions, the browser can send a request for a
-    # component ID that no longer exists. So we need to check for
-    # the :error case accordingly.
-    case result do
-      {diff, new_components, {redirected, flash}} ->
-        new_state = %{state | components: new_components}
+  # Due to race conditions, the browser can send a request for a
+  # component ID that no longer exists. So we need to check for
+  # the :error case accordingly.
+  defp do_component_handle_event_result({diff, new_components, {redirected, flash}}, state, ref) do
+    new_state = %{state | components: new_components}
 
-        if redirected do
-          handle_redirect(new_state, redirected, flash, nil, {diff, ref})
-        else
-          {:noreply, push_render(new_state, diff, ref)}
-        end
-
-      :error ->
-        {:noreply, push_noop(state, ref)}
+    if redirected do
+      handle_redirect(new_state, redirected, flash, nil, {diff, ref})
+    else
+      {:noreply, push_render(new_state, diff, ref)}
     end
+  end
+
+  defp do_component_handle_event_result(_, state, ref) do
+    {:noreply, push_noop(state, ref)}
   end
 
   defp decode_event_type("form", url_encoded) do
