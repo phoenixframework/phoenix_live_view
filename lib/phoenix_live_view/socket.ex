@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.Socket.AssignsNotInSocket do
   tracking takes place.
   """
   defstruct []
+  @type t :: %__MODULE__{}
 end
 
 defmodule Phoenix.LiveView.Socket do
