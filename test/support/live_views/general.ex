@@ -284,3 +284,11 @@ defmodule Phoenix.LiveViewTest.RedirLive do
   defp do_redirect(socket, "redirect", opts), do: redirect(socket, opts)
   defp do_redirect(socket, "push_patch", opts), do: push_patch(socket, opts)
 end
+
+defmodule Phoenix.LiveViewTest.AssignsNotInSocketLive do
+  use Phoenix.LiveView
+
+  def render(assigns), do: ~L|<%= boom(@socket) %>|
+  def mount(_params, _session, socket), do: {:ok, socket}
+  defp boom(socket), do: socket.assigns.boom
+end

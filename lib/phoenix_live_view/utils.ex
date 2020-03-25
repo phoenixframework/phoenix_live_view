@@ -349,7 +349,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp render_assigns(socket) do
-    Map.put(socket.assigns, :socket, socket)
+    Map.put(socket.assigns, :socket, %Socket{socket | assigns: %Socket.AssignsNotInSocket{}})
   end
 
   defp layout(socket, view) do

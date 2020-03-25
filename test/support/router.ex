@@ -53,6 +53,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
+    live "/assigns-not-in-socket", AssignsNotInSocketLive
 
     # integration layout
     scope "/" do

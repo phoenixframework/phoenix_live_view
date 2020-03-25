@@ -355,6 +355,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = get(conn, "/widget")
       assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*time: 12:00 NY/
     end
+
+    test "socket.assigns while rendering", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError, ~r/\(KeyError\) key :boom not found in: %Phoenix\.LiveView\.Socket\.AssignsNotInSocket\{\}/, fn ->
+        live(conn, "/assigns-not-in-socket")
+      end
+    end
   end
 
   describe "messaging callbacks" do
