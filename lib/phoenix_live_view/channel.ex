@@ -276,7 +276,7 @@ defmodule Phoenix.LiveView.Channel do
 
     result =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
-        inner_component_handle_event(socket, component_socket, component, event, val)
+        inner_component_handle_event(component_socket, component, event, val)
       end)
 
     # Due to race conditions, the browser can send a request for a
@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp inner_component_handle_event(socket, component_socket, component, "lv:clear-flash", val) do
+  defp inner_component_handle_event(component_socket, _component, "lv:clear-flash", val) do
     component_socket =
       case val do
         %{"key" => key} -> Utils.clear_flash(component_socket, key)
@@ -307,14 +307,14 @@ defmodule Phoenix.LiveView.Channel do
     {component_socket, {nil, %{}}}
   end
 
-  defp inner_component_handle_event(_, _, _, "lv:" <> _ = bad_event, _) do
+  defp inner_component_handle_event(_component_socket, _component, "lv:" <> _ = bad_event, _val) do
     raise ArgumentError, """
     received unknown LiveView event #{inspect(bad_event)}.
     The following LiveView events are suppported: lv:clear-flash.
     """
   end
 
-  defp inner_component_handle_event(_socket, component_socket, component, event, val) do
+  defp inner_component_handle_event(component_socket, component, event, val) do
     case component.handle_event(event, val, component_socket) do
       {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
         {component_socket, {redirected, assigns.flash}}

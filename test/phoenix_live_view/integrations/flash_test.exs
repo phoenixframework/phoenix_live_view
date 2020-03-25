@@ -203,6 +203,12 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
     result = render_click([flash_live, "flash-component"], "lv:clear-flash")
     assert result =~ "component[]:info"
+
+    result = render_click([flash_live, "flash-component"], "put_flash", %{"error" => "oops!"})
+    assert result =~ "component[oops!]:error"
+
+    result = render_click([flash_live, "flash-component"], "lv:clear-flash", %{key: "error"})
+    assert result =~ "component[]:error"
   end
 
   test "works without flash", %{conn: conn} do

@@ -60,8 +60,12 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
     {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
   end
 
-  def handle_event("put_flash", %{"info" => info}, socket) do
-    {:noreply, socket |> put_flash(:info, info)}
+  def handle_event("put_flash", %{"info" => value}, socket) do
+    {:noreply, socket |> put_flash(:info, value)}
+  end
+
+  def handle_event("put_flash", %{"error" => value}, socket) do
+    {:noreply, socket |> put_flash(:error, value)}
   end
 end
 
