@@ -193,7 +193,6 @@ defmodule Phoenix.LiveView.Static do
   def nested_render(%Socket{endpoint: endpoint, connected?: connected?} = parent, view, opts) do
     config = load_live!(view, :view)
     container = container(config, opts)
-    flash = Utils.get_flash(parent)
 
     child_id =
       opts[:id] ||
@@ -214,7 +213,7 @@ defmodule Phoenix.LiveView.Static do
         },
         %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
-        flash
+        %{}
       )
 
     if connected? do
