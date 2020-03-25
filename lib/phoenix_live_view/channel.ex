@@ -305,7 +305,7 @@ defmodule Phoenix.LiveView.Channel do
       end
 
     component_socket = Utils.maybe_call_update!(socket, component, component_socket.assigns)
-    {component_socket, {component_socket.redirected, component_socket.assigns.flash}}
+    {component_socket, {nil, %{}}}
   end
 
   defp inner_component_handle_event(_, _, _, "lv:" <> _ = bad_event, _) do
