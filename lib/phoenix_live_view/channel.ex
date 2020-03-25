@@ -304,7 +304,6 @@ defmodule Phoenix.LiveView.Channel do
         _ -> Utils.clear_flash(component_socket)
       end
 
-    component_socket = Utils.maybe_call_update!(socket, component, component_socket.assigns)
     {component_socket, {nil, %{}}}
   end
 

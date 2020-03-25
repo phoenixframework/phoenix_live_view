@@ -16,8 +16,14 @@ defmodule Phoenix.LiveView.Utils do
   """
   def assign(%Socket{} = socket, key, value) do
     case socket do
-      %{assigns: %{^key => ^value}} -> socket
-      %{} -> force_assign(socket, key, value)
+      %{assigns: %{^key => ^value}} when key == :flash and value == %{} ->
+        force_assign(socket, key, value)
+
+      %{assigns: %{^key => ^value}} ->
+        socket
+
+      %{} ->
+        force_assign(socket, key, value)
     end
   end
 
