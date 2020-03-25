@@ -16,9 +16,6 @@ defmodule Phoenix.LiveView.Utils do
   """
   def assign(%Socket{} = socket, key, value) do
     case socket do
-      %{assigns: %{^key => ^value}} when key == :flash and value == %{} ->
-        force_assign(socket, key, value)
-
       %{assigns: %{^key => ^value}} ->
         socket
 
@@ -143,14 +140,20 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Clears the flash.
   """
-  def clear_flash(%Socket{} = socket), do: assign(socket, :flash, %{})
+  def clear_flash(%Socket{} = socket), do: force_assign_flash(socket, %{})
 
   @doc """
   Clears the key from the flash.
   """
   def clear_flash(%Socket{} = socket, key) do
     new_flash = Map.delete(socket.assigns.flash, key)
-    assign(socket, :flash, new_flash)
+    force_assign_flash(socket, new_flash)
+  end
+
+  defp force_assign_flash(%Socket{} = socket, new_flash) do
+    new_changed = Map.put(socket.changed, :flash, true)
+    socket = assign(socket, :flash, new_flash)
+    %{socket | changed: new_changed}
   end
 
   @doc """
