@@ -275,13 +275,14 @@ defmodule Phoenix.LiveView.Channel do
     %{socket: socket, components: components} = state
 
     socket
-    |> Diff.with_component(cid, %{}, components, fn component_socket, _component ->
+    |> Diff.with_component(cid, %{}, components, fn component_socket, component ->
       component_socket =
         case val do
           %{"key" => key} -> Utils.clear_flash(component_socket, key)
           _ -> Utils.clear_flash(component_socket)
         end
 
+      component_socket = Utils.maybe_call_update!(socket, component, component_socket.assigns)
       {component_socket, {component_socket.redirected, component_socket.assigns.flash}}
     end)
     |> do_component_handle_event_result(state, ref)
