@@ -173,7 +173,7 @@ defmodule Phoenix.LiveComponent do
   for each card, passing the card struct as argument to CardComponent:
 
       <%= for card <- @cards do %>
-        <%= live_component CardComponent, card: card, board_id: @id %>
+        <%= live_component @socket, CardComponent, card: card, board_id: @id %>
       <% end %>
 
   Now, when the user submits a form inside the CardComponent to update the
@@ -240,7 +240,7 @@ defmodule Phoenix.LiveComponent do
   only by passing the IDs:
 
       <%= for card_id <- @card_ids do %>
-        <%= live_component CardComponent, card_id: card_id, board_id: @id %>
+        <%= live_component @socket, CardComponent, card_id: card_id, board_id: @id %>
       <% end %>
 
   Now, each CardComponent loads their own card. Of course, doing so per
