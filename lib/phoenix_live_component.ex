@@ -39,7 +39,7 @@ defmodule Phoenix.LiveComponent do
 
   First `c:mount/1` is called only with the socket. `mount/1` can be used
   to set any initial state. Then `c:update/2` is invoked with all of the
-  assigns given to `live_component/2`. The default implementation of
+  assigns given to `live_component/3`. The default implementation of
   `c:update/2` simply merges all assigns into the socket. Then, after the
   component is updated, `c:render/1` is called with all assigns.
 
@@ -51,7 +51,7 @@ defmodule Phoenix.LiveComponent do
 
   ## Stateful components life-cycle
 
-  A stateful component is a component that receives an `:id` on `live_component/2`:
+  A stateful component is a component that receives an `:id` on `live_component/3`:
 
       <%= live_component @socket, HeroComponent, id: :hero, content: @content %>
 
@@ -169,7 +169,7 @@ defmodule Phoenix.LiveComponent do
   ### LiveView as the source of truth
 
   If the LiveView is the source of truth, the LiveView will be responsible
-  for fetching all of the cards in a board. Then it will call `live_component/2`
+  for fetching all of the cards in a board. Then it will call `live_component/3`
   for each card, passing the card struct as argument to CardComponent:
 
       <%= for card <- @cards do %>
