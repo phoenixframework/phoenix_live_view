@@ -23,6 +23,14 @@ defmodule Phoenix.LiveViewUnitTest do
       assert put_flash(@socket, :hello, "world").assigns.flash == %{"hello" => "world"}
       assert put_flash(@socket, :hello, :world).assigns.flash == %{"hello" => :world}
     end
+
+    test "clear" do
+      socket = put_flash(@socket, :hello, "world")
+      assert clear_flash(socket).assigns.flash == %{}
+      assert clear_flash(socket, :hello).assigns.flash == %{}
+      assert clear_flash(socket, "hello").assigns.flash == %{}
+      assert clear_flash(socket, "other").assigns.flash == %{"hello" => "world"}
+    end
   end
 
   describe "get_connect_params" do
