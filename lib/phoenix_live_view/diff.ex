@@ -345,7 +345,10 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component) do
-    socket = configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+    socket =
+      configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+      |> Utils.assign(:flash, %{})
+
     Utils.maybe_call_mount!(socket, component, [socket])
   end
 
@@ -357,7 +360,6 @@ defmodule Phoenix.LiveView.Diff do
         fingerprints: prints,
         changed: %{}
     }
-    |> Utils.assign(:flash, %{})
   end
 
   defp dump_component(socket, cid) do
