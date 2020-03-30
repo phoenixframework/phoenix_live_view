@@ -185,8 +185,35 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "renders dynamic without change tracking" do
       assert changed("<%= @foo %>", %{foo: 123}, %{foo: true}, false) == ["123"]
-      assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, 123) == ["3"]
+      assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, false) == ["3"]
     end
+
+    test "renders dynamic with nested assigns tracking" do
+      template = "<%= @map.foo + @map.bar %>"
+      old = %{map: %{foo: 123, bar: 456}}
+      new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
+      new_changed_foo = %{map: %{foo: 321, bar: 456}}
+      new_changed_bar = %{map: %{foo: 123, bar: 654}}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, new_augmented, old) == [nil]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "renders dynamic with nested assigns tracking 3-levels deeps" do
+      template = "<%= @root.map.foo + @root.map.bar %>"
+      old = %{root: %{map: %{foo: 123, bar: 456}}}
+      new_augmented = %{root: %{map: %{foo: 123, bar: 456, baz: 789}}}
+      new_changed_foo = %{root: %{map: %{foo: 321, bar: 456}}}
+      new_changed_bar = %{root: %{map: %{foo: 123, bar: 654}}}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, new_augmented, old) == [nil]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
 
     test "renders dynamic if it has a lexical form" do
       template = "<%= import List %><%= flatten(@foo) %>"
@@ -293,7 +320,7 @@ defmodule Phoenix.LiveView.EngineTest do
              ] = changed(template, %{foo: [%{x: 1, bar: [%{y: 1}]}]}, %{foo: true})
     end
 
-    test "renders dynamic if it uses assigns" do
+    test "renders dynamic if it uses assigns directly" do
       template = "<%= for _ <- [1, 2, 3], do: assigns.foo %>"
       assert changed(template, %{foo: "a"}, nil) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]

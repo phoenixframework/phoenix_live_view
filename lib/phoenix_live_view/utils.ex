@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.Utils do
   Forces an assign.
   """
   def force_assign(%Socket{assigns: assigns, changed: changed} = socket, key, val) do
-    new_changed = Map.put(changed, key, true)
+    new_changed = Map.put(changed, key, Map.get(assigns, key))
     new_assigns = Map.put(assigns, key, val)
     %{socket | assigns: new_assigns, changed: new_changed}
   end
@@ -43,6 +43,9 @@ defmodule Phoenix.LiveView.Utils do
   """
   def changed?(%Socket{changed: changed}), do: changed != %{}
 
+  @doc """
+  Checks if the given assign changed.
+  """
   def changed?(%Socket{changed: %{} = changed}, assign), do: Map.has_key?(changed, assign)
   def changed?(%Socket{}, _), do: false
 

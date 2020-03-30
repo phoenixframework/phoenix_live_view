@@ -281,14 +281,24 @@ defmodule Phoenix.LiveView do
 
   The tracking of changes is done via assigns. Imagine this template:
 
+      <h1><%= expand_title(@title) %></h1>
+
+  If the `@title` assign changes, then LiveView will execute
+  `expand_title(@title)` and send the new content. If `@title` is
+  the same, nothing is executed and nothing is sent.
+
+  Change tracking also works when accessing map/struct fields.
+  Take this template:
+
       <div id="user_<%= @user.id %>">
         <%= @user.name %>
       </div>
 
-  If the `@user` assign changes, then LiveView will re-render only
-  the `@user.id` and `@user.name` and send them to the browser.
+  If the `@user.name` changes but `@user.id` doesn't, then LiveView
+  will re-render only `@user.name` and it execute or resend `@user.id`
+  at all.
 
-  The change tracking also works when rendering other templates, as
+  The change tracking also works when rendering other templates as
   long as they are also `.leex` templates and as long as all assigns
   are passed to the child/inner template:
 
@@ -312,41 +322,25 @@ defmodule Phoenix.LiveView do
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces this best practice.
 
-  ### Change tracking pitfalls
-
-  Although change tracking can considerably reduce the amount of data sent
-  over the wire, there are some pitfalls users should be aware of.
-
-  First of all, change tracking can only track assigns. So for example,
-  if you do something such as:
-
-      <%= @post.the_whole_content %>
-
-  If any other field besides `the_whole_content` in `@post` changes for any
-  reason, `the_whole_content` will be sent downstream. Although this is not
-  generally a problem, if you have large fields that you don't want to resend
-  or if you have one field in particular that changes all the time while others
-  do not, you may want to track them as their own assign.
-
-  Another limitation of changing tracking is that it does not work across regular
-  function calls. For example, imagine the following template that renders a `div`:
+  Finally, note that change tracking works inside do/blocks, as long as those
+  blocks are given to Elixir's basic constructs, such as `if`, `case`, `for`,
+  and friends. If the do-block is given to a library function or user function,
+  such as `content_tag`, change tracking won't work. For example, imagine the
+  following template that renders a `div`:
 
       <%= content_tag :div, id: "user_#{@id}" do %>
         <%= @name %>
         <%= @description %>
       <% end %>
 
-  LiveView knows nothing about `content_tag`, which means the whole `div` will be
-  sent whenever any of the assigns change. This can be easily fixed by writing the
-  HTML directly:
+  LiveView knows nothing about `content_tag`, which means the whole `div` will
+  be sent whenever any of the assigns change. This can be easily fixed by
+  writing the HTML directly:
 
       <div id="user_<%= @id %>">
         <%= @name %>
         <%= @description %>
       </div>
-
-  Note though this concern does not apply to Elixir's constructs, such as `if`,
-  `case`, `for`, and friends. LiveView always knows how to optimize across those.
 
   ## Bindings
 

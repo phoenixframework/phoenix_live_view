@@ -259,6 +259,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @behaviour EEx.Engine
+  @assigns_var Macro.var(:assigns, nil)
 
   @impl true
   def init(_opts) do
@@ -457,7 +458,7 @@ defmodule Phoenix.LiveView.Engine do
     quote do: unquote(var) = unquote(live_struct)
   end
 
-  defp to_conditional_var([], var, live_struct) do
+  defp to_conditional_var(keys, var, live_struct) when keys == %{} do
     quote do
       unquote(var) =
         case changed do
@@ -478,12 +479,45 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp changed_assigns(assigns) do
-    assigns
-    |> Enum.map(fn assign ->
-      quote do: unquote(__MODULE__).changed_assign?(changed, unquote(assign))
-    end)
-    |> Enum.reduce(&{:or, [], [&1, &2]})
+    checks =
+      for {key, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
+        case key do
+          [assign] ->
+            quote do
+              unquote(__MODULE__).changed_assign?(changed, unquote(assign))
+            end
+
+          nested ->
+            quote do
+              unquote(__MODULE__).nested_changed_assign?(
+                unquote(@assigns_var),
+                changed,
+                unquote(nested)
+              )
+            end
+        end
+      end
+
+    Enum.reduce(checks, &{:or, [], [&1, &2]})
   end
+
+  # If we are accessing @foo.bar.baz but in the same place we also pass
+  # @foo.bar or @foo, we don't need to check for @foo.bar.baz.
+
+  # If there is no nesting, then we are not nesting.
+  defp nested_and_parent_is_checked?([_], _assigns),
+    do: false
+
+  # Otherwise, we convert @foo.bar.baz into [:baz, :bar, :foo], discard :baz,
+  # and then check if [:foo, :bar] and then [:foo] is in it.
+  defp nested_and_parent_is_checked?(keys, assigns),
+    do: parent_is_checked?(tl(Enum.reverse(keys)), assigns)
+
+  defp parent_is_checked?([], _assigns),
+    do: false
+
+  defp parent_is_checked?(rest, assigns),
+    do: Map.has_key?(assigns, Enum.reverse(rest)) or parent_is_checked?(tl(rest), assigns)
 
   ## Extracts binaries and variable from iodata
 
@@ -526,32 +560,60 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze_and_return_tainted_keys(ast, vars, assigns) do
     {ast, vars, assigns} = analyze(ast, vars, assigns)
     {tainted_assigns?, assigns} = Map.pop(assigns, __MODULE__, false)
-    keys = if match?({:tainted, _}, vars) or tainted_assigns?, do: :all, else: Map.keys(assigns)
+    keys = if match?({:tainted, _}, vars) or tainted_assigns?, do: :all, else: assigns
     {ast, keys, vars}
   end
 
-  # Non-expanded assign access
-  defp analyze({:@, meta, [{name, _, context}]}, vars, assigns)
-       when is_atom(name) and is_atom(context) do
-    assigns_var = Macro.var(:assigns, nil)
+  # Nested assign
+  defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, [right | nest])
+    {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
+  end
 
+  # Non-expanded assign
+  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
+       when is_atom(name) and is_atom(context) do
     expr =
       quote line: meta[:line] || 0 do
-        unquote(__MODULE__).fetch_assign!(unquote(assigns_var), unquote(name))
+        unquote(__MODULE__).fetch_assign!(unquote(@assigns_var), unquote(name))
       end
 
-    {expr, vars, Map.put(assigns, name, true)}
+    {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
   # Expanded assign access. The non-expanded form is handled on root,
   # then all further traversals happen on the expanded form
+  defp analyze_assign(
+         {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
+         vars,
+         assigns,
+         nest
+       )
+       when is_atom(name) do
+    {expr, vars, Map.put(assigns, [name | nest], true)}
+  end
+
+  defp analyze_assign(expr, vars, assigns, _nest) do
+    analyze(expr, vars, assigns)
+  end
+
+  # Delegates to analyze assign
+  defp analyze({{:., _, [_, _]}, _, []} = expr, vars, assigns) do
+    analyze_assign(expr, vars, assigns, [])
+  end
+
+  defp analyze({:@, _, [{name, _, context}]} = expr, vars, assigns)
+       when is_atom(name) and is_atom(context) do
+    analyze_assign(expr, vars, assigns, [])
+  end
+
   defp analyze(
          {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
          vars,
          assigns
        )
        when is_atom(name) do
-    {expr, vars, Map.put(assigns, name, true)}
+    analyze_assign(expr, vars, assigns, [])
   end
 
   # Assigns is a strong-taint
@@ -734,6 +796,27 @@ defmodule Phoenix.LiveView.Engine do
     case changed do
       %{^name => _} -> true
       %{} -> false
+    end
+  end
+
+  def nested_changed_assign?(assigns, changed, [head | _] = all) do
+    changed_assign?(changed, head) and recur_changed_assign?(assigns, changed, all)
+  end
+
+  defp recur_changed_assign?(assigns, changed, [head]) do
+    case {assigns, changed} do
+      {%{^head => value}, %{^head => value}} -> false
+      {_, _} -> true
+    end
+  end
+
+  defp recur_changed_assign?(assigns, changed, [head | tail]) do
+    case {assigns, changed} do
+      {%{^head => assigns_value}, %{^head => changed_value}} ->
+        recur_changed_assign?(assigns_value, changed_value, tail)
+
+      {_, _} ->
+        true
     end
   end
 
