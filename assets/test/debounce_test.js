@@ -36,6 +36,21 @@ describe("debounce", function() {
     expect(calls).toBe(4)
   })
 
+  test("triggers debounce on input blur", async () => {
+    let calls = 0
+    let el = container().querySelector("input[name=debounce-100]")
+
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
+    })
+    simulateInput(el, "one")
+    simulateInput(el, "two")
+    simulateInput(el, "three")
+    DOM.dispatchEvent(el, "blur")
+    expect(calls).toBe(1)
+    expect(el.value).toBe("three")
+  })
+
   test("triggers on timeout", done => {
     let calls = 0
     let el = container().querySelector("input[name=debounce-100]")

@@ -60,6 +60,7 @@ const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
 const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
+const DEBOUNCE_BLUR_TIMER = "debounce-blur-timer"
 const DEBOUNCE_PREV_KEY = "debounce-prev-key"
 // Rendered
 const DYNAMICS = "d"
@@ -955,14 +956,23 @@ export let DOM = {
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
-        this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(() => {
+        let debounceCallback = () => {
           if(el.form){
             el.form.removeEventListener(PHX_CHANGE_EVENT, clearTimer)
             el.form.removeEventListener("submit", clearTimer)
           }
+          el.removeEventListener("blur", this.private(el, DEBOUNCE_BLUR_TIMER))
+          this.deletePrivate(el, DEBOUNCE_BLUR_TIMER)
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
-        }, timeout))
+        }
+        let blurCallback = () => {
+          clearTimeout(this.private(el, DEBOUNCE_TIMER))
+          debounceCallback()
+        }
+        this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(debounceCallback, timeout))
+        el.addEventListener("blur", blurCallback)
+        this.putPrivate(el, DEBOUNCE_BLUR_TIMER, blurCallback)
         if(el.form){
           el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
           el.form.addEventListener("submit", clearTimer)
