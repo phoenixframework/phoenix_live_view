@@ -8,6 +8,13 @@ let appendTitle = opts => {
   document.head.appendChild(title)
 }
 
+let tag = (tagName, attrs, innerHTML) => {
+  let el = document.createElement(tagName)
+  el.innerHTML = innerHTML
+  for(let key in attrs){ el.setAttribute(key, attrs[key]) }
+  return el
+}
+
 describe("DOM", () => {
   beforeEach(() => {
     let curTitle = document.querySelector("title")
@@ -37,6 +44,36 @@ describe("DOM", () => {
       appendTitle({prefix: "PRE ", suffix: " POST"})
       DOM.putTitle("My Title")
       expect(document.title).toBe("PRE My Title POST")
+    })
+  })
+
+  describe("findParentCIDs", () => {
+    test("returns only parent cids", () => {
+      let view = tag("div", [], `
+        <div data-phx-main="true"
+            data-phx-session="123"
+            data-phx-static="456"
+            data-phx-view="V"
+            id="phx-123"
+            class="phx-connected"
+            data-phx-root-id="phx-FgFpFf-J8Gg-jEnh">
+        </div>
+      `)
+      document.body.appendChild(view)
+
+      expect(DOM.findParentCIDs(view, [1, 2, 3])).toEqual(new Set([1, 2, 3]))
+
+      view.appendChild(tag("div", {"data-phx-component": 1}, `
+        <div data-phx-component="2"></div>
+      `))
+      expect(DOM.findParentCIDs(view, [1, 2, 3])).toEqual(new Set([1, 3]))
+
+      view.appendChild(tag("div", {"data-phx-component": 1}, `
+        <div data-phx-component="2">
+          <div data-phx-component="3"></div>
+        </div>
+      `))
+      expect(DOM.findParentCIDs(view, [1, 2, 3])).toEqual(new Set([1]))
     })
   })
 })

@@ -890,6 +890,18 @@ export let DOM = {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
   },
 
+  findParentCIDs(node, cids){
+    let initial = new Set(cids)
+    return cids.reduce((acc, cid) => {
+      let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
+      this.all(node, selector)
+        .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
+        .forEach(childCID => acc.delete(childCID))
+
+      return acc
+    }, initial)
+  },
+
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
   deletePrivate(el, key){ el[PHX_PRIVATE] && delete(el[PHX_PRIVATE][key]) },
@@ -1213,7 +1225,11 @@ class DOMPatch {
     let fromRef = parseInt(fromRefAttr)
     if(this.ref !== null && this.ref >= fromRef){
       fromEl.removeAttribute(PHX_REF)
-      PHX_EVENT_CLASSES.forEach(className => fromEl.classList.remove(className))
+      toEl.removeAttribute(PHX_REF)
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.remove(className)
+        toEl.classList.remove(className)
+      })
       return true
     } else {
       PHX_EVENT_CLASSES.forEach(className => {
@@ -1525,14 +1541,23 @@ export class View {
 
     this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
-    let html = typeof(cid) === "number" ?
-      Rendered.componentToString(this.rendered, cid) :
-      Rendered.toString(this.rendered)
 
-    let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
-    let phxChildrenAdded = this.performPatch(patch)
-    if(phxChildrenAdded){
-      this.joinNewChildren()
+    // when we don't have an acknowledgement CID and the diff only contains
+    // component diffs, then walk components and patch only the parent component
+    // containers found in the diff. Otherwise, patch entire LV container.
+    if(!cid && diff.c && Object.keys(diff).length === 1){
+      let parentCids = DOM.findParentCIDs(this.el, Object.keys(diff.c).map(parseInt))
+      parentCids.forEach(parentCID => this.update(diff, parentCID, ref))
+    } else {
+      let html = typeof(cid) === "number" ?
+        Rendered.componentToString(this.rendered, cid) :
+        Rendered.toString(this.rendered)
+
+      let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
+      let phxChildrenAdded = this.performPatch(patch)
+      if(phxChildrenAdded){
+        this.joinNewChildren()
+      }
     }
   }
 
