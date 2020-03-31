@@ -381,8 +381,8 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, vars, assigns) do
     case Enum.split(args, -1) do
       {args, [[do: do_block]]} ->
-        {args, vars, assigns} = analyze_list(args, vars, assigns, [])
-        do_block = maybe_block_to_rendered(do_block, vars, assigns)
+        {args, vars, _} = analyze_list(args, vars, assigns, [])
+        do_block = maybe_block_to_rendered(do_block, vars)
         to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
 
       _ ->
@@ -390,12 +390,12 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns) do
+  defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns) do
     with {:for, meta, [_ | _] = args} <- expr,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), assigns)
+        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{})
 
       for = {:for, meta, filters ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
@@ -415,11 +415,11 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(macro) do
     if classify_taint(macro, args) == :live do
       {args, [opts]} = Enum.split(args, -1)
-      {args, vars, assigns} = analyze_list(args, vars, assigns, [])
+      {args, vars, _} = analyze_list(args, vars, assigns, [])
 
       opts =
         for {key, value} <- opts do
-          {key, maybe_block_to_rendered(value, vars, assigns)}
+          {key, maybe_block_to_rendered(value, vars)}
         end
 
       to_safe({macro, meta, args ++ [opts]}, true)
@@ -432,10 +432,10 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
-  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, assigns) do
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
     # First collect all vars across all assigns since cond/case may be linear
     {blocks, {vars, assigns}} =
-      Enum.map_reduce(blocks, {vars, assigns}, fn
+      Enum.map_reduce(blocks, {vars, %{}}, fn
         {:->, meta, [args, block]}, {vars, assigns} ->
           {args, vars, assigns} = analyze_list(args, vars, assigns, [])
           {{:->, meta, [args, block]}, {vars, assigns}}
@@ -443,12 +443,15 @@ defmodule Phoenix.LiveView.Engine do
 
     # Now convert blocks
     for {:->, meta, [args, block]} <- blocks do
-      {:->, meta, [args, maybe_block_to_rendered(block, vars, assigns)]}
+      case to_rendered_struct(block, vars, assigns) do
+        {:ok, rendered} -> {:->, meta, [args, rendered]}
+        :error -> {:->, meta, [args, block]}
+      end
     end
   end
 
-  defp maybe_block_to_rendered(block, vars, assigns) do
-    case to_rendered_struct(block, vars, assigns) do
+  defp maybe_block_to_rendered(block, vars) do
+    case to_rendered_struct(block, vars, %{}) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -844,6 +847,7 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:cond, [_]), do: :live
   defp classify_taint(:try, [_]), do: :live
   defp classify_taint(:receive, [_]), do: :live
+  defp classify_taint(:live_component, [_, _, _, _]), do: :live
 
   defp classify_taint(:alias, [_]), do: :always
   defp classify_taint(:import, [_]), do: :always
