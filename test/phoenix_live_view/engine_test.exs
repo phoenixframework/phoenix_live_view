@@ -196,6 +196,7 @@ defmodule Phoenix.LiveView.EngineTest do
       new_changed_bar = %{map: %{foo: 123, bar: 654}}
       assert changed(template, old, nil) == ["579"]
       assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{map: true}) == ["579"]
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]
@@ -209,11 +210,12 @@ defmodule Phoenix.LiveView.EngineTest do
       new_changed_bar = %{root: %{map: %{foo: 123, bar: 654}}}
       assert changed(template, old, nil) == ["579"]
       assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{root: true}) == ["579"]
+      assert changed(template, old, %{root: %{map: true}}) == ["579"]
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]
     end
-
 
     test "renders dynamic if it has a lexical form" do
       template = "<%= import List %><%= flatten(@foo) %>"

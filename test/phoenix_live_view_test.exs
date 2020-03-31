@@ -61,6 +61,25 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
+  describe "assign" do
+    test "tracks changes" do
+      socket = assign(@socket, existing: "foo")
+      assert socket.changed.existing == true
+
+      socket = Utils.clear_changed(socket)
+      assert assign(socket, existing: "foo").changed == %{}
+    end
+
+    test "keeps whole maps in changes" do
+      socket = assign(@socket, existing: %{foo: :bar})
+      socket = Utils.clear_changed(socket)
+      socket = assign(socket, existing: %{foo: :baz})
+      assert socket.changed.existing == %{foo: :bar}
+      socket = assign(socket, existing: %{foo: :bat})
+      assert socket.changed.existing == %{foo: :bar}
+    end
+  end
+
   describe "assign_new" do
     test "uses socket assigns if no parent assigns are present" do
       socket =
