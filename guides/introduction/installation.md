@@ -30,7 +30,8 @@ def deps do
 ```
 
 Once installed, update your endpoint's configuration to include a signing salt.
-You can generate a signing salt by running `mix phx.gen.secret 32`.
+You can generate a signing salt by running `mix phx.gen.secret 32`. This is done
+by default in new Phoenix apps:
 
 ```elixir
 # config/config.exs
@@ -164,16 +165,14 @@ latest javascript, then force an install.
 (cd assets && npm install --force phoenix_live_view)
 ```
 
-Ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`), before `app.js` is included like so:
+Finally ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`), before `app.js` is included like so:
 
 ```html
 <%= csrf_meta_tag() %>
 <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 ```
 
-LiveView no longer uses the default app layout. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Therefore, we recommend setting `put_root_layout` in a pipeline that is exclusive to LiveViews. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
-
-Enable connecting to a LiveView socket in your `app.js` file.
+and enable connecting to a LiveView socket in your `app.js` file.
 
 ```javascript
 // assets/js/app.js
@@ -182,18 +181,42 @@ import LiveSocket from "phoenix_live_view"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
+
+// connect if there are any LiveViews on the page
 liveSocket.connect()
+
+// expose liveSocket on window for web console debug logs and latency simulation:
+// >> liveSocket.enableDebug()
+// >> liveSocket.enableLatencySim(1000)
+window.liveSocket = liveSocket
 ```
 
-You can also optionally import the style for the default CSS classes in your `app.css` file. For a regular project:
+## Layouts
 
-```css
-/* assets/css/app.css */
-@import "../../deps/phoenix_live_view/assets/css/live_view.css";
+LiveView no longer uses the default app layout. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Therefore, we recommend setting `put_root_layout` in a pipeline that is exclusive to LiveViews. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
+
+## Progress animation
+
+If you want to show a progress bar as users perform live actions, we recommend using [`nprogress`](https://github.com/rstacruz/nprogress).
+
+First add `nprogress` as a dependency in your `assets/package.json`:
+
+```json
+"nprogress": "^0.2.0"
 ```
 
-However, if you're adding `phoenix_live_view` to an umbrella project, the import link should be modified appropriately:
+Then in your `assets/css/app.css` file, import its style:
 
 ```css
-/* assets/css/app.css */
-@import "../../../../deps/phoenix_live_view/assets/css/live_view.css";
+@import "../node_modules/nprogress/nprogress.css";
+```
+
+Finally customize LiveView to use it in your `assets/js/app.js`, right before the `liveView.connect()` call:
+
+```js
+import NProgress from "nprogress"
+
+// Show progress bar on live navigation and form submits
+window.addEventListener("phx:page-loading-start", info => NProgress.start())
+window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+```
