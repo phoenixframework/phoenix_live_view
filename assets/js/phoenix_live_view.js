@@ -146,6 +146,8 @@ export let Rendered = {
     return output.buffer
   },
 
+  isComponentOnlyDiff(diff){ return diff.c && Object.keys(diff).length === 1 },
+
   mergeDiff(source, diff){
     if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
       return this.build(diff)
@@ -1534,31 +1536,39 @@ export class View {
     this.pendingJoinOps = []
   }
 
-  update(diff, cid, ref){
+  update(diff, cidAck, ref){
     if(isEmpty(diff) && ref === null){ return }
     if(diff.title){ DOM.putTitle(diff.title) }
-    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid, ref}) }
+    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
     this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
+    let phxChildrenAdded = false
 
     // when we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
-    if(!cid && diff.c && Object.keys(diff).length === 1){
+    if(cidAck){
+      if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
+    } else if(Rendered.isComponentOnlyDiff(diff)){
       let parentCids = DOM.findParentCIDs(this.el, Object.keys(diff.c).map(parseInt))
-      parentCids.forEach(parentCID => this.update(diff, parentCID, ref))
+      parentCids.forEach(parentCID => {
+        if(this.componentPatch(parentCID, ref)){ phxChildrenAdded = true }
+      })
     } else {
-      let html = typeof(cid) === "number" ?
-        Rendered.componentToString(this.rendered, cid) :
-        Rendered.toString(this.rendered)
-
-      let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
-      let phxChildrenAdded = this.performPatch(patch)
-      if(phxChildrenAdded){
-        this.joinNewChildren()
-      }
+      let html = Rendered.toString(this.rendered)
+      let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
+      phxChildrenAdded = this.performPatch(patch)
     }
+
+    if(phxChildrenAdded){ this.joinNewChildren() }
+  }
+
+  componentPatch(cid, ref){
+    let html = Rendered.componentToString(this.rendered, cid)
+    let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
+    let childrenAdded = this.performPatch(patch)
+    return childrenAdded
   }
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
