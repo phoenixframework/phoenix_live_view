@@ -346,7 +346,12 @@ defmodule Phoenix.LiveView.Diff do
 
   defp mount_component(socket, component) do
     socket =
-      configure_socket_for_component(socket, %{}, %{}, new_fingerprints())
+      configure_socket_for_component(
+        socket,
+        %{},
+        Map.take(socket.private, [:conn_session]),
+        new_fingerprints()
+      )
       |> Utils.assign(:flash, %{})
 
     Utils.maybe_call_mount!(socket, component, [socket])

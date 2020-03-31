@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LayoutView, NestedLive}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -618,6 +618,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
                :ok = GenServer.call(view.pid, {:dynamic_child, :static})
                catch_exit(render(view))
              end) =~ "duplicate LiveView id: \"static\""
+    end
+    
+    test "live view nested inside a live component" do
+      assert {:ok, _view, _html} = live_isolated(build_conn(), NestedLive)
     end
 
     @tag session: %{nest: []}
