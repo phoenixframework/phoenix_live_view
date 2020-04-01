@@ -1548,7 +1548,7 @@ export class View {
     // when we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
-    if(cidAck){
+    if(typeof(cidAck) === "number"){
       if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
     } else if(Rendered.isComponentOnlyDiff(diff)){
       let parentCids = DOM.findParentCIDs(this.el, Object.keys(diff.c).map(parseInt))
