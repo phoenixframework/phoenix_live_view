@@ -146,6 +146,8 @@ export let Rendered = {
     return output.buffer
   },
 
+  componentCIDs(diff){ return Object.keys(diff.c).map(parseInt) },
+
   isComponentOnlyDiff(diff){ return diff.c && Object.keys(diff).length === 1 },
 
   mergeDiff(source, diff){
@@ -1551,7 +1553,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
     } else if(Rendered.isComponentOnlyDiff(diff)){
-      let parentCids = DOM.findParentCIDs(this.el, Object.keys(diff.c).map(parseInt))
+      let parentCids = DOM.findParentCIDs(this.el, Rendered.componentCIDs(diff))
       parentCids.forEach(parentCID => {
         if(this.componentPatch(parentCID, ref)){ phxChildrenAdded = true }
       })
