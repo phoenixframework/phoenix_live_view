@@ -466,13 +466,16 @@ export class LiveSocket {
   }
 
   withinTargets(phxTarget, callback){
-    let targetChildren = Array.from(document.querySelectorAll(phxTarget))
-    if(targetChildren.length > 0){
-      targetChildren.forEach(targetEl => {
+    if(/^(0|[1-9]\d+)$/.test(phxTarget)){
+      let myselfTarget = DOM.findFirstComponentNode(document, phxTarget)
+      if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
+      this.owner(myselfTarget , view => callback(view, myselfTarget))
+    } else {
+      let targets = Array.from(document.querySelectorAll(phxTarget))
+      if(targets.length === 0){ throw new Error(`no phx-target's found for selector "${phxTarget}"`) }
+      targets.forEach(targetEl => {
         this.owner(targetEl, view => callback(view, targetEl))
       })
-    } else {
-      throw new Error(`no phx-target's found matching selector "${phxTarget}"`)
     }
   }
 
@@ -881,6 +884,8 @@ export let DOM = {
     let array = Array.from(node.querySelectorAll(query))
     return callback ? array.forEach(callback) : array
   },
+
+  findFirstComponentNode(node, cid){ return node.querySelector(`[${PHX_COMPONENT}="${cid}"]`) },
 
   findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
 

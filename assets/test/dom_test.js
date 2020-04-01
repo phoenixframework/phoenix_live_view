@@ -49,7 +49,7 @@ describe("DOM", () => {
 
   describe("findParentCIDs", () => {
     test("returns only parent cids", () => {
-      let view = tag("div", [], `
+      let view = tag("div", {}, `
         <div data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
@@ -74,6 +74,21 @@ describe("DOM", () => {
         </div>
       `))
       expect(DOM.findParentCIDs(view, [1, 2, 3])).toEqual(new Set([1]))
+    })
+  })
+
+  describe("findFirstComponentNode", () => {
+    test("returns the first node with cid ID", () => {
+      let component = tag("div", {"data-phx-component": 0}, `
+        <div data-phx-component="0"></div>
+      `)
+      document.body.appendChild(component )
+
+      expect(DOM.findFirstComponentNode(document, 0)).toBe(component)
+    })
+
+    test("returns null with no matching cid", () => {
+      expect(DOM.findFirstComponentNode(document, 123)).toBe(null)
     })
   })
 })
