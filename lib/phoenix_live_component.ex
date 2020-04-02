@@ -96,21 +96,21 @@ defmodule Phoenix.LiveComponent do
   receive events.
 
   If you want to target another component, you can also pass an ID
-  or a class selector to any element inside the targetted component.
+  or a class selector to any element inside the targeted component.
   For example, if there is a `UserComponent` with `:id` of `13`, it
   will have the DOM ID of `user-13`. Using a query selector, we can
-  sent an event to it with:
+  send an event to it with:
 
       <a href="#" phx-click="say_hello" phx-target="#user-13">
         Say hello!
       </a>
 
-  In both cases, `c:handle_event/3` will be called by with the
+  In both cases, `c:handle_event/3` will be called with the
   "say_hello" event. When `c:handle_event/3` is called for a component,
   only the diff of the component is sent to the client, making them
   extremely efficient.
 
-  Any valid query selector for `phx-target` is supported, provided the
+  Any valid query selector for `phx-target` is supported, provided that the
   matched nodes are children of a LiveView or LiveComponent, for example
   to send the `close` event to multiple components:
 
