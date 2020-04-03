@@ -228,7 +228,6 @@ export let Rendered = {
         if(skip){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
-          console.log(child.outerHTML)
         }
       } else {
         if(child.nodeValue.trim() !== ""){
@@ -1136,6 +1135,9 @@ class DOMPatch {
         },
         onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
         onBeforeNodeDiscarded: (el) => {
+          if(el.parentNode && ["append", "prepend"].indexOf(el.parentNode.getAttribute(phxUpdate)) >= 0){
+            return false
+          }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
           // nested view handling
@@ -1242,34 +1244,32 @@ class DOMPatch {
       Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
       firstComponent.remove()
     } else {
-      time("clone", () => {
-        diffContainer = DOM.cloneNode(container, html)
-      })
+      return html
     }
 
-    time("append", () => {
-    DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
-      if(el.getAttribute(PHX_SKIP) !== null){ return }
-      let id = el.id || logError("append/prepend requires an ID, got: ", el)
-      let existingInContainer = container.querySelector(`#${id}`)
-      if(!existingInContainer){ return }
-      let existing = DOM.cloneNode(existingInContainer)
-      let updateType = el.getAttribute(phxUpdate)
-      let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
-      let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
+    // time("append", () => {
+    // DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
+    //   if(el.getAttribute(PHX_SKIP) !== null){ return }
+    //   let id = el.id || logError("append/prepend requires an ID, got: ", el)
+    //   let existingInContainer = container.querySelector(`#${id}`)
+    //   if(!existingInContainer){ return }
+    //   let existing = DOM.cloneNode(existingInContainer)
+    //   let updateType = el.getAttribute(phxUpdate)
+    //   let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
+    //   let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
 
-      if(newIds.toString() !== existingIds.toString()){
-        let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
-        dupIds.forEach(id => {
-          let updatedEl = el.querySelector(`#${id}`)
-          existing.querySelector(`#${id}`).replaceWith(updatedEl)
-        })
-        el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
-      }
-    })
-    })
+    //   if(newIds.toString() !== existingIds.toString()){
+    //     let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
+    //     dupIds.forEach(id => {
+    //       let updatedEl = el.querySelector(`#${id}`)
+    //       existing.querySelector(`#${id}`).replaceWith(updatedEl)
+    //     })
+    //     el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
+    //   }
+    // })
+    // })
 
-    return diffContainer
+    return diffContainer.outerHTML
   }
 
   syncPendingRef(fromEl, toEl){
@@ -1414,7 +1414,7 @@ export class View {
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = Rendered.build(rendered)
-    let html = Rendered.toString(this.rendered)
+    let html = this.renderContainer()
     this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
 
@@ -1616,9 +1616,7 @@ export class View {
       patch.undoRefs()
     } else {
       time("fullPatch", () => {
-        let html = time("toString", () => {
-          return Rendered.toString(this.rendered, this.rendered[COMPONENTS], Rendered.componentCIDs(diff))
-        })
+        let html = this.renderContainer(diff)
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
         patch.undoRefs()
@@ -1626,6 +1624,15 @@ export class View {
     }
 
     if(phxChildrenAdded){ this.joinNewChildren() }
+  }
+
+  renderContainer(diff){
+    let tag = this.el.tagName
+    let cids = diff ? Rendered.componentCIDs(diff) : null
+    let html = time("toString", () => {
+      return Rendered.toString(this.rendered, this.rendered[COMPONENTS], cids)
+    })
+    return `<${tag}>${html}</${tag}>`
   }
 
   componentPatch(cid, ref){
