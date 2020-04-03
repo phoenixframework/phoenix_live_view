@@ -484,7 +484,7 @@ export class LiveSocket {
   }
 
   withinTargets(phxTarget, callback){
-    if(/^(0|[1-9]\d+)$/.test(phxTarget)){
+    if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
       let myselfTarget = DOM.findFirstComponentNode(document, phxTarget)
       if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
       this.owner(myselfTarget , view => callback(view, myselfTarget))
@@ -1616,9 +1616,12 @@ export class View {
       patch.undoRefs()
     } else {
       time("fullPatch", () => {
-        let html = Rendered.toString(this.rendered, this.rendered[COMPONENTS], Rendered.componentCIDs(diff))
+        let html = time("toString", () => {
+          return Rendered.toString(this.rendered, this.rendered[COMPONENTS], Rendered.componentCIDs(diff))
+        })
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
+        patch.undoRefs()
       })
     }
 
