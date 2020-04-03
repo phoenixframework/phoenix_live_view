@@ -147,13 +147,14 @@ export let Rendered = {
     return rendered
   },
 
-  toString(rendered, components = rendered[COMPONENTS] || {}){
-    let output = {buffer: "", components: components}
+  toString(rendered, components = rendered[COMPONENTS] || {}, onlyCids){
+    onlyCids = onlyCids ? new Set(onlyCids) : null
+    let output = {buffer: "", components: components, onlyCids: onlyCids}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
 
-  componentCIDs(diff){ return Object.keys(diff.c).map(i => parseInt(i)) },
+  componentCIDs(diff){ return diff.c ? Object.keys(diff.c).map(i => parseInt(i)) : [] },
 
   isComponentOnlyDiff(diff){
     if(!diff.c){ return false }
@@ -207,7 +208,7 @@ export let Rendered = {
 
   dynamicToBuffer(rendered, output){
     if(typeof(rendered) === "number"){
-      output.buffer += this.recursiveCIDToString(output.components, rendered)
+      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
@@ -215,14 +216,20 @@ export let Rendered = {
     }
   },
 
-  recursiveCIDToString(components, cid){
+  recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
     template.innerHTML = this.toString(component, components)
     let container = template.content
+    let skip = onlyCids && !onlyCids.has(cid)
     Array.from(container.childNodes).forEach(child => {
       if(child.nodeType === Node.ELEMENT_NODE){
         child.setAttribute(PHX_COMPONENT, cid)
+        if(skip){
+          child.setAttribute(PHX_SKIP, "")
+          child.innerHTML = ""
+          console.log(child.outerHTML)
+        }
       } else {
         if(child.nodeValue.trim() !== ""){
           logError(`only HTML element tags are allowed at the root of components.\n\n` +
@@ -1110,6 +1117,7 @@ class DOMPatch {
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
+    // console.log(diffHTML.outerHTML)
     time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
@@ -1193,7 +1201,8 @@ class DOMPatch {
 
   isCIDPatch(){ return this.cidPatch }
 
-  skipCIDSibling(el){ if(!this.isCIDPatch()){ return false }
+  skipCIDSibling(el){
+    // if(!this.isCIDPatch()){ return false }
     return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
   }
 
@@ -1240,6 +1249,7 @@ class DOMPatch {
 
     time("append", () => {
     DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
+      if(el.getAttribute(PHX_SKIP) !== null){ return }
       let id = el.id || logError("append/prepend requires an ID, got: ", el)
       let existingInContainer = container.querySelector(`#${id}`)
       if(!existingInContainer){ return }
@@ -1606,7 +1616,7 @@ export class View {
       patch.undoRefs()
     } else {
       time("fullPatch", () => {
-        let html = Rendered.toString(this.rendered)
+        let html = Rendered.toString(this.rendered, this.rendered[COMPONENTS], Rendered.componentCIDs(diff))
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
       })
