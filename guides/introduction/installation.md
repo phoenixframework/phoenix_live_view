@@ -193,7 +193,7 @@ window.liveSocket = liveSocket
 
 ## Layouts
 
-LiveView no longer uses the default app layout. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Therefore, we recommend setting `put_root_layout` in a pipeline that is exclusive to LiveViews. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
+LiveView no longer uses the default app layout. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
 
 ## Progress animation
 
