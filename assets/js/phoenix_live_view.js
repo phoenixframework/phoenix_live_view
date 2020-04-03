@@ -219,7 +219,7 @@ export let Rendered = {
   recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
-    template.innerHTML = this.toString(component, components)
+    template.innerHTML = this.toString(component, components, onlyCids)
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
     Array.from(container.childNodes).forEach(child => {
