@@ -599,7 +599,6 @@ defmodule Phoenix.LiveView do
   We can render another template directly from a LiveView template by simply
   calling `render`:
 
-      render "child_template", assigns
       render SomeOtherView, "child_template", assigns
 
   If the other template has the `.leex` extension, LiveView change tracking
