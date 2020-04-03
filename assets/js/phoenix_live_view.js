@@ -1008,8 +1008,7 @@ export let DOM = {
 
   cloneNode(node, html){
     if(typeof(html) === "undefined"){
-      let cloned = node.cloneNode(true)
-      return cloned
+      return node.cloneNode(true)
     } else {
       let cloned = node.cloneNode(false)
       cloned.innerHTML = html
@@ -1111,69 +1110,71 @@ class DOMPatch {
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
-    morphdom(targetContainer, diffHTML, {
-      childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
-      onBeforeNodeAdded: (el) => {
-        //input handling
-        DOM.discardError(targetContainer, el)
-        this.trackBefore("added", el)
-        return el
-      },
-      onNodeAdded: (el) => {
-        // nested view handling
-        if(DOM.isPhxChild(el) && view.ownsElement(el)){
-          this.trackAfter("phxChildAdded", el)
-        }
-        added.push(el)
-      },
-      onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
-      onBeforeNodeDiscarded: (el) => {
-        if(this.skipCIDSibling(el)){ return false }
-        this.trackBefore("discarded", el)
-        // nested view handling
-        if(DOM.isPhxChild(el)){
-          view.liveSocket.destroyViewByEl(el)
-          return true
-        }
-      },
-      onElUpdated: (el) => { updates.push(el) },
-      onBeforeElUpdated: (fromEl, toEl) => {
-        if(this.skipCIDSibling(toEl)){ return false }
-        if(fromEl.getAttribute(phxUpdate) === "ignore"){
-          this.trackBefore("updated", fromEl, toEl)
-          DOM.mergeAttrs(fromEl, toEl)
-          updates.push(fromEl)
-          return false
-        }
-        if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-        if(!this.syncPendingRef(fromEl, toEl)){ return false }
+    time("morphdom", () => {
+      morphdom(targetContainer, diffHTML, {
+        childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+        onBeforeNodeAdded: (el) => {
+          //input handling
+          DOM.discardError(targetContainer, el)
+          this.trackBefore("added", el)
+          return el
+        },
+        onNodeAdded: (el) => {
+          // nested view handling
+          if(DOM.isPhxChild(el) && view.ownsElement(el)){
+            this.trackAfter("phxChildAdded", el)
+          }
+          added.push(el)
+        },
+        onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
+        onBeforeNodeDiscarded: (el) => {
+          if(this.skipCIDSibling(el)){ return false }
+          this.trackBefore("discarded", el)
+          // nested view handling
+          if(DOM.isPhxChild(el)){
+            view.liveSocket.destroyViewByEl(el)
+            return true
+          }
+        },
+        onElUpdated: (el) => { updates.push(el) },
+        onBeforeElUpdated: (fromEl, toEl) => {
+          if(this.skipCIDSibling(toEl)){ return false }
+          if(fromEl.getAttribute(phxUpdate) === "ignore"){
+            this.trackBefore("updated", fromEl, toEl)
+            DOM.mergeAttrs(fromEl, toEl)
+            updates.push(fromEl)
+            return false
+          }
+          if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+          if(!this.syncPendingRef(fromEl, toEl)){ return false }
 
-        // nested view handling
-        if(DOM.isPhxChild(toEl)){
-          let prevStatic = fromEl.getAttribute(PHX_STATIC)
-          DOM.mergeAttrs(fromEl, toEl)
-          fromEl.setAttribute(PHX_STATIC, prevStatic)
-          fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
-          return false
-        }
+          // nested view handling
+          if(DOM.isPhxChild(toEl)){
+            let prevStatic = fromEl.getAttribute(PHX_STATIC)
+            DOM.mergeAttrs(fromEl, toEl)
+            fromEl.setAttribute(PHX_STATIC, prevStatic)
+            fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
+            return false
+          }
 
-        // input handling
-        DOM.copyPrivates(toEl, fromEl)
-        DOM.discardError(targetContainer, toEl)
+          // input handling
+          DOM.copyPrivates(toEl, fromEl)
+          DOM.discardError(targetContainer, toEl)
 
-        let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-        if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
-          this.trackBefore("updated", fromEl, toEl)
-          DOM.mergeFocusedInput(fromEl, toEl)
-          DOM.syncAttrsToProps(fromEl)
-          updates.push(fromEl)
-          return false
-        } else {
-          DOM.syncAttrsToProps(toEl)
-          this.trackBefore("updated", fromEl, toEl)
-          return true
+          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
+          if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
+            this.trackBefore("updated", fromEl, toEl)
+            DOM.mergeFocusedInput(fromEl, toEl)
+            DOM.syncAttrsToProps(fromEl)
+            updates.push(fromEl)
+            return false
+          } else {
+            DOM.syncAttrsToProps(toEl)
+            this.trackBefore("updated", fromEl, toEl)
+            return true
+          }
         }
-      }
+      })
     })
 
     // if(view.liveSocket.isDebugEnabled()){ detectDuplicateIds() }
@@ -1233,7 +1234,7 @@ class DOMPatch {
       firstComponent.remove()
     } else {
       time("clone", () => {
-      diffContainer = DOM.cloneNode(container, html)
+        diffContainer = DOM.cloneNode(container, html)
       })
     }
 
