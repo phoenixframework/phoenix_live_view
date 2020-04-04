@@ -1200,13 +1200,20 @@ class DOMPatch {
             updates.push(fromEl)
             return false
           } else {
+            // we optimize append/prepend operations in two ways:
+            //   1) by tracking the previously
+            //     appended ids. If the ids don't change b/w patches, we know that we
+            //     are going to re-arrange the same appendPrependUpdates so we can
+            //     skip the post-morph append/prepend ops.
+            //   2) for appends, we can skip post-morph re-arranging if the
+            //     new content contains only new ids, because it will simply
+            //     be appended to the container
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
+              let isAppend = toEl.getAttribute(phxUpdate) === "append"
               let idsBefore = Array.from(fromEl.children).map(child => child.id)
               let newIds = Array.from(toEl.children).map(child => child.id)
               onUpdated[toEl.id] = (el) => DOM.putPrivate(el, "prev-new", newIds)
               let prevNew = DOM.private(fromEl, "prev-new") || []
-
-              let isAppend = toEl.getAttribute(phxUpdate) === "append"
               let isOnlyNewIds = isAppend && !newIds.find(id => idsBefore.indexOf(id) >= 0)
 
               if(!(isOnlyNewIds || prevNew.toString() === newIds.toString())){
