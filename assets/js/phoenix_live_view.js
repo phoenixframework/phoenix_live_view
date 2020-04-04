@@ -148,11 +148,11 @@ export let Rendered = {
     return output.buffer
   },
 
-  componentCIDs(diff){ return diff.c ? Object.keys(diff.c).map(i => parseInt(i)) : [] },
+  componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) },
 
   isComponentOnlyDiff(diff){
-    if(!diff.c){ return false }
-    let keys = Object.keys(diff).filter(k => k !== "title" && k !== "c")
+    if(!diff[COMPONENTS]){ return false }
+    let keys = Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS)
     return keys.length === 0
   },
 
@@ -1209,15 +1209,19 @@ class DOMPatch {
 
     if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
 
-    appendPrependUpdates.forEach(([containerID, idsBefore]) => {
-      let el = DOM.byId(containerID)
-      let isAppend = el.getAttribute(phxUpdate) === "append"
-      if(isAppend){
-        idsBefore.reverse().forEach(id => el.insertBefore(DOM.byId(id), el.firstChild))
-      } else {
-        idsBefore.forEach(id => el.appendChild(DOM.byId(id), el.querySelector(`#${id}`)))
-      }
-    })
+    if(appendPrependUpdates.length > 0){
+      liveSocket.time("post-morph append/prepend restoration", () => {
+        appendPrependUpdates.forEach(([containerID, idsBefore]) => {
+          let el = DOM.byId(containerID)
+          let isAppend = el.getAttribute(phxUpdate) === "append"
+          if(isAppend){
+            idsBefore.reverse().forEach(id => el.insertBefore(DOM.byId(id), el.firstChild))
+          } else {
+            idsBefore.forEach(id => el.appendChild(DOM.byId(id), el.querySelector(`#${id}`)))
+          }
+        })
+      })
+    }
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
