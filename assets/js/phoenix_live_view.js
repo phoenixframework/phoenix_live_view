@@ -912,6 +912,10 @@ export let DOM = {
     return this.findPhxChildren(template.content, parentId)
   },
 
+  isPhxUpdate(el, phxUpdate, updateTypes){
+    return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0
+  },
+
   findPhxChildren(el, parentId){
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
   },
@@ -1110,6 +1114,8 @@ class DOMPatch {
     let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
     let added = []
     let updates = []
+    let appendPrependIds = {}
+    let appendPrependUpdates = []
 
     let diffHTML = time("diffHTML", () => this.buildDiffHTML(container, html, phxUpdate, targetContainer))
 
@@ -1135,9 +1141,7 @@ class DOMPatch {
         },
         onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
         onBeforeNodeDiscarded: (el) => {
-          if(el.parentNode && ["append", "prepend"].indexOf(el.parentNode.getAttribute(phxUpdate)) >= 0){
-            return false
-          }
+          if(DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"])){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
           // nested view handling
@@ -1146,7 +1150,10 @@ class DOMPatch {
             return true
           }
         },
-        onElUpdated: (el) => { updates.push(el) },
+        onElUpdated: (el) => {
+          if(DOM.isPhxUpdate(el, phxUpdate, ["append", "prepend"])){ appendPrependUpdates.push(el) }
+          updates.push(el)
+        },
         onBeforeElUpdated: (fromEl, toEl) => {
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
@@ -1179,6 +1186,13 @@ class DOMPatch {
             updates.push(fromEl)
             return false
           } else {
+            if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
+              // console.log(fromEl.outerHTML)
+              // let isAppend = toEl.getAttribute(phxUpdate) === "append"
+              let idsBefore = Array.from(fromEl.children).map(child => child.id)
+
+              appendPrependIds[toEl.id] = idsBefore
+            }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
             return true
@@ -1188,6 +1202,23 @@ class DOMPatch {
     })
 
     // if(view.liveSocket.isDebugEnabled()){ detectDuplicateIds() }
+
+    // appendPrependUpdates.forEach(el => {
+    //   let idsBefore = appendPrependIds[el.id]
+    //   let isAppend = el.getAttribute(phxUpdate) === "append"
+    //   // consider firstChild not existing
+    //   // append
+    //   if(isAppend){
+    //     idsBefore.reverse().forEach(id => {
+    //       el.insertBefore(el.querySelector(`#${id}`), el.firstChild)
+    //     })
+    //   } else {
+    //     idsBefore.forEach(id => {
+    //       let child = el.querySelector(`#${id}`)
+    //       el.appendChild(child)
+    //     })
+    //   }
+    // })
 
     view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
@@ -1223,14 +1254,14 @@ class DOMPatch {
   // - precomputes updates on existing child ids within a prepend/append child list
   //   to allow existing nodes to be updated in place rather than reordered
   buildDiffHTML(container, html, phxUpdate, targetContainer){
-    let diffContainer = null
-    let elementsOnly = child => child.nodeType === Node.ELEMENT_NODE
-    let idsOnly = child => child.id || logError("append/prepend children require IDs, got: ", child)
-    let template = document.createElement("template")
-    if(this.isCIDPatch() && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()){
-      template.innerHTML = html
-      diffContainer = template.content.childNodes[0]
-    } else if(this.isCIDPatch()){
+    let isCIDPatch = this.isCIDPatch()
+    let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()
+    if(!isCIDPatch || isCIDWithSingleRoot){
+      return html
+    } else {
+      // component patch with multiple CID roots
+      let diffContainer = null
+      let template = document.createElement("template")
       diffContainer = DOM.cloneNode(targetContainer)
       let [firstComponent, ...rest] = DOM.findComponentNodeList(diffContainer, this.targetCID)
       template.innerHTML = html
@@ -1243,34 +1274,9 @@ class DOMPatch {
       })
       Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
       firstComponent.remove()
-    } else {
-      return html
+      return diffContainer.outerHTML
     }
-
-    // time("append", () => {
-    // DOM.all(diffContainer, `[${phxUpdate}=append],[${phxUpdate}=prepend]`, el => {
-    //   if(el.getAttribute(PHX_SKIP) !== null){ return }
-    //   let id = el.id || logError("append/prepend requires an ID, got: ", el)
-    //   let existingInContainer = container.querySelector(`#${id}`)
-    //   if(!existingInContainer){ return }
-    //   let existing = DOM.cloneNode(existingInContainer)
-    //   let updateType = el.getAttribute(phxUpdate)
-    //   let newIds = Array.from(el.childNodes).filter(elementsOnly).map(idsOnly)
-    //   let existingIds = Array.from(existing.childNodes).filter(elementsOnly).map(idsOnly)
-
-    //   if(newIds.toString() !== existingIds.toString()){
-    //     let dupIds = newIds.filter(id => existingIds.indexOf(id) >= 0)
-    //     dupIds.forEach(id => {
-    //       let updatedEl = el.querySelector(`#${id}`)
-    //       existing.querySelector(`#${id}`).replaceWith(updatedEl)
-    //     })
-    //     el.insertAdjacentHTML(updateType === "append" ? "afterbegin" : "beforeend", existing.innerHTML)
-    //   }
-    // })
-    // })
-
-    return diffContainer.outerHTML
-  }
+ }
 
   syncPendingRef(fromEl, toEl){
     let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
