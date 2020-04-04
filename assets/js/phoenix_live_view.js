@@ -52,6 +52,7 @@ const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
 const PHX_AUTO_RECOVER = "auto-recover"
 const PHX_LV_DEBUG = "phx:live-socket:debug"
+const PHX_LV_PROFILE = "phx:live-socket:profiling"
 const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
@@ -65,13 +66,6 @@ const DEBOUNCE_PREV_KEY = "debounce-prev-key"
 const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
-
-let time = (name, func) => {
-  console.time(name)
-  let result = func()
-  console.timeEnd(name)
-  return result
-}
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -319,11 +313,17 @@ export class LiveSocket {
 
   // public
 
+  isProfileEnabled(){ return sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
+
   isDebugEnabled(){ return sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
 
   enableDebug(){ sessionStorage.setItem(PHX_LV_DEBUG, "true") }
 
+  enableProfiling(){ sessionStorage.setItem(PHX_LV_PROFILE, "true") }
+
   disableDebug(){ sessionStorage.removeItem(PHX_LV_DEBUG) }
+
+  disableProfiling(){ sessionStorage.removeItem(PHX_LV_PROFILE) }
 
   enableLatencySim(upperBoundMs){
     this.enableDebug()
@@ -357,6 +357,14 @@ export class LiveSocket {
   disconnect(){ this.socket.disconnect() }
 
   // private
+
+  time(name, func){
+    if(!this.isProfileEnabled() || !console.time){ return func() }
+    console.time(name)
+    let result = func()
+    console.timeEnd(name)
+    return result
+  }
 
   log(view, kind, msgCallback){
     if(this.viewLogger){
@@ -897,6 +905,8 @@ export let Browser = {
 }
 
 export let DOM = {
+  byId(id){ return document.getElementById(id) || logError(`no id found for ${id}`) },
+
   all(node, query, callback){
     let array = Array.from(node.querySelectorAll(query))
     return callback ? array.forEach(callback) : array
@@ -1074,6 +1084,7 @@ export let DOM = {
 class DOMPatch {
   constructor(view, container, id, html, targetCID, ref){
     this.view = view
+    this.liveSocket = view.liveSocket
     this.container = container
     this.id = id
     this.rootID = view.root.id
@@ -1105,25 +1116,26 @@ class DOMPatch {
   }
 
   perform(){
-    let {view, container, html} = this
+    let {view, liveSocket, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer() : container
     if(this.isCIDPatch() && !targetContainer){ return }
 
-    let focused = view.liveSocket.getActiveElement()
+    let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
-    let phxUpdate = view.liveSocket.binding(PHX_UPDATE)
+    let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let added = []
     let updates = []
-    let appendPrependIds = {}
     let appendPrependUpdates = []
 
-    let diffHTML = time("diffHTML", () => this.buildDiffHTML(container, html, phxUpdate, targetContainer))
+    let diffHTML = liveSocket.time("premorph container prep", () => {
+      return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
+    })
 
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
     // console.log(diffHTML.outerHTML)
-    time("morphdom", () => {
+    liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         onBeforeNodeAdded: (el) => {
@@ -1146,14 +1158,11 @@ class DOMPatch {
           this.trackBefore("discarded", el)
           // nested view handling
           if(DOM.isPhxChild(el)){
-            view.liveSocket.destroyViewByEl(el)
+            liveSocket.destroyViewByEl(el)
             return true
           }
         },
-        onElUpdated: (el) => {
-          if(DOM.isPhxUpdate(el, phxUpdate, ["append", "prepend"])){ appendPrependUpdates.push(el) }
-          updates.push(el)
-        },
+        onElUpdated: (el) => { updates.push(el) },
         onBeforeElUpdated: (fromEl, toEl) => {
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
@@ -1187,11 +1196,8 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              // console.log(fromEl.outerHTML)
-              // let isAppend = toEl.getAttribute(phxUpdate) === "append"
               let idsBefore = Array.from(fromEl.children).map(child => child.id)
-
-              appendPrependIds[toEl.id] = idsBefore
+              appendPrependUpdates.push([toEl.id, idsBefore])
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
@@ -1201,26 +1207,19 @@ class DOMPatch {
       })
     })
 
-    // if(view.liveSocket.isDebugEnabled()){ detectDuplicateIds() }
+    if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
 
-    // appendPrependUpdates.forEach(el => {
-    //   let idsBefore = appendPrependIds[el.id]
-    //   let isAppend = el.getAttribute(phxUpdate) === "append"
-    //   // consider firstChild not existing
-    //   // append
-    //   if(isAppend){
-    //     idsBefore.reverse().forEach(id => {
-    //       el.insertBefore(el.querySelector(`#${id}`), el.firstChild)
-    //     })
-    //   } else {
-    //     idsBefore.forEach(id => {
-    //       let child = el.querySelector(`#${id}`)
-    //       el.appendChild(child)
-    //     })
-    //   }
-    // })
+    appendPrependUpdates.forEach(([containerID, idsBefore]) => {
+      let el = DOM.byId(containerID)
+      let isAppend = el.getAttribute(phxUpdate) === "append"
+      if(isAppend){
+        idsBefore.reverse().forEach(id => el.insertBefore(DOM.byId(id), el.firstChild))
+      } else {
+        idsBefore.forEach(id => el.appendChild(DOM.byId(id), el.querySelector(`#${id}`)))
+      }
+    })
 
-    view.liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
+    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
@@ -1248,11 +1247,12 @@ class DOMPatch {
     }
   }
 
-  // builds container for morphdom patch
-  // - precomputes append/prepend content in diff node to make it appear as if
-  //   the contents had been appended/prepended on full child node list
-  // - precomputes updates on existing child ids within a prepend/append child list
-  //   to allow existing nodes to be updated in place rather than reordered
+  // builds HTML for morphdom patch
+  // - for full patches of LiveView or a component with a single
+  //   root node, simply returns the HTML
+  // - for patches of a component with multiple root nodes, the
+  //   parent node becomes the target container and non-component
+  //   siblings are marked as skip.
   buildDiffHTML(container, html, phxUpdate, targetContainer){
     let isCIDPatch = this.isCIDPatch()
     let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()
@@ -1420,7 +1420,7 @@ export class View {
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = Rendered.build(rendered)
-    let html = this.renderContainer()
+    let html = this.renderContainer(null, "join")
     this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
 
@@ -1469,7 +1469,7 @@ export class View {
   }
 
   attachTrueDocEl(){
-    this.el = document.getElementById(this.id) || logError(`no id found on join for #${this.id}`)
+    this.el = DOM.byId(this.id)
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
@@ -1607,11 +1607,11 @@ export class View {
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
     if(typeof(cidAck) === "number"){
-      time("cidAckPatch", () => {
+      this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
       })
     } else if(Rendered.isComponentOnlyDiff(diff)){
-      time("cidOnlyPatch", () => {
+      this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, Rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
           if(this.componentPatch(parentCID, ref)){ phxChildrenAdded = true }
@@ -1621,8 +1621,8 @@ export class View {
       let patch = new DOMPatch(this, this.el, this.id, "", null, ref)
       patch.undoRefs()
     } else {
-      time("fullPatch", () => {
-        let html = this.renderContainer(diff)
+      this.liveSocket.time("full patch complete", () => {
+        let html = this.renderContainer(diff, "update")
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
         patch.undoRefs()
@@ -1632,13 +1632,13 @@ export class View {
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
-  renderContainer(diff){
-    let tag = this.el.tagName
-    let cids = diff ? Rendered.componentCIDs(diff) : null
-    let html = time("toString", () => {
-      return Rendered.toString(this.rendered, this.rendered[COMPONENTS], cids)
+  renderContainer(diff, kind){
+    return this.liveSocket.time(`toString diff (${kind})`, () => {
+      let tag = this.el.tagName
+      let cids = diff ? Rendered.componentCIDs(diff) : null
+      let html = Rendered.toString(this.rendered, this.rendered[COMPONENTS], cids)
+      return `<${tag}>${html}</${tag}>`
     })
-    return `<${tag}>${html}</${tag}>`
   }
 
   componentPatch(cid, ref){
