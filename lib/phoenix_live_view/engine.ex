@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.Component do
             <%= live_component @socket, SomeComponent %>
           <% end %>
 
-      That's because the compontent is inside `content_tag`. However, this works:
+      That's because the component is inside `content_tag`. However, this works:
 
           <div>
             <%= live_component @socket, SomeComponent %>
