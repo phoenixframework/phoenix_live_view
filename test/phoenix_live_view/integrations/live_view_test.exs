@@ -161,7 +161,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "renders a live view with custom session and a router", %{conn: conn} do
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"}, router: MyApp.Router)
+        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive,
+          session: %{"hello" => "world"},
+          router: MyApp.Router
+        )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
@@ -357,9 +360,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "socket.assigns while rendering", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/\(KeyError\) key :boom not found in: %Phoenix\.LiveView\.Socket\.AssignsNotInSocket\{\}/, fn ->
-        live(conn, "/assigns-not-in-socket")
-      end
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/\(KeyError\) key :boom not found in: %Phoenix\.LiveView\.Socket\.AssignsNotInSocket\{\}/,
+                   fn ->
+                     live(conn, "/assigns-not-in-socket")
+                   end
     end
   end
 
@@ -619,7 +624,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
                catch_exit(render(view))
              end) =~ "duplicate LiveView id: \"static\""
     end
-    
+
     test "live view nested inside a live component" do
       assert {:ok, _view, _html} = live_isolated(build_conn(), NestedLive)
     end

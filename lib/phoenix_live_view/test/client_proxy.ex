@@ -223,7 +223,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:noreply, render_reply(reply, from, state)}
         end
 
-      :error -> {:noreply, state}
+      :error ->
+        {:noreply, state}
     end
   end
 

@@ -17,9 +17,36 @@ defmodule Phoenix.LiveView.Component do
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%{id: id, component: component}) do
-      raise ArgumentError,
-            "cannot convert component #{inspect(component)} with id #{inspect(id)} to HTML. " <>
-              "A component must always be returned directly as part of a LiveView template"
+      raise ArgumentError, """
+      cannot convert component #{inspect(component)} with id #{inspect(id)} to HTML.
+
+      A component must always be returned directly as part of a LiveView template.
+
+      For example, this is not allowed:
+
+          <%= content_tag :div do %>
+            <%= live_component @socket, SomeComponent %>
+          <% end %>
+
+      That's because the compontent is inside `content_tag`. However, this works:
+
+          <div>
+            <%= live_component @socket, SomeComponent %>
+          </div>
+
+      Components are also allowed inside Elixir's special forms, such as
+      `if`, `for`, `case`, and friends. So while this does not work:
+
+          <%= Enum.map(items, fn item -> %>
+            <%= live_component @socket, SomeComponent, id: item %>
+          <% end %>
+
+      Since the component was given to `Enum.map/2`, this does:
+
+          <%= for item <- items do %>
+            <%= live_component @socket, SomeComponent, id: item %>
+          <% end %>
+      """
     end
   end
 end
