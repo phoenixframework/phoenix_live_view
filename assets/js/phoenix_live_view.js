@@ -659,6 +659,7 @@ export class LiveSocket {
           screenY: e.screenY,
           offsetX: e.offsetX,
           offsetY: e.offsetY,
+          detail: e.detail || 1,
         }
 
         this.debounce(target, e, () => {
