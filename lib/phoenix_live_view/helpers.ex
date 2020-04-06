@@ -199,7 +199,14 @@ defmodule Phoenix.LiveView.Helpers do
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
   defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
-    assigns = rewrite_do(maybe_do(do_block) || maybe_do(assigns), assigns, __CALLER__)
+    {do_block, assigns} =
+      case {do_block, assigns} do
+        {[do: do_block], _} -> {do_block, assigns}
+        {_, [do: do_block]} -> {do_block, []}
+        {_, _} -> {nil, assigns}
+      end
+
+    assigns = rewrite_do(do_block, assigns, __CALLER__)
 
     quote do
       Phoenix.LiveView.Helpers.__live_component__(
@@ -208,24 +215,6 @@ defmodule Phoenix.LiveView.Helpers do
         unquote(assigns)
       )
     end
-  end
-
-  @doc """
-  Returns the flash message from the LiveView flash assign.
-
-  ## Examples
-
-      <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
-      <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
-  """
-  def live_flash(%_struct{} = other, _key) do
-    raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
-  end
-
-  def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
-
-  defp maybe_do(value) do
-    if Keyword.keyword?(value), do: value[:do]
   end
 
   defp rewrite_do(nil, opts, _caller), do: opts
@@ -256,11 +245,22 @@ defmodule Phoenix.LiveView.Helpers do
 
     quote do
       fn extra_assigns ->
-        var!(assigns) = Enum.into(extra_assigns, var!(assigns))
+        var!(assigns) =
+          case extra_assigns do
+            [] ->
+              var!(assigns)
 
-        var!(changed, Phoenix.LiveView.Engine) =
-          if var = var!(changed, Phoenix.LiveView.Engine) do
-            for {key, _} <- extra_assigns, into: var, do: {key, true}
+            _ ->
+              assigns = Enum.into(extra_assigns, var!(assigns))
+
+              if var = var!(changed, Phoenix.LiveView.Engine) do
+                changed =
+                  for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
+
+                put_in(assigns.socket.changed, changed)
+              else
+                assigns
+              end
           end
 
         unquote(do_block)
@@ -287,6 +287,20 @@ defmodule Phoenix.LiveView.Helpers do
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
+
+  @doc """
+  Returns the flash message from the LiveView flash assign.
+
+  ## Examples
+
+      <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
+      <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
+  """
+  def live_flash(%_struct{} = other, _key) do
+    raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
+  end
+
+  def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.

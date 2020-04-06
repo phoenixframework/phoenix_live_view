@@ -874,7 +874,8 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:cond, [_]), do: :live
   defp classify_taint(:try, [_]), do: :live
   defp classify_taint(:receive, [_]), do: :live
-  defp classify_taint(:live_component, [_, _, _, _]), do: :live
+  defp classify_taint(:live_component, [_, _, [do: _]]), do: :live
+  defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :live
 
   defp classify_taint(:alias, [_]), do: :always
   defp classify_taint(:import, [_]), do: :always

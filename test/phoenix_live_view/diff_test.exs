@@ -250,6 +250,8 @@ defmodule Phoenix.LiveView.DiffTest do
       {:ok, assign(socket, :id, "DEFAULT")}
     end
 
+    def render(%{do: _}), do: raise("unexpected :do assign")
+
     def render(assigns) do
       ~L"""
       HELLO <%= @id %> <%= @inner_content.(value: 1) %>
@@ -366,6 +368,32 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
     end
 
+    test "block tracking without assigns" do
+      assigns = %{socket: %Socket{changed: nil}}
+
+      rendered = ~L"""
+      <%= live_component @socket, BlockComponent do %>
+        WITH VALUE <%= @value %>
+      <% end %>
+      """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "",
+                 1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
+                 2 => "",
+                 3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
+                 :s => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
+               },
+               :s => ["", "\n"]
+             }
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      assert full_render == %{0 => %{0 => "", 1 => %{0 => "1"}, 2 => "", 3 => %{0 => "2"}}}
+    end
+
     test "block tracking" do
       assigns = %{socket: %Socket{changed: nil}}
 
@@ -417,6 +445,70 @@ defmodule Phoenix.LiveView.DiffTest do
                    2 => "WORLD",
                    3 => %{0 => "[value: 2]", :s => ["\n    WITH EXTRA ", "\n"]},
                    :s => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
+                 }
+               }
+             }
+    end
+
+    defp tracking(assigns) do
+      ~L"""
+      <%= live_component @socket, BlockComponent, id: "TRACKING" do %>
+        WITH PARENT VALUE <%= @parent_value %>
+        WITH VALUE <%= @value %>
+      <% end %>
+      """
+    end
+
+    test "block tracking with child and parent assigns" do
+      assigns = %{socket: %Socket{changed: nil}, parent_value: 123}
+      {socket, full_render, components} = render(tracking(assigns))
+
+      assert full_render == %{
+               0 => 0,
+               :c => %{
+                 0 => %{
+                   0 => "TRACKING",
+                   1 => %{
+                     0 => "123",
+                     :s => [
+                       "\n  WITH PARENT VALUE ",
+                       "\n  WITH VALUE ",
+                       "\n"
+                     ],
+                     1 => "1"
+                   },
+                   2 => "TRACKING",
+                   3 => %{
+                     0 => "123",
+                     :s => [
+                       "\n  WITH PARENT VALUE ",
+                       "\n  WITH VALUE ",
+                       "\n"
+                     ],
+                     1 => "2"
+                   },
+                   :s => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
+                 }
+               },
+               :s => ["", "\n"]
+             }
+
+      {_socket, full_render, _components} =
+        render(tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => 0, :c => %{0 => %{}}}
+
+      assigns = %{socket: %Socket{changed: %{parent_value: true}}, parent_value: 246}
+
+      {_socket, full_render, _components} =
+        render(tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => 0,
+               :c => %{
+                 0 => %{
+                   1 => %{0 => "246", 1 => "1"},
+                   3 => %{0 => "246", 1 => "2"}
                  }
                }
              }
