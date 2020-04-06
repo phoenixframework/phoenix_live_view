@@ -25,6 +25,7 @@ const PHX_LIVE_LINK = "data-phx-link"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_SKIP = "data-phx-skip"
+const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -1112,6 +1113,12 @@ class DOMPatch {
     DOM.all(this.container, `[${PHX_REF}]`, el => this.syncPendingRef(el, el))
   }
 
+  markPrunableContentForRemoval(){
+    DOM.all(this.container, `[phx-update=append] > *, [phx-update=prepend] > *`, el => {
+      el.setAttribute(PHX_REMOVE, "")
+    })
+  }
+
   perform(){
     let {view, liveSocket, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer() : container
@@ -1150,6 +1157,7 @@ class DOMPatch {
         },
         onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
         onBeforeNodeDiscarded: (el) => {
+          if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
           if(DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"])){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
@@ -1232,9 +1240,13 @@ class DOMPatch {
           let el = DOM.byId(containerID)
           let isAppend = el.getAttribute(phxUpdate) === "append"
           if(isAppend){
-            idsBefore.reverse().forEach(id => el.insertBefore(DOM.byId(id), el.firstChild))
+            idsBefore.reverse().forEach(id => {
+              maybe(document.getElementById(id), child => el.insertBefore(child, el.firstChild))
+            })
           } else {
-            idsBefore.forEach(id => el.appendChild(DOM.byId(id), el.querySelector(`#${id}`)))
+            idsBefore.forEach(id => {
+              maybe(document.getElementById(id), child => el.appendChild(child))
+            })
           }
         })
       })
@@ -1500,6 +1512,7 @@ export class View {
   applyJoinPatch(live_patch, html){
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
+    patch.markPrunableContentForRemoval()
     this.joinPending = false
     this.performPatch(patch)
     this.joinNewChildren()
