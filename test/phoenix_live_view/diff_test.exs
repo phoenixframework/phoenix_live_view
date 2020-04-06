@@ -392,7 +392,7 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => 0}
+      assert full_render == %{0 => 0, :c => %{0 => %{}}}
     end
 
     test "explicit block tracking" do
@@ -525,7 +525,7 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, full_render, components} =
         render(rendered, previous_socket.fingerprints, previous_components)
 
-      assert full_render == %{0 => 0}
+      assert full_render == %{0 => 0, :c => %{0 => %{}}}
       assert socket.fingerprints == previous_socket.fingerprints
       assert components == previous_components
 
