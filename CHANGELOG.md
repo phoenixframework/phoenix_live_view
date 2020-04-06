@@ -1,13 +1,21 @@
-## 0.11-dev
+## 0.11.0 (2020-04-06)
 
-### Enhancements
-  - Optimize various client rendering scenarios for faster DOM patching
-  of components and append/prepended content
-  - Add `enableProfiling()` and `disableProfiling()` to `LiveSocket` for client performance profiling to aid the development process
+### Backwards incompatible changes
+  - Remove socket.assigns during render to avoid change tracking bugs. If you were previously relying on passing `@socket` to functions then referencing socket assigns, pass the explicit assign instead to your functions from the template
 
 ### Bug fixes
   - Fix client issue with greater than two levels of LiveView nesting
   - Fix bug causing entire LiveView to be re-rendering with only a component changed
+  - Fix issue where rejoins would not trigger phx:page-loading-stop
+
+### Enhancements
+  - Support deep change tracking so `@foo.bar` only executes and diffs when bar changes
+  - Add `@myself` assign, to allow components to target themselves instead of relying on a DOM id, for example: `phx-target="<%= @myself %>"`
+  - Optimize various client rendering scenarios for faster DOM patching
+  of components and append/prepended content
+  - Add `enableProfiling()` and `disableProfiling()` to `LiveSocket` for client performance profiling to aid the development process
+  - Allow LiveViews to be rendered inside LiveComponents
+  - Add support for clearing flash inside components
 
 ## 0.10.0 (2020-03-18)
 
