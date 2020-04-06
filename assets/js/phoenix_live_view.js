@@ -1473,7 +1473,10 @@ export class View {
   }
 
   onJoinComplete({live_patch}, html){
-    if(this.joinCount > 1){ return this.applyJoinPatch(live_patch, html) }
+    if(this.joinCount > 1){
+      DOM.dispatchEvent(window, "phx:page-loading-stop", {to: this.href, kind: "rejoin"})
+      return this.applyJoinPatch(live_patch, html)
+    }
 
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(c => this.joinChild(c))
     if(newChildren.length === 0){
