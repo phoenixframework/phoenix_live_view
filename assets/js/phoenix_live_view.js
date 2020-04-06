@@ -152,8 +152,7 @@ export let Rendered = {
 
   isComponentOnlyDiff(diff){
     if(!diff[COMPONENTS]){ return false }
-    let keys = Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS)
-    return keys.length === 0
+    return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
   },
 
   mergeDiff(source, diff){
@@ -1110,9 +1109,7 @@ class DOMPatch {
   }
 
   undoRefs(){
-    DOM.all(this.container, `[${PHX_REF}]`, el => {
-      this.syncPendingRef(el, el)
-    })
+    DOM.all(this.container, `[${PHX_REF}]`, el => this.syncPendingRef(el, el))
   }
 
   perform(){
@@ -1135,7 +1132,6 @@ class DOMPatch {
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
-    // console.log(diffHTML.outerHTML)
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
@@ -1201,10 +1197,10 @@ class DOMPatch {
             return false
           } else {
             // we optimize append/prepend operations in two ways:
-            //   1) by tracking the previously
-            //     appended ids. If the ids don't change b/w patches, we know that we
-            //     are going to re-arrange the same appendPrependUpdates so we can
-            //     skip the post-morph append/prepend ops.
+            //   1) By tracking the previously appended ids. If the ids don't
+            //     change b/w patches, we know that we are going to re-arrange
+            //     the same appendPrependUpdates so we can skip the post-morph
+            //     append/prepend ops.
             //   2) for appends, we can skip post-morph re-arranging if the
             //     new content contains only new ids, because it will simply
             //     be appended to the container
@@ -1624,7 +1620,7 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", {diff, cidAck, ref}])
+    this.log("update", () => ["", diff])
     this.rendered = Rendered.mergeDiff(this.rendered, diff)
     let phxChildrenAdded = false
 
