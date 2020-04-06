@@ -55,7 +55,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   def find_live_views(html) do
     html
     |> all("[data-phx-session]")
-    |> Enum.map(fn node ->
+    |> Enum.reduce([], fn node, acc ->
       attrs = attrs(node)
 
       static =
@@ -64,7 +64,13 @@ defmodule Phoenix.LiveViewTest.DOM do
           true -> attrs["data-phx-static"]
         end
 
-      {attrs["id"], attrs["data-phx-session"], static}
+      found = {attrs["id"], attrs["data-phx-session"], static}
+
+      if attrs["data-phx-main"] == "true" do
+        [found | acc]
+      else
+        acc ++ [found]
+      end
     end)
   end
 
