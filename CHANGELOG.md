@@ -1,7 +1,13 @@
-## 0.10.1
+## 0.11-dev
+
+### Enhancements
+  - Optimize various client rendering scenarios for faster DOM patching
+  of components and append/prepended content
+  - Add `enableProfiling()` and `disableProfiling()` to `LiveSocket` for client performance profiling to aid the development process
 
 ### Bug fixes
   - Fix client issue with greater than two levels of LiveView nesting
+  - Fix bug causing entire LiveView to be re-rendering with only a component changed
 
 ## 0.10.0 (2020-03-18)
 
