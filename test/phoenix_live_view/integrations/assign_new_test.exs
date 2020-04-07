@@ -50,5 +50,24 @@ defmodule Phoenix.LiveView.AssignNewTest do
       assert html =~ "child static name: user-from-root"
       assert html =~ "child dynamic name: user-from-child"
     end
+
+    test "deep nesting of dynamically rendered child", %{conn: conn} do
+      user = %{name: "user-from-conn", id: 123}
+
+      {:ok, view, _html} =
+        conn
+        |> Plug.Conn.assign(:current_user, user)
+        |> Plug.Conn.put_session(:user_id, user.id)
+        |> live("/nested")
+
+      assert render(view) =~ "child static name: user-from-root"
+      refute render(view) =~ "child dynamic name"
+
+      :ok = GenServer.call(view.pid, {:dynamic_child, :dynamic})
+
+      html = render(view)
+      assert html =~ "child static name: user-from-root"
+      assert html =~ "child dynamic name: user-from-child"
+    end
   end
 end

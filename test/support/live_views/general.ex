@@ -163,6 +163,25 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   end
 end
 
+defmodule Phoenix.LiveViewTest.MultipleNestedLiveview do
+  use Phoenix.LiveView
+  alias Phoenix.LiveViewTest.RootLive
+
+  def render(assigns) do
+    ~L"""
+    <%= live_render(@socket, RootLive, id: :root, session: %{"user_id" => @user_id, "dynamic_child" => @dynamic_child}) %>
+    """
+  end
+
+  def mount(_params, %{"user_id" => user_id}, socket) do
+    {:ok, assign(socket, user_id: user_id, dynamic_child: nil)}
+  end
+
+  def handle_call({:dynamic_child, child}, _from, socket) do
+    {:reply, :ok, assign(socket, dynamic_child: child)}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.RootLive do
   use Phoenix.LiveView
   alias Phoenix.LiveViewTest.ChildLive
@@ -181,6 +200,15 @@ defmodule Phoenix.LiveViewTest.RootLive do
     {:ok,
      socket
      |> assign(:dynamic_child, nil)
+     |> assign_new(:current_user, fn ->
+       %{name: "user-from-root", id: user_id}
+     end)}
+  end
+
+  def mount(_params, %{"user_id" => user_id, "dynamic_child" => dynamic_child}, socket) do
+    {:ok,
+     socket
+     |> assign(:dynamic_child, dynamic_child)
      |> assign_new(:current_user, fn ->
        %{name: "user-from-root", id: user_id}
      end)}
