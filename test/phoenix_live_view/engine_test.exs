@@ -451,6 +451,19 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true}) == ["456"]
       assert changed(template, %{foo: 123, bar: false, baz: 456}, %{baz: true}) == ["456"]
     end
+
+    test "converts unless-do into rendered" do
+      template = "<%= unless false do %>one<%= @foo %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+    end
   end
 
   describe "case" do
