@@ -1114,21 +1114,30 @@ defmodule Phoenix.LiveView do
   By default, all forms marked with `phx-change` will recover input values
   automatically after the user has reconnected or the LiveView has remounted
   after a crash. This is achieved by the client triggering the same `phx-change`
-  to the server as soon as the mount has been completed. For most use cases,
-  this is all you need and form recovery will happen without consideration. In some cases,
-  where forms are built step-by-step in a stateful fashion, it may require extra recovery
-  handling on the server outside of your existing `phx-change` callback code. To enable
-  specialized recovery, provide a `phx-auto-recover` binding on the form to
-  specify a different event to trigger for recovery, which will receive the form params
-  as usual. For example, imagine a LiveView wizard form where the form is stateful and
-  built based on what step the user is on and by prior selections:
+  to the server as soon as the mount has been completed.
+
+  **Note:** if you want to see form recovery working in development, please
+  make sure to disable live reloading in development by commenting out the
+  LiveReload plug in your `endpoint.ex` file or by setting `code_reloader: false`
+  in your `config/dev.exs`. Otherwise live reloading may cause the current page
+  to be reloaded whenever you restart the server, which will discard all form
+  state.
+
+  For most use cases, this is all you need and form recovery will happen
+  without consideration. In some cases, where forms are built step-by-step in a
+  stateful fashion, it may require extra recovery handling on the server outside
+  of your existing `phx-change` callback code. To enable specialized recovery,
+  provide a `phx-auto-recover` binding on the form to specify a different event
+  to trigger for recovery, which will receive the form params as usual. For example,
+  imagine a LiveView wizard form where the form is stateful and built based on what
+  step the user is on and by prior selections:
 
       <form phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
 
-  On the server, the `"validate_wizard_step"` event is only concerned with the current client
-  form data, but the server maintains the entire state of the wizard. To recover in this
-  scenario, you can specify a recovery event, such as `"recover_wizard"` above, which
-  would wire up to the following server callbacks in your LiveView:
+  On the server, the `"validate_wizard_step"` event is only concerned with the
+  current client form data, but the server maintains the entire state of the wizard.
+  To recover in this scenario, you can specify a recovery event, such as `"recover_wizard"`
+  above, which would wire up to the following server callbacks in your LiveView:
 
       def handle_event("validate_wizard_step", params, socket) do
         # regular validations for current step
