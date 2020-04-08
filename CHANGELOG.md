@@ -7,6 +7,9 @@
   - Fix orphaned prepend/append content across joins
   - Track `unless` in LiveEEx engine
 
+### Backwards incompatible changes
+  - `render_event`/`render_click` and friends now expect a DOM ID selector to be given when working with components. For example, instead of `render_click([live, "user-13"])`, you should write `render_click([live, "#user-13"])`, mirroring the `phx-target` API
+
 ## 0.11.0 (2020-04-06)
 
 ### Backwards incompatible changes
