@@ -13,6 +13,7 @@
 ### Enhancements
   - Trigger debounced events immediately on input blur
   - Support `defaults` option on `LiveSocket` constructor to configure default `phx-debounce` and `phx-throttle` values, allowing `<input .. phx-debounce />`
+  - Add `detail` key to click event metadata for detecting double/triple clicks
 
 ## 0.11.0 (2020-04-06)
 
