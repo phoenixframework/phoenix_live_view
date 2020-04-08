@@ -41,7 +41,7 @@ describe("debounce", function() {
     let el = container().querySelector("input[name=debounce-100]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", "phx-throttle", () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => calls++)
     })
     simulateInput(el, "one")
     simulateInput(el, "two")
