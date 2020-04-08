@@ -1,4 +1,4 @@
-## 0.11.1-dev
+## 0.11.1 (2020-04-08)
 
 ### Bug fixes
   - Fix readonly states failing to be undone after an empty diff
