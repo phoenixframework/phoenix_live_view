@@ -106,6 +106,7 @@ Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18
 
 ```javascript
 // assets/js/app.js
+import "mdn-polyfills/Object.assign"
 import "mdn-polyfills/CustomEvent"
 import "mdn-polyfills/String.prototype.startsWith"
 import "mdn-polyfills/Array.from"

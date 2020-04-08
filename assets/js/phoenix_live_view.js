@@ -63,6 +63,10 @@ const LINK_HEADER = "x-requested-with"
 const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
 const DEBOUNCE_PREV_KEY = "debounce-prev-key"
+const DEFAULTS = {
+  debounce: 300,
+  throttle: 300
+}
 // Rendered
 const DYNAMICS = "d"
 const STATIC = "s"
@@ -256,6 +260,12 @@ export let Rendered = {
  *
  * @param {Object} [opts] - Optional configuration. Outside of keys listed below, all
  * configuration is passed directly to the Phoenix Socket constructor.
+ * @param {Function} [opts.defaults] - The optional defaults to use for various bindings,
+ * such as `phx-debounce`. Supports the following keys:
+ *
+ *   - debounce - the millisecond phx-debounce time. Defaults 300
+ *   - throttle - the millisecond phx-throttle time. Defaults 300
+ *
  * @param {Function} [opts.params] - The optional function for passing connect params.
  * The function receives the viewName associated with a given LiveView. For example:
  *
@@ -287,6 +297,7 @@ export class LiveSocket {
     this.opts = opts
     this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
+    this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {})
     this.activeElement = null
     this.prevActive = null
     this.silenced = false
@@ -813,7 +824,11 @@ export class LiveSocket {
   }
 
   debounce(el, event, callback){
-    DOM.debounce(el, event, this.binding(PHX_DEBOUNCE), this.binding(PHX_THROTTLE), callback)
+    let phxDebounce = this.binding(PHX_DEBOUNCE)
+    let phxThrottle = this.binding(PHX_THROTTLE)
+    let defaultDebounce = this.defaults.debounce.toString()
+    let defaultThrottle = this.defaults.throttle.toString()
+    DOM.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback)
   }
 
   silenceEvents(callback){
@@ -968,9 +983,11 @@ export let DOM = {
     document.title = `${prefix || ""}${str}${suffix || ""}`
   },
 
-  debounce(el, event, phxDebounce, phxThrottle, callback){
+  debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
+    if(debounce === ""){ debounce = defaultDebounce }
+    if(throttle === ""){ throttle = defaultThrottle }
     let value = debounce || throttle
     switch(value){
       case null: return callback()
