@@ -1389,7 +1389,9 @@ export class View {
   }
 
   destroy(callback = function(){}){
+    this.destroyAllChildren()
     this.destroyed = true
+    delete this.root.children[this.id]
     if(this.parent){ delete this.root.children[this.parent.id][this.id] }
     clearTimeout(this.loaderTimer)
     let onFinished = () => {
@@ -1485,8 +1487,8 @@ export class View {
   }
 
   onJoinComplete({live_patch}, html){
-    if(this.joinCount > 1){
-      DOM.dispatchEvent(window, "phx:page-loading-stop", {to: this.href, kind: "rejoin"})
+    if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
+      if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-stop", {to: this.href, kind: "rejoin"}) }
       return this.applyJoinPatch(live_patch, html)
     }
 
@@ -1591,7 +1593,6 @@ export class View {
 
   destroyDescendent(id){
     for(let parentId in this.root.children){
-      if(parentId === id){ return this.root.children[parentId].destroy() }
       for(let childId in this.root.children[parentId]){
         if(childId === id){ return this.root.children[parentId][childId].destroy() }
       }
