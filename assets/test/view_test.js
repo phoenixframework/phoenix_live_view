@@ -1,6 +1,14 @@
 import {Socket} from "phoenix"
 import LiveSocket, {View, DOM} from '../js/phoenix_live_view'
 
+let stubChannel = view => {
+  let fakePush = {
+    receives: [],
+    receive(kind, cb){ this.receives.push([kind, cb])}
+  }
+  view.channel.push = () => fakePush
+}
+
 function liveViewDOM() {
   const div = document.createElement('div')
   div.setAttribute('data-phx-view', 'User.Form')
@@ -458,6 +466,30 @@ describe('View + Component', function() {
     view.channel = channelStub
 
     view.pushEvent('keyup', input, targetCtx, "click", {})
+  })
+
+  test("empty diff undoes refs and pending attributes", () => {
+    let liveSocket = new LiveSocket('/live', Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+    let ref = 456
+    let html = `<form phx-submit="submit" phx-page-loading=""><input type="text"></form>`
+
+    stubChannel(view)
+    view.onJoin({rendered: {
+      s: [html],
+      fingerprint: 123
+    }})
+    expect(view.el.innerHTML).toBe(html)
+
+    let form = view.el.querySelector("form")
+    view.pushFormSubmit(form, null, "submit", function(){})
+
+    expect(view.el.innerHTML).toBe(`<form phx-submit="submit" phx-page-loading="" class="phx-submit-loading" data-phx-ref="0"><input type="text" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="0"></form>`)
+
+    view.update({}, null, ref) // empty diff update
+
+    expect(view.el.innerHTML).toBe(html)
   })
 });
 

@@ -907,6 +907,11 @@ export let Browser = {
 export let DOM = {
   byId(id){ return document.getElementById(id) || logError(`no id found for ${id}`) },
 
+  removeClass(el, className){
+    el.classList.remove(className)
+    if(el.classList.length === 0){ el.removeAttribute("class") }
+  },
+
   all(node, query, callback){
     let array = Array.from(node.querySelectorAll(query))
     return callback ? array.forEach(callback) : array
@@ -1317,11 +1322,13 @@ class DOMPatch {
 
     let fromRef = parseInt(fromRefAttr)
     if(this.ref !== null && this.ref >= fromRef){
-      fromEl.removeAttribute(PHX_REF)
-      toEl.removeAttribute(PHX_REF)
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.remove(className)
-        toEl.classList.remove(className)
+      [fromEl, toEl].forEach(el => {
+        el.removeAttribute(PHX_REF)
+        if(el.getAttribute(PHX_READONLY) !== null){
+          el.readOnly = false
+          el.removeAttribute(PHX_READONLY)
+        }
+        PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
       })
       return true
     } else {
