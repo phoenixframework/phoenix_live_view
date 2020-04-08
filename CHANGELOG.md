@@ -1,3 +1,12 @@
+## 0.11.1-dev
+
+### Bug fixes
+  - Fix readonly states failing to be undone after an empty diff
+  - Fix dynamically added child failing to be joined by the client
+  - Fix teardown bug causing stale client sessions to attempt a rejoin on reconnect
+  - Fix orphaned prepend/append content across joins
+  - Track `unless` in LiveEEx engine
+
 ## 0.11.0 (2020-04-06)
 
 ### Backwards incompatible changes
