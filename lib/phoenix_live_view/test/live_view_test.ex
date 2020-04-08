@@ -329,9 +329,8 @@ defmodule Phoenix.LiveViewTest do
           {^ref, {:mounted, view_pid, html}} ->
             receive do
               {^ref, {:redirect, _topic, opts}} ->
-                %{to: to} = opts
                 ensure_down!(view_pid)
-                {:error, %{redirect: to}}
+                {:error, {:redirect, opts}}
             after
               0 ->
                 {:ok, build_test_view(view, view_pid, proxy_pid), html}

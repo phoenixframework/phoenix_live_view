@@ -228,8 +228,8 @@ defmodule Phoenix.LiveView.Channel do
       {:redirect, %{to: _to} = opts} ->
         {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
-      {:live, :redirect, %{to: to} = opts} ->
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, to}})
+      {:live, :redirect, %{to: _to} = opts} ->
+        send(new_state.transport_pid, {:socket_close, self(), {:redirect, opts}})
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, {params, action}, %{to: to} = opts} ->
@@ -388,15 +388,15 @@ defmodule Phoenix.LiveView.Channel do
     root_pid = new_socket.root_pid
 
     case result do
-      {:redirect, %{to: to} = opts} ->
+      {:redirect, %{to: _to} = opts} ->
         new_state
         |> push_redirect(flash, opts, ref)
-        |> stop_shutdown_redirect(to)
+        |> stop_shutdown_redirect(opts)
 
-      {:live, :redirect, %{to: to} = opts} ->
+      {:live, :redirect, %{to: _to} = opts} ->
         new_state
         |> push_live_redirect(flash, opts, ref)
-        |> stop_shutdown_redirect(to)
+        |> stop_shutdown_redirect(opts)
 
       {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         new_state
@@ -417,9 +417,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp stop_shutdown_redirect(state, to) do
-    send(state.transport_pid, {:socket_close, self(), {:redirect, to}})
-    {:stop, {:shutdown, {:redirect, to}}, state}
+  defp stop_shutdown_redirect(state, opts) do
+    send(state.transport_pid, {:socket_close, self(), {:redirect, opts}})
+    {:stop, {:shutdown, {:redirect, opts}}, state}
   end
 
   defp drop_redirect(state) do

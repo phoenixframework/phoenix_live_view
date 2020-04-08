@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         get(conn, "/redir?during=connected&kind=push_redirect&child_to=/thermo?from_child=true")
 
       assert html_response(conn, 200) =~ "child_content"
-      assert {:error, %{redirect: "/thermo?from_child=true"}} = live(conn)
+      assert {:error, {:redirect, %{to: "/thermo?from_child=true"}}} = live(conn)
     end
 
     test "child push_patch when disconnected", %{conn: conn} do
@@ -147,7 +147,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "child redirect when connected", %{conn: conn} do
       conn = get(conn, "/redir?during=connected&kind=redirect&child_to=/thermo?from_child=true")
       assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, %{redirect: "/thermo?from_child=true"}} = live(conn)
+      assert {:error, {:redirect, %{to: "/thermo?from_child=true"}}} = live(conn)
     end
   end
 
