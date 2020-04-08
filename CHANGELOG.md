@@ -10,6 +10,10 @@
 ### Backwards incompatible changes
   - `render_event`/`render_click` and friends now expect a DOM ID selector to be given when working with components. For example, instead of `render_click([live, "user-13"])`, you should write `render_click([live, "#user-13"])`, mirroring the `phx-target` API
 
+### Enhancements
+  - Trigger debounced events immediately on input blur
+  - Support `defaults` option on `LiveSocket` constructor to configure default `phx-debounce` and `phx-throttle` values, allowing `<input .. phx-debounce />`
+
 ## 0.11.0 (2020-04-06)
 
 ### Backwards incompatible changes
