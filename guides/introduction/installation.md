@@ -211,7 +211,7 @@ Then in your `assets/css/app.css` file, import its style:
 @import "../node_modules/nprogress/nprogress.css";
 ```
 
-Finally customize LiveView to use it in your `assets/js/app.js`, right before the `liveView.connect()` call:
+Finally customize LiveView to use it in your `assets/js/app.js`, right before the `liveSocket.connect()` call:
 
 ```js
 import NProgress from "nprogress"
