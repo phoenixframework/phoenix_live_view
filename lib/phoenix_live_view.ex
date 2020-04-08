@@ -295,7 +295,7 @@ defmodule Phoenix.LiveView do
       </div>
 
   If the `@user.name` changes but `@user.id` doesn't, then LiveView
-  will re-render only `@user.name` and it execute or resend `@user.id`
+  will re-render only `@user.name` and it will not execute or resend `@user.id`
   at all.
 
   The change tracking also works when rendering other templates as
