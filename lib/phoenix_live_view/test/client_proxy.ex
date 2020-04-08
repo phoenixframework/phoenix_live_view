@@ -146,7 +146,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info({:sync_render, topic, path, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, {:ok, state.html |> DOM.outer_html([view.id | path]) |> DOM.to_html()})
+    selector = "#" <> Enum.join([view.id | path], " ")
+    GenServer.reply(from, {:ok, state.html |> DOM.find(selector) |> DOM.to_html()})
     {:noreply, state}
   end
 
@@ -361,7 +362,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     case DOM.patch_id(view.id, state.html, child_html) do
       {new_html, [_ | _] = deleted_cids, deleted_cid_ids} ->
         for id <- deleted_cid_ids,
-            do: send_caller(state, {:removed_component, view.topic, id})
+            do: send_caller(state, {:removed_component, view.topic, "#" <> id})
 
         push(%{state | html: new_html}, view, "cids_destroyed", %{"cids" => deleted_cids})
 
@@ -578,14 +579,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_add_cid_to_payload(_view, [], payload), do: payload
 
   defp maybe_add_cid_to_payload(view, [_ | _] = ids, payload) do
-    id = List.last(ids)
-    cid = DOM.cid_by_id(view.rendered, id)
-
-    if cid && DOM.by_id!(DOM.render_diff(view.rendered), ids) do
+    if cid = DOM.cid_by_selector(view.rendered, Enum.join(ids, " ")) do
       Map.put(payload, "cid", cid)
     else
       raise ArgumentError,
-            "no component with ID \"#{id}\" found in view #{inspect(view.module)}"
+            "no component found with selector #{inspect(ids)} in view #{inspect(view.module)}. " <>
+              "Note that each selector must be an ID, so make sure to prefix them with #"
     end
   end
 end

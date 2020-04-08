@@ -10,14 +10,12 @@ defmodule Phoenix.LiveViewTest.DOM do
     by_id(html_tree, id) || raise ArgumentError, "could not find ID #{inspect(id)} in the DOM"
   end
 
-  def cid_by_id(rendered, id) do
-    rendered
-    |> render_diff()
-    |> by_id!(id)
-    |> all_attributes(@phx_component)
-    |> case do
-      [cid] -> String.to_integer(cid)
-      [] -> nil
+  def cid_by_selector(rendered, selector) do
+    with [node | _] <- Floki.find(render_diff(rendered), selector),
+         [cid] <- all_attributes(node, @phx_component) do
+      String.to_integer(cid)
+    else
+      _ -> nil
     end
   end
 
@@ -41,7 +39,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def inner_html(html, id), do: html |> by_id!(id) |> child_nodes()
 
-  def outer_html(html, id), do: html |> by_id!(id)
+  def find(html, selector), do: Floki.find(html, selector)
 
   def find_static_views(html) do
     html
@@ -248,15 +246,6 @@ defmodule Phoenix.LiveViewTest.DOM do
         else
           raise ArgumentError, "phx-update append/prepend containers require an ID (#{id})"
         end
-    end
-  end
-
-  defp by_id(html_tree, ids) when is_list(ids) do
-    selector = Enum.join(Enum.map(ids, fn id -> "##{id}" end), " ")
-
-    case Floki.find(html_tree, selector) do
-      [node | _] -> node
-      [] -> nil
     end
   end
 

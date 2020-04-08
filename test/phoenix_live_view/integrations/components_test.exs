@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
-    assert_remove_component(view, "chris")
+    assert_remove_component(view, "#chris")
   end
 
   test "preloads", %{conn: conn} do
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.ComponentTest do
   test "handle_event delegates event to component", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
-    html = render_click([view, "chris"], "transform", %{"op" => "upcase"})
+    html = render_click([view, "#chris"], "transform", %{"op" => "upcase"})
 
     assert [
              _,
@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ["\n  jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "jose"], "transform", %{"op" => "title-case"})
+    html = render_click([view, "#jose"], "transform", %{"op" => "title-case"})
 
     assert [
              _,
@@ -90,7 +90,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ["\n  Jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "jose"], "transform", %{"op" => "dup"})
+    html = render_click([view, "#jose"], "transform", %{"op" => "dup"})
 
     assert [
              _,
@@ -105,7 +105,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "jose", "Jose-dup"], "transform", %{"op" => "upcase"})
+    html = render_click([view, "#jose", "#Jose-dup"], "transform", %{"op" => "upcase"})
 
     assert [
              _,
@@ -120,7 +120,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ]}
            ] = DOM.parse(html)
 
-    assert render([view, "jose", "Jose-dup"]) ==
+    assert render([view, "#jose", "#Jose-dup"]) ==
              "<div id=\"Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
   end
 
@@ -212,12 +212,12 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert [
                {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
                 ["\n  NEW-chris says hi with socket: true\n"]}
-             ] == DOM.parse(render([view, "chris"]))
+             ] == DOM.parse(render([view, "#chris"]))
 
       assert [
                {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
                 ["\n  NEW-jose says hi with socket: true\n"]}
-             ] == DOM.parse(render([view, "jose"]))
+             ] == DOM.parse(render([view, "#jose"]))
     end
 
     test "updates without :id raise", %{conn: conn} do
@@ -236,7 +236,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert html =~ "Redirect: none"
 
       assert {:error, {:redirect, %{to: "/components?redirect=push"}}} =
-               render_click([view, "chris"], "transform", %{"op" => "push_redirect"})
+               render_click([view, "#chris"], "transform", %{"op" => "push_redirect"})
 
       assert_redirect(view, "/components?redirect=push")
     end
@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert render_click([view, "chris"], "transform", %{"op" => "push_patch"}) =~
+      assert render_click([view, "#chris"], "transform", %{"op" => "push_patch"}) =~
                "Redirect: none"
 
       assert_redirect(view, "/components?redirect=patch")
@@ -255,7 +255,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert render_click([view, "chris"], "transform", %{"op" => "redirect"}) ==
+      assert render_click([view, "#chris"], "transform", %{"op" => "redirect"}) ==
                {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
 
       assert_redirect(view, "/components?redirect=redirect")
