@@ -35,6 +35,15 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
 
   """
+  def live_patch(%Socket{}, _) do
+    raise """
+    you are invoking live_patch/2 with a socket but a socket is not expected.
+
+    If you want to live_patch/2 inside a LiveView, use push_patch/2 instead.
+    If you are inside a template, make the sure the first argument is a string.
+    """
+  end
+
   def live_patch(opts, do: block) when is_list(opts) do
     live_link("patch", block, opts)
   end
@@ -73,15 +82,12 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
 
   """
-  # TODO: Remove once the deprecation period is over
   def live_redirect(%Socket{}, _) do
     raise """
-    you are invoking live_redirect/2 with a socket but live_redirect/2 \
-    inside a LiveView is deprecated.
+    you are invoking live_redirect/2 with a socket but a socket is not expected.
 
-    Instead you must use push_patch/2 to update the same LiveView or \
-    push_redirect/2 if you want to mount another LiveView in place of \
-    the current one.
+    If you want to live_redirect/2 inside a LiveView, use push_redirect/2 instead.
+    If you are inside a template, make the sure the first argument is a string.
     """
   end
 
