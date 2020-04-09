@@ -1,14 +1,13 @@
 # Installation
 
-While Phoenix LiveView is under heavy development, the installation instructions
-are likely to change rapidly as well. The instructions below will serve if you
-are installing the latest stable version from Hex. If you are installing from
-GitHub to get the latest features, follow the instructions in [the README
-there](https://github.com/phoenixframework/phoenix_live_view/blob/master/README.md#installation)
-instead.
+**Note:** Phoenix v1.5 comes with built-in support for LiveView apps. Just create
+your application with `mix phx.new my_app --live`. If you are using earlier Phoenix
+versions or your app already exists, keep on reading.
 
-To start using LiveView, add to your `mix.exs` and run `mix deps.get`. If
-installing from Hex, use the latest version from there:
+The instructions below will serve if you are installing the latest stable version
+from Hex. To start using LiveView, add to your `mix.exs` and run `mix deps.get`.
+
+If installing from Hex, use the latest version from there:
 
 ```elixir
 def deps do
