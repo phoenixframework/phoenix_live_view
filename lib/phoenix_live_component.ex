@@ -321,13 +321,11 @@ defmodule Phoenix.LiveComponent do
         new_assigns -> "New entry: " <> new_assigns[:entry]
       end
 
-  ## Live links and live redirects
+  ## Live patches and live redirects
 
-  A template rendered inside a component can use `live_link` calls. The
-  `live_link` is always handled by the parent `LiveView`, as components
-  do not provide `handle_params`. `live_redirect` from inside a component
-  is not currently supported. For such, you must send a message to the
-  LiveView itself, as mentioned above, which may then redirect.
+  A template rendered inside a component can use `live_patch` and
+  `live_redirect` calls. The `live_patch` is always handled by the parent
+  `LiveView`, as components do not provide `handle_params`.
 
   ## Limitations
 
