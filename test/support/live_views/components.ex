@@ -1,19 +1,3 @@
-defmodule Phoenix.LiveViewTest.BasicComponent do
-  use Phoenix.LiveComponent
-
-  def mount(socket) do
-    {:ok, assign(socket, id: nil, name: "unknown")}
-  end
-
-  def render(assigns) do
-    ~L"""
-    <div <%= if @id, do: Phoenix.HTML.raw("id=\"#{@id}\""), else: "" %>>
-      <%= @name %> says hi with socket: <%= !!@socket %>
-    </div>
-    """
-  end
-end
-
 defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
@@ -40,7 +24,8 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   def render(assigns) do
     ~L"""
     <div id="<%= @id %>" phx-target="#<%= @id %>">
-      <%= @name %> says hi with socket: <%= !!@socket %><%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
+      <%= @name %> says hi with socket: <%= !!@socket %>
+      <%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
     """
   end
@@ -77,7 +62,6 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
   def render(assigns) do
     ~L"""
     Redirect: <%= @redirect %>
-    <%= live_component @socket, Phoenix.LiveViewTest.BasicComponent %>
     <%= for name <- @names do %>
       <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent, id: name, name: name, from: @from %>
     <% end %>

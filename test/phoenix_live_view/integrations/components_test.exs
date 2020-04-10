@@ -27,11 +27,10 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", _,
               [
                 _,
-                {"div", [], ["\n  unknown says hi with socket: true\n"]},
                 {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-                 ["\n  chris says hi with socket: true\n"]},
+                 ["\n  chris says hi with socket: true\n  \n"]},
                 {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-                 ["\n  jose says hi with socket: true\n"]}
+                 ["\n  jose says hi with socket: true\n  \n"]}
               ]}
            ] = DOM.parse(render(view))
   end
@@ -74,36 +73,33 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     assert [
              _,
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-              ["\n  CHRIS says hi with socket: true\n"]},
+              ["\n  CHRIS says hi with socket: true\n" <> _]},
              {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-              ["\n  jose says hi with socket: true\n"]}
+              ["\n  jose says hi with socket: true\n" <> _]}
            ] = DOM.parse(html)
 
     html = render_click([view, "#jose"], "transform", %{"op" => "title-case"})
 
     assert [
              _,
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-              ["\n  CHRIS says hi with socket: true\n"]},
+              ["\n  CHRIS says hi with socket: true\n" <> _]},
              {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-              ["\n  Jose says hi with socket: true\n"]}
+              ["\n  Jose says hi with socket: true\n" <> _]}
            ] = DOM.parse(html)
 
     html = render_click([view, "#jose"], "transform", %{"op" => "dup"})
 
     assert [
              _,
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-              ["\n  CHRIS says hi with socket: true\n"]},
+              ["\n  CHRIS says hi with socket: true\n" <> _]},
              {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               [
-                "\n  Jose says hi with socket: true",
+                "\n  Jose says hi with socket: true\n  ",
                 {"div", [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
-                 ["\n  Jose-dup says hi with socket: true\n"]}
+                 ["\n  Jose-dup says hi with socket: true\n" <> _]}
               ]}
            ] = DOM.parse(html)
 
@@ -111,19 +107,18 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     assert [
              _,
-             {"div", [], ["\n  unknown says hi with socket: true\n"]},
              {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-              ["\n  CHRIS says hi with socket: true\n"]},
+              ["\n  CHRIS says hi with socket: true\n" <> _]},
              {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               [
-                "\n  Jose says hi with socket: true",
+                "\n  Jose says hi with socket: true\n  ",
                 {"div", [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
-                 ["\n  JOSE-DUP says hi with socket: true\n"]}
+                 ["\n  JOSE-DUP says hi with socket: true\n" <> _]}
               ]}
            ] = DOM.parse(html)
 
     assert render([view, "#jose", "#Jose-dup"]) ==
-             "<div id=\"Jose-dup\" phx-target=\"#Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
+             "<div id=\"Jose-dup\" phx-target=\"#Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n  \n</div>"
   end
 
   describe "send_update" do
@@ -148,12 +143,12 @@ defmodule Phoenix.LiveView.ComponentTest do
 
       assert [
                {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-                ["\n  NEW-chris says hi with socket: true\n"]}
+                ["\n  NEW-chris says hi with socket: true\n  \n"]}
              ] == DOM.parse(render([view, "#chris"]))
 
       assert [
                {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-                ["\n  NEW-jose says hi with socket: true\n"]}
+                ["\n  NEW-jose says hi with socket: true\n  \n"]}
              ] == DOM.parse(render([view, "#jose"]))
     end
 
