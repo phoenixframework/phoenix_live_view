@@ -17,7 +17,7 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   test "renders successfully when disconnected", %{conn: conn} do
     conn = get(conn, "/components")
-    assert html_response(conn, 200) =~ "<div id=\"chris\">"
+    assert html_response(conn, 200) =~ "<div id=\"chris\" phx-target=\"#chris\">"
   end
 
   test "renders successfully when connected", %{conn: conn} do
@@ -28,9 +28,9 @@ defmodule Phoenix.LiveView.ComponentTest do
               [
                 _,
                 {"div", [], ["\n  unknown says hi with socket: true\n"]},
-                {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+                {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
                  ["\n  chris says hi with socket: true\n"]},
-                {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+                {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
                  ["\n  jose says hi with socket: true\n"]}
               ]}
            ] = DOM.parse(render(view))
@@ -40,14 +40,16 @@ defmodule Phoenix.LiveView.ComponentTest do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}], ["\n  chris says" <> _]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
+             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+              ["\n  chris says" <> _]},
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+              ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}], ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     assert_remove_component(view, "#chris")
@@ -73,9 +75,9 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               ["\n  jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
@@ -84,9 +86,9 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               ["\n  Jose says hi with socket: true\n"]}
            ] = DOM.parse(html)
 
@@ -95,12 +97,12 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               [
                 "\n  Jose says hi with socket: true",
-                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                {"div", [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
                  ["\n  Jose-dup says hi with socket: true\n"]}
               ]}
            ] = DOM.parse(html)
@@ -110,18 +112,91 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert [
              _,
              {"div", [], ["\n  unknown says hi with socket: true\n"]},
-             {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
+             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
               ["\n  CHRIS says hi with socket: true\n"]},
-             {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
+             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
               [
                 "\n  Jose says hi with socket: true",
-                {"div", [{"id", "Jose-dup"}, {"data-phx-component", "2"}],
+                {"div", [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
                  ["\n  JOSE-DUP says hi with socket: true\n"]}
               ]}
            ] = DOM.parse(html)
 
     assert render([view, "#jose", "#Jose-dup"]) ==
-             "<div id=\"Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
+             "<div id=\"Jose-dup\" phx-target=\"#Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n</div>"
+  end
+
+  describe "send_update" do
+    test "updates child from parent", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      send(
+        view.pid,
+        {:send_update,
+         [
+           {StatefulComponent, id: "chris", name: "NEW-chris", from: self()},
+           {StatefulComponent, id: "jose", name: "NEW-jose", from: self()}
+         ]}
+      )
+
+      assert_receive {:preload, [%{id: "chris", name: "NEW-chris"}]}
+      assert_receive {:preload, [%{id: "jose", name: "NEW-jose"}]}
+      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
+      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
+      refute_receive {:updated, _}
+      refute_receive {:preload, _}
+
+      assert [
+               {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+                ["\n  NEW-chris says hi with socket: true\n"]}
+             ] == DOM.parse(render([view, "#chris"]))
+
+      assert [
+               {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+                ["\n  NEW-jose says hi with socket: true\n"]}
+             ] == DOM.parse(render([view, "#jose"]))
+    end
+
+    test "updates without :id raise", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
+               refute_receive {:updated, _}
+             end) =~ "** (ArgumentError) missing required :id in send_update"
+    end
+  end
+
+  describe "redirects" do
+    test "push_redirect", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
+
+      assert {:error, {:redirect, %{to: "/components?redirect=push"}}} =
+               render_click([view, "#chris"], "transform", %{"op" => "push_redirect"})
+
+      assert_redirect(view, "/components?redirect=push")
+    end
+
+    test "push_patch", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
+
+      assert render_click([view, "#chris"], "transform", %{"op" => "push_patch"}) =~
+               "Redirect: none"
+
+      assert_redirect(view, "/components?redirect=patch")
+    end
+
+    test "redirect", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/components")
+      assert html =~ "Redirect: none"
+
+      assert render_click([view, "#chris"], "transform", %{"op" => "redirect"}) ==
+               {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
+
+      assert_redirect(view, "/components?redirect=redirect")
+    end
   end
 
   defmodule MyComponent do
@@ -186,79 +261,6 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "nested render only" do
       assert render_component(NestedRenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
-    end
-  end
-
-  describe "send_update" do
-    test "updates child from parent", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/components")
-
-      send(
-        view.pid,
-        {:send_update,
-         [
-           {StatefulComponent, id: "chris", name: "NEW-chris", from: self()},
-           {StatefulComponent, id: "jose", name: "NEW-jose", from: self()}
-         ]}
-      )
-
-      assert_receive {:preload, [%{id: "chris", name: "NEW-chris"}]}
-      assert_receive {:preload, [%{id: "jose", name: "NEW-jose"}]}
-      assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
-      assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
-      refute_receive {:updated, _}
-      refute_receive {:preload, _}
-
-      assert [
-               {"div", [{"id", "chris"}, {"data-phx-component", "0"}],
-                ["\n  NEW-chris says hi with socket: true\n"]}
-             ] == DOM.parse(render([view, "#chris"]))
-
-      assert [
-               {"div", [{"id", "jose"}, {"data-phx-component", "1"}],
-                ["\n  NEW-jose says hi with socket: true\n"]}
-             ] == DOM.parse(render([view, "#jose"]))
-    end
-
-    test "updates without :id raise", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/components")
-
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
-               refute_receive {:updated, _}
-             end) =~ "** (ArgumentError) missing required :id in send_update"
-    end
-  end
-
-  describe "redirects" do
-    test "push_redirect", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/components")
-      assert html =~ "Redirect: none"
-
-      assert {:error, {:redirect, %{to: "/components?redirect=push"}}} =
-               render_click([view, "#chris"], "transform", %{"op" => "push_redirect"})
-
-      assert_redirect(view, "/components?redirect=push")
-    end
-
-    test "push_patch", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/components")
-      assert html =~ "Redirect: none"
-
-      assert render_click([view, "#chris"], "transform", %{"op" => "push_patch"}) =~
-               "Redirect: none"
-
-      assert_redirect(view, "/components?redirect=patch")
-    end
-
-    test "redirect", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/components")
-      assert html =~ "Redirect: none"
-
-      assert render_click([view, "#chris"], "transform", %{"op" => "redirect"}) ==
-               {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
-
-      assert_redirect(view, "/components?redirect=redirect")
     end
   end
 end

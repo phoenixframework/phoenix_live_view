@@ -146,8 +146,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info({:sync_render, topic, path, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    selector = "#" <> Enum.join([view.id | path], " ")
-    GenServer.reply(from, {:ok, state.html |> DOM.find(selector) |> DOM.to_html()})
+    GenServer.reply(from, {:ok, state |> view_selector_nodes(view, path) |> DOM.to_html()})
     {:noreply, state}
   end
 
@@ -273,7 +272,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
     payload =
-      maybe_add_cid_to_payload(view, path, %{
+      maybe_add_cid_to_payload(state, view, path, %{
         "value" => raw_val,
         "event" => to_string(event),
         "type" => to_string(type)
@@ -422,7 +421,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case fetch_view_by_topic(new_state, topic) do
       {:ok, view} ->
-        GenServer.reply(from, {:ok, new_state.html |> DOM.inner_html(view.id) |> DOM.to_html()})
+        GenServer.reply(from, {:ok, new_state.html |> DOM.inner_html!(view.id) |> DOM.to_html()})
         new_state
 
       :error ->
@@ -487,13 +486,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp recursive_detect_added_or_removed_children(state, view, html_before) do
     state.html
-    |> DOM.inner_html(view.id)
+    |> DOM.inner_html!(view.id)
     |> DOM.find_live_views()
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->
-          {_, _, inner_html} = DOM.by_id!(html_before, view.id)
-          patch_view(acc, view, inner_html)
+          patch_view(acc, view, DOM.inner_html!(html_before, view.id))
 
         :error ->
           static = static || Map.get(state.root_view.child_statics, id)
@@ -576,15 +574,48 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> build()
   end
 
-  defp maybe_add_cid_to_payload(_view, [], payload), do: payload
+  defp maybe_add_cid_to_payload(_state, _view, [], payload), do: payload
 
-  defp maybe_add_cid_to_payload(view, [_ | _] = ids, payload) do
-    if cid = DOM.cid_by_selector(view.rendered, Enum.join(ids, " ")) do
-      Map.put(payload, "cid", cid)
-    else
-      raise ArgumentError,
-            "no component found with selector #{inspect(ids)} in view #{inspect(view.module)}. " <>
-              "Note that each selector must be an ID, so make sure to prefix them with #"
+  defp maybe_add_cid_to_payload(state, view, [_ | _] = ids, payload) do
+    case view_selector(state, view, ids) do
+      {:cid, cid} -> Map.put(payload, "cid", cid)
+      :view -> payload
+    end
+  end
+
+  defp view_selector(state, view, path) do
+    selector = Enum.join(path, " ")
+    node = DOM.one!(state.html, "##{view.id} #{selector}", selector, "selector")
+
+    case DOM.all_attributes(node, "phx-target") do
+      [] ->
+        :view
+
+      ["#" <> _ = target] ->
+        target = DOM.one!(state.html, "##{view.id} #{target}", target, "phx-target")
+
+        if cid = DOM.component_id(target) do
+          {:cid, String.to_integer(cid)}
+        else
+          :view
+        end
+
+      [maybe_integer] ->
+        case Integer.parse(maybe_integer) do
+          {cid, ""} ->
+            {:cid, cid}
+
+          _ ->
+            raise ArgumentError,
+                  "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"
+        end
+    end
+  end
+
+  defp view_selector_nodes(state, view, path) do
+    case view_selector(state, view, path) do
+      {:cid, cid} -> DOM.all(state.html, "##{view.id} #{DOM.component_selector(cid)}")
+      :view -> DOM.by_id!(state.html, view.id)
     end
   end
 end

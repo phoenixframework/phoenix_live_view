@@ -131,13 +131,17 @@ defmodule Phoenix.LiveViewTest do
   If you want to test how components are mounted by a LiveView and
   interact with DOM events, you can use the regular `live/2` macro
   to build the LiveView with the component and then scope events by
-  passing the view and the component **DOM ID selector** in a list:
+  passing the view and a **DOM selector** in a list:
 
       {:ok, view, html} = live(conn, "/users")
       html = render_click([view, "#user-13"], "delete", %{})
       refute html =~ "user-13"
       assert_remove_component(view, "#user-13")
 
+  In the example above, LiveView will lookup for an element with
+  ID=user-13 and retrieve its `phx-target`. If `phx-target` points
+  to a component, that will be the component used, otherwise it will
+  fallback to the view.
   """
 
   require Phoenix.ConnTest

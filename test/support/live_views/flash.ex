@@ -46,7 +46,7 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def render(assigns) do
     ~L"""
-    <div id="<%= @id %>">
+    <div id="<%= @id %>" phx-target="<%= @myself %>">
     component[<%= live_flash(@flash, :info) %>]:info
     component[<%= live_flash(@flash, :error) %>]:error
     </div>

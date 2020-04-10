@@ -39,7 +39,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def render(assigns) do
     ~L"""
-    <div id="<%= @id %>">
+    <div id="<%= @id %>" phx-target="#<%= @id %>">
       <%= @name %> says hi with socket: <%= !!@socket %><%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
     """

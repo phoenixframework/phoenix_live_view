@@ -398,7 +398,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
                <button phx-click="inc">+</button>
                """)
 
-      assert DOM.child_nodes(hd(DOM.parse(render(view)))) ==
+      [{_, _, child_nodes} | _] = DOM.parse(render(view))
+
+      assert child_nodes ==
                DOM.parse("""
                Redirect: none\nThe temp is: 3
                <button phx-click="dec">-</button>
