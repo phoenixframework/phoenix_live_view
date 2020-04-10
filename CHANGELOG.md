@@ -1,3 +1,8 @@
+## 0.11.2-dev
+
+### Bug fixes
+  - Fix phx-target @myself targetting a sibling LiveView component with the same component ID
+
 ## 0.11.1 (2020-04-08)
 
 ### Bug fixes

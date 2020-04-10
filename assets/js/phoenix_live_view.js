@@ -502,9 +502,9 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  withinTargets(phxTarget, callback){
+  withinTargets(el, phxTarget, callback){
     if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
-      let myselfTarget = DOM.findFirstComponentNode(document, phxTarget)
+      let myselfTarget = el
       if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
       this.owner(myselfTarget , view => callback(view, myselfTarget))
     } else {
@@ -521,7 +521,7 @@ export class LiveSocket {
     if(phxTarget === null){
       this.owner(childEl, view => callback(view, childEl))
     } else {
-      this.withinTargets(phxTarget, callback)
+      this.withinTargets(childEl, phxTarget, callback)
     }
   }
 
@@ -2065,7 +2065,7 @@ class ViewHook {
   }
 
   pushEventTo(phxTarget, event, payload = {}){
-    this.__liveSocket.withinTargets(phxTarget, (view, targetCtx) => {
+    this.__liveSocket.withinTargets(null, phxTarget, (view, targetCtx) => {
       view.pushHookEvent(targetCtx, event, payload)
     })
   }
