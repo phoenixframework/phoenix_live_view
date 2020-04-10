@@ -51,7 +51,7 @@
 ### Backwards incompatible changes
   - Rename socket assign `@live_view_module` to `@live_module`
   - Rename socket assign `@live_view_action` to `@live_action`
-  - LiveView no longer uses the default app layout and `put_live_layout` is no longer supported. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
+  - LiveView no longer uses the default app layout and `put_live_layout` is no longer supported. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/0.10.0/Phoenix.LiveView.html#module-live-layouts) section of the docs.
 
 ### Bug fixes
   - Fix loading states causing nested LiveViews to be removed during live navigation
