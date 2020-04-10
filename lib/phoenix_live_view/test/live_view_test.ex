@@ -529,20 +529,20 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the current list of children of the parent live view.
+  Returns the current list of live view children for the `parent` live view.
 
   Children are returned in the order they appear in the rendered HTML.
 
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
-      assert [clock_view] = children(view)
+      assert [clock_view] = live_children(view)
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
-  def children(%View{} = parent) do
+  def live_children(%View{} = parent) do
     parent
     |> proxy_pid()
-    |> GenServer.call({:children, proxy_topic(parent)})
+    |> GenServer.call({:live_children, proxy_topic(parent)})
   end
 
   @doc """
@@ -556,7 +556,7 @@ defmodule Phoenix.LiveViewTest do
   """
   def find_child(%View{} = parent, child_id) do
     parent
-    |> children()
+    |> live_children()
     |> Enum.find(fn %View{id: id} -> id == child_id end)
   end
 
@@ -624,7 +624,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      [child1, child2] = children(parent_view)
+      [child1, child2] = live_children(parent_view)
       send(parent_view.pid, :msg_that_removes_children)
 
       assert_remove child1, _
