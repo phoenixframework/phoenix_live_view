@@ -466,16 +466,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           new_state.html
           |> DOM.all("[data-phx-view]")
           |> DOM.all_attributes("id")
-          |> Enum.reduce(%{}, fn id, seen ->
-            if Map.has_key?(seen, id) do
-              raise "duplicate LiveView id: #{inspect(id)}"
-            else
-              Map.put(seen, id, true)
-            end
-          end)
+          |> MapSet.new()
 
         Enum.reduce(new_view.children, new_state, fn {id, _session}, acc ->
-          if Map.has_key?(ids_after, id) do
+          if id in ids_after do
             acc
           else
             drop_child(acc, new_view, id, :removed)

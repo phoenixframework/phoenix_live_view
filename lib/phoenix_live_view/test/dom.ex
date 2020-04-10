@@ -23,10 +23,12 @@ defmodule Phoenix.LiveViewTest.DOM do
         node
 
       [_ | _] ->
-        "expected #{type} #{inspect(error_selector)} to return a single element, but got many"
+        raise ArgumentError,
+              "expected #{type} #{inspect(error_selector)} to return a single element, but got many"
 
       [] ->
-        "expected #{type} #{inspect(error_selector)} to return a single element, but got none"
+        raise ArgumentError,
+              "expected #{type} #{inspect(error_selector)} to return a single element, but got none"
     end
   end
 

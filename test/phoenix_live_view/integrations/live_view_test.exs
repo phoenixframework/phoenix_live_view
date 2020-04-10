@@ -624,7 +624,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                :ok = GenServer.call(view.pid, {:dynamic_child, :static})
                catch_exit(render(view))
-             end) =~ "duplicate LiveView id: \"static\""
+             end) =~ "expected selector \"#static\" to return a single element, but got many"
     end
 
     test "live view nested inside a live component" do
