@@ -893,7 +893,7 @@ defmodule Phoenix.LiveView do
     * the live layout - this is the layout which wraps a LiveView and
       is rendered as part of the LiveView life-cycle
 
-  Overall, those layouts are found in `templates/layouts` with the
+  Overall, those layouts are found in `templates/layout` with the
   following names:
 
       * root.html.eex
