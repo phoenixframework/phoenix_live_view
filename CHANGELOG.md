@@ -1,8 +1,14 @@
-## 0.11.2-dev
+# Changelog
+
+## 0.?.?
 
 ### Bug fixes
   - Fix phx-target @myself targetting a sibling LiveView component with the same component ID
   - Fix phx:page-loading-stop firing before the DOM patch has been performed
+
+### Backwards incompatible changes
+  - `Phoenix.LiveViewTest.children/1` has been renamed to `Phoenix.LiveViewTest.live_children/1`
+  - `Phoenix.LiveViewTest.find_child/2` has been renamed to `Phoenix.LiveViewTest.get_live_child/2`
 
 ## 0.11.1 (2020-04-08)
 
