@@ -2,6 +2,7 @@
 
 ### Bug fixes
   - Fix phx-target @myself targetting a sibling LiveView component with the same component ID
+  - Fix phx:page-loading-stop firing before the DOM patch has been performed
 
 ## 0.11.1 (2020-04-08)
 
