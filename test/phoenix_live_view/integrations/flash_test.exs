@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "nested redirect with flash", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      flash_child = find_child(flash_live, "flash-child")
+      flash_child = get_live_child(flash_live, "flash-child")
       render_click(flash_child, "redirect", %{"to" => "/flash-root?redirect", "info" => "ok!"})
       assert_redirect(flash_child, "/flash-root?redirect", %{"info" => "ok!"})
     end
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "nested push_redirect with flash", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      flash_child = find_child(flash_live, "flash-child")
+      flash_child = get_live_child(flash_live, "flash-child")
       render_click(flash_child, "push_redirect", %{"to" => "/flash-root?push", "info" => "ok!"})
       assert_redirect(flash_child, "/flash-root?push", %{"info" => "ok!"})
     end
@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "nested push_patch with flash", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      flash_child = find_child(flash_live, "flash-child")
+      flash_child = get_live_child(flash_live, "flash-child")
       render_click(flash_child, "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
 
       result = render(flash_live)

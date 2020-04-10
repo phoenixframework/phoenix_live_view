@@ -113,7 +113,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert render(parent) =~ "some content in child"
 
-      assert child = find_child(parent, "child-dom-id")
+      assert child = get_live_child(parent, "child-dom-id")
       send(parent.pid, :msg_that_removes_child)
 
       assert_remove child, _
@@ -442,7 +442,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
+      assert render_keyup([view, "#child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keyup(view, event, key_code) do
     render_event(view, :keyup, event, key_code)
@@ -456,7 +456,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-      assert render_keyup([view, "child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
+      assert render_keyup([view, "#child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
   """
   def render_keydown(view, event, key_code) do
     render_event(view, :keydown, event, key_code)
@@ -470,7 +470,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
-      assert render_blur([view, "child-id"], :inactive) =~ "Tap to wake"
+      assert render_blur([view, "#child-id"], :inactive) =~ "Tap to wake"
   """
   def render_blur(view, event, value \\ %{}) do
     render_event(view, :blur, event, value)
@@ -485,7 +485,7 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
       assert render_focus(view, :active) =~ "Waking up..."
-      assert render_focus([view, "child-id"], :active) =~ "Waking up..."
+      assert render_focus([view, "#child-id"], :active) =~ "Waking up..."
   """
   def render_focus(view, event, value \\ %{}) do
     render_event(view, :focus, event, value)
@@ -507,7 +507,7 @@ defmodule Phoenix.LiveViewTest do
   defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
     case GenServer.call(
            proxy_pid(view),
-           {:render_event, proxy_topic(view), path, to_string(type), to_string(event), value}
+           {:render_event, proxy_topic(view), path, type, to_string(event), value}
          ) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
@@ -521,7 +521,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
-  def render_patch(view, path) do
+  def render_patch(%View{} = view, path) do
     case GenServer.call(proxy_pid(view), {:render_patch, proxy_topic(view), path}) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
@@ -529,7 +529,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the current list of live view children for the `parent` live view.
+  Returns the current list of live view children for the `parent` LiveView.
 
   Children are returned in the order they appear in the rendered HTML.
 
@@ -546,15 +546,15 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Finds the nested LiveView child given a parent.
+  Gets the nested LiveView child by `child_id` from the `parent` LiveView.
 
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
-      assert clock_view = find_child(view, "clock")
+      assert clock_view = get_live_child(view, "#clock")
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
-  def find_child(%View{} = parent, child_id) do
+  def get_live_child(%View{} = parent, child_id) do
     parent
     |> live_children()
     |> Enum.find(fn %View{id: id} -> id == child_id end)

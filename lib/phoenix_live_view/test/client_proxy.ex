@@ -279,7 +279,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       maybe_add_cid_to_payload(state, view, path, %{
         "value" => stringify(type, value),
         "event" => event,
-        "type" => type
+        "type" => Atom.to_string(type)
       })
 
     {:noreply, push_with_reply(state, from, view, "event", payload)}
@@ -617,7 +617,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp stringify("form", value), do: Plug.Conn.Query.encode(value)
+  defp stringify(:form, value), do: Plug.Conn.Query.encode(value)
   defp stringify(_, value), do: stringify(value)
 
   defp stringify(%{__struct__: _} = struct),
