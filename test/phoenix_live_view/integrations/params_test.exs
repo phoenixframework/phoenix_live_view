@@ -185,7 +185,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "from event callback ack", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
-      assert render_click(counter_live, :push_patch, "/counter/123?from=event_ack") =~
+      assert render_click(counter_live, :push_patch, %{to: "/counter/123?from=event_ack"}) =~
                escape(~s|%{"from" => "event_ack", "id" => "123"}|)
 
       assert_redirect(counter_live, "/counter/123?from=event_ack")
@@ -246,7 +246,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       assert {:error, {:live_redirect, %{to: "/thermo/123"}}} =
-               render_click(counter_live, :push_redirect, "/thermo/123")
+               render_click(counter_live, :push_redirect, %{to: "/thermo/123"})
 
       assert_redirect(counter_live, "/thermo/123")
 

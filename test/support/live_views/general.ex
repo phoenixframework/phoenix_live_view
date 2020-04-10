@@ -56,11 +56,11 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, redirect(socket, to: to)}
   end
 
-  def handle_event("inactive", msg, socket) do
+  def handle_event("inactive", %{"value" => msg}, socket) do
     {:noreply, assign(socket, :greeting, "Tap to wake – #{msg}")}
   end
 
-  def handle_event("active", msg, socket) do
+  def handle_event("active", %{"value" => msg}, socket) do
     {:noreply, assign(socket, :greeting, "Waking up – #{msg}")}
   end
 

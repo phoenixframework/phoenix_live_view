@@ -307,7 +307,7 @@ defmodule Phoenix.LiveViewTest do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     %ClientProxy{ref: ref} =
-      view =
+      proxy =
       ClientProxy.build(
         id: id,
         connect_params: opts[:connect_params] || %{},
@@ -321,23 +321,23 @@ defmodule Phoenix.LiveViewTest do
     opts = [
       caller: {self(), ref},
       html: html,
-      view: view,
+      proxy: proxy,
       timeout: timeout,
       session: Plug.Conn.get_session(conn),
       url: mount_url(endpoint, path)
     ]
 
     case ClientProxy.start_link(opts) do
-      {:ok, proxy_pid} ->
+      {:ok, _} ->
         receive do
-          {^ref, {:mounted, view_pid, html}} ->
+          {^ref, {:mounted, view, html}} ->
             receive do
               {^ref, {:redirect, _topic, opts}} ->
-                ensure_down!(view_pid)
+                ensure_down!(view.pid)
                 {:error, {:redirect, opts}}
             after
               0 ->
-                {:ok, build_test_view(view, view_pid, proxy_pid), html}
+                {:ok, view, html}
             end
         end
 
@@ -355,10 +355,6 @@ defmodule Phoenix.LiveViewTest do
   defp mount_url(_endpoint, nil), do: nil
   defp mount_url(endpoint, "/"), do: endpoint.url()
   defp mount_url(endpoint, path), do: Path.join(endpoint.url(), path)
-
-  defp build_test_view(%ClientProxy{id: id, ref: ref} = view, view_pid, proxy_pid) do
-    %View{id: id, pid: view_pid, proxy: {ref, view.topic, proxy_pid}, module: view.module}
-  end
 
   defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: ""}),
     do: request_path
@@ -422,8 +418,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
   def render_submit(view, event, value \\ %{}) do
-    encoded_form = Plug.Conn.Query.encode(value)
-    render_event(view, :form, event, encoded_form)
+    render_event(view, :form, event, value)
   end
 
   @doc """
@@ -436,8 +431,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
   def render_change(view, event, value \\ %{}) do
-    encoded_form = Plug.Conn.Query.encode(value)
-    render_event(view, :form, event, encoded_form)
+    render_event(view, :form, event, value)
   end
 
   @doc """
@@ -510,10 +504,10 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :hook, event, value)
   end
 
-  defp render_event([%View{} = view | path], type, event, value) do
+  defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
     case GenServer.call(
            proxy_pid(view),
-           {:render_event, proxy_topic(view), type, path, event, stringify(value)}
+           {:render_event, proxy_topic(view), path, to_string(type), to_string(event), value}
          ) do
       {:ok, html} -> html
       {:error, reason} -> {:error, reason}
@@ -549,9 +543,6 @@ defmodule Phoenix.LiveViewTest do
     parent
     |> proxy_pid()
     |> GenServer.call({:children, proxy_topic(parent)})
-    |> Enum.map(fn %ClientProxy{} = proxy_view ->
-      build_test_view(proxy_view, proxy_view.pid, proxy_view.proxy)
-    end)
   end
 
   @doc """
@@ -675,18 +666,6 @@ defmodule Phoenix.LiveViewTest do
       timeout -> {:error, :timeout}
     end
   end
-
-  defp stringify(%{__struct__: _} = struct),
-    do: struct
-
-  defp stringify(%{} = params),
-    do: Enum.into(params, %{}, &stringify_kv/1)
-
-  defp stringify(other),
-    do: other
-
-  defp stringify_kv({k, v}),
-    do: {to_string(k), stringify(v)}
 
   defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
   defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic

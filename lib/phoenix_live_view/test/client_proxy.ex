@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             id: nil,
             connect_params: %{}
 
-  alias Phoenix.LiveViewTest.{ClientProxy, DOM}
+  alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
 
   @doc """
   Encoding used by the Channel serializer.
@@ -40,7 +40,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def init(opts) do
     {_caller_pid, _caller_ref} = caller = Keyword.fetch!(opts, :caller)
     root_html = Keyword.fetch!(opts, :html)
-    root_view = Keyword.fetch!(opts, :view)
+    root_view = Keyword.fetch!(opts, :proxy)
     timeout = Keyword.fetch!(opts, :timeout)
     session = Keyword.fetch!(opts, :session)
     url = Keyword.fetch!(opts, :url)
@@ -66,13 +66,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           |> put_view(root_view, pid, rendered)
           |> detect_added_or_removed_children(root_view, root_html)
 
-        send_caller(new_state, {:mounted, pid, DOM.to_html(new_state.html)})
+        send_caller(new_state, {:mounted, build_view(root_view, pid), DOM.to_html(new_state.html)})
         {:ok, new_state}
 
       {:error, reason} ->
         send_caller(state, reason)
         :ignore
     end
+  end
+
+  defp build_view(%ClientProxy{id: id, ref: ref, topic: topic, module: module}, view_pid) do
+    %View{id: id, pid: view_pid, proxy: {ref, topic, self()}, module: module}
   end
 
   defp mount_view(state, view, timeout, url) do
@@ -135,7 +139,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     children =
       Enum.flat_map(view.children, fn {id, _session} ->
         case fetch_view_by_id(state, id) do
-          {:ok, child} -> [child]
+          {:ok, child} -> [build_view(child, child.pid)]
           :error -> []
         end
       end)
@@ -268,14 +272,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_event, topic, type, path, event, raw_val}, from, state) do
+  def handle_call({:render_event, topic, path, type, event, value}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
     payload =
       maybe_add_cid_to_payload(state, view, path, %{
-        "value" => raw_val,
-        "event" => to_string(event),
-        "type" => to_string(type)
+        "value" => stringify(type, value),
+        "event" => event,
+        "type" => type
       })
 
     {:noreply, push_with_reply(state, from, view, "event", payload)}
@@ -612,4 +616,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       :view -> DOM.by_id!(state.html, view.id)
     end
   end
+
+  defp stringify("form", value), do: Plug.Conn.Query.encode(value)
+  defp stringify(_, value), do: stringify(value)
+
+  defp stringify(%{__struct__: _} = struct),
+    do: struct
+
+  defp stringify(%{} = params),
+    do: Enum.into(params, %{}, &stringify_kv/1)
+
+  defp stringify(other),
+    do: other
+
+  defp stringify_kv({k, v}),
+    do: {to_string(k), stringify(v)}
 end

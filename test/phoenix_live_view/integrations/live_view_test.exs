@@ -239,12 +239,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
              end)
     end
 
-    test "render_click with string value", %{conn: conn} do
-      {:ok, view, _} = live(conn, "/thermo")
-      assert render_click(view, :save, "22") =~ "The temp is: 22"
-    end
-
-    test "render_click with map value", %{conn: conn} do
+    test "render_click", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_click(view, :save, %{temp: 20}) =~ "The temp is: 20"
     end
@@ -285,8 +280,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_blur and render_focus", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render(view) =~ "The temp is: 1", view.id
-      assert render_blur(view, :inactive, "Zzz") =~ "Tap to wake – Zzz"
-      assert render_focus(view, :active, "Hello!") =~ "Waking up – Hello!"
+      assert render_blur(view, :inactive, %{value: "Zzz"}) =~ "Tap to wake – Zzz"
+      assert render_focus(view, :active, %{value: "Hello!"}) =~ "Waking up – Hello!"
     end
 
     test "render_hook", %{conn: conn} do
@@ -725,7 +720,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
 
-      assert render_click(view, :double, "") ==
+      assert render_click(view, :double) ==
                "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
     end
 
@@ -736,7 +731,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~
                ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
-      assert render_click(view, :double, "") ==
+      assert render_click(view, :double) ==
                "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"
     end
 
@@ -744,7 +739,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "is picked from config on mount when given false", %{conn: conn} do
       {:ok, view, html} = live(conn, "/layout")
       assert html =~ "The value is: 123</div>"
-      assert render_click(view, :double, "") == "The value is: 246"
+      assert render_click(view, :double) == "The value is: 246"
     end
 
     test "is not picked from config on use for child live views", %{conn: conn} do

@@ -61,11 +61,11 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_redirect(socket, to: to)}
   end
 
-  def handle_event("push_patch", to, socket) do
+  def handle_event("push_patch", %{"to" => to}, socket) do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_event("push_redirect", to, socket) do
+  def handle_event("push_redirect", %{"to" => to}, socket) do
     {:noreply, push_redirect(socket, to: to)}
   end
 end
