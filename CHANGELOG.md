@@ -31,6 +31,7 @@
 
 ### Backwards incompatible changes
   - Remove socket.assigns during render to avoid change tracking bugs. If you were previously relying on passing `@socket` to functions then referencing socket assigns, pass the explicit assign instead to your functions from the template
+  - Removed `assets/css/live_view.css`. If you want to show a progress bar then in `app.css` replace `@import "../../../../deps/phoenix_live_view/assets/css/live_view.css";` with `@import "../node_modules/nprogress/nprogress.css";` and add `nprogress` to `assets/package.json`. Full details in the [Progress animation guide](https://hexdocs.pm/phoenix_live_view/0.11.0/installation.html#progress-animation)
 
 ### Bug fixes
   - Fix client issue with greater than two levels of LiveView nesting
