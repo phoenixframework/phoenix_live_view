@@ -31,8 +31,12 @@ defmodule Phoenix.LiveViewTest.DOM do
   def all_attributes(html_tree, name), do: Floki.attribute(html_tree, name)
 
   def all_values({_, attributes, _}) do
-    for {"phx-value-" <> key, value} <- attributes, do: {key, value}, into: %{}
+    for {attr, value} <- attributes, key = value_key(attr), do: {key, value}, into: %{}
   end
+
+  defp value_key("phx-value-" <> key), do: key
+  defp value_key("value"), do: "value"
+  defp value_key(_), do: nil
 
   def to_html(html_tree), do: Floki.raw_html(html_tree)
 

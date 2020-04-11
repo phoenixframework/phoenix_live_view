@@ -61,9 +61,17 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "clicks the given element with value", %{live: view} do
       assert view |> element("span#span-click-value") |> render_click() =~
+               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-click-value") |> render_click(%{"value" => "override"}) =~
+               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "clicks the given element with phx-value", %{live: view} do
+      assert view |> element("span#span-click-phx-value") |> render_click() =~
                ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
 
-      assert view |> element("span#span-click-value") |> render_click(%{"foo" => "override"}) =~
+      assert view |> element("span#span-click-phx-value") |> render_click(%{"foo" => "override"}) =~
                ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
     end
 
