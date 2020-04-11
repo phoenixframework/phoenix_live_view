@@ -229,7 +229,6 @@ defmodule Phoenix.LiveView.Channel do
         {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, :redirect, %{to: _to} = opts} ->
-        send(new_state.transport_pid, {:socket_close, self(), {:redirect, opts}})
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, {params, action}, %{to: to} = opts} ->
@@ -389,13 +388,17 @@ defmodule Phoenix.LiveView.Channel do
 
     case result do
       {:redirect, %{to: _to} = opts} ->
+        opts = copy_flash(new_state, flash, opts)
+
         new_state
-        |> push_redirect(flash, opts, ref)
+        |> push_redirect(opts, ref)
         |> stop_shutdown_redirect(opts)
 
       {:live, :redirect, %{to: _to} = opts} ->
+        opts = copy_flash(new_state, flash, opts)
+
         new_state
-        |> push_live_redirect(flash, opts, ref)
+        |> push_live_redirect(opts, ref)
         |> stop_shutdown_redirect(opts)
 
       {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
@@ -452,20 +455,20 @@ defmodule Phoenix.LiveView.Channel do
     push(state, "live_patch", opts)
   end
 
-  defp push_redirect(state, flash, opts, nil = _ref) do
-    push(state, "redirect", copy_flash(state, flash, opts))
+  defp push_redirect(state, opts, nil = _ref) do
+    push(state, "redirect", opts)
   end
 
-  defp push_redirect(state, flash, opts, ref) do
-    reply(state, ref, :ok, %{redirect: copy_flash(state, flash, opts)})
+  defp push_redirect(state, opts, ref) do
+    reply(state, ref, :ok, %{redirect: opts})
   end
 
-  defp push_live_redirect(state, flash, opts, nil = _ref) do
-    push(state, "live_redirect", copy_flash(state, flash, opts))
+  defp push_live_redirect(state, opts, nil = _ref) do
+    push(state, "live_redirect", opts)
   end
 
-  defp push_live_redirect(state, flash, opts, ref) do
-    reply(state, ref, :ok, %{live_redirect: copy_flash(state, flash, opts)})
+  defp push_live_redirect(state, opts, ref) do
+    reply(state, ref, :ok, %{live_redirect: opts})
   end
 
   defp push_noop(state, nil = _ref), do: state

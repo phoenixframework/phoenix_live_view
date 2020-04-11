@@ -66,7 +66,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           |> put_view(root_view, pid, rendered)
           |> detect_added_or_removed_children(root_view, root_html)
 
-        send_caller(new_state, {:mounted, build_view(root_view, pid), DOM.to_html(new_state.html)})
+        send_caller(
+          new_state,
+          {:mounted, build_view(root_view, pid), DOM.to_html(new_state.html)}
+        )
+
         {:ok, new_state}
 
       {:error, reason} ->

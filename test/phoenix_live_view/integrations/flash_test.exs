@@ -23,7 +23,9 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
-      render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:error, {:redirect, %{flash: _}}} =
+        render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
       assert_redirect(flash_child, "/flash-root", flash)
       assert flash == %{"info" => "ok!"}
     end
@@ -31,7 +33,10 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash does not include previous event flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
       render_click(flash_child, "set_error", %{"error" => "ok!"})
-      render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
+      {:error, {:redirect, %{flash: _}}} =
+        render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
       assert_redirect(flash_child, "/flash-root", flash)
       assert flash == %{"info" => "ok!"}
     end
@@ -39,7 +44,9 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
-      render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:error, {:live_redirect, %{flash: _}}} =
+        render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
       assert_redirect(flash_child, "/flash-root", flash)
       assert flash == %{"info" => "ok!"}
     end
@@ -48,7 +55,10 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
       render_click(flash_child, "set_error", %{"error" => "ok!"})
-      render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
+      {:error, {:live_redirect, %{flash: _}}} =
+        render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
       assert_redirect(flash_child, "/flash-root", flash)
       assert flash == %{"info" => "ok!"}
     end
@@ -127,10 +137,11 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "#flash-component"], "redirect", %{
-        "to" => "/flash-root",
-        "info" => "ok!"
-      })
+      {:error, {:redirect, %{flash: _}}} =
+        render_click([flash_live, "#flash-component"], "redirect", %{
+          "to" => "/flash-root",
+          "info" => "ok!"
+        })
 
       assert_redirect(flash_live, "/flash-root", %{"info" => "ok!"})
     end
@@ -138,10 +149,11 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_redirect with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "#flash-component"], "push_redirect", %{
-        "to" => "/flash-root",
-        "info" => "ok!"
-      })
+      {:error, {:redirect, %{flash: _}}} =
+        render_click([flash_live, "#flash-component"], "push_redirect", %{
+          "to" => "/flash-root",
+          "info" => "ok!"
+        })
 
       assert_redirect(flash_live, "/flash-root", %{"info" => "ok!"})
     end
@@ -164,7 +176,9 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash from LiveView to DeadView", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click(flash_live, "redirect", %{"to" => "/", "info" => "ok!"})
+      {:error, {:redirect, %{flash: _}}} =
+        render_click(flash_live, "redirect", %{"to" => "/", "info" => "ok!"})
+
       assert_redirect(flash_live, "/", %{"info" => "ok!"})
     end
 
@@ -174,7 +188,6 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
         |> LiveView.Router.fetch_live_flash([])
         |> Phoenix.Controller.put_flash(:info, "flash from the dead")
         |> Phoenix.Controller.redirect(to: "/flash-root")
-        |> recycle()
         |> get("/flash-root")
 
       assert html_response(conn, 200) =~ "flash from the dead"
