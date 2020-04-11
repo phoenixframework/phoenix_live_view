@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             id: nil,
             connect_params: %{}
 
-  alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
 
   @doc """
   Encoding used by the Channel serializer.
@@ -153,9 +153,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, topic, path, from}, state) do
+  def handle_info({:sync_render, topic, view_or_element, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, {:ok, state |> view_selector_nodes(view, path) |> DOM.to_html()})
+    GenServer.reply(from, state |> select_nodes(view, view_or_element) |> DOM.to_html())
     {:noreply, state}
   end
 
@@ -270,10 +270,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  def handle_call({:render_tree, topic, path}, from, state) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
-    :ok = Phoenix.LiveView.Channel.ping(view.pid)
-    send(self(), {:sync_render, topic, path, from})
+  def handle_call({:render_tree, view_or_element}, from, state) do
+    topic = proxy_topic(view_or_element)
+    {:ok, %{pid: pid}} = fetch_view_by_topic(state, topic)
+    :ok = Phoenix.LiveView.Channel.ping(pid)
+    send(self(), {:sync_render, topic, view_or_element, from})
     {:noreply, state}
   end
 
@@ -584,22 +585,38 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_add_cid_to_payload(_state, _view, [], payload), do: payload
 
   defp maybe_add_cid_to_payload(state, view, [_ | _] = ids, payload) do
-    case view_selector(state, view, ids) do
+    case view_selector(state, view, Enum.join(ids, " ")) do
       {:cid, cid} -> Map.put(payload, "cid", cid)
       :view -> payload
     end
   end
 
-  defp view_selector(state, view, path) do
-    selector = Enum.join(path, " ")
-    node = DOM.one!(state.html, "##{view.id} #{selector}", selector, "selector")
+  ## Element helpers
+
+  defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
+  defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
+
+  defp select_nodes(state, view, %Element{selector: selector}) do
+    case view_selector(state, view, selector) do
+      {:cid, cid} -> DOM.all(state.html, "##{view.id} #{DOM.component_selector(cid)}")
+      :view -> DOM.by_id!(state.html, view.id)
+    end
+  end
+
+  defp select_nodes(state, view, %View{}) do
+    DOM.by_id!(state.html, view.id)
+  end
+
+  defp view_selector(state, view, selector) do
+    tree = DOM.by_id!(state.html, view.id)
+    node = DOM.one!(tree, selector, "selector")
 
     case DOM.all_attributes(node, "phx-target") do
       [] ->
         :view
 
       ["#" <> _ = target] ->
-        target = DOM.one!(state.html, "##{view.id} #{target}", target, "phx-target")
+        target = DOM.one!(tree, target, "phx-target")
 
         if cid = DOM.component_id(target) do
           {:cid, String.to_integer(cid)}
@@ -616,13 +633,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             raise ArgumentError,
                   "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"
         end
-    end
-  end
-
-  defp view_selector_nodes(state, view, path) do
-    case view_selector(state, view, path) do
-      {:cid, cid} -> DOM.all(state.html, "##{view.id} #{DOM.component_selector(cid)}")
-      :view -> DOM.by_id!(state.html, view.id)
     end
   end
 

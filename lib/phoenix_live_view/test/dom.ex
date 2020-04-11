@@ -13,22 +13,18 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
-  def one!(html_tree, selector) do
-    one!(html_tree, selector, selector, :selector)
-  end
-
-  def one!(html_tree, actual_selector, error_selector, type) do
-    case all(html_tree, actual_selector) do
+  def one!(html_tree, selector, type \\ :selector) do
+    case all(html_tree, selector) do
       [node] ->
         node
 
       [_ | _] ->
         raise ArgumentError,
-              "expected #{type} #{inspect(error_selector)} to return a single element, but got many"
+              "expected #{type} #{inspect(selector)} to return a single element, but got many"
 
       [] ->
         raise ArgumentError,
-              "expected #{type} #{inspect(error_selector)} to return a single element, but got none"
+              "expected #{type} #{inspect(selector)} to return a single element, but got none"
     end
   end
 

@@ -149,7 +149,7 @@ defmodule Phoenix.LiveViewTest do
   require Phoenix.ConnTest
 
   alias Phoenix.LiveView.{Diff, Socket}
-  alias Phoenix.LiveViewTest.{View, ClientProxy, DOM}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
 
   @doc """
   Spawns a connected LiveView process.
@@ -364,6 +364,16 @@ defmodule Phoenix.LiveViewTest do
   defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: query_string}),
     do: request_path <> "?" <> query_string
 
+  defp ensure_down!(pid, timeout \\ 100) do
+    ref = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^ref, :process, ^pid, reason} -> {:ok, reason}
+    after
+      timeout -> {:error, :timeout}
+    end
+  end
+
   @doc """
   Mounts, updates and renders a component.
 
@@ -565,26 +575,51 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Returns the string of HTML of the rendered view or component.
 
-  If a view is provided, the entire LiveView is rendered. A list
-  may be passed containing view and the component **DOM ID's**:
+  If a view is provided, the entire LiveView is rendered. If an
+  element is provided, only that element is rendered.
 
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
       assert render(view) =~ "cooling"
-      assert render([view, "clock"]) =~ "12:00 PM"
-      assert render([view, "clock", "alarm"]) =~ "Snooze"
+
+      assert view
+             |> elemnt("#clock #alarm")
+             |> render() =~ "Snooze"
   """
-  def render(%View{} = view), do: render([view])
+  def render(%View{} = view), do: render_tree(view)
+  def render(%Element{} = element), do: render_tree(element)
 
   def render([%View{} = view | path]) do
-    {:ok, html} = GenServer.call(proxy_pid(view), {:render_tree, proxy_topic(view), path})
-    html
+    IO.warn("invoking render/1 with a path is deprecated, pass a live_view or an element instead")
+    render_tree(element(view, Path.join(path, " ")))
   end
 
-  def render(other) do
-    raise ArgumentError,
-          "expected to render a %View{} or view ID selector. Got: #{inspect(other)}"
+  defp render_tree(view_or_element) do
+    GenServer.call(proxy_pid(view_or_element), {:render_tree, view_or_element})
+  end
+
+  @doc """
+  Returns an element to scope a function to.
+
+  It expects the current LiveView, a query selector, and a text filter.
+
+  An optional text filter may be given to filter the results by the query
+  selector. If the text filter is a string or a regex, it will match any
+  element that contains the string or matches the regex. After the text
+  filter is applied, only one element must remain, otherwise an error is
+  raised.
+
+  If no text filter is given, then the query selector itself must return
+  a single element.
+
+      assert view
+            |> element("#term a:first-child()", "Increment")
+            |> render() =~ "Increment</a>"
+
+  """
+  def element(%View{} = view, selector, text_filter \\ nil) when is_binary(selector) do
+    %Element{view: view, selector: selector, text_filter: text_filter}
   end
 
   @doc """
@@ -795,16 +830,9 @@ defmodule Phoenix.LiveViewTest do
     GenServer.call(proxy_pid(view), {:stop, proxy_topic(view)})
   end
 
-  defp ensure_down!(pid, timeout \\ 100) do
-    ref = Process.monitor(pid)
-
-    receive do
-      {:DOWN, ^ref, :process, ^pid, reason} -> {:ok, reason}
-    after
-      timeout -> {:error, :timeout}
-    end
-  end
-
   defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
+  defp proxy_pid(%Element{view: view}), do: proxy_pid(view)
+
   defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
+  defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
 end

@@ -17,3 +17,20 @@ defmodule Phoenix.LiveViewTest.View do
             proxy: nil,
             endpoint: nil
 end
+
+defmodule Phoenix.LiveViewTest.Element do
+  @moduledoc """
+  The struct returned by `Phoenix.LiveViewTest.element/3`.
+
+  The following public fields represent the element:
+
+    * `view` - The LiveView entry
+    * `selector` - The query selector
+    * `text_filter` - The text to further filter the element
+
+  See the `Phoenix.LiveViewTest` documentation for usage.
+  """
+  defstruct view: nil,
+            selector: nil,
+            text_filter: nil
+end

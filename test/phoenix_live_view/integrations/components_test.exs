@@ -120,7 +120,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ]}
            ] = DOM.parse(html)
 
-    assert render([view, "#jose", "#Jose-dup"]) ==
+    assert view |> element("#jose #Jose-dup") |> render() ==
              "<div id=\"Jose-dup\" phx-target=\"#Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n  \n</div>"
   end
 
@@ -147,12 +147,12 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert [
                {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
                 ["\n  NEW-chris says hi with socket: true\n  \n"]}
-             ] == DOM.parse(render([view, "#chris"]))
+             ] == view |> element("#chris") |> render() |> DOM.parse()
 
       assert [
                {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
                 ["\n  NEW-jose says hi with socket: true\n  \n"]}
-             ] == DOM.parse(render([view, "#jose"]))
+             ] == view |> element("#jose") |> render() |> DOM.parse()
     end
 
     test "updates without :id raise", %{conn: conn} do
