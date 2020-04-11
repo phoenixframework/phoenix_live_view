@@ -584,7 +584,7 @@ defmodule Phoenix.LiveViewTest do
       assert render(view) =~ "cooling"
 
       assert view
-             |> elemnt("#clock #alarm")
+             |> element("#clock #alarm")
              |> render() =~ "Snooze"
   """
   def render(%View{} = view), do: render_tree(view)

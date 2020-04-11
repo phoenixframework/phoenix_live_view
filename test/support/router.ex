@@ -46,6 +46,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/", ThermostatLive, as: :live_root
     live "/clock", ClockLive
     live "/redir", RedirLive
+    live "/elements", ElementsLive
 
     live "/same-child", SameChildLive
     live "/root", RootLive

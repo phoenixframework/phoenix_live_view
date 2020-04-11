@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.ParamsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
@@ -8,7 +8,6 @@ defmodule Phoenix.LiveView.ParamsTest do
   alias Phoenix.LiveViewTest.Endpoint
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   setup do
     conn =

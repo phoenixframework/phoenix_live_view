@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.AssignNewTest do
+defmodule Phoenix.LiveView.AssignsTest do
   use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
@@ -6,13 +6,12 @@ defmodule Phoenix.LiveView.AssignNewTest do
   alias Phoenix.LiveViewTest.Endpoint
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
-  describe "mounted from root" do
+  describe "assign_new from root" do
     test "uses conn.assigns on static render then fetches on connected mount", %{conn: conn} do
       user = %{name: "user-from-conn", id: 123}
 
@@ -31,7 +30,7 @@ defmodule Phoenix.LiveView.AssignNewTest do
     end
   end
 
-  describe "mounted from dynamically rendered child" do
+  describe "assign_new from dynamically rendered child" do
     test "invokes own assign_new", %{conn: conn} do
       user = %{name: "user-from-conn", id: 123}
 
@@ -49,6 +48,32 @@ defmodule Phoenix.LiveView.AssignNewTest do
       html = render(view)
       assert html =~ "child static name: user-from-root"
       assert html =~ "child dynamic name: user-from-child"
+    end
+  end
+
+  describe "temporary assigns" do
+    test "can be configured with mount options", %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, temporary_assigns: [description: nil])
+        |> live("/opts")
+
+      assert html =~ "long description. canary"
+      assert render(conf_live) =~ "long description. canary"
+      socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
+
+      assert socket.assigns.description == nil
+      assert socket.assigns.canary == "canary"
+    end
+
+    test "raises with invalid options", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/3/,
+                   fn ->
+                     conn
+                     |> put_session(:opts, oops: [:description])
+                     |> live("/opts")
+                   end
     end
   end
 end

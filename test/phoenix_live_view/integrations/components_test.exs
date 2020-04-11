@@ -1,13 +1,11 @@
 defmodule Phoenix.LiveView.ComponentTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
 
   @endpoint Endpoint
-  @moduletag :capture_log
-
   @moduletag session: %{names: ["chris", "jose"], from: nil}
 
   setup config do

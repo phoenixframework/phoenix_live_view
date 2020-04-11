@@ -7,7 +7,6 @@ defmodule Phoenix.LiveView.RouterTest do
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   setup config do
     conn = Plug.Test.init_test_session(build_conn(), config[:plug_session] || %{})

@@ -1,14 +1,12 @@
 defmodule Phoenix.LiveView.FlashIntegrationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, Router}
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   setup do
     conn =
