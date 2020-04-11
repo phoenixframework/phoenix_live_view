@@ -586,37 +586,59 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect was performed.
+  Asserts a redirect will happen within `timeout`.
+
+  It returns the flash messages from said redirect, if any.
+  Note the flash will contain string keys.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      assert_redirect view, "/path"
+      flash = assert_redirect view, "/path"
+      assert flash["info"] == "Welcome"
 
   """
-  defmacro assert_redirect(view, to) do
-    quote do
-      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
+  def assert_redirect(%View{} = view, to, timeout \\ 100)
+      when is_binary(to) and is_integer(timeout) do
+    %{proxy: {ref, topic, _}, endpoint: endpoint} = view
+
+    receive do
+      {^ref, {:redirect, ^topic, %{to: ^to} = opts}} ->
+        Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])
+    after
+      timeout ->
+        message = "expected #{inspect(view.module)} to redirect to #{inspect(to)}, "
+
+        case flush_redirects(ref, topic, nil) do
+          nil -> raise ArgumentError, message <> "but got none"
+          last -> raise ArgumentError, message <> "but got #{inspect(last)}"
+        end
+    end
+  end
+
+  defp flush_redirects(ref, topic, last) do
+    receive do
+      {^ref, {:redirect, ^topic, %{to: to}}} -> flush_redirects(ref, topic, to)
+    after
+      0 -> last
     end
   end
 
   @doc """
-  Asserts a redirect was performed flash.
+  Asserts a redirect was performed.
 
-  *Note*: the flash will contain string keys.
+  It returns the flash messages from said redirect, if any.
+  Note the flash will contain string keys.
 
   ## Examples
 
-      assert_redirect view, "/path", %{"info" => "it worked!"}
+      render_click(view, :event_that_triggers_redirect)
+      flash = assert_redirected view, "/path"
+      assert flash["info"] == "Welcome"
 
   """
-  defmacro assert_redirect(view, to, flash) do
-    quote do
-      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      assert_receive {^ref, {:redirect, ^topic, %{to: unquote(to)} = opts}}
-      assert unquote(flash) = Phoenix.LiveView.Utils.verify_flash(@endpoint, opts[:flash])
-    end
+  def assert_redirected(view, to) do
+    assert_redirect(view, to, 0)
   end
 
   @doc """

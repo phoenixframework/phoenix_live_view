@@ -9,6 +9,7 @@
 ### Backwards incompatible changes
   - `Phoenix.LiveViewTest.children/1` has been renamed to `Phoenix.LiveViewTest.live_children/1`
   - `Phoenix.LiveViewTest.find_child/2` has been renamed to `Phoenix.LiveViewTest.get_live_child/2`
+  - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the flash, instead if returns it
 
 ## 0.11.1 (2020-04-08)
 

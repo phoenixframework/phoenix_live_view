@@ -79,8 +79,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp build_view(%ClientProxy{id: id, ref: ref, topic: topic, module: module}, view_pid) do
-    %View{id: id, pid: view_pid, proxy: {ref, topic, self()}, module: module}
+  defp build_view(%ClientProxy{} = proxy, view_pid) do
+    %{id: id, ref: ref, topic: topic, module: module, endpoint: endpoint} = proxy
+    %View{id: id, pid: view_pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
   end
 
   defp mount_view(state, view, timeout, url) do
