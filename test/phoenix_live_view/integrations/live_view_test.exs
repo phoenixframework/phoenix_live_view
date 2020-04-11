@@ -478,8 +478,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       refute render(thermo_view) == html_without_nesting
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
-      assert_remove(clock_view, {:shutdown, :removed})
-      assert_remove(controls_view, {:shutdown, :removed})
+      assert assert_remove(clock_view) == {:shutdown, :removed}
+      assert assert_remove(controls_view) == {:shutdown, :removed}
       assert [{_, _, ^html_without_nesting}] = DOM.parse(render(thermo_view))
 
       refute get_live_child(thermo_view, "clock")
@@ -513,9 +513,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert controls_view = get_live_child(clock_view, "NY-controls")
 
       stop(thermo_view)
-      assert_remove(thermo_view, {:shutdown, :stop})
-      assert_remove(clock_view, {:shutdown, :stop})
-      assert_remove(controls_view, {:shutdown, :stop})
+      assert assert_remove(thermo_view) == {:shutdown, :stop}
+      assert assert_remove(clock_view) == {:shutdown, :stop}
+      assert assert_remove(controls_view) == {:shutdown, :stop}
     end
 
     @tag session: %{nest: []}
@@ -526,8 +526,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert controls_view = get_live_child(clock_view, "NY-controls")
 
       stop(clock_view)
-      assert_remove(clock_view, {:shutdown, :stop})
-      assert_remove(controls_view, {:shutdown, :stop})
+      assert assert_remove(clock_view) == {:shutdown, :stop}
+      assert assert_remove(controls_view) == {:shutdown, :stop}
 
       refute get_live_child(thermo_view, "clock")
     end
@@ -540,7 +540,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert controls_view = get_live_child(clock_view, "NY-controls")
 
       stop(controls_view)
-      assert_remove(controls_view, {:shutdown, :stop})
+      assert assert_remove(controls_view) == {:shutdown, :stop}
       assert get_live_child(thermo_view, "clock")
       refute get_live_child(clock_view, "NY-controls")
     end
@@ -555,9 +555,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       send(thermo_view.pid, :boom)
 
-      assert_remove(thermo_view, _)
-      assert_remove(clock_view, _)
-      assert_remove(controls_view, _)
+      assert assert_remove(thermo_view)
+      assert assert_remove(clock_view)
+      assert assert_remove(controls_view)
     end
 
     @tag :capture_log
@@ -570,8 +570,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       send(clock_view.pid, :boom)
 
-      assert_remove(clock_view, _)
-      assert_remove(controls_view, _)
+      assert assert_remove(clock_view)
+      assert assert_remove(controls_view)
       refute get_live_child(thermo_view, "clock")
     end
 
@@ -585,7 +585,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       send(controls_view.pid, :boom)
 
-      assert_remove(controls_view, _)
+      assert assert_remove(controls_view)
       assert get_live_child(thermo_view, "clock")
       refute get_live_child(clock_view, "NY-controls")
     end

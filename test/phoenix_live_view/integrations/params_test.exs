@@ -250,7 +250,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert_redirect(counter_live, "/thermo/123")
 
-      assert_remove(counter_live, {:live_redirect, %{to: "/thermo/123"}})
+      assert {:live_redirect, %{to: "/thermo/123"}} = assert_remove(counter_live)
     end
 
     test "from handle_params", %{conn: conn} do
@@ -270,7 +270,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_receive {:handle_params, "http://localhost:4000/counter/123?from=handle_params",
                       %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
 
-      assert_remove(counter_live, {:live_redirect, %{to: "/thermo/123"}})
+      assert {:live_redirect, %{to: "/thermo/123"}} = assert_remove(counter_live)
     end
 
     test "shuts down with push_redirect", %{conn: conn} do

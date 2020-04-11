@@ -101,10 +101,12 @@ defmodule Phoenix.LiveViewTest do
   can be tested with `assert_remove/3`. For example:
 
       send(view.pid, :boom)
-      assert_remove view, {:shutdown, %RuntimeError{}}
+      reason = assert_remove view
+      assert {:shutdown, %RuntimeError{}} = reason
 
       stop(view)
-      assert_remove view, {:shutdown, :stop}
+      reason = assert_remove view
+      assert {:shutdown, :stop} = reason
 
   Nested views can be removed by a parent at any time based on conditional
   rendering. In these cases, the removal of the view is detected by the
@@ -116,7 +118,7 @@ defmodule Phoenix.LiveViewTest do
       assert child = get_live_child(parent, "child-dom-id")
       send(parent.pid, :msg_that_removes_child)
 
-      assert_remove child, _
+      assert_remove child
       refute render(parent) =~ "some content in child"
 
   ## Testing components
@@ -642,28 +644,41 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a view was removed by a parent or shutdown itself.
+  Asserts a view will be removed by a parent or shutdown itself.
+
+  It returns the removal message.
 
   ## Examples
 
       [child1, child2] = live_children(parent_view)
       send(parent_view.pid, :msg_that_removes_children)
 
-      assert_remove child1, _
-      assert_remove child2, {:shutdown, :removed}
+      assert_remove child1
+      reason = assert_remove child2
+      assert reason == {:shutdown, :removed}
   """
-  defmacro assert_remove(view, reason, timeout \\ 100) do
-    quote do
-      %View{proxy: {ref, topic, _proxy_pid}} = unquote(view)
-      assert_receive {^ref, {:removed, ^topic, unquote(reason)}}, unquote(timeout)
+  def assert_remove(%View{} = view, timeout \\ 100) do
+    %{proxy: {ref, topic, _proxy_pid}, module: module} = view
+
+    receive do
+      {^ref, {:removed, ^topic, reason}} ->
+        reason
+    after
+      timeout ->
+        raise "expected #{inspect(module)} to have been removed but it was not"
     end
   end
 
   @doc false
-  defmacro assert_remove_component(view, id, timeout \\ 100) do
-    quote bind_quoted: binding() do
-      %View{proxy: {ref, topic, _proxy_pid}} = view
-      assert_receive {^ref, {:removed_component, ^topic, ^id}}, timeout
+  def assert_remove_component(%View{} = view, id, timeout \\ 100) do
+    %{proxy: {ref, topic, _proxy_pid}, module: module} = view
+
+    receive do
+      {^ref, {:removed_component, ^topic, ^id}} ->
+        :ok
+    after
+      timeout ->
+        raise "expected component with DOM ID #{inspect(id)} within #{inspect(module)} to have been removed but it was not"
     end
   end
 
