@@ -153,11 +153,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, topic, view_or_element, from}, state) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
+  def handle_info({:sync_render, view_or_element, from}, state) do
+    {:ok, view} = fetch_view_by_topic(state, proxy_topic(view_or_element))
 
     result =
-      case select_node(state, view, view_or_element) do
+      case state |> root(view) |> select_node(view_or_element) do
         {:ok, node} -> {:ok, DOM.to_html(node)}
         {:error, message} -> {:raise, ArgumentError.exception(message)}
       end
@@ -281,21 +281,47 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     topic = proxy_topic(view_or_element)
     {:ok, %{pid: pid}} = fetch_view_by_topic(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render, topic, view_or_element, from})
+    send(self(), {:sync_render, view_or_element, from})
     {:noreply, state}
   end
 
-  def handle_call({:render_event, topic, path, type, event, value}, from, state) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
+  def handle_call({:render_event, view_or_element, type, value}, from, state) do
+    result =
+      case view_or_element do
+        # TODO: Remove me once paths are removed
+        {view, [_ | _] = path, event} ->
+          {:ok, view} = fetch_view_by_topic(state, proxy_topic(view))
+          root = root(state, view)
 
-    payload = %{
-      "value" => stringify(type, value),
-      "event" => event,
-      "type" => Atom.to_string(type)
-    }
+          with {:ok, node} <- DOM.maybe_one(root, Enum.join(path, " ")),
+               {:ok, cid} <- maybe_cid(root, node) do
+            {view, cid, event, %{}}
+          end
 
-    case maybe_add_cid_to_payload(state, view, path, payload) do
-      {:ok, payload} ->
+        {view, [], event} ->
+          {:ok, view} = fetch_view_by_topic(state, proxy_topic(view))
+          {view, nil, event, %{}}
+
+        %Element{} = element ->
+          {:ok, view} = fetch_view_by_topic(state, proxy_topic(element))
+          root = root(state, view)
+
+          with {:ok, node} <- select_node(root, element),
+               {:ok, cid} <- maybe_cid(root, node),
+               {:ok, event} <- maybe_event(type, node, element) do
+            {view, cid, event, %{}}
+          end
+      end
+
+    case result do
+      {view, cid, event, extra} ->
+        payload = %{
+          "cid" => cid,
+          "type" => Atom.to_string(type),
+          "event" => event,
+          "value" => encode(type, DOM.deep_merge(stringify(value), stringify(extra)))
+        }
+
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
       {:error, message} ->
@@ -594,33 +620,29 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> build()
   end
 
-  defp maybe_add_cid_to_payload(_state, _view, [], payload), do: {:ok, payload}
-
-  defp maybe_add_cid_to_payload(state, view, [_ | _] = ids, payload) do
-    case cid_or_view(state, view, Enum.join(ids, " ")) do
-      {:cid, cid} -> {:ok, Map.put(payload, "cid", cid)}
-      :view -> {:ok, payload}
-      {:error, message} -> {:error, message}
-    end
-  end
-
   ## Element helpers
 
   defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
   defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
 
-  defp select_node(state, view, %View{}) do
-    {:ok, DOM.by_id!(state.html, view.id)}
+  defp root(state, view), do: DOM.by_id!(state.html, view.id)
+
+  defp select_node(root, %View{}) do
+    {:ok, root}
   end
 
-  defp select_node(state, view, %Element{selector: selector, text_filter: nil}) do
-    tree = DOM.inner_html!(state.html, view.id)
-    DOM.maybe_one(tree, selector)
+  defp select_node(root, %Element{selector: selector, text_filter: nil}) do
+    root
+    |> DOM.child_nodes()
+    |> DOM.maybe_one(selector)
   end
 
-  defp select_node(state, view, %Element{selector: selector, text_filter: text_filter}) do
-    tree = DOM.inner_html!(state.html, view.id)
-    nodes = DOM.all(tree, selector)
+  defp select_node(root, %Element{selector: selector, text_filter: text_filter}) do
+    nodes =
+      root
+      |> DOM.child_nodes()
+      |> DOM.all(selector)
+
     filtered_nodes = Enum.filter(nodes, &(DOM.to_text(&1) =~ text_filter))
 
     case {nodes, filtered_nodes} do
@@ -647,38 +669,49 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp cid_or_view(state, view, selector) do
-    tree = DOM.by_id!(state.html, view.id)
+  defp maybe_cid(_tree, nil) do
+    {:ok, nil}
+  end
 
-    with {:ok, node} <- DOM.maybe_one(tree, selector) do
-      case DOM.all_attributes(node, "phx-target") do
-        [] ->
-          :view
+  defp maybe_cid(tree, node) do
+    case DOM.all_attributes(node, "phx-target") do
+      [] ->
+        {:ok, nil}
 
-        ["#" <> _ = target] ->
-          with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
-            if cid = DOM.component_id(target) do
-              {:cid, String.to_integer(cid)}
-            else
-              :view
-            end
+      ["#" <> _ = target] ->
+        with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
+          if cid = DOM.component_id(target) do
+            {:ok, String.to_integer(cid)}
+          else
+            {:ok, nil}
           end
+        end
 
-        [maybe_integer] ->
-          case Integer.parse(maybe_integer) do
-            {cid, ""} ->
-              {:cid, cid}
+      [maybe_integer] ->
+        case Integer.parse(maybe_integer) do
+          {cid, ""} ->
+            {:ok, cid}
 
-            _ ->
-              {:error,
-               "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
-          end
-      end
+          _ ->
+            {:error,
+             "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
+        end
     end
   end
 
-  defp stringify(:form, value), do: Plug.Conn.Query.encode(value)
-  defp stringify(_, value), do: stringify(value)
+  defp maybe_event(type, node, element) do
+    case DOM.all_attributes(node, "phx-#{type}") do
+      [value] ->
+        {:ok, value}
+
+      [] ->
+        {:error,
+         "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
+    end
+  end
+
+  defp encode(:form, value), do: Plug.Conn.Query.encode(value)
+  defp encode(_, value), do: value
 
   defp stringify(%{__struct__: _} = struct),
     do: struct

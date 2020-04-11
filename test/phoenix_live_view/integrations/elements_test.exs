@@ -53,4 +53,16 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("div", "This") |> render() end
     end
   end
+
+  describe "render_click/2" do
+    test "clicks the given element", %{live: view} do
+      assert view |> element("span#span-click-no-value") |> render_click() =~ "span-click: %{}"
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-click attribute",
+                   fn -> view |> element("span#span-no-attr") |> render_click() end
+    end
+  end
 end

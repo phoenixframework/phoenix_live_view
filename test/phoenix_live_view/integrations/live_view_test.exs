@@ -239,7 +239,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
              end)
     end
 
-
     test "live render in widget-style", %{conn: conn} do
       conn = get(conn, "/widget")
       assert html_response(conn, 200) =~ ~r/WIDGET:[\S\s]*time: 12:00 NY/

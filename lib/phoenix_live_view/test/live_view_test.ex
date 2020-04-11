@@ -407,7 +407,29 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Sends a click event to the view and returns the rendered result.
+  Sends a click event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-click` attribute in it. The event name
+  given set on `phx-click` is then sent to the appropriate live view
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("buttons", "Increment")
+             |> render_click() =~ "The temperature is: 30℉"
+  """
+  def render_click(element, value \\ %{})
+  def render_click(%Element{} = element, %{} = value), do: render_event(element, :click, value)
+  def render_click(view, event), do: render_click(view, event, %{})
+
+  @doc """
+  Sends a click `event` to the `view` with `value` and returns the rendered result.
 
   ## Examples
 
@@ -416,7 +438,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
       assert render_click([view, "clock"], :set, %{time: "1:00"}) =~ "time: 1:00 PM"
   """
-  def render_click(view, event, value \\ %{}) do
+  def render_click(view, event, value) do
     render_event(view, :click, event, value)
   end
 
@@ -516,12 +538,16 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :hook, event, value)
   end
 
+  defp render_event(%Element{view: view} = element, type, value) when is_map(value) do
+    call(view, {:render_event, element, type, value})
+  end
+
   defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
-    call(view, {:render_event, proxy_topic(view), path, type, to_string(event), value})
+    call(view, {:render_event, {view, path, to_string(event)}, type, value})
   end
 
   defp render_event(%View{} = view, type, event, value) do
-    render_event([view], type, event, value)
+    call(view, {:render_event, {view, [], to_string(event)}, type, value})
   end
 
   @doc """

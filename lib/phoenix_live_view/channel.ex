@@ -83,14 +83,12 @@ defmodule Phoenix.LiveView.Channel do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode_event_type(type, raw_val)
 
-    case Map.fetch(msg.payload, "cid") do
-      {:ok, cid} ->
-        component_handle_event(state, cid, event, val, msg.ref)
-
-      :error ->
-        state.socket
-        |> view_handle_event(event, val)
-        |> handle_result({:handle_event, 3, msg.ref}, state)
+    if cid = msg.payload["cid"] do
+      component_handle_event(state, cid, event, val, msg.ref)
+    else
+      state.socket
+      |> view_handle_event(event, val)
+      |> handle_result({:handle_event, 3, msg.ref}, state)
     end
   end
 

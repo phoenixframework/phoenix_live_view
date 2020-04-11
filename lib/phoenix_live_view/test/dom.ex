@@ -41,6 +41,8 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
+  def child_nodes({_, _, nodes}), do: nodes
+
   def inner_html!(html, id), do: html |> by_id!(id) |> child_nodes()
 
   def component_selector(cid), do: "[#{@phx_component}=\"#{cid}\"]"
@@ -263,6 +265,4 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp attrs({_tag, attrs, _children}), do: Enum.into(attrs, %{})
   defp attrs({_tag, attrs, _children}, key), do: Enum.into(attrs, %{})[key]
-
-  defp child_nodes({_, _, nodes}), do: nodes
 end
