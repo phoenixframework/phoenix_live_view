@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_redirect with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      {:error, {:redirect, %{flash: _}}} =
+      {:error, {:live_redirect, %{flash: _}}} =
         render_click([flash_live, "#flash-component"], "push_redirect", %{
           "to" => "/flash-root",
           "info" => "ok!"
