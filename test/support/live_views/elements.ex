@@ -5,6 +5,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     ~L"""
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
+    <div>This</div>
     """
   end
 

@@ -517,13 +517,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
-    case GenServer.call(
-           proxy_pid(view),
-           {:render_event, proxy_topic(view), path, type, to_string(event), value}
-         ) do
-      {:ok, html} -> html
-      {:error, reason} -> {:error, reason}
-    end
+    call(view, {:render_event, proxy_topic(view), path, type, to_string(event), value})
   end
 
   defp render_event(%View{} = view, type, event, value) do
@@ -533,11 +527,8 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
-  def render_patch(%View{} = view, path) do
-    case GenServer.call(proxy_pid(view), {:render_patch, proxy_topic(view), path}) do
-      {:ok, html} -> html
-      {:error, reason} -> {:error, reason}
-    end
+  def render_patch(%View{} = view, path) when is_binary(path) do
+    call(view, {:render_patch, proxy_topic(view), path})
   end
 
   @doc """
@@ -552,9 +543,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
   def live_children(%View{} = parent) do
-    parent
-    |> proxy_pid()
-    |> GenServer.call({:live_children, proxy_topic(parent)})
+    call(parent, {:live_children, proxy_topic(parent)})
   end
 
   @doc """
@@ -596,7 +585,16 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_tree(view_or_element) do
-    GenServer.call(proxy_pid(view_or_element), {:render_tree, view_or_element})
+    call(view_or_element, {:render_tree, view_or_element})
+  end
+
+  defp call(view_or_element, tuple) do
+    case GenServer.call(proxy_pid(view_or_element), tuple, 30_000) do
+      :ok -> :ok
+      {:ok, result} -> result
+      {:error, _} = err -> err
+      {:raise, exception} -> raise exception
+    end
   end
 
   @doc """
@@ -827,7 +825,7 @@ defmodule Phoenix.LiveViewTest do
       assert_remove view, {:shutdown, :stop}
   """
   def stop(%View{} = view) do
-    GenServer.call(proxy_pid(view), {:stop, proxy_topic(view)})
+    call(view, {:stop, proxy_topic(view)})
   end
 
   defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid

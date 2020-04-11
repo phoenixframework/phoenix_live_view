@@ -149,13 +149,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         end
       end)
 
-    GenServer.reply(from, children)
+    GenServer.reply(from, {:ok, children})
     {:noreply, state}
   end
 
   def handle_info({:sync_render, topic, view_or_element, from}, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
-    GenServer.reply(from, state |> select_nodes(view, view_or_element) |> DOM.to_html())
+
+    result =
+      case select_node(state, view, view_or_element) do
+        {:ok, node} -> {:ok, DOM.to_html(node)}
+        {:error, message} -> {:raise, ArgumentError.exception(message)}
+      end
+
+    GenServer.reply(from, result)
     {:noreply, state}
   end
 
@@ -281,14 +288,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:render_event, topic, path, type, event, value}, from, state) do
     {:ok, view} = fetch_view_by_topic(state, topic)
 
-    payload =
-      maybe_add_cid_to_payload(state, view, path, %{
-        "value" => stringify(type, value),
-        "event" => event,
-        "type" => Atom.to_string(type)
-      })
+    payload = %{
+      "value" => stringify(type, value),
+      "event" => event,
+      "type" => Atom.to_string(type)
+    }
 
-    {:noreply, push_with_reply(state, from, view, "event", payload)}
+    case maybe_add_cid_to_payload(state, view, path, payload) do
+      {:ok, payload} ->
+        {:noreply, push_with_reply(state, from, view, "event", payload)}
+
+      {:error, message} ->
+        {:reply, {:raise, ArgumentError.exception(message)}, state}
+    end
   end
 
   def handle_call({:render_patch, topic, path}, from, state) do
@@ -582,12 +594,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> build()
   end
 
-  defp maybe_add_cid_to_payload(_state, _view, [], payload), do: payload
+  defp maybe_add_cid_to_payload(_state, _view, [], payload), do: {:ok, payload}
 
   defp maybe_add_cid_to_payload(state, view, [_ | _] = ids, payload) do
-    case view_selector(state, view, Enum.join(ids, " ")) do
-      {:cid, cid} -> Map.put(payload, "cid", cid)
-      :view -> payload
+    case cid_or_view(state, view, Enum.join(ids, " ")) do
+      {:cid, cid} -> {:ok, Map.put(payload, "cid", cid)}
+      :view -> {:ok, payload}
+      {:error, message} -> {:error, message}
     end
   end
 
@@ -596,43 +609,71 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
   defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
 
-  defp select_nodes(state, view, %Element{selector: selector}) do
-    case view_selector(state, view, selector) do
-      {:cid, cid} -> DOM.all(state.html, "##{view.id} #{DOM.component_selector(cid)}")
-      :view -> DOM.by_id!(state.html, view.id)
+  defp select_node(state, view, %View{}) do
+    {:ok, DOM.by_id!(state.html, view.id)}
+  end
+
+  defp select_node(state, view, %Element{selector: selector, text_filter: nil}) do
+    tree = DOM.inner_html!(state.html, view.id)
+    DOM.maybe_one(tree, selector)
+  end
+
+  defp select_node(state, view, %Element{selector: selector, text_filter: text_filter}) do
+    tree = DOM.inner_html!(state.html, view.id)
+    nodes = DOM.all(tree, selector)
+    filtered_nodes = Enum.filter(nodes, &(DOM.to_text(&1) =~ text_filter))
+
+    case {nodes, filtered_nodes} do
+      {_, [filtered_node]} ->
+        {:ok, filtered_node}
+
+      {[], _} ->
+        {:error, "selector #{inspect(selector)} did not return any element"}
+
+      {[node], []} ->
+        {:error,
+         "selector #{inspect(selector)} did not match text filter #{inspect(text_filter)}, " <>
+           "got: #{inspect(DOM.to_text(node))}"}
+
+      {_, []} ->
+        {:error,
+         "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
+           "but none matched the text filter #{inspect(text_filter)}"}
+
+      {_, _} ->
+        {:error,
+         "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
+           "and #{length(filtered_nodes)} of them matched the text filter #{inspect(text_filter)}"}
     end
   end
 
-  defp select_nodes(state, view, %View{}) do
-    DOM.by_id!(state.html, view.id)
-  end
-
-  defp view_selector(state, view, selector) do
+  defp cid_or_view(state, view, selector) do
     tree = DOM.by_id!(state.html, view.id)
-    node = DOM.one!(tree, selector, "selector")
 
-    case DOM.all_attributes(node, "phx-target") do
-      [] ->
-        :view
-
-      ["#" <> _ = target] ->
-        target = DOM.one!(tree, target, "phx-target")
-
-        if cid = DOM.component_id(target) do
-          {:cid, String.to_integer(cid)}
-        else
+    with {:ok, node} <- DOM.maybe_one(tree, selector) do
+      case DOM.all_attributes(node, "phx-target") do
+        [] ->
           :view
-        end
 
-      [maybe_integer] ->
-        case Integer.parse(maybe_integer) do
-          {cid, ""} ->
-            {:cid, cid}
+        ["#" <> _ = target] ->
+          with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
+            if cid = DOM.component_id(target) do
+              {:cid, String.to_integer(cid)}
+            else
+              :view
+            end
+          end
 
-          _ ->
-            raise ArgumentError,
-                  "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"
-        end
+        [maybe_integer] ->
+          case Integer.parse(maybe_integer) do
+            {cid, ""} ->
+              {:cid, cid}
+
+            _ ->
+              {:error,
+               "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
+          end
+      end
     end
   end
 

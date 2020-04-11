@@ -13,18 +13,18 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
-  def one!(html_tree, selector, type \\ :selector) do
+  def maybe_one(html_tree, selector, type \\ :selector) do
     case all(html_tree, selector) do
       [node] ->
-        node
-
-      [_ | _] ->
-        raise ArgumentError,
-              "expected #{type} #{inspect(selector)} to return a single element, but got many"
+        {:ok, node}
 
       [] ->
-        raise ArgumentError,
-              "expected #{type} #{inspect(selector)} to return a single element, but got none"
+        {:error, "expected #{type} #{inspect(selector)} to return a single element, but got none"}
+
+      many ->
+        {:error,
+         "expected #{type} #{inspect(selector)} to return a single element, " <>
+           "but got #{length(many)}"}
     end
   end
 
@@ -32,7 +32,14 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def to_html(html_tree), do: Floki.raw_html(html_tree)
 
-  def by_id!(html_tree, id), do: one!(html_tree, "#" <> id)
+  def to_text(html_tree), do: Floki.text(html_tree)
+
+  def by_id!(html_tree, id) do
+    case maybe_one(html_tree, "#" <> id) do
+      {:ok, node} -> node
+      {:error, message} -> raise message
+    end
+  end
 
   def inner_html!(html, id), do: html |> by_id!(id) |> child_nodes()
 
