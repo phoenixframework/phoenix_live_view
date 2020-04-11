@@ -1,6 +1,22 @@
 # Changelog
 
-## 0.?.?
+## 0.12.0-dev
+
+This version of LiveView comes with an overhaul of the testing module, more closely integrating your LiveView template with your LiveView events. For example, in previous versions, you could write this test:
+
+    render_click(live_view, "increment_by", %{by: 1})
+
+However, there is no guarantee that there is any element on the page with a `phx-click="increment"` attribute and `phx-value-by` set to 1. With LiveView 0.12.0, you can now write:
+
+    live_view
+    |> element("#term .buttons a", "Increment")
+    |> render_click()
+
+The new implementation will check there is a button at `#term .buttons a`, with "Increment" as text, validate that it has a "phx-click" attribute and automatically submit to it with all relevant `phx-value` entries. This brings us closer to integration/acceptance test frameworks without any of the overhead and complexities of running a headless browser.
+
+### Enhancements
+  - Add `assert_patch/3` and `assert_patched/2` for asserting on patches
+  - Add `follow_redirect/3` to automatically follow redirects from `render_*` events
 
 ### Bug fixes
   - Fix phx-target @myself targetting a sibling LiveView component with the same component ID
@@ -10,6 +26,7 @@
   - `Phoenix.LiveViewTest.children/1` has been renamed to `Phoenix.LiveViewTest.live_children/1`
   - `Phoenix.LiveViewTest.find_child/2` has been renamed to `Phoenix.LiveViewTest.get_live_child/2`
   - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the flash, instead it returns the flash
+  - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the patch redirects, use `assert_patch/3` instead
   - `Phoenix.LiveViewTest.assert_remove/3` no longer matches on the reason, instead it returns the reason
 
 ## 0.11.1 (2020-04-08)

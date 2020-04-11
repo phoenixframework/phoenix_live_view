@@ -658,7 +658,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
          end}
       )
 
-      assert_redirect(thermo_view, "/thermo?redirect=patch")
+      assert_patch(thermo_view, "/thermo?redirect=patch")
       assert render(thermo_view) =~ "Redirect: patch"
     end
 

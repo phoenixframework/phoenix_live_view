@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert render_click([view, "#chris"], "transform", %{"op" => "push_patch"}) =~
                "Redirect: none"
 
-      assert_redirect(view, "/components?redirect=patch")
+      assert_patch(view, "/components?redirect=patch")
     end
 
     test "redirect", %{conn: conn} do

@@ -23,8 +23,12 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
-      {:error, {:redirect, %{flash: _}}} =
-        render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:ok, conn} =
+        flash_child
+        |> render_click("redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn)
+
+      assert conn.resp_body =~ "root[ok!]:info"
 
       flash = assert_redirected(flash_child, "/flash-root")
       assert flash == %{"info" => "ok!"}
@@ -34,8 +38,12 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       {:ok, flash_child, _} = live(conn, "/flash-child")
       render_click(flash_child, "set_error", %{"error" => "ok!"})
 
-      {:error, {:redirect, %{flash: _}}} =
-        render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:ok, conn} =
+        flash_child
+        |> render_click("redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn, "/flash-root")
+
+      assert conn.resp_body =~ "root[ok!]:info"
 
       flash = assert_redirected(flash_child, "/flash-root")
       assert flash == %{"info" => "ok!"}
@@ -44,8 +52,13 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
-      {:error, {:live_redirect, %{flash: _}}} =
-        render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:ok, root_child, disconnected_html} =
+        flash_child
+        |> render_click("push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn, "/flash-root")
+
+      assert disconnected_html =~ "root[ok!]:info"
+      assert render(root_child) =~ "root[ok!]:info"
 
       flash = assert_redirected(flash_child, "/flash-root")
       assert flash == %{"info" => "ok!"}
@@ -56,8 +69,13 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
       render_click(flash_child, "set_error", %{"error" => "ok!"})
 
-      {:error, {:live_redirect, %{flash: _}}} =
-        render_click(flash_child, "push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+      {:ok, root_child, disconnected_html} =
+        flash_child
+        |> render_click("push_redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn, "/flash-root")
+
+      assert disconnected_html =~ "root[ok!]:info"
+      assert render(root_child) =~ "root[ok!]:info"
 
       flash = assert_redirected(flash_child, "/flash-root")
       assert flash == %{"info" => "ok!"}
@@ -71,6 +89,8 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
       assert result =~ "uri[http://localhost:4000/flash-root?foo]"
       assert result =~ "root[ok!]:info"
+
+      assert assert_patch(flash_live, "/flash-root?foo") == :ok
     end
 
     test "push_patch with flash does not include previous event flash", %{conn: conn} do
@@ -84,6 +104,8 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert result =~ "uri[http://localhost:4000/flash-root?foo]"
       assert result =~ "root[ok!]:info"
       assert result =~ "root[]:error"
+
+      assert assert_patch(flash_live, "/flash-root?foo") == :ok
     end
 
     test "clears flash on client-side patches", %{conn: conn} do
@@ -132,6 +154,50 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       result = render(flash_live)
       assert result =~ "uri[http://localhost:4000/flash-root?patch]"
       assert result =~ "root[ok!]"
+    end
+
+    test "raises on invalid follow redirect", %{conn: conn} do
+      {:ok, flash_child, _} = live(conn, "/flash-child")
+
+      assert_raise ArgumentError,
+                   "expected LiveView to redirect to \"/wrong\", but got \"/flash-root\"",
+                   fn ->
+                     flash_child
+                     |> render_click("redirect", %{"to" => "/flash-root", "info" => "ok!"})
+                     |> follow_redirect(conn, "/wrong")
+                   end
+    end
+
+    test "raises on invalid assert redirect", %{conn: conn} do
+      {:ok, flash_child, _} = live(conn, "/flash-child")
+      render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
+      assert_raise ArgumentError,
+                   "expected Phoenix.LiveViewTest.FlashChildLive to redirect to \"/wrong\", but got a redirect to \"/flash-root\"",
+                   fn -> assert_redirect(flash_child, "/wrong") end
+
+      {:ok, flash_live, _} = live(conn, "/flash-root")
+      render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
+
+      assert_raise ArgumentError,
+                   "expected Phoenix.LiveViewTest.FlashLive to redirect to \"/wrong\", but got a patch to \"/flash-root?foo\"",
+                   fn -> assert_redirect(flash_live, "/wrong") end
+    end
+
+    test "raises on invalid assert patch", %{conn: conn} do
+      {:ok, flash_live, _} = live(conn, "/flash-root")
+      render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
+
+      assert_raise ArgumentError,
+                   "expected Phoenix.LiveViewTest.FlashLive to redirect to \"/wrong\", but got a patch to \"/flash-root?foo\"",
+                   fn -> assert_patch(flash_live, "/wrong") end
+
+      {:ok, flash_child, _} = live(conn, "/flash-child")
+      render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
+
+      assert_raise ArgumentError,
+                   "expected Phoenix.LiveViewTest.FlashChildLive to redirect to \"/wrong\", but got a redirect to \"/flash-root\"",
+                   fn -> assert_patch(flash_child, "/wrong") end
     end
   end
 

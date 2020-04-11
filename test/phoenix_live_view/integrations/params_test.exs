@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert render_click(counter_live, :push_patch, %{to: "/counter/123?from=event_ack"}) =~
                escape(~s|%{"from" => "event_ack", "id" => "123"}|)
 
-      assert_redirect(counter_live, "/counter/123?from=event_ack")
+      assert_patch(counter_live, "/counter/123?from=event_ack")
     end
 
     test "from handle_info", %{conn: conn} do

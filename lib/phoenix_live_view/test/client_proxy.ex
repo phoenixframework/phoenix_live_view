@@ -179,7 +179,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, opts)
+    send_patch(state, state.root_view.topic, opts)
     {:noreply, state}
   end
 
@@ -220,7 +220,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:noreply, state}
 
           %{live_patch: %{to: _to} = opts} ->
-            send_redirect(state, topic, opts)
+            send_patch(state, topic, opts)
             {:noreply, render_reply(reply, from, state)}
 
           %{redirect: %{to: _to} = opts} ->
@@ -534,6 +534,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp send_redirect(state, topic, %{to: _to} = opts) do
     send_caller(state, {:redirect, topic, opts})
+  end
+
+  defp send_patch(state, topic, %{to: _to} = opts) do
+    send_caller(state, {:patch, topic, opts})
   end
 
   defp push(state, view, event, payload) do

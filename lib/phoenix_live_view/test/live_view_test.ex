@@ -180,21 +180,21 @@ defmodule Phoenix.LiveViewTest do
         |> live()
   """
   defmacro live(conn, path_or_opts \\ []) do
-    quote bind_quoted: binding(), unquote: true, generated: true do
+    quote bind_quoted: binding(), generated: true do
       case path_or_opts do
         opts when is_list(opts) ->
-          unquote(__MODULE__).__live__(conn, opts)
+          Phoenix.LiveViewTest.__live__(conn, opts)
 
         path when is_binary(path) ->
-          unquote(__MODULE__).__live__(get(conn, path), path, [])
+          Phoenix.LiveViewTest.__live__(get(conn, path), path, [])
       end
     end
   end
 
   @doc "See `live/2`."
   defmacro live(conn, path, opts) do
-    quote bind_quoted: binding(), unquote: true do
-      unquote(__MODULE__).__live__(get(conn, path), path, opts)
+    quote bind_quoted: binding() do
+      Phoenix.LiveViewTest.__live__(get(conn, path), path, opts)
     end
   end
 
@@ -588,6 +588,40 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Asserts a live patch will happen within `timeout`.
+
+  It always returns `:ok`. To assert on the flash message,
+  you can assert on the result of the rendered LiveView.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_patch)
+      assert_patch view, "/path"
+
+  """
+  def assert_patch(%View{} = view, to, timeout \\ 100)
+      when is_binary(to) and is_integer(timeout) do
+    assert_navigation(view, :patch, to, timeout)
+    :ok
+  end
+
+  @doc """
+  Asserts a live patch was performed.
+
+  It always returns `:ok`. To assert on the flash message,
+  you can assert on the result of the rendered LiveView.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_redirect)
+      assert_patched view, "/path"
+
+  """
+  def assert_patched(view, to) do
+    assert_patch(view, to, 0)
+  end
+
+  @doc """
   Asserts a redirect will happen within `timeout`.
 
   It returns the flash messages from said redirect, if any.
@@ -602,28 +636,7 @@ defmodule Phoenix.LiveViewTest do
   """
   def assert_redirect(%View{} = view, to, timeout \\ 100)
       when is_binary(to) and is_integer(timeout) do
-    %{proxy: {ref, topic, _}, endpoint: endpoint} = view
-
-    receive do
-      {^ref, {:redirect, ^topic, %{to: ^to} = opts}} ->
-        Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])
-    after
-      timeout ->
-        message = "expected #{inspect(view.module)} to redirect to #{inspect(to)}, "
-
-        case flush_redirects(ref, topic, nil) do
-          nil -> raise ArgumentError, message <> "but got none"
-          last -> raise ArgumentError, message <> "but got #{inspect(last)}"
-        end
-    end
-  end
-
-  defp flush_redirects(ref, topic, last) do
-    receive do
-      {^ref, {:redirect, ^topic, %{to: to}}} -> flush_redirects(ref, topic, to)
-    after
-      0 -> last
-    end
+    assert_navigation(view, :redirect, to, timeout)
   end
 
   @doc """
@@ -641,6 +654,94 @@ defmodule Phoenix.LiveViewTest do
   """
   def assert_redirected(view, to) do
     assert_redirect(view, to, 0)
+  end
+
+  defp assert_navigation(view, kind, to, timeout) do
+    %{proxy: {ref, topic, _}, endpoint: endpoint} = view
+
+    receive do
+      {^ref, {^kind, ^topic, %{to: ^to} = opts}} ->
+        Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])
+    after
+      timeout ->
+        message = "expected #{inspect(view.module)} to redirect to #{inspect(to)}, "
+
+        case flush_navigation(ref, topic, nil) do
+          nil -> raise ArgumentError, message <> "but got none"
+          {kind, to} -> raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+        end
+    end
+  end
+
+  defp flush_navigation(ref, topic, last) do
+    receive do
+      {^ref, {kind, ^topic, %{to: to}}} when kind in [:patch, :redirect] ->
+        flush_navigation(ref, topic, {kind, to})
+    after
+      0 -> last
+    end
+  end
+
+  @doc """
+  Follows the redirect from a `render_*` action.
+
+  Imagine you have a LiveView that redirects on a `render_click`
+  event. You can make it sure it immediately redirects after the
+  `render_click` action by calling `follow_redirect/3`:
+
+      live_view
+      |> render_click("redirect")
+      |> follow_redirect(conn)
+
+  Note `follow_redirect/3` expects a connection as second argument.
+  This is the connection that will be used to perform the underlying
+  request.
+
+  If the LiveView redirects with a live redirect, this macro returns
+  `{:ok, live_view, disconnected_html}` with the content of the new
+  live view, the same as the `live/3` macro. If the LiveView redirects
+  with a regular redirect, this macro returns `{:ok, conn}` with the
+  rendered redirected page. In any other case, this macro raises.
+
+  Finally, note that you can optionally assert on the path you are
+  being redirected to by passing a third argument:
+
+      live_view
+      |> render_click("redirect")
+      |> follow_redirect(conn, "/redirected/page")
+
+  """
+  defmacro follow_redirect(reason, conn, to \\ nil) do
+    quote bind_quoted: binding() do
+      case reason do
+        {:error, {:live_redirect, opts}} ->
+          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
+          live(conn, to)
+
+        {:error, {:redirect, opts}} ->
+          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
+          {:ok, get(conn, to)}
+
+        _ ->
+          raise "LiveView did not redirect"
+      end
+    end
+  end
+
+  @doc false
+  def __follow_redirect__(conn, expected_to, %{to: to} = opts) do
+    if expected_to && expected_to != to do
+      raise ArgumentError,
+            "expected LiveView to redirect to #{inspect(expected_to)}, but got #{inspect(to)}"
+    end
+
+    conn = Phoenix.ConnTest.ensure_recycled(conn)
+
+    if flash = opts[:flash] do
+      {Phoenix.ConnTest.put_req_cookie(conn, "__phoenix_flash__", flash), to}
+    else
+      {conn, to}
+    end
   end
 
   @doc """
