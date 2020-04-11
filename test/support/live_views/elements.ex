@@ -8,6 +8,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div>This</div>
     <span id="span-no-attr">This is a span</span>
     <span id="span-click-no-value" phx-click="span-click">This is a span</span>
+    <span id="span-click-value" phx-click="span-click" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     """
   end
 

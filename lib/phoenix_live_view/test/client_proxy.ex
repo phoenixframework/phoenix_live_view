@@ -309,7 +309,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                {:ok, cid} <- maybe_cid(root, node),
                {:ok, event} <- maybe_event(type, node, element) do
-            {view, cid, event, %{}}
+            {view, cid, event, DOM.all_values(node)}
           end
       end
 
@@ -319,7 +319,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           "cid" => cid,
           "type" => Atom.to_string(type),
           "event" => event,
-          "value" => encode(type, DOM.deep_merge(stringify(value), stringify(extra)))
+          "value" => encode(type, DOM.deep_merge(extra, stringify(value)))
         }
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}

@@ -436,7 +436,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temperature is: 30℉"
       assert render_click(view, :inc) =~ "The temperature is: 31℉"
-      assert render_click([view, "clock"], :set, %{time: "1:00"}) =~ "time: 1:00 PM"
+
   """
   def render_click(view, event, value) do
     render_event(view, :click, event, value)

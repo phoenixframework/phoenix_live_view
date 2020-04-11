@@ -56,7 +56,15 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_click/2" do
     test "clicks the given element", %{live: view} do
-      assert view |> element("span#span-click-no-value") |> render_click() =~ "span-click: %{}"
+      assert view |> element("span#span-click-no-value") |> render_click() =~ ~s|span-click: %{}|
+    end
+
+    test "clicks the given element with value", %{live: view} do
+      assert view |> element("span#span-click-value") |> render_click() =~
+               ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-click-value") |> render_click(%{"foo" => "override"}) =~
+               ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
