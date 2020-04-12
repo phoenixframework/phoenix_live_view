@@ -468,6 +468,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
+      Process.flag(:trap_exit, true)
       html_without_nesting =
         DOM.parse("""
         Redirect: none\nThe temp is: 1
@@ -477,15 +478,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-      refute render(thermo_view) == html_without_nesting
+      assert get_live_child(thermo_view, "clock")
+      refute DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
-      assert assert_remove(clock_view) == {:shutdown, :removed}
-      assert assert_remove(controls_view) == {:shutdown, :removed}
-      assert [{_, _, ^html_without_nesting}] = DOM.parse(render(thermo_view))
-
+      assert DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
       refute get_live_child(thermo_view, "clock")
     end
 
@@ -507,88 +504,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "multiple nested children of same module with new session", %{conn: conn} do
       {:ok, parent, _} = live(conn, "/same-child")
       assert render_click(parent, :inc) =~ "Toronto"
-    end
-
-    @tag session: %{nest: []}
-    test "parent graceful exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      stop(thermo_view)
-      assert assert_remove(thermo_view) == {:shutdown, :stop}
-      assert assert_remove(clock_view) == {:shutdown, :stop}
-      assert assert_remove(controls_view) == {:shutdown, :stop}
-    end
-
-    @tag session: %{nest: []}
-    test "child level 1 graceful exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      stop(clock_view)
-      assert assert_remove(clock_view) == {:shutdown, :stop}
-      assert assert_remove(controls_view) == {:shutdown, :stop}
-
-      refute get_live_child(thermo_view, "clock")
-    end
-
-    @tag session: %{nest: []}
-    test "child level 2 graceful exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      stop(controls_view)
-      assert assert_remove(controls_view) == {:shutdown, :stop}
-      assert get_live_child(thermo_view, "clock")
-      refute get_live_child(clock_view, "NY-controls")
-    end
-
-    @tag session: %{nest: []}
-    test "abnormal parent exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      send(thermo_view.pid, :boom)
-
-      assert assert_remove(thermo_view)
-      assert assert_remove(clock_view)
-      assert assert_remove(controls_view)
-    end
-
-    @tag session: %{nest: []}
-    test "abnormal child level 1 exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      send(clock_view.pid, :boom)
-
-      assert assert_remove(clock_view)
-      assert assert_remove(controls_view)
-      refute get_live_child(thermo_view, "clock")
-    end
-
-    @tag session: %{nest: []}
-    test "abnormal child level 2 exit removes children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
-
-      send(controls_view.pid, :boom)
-
-      assert assert_remove(controls_view)
-      assert get_live_child(thermo_view, "clock")
-      refute get_live_child(clock_view, "NY-controls")
     end
 
     test "nested for comprehensions", %{conn: conn} do

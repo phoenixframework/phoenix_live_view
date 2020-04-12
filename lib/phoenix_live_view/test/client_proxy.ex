@@ -240,23 +240,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     case fetch_view_by_pid(state, pid) do
-      {:ok, _view} -> {:noreply, drop_downed_view(state, pid, reason)}
-      :error -> {:noreply, state}
+      {:ok, _view} ->
+        Logger.disable(self())
+        {:stop, reason, state}
+
+      :error ->
+        {:noreply, state}
     end
   end
 
   def handle_info({:socket_close, pid, reason}, state) do
-    {:noreply, drop_downed_view(state, pid, reason)}
-  end
-
-  def handle_call({:stop, topic}, _from, state) do
-    case fetch_view_by_topic(state, topic) do
-      {:ok, view} ->
-        {:reply, :ok, drop_view_by_id(state, view.id, :stop)}
-
-      :error ->
-        {:reply, :ok, state}
-    end
+    {:ok, view} = fetch_view_by_pid(state, pid)
+    {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
   def handle_call({:live_children, topic}, from, state) do
@@ -340,6 +335,27 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
   end
 
+  defp drop_view_by_id(state, id, reason) do
+    {:ok, view} = fetch_view_by_id(state, id)
+    push(state, view, "phx_leave", %{})
+
+    state =
+      Enum.reduce(view.children, state, fn {child_id, _child_session}, acc ->
+        drop_view_by_id(acc, child_id, reason)
+      end)
+
+    flush_replies(
+      %{
+        state
+        | ids: Map.delete(state.ids, view.id),
+          views: Map.delete(state.views, view.topic),
+          pids: Map.delete(state.pids, view.pid)
+      },
+      view.pid,
+      reason
+    )
+  end
+
   defp flush_replies(state, pid, reason) do
     Enum.reduce(state.replies, state, fn
       {ref, {from, ^pid}}, acc ->
@@ -410,31 +426,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {new_html, [] = _deleted_cids, [] = _deleted_cid_ids} ->
         %{state | html: new_html}
     end
-  end
-
-  defp drop_downed_view(state, pid, reason) when is_pid(pid) do
-    {:ok, view} = fetch_view_by_pid(state, pid)
-    send_caller(state, {:removed, view.topic, reason})
-
-    flush_replies(
-      %{
-        state
-        | ids: Map.delete(state.ids, view.id),
-          views: Map.delete(state.views, view.topic),
-          pids: Map.delete(state.pids, view.pid)
-      },
-      pid,
-      reason
-    )
-  end
-
-  defp drop_view_by_id(state, id, reason) do
-    {:ok, view} = fetch_view_by_id(state, id)
-    :ok = shutdown_view(view, reason)
-
-    Enum.reduce(view.children, state, fn {child_id, _child_session}, acc ->
-      drop_child(acc, view, child_id, reason)
-    end)
   end
 
   defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason, from \\ nil)
@@ -519,7 +510,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       if id in ids_after do
         acc
       else
-        drop_child(acc, new_view, id, :removed)
+        drop_child(acc, new_view, id, {:shutdown, :left})
       end
     end)
   end
@@ -557,11 +548,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           end
       end
     end)
-  end
-
-  defp shutdown_view(%ClientProxy{pid: pid}, reason) do
-    Process.exit(pid, {:shutdown, reason})
-    :ok
   end
 
   defp send_caller(%{caller: {pid, ref}}, msg) when is_pid(pid) do

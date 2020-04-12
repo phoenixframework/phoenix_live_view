@@ -783,33 +783,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  @doc """
-  Asserts a view will be removed by a parent or shutdown itself.
-
-  It returns the removal message. If the LiveView redirected,
-  it won't be marked as removed. Use `assert_redirect` instead.
-
-  ## Examples
-
-      [child1, child2] = live_children(parent_view)
-      send(parent_view.pid, :msg_that_removes_children)
-
-      assert_remove child1
-      reason = assert_remove child2
-      assert reason == {:shutdown, :removed}
-  """
-  def assert_remove(%View{} = view, timeout \\ 100) do
-    %{proxy: {ref, topic, _proxy_pid}, module: module} = view
-
-    receive do
-      {^ref, {:removed, ^topic, reason}} ->
-        reason
-    after
-      timeout ->
-        raise "expected #{inspect(module)} to have been removed but it was not"
-    end
-  end
-
   @doc false
   def assert_remove_component(%View{} = view, id, timeout \\ 100) do
     %{proxy: {ref, topic, _proxy_pid}, module: module} = view
@@ -821,18 +794,6 @@ defmodule Phoenix.LiveViewTest do
       timeout ->
         raise "expected component with DOM ID #{inspect(id)} within #{inspect(module)} to have been removed but it was not"
     end
-  end
-
-  @doc """
-  Stops a LiveView process.
-
-  ## Examples
-
-      stop(view)
-      assert_remove view, {:shutdown, :stop}
-  """
-  def stop(%View{} = view) do
-    call(view, {:stop, proxy_topic(view)})
   end
 
   defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid

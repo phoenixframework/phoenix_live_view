@@ -27,7 +27,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - `Phoenix.LiveViewTest.find_child/2` has been renamed to `Phoenix.LiveViewTest.get_live_child/2`
   - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the flash, instead it returns the flash
   - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the patch redirects, use `assert_patch/3` instead
-  - `Phoenix.LiveViewTest.assert_remove/3` no longer matches on the reason, instead it returns the reason
+  - `Phoenix.LiveViewTest.assert_remove/3` has been removed. If the LiveView crashes, it will cause the test to crash too
 
 ## 0.11.1 (2020-04-08)
 

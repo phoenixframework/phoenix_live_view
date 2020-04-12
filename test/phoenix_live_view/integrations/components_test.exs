@@ -154,6 +154,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     end
 
     test "updates without :id raise", %{conn: conn} do
+      Process.flag(:trap_exit, true)
       {:ok, view, _html} = live(conn, "/components")
 
       assert ExUnit.CaptureLog.capture_log(fn ->
