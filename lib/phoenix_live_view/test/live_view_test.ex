@@ -513,16 +513,18 @@ defmodule Phoenix.LiveViewTest do
     render_event(view, :hook, event, value)
   end
 
-  defp render_event(%Element{view: view} = element, type, value) when is_map(value) do
-    call(view, {:render_event, element, type, value})
-  end
-
-  defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
-    call(view, {:render_event, {view, path, to_string(event)}, type, value})
+  defp render_event(%Element{} = element, type, value) when is_map(value) do
+    call(element, {:render_event, element, type, value})
   end
 
   defp render_event(%View{} = view, type, event, value) do
-    call(view, {:render_event, {view, [], to_string(event)}, type, value})
+    call(view, {:render_event, {proxy_topic(view), to_string(event)}, type, value})
+  end
+
+  # TODO: Deprecate me
+  defp render_event([%View{} = view | path], type, event, value) when is_map(value) do
+    element = %{element(view, Enum.join(path, " ")) | event: to_string(event)}
+    call(view, {:render_event, element, type, value})
   end
 
   @doc """
@@ -589,16 +591,21 @@ defmodule Phoenix.LiveViewTest do
              |> element("#clock #alarm")
              |> render() =~ "Snooze"
   """
-  def render(%View{} = view), do: render_tree(view)
-  def render(%Element{} = element), do: render_tree(element)
+  def render(%View{} = view) do
+    render(view, proxy_topic(view))
+  end
+
+  def render(%Element{} = element) do
+    render(element, element)
+  end
 
   def render([%View{} = view | path]) do
     IO.warn("invoking render/1 with a path is deprecated, pass a live_view or an element instead")
-    render_tree(element(view, Path.join(path, " ")))
+    render(view, element(view, Path.join(path, " ")))
   end
 
-  defp render_tree(view_or_element) do
-    call(view_or_element, {:render, :find_element, view_or_element}) |> DOM.to_html()
+  defp render(view_or_element, topic_or_element) do
+    call(view_or_element, {:render, :find_element, topic_or_element}) |> DOM.to_html()
   end
 
   defp call(view_or_element, tuple) do
@@ -634,8 +641,8 @@ defmodule Phoenix.LiveViewTest do
             |> render() =~ "Increment</a>"
 
   """
-  def element(%View{} = view, selector, text_filter \\ nil) when is_binary(selector) do
-    %Element{view: view, selector: selector, text_filter: text_filter}
+  def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
+    %Element{proxy: proxy, selector: selector, text_filter: text_filter}
   end
 
   @doc """
@@ -795,8 +802,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
-  defp proxy_pid(%Element{view: view}), do: proxy_pid(view)
-
-  defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
+  defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
+  defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 end

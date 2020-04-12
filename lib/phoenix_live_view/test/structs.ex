@@ -24,13 +24,13 @@ defmodule Phoenix.LiveViewTest.Element do
 
   The following public fields represent the element:
 
-    * `view` - The LiveView entry
     * `selector` - The query selector
     * `text_filter` - The text to further filter the element
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
-  defstruct view: nil,
+  defstruct proxy: nil,
             selector: nil,
-            text_filter: nil
+            text_filter: nil,
+            event: nil
 end

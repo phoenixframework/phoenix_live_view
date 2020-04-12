@@ -153,9 +153,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, operation, view_or_element, from}, state) do
-    view = fetch_view_by_topic!(state, proxy_topic(view_or_element))
-    result = state |> root(view) |> select_node(view_or_element)
+  def handle_info({:sync_render, operation, topic_or_element, from}, state) do
+    view = fetch_view_by_topic!(state, proxy_topic(topic_or_element))
+    result = state |> root(view) |> select_node(topic_or_element)
 
     reply =
       case {operation, result} do
@@ -264,29 +264,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render, operation, view_or_element}, from, state) do
-    topic = proxy_topic(view_or_element)
+  def handle_call({:render, operation, topic_or_element}, from, state) do
+    topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render, operation, view_or_element, from})
+    send(self(), {:sync_render, operation, topic_or_element, from})
     {:noreply, state}
   end
 
-  def handle_call({:render_event, view_or_element, type, value}, from, state) do
+  def handle_call({:render_event, topic_or_element, type, value}, from, state) do
     result =
-      case view_or_element do
-        # TODO: Remove me once paths are removed
-        {view, [_ | _] = path, event} ->
-          view = fetch_view_by_topic!(state, proxy_topic(view))
-          root = root(state, view)
-
-          with {:ok, node} <- DOM.maybe_one(root, Enum.join(path, " ")),
-               {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, %{}}
-          end
-
-        {view, [], event} ->
-          view = fetch_view_by_topic!(state, proxy_topic(view))
+      case topic_or_element do
+        {topic, event} ->
+          view = fetch_view_by_topic!(state, topic)
           {view, nil, event, %{}}
 
         %Element{} = element ->
@@ -601,14 +591,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   ## Element helpers
 
-  defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
-  defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
+  defp proxy_topic(topic) when is_binary(topic), do: topic
+  defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   defp root(state, view), do: DOM.by_id!(state.html, view.id)
-
-  defp select_node(root, %View{}) do
-    {:ok, root}
-  end
 
   defp select_node(root, %Element{selector: selector, text_filter: nil}) do
     root
@@ -648,6 +634,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp select_node(root, _topic) do
+    {:ok, root}
+  end
+
   defp maybe_cid(_tree, nil) do
     {:ok, nil}
   end
@@ -678,10 +668,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_event(_, _, %{event: event}) when is_binary(event) do
+    {:ok, event}
+  end
+
   defp maybe_event(:click, {"a", attrs, _}, element) do
     case List.keyfind(attrs, "phx-click", 0) do
-      {_, value} ->
-        {:ok, value}
+      {_, event} ->
+        {:ok, event}
 
       nil ->
         case List.keyfind(attrs, "href", 0) do
@@ -709,8 +703,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(type, {_, attrs, _}, element) do
     case List.keyfind(attrs, "phx-#{type}", 0) do
-      {_, value} ->
-        {:ok, value}
+      {_, event} ->
+        {:ok, event}
 
       _ ->
         {:error, :invalid,
