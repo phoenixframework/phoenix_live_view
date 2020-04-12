@@ -54,16 +54,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       ids: %{},
       pids: %{},
       replies: %{},
-      root_view: root_view,
+      root_view: nil,
       html: root_html,
       session: session
     }
 
     case mount_view(state, root_view, timeout, url) do
-      {:ok, pid, rendered} ->
+      {:ok, root_view, rendered} ->
         try do
           state
-          |> put_view(root_view, pid, rendered)
+          |> Map.put(:root_view, root_view)
+          |> put_view(root_view, rendered)
           |> detect_added_or_removed_children(root_view, root_html)
         catch
           :throw, {:stop, {:shutdown, reason}, _} ->
@@ -71,7 +72,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             :ignore
         else
           new_state ->
-            send_caller(new_state, {:ok, build_view(root_view, pid), DOM.to_html(new_state.html)})
+            send_caller(new_state, {:ok, build_view(root_view), DOM.to_html(new_state.html)})
             {:ok, new_state}
         end
 
@@ -81,9 +82,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp build_view(%ClientProxy{} = proxy, view_pid) do
-    %{id: id, ref: ref, topic: topic, module: module, endpoint: endpoint} = proxy
-    %View{id: id, pid: view_pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
+  defp build_view(%ClientProxy{} = proxy) do
+    %{id: id, ref: ref, topic: topic, module: module, endpoint: endpoint, pid: pid} = proxy
+    %View{id: id, pid: pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
   end
 
   defp mount_view(state, view, timeout, url) do
@@ -96,7 +97,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         receive do
           {^ref, {:ok, %{rendered: rendered}}} ->
             Process.demonitor(mon_ref, [:flush])
-            {:ok, pid, rendered}
+            {:ok, %{view | pid: pid}, rendered}
 
           {^ref, {:error, reason}} ->
             Process.demonitor(mon_ref, [:flush])
@@ -143,7 +144,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     children =
       Enum.flat_map(view.children, fn {id, _session} ->
         case fetch_view_by_id(state, id) do
-          {:ok, child} -> [build_view(child, child.pid)]
+          {:ok, child} -> [build_view(child)]
           :error -> []
         end
       end)
@@ -317,6 +318,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
+      {:patch, topic, path} ->
+        handle_call({:render_patch, topic, path}, from, state)
+
       {:stop, topic, reason} ->
         stop_redirect(state, topic, reason, from)
 
@@ -337,6 +341,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       ref: ref
     })
 
+    send_patch(state, state.root_view.topic, %{to: path})
     {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
   end
 
@@ -382,7 +387,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     Phoenix.LiveView.Static.verify_session(view.endpoint, view.session_token, view.static_token)
   end
 
-  defp put_view(state, %ClientProxy{} = view, pid, rendered) do
+  defp put_view(state, %ClientProxy{pid: pid} = view, rendered) do
     {:ok, %{view: module}} = verify_session(view)
     new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
@@ -540,9 +545,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           acc
           |> mount_view(child_view, acc.timeout, nil)
           |> case do
-            {:ok, pid, rendered} ->
+            {:ok, child_view, rendered} ->
               acc
-              |> put_view(child_view, pid, rendered)
+              |> put_view(child_view, rendered)
               |> put_child(view, id, child_view.session_token)
               |> recursive_detect_added_or_removed_children(child_view, acc.html)
 
@@ -700,10 +705,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       nil ->
         case List.keyfind(attrs, "href", 0) do
           {_, to} ->
-            {_, kind} = List.keyfind(attrs, "data-phx-link-state", 0, {:default, "push"})
-
             case List.keyfind(attrs, "data-phx-link", 0) do
+              {_, "patch"} ->
+                {:patch, proxy_topic(element), to}
+
               {_, "redirect"} ->
+                {_, kind} = List.keyfind(attrs, "data-phx-link-state", 0, {:default, "push"})
+
                 {:stop, proxy_topic(element),
                  {:live_redirect, %{to: to, kind: String.to_atom(kind)}}}
 

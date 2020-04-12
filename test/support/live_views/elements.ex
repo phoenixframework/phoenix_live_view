@@ -15,11 +15,16 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <a href="/" id="redirect-a">Regular Link</a>
     <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
     <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
+    <%= live_patch "Live patch", to: "/elements?from=uri", id: "live-patch-a" %>
     """
   end
 
   def mount(_params, _session, socket) do
     {:ok, assign(socket, :event, nil)}
+  end
+
+  def handle_params(params, _uri, socket) do
+    {:noreply, assign(socket, :event, "handle_params: #{inspect(params)}")}
   end
 
   def handle_event(event, value, socket) do

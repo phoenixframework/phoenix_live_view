@@ -113,6 +113,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
       result = render_patch(flash_live, "/flash-root?foo=bar")
       assert result =~ "root[]:error"
+      assert_patched flash_live, "/flash-root?foo=bar"
     end
 
     test "clears flash when passed down to component", %{conn: conn} do
@@ -187,14 +188,14 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashLive to redirect to \"/wrong\", but got a patch to \"/flash-root?foo\"",
+                   "expected Phoenix.LiveViewTest.FlashLive to patch to \"/wrong\", but got a patch to \"/flash-root?foo\"",
                    fn -> assert_patch(flash_live, "/wrong") end
 
       {:ok, flash_child, _} = live(conn, "/flash-child")
       render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashChildLive to redirect to \"/wrong\", but got a redirect to \"/flash-root\"",
+                   "expected Phoenix.LiveViewTest.FlashChildLive to patch to \"/wrong\", but got a redirect to \"/flash-root\"",
                    fn -> assert_patch(flash_child, "/wrong") end
     end
   end

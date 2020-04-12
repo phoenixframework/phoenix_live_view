@@ -703,7 +703,7 @@ defmodule Phoenix.LiveViewTest do
         Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])
     after
       timeout ->
-        message = "expected #{inspect(view.module)} to redirect to #{inspect(to)}, "
+        message = "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
 
         case flush_navigation(ref, topic, nil) do
           nil -> raise ArgumentError, message <> "but got none"

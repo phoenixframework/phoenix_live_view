@@ -104,6 +104,12 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_redirected(view, "/example")
     end
 
+    test "clicks live patch links without phx-click", %{live: view} do
+      assert view |> element("a#live-patch-a") |> render_click() =~ "handle_params: %{&quot;from&quot; =&gt; &quot;uri&quot;}"
+
+      assert_patched(view, "/elements?from=uri")
+    end
+
     test "raises if link does not have attribute", %{live: view} do
       assert_raise ArgumentError,
                    "clicked link selected by \"a#a-no-attr\" does not have phx-click or href attributes",
