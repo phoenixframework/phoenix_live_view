@@ -260,15 +260,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_call({:live_children, topic}, from, state) do
-    case fetch_view_by_topic(state, topic) do
-      {:ok, view} ->
-        :ok = Phoenix.LiveView.Channel.ping(view.pid)
-        send(self(), {:sync_children, view.topic, from})
-        {:noreply, state}
-
-      :error ->
-        {:reply, {:error, :removed}, state}
-    end
+    view = fetch_view_by_topic!(state, topic)
+    :ok = Phoenix.LiveView.Channel.ping(view.pid)
+    send(self(), {:sync_children, view.topic, from})
+    {:noreply, state}
   end
 
   def handle_call({:render_tree, view_or_element}, from, state) do
