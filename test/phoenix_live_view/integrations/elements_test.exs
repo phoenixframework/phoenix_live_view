@@ -81,13 +81,33 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("span#span-no-attr") |> render_click() end
     end
 
-    test "clicks links even with href", %{live: view} do
+    test "clicks links", %{live: view} do
       assert view |> element("a#click-a") |> render_click() =~ ~s|link: %{}|
     end
 
-    test "clicks links without phx-click", %{live: view} do
-      assert {:error, {:redirect, %{to: "/"}}} = view |> element("a#regular-a") |> render_click()
-      assert_redirected view, "/"
+    test "clicks redirect links without phx-click", %{live: view} do
+      assert {:error, {:redirect, %{to: "/"}}} = view |> element("a#redirect-a") |> render_click()
+      assert_redirected(view, "/")
+    end
+
+    test "clicks live redirect links without phx-click", %{live: view} do
+      assert {:error, {:live_redirect, %{to: "/example", kind: :push}}} =
+               view |> element("a#live-redirect-a") |> render_click()
+
+      assert_redirected(view, "/example")
+    end
+
+    test "clicks live redirect links without phx-click and kind is replace", %{live: view} do
+      assert {:error, {:live_redirect, %{to: "/example", kind: :replace}}} =
+               view |> element("a#live-redirect-replace-a") |> render_click()
+
+      assert_redirected(view, "/example")
+    end
+
+    test "raises if link does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "clicked link selected by \"a#a-no-attr\" does not have phx-click or href attributes",
+                   fn -> view |> element("a#a-no-attr") |> render_click() end
     end
   end
 end

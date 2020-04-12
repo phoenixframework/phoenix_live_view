@@ -10,8 +10,11 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-click-no-value" phx-click="span-click">This is a span</span>
     <span id="span-click-value" phx-click="span-click" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-click-phx-value" phx-click="span-click" phx-value-foo="123" phx-value-bar="456">This is a span</span>
-    <a href="/" id="regular-a">Regular Link</a>
+    <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
+    <a href="/" id="redirect-a">Regular Link</a>
+    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
+    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
     """
   end
 

@@ -697,14 +697,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {_, value} ->
         {:ok, value}
 
-      _ ->
+      nil ->
         case List.keyfind(attrs, "href", 0) do
           {_, to} ->
-            {:stop, proxy_topic(element), {:redirect, %{to: to}}}
+            {_, kind} = List.keyfind(attrs, "data-phx-link-state", 0, {:default, "push"})
 
-          _ ->
+            case List.keyfind(attrs, "data-phx-link", 0) do
+              {_, "redirect"} ->
+                {:stop, proxy_topic(element),
+                 {:live_redirect, %{to: to, kind: String.to_atom(kind)}}}
+
+              nil ->
+                {:stop, proxy_topic(element), {:redirect, %{to: to}}}
+            end
+
+          nil ->
             {:error,
-             "link selected by #{inspect(element.selector)} does not have phx-click nor a href atribute"}
+             "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
         end
     end
   end
