@@ -219,14 +219,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         case payload do
           %{live_redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:live_redirect, opts})
+            stop_redirect(state, topic, {:live_redirect, opts}, from)
 
           %{live_patch: %{to: _to} = opts} ->
             send_patch(state, topic, opts)
             {:noreply, render_reply(reply, from, state)}
 
           %{redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:redirect, opts})
+            stop_redirect(state, topic, {:redirect, opts}, from)
 
           %{} ->
             {:noreply, render_reply(reply, from, state)}
@@ -318,7 +318,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
       {:stop, topic, reason} ->
-        stop_redirect(state, topic, reason)
+        stop_redirect(state, topic, reason, from)
 
       {:error, message} ->
         {:reply, {:raise, ArgumentError.exception(message)}, state}
@@ -437,9 +437,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason)
+  defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason, from \\ nil)
        when is_binary(topic) do
+    # First emit the redirect to avoid races between a render command
+    # returning {:error, redirect} but the redirect is not yet in its
+    # inbox.
     send_caller(state, {:redirect, topic, opts})
+
+    # Then we will reply with the actual reason. However, because in
+    # some cases the redirect may be sent off-band, the client still
+    # needs to catch any redirect server shutdown.
+    from && GenServer.reply(from, {:error, reason})
+
+    # Now we are ready to shutdown but unlink to avoid caller crashes.
     Process.unlink(pid)
     {:stop, {:shutdown, reason}, state}
   end
