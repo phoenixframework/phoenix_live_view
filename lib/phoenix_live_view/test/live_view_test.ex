@@ -325,15 +325,7 @@ defmodule Phoenix.LiveViewTest do
     case ClientProxy.start_link(opts) do
       {:ok, _} ->
         receive do
-          {^ref, {:mounted, view, html}} ->
-            receive do
-              {^ref, {kind, _topic, opts}} when kind in [:redirect, :live_redirect] ->
-                ensure_down!(view.pid)
-                {:error, {kind, opts}}
-            after
-              0 ->
-                {:ok, view, html}
-            end
+          {^ref, {:ok, view, html}} -> {:ok, view, html}
         end
 
       {:error, reason} ->
@@ -341,8 +333,8 @@ defmodule Phoenix.LiveViewTest do
 
       :ignore ->
         receive do
-          {^ref, {%_{} = exception, [_ | _] = stack}} -> reraise(exception, stack)
-          {^ref, reason} -> {:error, reason}
+          {^ref, {:error, {%_{} = exception, [_ | _] = stack}}} -> reraise(exception, stack)
+          {^ref, {:error, reason}} -> {:error, reason}
         end
     end
   end
@@ -356,16 +348,6 @@ defmodule Phoenix.LiveViewTest do
 
   defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: query_string}),
     do: request_path <> "?" <> query_string
-
-  defp ensure_down!(pid, timeout \\ 100) do
-    ref = Process.monitor(pid)
-
-    receive do
-      {:DOWN, ^ref, :process, ^pid, reason} -> {:ok, reason}
-    after
-      timeout -> {:error, :timeout}
-    end
-  end
 
   @doc """
   Mounts, updates and renders a component.
@@ -608,7 +590,12 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp call(view_or_element, tuple) do
-    case GenServer.call(proxy_pid(view_or_element), tuple, 30_000) do
+    try do
+      GenServer.call(proxy_pid(view_or_element), tuple, 30_000)
+    catch
+      :exit, {{:shutdown, {kind, opts}}, _} when kind in [:redirect, :live_redirect] ->
+        {:error, {kind, opts}}
+    else
       :ok -> :ok
       {:ok, result} -> result
       {:error, _} = err -> err
@@ -799,7 +786,8 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a view will be removed by a parent or shutdown itself.
 
-  It returns the removal message.
+  It returns the removal message. If the LiveView redirected,
+  it won't be marked as removed. Use `assert_redirect` instead.
 
   ## Examples
 

@@ -61,20 +61,22 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case mount_view(state, root_view, timeout, url) do
       {:ok, pid, rendered} ->
-        new_state =
+        try do
           state
           |> put_view(root_view, pid, rendered)
           |> detect_added_or_removed_children(root_view, root_html)
-
-        send_caller(
-          new_state,
-          {:mounted, build_view(root_view, pid), DOM.to_html(new_state.html)}
-        )
-
-        {:ok, new_state}
+        catch
+          :throw, {:stop, {:shutdown, reason}, _} ->
+            send_caller(state, {:error, reason})
+            :ignore
+        else
+          new_state ->
+            send_caller(new_state, {:ok, build_view(root_view, pid), DOM.to_html(new_state.html)})
+            {:ok, new_state}
+        end
 
       {:error, reason} ->
-        send_caller(state, reason)
+        send_caller(state, {:error, reason})
         :ignore
     end
   end
@@ -98,18 +100,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           {^ref, {:error, reason}} ->
             Process.demonitor(mon_ref, [:flush])
-            send_caller(state, reason)
             {:error, reason}
 
           {:DOWN, ^mon_ref, _, _, reason} ->
-            send_caller(state, reason)
             {:error, reason}
         after
           timeout -> exit(:timeout)
         end
 
       {:error, reason} ->
-        send_caller(state, reason)
         {:error, reason}
     end
   end
@@ -174,8 +173,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, opts)
-    {:noreply, state}
+    stop_redirect(state, state.root_view.topic, {:redirect, opts})
   end
 
   def handle_info(
@@ -198,8 +196,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         },
         state
       ) do
-    send_redirect(state, state.root_view.topic, opts)
-    {:noreply, state}
+    stop_redirect(state, state.root_view.topic, {:live_redirect, opts})
   end
 
   def handle_info(
@@ -222,18 +219,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         case payload do
           %{live_redirect: %{to: _to} = opts} ->
-            send_redirect(state, topic, opts)
-            GenServer.reply(from, {:error, {:live_redirect, opts}})
-            {:noreply, state}
+            stop_redirect(state, topic, {:live_redirect, opts})
 
           %{live_patch: %{to: _to} = opts} ->
             send_patch(state, topic, opts)
             {:noreply, render_reply(reply, from, state)}
 
           %{redirect: %{to: _to} = opts} ->
-            send_redirect(state, topic, opts)
-            GenServer.reply(from, {:error, {:redirect, opts}})
-            {:noreply, state}
+            stop_redirect(state, topic, {:redirect, opts})
 
           %{} ->
             {:noreply, render_reply(reply, from, state)}
@@ -324,8 +317,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
-      {:stop, reason} ->
-        stop_redirect(state, reason)
+      {:stop, topic, reason} ->
+        stop_redirect(state, topic, reason)
 
       {:error, message} ->
         {:reply, {:raise, ArgumentError.exception(message)}, state}
@@ -379,10 +372,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp drop_child(state, %ClientProxy{} = parent, id, reason) do
     state
     |> update_in([:views, parent.topic], fn %ClientProxy{} = parent ->
-      %ClientProxy{
-        parent
-        | children: Enum.reject(parent.children, fn {cid, _session} -> id == cid end)
-      }
+      new_children = Enum.reject(parent.children, fn {cid, _session} -> id == cid end)
+      %ClientProxy{parent | children: new_children}
     end)
     |> drop_view_by_id(id, reason)
   end
@@ -446,9 +437,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp stop_redirect(%{caller: {pid, _}} = state, reason) do
+  defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason)
+       when is_binary(topic) do
+    send_caller(state, {:redirect, topic, opts})
     Process.unlink(pid)
-    {:stop, {:shutdown, reason}, {:error, reason}, state}
+    {:stop, {:shutdown, reason}, state}
   end
 
   defp fetch_view_by_topic!(state, topic), do: Map.fetch!(state.views, topic)
@@ -464,12 +457,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     with {:ok, topic} <- Map.fetch(state.ids, id) do
       fetch_view_by_topic(state, topic)
     end
-  end
-
-  defp drop_all_views(state, reason) do
-    Enum.reduce(state.views, state, fn {_topic, view}, acc ->
-      drop_view_by_id(acc, view.id, reason)
-    end)
   end
 
   defp render_reply(reply, from, state) do
@@ -509,30 +496,22 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp detect_added_or_removed_children(state, view, html_before) do
-    try do
-      recursive_detect_added_or_removed_children(state, view, html_before)
-    catch
-      :throw, {:stop, {:redirect, view, to}, new_state} ->
-        send_redirect(new_state, view.topic, %{to: to})
-        drop_all_views(new_state, :redirected)
-    else
-      new_state ->
-        {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
+    new_state = recursive_detect_added_or_removed_children(state, view, html_before)
+    {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
 
-        ids_after =
-          new_state.html
-          |> DOM.all("[data-phx-view]")
-          |> DOM.all_attributes("id")
-          |> MapSet.new()
+    ids_after =
+      new_state.html
+      |> DOM.all("[data-phx-view]")
+      |> DOM.all_attributes("id")
+      |> MapSet.new()
 
-        Enum.reduce(new_view.children, new_state, fn {id, _session}, acc ->
-          if id in ids_after do
-            acc
-          else
-            drop_child(acc, new_view, id, :removed)
-          end
-        end)
-    end
+    Enum.reduce(new_view.children, new_state, fn {id, _session}, acc ->
+      if id in ids_after do
+        acc
+      else
+        drop_child(acc, new_view, id, :removed)
+      end
+    end)
   end
 
   defp recursive_detect_added_or_removed_children(state, view, html_before) do
@@ -546,7 +525,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         :error ->
           static = static || Map.get(state.root_view.child_statics, id)
-
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
           acc
@@ -558,11 +536,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
               |> put_child(view, id, child_view.session_token)
               |> recursive_detect_added_or_removed_children(child_view, acc.html)
 
-            {:error, %{live_redirect: %{to: to}}} ->
-              throw({:stop, {:redirect, view, to}, acc})
+            {:error, %{live_redirect: opts}} ->
+              throw(stop_redirect(acc, view.topic, {:live_redirect, opts}))
 
-            {:error, %{redirect: %{to: to}}} ->
-              throw({:stop, {:redirect, view, to}, acc})
+            {:error, %{redirect: opts}} ->
+              throw(stop_redirect(acc, view.topic, {:redirect, opts}))
 
             {:error, reason} ->
               raise "failed to mount view: #{Exception.format_exit(reason)}"
@@ -578,10 +556,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp send_caller(%{caller: {pid, ref}}, msg) when is_pid(pid) do
     send(pid, {ref, msg})
-  end
-
-  defp send_redirect(state, topic, %{to: _to} = opts) do
-    send_caller(state, {:redirect, topic, opts})
   end
 
   defp send_patch(state, topic, %{to: _to} = opts) do
@@ -716,7 +690,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       _ ->
         case List.keyfind(attrs, "href", 0) do
           {_, to} ->
-            {:stop, {:redirect, %{to: to}}}
+            {:stop, proxy_topic(element), {:redirect, %{to: to}}}
 
           _ ->
             {:error,

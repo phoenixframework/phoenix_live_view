@@ -87,6 +87,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "clicks links without phx-click", %{live: view} do
       assert {:error, {:redirect, %{to: "/"}}} = view |> element("a#regular-a") |> render_click()
+      assert_redirected view, "/"
     end
   end
 end
