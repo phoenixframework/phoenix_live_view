@@ -28,9 +28,9 @@ defmodule Phoenix.LiveViewTest.AppendLive do
 
   def render(assigns) do
     ~L"""
-    <div id="times" phx-update="<%= @update_type %>">
+    <div <%= @id && {:safe, "id=#{inspect(@id)}"} %> phx-update="<%= @update_type %>">
       <%= for %{id: id, name: name} <- @time_zones do %>
-        <h1 id="title-<%= id %>"><%= name %></h1>
+        <h1 <%= id && {:safe, "id=title-#{id}"} %>><%= name %></h1>
         <%= live_render(@socket, Phoenix.LiveViewTest.TZLive, id: "tz-#{id}", session: %{"name" => name}) %>
       <% end %>
     </div>
@@ -38,8 +38,12 @@ defmodule Phoenix.LiveViewTest.AppendLive do
   end
 
   def mount(_params, %{"time_zones" => {update_type, time_zones}}, socket) do
-    {:ok, assign(socket, update_type: update_type, time_zones: time_zones),
+    {:ok, assign(socket, update_type: update_type, time_zones: time_zones, id: "times"),
      temporary_assigns: [time_zones: []]}
+  end
+
+  def handle_event("remove-id", _, socket) do
+    {:noreply, assign(socket, :id, nil)}
   end
 
   def handle_event("add-tz", %{"id" => id, "name" => name}, socket) do

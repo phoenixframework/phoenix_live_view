@@ -98,6 +98,26 @@ defmodule Phoenix.LiveView.UpdateTest do
                {"div", _, ["time: 12:00 Tokyo\n" | _]}
              ] = find_time_zones(html, ["nested-append", "tokyo"])
     end
+
+    @tag session: %{time_zones: {:append, [%{id: "ny", name: "NY"}]}}
+    test "raises without id on the parent", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      {:ok, view, _html} = live(conn, "/time-zones")
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(render_click(view, "remove-id", %{}))
+             end) =~ "setting phx-update to \"append\" requires setting an ID on the container"
+    end
+
+    @tag session: %{time_zones: {:append, [%{id: "ny", name: "NY"}]}}
+    test "raises without id on the child", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      {:ok, view, _html} = live(conn, "/time-zones")
+
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               catch_exit(render_click(view, "add-tz", %{id: nil, name: "Tokyo"}))
+             end) =~ "setting phx-update to \"append\" requires setting an ID on each child"
+    end
   end
 
   describe "phx-update=prepend" do

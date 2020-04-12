@@ -668,23 +668,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_event(:hook, {_, attrs, _}, %Element{event: event} = element) do
+  defp maybe_event(:hook, node, %Element{event: event} = element) do
     true = is_binary(event)
 
-    case List.keyfind(attrs, "phx-hook", 0) do
-      {_, _} ->
-        case List.keyfind(attrs, "id", 0) do
-          {_, _} ->
-            {:ok, event}
-
-          _ ->
-            {:error, :invalid,
-             "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
-        end
-
-      _ ->
+    if DOM.attribute(node, "phx-hook") do
+      if DOM.attribute(node, "id") do
+        {:ok, event}
+      else
         {:error, :invalid,
-         "element selected by #{inspect(element.selector)} does not have phx-hook attribute"}
+         "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
+      end
+    else
+      {:error, :invalid,
+       "element selected by #{inspect(element.selector)} does not have phx-hook attribute"}
     end
   end
 
@@ -693,43 +689,36 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, event}
   end
 
-  defp maybe_event(:click, {"a", attrs, _}, element) do
-    case List.keyfind(attrs, "phx-click", 0) do
-      {_, event} ->
+  defp maybe_event(:click, {"a", _, _} = node, element) do
+    cond do
+      event = DOM.attribute(node, "phx-click") ->
         {:ok, event}
 
-      nil ->
-        case List.keyfind(attrs, "href", 0) do
-          {_, to} ->
-            case List.keyfind(attrs, "data-phx-link", 0) do
-              {_, "patch"} ->
-                {:patch, proxy_topic(element), to}
+      to = DOM.attribute(node, "href") ->
+        case DOM.attribute(node, "data-phx-link") do
+          "patch" ->
+            {:patch, proxy_topic(element), to}
 
-              {_, "redirect"} ->
-                {_, kind} = List.keyfind(attrs, "data-phx-link-state", 0, {:default, "push"})
-
-                {:stop, proxy_topic(element),
-                 {:live_redirect, %{to: to, kind: String.to_atom(kind)}}}
-
-              nil ->
-                {:stop, proxy_topic(element), {:redirect, %{to: to}}}
-            end
+          "redirect" ->
+            kind = DOM.attribute(node, "data-phx-link-state") || "push"
+            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: String.to_atom(kind)}}}
 
           nil ->
-            {:error, :invalid,
-             "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
+            {:stop, proxy_topic(element), {:redirect, %{to: to}}}
         end
+
+      true ->
+        {:error, :invalid,
+         "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
     end
   end
 
-  defp maybe_event(type, {_, attrs, _}, element) do
-    case List.keyfind(attrs, "phx-#{type}", 0) do
-      {_, event} ->
-        {:ok, event}
-
-      _ ->
-        {:error, :invalid,
-         "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
+  defp maybe_event(type, node, element) do
+    if event = DOM.attribute(node, "phx-#{type}") do
+      {:ok, event}
+    else
+      {:error, :invalid,
+       "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end
 

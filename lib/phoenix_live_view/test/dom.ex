@@ -50,6 +50,13 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp value_key("value"), do: "value"
   defp value_key(_), do: nil
 
+  def attribute({_tag, attrs, _children}, key) do
+    case List.keyfind(attrs, key, 0) do
+      {_, value} -> value
+      nil -> nil
+    end
+  end
+
   def to_html(html_tree), do: Floki.raw_html(html_tree)
 
   def to_text(html_tree), do: Floki.text(html_tree)
@@ -71,8 +78,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     html
     |> all("[data-phx-static]")
     |> Enum.into(%{}, fn node ->
-      attrs = attrs(node)
-      {attrs["id"], attrs["data-phx-static"]}
+      {attribute(node, "id"), attribute(node, "data-phx-static")}
     end)
   end
 
@@ -80,17 +86,15 @@ defmodule Phoenix.LiveViewTest.DOM do
     html
     |> all("[data-phx-session]")
     |> Enum.reduce([], fn node, acc ->
-      attrs = attrs(node)
+      id = attribute(node, "id")
+      static = attribute(node, "data-phx-static")
+      session = attribute(node, "data-phx-session")
+      main = attribute(node, "data-phx-main")
 
-      static =
-        cond do
-          attrs["data-phx-static"] in [nil, ""] -> nil
-          true -> attrs["data-phx-static"]
-        end
+      static = if static in [nil, ""], do: nil, else: static
+      found = {id, session, static}
 
-      found = {attrs["id"], attrs["data-phx-session"], static}
-
-      if attrs["data-phx-main"] == "true" do
+      if main == "true" do
         [found | acc]
       else
         acc ++ [found]
@@ -166,12 +170,12 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     phx_update_tree =
       walk(inner_html, fn node ->
-        apply_phx_update(attrs(node, "phx-update"), html, node)
+        apply_phx_update(attribute(node, "phx-update"), html, node)
       end)
 
     new_html =
       walk(html, fn {tag, attrs, children} = node ->
-        if attrs(node, "id") == id do
+        if attribute(node, "id") == id do
           {tag, attrs, phx_update_tree}
         else
           {tag, attrs, children}
@@ -192,10 +196,12 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
        when type in ["append", "prepend"] do
-    children_before = apply_phx_update_children(html, attrs(node, "id"), appended_children)
-    existing_ids = all_attributes(children_before, "id")
-    new_ids = all_attributes(appended_children, "id")
-    content_changed? = new_ids !== existing_ids
+    id = attribute(node, "id")
+    verify_phx_update_id!(type, id)
+    children_before = apply_phx_update_children(html, id)
+    existing_ids = apply_phx_update_children_id(type, children_before)
+    new_ids = apply_phx_update_children_id(type, appended_children)
+    content_changed? = new_ids != existing_ids
 
     dup_ids =
       if content_changed? && new_ids do
@@ -209,7 +215,7 @@ defmodule Phoenix.LiveViewTest.DOM do
         patched_before =
           walk(before, fn {tag, attrs, _} = node ->
             cond do
-              attrs(node, "id") == dup_id -> {tag, attrs, inner_html!(appended, dup_id)}
+              attribute(node, "id") == dup_id -> {tag, attrs, inner_html!(appended, dup_id)}
               true -> node
             end
           end)
@@ -229,30 +235,42 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  defp apply_phx_update(type, _state, {tag, attrs, children})
-       when type in [nil, "replace", "ignore"] do
-    {tag, attrs, children}
+  defp apply_phx_update("ignore", _state, node) do
+    verify_phx_update_id!("ignore", attribute(node, "id"))
+    node
   end
 
-  defp apply_phx_update(other, _state, {_tag, _attrs, _children}) do
-    raise ArgumentError, """
-    invalid phx-update value #{inspect(other)}.
-
-    Expected one of "replace", "append", "prepend", "ignore"
-    """
+  defp apply_phx_update(type, _state, node) when type in [nil, "replace"] do
+    node
   end
 
-  defp apply_phx_update_children(html, id, appended_children) do
+  defp apply_phx_update(other, _state, _node) do
+    raise ArgumentError,
+          "invalid phx-update value #{inspect(other)}, " <>
+            "expected one of \"replace\", \"append\", \"prepend\", \"ignore\""
+  end
+
+  defp verify_phx_update_id!(type, id) when id in ["", nil] do
+    raise ArgumentError, "setting phx-update to #{inspect(type)} requires setting an ID on the container"
+  end
+
+  defp verify_phx_update_id!(_type, _id) do
+    :ok
+  end
+
+  defp apply_phx_update_children(html, id) do
     case by_id(html, id) do
-      {_, _, children_before} ->
-        children_before
+      {_, _, children_before} -> children_before
+      nil -> []
+    end
+  end
 
-      nil ->
-        if Enum.empty?(appended_children) do
-          []
-        else
-          raise ArgumentError, "phx-update append/prepend containers require an ID (#{id})"
-        end
+  defp apply_phx_update_children_id(type, children) do
+    for child <- children do
+      attribute(child, "id") ||
+        raise ArgumentError,
+              "setting phx-update to #{inspect(type)} requires setting an ID on each child. " <>
+                "No ID was found on:\n\n#{to_html(child)}"
     end
   end
 
@@ -274,7 +292,4 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp by_id(html_tree, id) do
     html_tree |> Floki.find("##{id}") |> List.first()
   end
-
-  defp attrs({_tag, attrs, _children}), do: Enum.into(attrs, %{})
-  defp attrs({_tag, attrs, _children}, key), do: Enum.into(attrs, %{})[key]
 end
