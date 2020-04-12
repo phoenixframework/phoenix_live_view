@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
   end
 
-  describe "render_click/2" do
+  describe "render_click" do
     test "clicks the given element", %{live: view} do
       assert view |> element("span#span-click-no-value") |> render_click() =~ ~s|span-click: %{}|
     end
@@ -115,6 +115,32 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_raise ArgumentError,
                    "clicked link selected by \"a#a-no-attr\" does not have phx-click or href attributes",
                    fn -> view |> element("a#a-no-attr") |> render_click() end
+    end
+  end
+
+  describe "render_hook" do
+    test "hooks the given element", %{live: view} do
+      assert view |> element("section#hook-section") |> render_hook("custom-event") =~
+               ~s|custom-event: %{}|
+
+      assert view
+             |> element("section#hook-section")
+             |> render_hook("custom-event", %{foo: "bar"}) =~
+               ~s|custom-event: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-hook attribute",
+                   fn -> view |> element("span#span-no-attr") |> render_hook("custom-event") end
+    end
+
+    test "raises if element does not have id", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"section.idless-hook\" for phx-hook does not have an ID",
+                   fn ->
+                     view |> element("section.idless-hook") |> render_hook("custom-event")
+                   end
     end
   end
 end

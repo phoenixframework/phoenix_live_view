@@ -469,6 +469,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     @tag session: %{nest: []}
     test "nested children are removed and killed", %{conn: conn} do
       Process.flag(:trap_exit, true)
+
       html_without_nesting =
         DOM.parse("""
         Redirect: none\nThe temp is: 1

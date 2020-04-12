@@ -286,7 +286,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, DOM.all_values(node)}
+            {view, cid, event, event_values(type, node)}
           end
       end
 
@@ -668,6 +668,27 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_event(:hook, {_, attrs, _}, %Element{event: event} = element) do
+    true = is_binary(event)
+
+    case List.keyfind(attrs, "phx-hook", 0) do
+      {_, _} ->
+        case List.keyfind(attrs, "id", 0) do
+          {_, _} ->
+            {:ok, event}
+
+          _ ->
+            {:error, :invalid,
+             "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
+        end
+
+      _ ->
+        {:error, :invalid,
+         "element selected by #{inspect(element.selector)} does not have phx-hook attribute"}
+    end
+  end
+
+  # TODO: Remove this once deprecated paths have been removed
   defp maybe_event(_, _, %{event: event}) when is_binary(event) do
     {:ok, event}
   end
@@ -711,6 +732,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
          "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end
+
+  defp event_values(type, _) when type in [:change, :submit, :hook], do: %{}
+  defp event_values(_, node), do: DOM.all_values(node)
 
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
   defp encode(_, value), do: value

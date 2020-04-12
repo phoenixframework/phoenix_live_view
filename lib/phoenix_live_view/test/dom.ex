@@ -30,7 +30,8 @@ defmodule Phoenix.LiveViewTest.DOM do
         {:ok, node}
 
       [] ->
-        {:error, :none, "expected #{type} #{inspect(selector)} to return a single element, but got none"}
+        {:error, :none,
+         "expected #{type} #{inspect(selector)} to return a single element, but got none"}
 
       many ->
         {:error, :many,

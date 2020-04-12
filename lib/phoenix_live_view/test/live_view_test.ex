@@ -57,6 +57,12 @@ defmodule Phoenix.LiveViewTest do
     * `render_click/3` - sends a phx-click event and value and
       returns the rendered result of the `handle_event/3` callback.
 
+    * `render_focus/3` - sends a phx-focus event and value and
+      returns the rendered result of the `handle_event/3` callback.
+
+    * `render_blur/3` - sends a phx-focus event and value and
+      returns the rendered result of the `handle_event/3` callback.
+
     * `render_submit/3` - sends a form phx-submit event and value and
       returns the rendered result of the `handle_event/3` callback.
 
@@ -509,7 +515,13 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_hook(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
-  def render_hook(view, event, value \\ %{}) do
+  def render_hook(view_or_element, event, value \\ %{})
+
+  def render_hook(%Element{} = element, event, value) do
+    render_event(%{element | event: to_string(event)}, :hook, value)
+  end
+
+  def render_hook(view, event, value) do
     render_event(view, :hook, event, value)
   end
 

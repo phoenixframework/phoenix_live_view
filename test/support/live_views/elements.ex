@@ -16,6 +16,8 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
     <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
     <%= live_patch "Live patch", to: "/elements?from=uri", id: "live-patch-a" %>
+    <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
+    <section phx-hook="Example" class="idless-hook">Section</section>
     """
   end
 
