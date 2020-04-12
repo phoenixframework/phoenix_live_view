@@ -6,6 +6,17 @@ defmodule Phoenix.LiveViewTest.DOM do
   @dynamics :d
   @components :c
 
+  def ensure_loaded! do
+    unless Code.ensure_loaded?(Floki) do
+      raise """
+      Phoenix LiveView requires Floki as a test dependency.
+      Please add to your mix.exs:
+
+      {:floki, ">= 0.0.0", only: :test}
+      """
+    end
+  end
+
   def parse(html) do
     {:ok, parsed} = Floki.parse_document(html)
     parsed

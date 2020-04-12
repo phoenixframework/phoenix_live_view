@@ -139,7 +139,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:sync_children, topic, from}, state) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
+    view = fetch_view_by_topic!(state, topic)
 
     children =
       Enum.flat_map(view.children, fn {id, _session} ->
@@ -154,7 +154,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:sync_render, view_or_element, from}, state) do
-    {:ok, view} = fetch_view_by_topic(state, proxy_topic(view_or_element))
+    view = fetch_view_by_topic!(state, proxy_topic(view_or_element))
 
     result =
       case state |> root(view) |> select_node(view_or_element) do
@@ -279,7 +279,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_tree, view_or_element}, from, state) do
     topic = proxy_topic(view_or_element)
-    {:ok, %{pid: pid}} = fetch_view_by_topic(state, topic)
+    %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
     send(self(), {:sync_render, view_or_element, from})
     {:noreply, state}
@@ -290,7 +290,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       case view_or_element do
         # TODO: Remove me once paths are removed
         {view, [_ | _] = path, event} ->
-          {:ok, view} = fetch_view_by_topic(state, proxy_topic(view))
+          view = fetch_view_by_topic!(state, proxy_topic(view))
           root = root(state, view)
 
           with {:ok, node} <- DOM.maybe_one(root, Enum.join(path, " ")),
@@ -299,16 +299,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           end
 
         {view, [], event} ->
-          {:ok, view} = fetch_view_by_topic(state, proxy_topic(view))
+          view = fetch_view_by_topic!(state, proxy_topic(view))
           {view, nil, event, %{}}
 
         %Element{} = element ->
-          {:ok, view} = fetch_view_by_topic(state, proxy_topic(element))
+          view = fetch_view_by_topic!(state, proxy_topic(element))
           root = root(state, view)
 
           with {:ok, node} <- select_node(root, element),
-               {:ok, cid} <- maybe_cid(root, node),
-               {:ok, event} <- maybe_event(type, node, element) do
+               {:ok, event} <- maybe_event(type, node, element),
+               {:ok, cid} <- maybe_cid(root, node) do
             {view, cid, event, DOM.all_values(node)}
           end
       end
@@ -324,13 +324,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
+      {:stop, reason} ->
+        stop_redirect(state, reason)
+
       {:error, message} ->
         {:reply, {:raise, ArgumentError.exception(message)}, state}
     end
   end
 
   def handle_call({:render_patch, topic, path}, from, state) do
-    {:ok, view} = fetch_view_by_topic(state, topic)
+    view = fetch_view_by_topic!(state, topic)
     ref = to_string(state.ref + 1)
 
     send(view.pid, %Phoenix.Socket.Message{
@@ -443,6 +446,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
+  defp stop_redirect(%{caller: {pid, _}} = state, reason) do
+    Process.unlink(pid)
+    {:stop, {:shutdown, reason}, {:error, reason}, state}
+  end
+
+  defp fetch_view_by_topic!(state, topic), do: Map.fetch!(state.views, topic)
   defp fetch_view_by_topic(state, topic), do: Map.fetch(state.views, topic)
 
   defp fetch_view_by_pid(state, pid) when is_pid(pid) do
@@ -699,12 +708,29 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_event(type, node, element) do
-    case DOM.all_attributes(node, "phx-#{type}") do
-      [value] ->
+  defp maybe_event(:click, {"a", attrs, _}, element) do
+    case List.keyfind(attrs, "phx-click", 0) do
+      {_, value} ->
         {:ok, value}
 
-      [] ->
+      _ ->
+        case List.keyfind(attrs, "href", 0) do
+          {_, to} ->
+            {:stop, {:redirect, %{to: to}}}
+
+          _ ->
+            {:error,
+             "link selected by #{inspect(element.selector)} does not have phx-click nor a href atribute"}
+        end
+    end
+  end
+
+  defp maybe_event(type, {_, attrs, _}, element) do
+    case List.keyfind(attrs, "phx-#{type}", 0) do
+      {_, value} ->
+        {:ok, value}
+
+      _ ->
         {:error,
          "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end

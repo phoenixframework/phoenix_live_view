@@ -80,5 +80,13 @@ defmodule Phoenix.LiveView.ElementsTest do
                    "element selected by \"span#span-no-attr\" does not have phx-click attribute",
                    fn -> view |> element("span#span-no-attr") |> render_click() end
     end
+
+    test "clicks links even with href", %{live: view} do
+      assert view |> element("a#click-a") |> render_click() =~ ~s|link: %{}|
+    end
+
+    test "clicks links without phx-click", %{live: view} do
+      assert {:error, {:redirect, %{to: "/"}}} = view |> element("a#regular-a") |> render_click()
+    end
   end
 end

@@ -279,20 +279,13 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
+    DOM.ensure_loaded!()
+
     html =
       conn
       |> Phoenix.ConnTest.html_response(200)
       |> IO.iodata_to_binary()
       |> DOM.parse()
-
-    unless Code.ensure_loaded?(Floki) do
-      raise """
-      Phoenix LiveView requires Floki as a test dependency.
-      Please add to your mix.exs:
-
-      {:floki, ">= 0.0.0", only: :test}
-      """
-    end
 
     case DOM.find_live_views(html) do
       [{id, session_token, static_token} | _] ->
@@ -334,9 +327,9 @@ defmodule Phoenix.LiveViewTest do
         receive do
           {^ref, {:mounted, view, html}} ->
             receive do
-              {^ref, {:redirect, _topic, opts}} ->
+              {^ref, {kind, _topic, opts}} when kind in [:redirect, :live_redirect] ->
                 ensure_down!(view.pid)
-                {:error, {:redirect, opts}}
+                {:error, {kind, opts}}
             after
               0 ->
                 {:ok, view, html}
