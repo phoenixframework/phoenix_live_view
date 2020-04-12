@@ -251,7 +251,8 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp verify_phx_update_id!(type, id) when id in ["", nil] do
-    raise ArgumentError, "setting phx-update to #{inspect(type)} requires setting an ID on the container"
+    raise ArgumentError,
+          "setting phx-update to #{inspect(type)} requires setting an ID on the container"
   end
 
   defp verify_phx_update_id!(_type, _id) do

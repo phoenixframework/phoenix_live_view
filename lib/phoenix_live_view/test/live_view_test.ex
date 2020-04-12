@@ -589,6 +589,20 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Checks if the given `selector` with `text_filter` is on the page.
+
+  See `element/3` for more information,
+
+  ## Examples
+
+      assert has_element?(view, "#some-element")
+
+  """
+  def has_element?(%View{} = view, selector, text_filter \\ nil) do
+    has_element?(element(view, selector, text_filter))
+  end
+
+  @doc """
   Returns the string of HTML of the rendered view or component.
 
   If a view is provided, the entire LiveView is rendered. If an

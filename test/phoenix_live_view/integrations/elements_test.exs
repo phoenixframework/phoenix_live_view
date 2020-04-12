@@ -12,6 +12,30 @@ defmodule Phoenix.LiveView.ElementsTest do
     %{live: live}
   end
 
+  describe "has_element?/1" do
+    test "checks if given element is on the page", %{live: view} do
+      assert view |> element("div") |> has_element?()
+      assert view |> element("#scoped-render") |> has_element?()
+      assert view |> element("div", "This is a div") |> has_element?()
+      assert view |> element("#scoped-render", ~r/^This is a div$/) |> has_element?()
+
+      refute view |> element("#unknown") |> has_element?()
+      refute view |> element("div", "no matching text") |> has_element?()
+    end
+  end
+
+  describe "has_element?/3" do
+    test "checks if given element is on the page", %{live: view} do
+      assert has_element?(view, "div")
+      assert has_element?(view, "#scoped-render")
+      assert has_element?(view, "div", "This is a div")
+      assert has_element?(view, "#scoped-render", ~r/^This is a div$/)
+
+      refute has_element?(view, "#unknown")
+      refute has_element?(view, "div", "no matching text")
+    end
+  end
+
   describe "render/1" do
     test "renders a given element", %{live: view} do
       assert view |> element("#scoped-render") |> render() ==
