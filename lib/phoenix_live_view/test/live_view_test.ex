@@ -115,7 +115,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert render(parent) =~ "some content in child"
 
-      assert child = get_live_child(parent, "child-dom-id")
+      assert child = find_live_child(parent, "child-dom-id")
       send(parent.pid, :msg_that_removes_child)
 
       assert_remove child
@@ -136,9 +136,9 @@ defmodule Phoenix.LiveViewTest do
   passing the view and a **DOM selector** in a list:
 
       {:ok, view, html} = live(conn, "/users")
-      html = render_click([view, "#user-13"], "delete", %{})
+      html = view |> element("#user-13 a", "Delete") |> render_click()
       refute html =~ "user-13"
-      assert_remove_component(view, "#user-13")
+      refute view |> element("#user-13") |> has_element?()
 
   In the example above, LiveView will lookup for an element with
   ID=user-13 and retrieve its `phx-target`. If `phx-target` points
@@ -553,13 +553,25 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
-      assert clock_view = get_live_child(view, "#clock")
+      assert clock_view = find_live_child(view, "#clock")
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
-  def get_live_child(%View{} = parent, child_id) do
+  def find_live_child(%View{} = parent, child_id) do
     parent
     |> live_children()
     |> Enum.find(fn %View{id: id} -> id == child_id end)
+  end
+
+  @doc """
+  Checks if the given element exists on the page.
+
+  ## Examples
+
+      assert view |> element("#some-element") |> has_element?()
+
+  """
+  def has_element?(%Element{} = element) do
+    call(element, {:render, :has_element?, element})
   end
 
   @doc """
@@ -586,7 +598,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_tree(view_or_element) do
-    call(view_or_element, {:render_tree, view_or_element})
+    call(view_or_element, {:render, :find_element, view_or_element}) |> DOM.to_html()
   end
 
   defp call(view_or_element, tuple) do
@@ -783,22 +795,8 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  @doc false
-  def assert_remove_component(%View{} = view, id, timeout \\ 100) do
-    %{proxy: {ref, topic, _proxy_pid}, module: module} = view
-
-    receive do
-      {^ref, {:removed_component, ^topic, ^id}} ->
-        :ok
-    after
-      timeout ->
-        raise "expected component with DOM ID #{inspect(id)} within #{inspect(module)} to have been removed but it was not"
-    end
-  end
-
   defp proxy_pid(%View{proxy: {_ref, _topic, pid}}), do: pid
   defp proxy_pid(%Element{view: view}), do: proxy_pid(view)
 
   defp proxy_topic(%View{proxy: {_ref, topic, _pid}}), do: topic
-  defp proxy_topic(%Element{view: view}), do: proxy_topic(view)
 end

@@ -153,16 +153,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, view_or_element, from}, state) do
+  def handle_info({:sync_render, operation, view_or_element, from}, state) do
     view = fetch_view_by_topic!(state, proxy_topic(view_or_element))
+    result = state |> root(view) |> select_node(view_or_element)
 
-    result =
-      case state |> root(view) |> select_node(view_or_element) do
-        {:ok, node} -> {:ok, DOM.to_html(node)}
-        {:error, message} -> {:raise, ArgumentError.exception(message)}
+    reply =
+      case {operation, result} do
+        {:find_element, {:ok, node}} -> {:ok, node}
+        {:find_element, {:error, _, message}} -> {:raise, ArgumentError.exception(message)}
+        {:has_element?, {:error, :none, _}} -> {:ok, false}
+        {:has_element?, _} -> {:ok, true}
       end
 
-    GenServer.reply(from, result)
+    GenServer.reply(from, reply)
     {:noreply, state}
   end
 
@@ -261,11 +264,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_tree, view_or_element}, from, state) do
+  def handle_call({:render, operation, view_or_element}, from, state) do
     topic = proxy_topic(view_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render, view_or_element, from})
+    send(self(), {:sync_render, operation, view_or_element, from})
     {:noreply, state}
   end
 
@@ -314,7 +317,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:stop, topic, reason} ->
         stop_redirect(state, topic, reason, from)
 
-      {:error, message} ->
+      {:error, _, message} ->
         {:reply, {:raise, ArgumentError.exception(message)}, state}
     end
   end
@@ -417,13 +420,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
-      {new_html, [_ | _] = deleted_cids, deleted_cid_ids} ->
-        for id <- deleted_cid_ids,
-            do: send_caller(state, {:removed_component, view.topic, "#" <> id})
-
+      {new_html, [_ | _] = deleted_cids} ->
         push(%{state | html: new_html}, view, "cids_destroyed", %{"cids" => deleted_cids})
 
-      {new_html, [] = _deleted_cids, [] = _deleted_cid_ids} ->
+      {new_html, [] = _deleted_cids} ->
         %{state | html: new_html}
     end
   end
@@ -629,20 +629,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:ok, filtered_node}
 
       {[], _} ->
-        {:error, "selector #{inspect(selector)} did not return any element"}
+        {:error, :none, "selector #{inspect(selector)} did not return any element"}
 
       {[node], []} ->
-        {:error,
+        {:error, :none,
          "selector #{inspect(selector)} did not match text filter #{inspect(text_filter)}, " <>
            "got: #{inspect(DOM.to_text(node))}"}
 
       {_, []} ->
-        {:error,
+        {:error, :none,
          "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
            "but none matched the text filter #{inspect(text_filter)}"}
 
       {_, _} ->
-        {:error,
+        {:error, :many,
          "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
            "and #{length(filtered_nodes)} of them matched the text filter #{inspect(text_filter)}"}
     end
@@ -672,7 +672,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:ok, cid}
 
           _ ->
-            {:error,
+            {:error, :invalid,
              "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
         end
     end
@@ -701,7 +701,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             end
 
           nil ->
-            {:error,
+            {:error, :invalid,
              "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
         end
     end
@@ -713,7 +713,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:ok, value}
 
       _ ->
-        {:error,
+        {:error, :invalid,
          "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end

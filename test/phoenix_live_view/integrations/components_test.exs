@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.ComponentTest do
               ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
-    assert_remove_component(view, "#chris")
+    refute view |> element("#chris") |> has_element?()
   end
 
   test "preloads", %{conn: conn} do

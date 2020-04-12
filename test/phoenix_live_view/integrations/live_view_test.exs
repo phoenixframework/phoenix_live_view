@@ -448,8 +448,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(thermo_view) =~ "time"
       assert render(thermo_view) =~ "snooze"
 
-      assert clock_view = get_live_child(thermo_view, "clock")
-      assert controls_view = get_live_child(clock_view, "NY-controls")
+      assert clock_view = find_live_child(thermo_view, "clock")
+      assert controls_view = find_live_child(clock_view, "NY-controls")
       assert clock_view.module == ClockLive
       assert controls_view.module == ClockControlsLive
 
@@ -478,20 +478,20 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, thermo_view, _} = live(conn, "/thermo")
 
-      assert get_live_child(thermo_view, "clock")
+      assert find_live_child(thermo_view, "clock")
       refute DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
 
       GenServer.call(thermo_view.pid, {:set, :nest, false})
       assert DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
-      refute get_live_child(thermo_view, "clock")
+      refute find_live_child(thermo_view, "clock")
     end
 
     @tag session: %{dup: false}
     test "multiple nested children of same module", %{conn: conn} do
       {:ok, parent, _} = live(conn, "/same-child")
-      assert tokyo = get_live_child(parent, "Tokyo")
-      assert madrid = get_live_child(parent, "Madrid")
-      assert toronto = get_live_child(parent, "Toronto")
+      assert tokyo = find_live_child(parent, "Tokyo")
+      assert madrid = find_live_child(parent, "Madrid")
+      assert toronto = find_live_child(parent, "Toronto")
       child_ids = for view <- [tokyo, madrid, toronto], do: view.id
 
       assert Enum.uniq(child_ids) == child_ids
@@ -547,7 +547,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
 
-      assert clock_view = get_live_child(thermo_view, "clock")
+      assert clock_view = find_live_child(thermo_view, "clock")
 
       send(
         clock_view.pid,
@@ -564,7 +564,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "push_patch", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
-      assert clock_view = get_live_child(thermo_view, "clock")
+      assert clock_view = find_live_child(thermo_view, "clock")
 
       send(
         clock_view.pid,
@@ -583,7 +583,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
 
-      assert clock_view = get_live_child(thermo_view, "clock")
+      assert clock_view = find_live_child(thermo_view, "clock")
 
       send(
         clock_view.pid,

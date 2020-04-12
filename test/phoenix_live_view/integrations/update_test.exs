@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView.UpdateTest do
              ] = find_time_zones(html, ["nested-append", "tokyo"])
 
       {:ok, view, _html} = live(conn)
-      assert nested_view = get_live_child(view, "tz-nested-append")
+      assert nested_view = find_live_child(view, "tz-nested-append")
 
       GenServer.call(nested_view.pid, {:append, ["item1"]})
       GenServer.call(nested_view.pid, {:append, ["item2"]})

@@ -30,10 +30,10 @@ defmodule Phoenix.LiveViewTest.DOM do
         {:ok, node}
 
       [] ->
-        {:error, "expected #{type} #{inspect(selector)} to return a single element, but got none"}
+        {:error, :none, "expected #{type} #{inspect(selector)} to return a single element, but got none"}
 
       many ->
-        {:error,
+        {:error, :many,
          "expected #{type} #{inspect(selector)} to return a single element, " <>
            "but got #{length(many)}"}
     end
@@ -56,15 +56,13 @@ defmodule Phoenix.LiveViewTest.DOM do
   def by_id!(html_tree, id) do
     case maybe_one(html_tree, "#" <> id) do
       {:ok, node} -> node
-      {:error, message} -> raise message
+      {:error, _, message} -> raise message
     end
   end
 
   def child_nodes({_, _, nodes}), do: nodes
 
   def inner_html!(html, id), do: html |> by_id!(id) |> child_nodes()
-
-  def component_selector(cid), do: "[#{@phx_component}=\"#{cid}\"]"
 
   def component_id(html_tree), do: Floki.attribute(html_tree, @phx_component) |> List.first()
 
@@ -181,13 +179,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     cids_after = inner_component_ids(id, new_html)
     deleted_cids = for cid <- cids_before -- cids_after, do: String.to_integer(cid)
-
-    deleted_ids =
-      html
-      |> all(Enum.map_join(deleted_cids, ", ", &component_selector(&1)))
-      |> all_attributes("id")
-
-    {new_html, deleted_cids, deleted_ids}
+    {new_html, deleted_cids}
   end
 
   defp inner_component_ids(id, html) do
