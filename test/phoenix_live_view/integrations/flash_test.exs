@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
       result = render_patch(flash_live, "/flash-root?foo=bar")
       assert result =~ "root[]:error"
-      assert_patched flash_live, "/flash-root?foo=bar"
+      assert_patched(flash_live, "/flash-root?foo=bar")
     end
 
     test "clears flash when passed down to component", %{conn: conn} do

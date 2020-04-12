@@ -105,7 +105,8 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "clicks live patch links without phx-click", %{live: view} do
-      assert view |> element("a#live-patch-a") |> render_click() =~ "handle_params: %{&quot;from&quot; =&gt; &quot;uri&quot;}"
+      assert view |> element("a#live-patch-a") |> render_click() =~
+               "handle_params: %{&quot;from&quot; =&gt; &quot;uri&quot;}"
 
       assert_patched(view, "/elements?from=uri")
     end
