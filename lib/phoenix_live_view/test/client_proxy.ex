@@ -722,7 +722,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp event_values(type, _) when type in [:change, :submit, :hook], do: %{}
+  defp event_values(:hook, _), do: %{}
   defp event_values(_, node), do: DOM.all_values(node)
 
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
