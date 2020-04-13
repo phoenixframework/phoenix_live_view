@@ -29,12 +29,13 @@ const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
+const PHX_NO_FEEDBACK_CLASS = "phx-no-feedback"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN = `data-phx-main`
 const PHX_ROOT_ID = `data-phx-root-id`
-const PHX_ERROR_FOR = "data-phx-error-for"
+const PHX_FEEDBACK_FOR = "error-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
@@ -1040,13 +1041,13 @@ export let DOM = {
     }
   },
 
-  discardError(container, el){
-    let field = el.getAttribute && el.getAttribute(PHX_ERROR_FOR)
+  discardError(container, el, phxFeedbackFor){
+    let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
     let input = field && container.querySelector(`#${field}`)
     if(!input){ return }
 
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
-      el.style.display = "none"
+      el.classList.add(PHX_NO_FEEDBACK_CLASS)
     }
   },
 
@@ -1160,6 +1161,7 @@ class DOMPatch {
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let added = []
     let updates = []
     let appendPrependUpdates = []
@@ -1177,7 +1179,7 @@ class DOMPatch {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         onBeforeNodeAdded: (el) => {
           //input handling
-          DOM.discardError(targetContainer, el)
+          DOM.discardError(targetContainer, el, phxFeedbackFor)
           this.trackBefore("added", el)
           return el
         },
@@ -1227,7 +1229,7 @@ class DOMPatch {
 
           // input handling
           DOM.copyPrivates(toEl, fromEl)
-          DOM.discardError(targetContainer, toEl)
+          DOM.discardError(targetContainer, toEl, phxFeedbackFor)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
