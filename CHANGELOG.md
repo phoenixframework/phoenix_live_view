@@ -23,6 +23,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - Fix phx:page-loading-stop firing before the DOM patch has been performed
 
 ### Backwards incompatible changes
+  - `phx-error-for` has been removed in favor of `phx-feedback-for`. `phx-feedback-for` will set a `phx-no-feedback` class whenever feedback has to be hidden
   - `Phoenix.LiveViewTest.children/1` has been renamed to `Phoenix.LiveViewTest.live_children/1`
   - `Phoenix.LiveViewTest.find_child/2` has been renamed to `Phoenix.LiveViewTest.find_live_child/2`
   - `Phoenix.LiveViewTest.assert_redirect/3` no longer matches on the flash, instead it returns the flash
