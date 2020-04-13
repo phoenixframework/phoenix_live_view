@@ -91,5 +91,14 @@ describe("DOM", () => {
       expect(DOM.findFirstComponentNode(document, 123)).toBe(null)
     })
   })
+
+  test("isNowTriggerFormExternal", () => {
+    let form
+    form = tag("form", {"phx-trigger-external": ""}, "")
+    expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(true)
+
+    form = tag("form", {}, "")
+    expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
+  })
 })
 

@@ -36,6 +36,7 @@ const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN = `data-phx-main`
 const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_FEEDBACK_FOR = "error-for"
+const PHX_TRIGGER_EXTERNAL = "trigger-external"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
@@ -73,6 +74,7 @@ const DEFAULTS = {
 const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
+
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
 
@@ -1112,7 +1114,11 @@ export let DOM = {
     }
   },
 
-  isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 }
+  isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
+
+  isNowTriggerFormExternal(el, phxTriggerExternal){
+    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
+  }
 }
 
 class DOMPatch {
@@ -1162,6 +1168,7 @@ class DOMPatch {
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
+    let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_EXTERNAL)
     let added = []
     let updates = []
     let appendPrependUpdates = []
@@ -1183,6 +1190,7 @@ class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
+          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){ el.submit() }
           // nested view handling
           if(DOM.isPhxChild(el) && view.ownsElement(el)){
             this.trackAfter("phxChildAdded", el)
@@ -1201,7 +1209,10 @@ class DOMPatch {
             return true
           }
         },
-        onElUpdated: (el) => { updates.push(el) },
+        onElUpdated: (el) => {
+          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){ el.submit() }
+          updates.push(el)
+        },
         onBeforeElUpdated: (fromEl, toEl) => {
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
