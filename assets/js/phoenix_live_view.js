@@ -1165,7 +1165,6 @@ class DOMPatch {
     let added = []
     let updates = []
     let appendPrependUpdates = []
-    let onUpdated = []
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
@@ -1202,11 +1201,7 @@ class DOMPatch {
             return true
           }
         },
-        onElUpdated: (el) => {
-          let callback = el.id && onUpdated[el.id]
-          callback && callback(el)
-          updates.push(el)
-        },
+        onElUpdated: (el) => { updates.push(el) },
         onBeforeElUpdated: (fromEl, toEl) => {
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
@@ -1251,11 +1246,9 @@ class DOMPatch {
               let isAppend = toEl.getAttribute(phxUpdate) === "append"
               let idsBefore = Array.from(fromEl.children).map(child => child.id)
               let newIds = Array.from(toEl.children).map(child => child.id)
-              onUpdated[toEl.id] = (el) => DOM.putPrivate(el, "prev-new", newIds)
-              let prevNew = DOM.private(fromEl, "prev-new") || []
               let isOnlyNewIds = isAppend && !newIds.find(id => idsBefore.indexOf(id) >= 0)
 
-              if(!(isOnlyNewIds || prevNew.toString() === newIds.toString())){
+              if(!isOnlyNewIds){
                 appendPrependUpdates.push([toEl.id, idsBefore])
               }
             }
