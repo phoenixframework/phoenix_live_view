@@ -167,4 +167,60 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
   end
+
+  describe "render_blur" do
+    test "blurs the given element", %{live: view} do
+      assert view |> element("span#span-blur-no-value") |> render_blur() =~ ~s|span-blur: %{}|
+    end
+
+    test "blurs the given element with value", %{live: view} do
+      assert view |> element("span#span-blur-value") |> render_blur() =~
+               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-blur-value") |> render_blur(%{"value" => "override"}) =~
+               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "blurs the given element with phx-value", %{live: view} do
+      assert view |> element("span#span-blur-phx-value") |> render_blur() =~
+               ~s|span-blur: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-blur-phx-value") |> render_blur(%{"foo" => "override"}) =~
+               ~s|span-blur: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-blur attribute",
+                   fn -> view |> element("span#span-no-attr") |> render_blur() end
+    end
+  end
+
+  describe "render_focus" do
+    test "focuses the given element", %{live: view} do
+      assert view |> element("span#span-focus-no-value") |> render_focus() =~ ~s|span-focus: %{}|
+    end
+
+    test "focuses the given element with value", %{live: view} do
+      assert view |> element("span#span-focus-value") |> render_focus() =~
+               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-focus-value") |> render_focus(%{"value" => "override"}) =~
+               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "focuses the given element with phx-value", %{live: view} do
+      assert view |> element("span#span-focus-phx-value") |> render_focus() =~
+               ~s|span-focus: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-focus-phx-value") |> render_focus(%{"foo" => "override"}) =~
+               ~s|span-focus: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-focus attribute",
+                   fn -> view |> element("span#span-no-attr") |> render_focus() end
+    end
+  end
 end

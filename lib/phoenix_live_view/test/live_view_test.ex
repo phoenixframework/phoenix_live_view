@@ -54,25 +54,25 @@ defmodule Phoenix.LiveViewTest do
   browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
 
-    * `render_click/3` - sends a phx-click event and value and
+    * `render_click/1` - sends a phx-click event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_focus/3` - sends a phx-focus event and value and
+    * `render_focus/2` - sends a phx-focus event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_blur/3` - sends a phx-focus event and value and
+    * `render_blur/1` - sends a phx-focus event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_submit/3` - sends a form phx-submit event and value and
+    * `render_submit/1` - sends a form phx-submit event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_change/3` - sends a form phx-change event and value and
+    * `render_change/1` - sends a form phx-change event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keydown/3` - sends a form phx-keydown event and value and
+    * `render_keydown/1` - sends a form phx-keydown event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_keyup/3` - sends a form phx-keyup event and value and
+    * `render_keyup/1` - sends a form phx-keyup event and value and
       returns the rendered result of the `handle_event/3` callback.
 
   For example:
@@ -478,6 +478,28 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Sends a blur event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-click` attribute in it. The event name
+  given set on `phx-click` is then sent to the appropriate live view
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("#inactive")
+             |> render_blur() =~ "Tap to wake"
+  """
+  def render_blur(element, value \\ %{})
+  def render_blur(%Element{} = element, %{} = value), do: render_event(element, :blur, value)
+  def render_blur(view, event), do: render_blur(view, event, %{})
+
+  @doc """
   Sends a blur event to the view and returns the rendered result.
 
   ## Examples
@@ -485,11 +507,33 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_blur(view, :inactive) =~ "Tap to wake"
-      assert render_blur([view, "#child-id"], :inactive) =~ "Tap to wake"
+
   """
-  def render_blur(view, event, value \\ %{}) do
+  def render_blur(view, event, value) do
     render_event(view, :blur, event, value)
   end
+
+  @doc """
+  Sends a focus event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-click` attribute in it. The event name
+  given set on `phx-click` is then sent to the appropriate live view
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("#inactive")
+             |> render_focus() =~ "Tap to wake"
+  """
+  def render_focus(element, value \\ %{})
+  def render_focus(%Element{} = element, %{} = value), do: render_event(element, :focus, value)
+  def render_focus(view, event), do: render_focus(view, event, %{})
 
   @doc """
   Sends a focus event to the view and returns the rendered result.
@@ -498,11 +542,10 @@ defmodule Phoenix.LiveViewTest do
 
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
-      assert render_blur(view, :inactive) =~ "Tap to wake"
-      assert render_focus(view, :active) =~ "Waking up..."
-      assert render_focus([view, "#child-id"], :active) =~ "Waking up..."
+      assert render_focus(view, :inactive) =~ "Tap to wake"
+
   """
-  def render_focus(view, event, value \\ %{}) do
+  def render_focus(view, event, value) do
     render_event(view, :focus, event, value)
   end
 

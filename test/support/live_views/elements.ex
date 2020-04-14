@@ -10,6 +10,12 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-click-no-value" phx-click="span-click">This is a span</span>
     <span id="span-click-value" phx-click="span-click" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-click-phx-value" phx-click="span-click" phx-value-foo="123" phx-value-bar="456">This is a span</span>
+    <span id="span-blur-no-value" phx-blur="span-blur">This is a span</span>
+    <span id="span-blur-value" phx-blur="span-blur" value="123" phx-value-extra="456">This is a span</span>
+    <span id="span-blur-phx-value" phx-blur="span-blur" phx-value-foo="123" phx-value-bar="456">This is a span</span>
+    <span id="span-focus-no-value" phx-focus="span-focus">This is a span</span>
+    <span id="span-focus-value" phx-focus="span-focus" value="123" phx-value-extra="456">This is a span</span>
+    <span id="span-focus-phx-value" phx-focus="span-focus" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
