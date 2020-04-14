@@ -492,7 +492,7 @@ describe('View + Component', function() {
     expect(view.el.innerHTML).toBe(html)
   })
 
-  describe("phx-trigger-external", () => {
+  describe("phx-trigger-action", () => {
     test("triggers external submit on updated DOM el", (done) => {
       let liveSocket = new LiveSocket('/live', Socket)
       let el = liveViewDOM()
@@ -505,10 +505,10 @@ describe('View + Component', function() {
 
       let formEl = document.getElementById("form")
       formEl.submit = () => done()
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-external><input type="text"></form>`
+      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
       view.update({s: [updatedHtml]}, null, null)
 
-      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-external=\"\"><input type=\"text\"></form>")
+      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
 
     test("triggers external submit on added DOM el", (done) => {
@@ -522,10 +522,10 @@ describe('View + Component', function() {
       view.onJoin({rendered: {s: [html], fingerprint: 123}})
       expect(view.el.innerHTML).toBe(html)
 
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-external><input type="text"></form>`
+      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
       view.update({s: [updatedHtml]}, null, null)
 
-      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-external=\"\"><input type=\"text\"></form>")
+      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
   })
 });

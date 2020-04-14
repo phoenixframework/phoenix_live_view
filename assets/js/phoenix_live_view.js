@@ -35,7 +35,7 @@ const PHX_PARENT_ID = "data-phx-parent-id"
 const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN = `data-phx-main`
 const PHX_ROOT_ID = `data-phx-root-id`
-const PHX_TRIGGER_EXTERNAL = "trigger-external"
+const PHX_TRIGGER_ACTION = "trigger-action"
 const PHX_FEEDBACK_FOR = "feedback-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
 const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
@@ -1168,7 +1168,7 @@ class DOMPatch {
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
-    let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_EXTERNAL)
+    let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
     let updates = []
     let appendPrependUpdates = []
