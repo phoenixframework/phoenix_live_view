@@ -450,18 +450,25 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Sends a keyup event to the view and returns the rendered result.
+  Sends a keydown event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-click` attribute in it. The event name
+  given set on `phx-click` is then sent to the appropriate live view
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
 
   ## Examples
 
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
-      assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-      assert render_keyup([view, "#child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
+      assert view |> element("#inc") |> render_keydown() =~ "The temp is: 31℉"
+
   """
-  def render_keyup(view, event, key_code) do
-    render_event(view, :keyup, event, key_code)
-  end
+  def render_keydown(element, value \\ %{})
+  def render_keydown(%Element{} = element, %{} = value), do: render_event(element, :keydown, value)
+  def render_keydown(view, event), do: render_keydown(view, event, %{})
 
   @doc """
   Sends a keydown event to the view and returns the rendered result.
@@ -470,11 +477,46 @@ defmodule Phoenix.LiveViewTest do
 
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
-      assert render_keyup(view, :inc, :ArrowUp) =~ "The temp is: 32℉"
-      assert render_keyup([view, "#child-id"], :inc, :ArrowDown) =~ "The temp is: 31℉"
+      assert render_keydown(view, :inc) =~ "The temp is: 31℉"
+
   """
-  def render_keydown(view, event, key_code) do
-    render_event(view, :keydown, event, key_code)
+  def render_keydown(view, event, value) do
+    render_event(view, :keydown, event, value)
+  end
+
+  @doc """
+  Sends a keyup event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-click` attribute in it. The event name
+  given set on `phx-click` is then sent to the appropriate live view
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+      assert html =~ "The temp is: 30℉"
+      assert view |> element("#inc") |> render_keyup() =~ "The temp is: 31℉"
+
+  """
+  def render_keyup(element, value \\ %{})
+  def render_keyup(%Element{} = element, %{} = value), do: render_event(element, :keyup, value)
+  def render_keyup(view, event), do: render_keyup(view, event, %{})
+
+  @doc """
+  Sends a keyup event to the view and returns the rendered result.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+      assert html =~ "The temp is: 30℉"
+      assert render_keyup(view, :inc) =~ "The temp is: 31℉"
+
+  """
+  def render_keyup(view, event, value) do
+    render_event(view, :keyup, event, value)
   end
 
   @doc """

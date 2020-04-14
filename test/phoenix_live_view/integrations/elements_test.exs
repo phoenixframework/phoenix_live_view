@@ -223,4 +223,75 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("span#span-no-attr") |> render_focus() end
     end
   end
+
+  describe "render_keyup" do
+    test "keyups the given element", %{live: view} do
+      assert view |> element("span#span-keyup-no-value") |> render_keyup() =~ ~s|span-keyup: %{}|
+    end
+
+    test "keyups the given element with value", %{live: view} do
+      assert view |> element("span#span-keyup-value") |> render_keyup() =~
+               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-keyup-value") |> render_keyup(%{"value" => "override"}) =~
+               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "keyups the given element with phx-value", %{live: view} do
+      assert view |> element("span#span-keyup-phx-value") |> render_keyup() =~
+               ~s|span-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+
+      assert view |> element("span#span-keyup-phx-value") |> render_keyup(%{"foo" => "override"}) =~
+               ~s|span-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "keyups the given element with phx-window-keyup", %{live: view} do
+      assert view |> element("span#span-window-keyup-phx-value") |> render_keyup() =~
+               ~s|span-window-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-keyup or phx-window-keyup attributes",
+                   fn -> view |> element("span#span-no-attr") |> render_keyup() end
+    end
+  end
+
+  describe "render_keydown" do
+    test "keydowns the given element", %{live: view} do
+      assert view |> element("span#span-keydown-no-value") |> render_keydown() =~
+               ~s|span-keydown: %{}|
+    end
+
+    test "keydowns the given element with value", %{live: view} do
+      assert view |> element("span#span-keydown-value") |> render_keydown() =~
+               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+
+      assert view
+             |> element("span#span-keydown-value")
+             |> render_keydown(%{"value" => "override"}) =~
+               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "keydowns the given element with phx-value", %{live: view} do
+      assert view |> element("span#span-keydown-phx-value") |> render_keydown() =~
+               ~s|span-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+
+      assert view
+             |> element("span#span-keydown-phx-value")
+             |> render_keydown(%{"foo" => "override"}) =~
+               ~s|span-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+    end
+
+    test "keydowns the given element with phx-window-keydown", %{live: view} do
+      assert view |> element("span#span-window-keydown-phx-value") |> render_keydown() =~
+               ~s|span-window-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+    end
+
+    test "raises if element does not have attribute", %{live: view} do
+      assert_raise ArgumentError,
+                   "element selected by \"span#span-no-attr\" does not have phx-keydown or phx-window-keydown attributes",
+                   fn -> view |> element("span#span-no-attr") |> render_keydown() end
+    end
+  end
 end

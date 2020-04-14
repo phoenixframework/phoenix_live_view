@@ -713,6 +713,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_event(type, node, element) when type in [:keyup, :keydown] do
+    cond do
+      event = DOM.attribute(node, "phx-#{type}") ->
+        {:ok, event}
+
+      event = DOM.attribute(node, "phx-window-#{type}") ->
+        {:ok, event}
+
+      true ->
+        {:error, :invalid,
+         "element selected by #{inspect(element.selector)} does not have " <>
+           "phx-#{type} or phx-window-#{type} attributes"}
+    end
+  end
+
   defp maybe_event(type, node, element) do
     if event = DOM.attribute(node, "phx-#{type}") do
       {:ok, event}
