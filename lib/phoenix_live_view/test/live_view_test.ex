@@ -1,16 +1,16 @@
 defmodule Phoenix.LiveViewTest do
   @moduledoc """
-  Conveniences for testing Phoenix live views.
+  Conveniences for testing Phoenix LiveViews.
 
   In LiveView tests, we interact with views via process
   communication in substitution of a browser. Like a browser,
   our test process receives messages about the rendered updates
   from the view which can be asserted against to test the
-  life-cycle and behavior of live views and their children.
+  life-cycle and behavior of LiveViews and their children.
 
   ## LiveView Testing
 
-  The life-cycle of a live view as outlined in the `Phoenix.LiveView`
+  The life-cycle of a LiveView as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
   socket state. Once the browser receives the HTML, it connects to the
   server and a new LiveView process is started, remounted in a connected
@@ -49,7 +49,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Testing Events
 
-  The browser can send a variety of events to a live view via `phx-` bindings,
+  The browser can send a variety of events to a LiveView via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
   browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
@@ -93,7 +93,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Testing regular messages
 
-  Live views are `GenServer`'s under the hood, and can send and receive messages
+  LiveViews are `GenServer`'s under the hood, and can send and receive messages
   just like any other server. To test the side effects of sending or receiving
   messages, simply message the view and use the `render` function to test the
   result:
@@ -218,7 +218,7 @@ defmodule Phoenix.LiveViewTest do
       See `Phoenix.LiveView.get_connect_params/1` for more information.
     * `:session` - the session to be given to the LiveView
 
-  All other options are forwarded to the live view for rendering. Refer to
+  All other options are forwarded to the LiveView for rendering. Refer to
   `Phoenix.LiveView.Helpers.live_render/3` for a list of supported render
   options.
 
@@ -392,7 +392,7 @@ defmodule Phoenix.LiveViewTest do
 
   The `element` is created with `element/3` and must point to a single
   element on the page with a `phx-click` attribute in it. The event name
-  given set on `phx-click` is then sent to the appropriate live view
+  given set on `phx-click` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
   entries in the element are sent as values. Extra values can be given
   with the `value` argument.
@@ -452,12 +452,12 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Sends a keydown event given by `element` and returns the rendered result.
 
-  The `element` is created with `element/3` and must point to a single
-  element on the page with a `phx-click` attribute in it. The event name
-  given set on `phx-click` is then sent to the appropriate live view
-  (or component if `phx-target` is set accordingly). All `phx-value-*`
-  entries in the element are sent as values. Extra values can be given
-  with the `value` argument.
+  The `element` is created with `element/3` and must point to a single element
+  on the page with a `phx-keydown` or `phx-window-keydown` attribute in it.
+  The event name given set on `phx-keydown` is then sent to the appropriate
+  LiveView (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given with
+  the `value` argument.
 
   ## Examples
 
@@ -488,11 +488,11 @@ defmodule Phoenix.LiveViewTest do
   Sends a keyup event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
-  element on the page with a `phx-click` attribute in it. The event name
-  given set on `phx-click` is then sent to the appropriate live view
-  (or component if `phx-target` is set accordingly). All `phx-value-*`
-  entries in the element are sent as values. Extra values can be given
-  with the `value` argument.
+  element on the page with a `phx-keyup` or `phx-window-keyup` attribute
+  in it. The event name given set on `phx-keyup` is then sent to the
+  appropriate LiveView (or component if `phx-target` is set accordingly).
+  All `phx-value-*` entries in the element are sent as values. Extra values
+  can be given with the `value` argument.
 
   ## Examples
 
@@ -523,8 +523,8 @@ defmodule Phoenix.LiveViewTest do
   Sends a blur event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
-  element on the page with a `phx-click` attribute in it. The event name
-  given set on `phx-click` is then sent to the appropriate live view
+  element on the page with a `phx-blur` attribute in it. The event name
+  given set on `phx-blur` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
   entries in the element are sent as values. Extra values can be given
   with the `value` argument.
@@ -559,8 +559,8 @@ defmodule Phoenix.LiveViewTest do
   Sends a focus event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
-  element on the page with a `phx-click` attribute in it. The event name
-  given set on `phx-click` is then sent to the appropriate live view
+  element on the page with a `phx-focus` attribute in it. The event name
+  given set on `phx-focus` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
   entries in the element are sent as values. Extra values can be given
   with the `value` argument.
@@ -632,7 +632,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Returns the current list of live view children for the `parent` LiveView.
+  Returns the current list of LiveView children for the `parent` LiveView.
 
   Children are returned in the order they appear in the rendered HTML.
 
@@ -868,7 +868,7 @@ defmodule Phoenix.LiveViewTest do
 
   If the LiveView redirects with a live redirect, this macro returns
   `{:ok, live_view, disconnected_html}` with the content of the new
-  live view, the same as the `live/3` macro. If the LiveView redirects
+  LiveView, the same as the `live/3` macro. If the LiveView redirects
   with a regular redirect, this macro returns `{:ok, conn}` with the
   rendered redirected page. In any other case, this macro raises.
 
