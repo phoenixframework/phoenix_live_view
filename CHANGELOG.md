@@ -41,6 +41,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
 
 ### Backwards incompatible changes
   - `render_event`/`render_click` and friends now expect a DOM ID selector to be given when working with components. For example, instead of `render_click([live, "user-13"])`, you should write `render_click([live, "#user-13"])`, mirroring the `phx-target` API
+  - Accessing the socket assigns directly `@socket.assigns[...]` in a template will now raise the exception `Phoenix.LiveView.Socket.AssignsNotInSocket`. The socket assigns are available directly inside the template as LiveEEx `assigns`, such as `@foo` and `@bar`. Any assign access should be done using the assigns in the template where proper change tracking takes place.
 
 ### Enhancements
   - Trigger debounced events immediately on input blur
