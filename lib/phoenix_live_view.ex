@@ -905,12 +905,12 @@ defmodule Phoenix.LiveView do
   access to the `@conn` assign. The root layout must be defined
   in your router:
 
-      plug :put_root_layout, {MyApp.LayoutView, :root}
+      plug :put_root_layout, {MyAppWeb.LayoutView, :root}
 
   Alternatively, the layout can be passed to the `live` macro
   in the router:
 
-      live "/dashboard", MyApp.Dashboard, layout: {MyApp.LayoutView, :root}
+      live "/dashboard", MyApp.Dashboard, layout: {MyAppWeb.LayoutView, :root}
 
   If you want the "root" layout to only apply to LiveViews, you
   can pass it as a option or define it in a specific pipeline that
@@ -1051,7 +1051,7 @@ defmodule Phoenix.LiveView do
   so LiveView includes a latency simulator with the JavaScript client to ensure your
   application provides a pleasant experience. Like the `enableDebug()` function above,
   the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
-  functions which apply throughout the current browser sesssion. The `enableLatencySim` function
+  functions which apply throughout the current browser session. The `enableLatencySim` function
   accepts an integer in milliseconds for the round-trip-time to the server. For example:
 
       // app.js
