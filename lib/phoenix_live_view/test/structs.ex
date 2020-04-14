@@ -32,5 +32,6 @@ defmodule Phoenix.LiveViewTest.Element do
   defstruct proxy: nil,
             selector: nil,
             text_filter: nil,
-            event: nil
+            event: nil,
+            form_data: nil
 end

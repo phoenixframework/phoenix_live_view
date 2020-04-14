@@ -285,8 +285,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           with {:ok, node} <- select_node(root, element),
                {:ok, event} <- maybe_event(type, node, element),
+               {:ok, values} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, event_values(type, node)}
+            {view, cid, event, values}
           end
       end
 
@@ -737,8 +738,26 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp event_values(:hook, _), do: %{}
-  defp event_values(_, node), do: DOM.all_values(node)
+  defp maybe_values(_, {tag, _, _}, %{form_data: form_data})
+       when tag != "form" and form_data != nil do
+    {:error, :invalid,
+     "a form element was given but the selected node is not a form, got #{inspect(tag)}}"}
+  end
+
+  defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
+
+  defp maybe_values(type, {tag, _, _} = _node, element) when type in [:change, :submit] do
+    if tag == "form" do
+      {:ok, stringify(element.form_data || %{})}
+    else
+      {:error, :invalid,
+       "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
+    end
+  end
+
+  defp maybe_values(_type, node, _element) do
+    {:ok, DOM.all_values(node)}
+  end
 
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
   defp encode(_, value), do: value

@@ -397,6 +397,17 @@ defmodule Phoenix.LiveViewTest do
   entries in the element are sent as values. Extra values can be given
   with the `value` argument.
 
+  If the element is does not have a `phx-click` attribute but it is
+  a link (the `<a>` tag), the link will be followed accordingly:
+
+    * if the link is a `live_patch`, the current view will be patched
+    * if the link is a `live_redirect`, this function will return
+      `{:error, {:live_redirect, %{to: url}}}`, which can be followed
+      with `follow_redirect/2`
+    * if the link is a regular link, this function will return
+      `{:error, {:redirect, %{to: url}}}`, which can be followed
+      with `follow_redirect/2`
+
   ## Examples
 
       {:ok, view, html} = live(conn, "/thermo")
@@ -424,6 +435,28 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Sends a form submit event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-submit` attribute in it. The event name
+  given set on `phx-submit` is then sent to the appropriate LiveView
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("form")
+             |> render_submit(%{deg: 123}) =~ "123 exceeds limits"
+  """
+  def render_submit(element, value \\ %{})
+  def render_submit(%Element{} = element, %{} = value), do: render_event(element, :submit, value)
+  def render_submit(view, event), do: render_submit(view, event, %{})
+
+  @doc """
   Sends a form submit event to the view and returns the rendered result.
 
   ## Examples
@@ -432,9 +465,31 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
-  def render_submit(view, event, value \\ %{}) do
+  def render_submit(view, event, value) do
     render_event(view, :form, event, value)
   end
+
+  @doc """
+  Sends a form change event given by `element` and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-change` attribute in it. The event name
+  given set on `phx-change` is then sent to the appropriate LiveView
+  (or component if `phx-target` is set accordingly). All `phx-value-*`
+  entries in the element are sent as values. Extra values can be given
+  with the `value` argument.
+
+  ## Examples
+
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("form")
+             |> render_change(%{deg: 123}) =~ "123 exceeds limits"
+  """
+  def render_change(element, value \\ %{})
+  def render_change(%Element{} = element, %{} = value), do: render_event(element, :change, value)
+  def render_change(view, event), do: render_change(view, event, %{})
 
   @doc """
   Sends a form change event to the view and returns the rendered result.
@@ -445,7 +500,7 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "The temp is: 30℉"
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
-  def render_change(view, event, value \\ %{}) do
+  def render_change(view, event, value) do
     render_event(view, :form, event, value)
   end
 

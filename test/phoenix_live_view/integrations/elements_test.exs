@@ -85,10 +85,10 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "clicks the given element with value", %{live: view} do
       assert view |> element("span#span-click-value") |> render_click() =~
-               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
       assert view |> element("span#span-click-value") |> render_click(%{"value" => "override"}) =~
-               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+               ~s|span-click: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
     end
 
     test "clicks the given element with phx-value", %{live: view} do
@@ -175,10 +175,10 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "blurs the given element with value", %{live: view} do
       assert view |> element("span#span-blur-value") |> render_blur() =~
-               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
       assert view |> element("span#span-blur-value") |> render_blur(%{"value" => "override"}) =~
-               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
     end
 
     test "blurs the given element with phx-value", %{live: view} do
@@ -203,10 +203,10 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "focuses the given element with value", %{live: view} do
       assert view |> element("span#span-focus-value") |> render_focus() =~
-               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
       assert view |> element("span#span-focus-value") |> render_focus(%{"value" => "override"}) =~
-               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
     end
 
     test "focuses the given element with phx-value", %{live: view} do
@@ -231,10 +231,10 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "keyups the given element with value", %{live: view} do
       assert view |> element("span#span-keyup-value") |> render_keyup() =~
-               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
       assert view |> element("span#span-keyup-value") |> render_keyup(%{"value" => "override"}) =~
-               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
     end
 
     test "keyups the given element with phx-value", %{live: view} do
@@ -265,12 +265,12 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "keydowns the given element with value", %{live: view} do
       assert view |> element("span#span-keydown-value") |> render_keydown() =~
-               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
       assert view
              |> element("span#span-keydown-value")
              |> render_keydown(%{"value" => "override"}) =~
-               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;456&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
     end
 
     test "keydowns the given element with phx-value", %{live: view} do
@@ -292,6 +292,38 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_raise ArgumentError,
                    "element selected by \"span#span-no-attr\" does not have phx-keydown or phx-window-keydown attributes",
                    fn -> view |> element("span#span-no-attr") |> render_keydown() end
+    end
+  end
+
+  describe "render_change" do
+    test "raises if element is not a form", %{live: view} do
+      assert_raise ArgumentError, "phx-change is only allowed in forms, got \"a\"", fn ->
+        view |> element("#a-no-form") |> render_change()
+      end
+    end
+
+    test "changes the given element", %{live: view} do
+      assert view |> element("#form") |> render_change() =~
+               ~s|form-change: %{}|
+
+      assert view |> element("#form") |> render_change(%{"foo" => "bar"}) =~
+               ~s|form-change: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+    end
+  end
+
+  describe "render_submit" do
+    test "raises if element is not a form", %{live: view} do
+      assert_raise ArgumentError, "phx-submit is only allowed in forms, got \"a\"", fn ->
+        view |> element("#a-no-form") |> render_submit()
+      end
+    end
+
+    test "submits the given element", %{live: view} do
+      assert view |> element("#form") |> render_submit() =~
+               ~s|form-submit: %{}|
+
+      assert view |> element("#form") |> render_submit(%{"foo" => "bar"}) =~
+               ~s|form-submit: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
     end
   end
 end
