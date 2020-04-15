@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       app: :phoenix_live_view,
       version: @version,
-      elixir: "~> 1.7",
+      elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: compilers(Mix.env()),

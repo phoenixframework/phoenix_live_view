@@ -105,9 +105,8 @@ defmodule Phoenix.LiveView.UpdateTest do
       Process.flag(:trap_exit, true)
       {:ok, view, _html} = live(conn, "/time-zones")
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               catch_exit(render_click(view, "remove-id", %{}))
-             end) =~ "setting phx-update to \"append\" requires setting an ID on the container"
+      assert Exception.format(:exit, catch_exit(render_click(view, "remove-id", %{}))) =~
+               "setting phx-update to \"append\" requires setting an ID on the container"
     end
 
     @tag session: %{time_zones: {:append, [%{id: "ny", name: "NY"}]}}
@@ -115,9 +114,11 @@ defmodule Phoenix.LiveView.UpdateTest do
       Process.flag(:trap_exit, true)
       {:ok, view, _html} = live(conn, "/time-zones")
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
+      assert Exception.format(
+               :exit,
                catch_exit(render_click(view, "add-tz", %{id: nil, name: "Tokyo"}))
-             end) =~ "setting phx-update to \"append\" requires setting an ID on each child"
+             ) =~
+               "setting phx-update to \"append\" requires setting an ID on each child"
     end
   end
 

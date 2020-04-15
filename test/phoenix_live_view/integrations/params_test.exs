@@ -103,7 +103,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "hard redirects", %{conn: conn} do
-      {:error, %{redirect: %{to: "/thermo/456"}}} =
+      {:error, {:redirect, %{to: "/thermo/456"}}} =
         conn
         |> put_serialized_session(:on_handle_params, fn socket ->
           if LiveView.connected?(socket) do
@@ -135,7 +135,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "push_redirect", %{conn: conn} do
-      {:error, %{live_redirect: %{to: "/thermo/456"}}} =
+      {:error, {:live_redirect, %{to: "/thermo/456"}}} =
         conn
         |> put_serialized_session(:on_handle_params, fn socket ->
           if LiveView.connected?(socket) do

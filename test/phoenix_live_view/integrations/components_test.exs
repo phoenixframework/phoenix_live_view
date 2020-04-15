@@ -15,7 +15,9 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   test "renders successfully when disconnected", %{conn: conn} do
     conn = get(conn, "/components")
-    assert html_response(conn, 200) =~ "<div id=\"chris\" phx-target=\"#chris\" phx-click=\"transform\">"
+
+    assert html_response(conn, 200) =~
+             "<div id=\"chris\" phx-target=\"#chris\" phx-click=\"transform\">"
   end
 
   test "renders successfully when connected", %{conn: conn} do
@@ -94,8 +96,7 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
               [
                 "\n  Jose says hi with socket: true\n  ",
-                {"div",
-                 [{"data-phx-component", "2"}, {"id", "Jose-dup"} | _],
+                {"div", [{"data-phx-component", "2"}, {"id", "Jose-dup"} | _],
                  ["\n  Jose-dup says hi with socket: true\n" <> _]}
               ]}
            ] = DOM.parse(html)

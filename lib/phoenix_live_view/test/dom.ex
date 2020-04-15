@@ -32,7 +32,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       [] ->
         {:error, :none,
          "expected #{type} #{inspect(selector)} to return a single element, but got none " <>
-         "within: \n\n" <> inspect_html(html_tree)}
+           "within: \n\n" <> inspect_html(html_tree)}
 
       many ->
         {:error, :many,
@@ -48,9 +48,11 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   def inspect_html(nodes) when is_list(nodes) do
-    for dom_node <- nodes, into: "", do: inspect_html(dom_node) <> "\n\n"
+    for dom_node <- nodes, into: "", do: inspect_html(dom_node)
   end
-  def inspect_html(dom_node), do: "    " <> String.replace(to_html(dom_node), "\n", "\n   ")
+
+  def inspect_html(dom_node),
+    do: "    " <> String.replace(to_html(dom_node), "\n", "\n   ") <> "\n"
 
   defp value_key("phx-value-" <> key), do: key
   defp value_key("value"), do: "value"
@@ -258,7 +260,8 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp verify_phx_update_id!(type, id, node) when id in ["", nil] do
     raise ArgumentError,
-          "setting phx-update to #{inspect(type)} requires setting an ID on the container, got: \n\n #{inspect_html(node)}"
+          "setting phx-update to #{inspect(type)} requires setting an ID on the container, " <>
+            "got: \n\n #{inspect_html(node)}"
   end
 
   defp verify_phx_update_id!(_type, _id, _node) do

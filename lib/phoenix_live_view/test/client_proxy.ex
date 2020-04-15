@@ -38,6 +38,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def init(opts) do
+    # Since we are always running in the test client,
+    # we will disable our own logging and let the client
+    # do the job.
+    Logger.disable(self())
+
     {_caller_pid, _caller_ref} = caller = Keyword.fetch!(opts, :caller)
     root_html = Keyword.fetch!(opts, :html)
     root_view = Keyword.fetch!(opts, :proxy)
@@ -59,26 +64,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session
     }
 
-    case mount_view(state, root_view, timeout, url) do
-      {:ok, root_view, rendered} ->
-        try do
-          state
-          |> Map.put(:root_view, root_view)
-          |> put_view(root_view, rendered)
-          |> detect_added_or_removed_children(root_view, root_html)
-        catch
-          :throw, {:stop, {:shutdown, reason}, _} ->
-            send_caller(state, {:error, reason})
-            :ignore
-        else
-          new_state ->
-            send_caller(new_state, {:ok, build_view(root_view), DOM.to_html(new_state.html)})
-            {:ok, new_state}
-        end
+    try do
+      {root_view, rendered} = mount_view(state, root_view, timeout, url)
 
-      {:error, reason} ->
+      new_state =
+        state
+        |> Map.put(:root_view, root_view)
+        |> put_view(root_view, rendered)
+        |> detect_added_or_removed_children(root_view, root_html)
+
+      send_caller(new_state, {:ok, build_view(root_view), DOM.to_html(new_state.html)})
+      {:ok, new_state}
+    catch
+      :throw, {:stop, {:shutdown, reason}, _state} ->
         send_caller(state, {:error, reason})
         :ignore
+
+      :throw, {:stop, reason, _} ->
+        Process.unlink(elem(caller, 0))
+        {:stop, reason}
     end
   end
 
@@ -97,20 +101,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         receive do
           {^ref, {:ok, %{rendered: rendered}}} ->
             Process.demonitor(mon_ref, [:flush])
-            {:ok, %{view | pid: pid}, rendered}
+            {%{view | pid: pid}, rendered}
+
+          {^ref, {:error, %{live_redirect: opts}}} ->
+            throw(stop_redirect(state, view.topic, {:live_redirect, opts}))
+
+          {^ref, {:error, %{redirect: opts}}} ->
+            throw(stop_redirect(state, view.topic, {:redirect, opts}))
 
           {^ref, {:error, reason}} ->
-            Process.demonitor(mon_ref, [:flush])
-            {:error, reason}
+            throw({:stop, reason, state})
 
           {:DOWN, ^mon_ref, _, _, reason} ->
-            {:error, reason}
+            throw({:stop, reason, state})
         after
           timeout -> exit(:timeout)
         end
 
       {:error, reason} ->
-        {:error, reason}
+        throw({:stop, reason, state})
     end
   end
 
@@ -223,14 +232,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         case payload do
           %{live_redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:live_redirect, opts}, from)
+            stop_redirect(state, topic, {:live_redirect, opts})
 
           %{live_patch: %{to: _to} = opts} ->
             send_patch(state, topic, opts)
             {:noreply, render_reply(reply, from, state)}
 
           %{redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:redirect, opts}, from)
+            stop_redirect(state, topic, {:redirect, opts})
 
           %{} ->
             {:noreply, render_reply(reply, from, state)}
@@ -244,7 +253,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     case fetch_view_by_pid(state, pid) do
       {:ok, _view} ->
-        Logger.disable(self())
         {:stop, reason, state}
 
       :error ->
@@ -307,7 +315,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         handle_call({:render_patch, topic, path}, from, state)
 
       {:stop, topic, reason} ->
-        stop_redirect(state, topic, reason, from)
+        stop_redirect(state, topic, reason)
 
       {:error, _, message} ->
         {:reply, {:raise, ArgumentError.exception(message)}, state}
@@ -420,19 +428,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason, from \\ nil)
+  defp stop_redirect(%{caller: {pid, _}} = state, topic, {_kind, opts} = reason)
        when is_binary(topic) do
-    # First emit the redirect to avoid races between a render command
-    # returning {:error, redirect} but the redirect is not yet in its
-    # inbox.
     send_caller(state, {:redirect, topic, opts})
-
-    # Then we will reply with the actual reason. However, because in
-    # some cases the redirect may be sent off-band, the client still
-    # needs to catch any redirect server shutdown.
-    from && GenServer.reply(from, {:error, reason})
-
-    # Now we are ready to shutdown but unlink to avoid caller crashes.
     Process.unlink(pid)
     {:stop, {:shutdown, reason}, state}
   end
@@ -520,24 +518,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           static = static || Map.get(state.root_view.child_statics, id)
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
+          {child_view, rendered} = mount_view(acc, child_view, acc.timeout, nil)
+
           acc
-          |> mount_view(child_view, acc.timeout, nil)
-          |> case do
-            {:ok, child_view, rendered} ->
-              acc
-              |> put_view(child_view, rendered)
-              |> put_child(view, id, child_view.session_token)
-              |> recursive_detect_added_or_removed_children(child_view, acc.html)
-
-            {:error, %{live_redirect: opts}} ->
-              throw(stop_redirect(acc, view.topic, {:live_redirect, opts}))
-
-            {:error, %{redirect: opts}} ->
-              throw(stop_redirect(acc, view.topic, {:redirect, opts}))
-
-            {:error, reason} ->
-              raise "failed to mount view: #{Exception.format_exit(reason)}"
-          end
+          |> put_view(child_view, rendered)
+          |> put_child(view, id, child_view.session_token)
+          |> recursive_detect_added_or_removed_children(child_view, acc.html)
       end
     end)
   end
@@ -861,8 +847,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     cond do
       types == [] ->
-        {:error, :invalid, "could not find non-disabled input, select or textarea with name #{inspect(name)} within:\n\n" <>
-        DOM.inspect_html(DOM.all(node, "[name]"))}
+        {:error, :invalid,
+         "could not find non-disabled input, select or textarea with name #{inspect(name)} within:\n\n" <>
+           DOM.inspect_html(DOM.all(node, "[name]"))}
 
       forbidden_type = Enum.find(types, &(&1 in @forbidden)) ->
         {:error, :invalid,

@@ -11,6 +11,7 @@ defmodule Phoenix.LiveViewTest.View do
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
+  @derive {Inspect, only: [:id, :module, :pid, :endpoint]}
   defstruct id: nil,
             module: nil,
             pid: nil,
@@ -29,6 +30,7 @@ defmodule Phoenix.LiveViewTest.Element do
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
+  @derive {Inspect, only: [:selector, :text_filter]}
   defstruct proxy: nil,
             selector: nil,
             text_filter: nil,

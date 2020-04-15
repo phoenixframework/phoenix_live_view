@@ -335,11 +335,10 @@ defmodule Phoenix.LiveViewTest do
         end
 
       {:error, reason} ->
-        {:error, reason}
+        exit({reason, {__MODULE__, :live, [path]}})
 
       :ignore ->
         receive do
-          {^ref, {:error, {%_{} = exception, [_ | _] = stack}}} -> reraise(exception, stack)
           {^ref, {:error, reason}} -> {:error, reason}
         end
     end
@@ -834,10 +833,12 @@ defmodule Phoenix.LiveViewTest do
     catch
       :exit, {{:shutdown, {kind, opts}}, _} when kind in [:redirect, :live_redirect] ->
         {:error, {kind, opts}}
+
+      :exit, {{exception, stack}, _} ->
+        exit({{exception, stack}, {__MODULE__, :call, [view_or_element]}})
     else
       :ok -> :ok
       {:ok, result} -> result
-      {:error, _} = err -> err
       {:raise, exception} -> raise exception
     end
   end

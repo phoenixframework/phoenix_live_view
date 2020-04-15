@@ -37,14 +37,13 @@ defmodule Phoenix.LiveView.Channel do
     e -> reraise(e, __STACKTRACE__)
   end
 
-  def handle_info({:DOWN, _, _, transport_pid, reason}, %{transport_pid: transport_pid} = state) do
-    reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
-    {:stop, reason, state}
+  def handle_info({:DOWN, _, _, transport_pid, _reason}, %{transport_pid: transport_pid} = state) do
+    {:stop, {:shutdown, :closed}, state}
   end
 
   def handle_info({:DOWN, _, _, parent, reason}, %{socket: %{parent_pid: parent}} = state) do
     send(state.transport_pid, {:socket_close, self(), reason})
-    {:stop, reason, state}
+    {:stop, {:shutdown, :parent_exited}, state}
   end
 
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do

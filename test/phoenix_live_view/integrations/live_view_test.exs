@@ -75,7 +75,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "push_redirect when connected", %{conn: conn} do
       conn = get(conn, "/redir?during=connected&kind=push_redirect&to=/thermo")
       assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, %{live_redirect: %{kind: :push, to: "/thermo"}}} = live(conn)
+      assert {:error, {:live_redirect, %{kind: :push, to: "/thermo"}}} = live(conn)
     end
 
     test "push_patch when disconnected", %{conn: conn} do
@@ -88,9 +88,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = get(conn, "/redir?during=connected&kind=push_patch&to=/redir?patched=true")
       assert html_response(conn, 200) =~ "parent_content"
 
-      assert_raise RuntimeError, ~r/attempted to live patch while/, fn ->
-        live(conn)
-      end
+      assert Exception.format(:exit, catch_exit(live(conn))) =~
+               "attempted to live patch while mounting"
     end
 
     test "redirect when disconnected", %{conn: conn} do
@@ -101,7 +100,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "redirect when connected", %{conn: conn} do
       conn = get(conn, "/redir?during=connected&kind=redirect&to=/thermo")
       assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, %{redirect: %{to: "/thermo"}}} = live(conn)
+      assert {:error, {:redirect, %{to: "/thermo"}}} = live(conn)
     end
 
     test "child push_redirect when disconnected", %{conn: conn} do
@@ -132,9 +131,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = get(conn, "/redir?during=connected&kind=push_patch&child_to=/redir?patched=true")
       assert html_response(conn, 200) =~ "child_content"
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               live(conn)
-             end) =~ "a LiveView cannot be mounted while issuing a live patch to the client"
+      assert Exception.format(:exit, catch_exit(live(conn))) =~
+               "a LiveView cannot be mounted while issuing a live patch to the client"
     end
 
     test "child redirect when disconnected", %{conn: conn} do
@@ -219,24 +217,20 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = simulate_bad_token_on_page(get(conn, "/thermo"))
 
       assert ExUnit.CaptureLog.capture_log(fn ->
-               assert {:error, %{reason: "badsession"}} = live(conn)
+               assert {%{reason: "badsession"}, _} = catch_exit(live(conn))
              end) =~ "failed while verifying session"
     end
 
     test "live render with outdated session", %{conn: conn} do
       conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               assert {:error, %{reason: "outdated"}} = live(conn)
-             end)
+      assert {%{reason: "outdated"}, _} = catch_exit(live(conn))
     end
 
     test "live render with expired session", %{conn: conn} do
       conn = simulate_expired_token_on_page(get(conn, "/thermo"))
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               assert {:error, %{reason: "outdated"}} = live(conn)
-             end)
+      assert {%{reason: "outdated"}, _} = catch_exit(live(conn))
     end
 
     test "live render in widget-style", %{conn: conn} do
@@ -533,10 +527,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
         |> Plug.Conn.put_session(:user_id, 13)
         |> live("/root")
 
-      assert ExUnit.CaptureLog.capture_log(fn ->
-               :ok = GenServer.call(view.pid, {:dynamic_child, :static})
-               catch_exit(render(view))
-             end) =~ "expected selector \"#static\" to return a single element, but got 2"
+      :ok = GenServer.call(view.pid, {:dynamic_child, :static})
+
+      assert Exception.format(:exit, catch_exit(render(view))) =~
+               "expected selector \"#static\" to return a single element, but got 2"
     end
 
     test "live view nested inside a live component" do
