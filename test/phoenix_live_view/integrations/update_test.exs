@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.UpdateTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
