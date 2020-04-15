@@ -839,19 +839,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     :ok
   end
 
-  defp fill_in_list([value | rest], prefix, node) do
-    case fill_in_map(value, prefix, node) do
-      :ok -> fill_in_list(rest, prefix, node)
-      {:error, _, _} = error -> error
-    end
-  end
-
-  defp fill_in_list([], _prefix, _node) do
-    :ok
-  end
-
   defp fill_in_type(%{} = value, key, node), do: fill_in_map(Map.to_list(value), key, node)
-  defp fill_in_type([%{} | _] = value, key, node), do: fill_in_list(value, key <> "[]", node)
   defp fill_in_type(value, key, node), do: fill_in_value(value, key, node)
 
   @limited ["select", "multiple select", "checkbox", "radio", "hidden"]
