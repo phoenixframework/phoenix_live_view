@@ -59,25 +59,25 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "raises on bad selector", %{live: view} do
       assert_raise ArgumentError,
-                   "expected selector \"div\" to return a single element, but got 3",
+                   ~r/expected selector "div" to return a single element, but got 3/,
                    fn -> view |> element("div") |> render() end
 
       assert_raise ArgumentError,
-                   "expected selector \"#unknown\" to return a single element, but got none",
+                   ~r/expected selector "#unknown" to return a single element, but got none/,
                    fn -> view |> element("#unknown") |> render() end
     end
 
     test "raises on bad selector with text filter", %{live: view} do
       assert_raise ArgumentError,
-                   "selector \"#scoped-render\" did not match text filter \"This is not a div\", got: \"This is a div\"",
+                   ~r/selector "#scoped-render" did not match text filter "This is not a div", got: \n\n    <div id="scoped-render"><span>This<\/span> is a div<\/div>/,
                    fn -> view |> element("#scoped-render", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   "selector \"div\" returned 3 elements but none matched the text filter \"This is not a div\"",
+                   ~r/selector "div" returned 3 elements but none matched the text filter "This is not a div"/,
                    fn -> view |> element("div", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   "selector \"div\" returned 3 elements and 2 of them matched the text filter \"This\"",
+                   ~r/selector "div" returned 3 elements and 2 of them matched the text filter "This"/,
                    fn -> view |> element("div", "This") |> render() end
     end
   end
@@ -460,7 +460,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "fill in missing", %{live: view} do
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[unknown]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[unknown\]"/,
                    fn -> view |> form("#form", hello: [unknown: "true"]) |> render_change() end
     end
 
@@ -509,7 +509,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"radio" => "1"|
 
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[radio][]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[radio\]\[\]"/,
                    fn ->
                      view |> form("#form", hello: [radio: [1, 2]]) |> render_change()
                    end
@@ -526,7 +526,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"checkbox" => "1"|
 
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[checkbox][]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[checkbox\]\[\]"/,
                    fn ->
                      view |> form("#form", hello: [checkbox: [1, 2]]) |> render_change()
                    end
@@ -556,7 +556,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"selected" => "1"|
 
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[selected][]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[selected\]\[\]"/,
                    fn ->
                      view |> form("#form", hello: [selected: [1, 2]]) |> render_change()
                    end
@@ -586,7 +586,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"latest" => "i truly win"|
 
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[latest][]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[latest\]\[\]"/,
                    fn ->
                      view |> form("#form", hello: [latest: ["i lose"]]) |> render_change()
                    end
@@ -603,7 +603,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"textarea" => "i truly win"|
 
       assert_raise ArgumentError,
-                   "could not find non-disabled input, select or textarea with name \"hello[textarea][]\"",
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[textarea\]\[\]"/,
                    fn ->
                      view |> form("#form", hello: [textarea: ["i lose"]]) |> render_change()
                    end

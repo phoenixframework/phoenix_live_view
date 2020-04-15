@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.UpdateTest do
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
+  @moduletag :capture_log
 
   setup config do
     {:ok,
