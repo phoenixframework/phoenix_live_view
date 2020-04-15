@@ -1110,7 +1110,7 @@ defmodule Phoenix.LiveView do
       <button type="submit" phx-disable-with="Saving...">Save</button>
 
   You may also take advantage of LiveView's CSS loading state classes to
-  swap our your form content while the form is submitting. For example,
+  swap out your form content while the form is submitting. For example,
   with the following rules in your `app.css`:
 
       .while-submitting { display: none; }
@@ -1124,7 +1124,7 @@ defmodule Phoenix.LiveView do
   You can show and hide content with the following markup:
 
       <form phx-change="update">
-        <div class="while-submitting">Please waiting while we save our content...</div>
+        <div class="while-submitting">Please wait while we save our content...</div>
         <div class="inputs">
           <input type="text" name="text" value="<%= @text %>">
         </div>
