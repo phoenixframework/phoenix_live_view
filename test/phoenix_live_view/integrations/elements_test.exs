@@ -7,6 +7,10 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   @endpoint Endpoint
 
+  defp last_event(view) do
+    view |> element("#last-event") |> render() |> HtmlEntities.decode()
+  end
+
   setup do
     {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/elements")
     %{live: live}
@@ -303,10 +307,13 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "changes the given element", %{live: view} do
-      assert view |> element("#form") |> render_change() =~
+      assert view |> element("#empty-form") |> render_change() =~
                ~s|form-change: %{}|
 
-      assert view |> element("#form") |> render_change(%{"foo" => "bar"}) =~
+      assert view |> element("#empty-form") |> render_change(foo: "bar") =~
+               ~s|form-change: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+
+      assert view |> element("#empty-form") |> render_change(%{"foo" => "bar"}) =~
                ~s|form-change: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
     end
   end
@@ -319,11 +326,60 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "submits the given element", %{live: view} do
-      assert view |> element("#form") |> render_submit() =~
+      assert view |> element("#empty-form") |> render_submit() =~
                ~s|form-submit: %{}|
 
-      assert view |> element("#form") |> render_submit(%{"foo" => "bar"}) =~
+      assert view |> element("#empty-form") |> render_submit(foo: "bar") =~
                ~s|form-submit: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+
+      assert view |> element("#empty-form") |> render_submit(%{"foo" => "bar"}) =~
+               ~s|form-submit: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+    end
+  end
+
+  describe "form" do
+    test "defaults", %{live: view} do
+      view |> form("#form") |> render_change()
+      form = last_event(view)
+      assert form =~ ~s|form-change: %{"hello" => %{|
+
+      # Element without types are still handle
+      assert form =~ ~s|"no-type" => "value"|
+
+      # Latest always wins
+      assert form =~ ~s|"latest" => "new"|
+
+      # Hidden elements too
+      assert form =~ ~s|"hidden" => "hidden"|
+
+      # Radio stores checked one but not disabled and not checked
+      assert form =~ ~s|"radio" => "2"|
+      refute form =~ ~s|"not-checked-radio"|
+      refute form =~ ~s|"disabled-radio"|
+
+      # Checkbox stores checked ones but not disabled and not checked
+      assert form =~ ~s|"checkbox" => "2"|
+      refute form =~ ~s|"not-checked-checkbox"|
+      refute form =~ ~s|"disabled-checkbox"|
+
+      # Multiple checkbox
+      assert form =~ ~s|"multiple-checkbox" => ["2", "3"]|
+
+      # Select
+      assert form =~ ~s|"selected" => "1"|
+      assert form =~ ~s|"not-selected" => "blank"|
+
+      # Multiple Select
+      assert form =~ ~s|"multiple-select" => ["2", "3"]|
+
+      # Text area
+      assert form =~ ~s|"textarea" => "Text"|
+
+      # Ignore everything with no name, disabled, or submits
+      refute form =~ "no-name"
+      refute form =~ "disabled"
+      refute form =~ "ignore-submit"
+      refute form =~ "ignore-image"
     end
   end
 end

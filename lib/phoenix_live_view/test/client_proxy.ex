@@ -746,17 +746,71 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
 
-  defp maybe_values(type, {tag, _, _} = _node, element) when type in [:change, :submit] do
+  defp maybe_values(type, {tag, _, _} = node, _element) when type in [:change, :submit] do
     if tag == "form" do
-      {:ok, stringify(element.form_data || %{})}
+      defaults =
+        node
+        |> DOM.all("input, select, textarea")
+        |> Enum.reverse()
+        |> Enum.reduce(%{}, &decode_form/2)
+
+      {:ok, defaults}
     else
-      {:error, :invalid,
-       "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
+      {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
     end
   end
 
   defp maybe_values(_type, node, _element) do
     {:ok, DOM.all_values(node)}
+  end
+
+  defp decode_form(node, acc) do
+    cond do
+      DOM.attribute(node, "disabled") -> acc
+      name = DOM.attribute(node, "name") -> decode_form(node, name, acc)
+      true -> acc
+    end
+  end
+
+  defp decode_form({"select", _, _} = node, name, acc) do
+    options = DOM.all(node, "option")
+
+    all_selected =
+      if DOM.attribute(node, "multiple") do
+        Enum.filter(options, &DOM.attribute(&1, "selected"))
+      else
+        List.wrap(Enum.find(options, &DOM.attribute(&1, "selected")) || List.first(options))
+      end
+
+    all_selected
+    |> Enum.reverse()
+    |> Enum.reduce(acc, fn selected, acc ->
+      Plug.Conn.Query.decode_pair({name, DOM.attribute(selected, "value")}, acc)
+    end)
+  end
+
+  defp decode_form({"textarea", _, [value]}, name, acc) do
+    Plug.Conn.Query.decode_pair({name, value}, acc)
+  end
+
+  defp decode_form({"input", _, _} = node, name, acc) do
+    type = DOM.attribute(node, "type") || "text"
+    value = DOM.attribute(node, "value") || ""
+
+    cond do
+      type in ["radio", "checkbox"] ->
+        if DOM.attribute(node, "checked") do
+          Plug.Conn.Query.decode_pair({name, value}, acc)
+        else
+          acc
+        end
+
+      type in ["image", "submit"] ->
+        acc
+
+      true ->
+        Plug.Conn.Query.decode_pair({name, value}, acc)
+    end
   end
 
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
@@ -767,6 +821,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp stringify(%{} = params),
     do: Enum.into(params, %{}, &stringify_kv/1)
+
+  defp stringify([{_, _} | _] = params),
+    do: Enum.into(params, %{}, &stringify_kv/1)
+
+  defp stringify(params) when is_list(params),
+    do: Enum.map(params, &stringify/1)
 
   defp stringify(other),
     do: other

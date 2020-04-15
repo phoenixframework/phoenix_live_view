@@ -47,7 +47,46 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
     <%# forms %>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
+    <form id="empty-form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
+    </form>
     <form id="form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
+      <input value="no-name">
+      <input name="hello[disabled]" value="value" disabled>
+      <input name="hello[no-type]" value="value">
+      <input name="hello[latest]" type="text" value="old">
+      <input name="hello[latest]" type="text" value="new">
+      <input name="hello[hidden]" type="hidden" value="hidden">
+      <input name="hello[radio]" type="radio" value="1">
+      <input name="hello[radio]" type="radio" value="2" checked>
+      <input name="hello[radio]" type="radio" value="3">
+      <input name="hello[not-checked-radio]" type="radio" value="1">
+      <input name="hello[disabled-radio]" type="radio" value="1" checked disabled>
+      <input name="hello[checkbox]" type="checkbox" value="1">
+      <input name="hello[checkbox]" type="checkbox" value="2" checked>
+      <input name="hello[checkbox]" type="checkbox" value="3">
+      <input name="hello[not-checked-checkbox]" type="checkbox" value="1">
+      <input name="hello[disabled-checkbox]" type="checkbox" value="1" checked disabled>
+      <input name="hello[multiple-checkbox][]" type="checkbox" value="1">
+      <input name="hello[multiple-checkbox][]" type="checkbox" value="2" checked>
+      <input name="hello[multiple-checkbox][]" type="checkbox" value="3" checked>
+      <select name="hello[not-selected]">
+        <option value="blank">None</option>
+        <option value="1">One</option>
+        <option value="2">Two</option>
+      </select>
+      <select name="hello[selected]">
+        <option value="blank">None</option>
+        <option value="1" selected>One</option>
+        <option value="2">Two</option>
+      </select>
+      <select name="hello[multiple-select][]" multiple>
+        <option value="1">One</option>
+        <option value="2" selected>Two</option>
+        <option value="3" selected>Three</option>
+      </select>
+      <textarea name="hello[textarea]">Text</textarea>
+      <input name="hello[ignore-submit]" type="submit" value="ignored">
+      <input name="hello[ignore-image]" type="image" value="ignored">
     </form>
     """
   end
