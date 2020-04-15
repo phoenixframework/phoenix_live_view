@@ -852,11 +852,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp fill_in_value(value, name, node) do
     name = if is_list(value), do: name <> "[]", else: name
 
-    inputs =
-      node
-      |> DOM.all("[name]")
-      |> Enum.map(fn {_tag, _attrs, _children} = child -> DOM.to_html(child) end)
-
     {types, values} =
       node
       |> DOM.all("[name=#{inspect(name)}]:not([disabled])")
@@ -866,12 +861,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     cond do
       types == [] ->
-        {:error, :invalid,
-         """
-         could not find non-disabled input, select or textarea with name #{inspect(name)} within:
-
-         #{for input <- inputs, do: "     #{input}\n"}
-         """}
+        {:error, :invalid, "could not find non-disabled input, select or textarea with name #{inspect(name)} within:\n\n" <>
+        DOM.inspect_html(DOM.all(node, "[name]"))}
 
       forbidden_type = Enum.find(types, &(&1 in @forbidden)) ->
         {:error, :invalid,
