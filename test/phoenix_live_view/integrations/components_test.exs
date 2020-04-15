@@ -159,7 +159,8 @@ defmodule Phoenix.LiveView.ComponentTest do
 
       assert ExUnit.CaptureLog.capture_log(fn ->
                send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
-               refute_receive {:updated, _}
+               ref = Process.monitor(view.pid)
+               assert_receive {:DOWN, ^ref, _, _, _}
              end) =~ "** (ArgumentError) missing required :id in send_update"
     end
   end
