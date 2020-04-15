@@ -84,10 +84,11 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_click" do
     test "clicks the given element", %{live: view} do
-      assert view |> element("span#span-click-no-value") |> render_click() =~ ~s|span-click: %{}|
+      assert view |> element("span#span-click-no-value") |> render_click() |> is_binary()
+      assert last_event(view) =~ ~s|span-click: %{}|
     end
 
-    test "clicks the given element with value", %{live: view} do
+    test "clicks the given element with value and proper escaping", %{live: view} do
       assert view |> element("span#span-click-value") |> render_click() =~
                ~s|span-click: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
 
@@ -96,11 +97,18 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "clicks the given element with phx-value", %{live: view} do
-      assert view |> element("span#span-click-phx-value") |> render_click() =~
-               ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-click-phx-value") |> render_click() |> is_binary()
 
-      assert view |> element("span#span-click-phx-value") |> render_click(%{"foo" => "override"}) =~
-               ~s|span-click: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-click: %{"bar" => "456", "foo" => "123"}|
+
+      assert view
+             |> element("span#span-click-phx-value")
+             |> render_click(%{"foo" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-click: %{"bar" => "456", "foo" => "override"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -133,8 +141,8 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "clicks live patch links without phx-click", %{live: view} do
-      assert view |> element("a#live-patch-a") |> render_click() =~
-               "handle_params: %{&quot;from&quot; =&gt; &quot;uri&quot;}"
+      assert view |> element("a#live-patch-a") |> render_click() |> is_binary()
+      assert last_event(view) =~ ~s|handle_params: %{"from" => "uri"}|
 
       assert_patched(view, "/elements?from=uri")
     end
@@ -148,13 +156,18 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_hook" do
     test "hooks the given element", %{live: view} do
-      assert view |> element("section#hook-section") |> render_hook("custom-event") =~
+      assert view |> element("section#hook-section") |> render_hook("custom-event") |> is_binary()
+
+      assert last_event(view) =~
                ~s|custom-event: %{}|
 
       assert view
              |> element("section#hook-section")
-             |> render_hook("custom-event", %{foo: "bar"}) =~
-               ~s|custom-event: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+             |> render_hook("custom-event", %{foo: "bar"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|custom-event: %{"foo" => "bar"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -174,23 +187,38 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_blur" do
     test "blurs the given element", %{live: view} do
-      assert view |> element("span#span-blur-no-value") |> render_blur() =~ ~s|span-blur: %{}|
+      assert view |> element("span#span-blur-no-value") |> render_blur() |> is_binary()
+      assert last_event(view) =~ ~s|span-blur: %{}|
     end
 
     test "blurs the given element with value", %{live: view} do
-      assert view |> element("span#span-blur-value") |> render_blur() =~
-               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-blur-value") |> render_blur() |> is_binary()
 
-      assert view |> element("span#span-blur-value") |> render_blur(%{"value" => "override"}) =~
-               ~s|span-blur: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-blur: %{"extra" => "456", "value" => "123"}|
+
+      assert view
+             |> element("span#span-blur-value")
+             |> render_blur(%{"value" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-blur: %{"extra" => "456", "value" => "override"}|
     end
 
     test "blurs the given element with phx-value", %{live: view} do
-      assert view |> element("span#span-blur-phx-value") |> render_blur() =~
-               ~s|span-blur: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-blur-phx-value") |> render_blur() |> is_binary()
 
-      assert view |> element("span#span-blur-phx-value") |> render_blur(%{"foo" => "override"}) =~
-               ~s|span-blur: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-blur: %{"bar" => "456", "foo" => "123"}|
+
+      assert view
+             |> element("span#span-blur-phx-value")
+             |> render_blur(%{"foo" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-blur: %{"bar" => "456", "foo" => "override"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -202,23 +230,38 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_focus" do
     test "focuses the given element", %{live: view} do
-      assert view |> element("span#span-focus-no-value") |> render_focus() =~ ~s|span-focus: %{}|
+      assert view |> element("span#span-focus-no-value") |> render_focus() |> is_binary()
+      assert last_event(view) =~ ~s|span-focus: %{}|
     end
 
     test "focuses the given element with value", %{live: view} do
-      assert view |> element("span#span-focus-value") |> render_focus() =~
-               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-focus-value") |> render_focus() |> is_binary()
 
-      assert view |> element("span#span-focus-value") |> render_focus(%{"value" => "override"}) =~
-               ~s|span-focus: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-focus: %{"extra" => "456", "value" => "123"}|
+
+      assert view
+             |> element("span#span-focus-value")
+             |> render_focus(%{"value" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-focus: %{"extra" => "456", "value" => "override"}|
     end
 
     test "focuses the given element with phx-value", %{live: view} do
-      assert view |> element("span#span-focus-phx-value") |> render_focus() =~
-               ~s|span-focus: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-focus-phx-value") |> render_focus() |> is_binary()
 
-      assert view |> element("span#span-focus-phx-value") |> render_focus(%{"foo" => "override"}) =~
-               ~s|span-focus: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-focus: %{"bar" => "456", "foo" => "123"}|
+
+      assert view
+             |> element("span#span-focus-phx-value")
+             |> render_focus(%{"foo" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-focus: %{"bar" => "456", "foo" => "override"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -230,28 +273,45 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_keyup" do
     test "keyups the given element", %{live: view} do
-      assert view |> element("span#span-keyup-no-value") |> render_keyup() =~ ~s|span-keyup: %{}|
+      assert view |> element("span#span-keyup-no-value") |> render_keyup() |> is_binary()
+      assert last_event(view) =~ ~s|span-keyup: %{}|
     end
 
     test "keyups the given element with value", %{live: view} do
-      assert view |> element("span#span-keyup-value") |> render_keyup() =~
-               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-keyup-value") |> render_keyup() |> is_binary()
 
-      assert view |> element("span#span-keyup-value") |> render_keyup(%{"value" => "override"}) =~
-               ~s|span-keyup: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-keyup: %{"extra" => "456", "value" => "123"}|
+
+      assert view
+             |> element("span#span-keyup-value")
+             |> render_keyup(%{"value" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-keyup: %{"extra" => "456", "value" => "override"}|
     end
 
     test "keyups the given element with phx-value", %{live: view} do
-      assert view |> element("span#span-keyup-phx-value") |> render_keyup() =~
-               ~s|span-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-keyup-phx-value") |> render_keyup() |> is_binary()
 
-      assert view |> element("span#span-keyup-phx-value") |> render_keyup(%{"foo" => "override"}) =~
-               ~s|span-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+      assert last_event(view) =~
+               ~s|span-keyup: %{"bar" => "456", "foo" => "123"}|
+
+      assert view
+             |> element("span#span-keyup-phx-value")
+             |> render_keyup(%{"foo" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-keyup: %{"bar" => "456", "foo" => "override"}|
     end
 
     test "keyups the given element with phx-window-keyup", %{live: view} do
-      assert view |> element("span#span-window-keyup-phx-value") |> render_keyup() =~
-               ~s|span-window-keyup: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-window-keyup-phx-value") |> render_keyup() |> is_binary()
+
+      assert last_event(view) =~
+               ~s|span-window-keyup: %{"bar" => "456", "foo" => "123"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -263,33 +323,41 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "render_keydown" do
     test "keydowns the given element", %{live: view} do
-      assert view |> element("span#span-keydown-no-value") |> render_keydown() =~
-               ~s|span-keydown: %{}|
+      assert view |> element("span#span-keydown-no-value") |> render_keydown() |> is_binary()
+      assert last_event(view) =~ ~s|span-keydown: %{}|
     end
 
     test "keydowns the given element with value", %{live: view} do
-      assert view |> element("span#span-keydown-value") |> render_keydown() =~
-               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-keydown-value") |> render_keydown() |> is_binary()
+      assert last_event(view) =~ ~s|span-keydown: %{"extra" => "456", "value" => "123"}|
 
       assert view
              |> element("span#span-keydown-value")
-             |> render_keydown(%{"value" => "override"}) =~
-               ~s|span-keydown: %{&quot;extra&quot; =&gt; &quot;&lt;456&gt;&quot;, &quot;value&quot; =&gt; &quot;override&quot;}|
+             |> render_keydown(%{"value" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~ ~s|span-keydown: %{"extra" => "456", "value" => "override"}|
     end
 
     test "keydowns the given element with phx-value", %{live: view} do
-      assert view |> element("span#span-keydown-phx-value") |> render_keydown() =~
-               ~s|span-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view |> element("span#span-keydown-phx-value") |> render_keydown() |> is_binary()
+      assert last_event(view) =~ ~s|span-keydown: %{"bar" => "456", "foo" => "123"}|
 
       assert view
              |> element("span#span-keydown-phx-value")
-             |> render_keydown(%{"foo" => "override"}) =~
-               ~s|span-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;override&quot;}|
+             |> render_keydown(%{"foo" => "override"})
+             |> is_binary()
+
+      assert last_event(view) =~ ~s|span-keydown: %{"bar" => "456", "foo" => "override"}|
     end
 
     test "keydowns the given element with phx-window-keydown", %{live: view} do
-      assert view |> element("span#span-window-keydown-phx-value") |> render_keydown() =~
-               ~s|span-window-keydown: %{&quot;bar&quot; =&gt; &quot;456&quot;, &quot;foo&quot; =&gt; &quot;123&quot;}|
+      assert view
+             |> element("span#span-window-keydown-phx-value")
+             |> render_keydown()
+             |> is_binary()
+
+      assert last_event(view) =~ ~s|span-window-keydown: %{"bar" => "456", "foo" => "123"}|
     end
 
     test "raises if element does not have attribute", %{live: view} do
@@ -307,14 +375,14 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "changes the given element", %{live: view} do
-      assert view |> element("#empty-form") |> render_change() =~
-               ~s|form-change: %{}|
+      assert view |> element("#empty-form") |> render_change()
+      assert last_event(view) =~ ~s|form-change: %{}|
 
-      assert view |> element("#empty-form") |> render_change(foo: "bar") =~
-               ~s|form-change: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+      assert view |> element("#empty-form") |> render_change(foo: "bar")
+      assert last_event(view) =~ ~s|form-change: %{"foo" => "bar"}|
 
-      assert view |> element("#empty-form") |> render_change(%{"foo" => "bar"}) =~
-               ~s|form-change: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+      assert view |> element("#empty-form") |> render_change(%{"foo" => "bar"})
+      assert last_event(view) =~ ~s|form-change: %{"foo" => "bar"}|
     end
   end
 
@@ -326,14 +394,14 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "submits the given element", %{live: view} do
-      assert view |> element("#empty-form") |> render_submit() =~
-               ~s|form-submit: %{}|
+      assert view |> element("#empty-form") |> render_submit()
+      assert last_event(view) =~ ~s|form-submit: %{}|
 
-      assert view |> element("#empty-form") |> render_submit(foo: "bar") =~
-               ~s|form-submit: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+      assert view |> element("#empty-form") |> render_submit(foo: "bar")
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
 
-      assert view |> element("#empty-form") |> render_submit(%{"foo" => "bar"}) =~
-               ~s|form-submit: %{&quot;foo&quot; =&gt; &quot;bar&quot;}|
+      assert view |> element("#empty-form") |> render_submit(%{"foo" => "bar"})
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
     end
   end
 

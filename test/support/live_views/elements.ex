@@ -12,20 +12,20 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-no-attr">This is a span</span>
 
     <span id="span-blur-no-value" phx-blur="span-blur">This is a span</span>
-    <span id="span-blur-value" phx-blur="span-blur" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
+    <span id="span-blur-value" phx-blur="span-blur" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-blur-phx-value" phx-blur="span-blur" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
     <span id="span-focus-no-value" phx-focus="span-focus">This is a span</span>
-    <span id="span-focus-value" phx-focus="span-focus" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
+    <span id="span-focus-value" phx-focus="span-focus" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-focus-phx-value" phx-focus="span-focus" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
     <span id="span-keyup-no-value" phx-keyup="span-keyup">This is a span</span>
-    <span id="span-keyup-value" phx-keyup="span-keyup" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
+    <span id="span-keyup-value" phx-keyup="span-keyup" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-keyup-phx-value" phx-keyup="span-keyup" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     <span id="span-window-keyup-phx-value" phx-window-keyup="span-window-keyup" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
     <span id="span-keydown-no-value" phx-keydown="span-keydown">This is a span</span>
-    <span id="span-keydown-value" phx-keydown="span-keydown" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
+    <span id="span-keydown-value" phx-keydown="span-keydown" value="123" phx-value-extra="456">This is a span</span>
     <span id="span-keydown-phx-value" phx-keydown="span-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     <span id="span-window-keydown-phx-value" phx-window-keydown="span-window-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
