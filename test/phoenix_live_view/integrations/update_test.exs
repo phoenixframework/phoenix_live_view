@@ -1,11 +1,12 @@
 defmodule Phoenix.LiveView.UpdateTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
+  @moduletag :capture_log
 
   setup config do
     {:ok,

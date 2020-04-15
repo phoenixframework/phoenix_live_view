@@ -31,12 +31,13 @@ defmodule Phoenix.LiveViewTest.DOM do
 
       [] ->
         {:error, :none,
-         "expected #{type} #{inspect(selector)} to return a single element, but got none"}
+         "expected #{type} #{inspect(selector)} to return a single element, but got none " <>
+         "within: \n\n" <> inspect_html(html_tree)}
 
       many ->
         {:error, :many,
          "expected #{type} #{inspect(selector)} to return a single element, " <>
-           "but got #{length(many)}"}
+           "but got #{length(many)}: \n\n" <> inspect_html(many)}
     end
   end
 
@@ -45,6 +46,11 @@ defmodule Phoenix.LiveViewTest.DOM do
   def all_values({_, attributes, _}) do
     for {attr, value} <- attributes, key = value_key(attr), do: {key, value}, into: %{}
   end
+
+  def inspect_html(nodes) when is_list(nodes) do
+    for dom_node <- nodes, into: "", do: inspect_html(dom_node) <> "\n\n"
+  end
+  def inspect_html(dom_node), do: "    " <> String.replace(to_html(dom_node), "\n", "\n   ")
 
   defp value_key("phx-value-" <> key), do: key
   defp value_key("value"), do: "value"
@@ -197,7 +203,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
        when type in ["append", "prepend"] do
     id = attribute(node, "id")
-    verify_phx_update_id!(type, id)
+    verify_phx_update_id!(type, id, node)
     children_before = apply_phx_update_children(html, id)
     existing_ids = apply_phx_update_children_id(type, children_before)
     new_ids = apply_phx_update_children_id(type, appended_children)
@@ -236,7 +242,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp apply_phx_update("ignore", _state, node) do
-    verify_phx_update_id!("ignore", attribute(node, "id"))
+    verify_phx_update_id!("ignore", attribute(node, "id"), node)
     node
   end
 
@@ -250,12 +256,12 @@ defmodule Phoenix.LiveViewTest.DOM do
             "expected one of \"replace\", \"append\", \"prepend\", \"ignore\""
   end
 
-  defp verify_phx_update_id!(type, id) when id in ["", nil] do
+  defp verify_phx_update_id!(type, id, node) when id in ["", nil] do
     raise ArgumentError,
-          "setting phx-update to #{inspect(type)} requires setting an ID on the container"
+          "setting phx-update to #{inspect(type)} requires setting an ID on the container, got: \n\n #{inspect_html(node)}"
   end
 
-  defp verify_phx_update_id!(_type, _id) do
+  defp verify_phx_update_id!(_type, _id, _node) do
     :ok
   end
 

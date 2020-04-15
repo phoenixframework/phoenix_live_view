@@ -617,22 +617,26 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:ok, filtered_node}
 
       {[], _} ->
-        {:error, :none, "selector #{inspect(selector)} did not return any element"}
+        {:error, :none,
+         "selector #{inspect(selector)} did not return any element within: \n\n" <>
+           DOM.inspect_html(root)}
 
       {[node], []} ->
         {:error, :none,
          "selector #{inspect(selector)} did not match text filter #{inspect(text_filter)}, " <>
-           "got: #{inspect(DOM.to_text(node))}"}
+           "got: \n\n#{DOM.inspect_html(node)}"}
 
       {_, []} ->
         {:error, :none,
          "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
-           "but none matched the text filter #{inspect(text_filter)}"}
+           "but none matched the text filter #{inspect(text_filter)}: \n\n" <>
+           DOM.inspect_html(nodes)}
 
       {_, _} ->
         {:error, :many,
          "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
-           "and #{length(filtered_nodes)} of them matched the text filter #{inspect(text_filter)}"}
+           "and #{length(filtered_nodes)} of them matched the text filter #{inspect(text_filter)}: \n\n " <>
+           DOM.inspect_html(filtered_nodes)}
     end
   end
 
@@ -848,9 +852,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp fill_in_value(value, name, node) do
     name = if is_list(value), do: name <> "[]", else: name
 
+    inputs =
+      node
+      |> DOM.all("[name]")
+      |> Enum.map(fn {_tag, _attrs, _children} = child -> DOM.to_html(child) end)
+
     {types, values} =
       node
-      |> DOM.all("[name=#{inspect(name)}]:not(disabled)")
+      |> DOM.all("[name=#{inspect(name)}]:not([disabled])")
       |> collect_values([], [])
 
     limited? = Enum.all?(types, &(&1 in @limited))
@@ -858,7 +867,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     cond do
       types == [] ->
         {:error, :invalid,
-         "could not find non-disabled input, select or textarea with name #{inspect(name)}"}
+         """
+         could not find non-disabled input, select or textarea with name #{inspect(name)} within:
+
+         #{for input <- inputs, do: "     #{input}\n"}
+         """}
 
       forbidden_type = Enum.find(types, &(&1 in @forbidden)) ->
         {:error, :invalid,
