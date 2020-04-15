@@ -117,6 +117,12 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("span#span-no-attr") |> render_click() end
     end
 
+    test "raises if element is disabled", %{live: view} do
+      assert_raise ArgumentError,
+                   "cannot click on element \"button#button-disabled-click\" because it is disabled",
+                   fn -> view |> element("button#button-disabled-click") |> render_click() end
+    end
+
     test "clicks links", %{live: view} do
       assert view |> element("a#click-a") |> render_click() =~ ~s|link: %{}|
     end
@@ -448,6 +454,12 @@ defmodule Phoenix.LiveView.ElementsTest do
       refute form =~ "disabled"
       refute form =~ "ignore-submit"
       refute form =~ "ignore-image"
+    end
+
+    test "fill in hidden", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for hidden \"hello[hidden]\" must be one of [\"hidden\"], got: \"true\"",
+                   fn -> view |> form("#form", hello: [hidden: "true"]) |> render_change() end
     end
   end
 end

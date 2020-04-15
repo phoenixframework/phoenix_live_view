@@ -284,6 +284,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           root = root(state, view)
 
           with {:ok, node} <- select_node(root, element),
+               :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, values} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
@@ -738,23 +739,37 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_values(_, {tag, _, _}, %{form_data: form_data})
+  defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do
     {:error, :invalid,
      "a form element was given but the selected node is not a form, got #{inspect(tag)}}"}
   end
 
+  defp maybe_enabled(type, node, element) do
+    if DOM.attribute(node, "disabled") do
+      {:error, :invalid,
+       "cannot #{type} on element #{inspect(element.selector)} because it is disabled"}
+    else
+      :ok
+    end
+  end
+
   defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
 
-  defp maybe_values(type, {tag, _, _} = node, _element) when type in [:change, :submit] do
+  defp maybe_values(type, {tag, _, _} = node, element) when type in [:change, :submit] do
     if tag == "form" do
       defaults =
         node
         |> DOM.all("input, select, textarea")
         |> Enum.reverse()
-        |> Enum.reduce(%{}, &decode_form/2)
+        |> Enum.reduce(%{}, &form_defaults/2)
 
-      {:ok, defaults}
+      stringified = stringify(element.form_data || %{})
+
+      case fill_in_map(Map.to_list(stringified), "", node) do
+        :ok -> {:ok, DOM.deep_merge(defaults, stringified)}
+        {:error, _, _} = error -> error
+      end
     else
       {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
     end
@@ -764,15 +779,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, DOM.all_values(node)}
   end
 
-  defp decode_form(node, acc) do
+  defp form_defaults(node, acc) do
     cond do
       DOM.attribute(node, "disabled") -> acc
-      name = DOM.attribute(node, "name") -> decode_form(node, name, acc)
+      name = DOM.attribute(node, "name") -> form_defaults(node, name, acc)
       true -> acc
     end
   end
 
-  defp decode_form({"select", _, _} = node, name, acc) do
+  defp form_defaults({"select", _, _} = node, name, acc) do
     options = DOM.all(node, "option")
 
     all_selected =
@@ -789,11 +804,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp decode_form({"textarea", _, [value]}, name, acc) do
+  defp form_defaults({"textarea", _, [value]}, name, acc) do
     Plug.Conn.Query.decode_pair({name, value}, acc)
   end
 
-  defp decode_form({"input", _, _} = node, name, acc) do
+  defp form_defaults({"input", _, _} = node, name, acc) do
     type = DOM.attribute(node, "type") || "text"
     value = DOM.attribute(node, "value") || ""
 
@@ -812,6 +827,90 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         Plug.Conn.Query.decode_pair({name, value}, acc)
     end
   end
+
+  defp fill_in_map([{key, value} | rest], prefix, node) do
+    case fill_in_type(value, fill_in_name(prefix, key), node) do
+      :ok -> fill_in_map(rest, prefix, node)
+      {:error, _, _} = error -> error
+    end
+  end
+
+  defp fill_in_map([], _prefix, _node) do
+    :ok
+  end
+
+  defp fill_in_list([value | rest], prefix, node) do
+    case fill_in_map(value, prefix, node) do
+      :ok -> fill_in_list(rest, prefix, node)
+      {:error, _, _} = error -> error
+    end
+  end
+
+  defp fill_in_list([], _prefix, _node) do
+    :ok
+  end
+
+  defp fill_in_type(%{} = value, key, node), do: fill_in_map(Map.to_list(value), key, node)
+  defp fill_in_type([%{} | _] = value, key, node), do: fill_in_list(value, key <> "[]", node)
+  defp fill_in_type(value, key, node), do: fill_in_value(value, key, node)
+
+  @limited_set ["select", "multiple-select", "checkbox", "radio", "hidden"]
+
+  defp fill_in_value(value, name, node) do
+    {types, values} =
+      node
+      |> DOM.all("[name=#{inspect(name)}]:not(disabled)")
+      |> collect_values([], [])
+
+    cond do
+      types == [] ->
+        {:error, :invalid, "could not find input, select or textarea with name #{inspect(name)}"}
+
+      Enum.all?(types, &(&1 in @limited_set)) and value not in values ->
+        {:error, :invalid,
+         "value for #{hd(types)} #{inspect(name)} must be one of #{inspect(values)}, " <>
+           "got: #{inspect(value)}"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp collect_values([{"textarea", _, _} | nodes], types, values) do
+    collect_values(nodes, ["textarea" | types], values)
+  end
+
+  defp collect_values([{"input", _, _} = node | nodes], types, values) do
+    type = DOM.attribute(node, "type") || "text"
+
+    if type in ["radio", "checkbox", "hidden"] do
+      value = DOM.attribute(node, "value") || ""
+      collect_values(nodes, [type | types], [value | values])
+    else
+      collect_values(nodes, [type | types], values)
+    end
+  end
+
+  defp collect_values([{"select", _, _} = node | nodes], types, values) do
+    options = node |> DOM.all("option") |> Enum.map(&(DOM.attribute(&1, "value") || ""))
+
+    if DOM.node(node, "multiple") do
+      collect_values(nodes, ["multiple-select" | types], options ++ values)
+    else
+      collect_values(nodes, ["select" | types], options ++ values)
+    end
+  end
+
+  defp collect_values([_ | nodes], types, values) do
+    collect_values(nodes, types, values)
+  end
+
+  defp collect_values([], types, values) do
+    {types, values}
+  end
+
+  defp fill_in_name("", name), do: name
+  defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
 
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
   defp encode(_, value), do: value
