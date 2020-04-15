@@ -6,7 +6,6 @@ defmodule Phoenix.LiveView.ElementsTest do
   alias Phoenix.LiveViewTest.{Endpoint}
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   defp last_event(view) do
     view |> element("#last-event") |> render() |> HtmlEntities.decode()
