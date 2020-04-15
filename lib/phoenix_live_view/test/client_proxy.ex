@@ -277,7 +277,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       case topic_or_element do
         {topic, event} ->
           view = fetch_view_by_topic!(state, topic)
-          {view, nil, event, %{}}
+          {view, nil, event, stringify(:hook, value)}
 
         %Element{} = element ->
           view = fetch_view_by_topic!(state, proxy_topic(element))
@@ -286,19 +286,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
-               {:ok, values} <- maybe_values(type, node, element),
+               {:ok, extra} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, values}
+            {view, cid, event, DOM.deep_merge(extra, stringify(type, value))}
           end
       end
 
     case result do
-      {view, cid, event, extra} ->
+      {view, cid, event, values} ->
         payload = %{
           "cid" => cid,
           "type" => Atom.to_string(type),
           "event" => event,
-          "value" => encode(type, DOM.deep_merge(extra, stringify(value)))
+          "value" => encode(type, values)
         }
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
@@ -748,7 +748,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_enabled(type, node, element) do
     if DOM.attribute(node, "disabled") do
       {:error, :invalid,
-       "cannot #{type} on element #{inspect(element.selector)} because it is disabled"}
+       "cannot #{type} element #{inspect(element.selector)} because it is disabled"}
     else
       :ok
     end
@@ -764,7 +764,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         |> Enum.reverse()
         |> Enum.reduce(%{}, &form_defaults/2)
 
-      stringified = stringify(element.form_data || %{})
+      stringified = stringify(type, element.form_data || %{})
 
       case fill_in_map(Map.to_list(stringified), "", node) do
         :ok -> {:ok, DOM.deep_merge(defaults, stringified)}
@@ -854,19 +854,29 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp fill_in_type([%{} | _] = value, key, node), do: fill_in_list(value, key <> "[]", node)
   defp fill_in_type(value, key, node), do: fill_in_value(value, key, node)
 
-  @limited_set ["select", "multiple-select", "checkbox", "radio", "hidden"]
+  @limited ["select", "multiple select", "checkbox", "radio", "hidden"]
+  @forbidden ["submit", "image"]
 
   defp fill_in_value(value, name, node) do
+    name = if is_list(value), do: name <> "[]", else: name
+
     {types, values} =
       node
       |> DOM.all("[name=#{inspect(name)}]:not(disabled)")
       |> collect_values([], [])
 
+    limited? = Enum.all?(types, &(&1 in @limited))
+
     cond do
       types == [] ->
-        {:error, :invalid, "could not find input, select or textarea with name #{inspect(name)}"}
+        {:error, :invalid,
+         "could not find non-disabled input, select or textarea with name #{inspect(name)}"}
 
-      Enum.all?(types, &(&1 in @limited_set)) and value not in values ->
+      forbidden_type = Enum.find(types, &(&1 in @forbidden)) ->
+        {:error, :invalid,
+         "cannot provide value to #{inspect(name)} because #{forbidden_type} inputs are never submitted"}
+
+      value = limited? && value |> List.wrap() |> Enum.find(&(&1 not in values)) ->
         {:error, :invalid,
          "value for #{hd(types)} #{inspect(name)} must be one of #{inspect(values)}, " <>
            "got: #{inspect(value)}"}
@@ -894,10 +904,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp collect_values([{"select", _, _} = node | nodes], types, values) do
     options = node |> DOM.all("option") |> Enum.map(&(DOM.attribute(&1, "value") || ""))
 
-    if DOM.node(node, "multiple") do
-      collect_values(nodes, ["multiple-select" | types], options ++ values)
+    if DOM.attribute(node, "multiple") do
+      collect_values(nodes, ["multiple select" | types], Enum.reverse(options, values))
     else
-      collect_values(nodes, ["select" | types], options ++ values)
+      collect_values(nodes, ["select" | types], Enum.reverse(options, values))
     end
   end
 
@@ -906,7 +916,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp collect_values([], types, values) do
-    {types, values}
+    {types, Enum.reverse(values)}
   end
 
   defp fill_in_name("", name), do: name
@@ -915,21 +925,24 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
   defp encode(_, value), do: value
 
-  defp stringify(%{__struct__: _} = struct),
-    do: struct
+  defp stringify(:hook, value), do: do_stringify(value, & &1)
+  defp stringify(_, value), do: do_stringify(value, &to_string/1)
 
-  defp stringify(%{} = params),
-    do: Enum.into(params, %{}, &stringify_kv/1)
+  defp do_stringify(%{__struct__: _} = struct, fun),
+    do: do_stringify_simple(struct, fun)
 
-  defp stringify([{_, _} | _] = params),
-    do: Enum.into(params, %{}, &stringify_kv/1)
+  defp do_stringify(%{} = params, fun),
+    do: Enum.into(params, %{}, &do_stringify_kv(&1, fun))
 
-  defp stringify(params) when is_list(params),
-    do: Enum.map(params, &stringify/1)
+  defp do_stringify([{_, _} | _] = params, fun),
+    do: Enum.into(params, %{}, &do_stringify_kv(&1, fun))
 
-  defp stringify(other),
-    do: other
+  defp do_stringify(params, fun) when is_list(params),
+    do: Enum.map(params, &do_stringify(&1, fun))
 
-  defp stringify_kv({k, v}),
-    do: {to_string(k), stringify(v)}
+  defp do_stringify(other, fun),
+    do: do_stringify_simple(other, fun)
+
+  defp do_stringify_simple(other, fun), do: fun.(other)
+  defp do_stringify_kv({k, v}, fun), do: {to_string(k), do_stringify(v, fun)}
 end

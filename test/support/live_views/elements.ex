@@ -57,6 +57,10 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[latest]" type="text" value="old">
       <input name="hello[latest]" type="text" value="new">
       <input name="hello[hidden]" type="hidden" value="hidden">
+      <input name="hello[hidden_or_checkbox]" type="hidden" value="false">
+      <input name="hello[hidden_or_checkbox]" type="checkbox" value="true">
+      <input name="hello[hidden_or_text]" type="hidden" value="false">
+      <input name="hello[hidden_or_text]" type="text" value="true">
       <input name="hello[radio]" type="radio" value="1">
       <input name="hello[radio]" type="radio" value="2" checked>
       <input name="hello[radio]" type="radio" value="3">

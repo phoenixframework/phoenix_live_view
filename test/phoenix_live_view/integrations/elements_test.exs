@@ -119,7 +119,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "raises if element is disabled", %{live: view} do
       assert_raise ArgumentError,
-                   "cannot click on element \"button#button-disabled-click\" because it is disabled",
+                   "cannot click element \"button#button-disabled-click\" because it is disabled",
                    fn -> view |> element("button#button-disabled-click") |> render_click() end
     end
 
@@ -425,6 +425,8 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       # Hidden elements too
       assert form =~ ~s|"hidden" => "hidden"|
+      assert form =~ ~s|"hidden_or_checkbox" => "false"|
+      assert form =~ ~s|"hidden_or_text" => "true"|
 
       # Radio stores checked one but not disabled and not checked
       assert form =~ ~s|"radio" => "2"|
@@ -456,10 +458,155 @@ defmodule Phoenix.LiveView.ElementsTest do
       refute form =~ "ignore-image"
     end
 
+    test "fill in missing", %{live: view} do
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[unknown]\"",
+                   fn -> view |> form("#form", hello: [unknown: "true"]) |> render_change() end
+    end
+
+    test "fill in forbidden", %{live: view} do
+      assert_raise ArgumentError,
+                   "cannot provide value to \"hello[ignore-submit]\" because submit inputs are never submitted",
+                   fn ->
+                     view |> form("#form", hello: ["ignore-submit": "true"]) |> render_change()
+                   end
+
+      assert_raise ArgumentError,
+                   "cannot provide value to \"hello[ignore-image]\" because image inputs are never submitted",
+                   fn ->
+                     view |> form("#form", hello: ["ignore-image": "true"]) |> render_change()
+                   end
+    end
+
     test "fill in hidden", %{live: view} do
       assert_raise ArgumentError,
                    "value for hidden \"hello[hidden]\" must be one of [\"hidden\"], got: \"true\"",
                    fn -> view |> form("#form", hello: [hidden: "true"]) |> render_change() end
+
+      assert view
+             |> form("#form",
+               hello: [
+                 hidden: "hidden",
+                 hidden_or_checkbox: "true",
+                 hidden_or_text: "any text"
+               ]
+             )
+             |> render_change()
+
+      form = last_event(view)
+
+      assert form =~ ~s|"hidden" => "hidden"|
+      assert form =~ ~s|"hidden_or_checkbox" => "true"|
+      assert form =~ ~s|"hidden_or_text" => "any text"|
+    end
+
+    test "fill in radio", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for radio \"hello[radio]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
+                   fn -> view |> form("#form", hello: [radio: "unknown"]) |> render_change() end
+
+      assert view |> form("#form", hello: [radio: "1"]) |> render_change()
+      assert last_event(view) =~ ~s|"radio" => "1"|
+
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[radio][]\"",
+                   fn ->
+                     view |> form("#form", hello: [radio: [1, 2]]) |> render_change()
+                   end
+    end
+
+    test "fill in checkbox", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for checkbox \"hello[checkbox]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
+                   fn ->
+                     view |> form("#form", hello: [checkbox: "unknown"]) |> render_change()
+                   end
+
+      assert view |> form("#form", hello: [checkbox: "1"]) |> render_change()
+      assert last_event(view) =~ ~s|"checkbox" => "1"|
+
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[checkbox][]\"",
+                   fn ->
+                     view |> form("#form", hello: [checkbox: [1, 2]]) |> render_change()
+                   end
+    end
+
+    test "fill in multile checkbox", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for checkbox \"hello[multiple-checkbox][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
+                   fn ->
+                     view
+                     |> form("#form", hello: ["multiple-checkbox": ["unknown"]])
+                     |> render_change()
+                   end
+
+      assert view |> form("#form", hello: ["multiple-checkbox": [1, 2]]) |> render_change()
+      assert last_event(view) =~ ~s|"multiple-checkbox" => ["1", "2"]|
+    end
+
+    test "fill in select", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for select \"hello[selected]\" must be one of [\"blank\", \"1\", \"2\"], got: \"unknown\"",
+                   fn ->
+                     view |> form("#form", hello: [selected: "unknown"]) |> render_change()
+                   end
+
+      assert view |> form("#form", hello: [selected: "1"]) |> render_change()
+      assert last_event(view) =~ ~s|"selected" => "1"|
+
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[selected][]\"",
+                   fn ->
+                     view |> form("#form", hello: [selected: [1, 2]]) |> render_change()
+                   end
+    end
+
+    test "fill in multile select", %{live: view} do
+      assert_raise ArgumentError,
+                   "value for multiple select \"hello[multiple-select][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
+                   fn ->
+                     view
+                     |> form("#form", hello: ["multiple-select": ["unknown"]])
+                     |> render_change()
+                   end
+
+      assert view |> form("#form", hello: ["multiple-select": [1, 2]]) |> render_change()
+      assert last_event(view) =~ ~s|"multiple-select" => ["1", "2"]|
+    end
+
+    test "fill in input", %{live: view} do
+      assert view |> form("#form", hello: [latest: "i win"]) |> render_change()
+      assert last_event(view) =~ ~s|"latest" => "i win"|
+
+      assert view
+             |> form("#form", hello: [latest: "i win"])
+             |> render_change(hello: [latest: "i truly win"])
+
+      assert last_event(view) =~ ~s|"latest" => "i truly win"|
+
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[latest][]\"",
+                   fn ->
+                     view |> form("#form", hello: [latest: ["i lose"]]) |> render_change()
+                   end
+    end
+
+    test "fill in textarea", %{live: view} do
+      assert view |> form("#form", hello: [textarea: "i win"]) |> render_change()
+      assert last_event(view) =~ ~s|"textarea" => "i win"|
+
+      assert view
+             |> form("#form", hello: [textarea: "i win"])
+             |> render_change(hello: [textarea: "i truly win"])
+
+      assert last_event(view) =~ ~s|"textarea" => "i truly win"|
+
+      assert_raise ArgumentError,
+                   "could not find non-disabled input, select or textarea with name \"hello[textarea][]\"",
+                   fn ->
+                     view |> form("#form", hello: [textarea: ["i lose"]]) |> render_change()
+                   end
     end
   end
 end
