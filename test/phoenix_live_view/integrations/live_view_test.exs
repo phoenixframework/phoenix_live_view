@@ -70,6 +70,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "push_redirect when disconnected", %{conn: conn} do
       conn = get(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
       assert redirected_to(conn) == "/thermo"
+
+      {:error, {:live_redirect, %{to: "/thermo"}}} =
+        live(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
     end
 
     test "push_redirect when connected", %{conn: conn} do
@@ -95,6 +98,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "redirect when disconnected", %{conn: conn} do
       conn = get(conn, "/redir?during=disconnected&kind=redirect&to=/thermo")
       assert redirected_to(conn) == "/thermo"
+
+      {:error, {:redirect, %{to: "/thermo"}}} =
+        live(conn, "/redir?during=disconnected&kind=redirect&to=/thermo")
     end
 
     test "redirect when connected", %{conn: conn} do

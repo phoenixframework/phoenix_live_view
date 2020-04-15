@@ -136,8 +136,8 @@ defmodule Phoenix.LiveView.Static do
         try do
           {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
         catch
-          :throw, {:phoenix, :child_redirect, redir_opts, flash} ->
-            {:stop, socket |> rewrite_redir(redir_opts) |> Utils.replace_flash(flash)}
+          :throw, {:phoenix, :child_redirect, redirected, flash} ->
+            {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
         end
 
       {:stop, socket} ->
@@ -233,8 +233,8 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
 
-    if socket.redirected do
-      throw({:phoenix, :child_redirect, redirect_opts(socket), Utils.get_flash(socket)})
+    if redir = socket.redirected do
+      throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
     end
 
     if exports_handle_params?(view) do
@@ -292,11 +292,8 @@ defmodule Phoenix.LiveView.Static do
     |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
     |> mount_handle_params(view, params, uri)
     |> case do
-      {:noreply, %Socket{redirected: {:live, :redirect, opts}} = socket} ->
-        {:stop, rewrite_redir(socket, opts)}
-
-      {:noreply, %Socket{redirected: {:live, {_, _} = _patch, opts}}} ->
-        {:stop, rewrite_redir(socket, opts)}
+      {:noreply, %Socket{redirected: {:live, _, _}} = socket} ->
+        {:stop, socket}
 
       {:noreply, %Socket{redirected: {:redirect, _opts}} = new_socket} ->
         {:stop, new_socket}
@@ -312,15 +309,6 @@ defmodule Phoenix.LiveView.Static do
         """
     end
   end
-
-  defp rewrite_redir(%Socket{} = socket, live_redir_opts) do
-    %Socket{socket | redirected: {:redirect, live_redir_opts}}
-  end
-
-  defp redirect_opts(%Socket{redirected: {:redirect, opts}}), do: opts
-  defp redirect_opts(%Socket{redirected: {:live, :redirect, opts}}), do: opts
-  defp redirect_opts(%Socket{redirected: {:live, {_, _} = _patch, opts}}), do: opts
-  defp redirect_opts(%Socket{}), do: raise(ArgumentError, "no redirect present")
 
   defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
     cond do

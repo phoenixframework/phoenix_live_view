@@ -173,17 +173,11 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} = live(conn, "/path")
-
       assert view.module = MyLive
-
       assert html =~ "the count is 3"
 
-      assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "/path")
+      assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "/path")
 
-      {:ok, view, html} =
-        conn
-        |> get("/path")
-        |> live()
   """
   defmacro live(conn, path_or_opts \\ []) do
     quote bind_quoted: binding(), generated: true do
@@ -253,7 +247,7 @@ defmodule Phoenix.LiveViewTest do
         connect_from_static_token(conn, path, opts)
 
       {:sent, 302} ->
-        {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+        {:error, {redirect_key(conn), %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
 
       {_, _} ->
         raise ArgumentError, """
@@ -279,9 +273,12 @@ defmodule Phoenix.LiveViewTest do
     connect_from_static_token(conn, path, opts)
   end
 
+  defp redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
+  defp redirect_key(_), do: :redirect
+
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
        when redir in [301, 302] do
-    {:error, %{redirect: %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+    {:error, {redirect_key(conn), %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
   end
 
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
@@ -991,7 +988,7 @@ defmodule Phoenix.LiveViewTest do
       |> render_click("redirect")
       |> follow_redirect(conn)
 
-  Note `follow_redirect/3` expects a connection as second argument.
+  `follow_redirect/3` expects a connection as second argument.
   This is the connection that will be used to perform the underlying
   request.
 

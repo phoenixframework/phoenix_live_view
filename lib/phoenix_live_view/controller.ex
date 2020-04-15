@@ -47,8 +47,11 @@ defmodule Phoenix.LiveView.Controller do
         |> put_flash(LiveView.Utils.get_flash(socket))
         |> Phoenix.Controller.redirect(to: to)
 
-      {:stop, %Socket{redirected: {:live, _, %{to: to}}}} ->
-        Phoenix.Controller.redirect(conn, to: to)
+      {:stop, %Socket{redirected: {:live, _, %{to: to}}} = socket} ->
+        conn
+        |> put_flash(LiveView.Utils.get_flash(socket))
+        |> Plug.Conn.put_private(:phoenix_live_redirect, true)
+        |> Phoenix.Controller.redirect(to: to)
     end
   end
 
