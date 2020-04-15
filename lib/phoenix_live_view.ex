@@ -881,7 +881,7 @@ defmodule Phoenix.LiveView do
 
   ## Live Layouts
 
-  When working with LiveViews, there is usually three layouts to be
+  When working with LiveViews, there are usually three layouts to be
   considered:
 
     * the root layout - this is a layout used by both LiveView and
