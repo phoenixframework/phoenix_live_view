@@ -46,30 +46,31 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def render(assigns) do
     ~L"""
-    <div id="<%= @id %>" phx-target="<%= @myself %>">
-    component[<%= live_flash(@flash, :info) %>]:info
-    component[<%= live_flash(@flash, :error) %>]:error
+    <div id="<%= @id %>" phx-target="<%= @myself %>" phx-click="click">
+    <span phx-click="lv:clear-flash">Clear all</span>
+    <span phx-click="lv:clear-flash" phx-value-key="info">component[<%= live_flash(@flash, :info) %>]:info</span>
+    <span phx-click="lv:clear-flash" phx-value-key="error">component[<%= live_flash(@flash, :error) %>]:error</span>
     </div>
     """
   end
 
-  def handle_event("redirect", %{"to" => to, "info" => info}, socket) do
+  def handle_event("click", %{"type" => "redirect", "to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
   end
 
-  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
+  def handle_event("click", %{"type" => "push_redirect", "to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
   end
 
-  def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
+  def handle_event("click", %{"type" => "push_patch", "to" => to, "info" => info}, socket) do
     {:noreply, socket |> put_flash(:info, info) |> push_patch(to: to)}
   end
 
-  def handle_event("put_flash", %{"info" => value}, socket) do
+  def handle_event("click", %{"type" => "put_flash", "info" => value}, socket) do
     {:noreply, socket |> put_flash(:info, value)}
   end
 
-  def handle_event("put_flash", %{"error" => value}, socket) do
+  def handle_event("click", %{"type" => "put_flash", "error" => value}, socket) do
     {:noreply, socket |> put_flash(:error, value)}
   end
 end

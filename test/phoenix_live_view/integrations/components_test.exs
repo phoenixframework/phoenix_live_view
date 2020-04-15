@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   test "renders successfully when disconnected", %{conn: conn} do
     conn = get(conn, "/components")
-    assert html_response(conn, 200) =~ "<div id=\"chris\" phx-target=\"#chris\">"
+    assert html_response(conn, 200) =~ "<div id=\"chris\" phx-target=\"#chris\" phx-click=\"transform\">"
   end
 
   test "renders successfully when connected", %{conn: conn} do
@@ -25,9 +25,9 @@ defmodule Phoenix.LiveView.ComponentTest do
              {"div", _,
               [
                 _,
-                {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+                {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
                  ["\n  chris says hi with socket: true\n  \n"]},
-                {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+                {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
                  ["\n  jose says hi with socket: true\n  \n"]}
               ]}
            ] = DOM.parse(render(view))
@@ -37,17 +37,14 @@ defmodule Phoenix.LiveView.ComponentTest do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
-             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
-              ["\n  chris says" <> _]},
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-              ["\n  jose says" <> _]}
+             {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _], ["\n  chris says" <> _]},
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _], ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
-              ["\n  jose says" <> _]}
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _], ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     refute view |> element("#chris") |> has_element?()
@@ -68,58 +65,57 @@ defmodule Phoenix.LiveView.ComponentTest do
   test "handle_event delegates event to component", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/components")
 
-    html = render_click([view, "#chris"], "transform", %{"op" => "upcase"})
+    html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
     assert [
              _,
-             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+             {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
               ["\n  CHRIS says hi with socket: true\n" <> _]},
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
               ["\n  jose says hi with socket: true\n" <> _]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "#jose"], "transform", %{"op" => "title-case"})
+    html = view |> element("#jose") |> render_click(%{"op" => "title-case"})
 
     assert [
              _,
-             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+             {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
               ["\n  CHRIS says hi with socket: true\n" <> _]},
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
               ["\n  Jose says hi with socket: true\n" <> _]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "#jose"], "transform", %{"op" => "dup"})
+    html = view |> element("#jose") |> render_click(%{"op" => "dup"})
 
     assert [
              _,
-             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+             {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
               ["\n  CHRIS says hi with socket: true\n" <> _]},
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
               [
                 "\n  Jose says hi with socket: true\n  ",
                 {"div",
-                 [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
+                 [{"data-phx-component", "2"}, {"id", "Jose-dup"} | _],
                  ["\n  Jose-dup says hi with socket: true\n" <> _]}
               ]}
            ] = DOM.parse(html)
 
-    html = render_click([view, "#jose", "#Jose-dup"], "transform", %{"op" => "upcase"})
+    html = view |> element("#jose #Jose-dup") |> render_click(%{"op" => "upcase"})
 
     assert [
              _,
-             {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+             {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
               ["\n  CHRIS says hi with socket: true\n" <> _]},
-             {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+             {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
               [
                 "\n  Jose says hi with socket: true\n  ",
-                {"div",
-                 [{"id", "Jose-dup"}, {"phx-target", "#Jose-dup"}, {"data-phx-component", "2"}],
+                {"div", [{"data-phx-component", "2"}, {"id", "Jose-dup"} | _],
                  ["\n  JOSE-DUP says hi with socket: true\n" <> _]}
               ]}
            ] = DOM.parse(html)
 
     assert view |> element("#jose #Jose-dup") |> render() ==
-             "<div id=\"Jose-dup\" phx-target=\"#Jose-dup\" data-phx-component=\"2\">\n  JOSE-DUP says hi with socket: true\n  \n</div>"
+             "<div data-phx-component=\"2\" id=\"Jose-dup\" phx-target=\"#Jose-dup\" phx-click=\"transform\">\n  JOSE-DUP says hi with socket: true\n  \n</div>"
   end
 
   describe "send_update" do
@@ -143,14 +139,14 @@ defmodule Phoenix.LiveView.ComponentTest do
       refute_receive {:preload, _}
 
       assert [
-               {"div", [{"id", "chris"}, {"phx-target", "#chris"}, {"data-phx-component", "0"}],
+               {"div", [{"data-phx-component", "0"}, {"id", "chris"} | _],
                 ["\n  NEW-chris says hi with socket: true\n  \n"]}
-             ] == view |> element("#chris") |> render() |> DOM.parse()
+             ] = view |> element("#chris") |> render() |> DOM.parse()
 
       assert [
-               {"div", [{"id", "jose"}, {"phx-target", "#jose"}, {"data-phx-component", "1"}],
+               {"div", [{"data-phx-component", "1"}, {"id", "jose"} | _],
                 ["\n  NEW-jose says hi with socket: true\n  \n"]}
-             ] == view |> element("#jose") |> render() |> DOM.parse()
+             ] = view |> element("#jose") |> render() |> DOM.parse()
     end
 
     test "updates without :id raise", %{conn: conn} do
@@ -171,7 +167,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert html =~ "Redirect: none"
 
       assert {:error, {:live_redirect, %{to: "/components?redirect=push"}}} =
-               render_click([view, "#chris"], "transform", %{"op" => "push_redirect"})
+               view |> element("#chris") |> render_click(%{"op" => "push_redirect"})
 
       assert_redirect(view, "/components?redirect=push")
     end
@@ -180,7 +176,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert render_click([view, "#chris"], "transform", %{"op" => "push_patch"}) =~
+      assert view |> element("#chris") |> render_click(%{"op" => "push_patch"}) =~
                "Redirect: none"
 
       assert_patch(view, "/components?redirect=patch")
@@ -190,7 +186,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
-      assert render_click([view, "#chris"], "transform", %{"op" => "redirect"}) ==
+      assert view |> element("#chris") |> render_click(%{"op" => "redirect"}) ==
                {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
 
       assert_redirect(view, "/components?redirect=redirect")

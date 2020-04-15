@@ -205,7 +205,10 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
       {:error, {:redirect, %{flash: _}}} =
-        render_click([flash_live, "#flash-component"], "redirect", %{
+        flash_live
+        |> element("#flash-component")
+        |> render_click(%{
+          "type" => "redirect",
           "to" => "/flash-root",
           "info" => "ok!"
         })
@@ -218,7 +221,10 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
       {:error, {:live_redirect, %{flash: _}}} =
-        render_click([flash_live, "#flash-component"], "push_redirect", %{
+        flash_live
+        |> element("#flash-component")
+        |> render_click(%{
+          "type" => "push_redirect",
           "to" => "/flash-root",
           "info" => "ok!"
         })
@@ -230,7 +236,10 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     test "push_patch with flash from component", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 
-      render_click([flash_live, "#flash-component"], "push_patch", %{
+      flash_live
+      |> element("#flash-component")
+      |> render_click(%{
+        "type" => "push_patch",
         "to" => "/flash-root?patch",
         "info" => "ok!"
       })
@@ -291,16 +300,24 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
   test "lv:clear-flash component", %{conn: conn} do
     {:ok, flash_live, _} = live(conn, "/flash-root")
 
-    result = render_click([flash_live, "#flash-component"], "put_flash", %{"info" => "ok!"})
+    result =
+      flash_live
+      |> element("#flash-component")
+      |> render_click(%{"type" => "put_flash", "info" => "ok!"})
+
     assert result =~ "component[ok!]:info"
 
-    result = render_click([flash_live, "#flash-component"], "lv:clear-flash")
+    result = flash_live |> element("#flash-component span", "Clear all") |> render_click()
     assert result =~ "component[]:info"
 
-    result = render_click([flash_live, "#flash-component"], "put_flash", %{"error" => "oops!"})
+    result =
+      flash_live
+      |> element("#flash-component")
+      |> render_click(%{"type" => "put_flash", "error" => "oops!"})
+
     assert result =~ "component[oops!]:error"
 
-    result = render_click([flash_live, "#flash-component"], "lv:clear-flash", %{key: "error"})
+    result = flash_live |> element("#flash-component span", ":error") |> render_click()
     assert result =~ "component[]:error"
   end
 

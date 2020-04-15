@@ -160,7 +160,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp inject_cid_attr({tag, attrs, children}, cid) do
-    {tag, attrs ++ [{@phx_component, to_string(cid)}], children}
+    {tag, [{@phx_component, to_string(cid)}] ++ attrs, children}
   end
 
   # Patching
