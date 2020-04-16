@@ -676,11 +676,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  # TODO: Remove this once deprecated paths have been removed
-  defp maybe_event(_, _, %{event: event}) when is_binary(event) do
-    {:ok, event}
-  end
-
   defp maybe_event(:click, {"a", _, _} = node, element) do
     cond do
       event = DOM.attribute(node, "phx-click") ->
