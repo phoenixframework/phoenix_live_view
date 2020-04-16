@@ -504,6 +504,30 @@ defmodule Phoenix.LiveView do
         end)
       end
 
+  #### Submitting the form action over HTTP
+
+  The `phx-trigger-action` attribute can be added to a form to trigger a standard
+  form submit on DOM patch to the URL specified in the form's standard `action`
+  attribute. This is useful to perform pre-final validation of a LiveView form
+  submit before posting to a controller route for operations that require
+  Plug session mutation. For example, in your LiveView template you can
+  annotate the `phx-trigger-action` with a boolean assign:
+
+      <%= f = form_for @changeset, phx_submit: :save, phx_trigger_action: @trigger_submit %>
+
+  Then in your LiveView, you can toggle the assign to trigger the form with the current
+  fields on next render:
+
+      def handle_event("save", params, socket) do
+        case validate_change_password(socket.assigns.user, params) do
+          {:ok, changeset} ->
+            {:noreply, assign(socket, changeset: changeset, trigger_submit: true)}
+
+          {:error, changeset} ->
+            {:noreply, assign(socket, changeset: changeset)}
+          end
+      end
+
   ### Number inputs
 
   Number inputs are a special case in LiveView forms. On programmatic updates,
