@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.0-dev
+## 0.12.0 (2020-04-16)
 
 This version of LiveView comes with an overhaul of the testing module, more closely integrating your LiveView template with your LiveView events. For example, in previous versions, you could write this test:
 
@@ -17,10 +17,13 @@ The new implementation will check there is a button at `#term .buttons a`, with 
 ### Enhancements
   - Add `assert_patch/3` and `assert_patched/2` for asserting on patches
   - Add `follow_redirect/3` to automatically follow redirects from `render_*` events
+  - Add `phx-trigger-action` form annotation to trigger an HTTP form submit on next DOM patch
 
 ### Bug fixes
   - Fix phx-target @myself targetting a sibling LiveView component with the same component ID
   - Fix phx:page-loading-stop firing before the DOM patch has been performed
+  - Fix `phx-update=prepend` failing to properly patch the DOM when the same ID is updated back to back
+  - Fix redirects on mount failing to copy flash
 
 ### Backwards incompatible changes
   - `phx-error-for` has been removed in favor of `phx-feedback-for`. `phx-feedback-for` will set a `phx-no-feedback` class whenever feedback has to be hidden
