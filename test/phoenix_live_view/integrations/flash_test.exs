@@ -18,6 +18,15 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
   end
 
   describe "LiveView <=> LiveView" do
+    test "redirect with flash on mount", %{conn: conn} do
+      {:ok, conn} =
+        conn
+        |> live("/flash-child?mount_redirect=ok!")
+        |> follow_redirect(conn)
+
+      assert conn.resp_body =~ "root[ok!]:info"
+    end
+
     test "redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
@@ -45,6 +54,15 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
       flash = assert_redirected(flash_child, "/flash-root")
       assert flash == %{"info" => "ok!"}
+    end
+
+    test "push_redirect with flash on mount", %{conn: conn} do
+      {:ok, _, html} =
+        conn
+        |> live("/flash-child?mount_push_redirect=ok!")
+        |> follow_redirect(conn)
+
+      assert html =~ "root[ok!]:info"
     end
 
     test "push_redirect with flash", %{conn: conn} do

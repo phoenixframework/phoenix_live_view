@@ -12,7 +12,9 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     """
   end
 
-  def handle_params(_params, uri, socket), do: {:noreply, assign(socket, :uri, uri)}
+  def handle_params(_params, uri, socket) do
+    {:noreply, assign(socket, :uri, uri)}
+  end
 
   def mount(_params, _session, socket), do: {:ok, assign(socket, uri: nil)}
 
@@ -96,6 +98,14 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
     ~L"""
     <%= live_flash(@flash, :info) %>
     """
+  end
+
+  def mount(%{"mount_redirect" => message}, _uri, socket) do
+    {:ok, socket |> redirect(to: "/flash-root") |> put_flash(:info, message)}
+  end
+
+  def mount(%{"mount_push_redirect" => message}, _uri, socket) do
+    {:ok, socket |> push_redirect(to: "/flash-root") |> put_flash(:info, message)}
   end
 
   def mount(_params, _session, socket), do: {:ok, socket}

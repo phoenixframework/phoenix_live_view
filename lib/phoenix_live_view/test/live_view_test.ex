@@ -152,6 +152,7 @@ defmodule Phoenix.LiveViewTest do
   fallback to the view.
   """
 
+  @flash_cookie "__phoenix_flash__"
   require Phoenix.ConnTest
 
   alias Phoenix.LiveView.{Diff, Socket}
@@ -247,7 +248,7 @@ defmodule Phoenix.LiveViewTest do
         connect_from_static_token(conn, path, opts)
 
       {:sent, 302} ->
-        {:error, {redirect_key(conn), %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+        error_redirect_conn(conn)
 
       {_, _} ->
         raise ArgumentError, """
@@ -273,12 +274,9 @@ defmodule Phoenix.LiveViewTest do
     connect_from_static_token(conn, path, opts)
   end
 
-  defp redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
-  defp redirect_key(_), do: :redirect
-
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
        when redir in [301, 302] do
-    {:error, {redirect_key(conn), %{to: hd(Plug.Conn.get_resp_header(conn, "location"))}}}
+    error_redirect_conn(conn)
   end
 
   defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
@@ -298,6 +296,23 @@ defmodule Phoenix.LiveViewTest do
         {:error, :nosession}
     end
   end
+
+  defp error_redirect_conn(conn) do
+    to = hd(Plug.Conn.get_resp_header(conn, "location"))
+
+    opts =
+      if flash = conn.private[:phoenix_flash] do
+        endpoint = Phoenix.Controller.endpoint_module(conn)
+        %{to: to, flash: Phoenix.LiveView.Utils.sign_flash(endpoint, flash)}
+      else
+        %{to: to}
+      end
+
+    {:error, {error_redirect_key(conn), opts}}
+  end
+
+  defp error_redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
+  defp error_redirect_key(_), do: :redirect
 
   defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id, opts) do
     child_statics = Map.delete(DOM.find_static_views(html), id)
@@ -1033,7 +1048,7 @@ defmodule Phoenix.LiveViewTest do
     conn = Phoenix.ConnTest.ensure_recycled(conn)
 
     if flash = opts[:flash] do
-      {Phoenix.ConnTest.put_req_cookie(conn, "__phoenix_flash__", flash), to}
+      {Phoenix.ConnTest.put_req_cookie(conn, @flash_cookie, flash), to}
     else
       {conn, to}
     end
