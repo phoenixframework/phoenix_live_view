@@ -362,7 +362,7 @@ defmodule Phoenix.LiveView do
   | [Params](#module-click-events) | `phx-value-*` |
   | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` |
   | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus` |
-  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `data-phx-error-for`, `phx-disable-with` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with` |
   | [Key Events](#module-key-events) | `phx-window-keydown`, `phx-window-keyup` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
@@ -486,8 +486,8 @@ defmodule Phoenix.LiveView do
   changeset to be re-rendered for the client.
 
   *Note*: For proper form error tag updates, the error tag must specify which
-  input it belongs to. This is accomplished with the `data-phx-error-for` attribute.
-  Failing to add the `data-phx-error-for` attribute will result in displaying error
+  input it belongs to. This is accomplished with the `phx-feedback-for` attribute.
+  Failing to add the `phx-feedback-for` attribute will result in displaying error
   messages for form fields that the user has not changed yet (e.g. required
   fields further down on the page.)
 
@@ -498,11 +498,20 @@ defmodule Phoenix.LiveView do
         |> Keyword.get_values(field)
         |> Enum.map(fn error ->
           content_tag(:span, translate_error(error),
-            class: "help-block",
-            data: [phx_error_for: input_id(form, field)]
+            class: "invalid-feedback",
+            phx_feedback_for: input_id(form, field)
           )
         end)
       end
+
+  Now, any DOM container with the `phx-feedback-for` attribute will receive a
+  `phx-no-feedback` class in cases where the form fields has yet to receive
+  user input/focus. The following css rules are generated in new projects
+  to hide the errors:
+
+      .phx-no-feedback.invalid-feedback, .phx-no-feedback .invalid-feedback {
+        display: none;
+      }
 
   #### Submitting the form action over HTTP
 
