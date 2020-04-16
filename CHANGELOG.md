@@ -34,11 +34,15 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - `Phoenix.LiveViewTest.assert_remove/3` has been removed. If the LiveView crashes, it will cause the test to crash too
   - Passing a path with DOM IDs to `render_*` test functions is deprecated. Furthermore, they now require a `phx-target="<%= @id %>"` on the given DOM ID:
     
+    ```html
     <div id="component-id" phx-target="component-id">
       ...
     </div>
+    ```
 
+    ```elixir
     html = render_submit([view, "#component-id"], event, value)
+    ```
     
   In any case case, this API is deprecated and you should migrate to the new element based API.
 
