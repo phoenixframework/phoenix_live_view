@@ -67,6 +67,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       end
     end
 
+    test "live mount with unexpected status", %{conn: conn} do
+      assert_raise ArgumentError, ~r/unexpected 404 response/, fn ->
+        conn
+        |> get("/not_found")
+        |> live()
+      end
+    end
+
     test "push_redirect when disconnected", %{conn: conn} do
       conn = get(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
       assert redirected_to(conn) == "/thermo"

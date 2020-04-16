@@ -250,6 +250,10 @@ defmodule Phoenix.LiveViewTest do
       {:sent, 302} ->
         error_redirect_conn(conn)
 
+      {:sent, _} ->
+        raise ArgumentError,
+              "request to #{conn.request_path} received unexpected #{status} response"
+
       {_, _} ->
         raise ArgumentError, """
         a request has not yet been sent.
