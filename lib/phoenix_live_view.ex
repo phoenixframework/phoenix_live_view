@@ -513,7 +513,9 @@ defmodule Phoenix.LiveView do
   Plug session mutation. For example, in your LiveView template you can
   annotate the `phx-trigger-action` with a boolean assign:
 
-      <%= f = form_for @changeset, phx_submit: :save, phx_trigger_action: @trigger_submit %>
+      <%= f = form_for @changeset, Routes.reset_password_path(@socket, :create),
+        phx_submit: :save,
+        phx_trigger_action: @trigger_submit %>
 
   Then in your LiveView, you can toggle the assign to trigger the form with the current
   fields on next render:
