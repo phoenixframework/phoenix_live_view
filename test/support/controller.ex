@@ -23,4 +23,10 @@ defmodule Phoenix.LiveViewTest.Controller do
     |> put_layout({Phoenix.LiveViewTest.AssignsLayoutView, :app})
     |> live_render(Phoenix.LiveViewTest.DashboardLive)
   end
+
+  def not_found(conn, _) do
+    conn
+    |> put_status(:not_found)
+    |> text("404")
+  end
 end
