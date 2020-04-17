@@ -150,9 +150,9 @@ export let Rendered = {
     return rendered
   },
 
-  toString(rendered, components = rendered[COMPONENTS] || {}, onlyCids){
+  toString(rendered, viewId, components = rendered[COMPONENTS] || {}, onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids}
+    let output = {buffer: "", components: components, onlyCids: onlyCids, viewId: viewId}
     this.toOutputBuffer(rendered, output)
     return output.buffer
   },
@@ -173,7 +173,7 @@ export let Rendered = {
     }
   },
 
-  componentToString(rendered, cid){ return this.recursiveCIDToString(rendered[COMPONENTS], cid)},
+  componentToString(rendered, viewId, cid){ return this.recursiveCIDToString(rendered[COMPONENTS], viewId, cid)},
 
   pruneCIDs(rendered, cids){
     cids.forEach(cid => delete rendered[COMPONENTS][cid])
@@ -210,7 +210,7 @@ export let Rendered = {
 
   dynamicToBuffer(rendered, output){
     if(typeof(rendered) === "number"){
-      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      output.buffer += this.recursiveCIDToString(output.components, output.viewId, rendered, output.onlyCids)
    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
@@ -218,15 +218,16 @@ export let Rendered = {
     }
   },
 
-  recursiveCIDToString(components, cid, onlyCids){
+  recursiveCIDToString(components, parentViewId, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
-    template.innerHTML = this.toString(component, components, onlyCids)
+    template.innerHTML = this.toString(component, parentViewId, components, onlyCids)
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
-    Array.from(container.childNodes).forEach(child => {
+    Array.from(container.childNodes).forEach((child, i) => {
       if(child.nodeType === Node.ELEMENT_NODE){
         child.setAttribute(PHX_COMPONENT, cid)
+        if(!child.id){ child.id = `${parentViewId}-${cid}-${i}`}
         if(skip){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
@@ -1306,7 +1307,6 @@ class DOMPatch {
   isCIDPatch(){ return this.cidPatch }
 
   skipCIDSibling(el){
-    // if(!this.isCIDPatch()){ return false }
     return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
   }
 
@@ -1716,13 +1716,13 @@ export class View {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName
       let cids = diff ? Rendered.componentCIDs(diff) : null
-      let html = Rendered.toString(this.rendered, this.rendered[COMPONENTS], cids)
+      let html = Rendered.toString(this.rendered, this.id, this.rendered[COMPONENTS], cids)
       return `<${tag}>${html}</${tag}>`
     })
   }
 
   componentPatch(cid, ref){
-    let html = Rendered.componentToString(this.rendered, cid)
+    let html = Rendered.componentToString(this.rendered, this.id, cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
     let childrenAdded = this.performPatch(patch)
     return childrenAdded
