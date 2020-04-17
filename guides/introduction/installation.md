@@ -70,14 +70,20 @@ end
 
 Then add the `Phoenix.LiveView.Router.fetch_live_flash` plug to your browser pipeline, in place of `:fetch_flash`:
 
+
 ```diff
 # lib/my_app_web/router.ex
+defmodule MyAppWeb.router do
+  use MyAppWeb, :router
++ import Phoenix.LiveView.Router
 
-pipeline :browser do
-  ...
-  plug :fetch_session
-- plug :fetch_flash
-+ plug :fetch_live_flash
+  pipeline :browser do
+    ...
+    plug :fetch_session
+-   plug :fetch_flash
++   plug :fetch_live_flash
+    ...
+  end
 end
 ```
 
