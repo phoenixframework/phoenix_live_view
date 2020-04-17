@@ -22,7 +22,7 @@ describe('Browser', () => {
       document.cookie = 'orange=5678'
       expect(Browser.getCookie('apple')).toEqual('1234')
     })
-    test('returns an empty string for a non-existant cookie', () => {
+    test('returns an empty string for a non-existent cookie', () => {
       document.cookie = 'apple=1234'
       document.cookie = 'orange=5678'
       expect(Browser.getCookie('plum')).toEqual('')
