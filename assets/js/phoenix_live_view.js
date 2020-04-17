@@ -474,7 +474,7 @@ export class LiveSocket {
   }
 
   redirect(to, flash){
-    this.unloaded = true
+    this.disconnect()
     Browser.redirect(to, flash)
   }
 
