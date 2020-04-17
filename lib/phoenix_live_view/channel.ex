@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.Channel do
   defp view_handle_event(%Socket{}, "lv:" <> _ = bad_event, _val) do
     raise ArgumentError, """
     received unknown LiveView event #{inspect(bad_event)}.
-    The following LiveView events are suppported: lv:clear-flash.
+    The following LiveView events are supported: lv:clear-flash.
     """
   end
 
@@ -306,7 +306,7 @@ defmodule Phoenix.LiveView.Channel do
   defp inner_component_handle_event(_component_socket, _component, "lv:" <> _ = bad_event, _val) do
     raise ArgumentError, """
     received unknown LiveView event #{inspect(bad_event)}.
-    The following LiveView events are suppported: lv:clear-flash.
+    The following LiveView events are supported: lv:clear-flash.
     """
   end
 

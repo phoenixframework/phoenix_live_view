@@ -27,7 +27,7 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Converts a diff into iodata.
 
-  It only acepts a full render diff.
+  It only accepts a full render diff.
   """
   def to_iodata(map) do
     to_iodata(map, Map.get(map, @components, %{}))
