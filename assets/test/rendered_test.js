@@ -1,78 +1,78 @@
-import { Rendered } from '../js/phoenix_live_view'
+import { Rendered } from "../js/phoenix_live_view"
 
 const STATIC = "s"
 const DYNAMICS = "d"
+const COMPONENTS = "c"
 
-describe('Rendered', () => {
-  describe('mergeDiff', () => {
-    test('recursively merges two diffs', () => {
-      expect(Rendered.mergeDiff(simpleDiff1, simpleDiff2)).toEqual(
-        simpleDiffResult
-      );
-      expect(Rendered.mergeDiff(deepDiff1, deepDiff2)).toEqual(deepDiffResult);
-    });
+describe("Rendered", () => {
+  describe("mergeDiff", () => {
+    test("recursively merges two diffs", () => {
+      let simple = new Rendered("123", simpleDiff1)
+      simple.mergeDiff(simpleDiff2)
+      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}})
 
-    test('returns the latter diff if it contains a `static` key', () => {
-      const diff1 = { 0: ['a'], 1: ['b'] };
-      const diff2 = { 0: ['c'], [STATIC]: 'c' };
-      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
-    });
+      let deep = new Rendered("123", deepDiff1)
+      deep.mergeDiff(deepDiff2)
+      expect(deep.get()).toEqual({...deepDiffResult, [COMPONENTS]: {}})
+    })
 
-    test('replaces a string when a map is returned', () => {
-      const diff1 = { 0: { 0: '<button>Press Me</button>', [STATIC]: '' } }
-      const diff2 = { 0: { 0: { 0: 'val', [STATIC]: '' }, [STATIC]: '' } }
-      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
-    });
+    test("merges the latter diff if it contains a `static` key", () => {
+      const diff1 = { 0: ["a"], 1: ["b"] }
+      const diff2 = { 0: ["c"], [STATIC]: "c"}
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual(diff2)
+    })
 
-    test('replaces a map when a string is returned', () => {
-      const diff1 = { 0: { 0: { 0: 'val', [STATIC]: '' }, [STATIC]: '' } }
-      const diff2 = { 0: { 0: '<button>Press Me</button>', [STATIC]: '' } }
-      expect(Rendered.mergeDiff(diff1, diff2)).toEqual(diff2);
-    });
-  });
+    test("replaces a string when a map is returned", () => {
+      const diff1 = { 0: { 0: "<button>Press Me</button>", [STATIC]: "" } }
+      const diff2 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: ""} }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
+    })
 
-  describe('isNewFingerprint', () => {
-    test('returns true if `diff.static` is truthy', () => {
-      const diff = { [STATIC]: ['<h2>'] };
-      expect(Rendered.isNewFingerprint(diff)).toEqual(true);
-    });
+    test("replaces a map when a string is returned", () => {
+      const diff1 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: "" } }
+      const diff2 = { 0: { 0: "<button>Press Me</button>", [STATIC]: ""} }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
+    })
+  })
 
-    test('returns false if `diff.static` is falsy', () => {
-      const diff = { [STATIC]: undefined };
-      expect(Rendered.isNewFingerprint(diff)).toEqual(false);
-    });
+  describe("isNewFingerprint", () => {
+    test("returns true if `diff.static` is truthy", () => {
+      const diff = { [STATIC]: ["<h2>"] }
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint(diff)).toEqual(true)
+    })
 
-    test('returns false if `diff` is undefined', () => {
-      expect(Rendered.isNewFingerprint()).toEqual(false);
-    });
-  });
+    test("returns false if `diff.static` is falsy", () => {
+      const diff = { [STATIC]: undefined }
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint(diff)).toEqual(false)
+    })
 
-  describe('toString', () => {
-    test('stringifies a diff', () => {
-      expect(Rendered.toString(simpleDiffResult).trim()).toEqual(
+    test("returns false if `diff` is undefined", () => {
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint()).toEqual(false)
+    })
+  })
+
+  describe("toString", () => {
+    test("stringifies a diff", () => {
+      let rendered = new Rendered("123", simpleDiffResult)
+      expect(rendered.toString().trim()).toEqual(
 `<div class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
   </div>
-</div>`.trim());
-    });
-  });
-
-  describe('toOutputBuffer', () => {
-    test('populates the output buffer', () => {
-      const output = { buffer: '' };
-      Rendered.toOutputBuffer(simpleDiffResult, output);
-      expect(output.buffer.trim()).toEqual(
-`<div class="thermostat">
-  <div class="bar cooling">
-    <a href="#" phx-click="toggle-mode">cooling</a>
-    <span>07:15:04 PM</span>
-  </div>
-</div>`.trim());
-    });
-  });
-});
+</div>`.trim())
+    })
+  })
+})
 
 const simpleDiff1 = {
   '0': 'cooling',

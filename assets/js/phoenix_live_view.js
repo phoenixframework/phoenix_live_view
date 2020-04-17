@@ -70,6 +70,7 @@ const DEFAULTS = {
   debounce: 300,
   throttle: 300
 }
+
 // Rendered
 const DYNAMICS = "d"
 const STATIC = "s"
@@ -131,58 +132,69 @@ let serializeForm = (form, meta = {}) => {
   return params.toString()
 }
 
-let recursiveMerge = (target, source) => {
-  for(let key in source){
-    let val = source[key]
-    let targetVal = target[key]
-    if(isObject(val) && isObject(targetVal)){
-      if(targetVal[DYNAMICS] && !val[DYNAMICS]){ delete targetVal[DYNAMICS] }
-      recursiveMerge(targetVal, val)
-    } else {
-      target[key] = val
-    }
+export class Rendered {
+  constructor(viewId, rendered){
+    this.viewId = viewId
+    this.replaceRendered(rendered)
   }
-}
 
-export let Rendered = {
-  build(rendered){
-    rendered[COMPONENTS] = rendered[COMPONENTS] || {}
-    return rendered
-  },
+  parentViewId(){ return this.viewId }
 
-  toString(rendered, viewId, components = rendered[COMPONENTS] || {}, onlyCids){
+  toString(onlyCids){
+    return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+  }
+
+  recursiveToString(rendered, components = rendered[COMPONENTS] || {}, onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids, viewId: viewId}
+    let output = {buffer: "", components: components, onlyCids: onlyCids}
     this.toOutputBuffer(rendered, output)
     return output.buffer
-  },
+  }
 
-  componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) },
+  componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
 
   isComponentOnlyDiff(diff){
     if(!diff[COMPONENTS]){ return false }
     return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
-  },
+  }
 
-  mergeDiff(source, diff){
+  mergeDiff(diff){
     if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
-      return this.build(diff)
+      this.replaceRendered(diff)
     } else {
-      recursiveMerge(source, diff)
-      return source
+      this.recursiveMerge(this.rendered, diff)
     }
-  },
+  }
 
-  componentToString(rendered, viewId, cid){ return this.recursiveCIDToString(rendered[COMPONENTS], viewId, cid)},
+  recursiveMerge(target, source){
+    for(let key in source){
+      let val = source[key]
+      let targetVal = target[key]
+      if(isObject(val) && isObject(targetVal)){
+        if(targetVal[DYNAMICS] && !val[DYNAMICS]){ delete targetVal[DYNAMICS] }
+        this.recursiveMerge(targetVal, val)
+      } else {
+        target[key] = val
+      }
+    }
+  }
 
-  pruneCIDs(rendered, cids){
-    cids.forEach(cid => delete rendered[COMPONENTS][cid])
-    return rendered
-  },
+  componentToString(cid){ return this.recursiveCIDToString(this.rendered[COMPONENTS], cid) }
+
+  pruneCIDs(cids){
+    cids.forEach(cid => delete this.rendered[COMPONENTS][cid])
+  }
 
   // private
 
-  isNewFingerprint(diff = {}){ return !!diff[STATIC] },
+  get(){ return this.rendered }
+
+  replaceRendered(rendered){
+    this.rendered = rendered
+    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
+  }
+
+  isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
   toOutputBuffer(rendered, output){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, output) }
@@ -193,7 +205,7 @@ export let Rendered = {
       this.dynamicToBuffer(rendered[i - 1], output)
       output.buffer += statics[i]
     }
-  },
+  }
 
   comprehensionToBuffer(rendered, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
@@ -206,28 +218,28 @@ export let Rendered = {
         output.buffer += statics[i]
       }
     }
-  },
+  }
 
   dynamicToBuffer(rendered, output){
     if(typeof(rendered) === "number"){
-      output.buffer += this.recursiveCIDToString(output.components, output.viewId, rendered, output.onlyCids)
+      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
    } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, output)
     } else {
       output.buffer += rendered
     }
-  },
+  }
 
-  recursiveCIDToString(components, parentViewId, cid, onlyCids){
+  recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
-    template.innerHTML = this.toString(component, parentViewId, components, onlyCids)
+    template.innerHTML = this.recursiveToString(component, components, onlyCids)
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
     Array.from(container.childNodes).forEach((child, i) => {
       if(child.nodeType === Node.ELEMENT_NODE){
         child.setAttribute(PHX_COMPONENT, cid)
-        if(!child.id){ child.id = `${parentViewId}-${cid}-${i}`}
+        if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
         if(skip){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
@@ -1496,7 +1508,7 @@ export class View {
     this.log("join", () => ["", rendered])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
-    this.rendered = Rendered.build(rendered)
+    this.rendered = new Rendered(this.id, rendered)
     let html = this.renderContainer(null, "join")
     this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
@@ -1680,7 +1692,7 @@ export class View {
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
     this.log("update", () => ["", diff])
-    this.rendered = Rendered.mergeDiff(this.rendered, diff)
+    this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
     // when we don't have an acknowledgement CID and the diff only contains
@@ -1690,9 +1702,9 @@ export class View {
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
       })
-    } else if(Rendered.isComponentOnlyDiff(diff)){
+    } else if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
-        let parentCids = DOM.findParentCIDs(this.el, Rendered.componentCIDs(diff))
+        let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
           if(this.componentPatch(parentCID, ref)){ phxChildrenAdded = true }
         })
@@ -1715,14 +1727,14 @@ export class View {
   renderContainer(diff, kind){
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName
-      let cids = diff ? Rendered.componentCIDs(diff) : null
-      let html = Rendered.toString(this.rendered, this.id, this.rendered[COMPONENTS], cids)
+      let cids = diff ? this.rendered.componentCIDs(diff) : null
+      let html = this.rendered.toString(cids)
       return `<${tag}>${html}</${tag}>`
     })
   }
 
   componentPatch(cid, ref){
-    let html = Rendered.componentToString(this.rendered, this.id, cid)
+    let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
     let childrenAdded = this.performPatch(patch)
     return childrenAdded
@@ -2030,7 +2042,7 @@ export class View {
     })
     if(completelyDestroyedCIDs.length > 0){
       this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
-        this.rendered = Rendered.pruneCIDs(this.rendered, completelyDestroyedCIDs)
+        this.rendered.pruneCIDs(completelyDestroyedCIDs)
       })
     }
   }
