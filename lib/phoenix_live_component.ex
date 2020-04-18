@@ -172,11 +172,10 @@ defmodule Phoenix.LiveComponent do
   should assume only one of them to be the source of truth. Let's discuss
   these approaches in detail.
 
-  Imagine that the scenario we will explore is that we have a LiveView
-  representing a board, where each card in the board is a separate component.
-  Each card has a form that allows to update the form title directly in the
-  component. We will see how to organize the data flow keeping either the
-  view or the component as the source of truth.
+  Imagine a scenario where LiveView represents a board with each card in
+  it as a separate component. Each card has a form that allows to update
+  its title directly in the component. We will see how to organize the
+  data flow keeping either the view or the component as the source of truth.
 
   ### LiveView as the source of truth
 
