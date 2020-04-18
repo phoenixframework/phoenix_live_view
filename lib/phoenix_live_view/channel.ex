@@ -568,8 +568,11 @@ defmodule Phoenix.LiveView.Channel do
       assign_new: assign_new
     } = verified
 
-    # Optional verified parts
-    router = verified[:router]
+    # Make sure the view is loaded. Otherwise if the first request
+    # ever is a LiveView connection, the view won't be loaded and
+    # the mount/handle_params callbacks won't be invoked as they
+    # are optional, leading to errors.
+    view.__live__()
 
     %Phoenix.Socket{
       endpoint: endpoint,
@@ -577,6 +580,8 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
+    # Optional verified parts
+    router = verified[:router]
     flash = verify_flash(endpoint, verified, params)
 
     Process.monitor(transport_pid)
