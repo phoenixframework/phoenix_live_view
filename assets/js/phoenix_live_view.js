@@ -1694,33 +1694,30 @@ export class View {
     this.log("update", () => ["", diff])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
+    let patch = new DOMPatch(this, this.el, this.id, "", null, ref)
 
     // when we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
     if(typeof(cidAck) === "number"){
       this.liveSocket.time("component ack patch complete", () => {
-        if(this.componentPatch(cidAck, ref)){ phxChildrenAdded = true }
+        if(this.componentPatch(diff[COMPONENTS][cidAck], cidAck, ref)){ phxChildrenAdded = true }
       })
     } else if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
-          if(this.componentPatch(parentCID, ref)){ phxChildrenAdded = true }
+          if(this.componentPatch(diff[COMPONENTS][parentCID], parentCID, ref)){ phxChildrenAdded = true }
         })
       })
-    } else if(isEmpty(diff)){
-      let patch = new DOMPatch(this, this.el, this.id, "", null, ref)
-      patch.undoRefs()
-    } else {
+    } else if(!isEmpty(diff)){
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
-        let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
-        patch.undoRefs()
       })
     }
 
+    patch.undoRefs()
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -1733,7 +1730,8 @@ export class View {
     })
   }
 
-  componentPatch(cid, ref){
+  componentPatch(diff, cid, ref){
+    if(isEmpty(diff)) return false
     let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
     let childrenAdded = this.performPatch(patch)
