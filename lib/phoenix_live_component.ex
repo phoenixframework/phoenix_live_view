@@ -97,9 +97,8 @@ defmodule Phoenix.LiveComponent do
 
   If you want to target another component, you can also pass an ID
   or a class selector to any element inside the targeted component.
-  For example, if there is a `UserComponent` with `:id` of `13`, it
-  will have the DOM ID of `user-13`. Using a query selector, we can
-  send an event to it with:
+  For example, if there is a `UserComponent` with the DOM ID of `user-13`,
+  using a query selector, we can send an event to it with:
 
       <a href="#" phx-click="say_hello" phx-target="#user-13">
         Say hello!
@@ -173,11 +172,10 @@ defmodule Phoenix.LiveComponent do
   should assume only one of them to be the source of truth. Let's discuss
   these approaches in detail.
 
-  Imagine that the scenario we will explore is that we have a LiveView
-  representing a board, where each card in the board is a separate component.
-  Each card has a form that allows to update the form title directly in the
-  component. We will see how to organize the data flow keeping either the
-  view or the component as the source of truth.
+  Imagine a scenario where LiveView represents a board with each card in
+  it as a separate component. Each card has a form that allows to update
+  its title directly in the component. We will see how to organize the
+  data flow keeping either the view or the component as the source of truth.
 
   ### LiveView as the source of truth
 
@@ -186,7 +184,7 @@ defmodule Phoenix.LiveComponent do
   for each card, passing the card struct as argument to CardComponent:
 
       <%= for card <- @cards do %>
-        <%= live_component @socket, CardComponent, card: card, board_id: @id %>
+        <%= live_component @socket, CardComponent, card: card, id: card.id, board_id: @id %>
       <% end %>
 
   Now, when the user submits a form inside the CardComponent to update the
@@ -253,7 +251,7 @@ defmodule Phoenix.LiveComponent do
   only by passing the IDs:
 
       <%= for card_id <- @card_ids do %>
-        <%= live_component @socket, CardComponent, card_id: card_id, board_id: @id %>
+        <%= live_component @socket, CardComponent, id: card_id, board_id: @id %>
       <% end %>
 
   Now, each CardComponent loads their own card. Of course, doing so per
