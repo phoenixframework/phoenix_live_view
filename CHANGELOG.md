@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.12.1
+## 0.12.1 (2020-04-19)
 
 ### Bug fixes
   - Fix component innerHTML being discarded when a sibling DOM element appears above it, in cases where the component lacks a DOM id
   - Fix firefox reconnecting briefly during hard redirects
+  - Fix phx-disable-with and other pending attributes failing to be restored when an empty patch is returned by server
+  - Ensure LiveView module is loaded before mount to prevent first application request logging errors if they very first request is to a LiveView connection
 
 ## 0.12.0 (2020-04-16)
 
