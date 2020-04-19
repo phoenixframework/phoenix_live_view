@@ -736,6 +736,18 @@ defmodule Phoenix.LiveViewTest do
     call(view, {:render_event, {proxy_topic(view), to_string(event)}, type, value})
   end
 
+  # TODO: Deprecate me
+  defp render_event([%View{} = view | path], type, event, value)
+       when is_map(value) or is_list(value) do
+    IO.warn(
+      "passing a view plus the path #{inspect(path)} is deprecated on tests. " <>
+        "See the new element/form API instead"
+    )
+
+    element = %{element(view, Enum.join(path, " ")) | event: to_string(event)}
+    call(view, {:render_event, element, type, value})
+  end
+
   @doc """
   Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
