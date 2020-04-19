@@ -100,5 +100,40 @@ describe("DOM", () => {
     form = tag("form", {}, "")
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
   })
+
+  test("undoRefs restores phx specific attributes awaiting a ref", () => {
+    let content = `
+      <span data-phx-ref="1"></span>
+      <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
+        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+        <datalist id="results">
+        </datalist>
+        <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+      </form>
+    `.trim()
+    let div = tag("div", {}, content)
+
+    DOM.undoRefs(1, div)
+    expect(div.innerHTML).toBe(`
+      <span></span>
+      <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
+        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+        <datalist id="results">
+        </datalist>
+        <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+      </form>
+    `.trim())
+
+    DOM.undoRefs(38, div)
+    expect(div.innerHTML).toBe(`
+      <span></span>
+      <form phx-change="suggest" phx-submit="search" phx-page-loading="">
+        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
+        <datalist id="results">
+        </datalist>
+        <button type="submit" phx-disable-with="Searching...">Searching...</button>
+      </form>
+    `.trim())
+  })
 })
 

@@ -46,6 +46,7 @@ const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
 const PHX_DISABLE_WITH = "disable-with"
+const PHX_DISABLE_WITH_RESTORE = "data-phx-disable-with-restore"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
@@ -1131,6 +1132,51 @@ export let DOM = {
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
+  },
+
+  undoRefs(ref, container){
+    DOM.all(container, `[${PHX_REF}]`, el => this.syncPendingRef(ref, el, el))
+  },
+
+  syncPendingRef(ref, fromEl, toEl){
+    let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
+    if(fromRefAttr === null){ return true }
+
+    let fromRef = parseInt(fromRefAttr)
+    if(ref !== null && ref >= fromRef){
+      [fromEl, toEl].forEach(el => {
+        // remove refs
+        el.removeAttribute(PHX_REF)
+        // retore inputs
+        if(el.getAttribute(PHX_READONLY) !== null){
+          el.readOnly = false
+          el.removeAttribute(PHX_READONLY)
+        }
+        if(el.getAttribute(PHX_DISABLED) !== null){
+          el.disabled = false
+          el.removeAttribute(PHX_DISABLED)
+        }
+        // remove classes
+        PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+        // restore disables
+        let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+        if(disableRestore !== null){
+          el.innerText = disableRestore
+          el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+        }
+      })
+      return true
+    } else {
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.contains(className) && toEl.classList.add(className)
+      })
+      toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
+      if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+        return false
+      } else {
+        return true
+      }
+    }
   }
 }
 
@@ -1160,10 +1206,6 @@ class DOMPatch {
 
   trackAfter(kind, ...args){
     this.callbacks[`after${kind}`].forEach(callback => callback(...args))
-  }
-
-  undoRefs(){
-    DOM.all(this.container, `[${PHX_REF}]`, el => this.syncPendingRef(el, el))
   }
 
   markPrunableContentForRemoval(){
@@ -1235,7 +1277,7 @@ class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!this.syncPendingRef(fromEl, toEl)){ return false }
+          if(!DOM.syncPendingRef(this.ref, fromEl, toEl)){ return false }
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
@@ -1359,34 +1401,6 @@ class DOMPatch {
       Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
       firstComponent.remove()
       return diffContainer.outerHTML
-    }
- }
-
-  syncPendingRef(fromEl, toEl){
-    let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
-    if(fromRefAttr === null){ return true }
-
-    let fromRef = parseInt(fromRefAttr)
-    if(this.ref !== null && this.ref >= fromRef){
-      [fromEl, toEl].forEach(el => {
-        el.removeAttribute(PHX_REF)
-        if(el.getAttribute(PHX_READONLY) !== null){
-          el.readOnly = false
-          el.removeAttribute(PHX_READONLY)
-        }
-        PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
-      })
-      return true
-    } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
-      if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
-        return false
-      } else {
-        return true
-      }
     }
   }
 }
@@ -1694,7 +1708,6 @@ export class View {
     this.log("update", () => ["", diff])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
-    let patch = new DOMPatch(this, this.el, this.id, "", null, ref)
 
     // when we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
@@ -1713,11 +1726,12 @@ export class View {
     } else if(!isEmpty(diff)){
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
+        let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
         phxChildrenAdded = this.performPatch(patch)
       })
     }
 
-    patch.undoRefs()
+    DOM.undoRefs(ref, this.el)
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -1890,7 +1904,12 @@ export class View {
       el.classList.add(`phx-${event}-loading`)
       el.setAttribute(PHX_REF, newRef)
       let disableText = el.getAttribute(disableWith)
-      if(disableText !== null){ el.innerText = disableText }
+      if(disableText !== null){
+        if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText)
+        }
+        el.innerText = disableText
+      }
     })
     return [newRef, elements]
   }
