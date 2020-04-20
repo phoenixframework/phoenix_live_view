@@ -444,6 +444,9 @@ defmodule Phoenix.LiveView do
         <%= submit "Save" %>
       </form>
 
+  *Reminder*: `form_for/3` is a `Phoenix.HTML` helper. Don't forget to include 
+  `use Phoenix.HTML` at the top of your LiveView, if using Phoenix.HTML helpers.
+
   Next, your LiveView picks up the events in `handle_event` callbacks:
 
       def render(assigns) ...
