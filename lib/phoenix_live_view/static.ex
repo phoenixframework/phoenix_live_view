@@ -55,7 +55,10 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp verify_token(endpoint, token) do
+  @doc """
+  TODO
+  """
+  def verify_token(endpoint, token) do
     case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
       {:ok, {@token_vsn, term}} -> {:ok, term}
       {:ok, _} -> {:error, :outdated}
@@ -370,7 +373,10 @@ defmodule Phoenix.LiveView.Static do
     })
   end
 
-  defp sign_token(endpoint, data) do
+  @doc """
+  TODO
+  """
+  def sign_token(endpoint, data) do
     Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
   end
 

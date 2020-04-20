@@ -37,7 +37,7 @@ const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_TRIGGER_ACTION = "trigger-action"
 const PHX_FEEDBACK_FOR = "feedback-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
-const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
+const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "file"]
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
@@ -209,50 +209,42 @@ let uploadFiles = (ctx, files, callback) => {
 }
 
 let serializeForm = (form, meta = {}) => {
+  let fileData = []
   let formData = new FormData(form)
+  // TODO: The intended purpose of this var remains unknown
+  let readerCount = 0
+  let toRemove = []
+
+  formData.forEach((val, key) => {
+    if(val instanceof File) {
+      toRemove.push(key)
+      let fileWithMeta = {path: key}
+      if(val.size > 0) {
+        fileWithMeta.name = val.name
+        fileWithMeta.type = val.type
+        fileWithMeta.size = val.size
+
+        if(meta.__live_uploads) {
+          fileWithMeta.file_ref = meta.__live_uploads[key]["file_ref"]
+          fileWithMeta.topic = meta.__live_uploads[key]["topic"]
+        }
+        fileData.push(fileWithMeta)
+      }
+    }
+  })
+
+  // Cleanup after building fileData
+  meta.delete("__live_uploads")
+  toRemove.forEach((key) => { formData.delete(key) })
+
   let params = new URLSearchParams()
   for(let [key, val] of formData.entries()){ params.append(key, val) }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
-  return params.toString()
-
-  // TODO: File upload (split formData and fileData)
-  // let serializeForm = (form, fileUploadData) => {
-  //   const formData = new FormData(form)
-  //   const fileData = [];
-  //   let toRemove = []
-  //   let readerCount = 0
-
-  //   formData.forEach((val, key) => {
-  //     if (val instanceof File) {
-  //       toRemove.push(key);
-  //       const fileWithMeta = {path: key};
-  //       if (val.size > 0) {
-  //         fileWithMeta.name = val.name;
-  //         fileWithMeta.type = val.type;
-  //         fileWithMeta.size = val.size;
-
-  //         if (fileUploadData) {
-  //           fileWithMeta.file_ref = fileUploadData[key]["file_ref"];
-  //           fileWithMeta.topic = fileUploadData[key]["topic"];
-  //         }
-  //         fileData.push(fileWithMeta);
-  //       }
-  //     }
-  //   })
-
-  //   toRemove.forEach((key) => {
-  //     formData.delete(key);
-  //   });
-
-  //   let params = new URLSearchParams()
-  //   for(let [key, val] of formData.entries()){ params.append(key, val) }
-
-  //   return {
-  //     formData: params.toString(),
-  //     fileData: fileData.length > 0 ? fileData : null
-  //   };
-  // }
+  return {
+    formData: params.toString(),
+    fileData: fileData.length > 0 ? fileData : null
+  }
 }
 
 export class Rendered {
@@ -1495,7 +1487,6 @@ class DOMAppendPrependUpdate {
   }
 }
 
-// TODO: File upload (ignore file input)
 class DOMPatch {
   static patchEl(fromEl, toEl){ morphdom(fromEl, toEl, {childrenOnly: false}) }
 
@@ -2363,21 +2354,18 @@ export class View {
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
-    this.pushWithReply(() => this.putRef([inputEl, inputEl.form], "change"), "event", {
+    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
+    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
+    let {fileData, formData} = serializeForm(inputEl.form, {_target: eventTarget.name})
+    let event = {
       type: "form",
       event: phxEvent,
-      value: serializeForm(inputEl.form, {_target: eventTarget.name}),
+      value: formData,
       cid: this.targetComponentID(inputEl.form, targetCtx)
-    }, callback)
+    }
 
-    // TODO: File upload
-    // const { fileData, formData } = serializeForm(inputEl.form);
-    // const event = { type: "form", event: phxEvent, value: formData };
-    // if (!fileData) {
-    //   this.pushWithReply("event", event);
-    //   return;
-    // }
-    // this.pushWithReply("event", Object.assign({}, event, {file_data: fileData}));
+    if(typeof fileData !== "undefined") { event.file_data = fileData }
+    this.pushWithReply(refGenerator, "event", event, callback)
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -2398,36 +2386,32 @@ export class View {
       formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
       return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
     }
-    this.pushWithReply(refGenerator, "event", {
-      type: "form",
-      event: phxEvent,
-      value: serializeForm(formEl),
-      cid: this.targetComponentID(formEl, targetCtx)
-    }, onReply)
 
-    // TODO: File upload
-    // this.uploadCount = 0;
-    // let files = gatherFiles(formEl)
-    // let numFiles = Object.keys(files).length;
-    // if (numFiles > 0) {
-    //   uploadFiles(this, files, (uploads) => {
-    //     const { formData, fileData} = serializeForm(formEl, uploads);
-    //         this.pushWithReply("event", {
-    //           type: "form",
-    //           file_count: numFiles,
-    //           // file_data: ...
-    //           event: phxEvent,
-    //           value: formData,
-    //           file_data: fileData
-    //         }, onReply)
-    //       })
-    // } else {
-    //   this.pushWithReply("event", {
-    //     type: "form",
-    //     event: phxEvent,
-    //     value: serializeForm(formEl)
-    //   }, onReply)
-    // }
+    this.uploadCount = 0
+    let files = gatherFiles(formEl)
+    let numFiles = Object.keys(files).length
+
+    if(numFiles > 0) {
+      uploadFiles(this, files, (uploads) => {
+        let {fileData, formData} = serializeForm(formEl, {__live_uploads: uploads})
+        this.pushWithReply(refGenerator, "event", {
+          type: "form",
+          event: phxEvent,
+          value: formData,
+          cid: this.targetComponentID(formEl, targetCtx),
+          file_count: numFiles,
+          file_data: fileData
+        }, onReply)
+      })
+    } else {
+      let {formData} = serializeForm(formEl)
+      this.pushWithReply(refGenerator, "event", {
+        type: "form",
+        event: phxEvent,
+        value: formData,
+        cid: this.targetComponentID(formEl, targetCtx)
+      }, onReply)
+    }
   }
 
   pushFormRecovery(form, callback){
