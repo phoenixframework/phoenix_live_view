@@ -4,25 +4,26 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   require Logger
 
-  alias Phoenix.LiveView.View
+  alias Phoenix.LiveView.Static
 
+  @impl true
   def join(topic, auth_payload, socket) do
     %{"ref" => ref} = auth_payload
 
-    with {:ok, %{pid: pid}} <- View.verify_token(socket.endpoint, ref),
+    with {:ok, %{pid: pid}} <- Static.verify_token(socket.endpoint, ref),
          {:ok, %{file_size_limit: file_size_limit, chunk_size: chunk_size}} <-
            GenServer.call(pid, {:phoenix, :register_file_upload, %{pid: self(), ref: topic}}),
          {:ok, path} <- Plug.Upload.random_file("live_view_upload"),
          {:ok, handle} <- File.open(path, [:binary, :write]) do
       Process.monitor(pid)
 
-      socket =
-        socket
-        |> Phoenix.Socket.assign(:path, path)
-        |> Phoenix.Socket.assign(:handle, handle)
-        |> Phoenix.Socket.assign(:live_view_pid, pid)
-        |> Phoenix.Socket.assign(:file_size_limit, file_size_limit)
-        |> Phoenix.Socket.assign(:uploaded_size, 0)
+      socket = Phoenix.Socket.assign(socket, %{
+        path: path,
+        handle: handle,
+        live_view_pid: pid,
+        file_size_limit: file_size_limit,
+        uploaded_size: 0
+      })
 
       {:ok, %{"chunkSize" => chunk_size}, socket}
     else
@@ -31,6 +32,7 @@ defmodule Phoenix.LiveView.UploadChannel do
     end
   end
 
+  @impl true
   def handle_in(
         "event",
         {:frame, payload},
@@ -48,20 +50,24 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   @impl true
-  def handle_call({:get_file, ref}, _reply, socket) do
+  def handle_call({:get_file, _ref}, _reply, socket) do
     File.close(socket.assigns.handle)
     {:reply, {:ok, socket.assigns.path}, socket}
   end
 
+  @impl true
   def handle_cast(:stop, socket) do
     {:stop, :normal, socket}
   end
 
+  @impl true
   def handle_info(
         {:DOWN, _, _, live_view_pid, reason},
-        %{assigns: %{live_view_pid: livd_view_pid}} = socket
+        %{assigns: %{live_view_pid: live_view_pid}} = socket
       ) do
     reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
-    {:stop, reason, :live_view_down, socket}
+    # {:stop, reason, :live_view_down, socket}
+    # TODO: stop the socket here
+    {:noreply, socket}
   end
 end
