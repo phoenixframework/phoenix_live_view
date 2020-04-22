@@ -458,7 +458,7 @@ defmodule Phoenix.LiveView do
       def handle_event("validate", %{"user" => params}, socket) do
         changeset =
           %User{}
-          |> Accounts.change_user(params)
+          |> Account.changeset(params)
           |> Map.put(:action, :insert)
 
         {:noreply, assign(socket, changeset: changeset)}
