@@ -53,10 +53,10 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
-    %{view: view, router: router} = socket
+    %{view: view} = socket
     %{"url" => url} = msg.payload
 
-    case Utils.live_link_info!(router, view, url) do
+    case Utils.live_link_info!(socket, view, url) do
       {:internal, params, action, _} ->
         socket = socket |> assign_action(action) |> Utils.clear_flash()
 
@@ -201,7 +201,7 @@ defmodule Phoenix.LiveView.Channel do
 
       socket.root_pid != self() or is_nil(router) ->
         # Let the callback fail for the usual reasons
-        Utils.live_link_info!(nil, view, url)
+        Utils.live_link_info!(%{socket | router: nil}, view, url)
 
       params == :not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
@@ -596,24 +596,26 @@ defmodule Phoenix.LiveView.Channel do
       _ -> Process.put(:"$callers", [transport_pid])
     end
 
+    socket = %Socket{
+      endpoint: endpoint,
+      view: view,
+      root_view: root_view,
+      connected?: true,
+      parent_pid: parent,
+      root_pid: root || self(),
+      id: id,
+      router: router
+    }
+
     {params, parsed_uri, action} =
-      case router && url && Utils.live_link_info!(router, view, url) do
+      case router && url && Utils.live_link_info!(socket, view, url) do
         {:internal, params, action, parsed_uri} -> {params, parsed_uri, action}
         _ -> {:not_mounted_at_router, :not_mounted_at_router, nil}
       end
 
     socket =
       Utils.configure_socket(
-        %Socket{
-          endpoint: endpoint,
-          view: view,
-          root_view: root_view,
-          connected?: true,
-          parent_pid: parent,
-          root_pid: root || self(),
-          id: id,
-          router: router
-        },
+        socket,
         mount_private(parent, assign_new, connect_params),
         action,
         flash

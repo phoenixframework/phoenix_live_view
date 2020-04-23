@@ -188,17 +188,20 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
-  def live_link_info!(nil, view, _uri) do
+  def live_link_info!(%{router: nil}, view, _uri) do
     raise ArgumentError,
           "cannot invoke handle_params/3 on #{inspect(view)} " <>
             "because it is not mounted nor accessed through the router live/3 macro"
   end
 
-  def live_link_info!(router, view, uri) do
+  def live_link_info!(%{router: router, endpoint: endpoint}, view, uri) do
     %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
+    decoded_path = URI.decode(path || "")
+    split_path = for segment <- String.split(decoded_path, "/"), segment != "", do: segment
+    route_path = strip_segments(endpoint.script_name(), split_path) || split_path
 
-    case Phoenix.Router.route_info(router, "GET", URI.decode(path || ""), host) do
+    case Phoenix.Router.route_info(router, "GET", route_path, host) do
       %{plug: Phoenix.LiveView.Plug, phoenix_live_view: {^view, action}, path_params: path_params} ->
         {:internal, Map.merge(query_params, path_params), action, parsed_uri}
 
@@ -211,6 +214,10 @@ defmodule Phoenix.LiveView.Utils do
                 "because it isn't defined in #{inspect(router)}"
     end
   end
+
+  defp strip_segments([head | tail1], [head | tail2]), do: strip_segments(tail1, tail2)
+  defp strip_segments([], tail2), do: tail2
+  defp strip_segments(_, _), do: nil
 
   @doc """
   Raises error message for bad live patch on mount.
