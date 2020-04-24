@@ -1022,6 +1022,29 @@ defmodule Phoenix.LiveView do
   instead*. Assigning the `@page_title` updates the `document.title` directly,
   and therefore cannot be used to update any other part of the base layout.
 
+  ## Using Gettext for internationalization
+
+  For interationalization with [gettext](https://hexdocs.pm/gettext/Gettext.html),
+  the locale used within your Plug pipeline can be stored in the Plug session and
+  restored within your LiveView mount. For example, after user signin or preference
+  changes, you can write the locale to the session:
+
+      def put_user_session(conn, current_user) do
+        locale = get_locale_for_user(current_user)
+        Gettext.put_locale(MyApp.Gettext, locale)
+
+        conn
+        |> put_session(:user_id, current_user.id)
+        |> put_session(:locale, locale)
+      end
+
+  Then in your LiveView `mount/3`, you can restore the locale:
+
+      def mount(_params, %{"locale" => locale}, socket) do
+        Gettext.put_locale(MyApp.Gettext, locale)
+        {:ok socket}
+      end
+
   ## Disconnecting all instances of a given live user
 
   It is possible to identify all LiveView sockets by setting a "live_socket_id"
