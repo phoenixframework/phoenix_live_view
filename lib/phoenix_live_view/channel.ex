@@ -52,21 +52,14 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({:DOWN, _, :process, maybe_child_pid, _} = msg, %{socket: socket} = state) do
     cond do
-      id = Map.get(state.children_pids, maybe_child_pid) ->
-        new_pids = Map.delete(state.children_pids, maybe_child_pid)
-        new_ids = Map.delete(state.children_ids, id)
-        {:noreply, %{state | children_pids: new_pids, children_ids: new_ids}}
-
       entry = Enum.find(state.uploads, &match?({_, ^maybe_child_pid}, &1)) ->
         {key, _} = entry
         new_uploads = Map.delete(state.uploads, key)
         {:noreply, %{state | uploads: new_uploads}}
 
       true ->
-        %{view: view} = socket
-
         msg
-        |> view.handle_info(socket)
+        |> socket.view.handle_info(socket)
         |> handle_result({:handle_info, 2, nil}, state)
     end
   end
