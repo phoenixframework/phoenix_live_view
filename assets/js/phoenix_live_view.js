@@ -169,7 +169,7 @@ let uploadFiles = (ctx, files, callback) => {
         const uploadChunk = (chunk, finished, uploaded) => {
           if (!finished) {
             const percentage = Math.round((uploaded / file.size) * 100);
-            ctx.pushWithReply("upload_progress", {path: key, size: file.size, uploaded, percentage})
+            ctx.pushWithReply(null, "upload_progress", {path: key, size: file.size, uploaded, percentage})
           }
 
           uploadChannel.push("file", {file: chunk})
@@ -234,7 +234,7 @@ let serializeForm = (form, meta = {}) => {
   })
 
   // Cleanup after building fileData
-  meta.delete("__live_uploads")
+  delete meta["__live_uploads"]
   toRemove.forEach((key) => { formData.delete(key) })
 
   let params = new URLSearchParams()
@@ -2364,7 +2364,7 @@ export class View {
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }
 
-    if(typeof fileData !== "undefined") { event.file_data = fileData }
+    if(fileData) { event.file_data = fileData }
     this.pushWithReply(refGenerator, "event", event, callback)
   }
 
