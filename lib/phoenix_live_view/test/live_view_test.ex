@@ -373,6 +373,9 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Mounts, updates and renders a component.
 
+  If the component uses the `@myself` assigns, then an `id` must
+  be given to it is marked as stateful.
+
   ## Examples
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
@@ -397,7 +400,9 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   def __render_component__(endpoint, component, assigns) do
     socket = %Socket{endpoint: endpoint}
-    rendered = Diff.component_to_rendered(socket, component, Map.new(assigns))
+    assigns = Map.new(assigns)
+    mount_assigns = if assigns[:id], do: %{myself: -1}, else: %{}
+    rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
