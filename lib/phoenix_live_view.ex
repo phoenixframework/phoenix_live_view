@@ -1452,6 +1452,7 @@ defmodule Phoenix.LiveView do
     quote bind_quoted: [opts: opts] do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
+      require Phoenix.LiveView.Renderer
       @behaviour Phoenix.LiveView
       @before_compile Phoenix.LiveView.Renderer
 

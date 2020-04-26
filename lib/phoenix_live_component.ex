@@ -368,6 +368,7 @@ defmodule Phoenix.LiveComponent do
     quote do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
+      require Phoenix.LiveView.Renderer
       @behaviour Phoenix.LiveComponent
       @before_compile Phoenix.LiveView.Renderer
 
