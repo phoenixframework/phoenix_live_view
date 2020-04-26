@@ -310,6 +310,13 @@ defmodule Phoenix.LiveComponent do
 
   Where the `:entry` assign was injected into the `do/end` block.
 
+  To get `@inner_content` as shown in the component render function above
+  you will need to pull it from the assigns in update like so:
+
+      def update(%{inner_content: inner_content}, socket) do
+        {:ok, assign(socket, inner_content: inner_content)}
+      end
+
   The approach above is the preferred one when passing blocks to `do/end`.
   However, if you are outside of a .leex template and you want to invoke a
   component passing `do/end` blocks, you will have to explicitly handle the
