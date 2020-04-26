@@ -79,7 +79,7 @@ defmodule Phoenix.LiveViewTest.Router do
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
-    pipe_through :setup_session
+    live "/sessionless-thermo", ThermostatLive
     live "/thermo-with-metadata", ThermostatLive, metadata: %{route_name: "opts"}
   end
 end

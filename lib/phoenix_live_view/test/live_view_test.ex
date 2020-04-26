@@ -340,7 +340,7 @@ defmodule Phoenix.LiveViewTest do
       html: html,
       proxy: proxy,
       timeout: timeout,
-      session: get_session_if_available(conn),
+      session: maybe_get_session(conn),
       url: mount_url(endpoint, path)
     ]
 
@@ -360,8 +360,12 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp get_session_if_available(%Plug.Conn{private: private} = conn) do
-    if Map.get(private, :plug_session), do: Plug.Conn.get_session(conn), else: %{}
+  defp maybe_get_session(%Plug.Conn{} = conn) do
+    try do
+      Plug.Conn.get_session(conn)
+    rescue
+      _ -> %{}
+    end
   end
 
   defp mount_url(_endpoint, nil), do: nil

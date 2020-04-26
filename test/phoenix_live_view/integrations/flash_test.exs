@@ -339,8 +339,8 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     assert result =~ "component[]:error"
   end
 
-  test "works without flash", %{conn: conn} do
-    {:ok, live, html} = live(conn, "/thermo-with-metadata")
+  test "works without session and flash", %{conn: conn} do
+    {:ok, live, html} = live(conn, "/sessionless-thermo")
     assert html =~ "The temp is: 1"
     assert render(live) =~ "The temp is: 1"
   end
