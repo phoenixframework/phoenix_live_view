@@ -310,8 +310,9 @@ defmodule Phoenix.LiveComponent do
 
   Where the `:entry` assign was injected into the `do/end` block.
 
-  To get `@inner_content` as shown in the component render function above
-  you will need to pull it from the assigns in update like so:
+  Note the `@inner_content` assign is also passed to `c:update/2`
+  along all other assigns. So if you have a custom `update/2`
+  implementation, make sure to assign it to the socket like so:
 
       def update(%{inner_content: inner_content}, socket) do
         {:ok, assign(socket, inner_content: inner_content)}
