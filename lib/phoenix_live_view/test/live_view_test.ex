@@ -101,32 +101,6 @@ defmodule Phoenix.LiveViewTest do
       send(view.pid, {:set_temp: 50})
       assert render(view) =~ "The temperature is: 50℉"
 
-  ## Testing shutdowns and stopping views
-
-  Like all processes, views can shutdown normally or abnormally, and this
-  can be tested with `assert_remove/3`. For example:
-
-      send(view.pid, :boom)
-      reason = assert_remove view
-      assert {:shutdown, %RuntimeError{}} = reason
-
-      stop(view)
-      reason = assert_remove view
-      assert {:shutdown, :stop} = reason
-
-  Nested views can be removed by a parent at any time based on conditional
-  rendering. In these cases, the removal of the view is detected by the
-  browser, or our test client, and the child is shutdown gracefully. This
-  can be tested in the same way as above:
-
-      assert render(parent) =~ "some content in child"
-
-      assert child = find_live_child(parent, "child-dom-id")
-      send(parent.pid, :msg_that_removes_child)
-
-      assert_remove child
-      refute render(parent) =~ "some content in child"
-
   ## Testing components
 
   There are two main mechanisms for testing components. To test stateless
