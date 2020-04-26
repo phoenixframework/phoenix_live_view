@@ -360,16 +360,24 @@ defmodule Phoenix.LiveComponent do
 
   In this case, the solution is to not use `content_tag` and rely on LiveEEx
   to build the markup.
+
+  ## Options
+
+    * `:collocated_extension` - configures the extension (with leading '.')
+      of any collocated template. Defaults: ".leex"
+    * `:collocated_engine` - configures the extension of any collocated template.
+      Defaults: Phoenix.LiveView.Engine
   """
 
   alias Phoenix.LiveView.Socket
 
-  defmacro __using__(_) do
-    quote do
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       require Phoenix.LiveView.Renderer
       @behaviour Phoenix.LiveComponent
+      @compile {:live_view, opts}
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false

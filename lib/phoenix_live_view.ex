@@ -259,6 +259,15 @@ defmodule Phoenix.LiveView do
         end
       end
 
+  If you use a custom templating engine, you can collocate templates with
+  the corresponding LiveView by passing options to `Phoenix.LiveView`:
+
+      defmodule AppWeb.ThermostatLive do
+        use Phoenix.LiveView,
+          collocated_engine: SomeLibrary.FooEngine,
+          collocated_extension: ".foo",
+      end
+
   In all cases, each assign in the template will be accessible as `@assign`.
 
   ## Assigns and LiveEEx Templates
@@ -1446,6 +1455,10 @@ defmodule Phoenix.LiveView do
     * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
     * `:layout` - configures the layout the `LiveView` will be rendered in
+    * `:collocated_extension` - configures the extension (with leading '.')
+      of any collocated template. Defaults: ".leex"
+    * `:collocated_engine` - configures the extension of any collocated template.
+      Defaults: Phoenix.LiveView.Engine
 
   """
   defmacro __using__(opts) do
@@ -1454,6 +1467,7 @@ defmodule Phoenix.LiveView do
       import Phoenix.LiveView.Helpers
       require Phoenix.LiveView.Renderer
       @behaviour Phoenix.LiveView
+      @compile {:live_view, opts}
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false

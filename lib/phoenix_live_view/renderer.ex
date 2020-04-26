@@ -2,8 +2,12 @@ defmodule Phoenix.LiveView.Renderer do
   @moduledoc false
 
   defmacro __before_compile__(env) do
+    compile_options = Module.get_attribute(env.module, :compile, [])
+    live_options = Keyword.get(compile_options, :live_view, [])
+    collocated_extension = Keyword.get(live_options, :collocated_extension, ".leex")
+    collocated_engine = Keyword.get(live_options, :collocated_engine, Phoenix.LiveView.Engine)
     render? = Module.defines?(env.module, {:render, 1})
-    template = template_path(env)
+    template = template_path(env, collocated_extension)
 
     case {render?, File.regular?(template)} do
       {true, true} ->
@@ -19,7 +23,7 @@ defmodule Phoenix.LiveView.Renderer do
         :ok
 
       {false, true} ->
-        ast = Phoenix.LiveView.Engine.compile(template, template_filename(env))
+        ast = collocated_engine.compile(template, template_filename(env))
 
         quote do
           @file unquote(template)
@@ -54,10 +58,10 @@ defmodule Phoenix.LiveView.Renderer do
     end
   end
 
-  defp template_path(env) do
+  defp template_path(env, extension) do
     env.file
     |> Path.dirname()
-    |> Path.join(template_filename(env) <> ".leex")
+    |> Path.join(template_filename(env) <> extension)
     |> Path.relative_to_cwd()
   end
 
