@@ -444,7 +444,7 @@ defmodule Phoenix.LiveView do
         <%= submit "Save" %>
       </form>
 
-  *Reminder*: `form_for/3` is a `Phoenix.HTML` helper. Don't forget to include 
+  *Reminder*: `form_for/3` is a `Phoenix.HTML` helper. Don't forget to include
   `use Phoenix.HTML` at the top of your LiveView, if using `Phoenix.HTML` helpers.
 
   Next, your LiveView picks up the events in `handle_event` callbacks:
@@ -1052,7 +1052,7 @@ defmodule Phoenix.LiveView do
 
       conn
       |> put_session(:current_user_id, user.id)
-      |> put_session(:live_socket_id, "users_sockets:#{user.id}")
+      |> put_session(:live_socket_id, "users_socket:#{user.id}")
 
   Now all LiveView sockets will be identified and listening to the given
   `live_socket_id`. You can disconnect all live users identified by said
