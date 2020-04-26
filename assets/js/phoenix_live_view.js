@@ -278,7 +278,7 @@ export class Rendered {
  *
  * @param {Object} [opts] - Optional configuration. Outside of keys listed below, all
  * configuration is passed directly to the Phoenix Socket constructor.
- * @param {Function} [opts.defaults] - The optional defaults to use for various bindings,
+ * @param {Object} [opts.defaults] - The optional defaults to use for various bindings,
  * such as `phx-debounce`. Supports the following keys:
  *
  *   - debounce - the millisecond phx-debounce time. Defaults 300
@@ -291,7 +291,7 @@ export class Rendered {
  *
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
- * @param {string} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+ * @param {Object} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
  * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
  * loading states.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
