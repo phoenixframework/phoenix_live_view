@@ -66,6 +66,31 @@ defmodule Phoenix.LiveView.AssignsTest do
       assert socket.assigns.canary == "canary"
     end
 
+    test "can be configured with a list of atom and keyword list", %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, temporary_assigns: [:description, title: "My Awesome Title"])
+        |> live("/opts")
+
+      assert html =~ "long description. canary"
+      assert render(conf_live) =~ "long description. canary"
+      socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
+
+      assert %Phoenix.LiveView.UnsetTemporary{} = socket.assigns.description
+      assert socket.assigns.title == "My Awesome Title"
+      assert socket.assigns.canary == "canary"
+    end
+
+    test "raises error with invalid temporary_assigns values", %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/the :temporary_assigns mount option must include atoms or keyword list/,
+                   fn ->
+                     conn
+                     |> put_session(:opts, temporary_assigns: ["invalid", "values", :one])
+                     |> live("/opts")
+                   end
+    end
+
     test "raises with invalid options", %{conn: conn} do
       assert_raise Plug.Conn.WrapperError,
                    ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/3/,

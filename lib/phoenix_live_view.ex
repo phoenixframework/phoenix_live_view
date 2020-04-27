@@ -1396,8 +1396,8 @@ defmodule Phoenix.LiveView do
   It must return either `{:ok, socket}` or `{:ok, socket, options}`, where
   `options` is one of:
 
-    * `:temporary_assigns` - a keyword list of assigns that are temporary
-      and must be reset to their value after every render
+    * `:temporary_assigns` - a list of atoms or a keyword list of assigns that
+      are temporary and must be reset to their value after every render
 
     * `:layout` - the optional layout to be used by the LiveView
 

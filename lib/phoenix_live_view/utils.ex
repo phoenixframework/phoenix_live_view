@@ -1,3 +1,12 @@
+defmodule Phoenix.LiveView.UnsetTemporary do
+  @moduledoc """
+  Struct for temporary assigns without value.
+  """
+
+  defstruct []
+  @type t :: %__MODULE__{}
+end
+
 defmodule Phoenix.LiveView.Utils do
   # Shared helpers used mostly by Channel and Diff,
   # but also Static, and LiveViewTest.
@@ -5,6 +14,7 @@ defmodule Phoenix.LiveView.Utils do
 
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.UnsetTemporary
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -347,8 +357,12 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
+    temp_assigns =
+      temp_assigns
+      |> Enum.map(fn e -> if is_atom(e), do: {e, %UnsetTemporary{}}, else: e end)
+
     unless Keyword.keyword?(temp_assigns) do
-      raise "the :temporary_assigns mount option must be keyword list"
+      raise "the :temporary_assigns mount option must include atoms or keyword list"
     end
 
     temp_assigns = Map.new(temp_assigns)
