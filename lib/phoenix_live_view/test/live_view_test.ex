@@ -133,17 +133,31 @@ defmodule Phoenix.LiveViewTest do
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
 
   @doc """
+  Puts connect params to be used on LiveView connections.
+
+  See `Phoenix.LiveView.get_connect_params/1`.
+  """
+  def put_connect_params(conn, params) when is_map(params) do
+    Plug.Conn.put_private(conn, :live_view_connect_params, params)
+  end
+
+  @doc """
+  Puts connect info to be used on LiveView connections.
+
+  See `Phoenix.LiveView.get_connect_info/1`.
+  """
+  def put_connect_info(conn, params) when is_map(params) do
+    Plug.Conn.put_private(conn, :live_view_connect_info, params)
+  end
+
+  @doc """
   Spawns a connected LiveView process.
 
-  Accepts either a previously rendered `%Plug.Conn{}` or
-  an unsent `%Plug.Conn{}`. The latter case is a convenience
-  to perform the `get/2` and connected mount in a single
-  step.
-
-  ## Options
-
-    * `:connect_params` - the map of params available in the socket-connected
-      mount. See `Phoenix.LiveView.get_connect_params/1` for more information.
+  If a `path` is given, then a regular `get(conn, path)`
+  is done and the page is upgraded to a `LiveView`. If
+  no path is givne, it assumes a previously rendered
+  `%Plug.Conn{}` is given, which will be converted to
+  a `LiveView` immediately.
 
   ## Examples
 
@@ -154,22 +168,18 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "/path")
 
   """
-  defmacro live(conn, path_or_opts \\ []) do
+  defmacro live(conn, path \\ nil) do
     quote bind_quoted: binding(), generated: true do
-      case path_or_opts do
-        opts when is_list(opts) ->
-          Phoenix.LiveViewTest.__live__(conn, opts)
+      cond do
+        is_binary(path) ->
+          Phoenix.LiveViewTest.__live__(get(conn, path), path)
 
-        path when is_binary(path) ->
-          Phoenix.LiveViewTest.__live__(get(conn, path), path, [])
+        is_nil(path) ->
+          Phoenix.LiveViewTest.__live__(conn)
+
+        true ->
+          raise RuntimeError, "path must be nil or a binary, got: #{inspect(path)}"
       end
-    end
-  end
-
-  @doc "See `live/2`."
-  defmacro live(conn, path, opts) do
-    quote bind_quoted: binding() do
-      Phoenix.LiveViewTest.__live__(get(conn, path), path, opts)
     end
   end
 
@@ -204,22 +214,20 @@ defmodule Phoenix.LiveViewTest do
 
   @doc false
   def __isolated__(conn, endpoint, live_view, opts) do
-    {mount_opts, lv_opts} = Keyword.split(opts, [:connect_params])
-
     put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
-    |> Phoenix.LiveView.Controller.live_render(live_view, lv_opts)
-    |> connect_from_static_token(nil, mount_opts)
+    |> Phoenix.LiveView.Controller.live_render(live_view, opts)
+    |> connect_from_static_token(nil)
   end
 
   @doc false
-  def __live__(%Plug.Conn{state: state, status: status} = conn, opts) do
+  def __live__(%Plug.Conn{state: state, status: status} = conn) do
     path = rebuild_path(conn)
 
     case {state, status} do
       {:sent, 200} ->
-        connect_from_static_token(conn, path, opts)
+        connect_from_static_token(conn, path)
 
       {:sent, 302} ->
         error_redirect_conn(conn)
@@ -248,16 +256,17 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  def __live__(conn, path, opts) do
-    connect_from_static_token(conn, path, opts)
+  @doc false
+  def __live__(conn, path) do
+    connect_from_static_token(conn, path)
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
+  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
        when redir in [301, 302] do
     error_redirect_conn(conn)
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path, opts) do
+  defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path) do
     DOM.ensure_loaded!()
 
     html =
@@ -268,7 +277,7 @@ defmodule Phoenix.LiveViewTest do
 
     case DOM.find_live_views(html) do
       [{id, session_token, static_token} | _] ->
-        do_connect(conn, path, html, session_token, static_token, id, opts)
+        do_connect(conn, path, html, session_token, static_token, id)
 
       [] ->
         {:error, :nosession}
@@ -292,16 +301,16 @@ defmodule Phoenix.LiveViewTest do
   defp error_redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
   defp error_redirect_key(_), do: :redirect
 
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id, opts) do
+  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id) do
     child_statics = Map.delete(DOM.find_static_views(html), id)
-    timeout = opts[:timeout] || 5000
     endpoint = Phoenix.Controller.endpoint_module(conn)
 
     %ClientProxy{ref: ref} =
       proxy =
       ClientProxy.build(
         id: id,
-        connect_params: opts[:connect_params] || %{},
+        connect_params: conn.private[:live_view_connect_params] || %{},
+        connect_info: conn.private[:live_view_connect_info] || %{},
         session_token: session_token,
         static_token: static_token,
         module: conn.assigns.live_module,
@@ -313,7 +322,6 @@ defmodule Phoenix.LiveViewTest do
       caller: {self(), ref},
       html: html,
       proxy: proxy,
-      timeout: timeout,
       session: maybe_get_session(conn),
       url: mount_url(endpoint, path)
     ]

@@ -5,6 +5,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     ~L"""
     The value is: <%= @val %>
     connect: <%= inspect(@connect_params) %>
+    info: <%= inspect(@connect_info) %>
     mount: <%= inspect(@mount_params) %>
     params: <%= inspect(@params) %>
     """
@@ -19,6 +20,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
        val: 1,
        mount_params: params,
        connect_params: get_connect_params(socket) || %{},
+       connect_info: get_connect_info(socket) || %{},
        test_pid: session["test_pid"],
        connected?: connected?(socket),
        on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)

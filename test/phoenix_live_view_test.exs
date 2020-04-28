@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewUnitTest do
               view: Phoenix.LiveViewTest.ParamCounterLive,
               root_view: Phoenix.LiveViewTest.ParamCounterLive
             },
-            %{connect_params: %{}},
+            %{connect_params: %{}, connect_info: %{}},
             nil,
             %{}
           )
@@ -58,6 +58,34 @@ defmodule Phoenix.LiveViewUnitTest do
     test "returns params connected and mounting" do
       socket = %{@socket | connected?: true}
       assert get_connect_params(socket) == %{}
+    end
+  end
+
+  describe "get_connect_info" do
+    test "raises when not in mounting state and connected" do
+      socket = Utils.post_mount_prune(%{@socket | connected?: true})
+
+      assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
+        get_connect_info(socket)
+      end
+    end
+
+    test "raises when not in mounting state and disconnected" do
+      socket = Utils.post_mount_prune(%{@socket | connected?: false})
+
+      assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
+        get_connect_info(socket)
+      end
+    end
+
+    test "returns nil when disconnected" do
+      socket = %{@socket | connected?: false}
+      assert get_connect_info(socket) == nil
+    end
+
+    test "returns params connected and mounting" do
+      socket = %{@socket | connected?: true}
+      assert get_connect_info(socket) == %{}
     end
   end
 

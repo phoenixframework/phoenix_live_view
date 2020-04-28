@@ -49,10 +49,7 @@ defmodule Phoenix.LiveView.Socket do
   @impl Phoenix.Socket
   def connect(_params, %Phoenix.Socket{} = socket, connect_info) do
     case connect_info do
-      %{session: session} when is_map(session) ->
-        {:ok, put_in(socket.private[:session], session)}
-
-      %{session: _} ->
+      %{session: session} when not is_map(session) ->
         Logger.debug("""
         LiveView session was misconfigured or the user token is outdated.
 
@@ -83,8 +80,8 @@ defmodule Phoenix.LiveView.Socket do
 
         :error
 
-      %{} ->
-        {:ok, put_in(socket.private[:session], %{})}
+      _ ->
+        {:ok, put_in(socket.private[:connect_info], connect_info)}
     end
   end
 
@@ -92,5 +89,5 @@ defmodule Phoenix.LiveView.Socket do
   Identifies the Phoenix.Socket for a LiveView client.
   """
   @impl Phoenix.Socket
-  def id(socket), do: socket.private[:session]["live_socket_id"]
+  def id(socket), do: socket.private.connect_info[:session]["live_socket_id"]
 end
