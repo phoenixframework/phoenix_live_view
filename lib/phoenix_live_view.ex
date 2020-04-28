@@ -1614,7 +1614,11 @@ defmodule Phoenix.LiveView do
   @doc """
   Adds a flash message to the socket to be displayed on redirect.
 
-  *Note*: the `Phoenix.Router.fetch_live_flash` plug must be plugged in
+  *Note*: You must call this from on a socket returned from the live
+  view itself, components have access to a local flash but that is
+  not copied back to the top level.
+
+  You ust also place the `Phoenix.Router.fetch_live_flash` plug in
   your browser's pipeline in place of `fetch_flash` to be supported,
   for example:
 
