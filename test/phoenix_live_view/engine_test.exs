@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.EngineTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{Engine, Rendered}
+  alias Phoenix.LiveView.{Engine, Rendered, UnsetTemporary}
 
   def safe(do: {:safe, _} = safe), do: safe
   def unsafe(do: {:safe, content}), do: content
@@ -81,6 +81,12 @@ defmodule Phoenix.LiveView.EngineTest do
       assert_raise ArgumentError,
                    ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
                    fn -> render("<%= @foo %>", %{bar: true}) end
+    end
+
+    test "raises ArgumentError for UnsetTemporary assigns" do
+      assert_raise ArgumentError,
+                   ~r/@bar is assigned with %Phoenix.LiveView.UnsetTemporary{}./s,
+                   fn -> render("<%= @bar %>", %{bar: %UnsetTemporary{}}) end
     end
   end
 

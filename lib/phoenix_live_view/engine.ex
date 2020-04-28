@@ -277,6 +277,8 @@ defmodule Phoenix.LiveView.Engine do
   stateful, they are always handled lazily by the diff algorithm.
   """
 
+  alias Phoenix.LiveView.UnsetTemporary
+
   @behaviour Phoenix.Template.Engine
 
   @impl true
@@ -853,6 +855,13 @@ defmodule Phoenix.LiveView.Engine do
   @doc false
   def fetch_assign!(assigns, key) do
     case assigns do
+      %{^key => %UnsetTemporary{}} ->
+        raise ArgumentError, """
+        @#{key} is assigned with %Phoenix.LiveView.UnsetTemporary{}.
+
+        Please make sure all proper assigns have been set.
+        """
+
       %{^key => val} ->
         val
 
