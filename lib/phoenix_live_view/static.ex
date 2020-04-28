@@ -112,7 +112,12 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
-        %{assign_new: {conn.assigns, []}, connect_params: %{}, conn_session: conn_session},
+        %{
+          assign_new: {conn.assigns, []},
+          connect_params: %{},
+          connect_info: %{},
+          conn_session: conn_session
+        },
         action,
         flash
       )
@@ -164,7 +169,7 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view},
-        %{assign_new: {conn.assigns, []}, connect_params: %{}},
+        %{assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
         action,
         flash
       )

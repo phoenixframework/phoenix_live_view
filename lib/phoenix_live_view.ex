@@ -1808,6 +1808,56 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
+  Accesses the connect info from the socket to use on connected mount.
+
+  Connect info are only sent when the client connects to the server and
+  only remain available during mount. `nil` is returned when called in a
+  disconnected state and a `RuntimeError` is raised if called after mount.
+
+  ## Examples
+
+  First, when invoking the LiveView socket, you need to declare the
+  `connect_info` you want to receive. Typically, it includes at least
+  the session but it may include other keys, such as `:peer_data`.
+  See `Phoenix.Endpoint.socket/3`:
+
+      socket "/live", Phoenix.LiveView.Socket,
+        connect_info: [:peer_data, session: @session_options]
+
+  Those values can now be accessed on the connected mount as
+  `get_connect_info/1`:
+
+      def mount(_params, _session, socket) do
+        if info = get_connect_info(socket) do
+          {:ok, assign(socket, ip: info.peer_data.address)}
+        else
+          {:ok, assign(socket, ip: nil)}
+        end
+      end
+  """
+  def get_connect_info(%Socket{private: private} = socket) do
+    cond do
+      connect_info = private[:connect_info] ->
+        if connected?(socket), do: connect_info, else: nil
+
+      child?(socket) ->
+        raise RuntimeError, """
+        attempted to read connect_info from a nested child LiveView #{inspect(socket.view)}.
+
+        Only the root LiveView has access to connect params.
+        """
+
+      true ->
+        raise RuntimeError, """
+        attempted to read connect_info outside of #{inspect(socket.view)}.mount/3.
+
+        connect_info only exists while mounting. If you require access to this information
+        after mount, store the state in socket assigns.
+        """
+    end
+  end
+
+  @doc """
   Asynchronously updates a component with new assigns.
 
   Requires a stateful component with a matching `:id` to send

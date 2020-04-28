@@ -14,7 +14,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             children: [],
             child_statics: %{},
             id: nil,
-            connect_params: %{}
+            connect_params: %{},
+            connect_info: %{}
 
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
 
@@ -31,7 +32,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     * `:caller` - the required `{ref, pid}` pair identifying the caller.
     * `:view` - the required `%Phoenix.LiveViewTest.View{}`
     * `:html` - the required string of HTML for the document.
-    * `:timeout` - the required timeout for successful mount
+
   """
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
@@ -46,12 +47,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {_caller_pid, _caller_ref} = caller = Keyword.fetch!(opts, :caller)
     root_html = Keyword.fetch!(opts, :html)
     root_view = Keyword.fetch!(opts, :proxy)
-    timeout = Keyword.fetch!(opts, :timeout)
     session = Keyword.fetch!(opts, :session)
     url = Keyword.fetch!(opts, :url)
 
     state = %{
-      timeout: timeout,
       join_ref: 0,
       ref: 0,
       caller: caller,
@@ -65,7 +64,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     }
 
     try do
-      {root_view, rendered} = mount_view(state, root_view, timeout, url)
+      {root_view, rendered} = mount_view(state, root_view, url)
 
       new_state =
         state
@@ -91,7 +90,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     %View{id: id, pid: pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
   end
 
-  defp mount_view(state, view, timeout, url) do
+  defp mount_view(state, view, url) do
     ref = make_ref()
 
     case start_supervised_channel(state, view, ref, url) do
@@ -114,8 +113,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           {:DOWN, ^mon_ref, _, _, reason} ->
             throw({:stop, reason, state})
-        after
-          timeout -> exit(:timeout)
         end
 
       {:error, reason} ->
@@ -129,7 +126,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       serializer: __MODULE__,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{session: state.session},
+      private: %{connect_info: Map.put_new(view.connect_info, :session, state.session)},
       topic: view.topic,
       join_ref: state.join_ref
     }
@@ -518,7 +515,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           static = static || Map.get(state.root_view.child_statics, id)
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
-          {child_view, rendered} = mount_view(acc, child_view, acc.timeout, nil)
+          {child_view, rendered} = mount_view(acc, child_view, nil)
 
           acc
           |> put_view(child_view, rendered)

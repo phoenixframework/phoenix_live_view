@@ -283,9 +283,18 @@ defmodule Phoenix.LiveView.ParamsTest do
   describe "connect_params" do
     test "connect_params can be read on mount", %{conn: conn} do
       {:ok, counter_live, _html} =
-        live(conn, "/counter/123", connect_params: %{"connect1" => "1"})
+        conn |> put_connect_params(%{"connect1" => "1"}) |> live("/counter/123")
 
       assert render(counter_live) =~ escape(~s|connect: %{"connect1" => "1"}|)
+    end
+  end
+
+  describe "connect_info" do
+    test "connect_params can be read on mount", %{conn: conn} do
+      {:ok, counter_live, _html} =
+        conn |> put_connect_info(%{x_headers: [{"x-forwarded-for", "1.2.3.4"}]}) |> live("/counter/123")
+
+      assert render(counter_live) =~ escape(~s|x_headers: [{"x-forwarded-for", "1.2.3.4"}]|)
     end
   end
 

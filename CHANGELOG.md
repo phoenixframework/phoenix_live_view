@@ -1,5 +1,9 @@
 # Changelog
 
+### Enhancements
+  - Add `Phoenix.LiveView.get_connect_info/1`
+  - Add `Phoenix.LiveViewTest.put_connect_info/2` and `Phoenix.LiveViewTest.put_connect_params/2`
+
 ## 0.12.1 (2020-04-19)
 
 ### Bug fixes

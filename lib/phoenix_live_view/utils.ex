@@ -89,7 +89,7 @@ defmodule Phoenix.LiveView.Utils do
   def post_mount_prune(%Socket{} = socket) do
     socket
     |> clear_changed()
-    |> drop_private([:connect_params, :assign_new])
+    |> drop_private([:connect_info, :connect_params, :assign_new])
   end
 
   @doc """
