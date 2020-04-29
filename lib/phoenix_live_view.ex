@@ -1827,7 +1827,7 @@ defmodule Phoenix.LiveView do
   See `Phoenix.Endpoint.socket/3`:
 
       socket "/live", Phoenix.LiveView.Socket,
-        connect_info: [:peer_data, session: @session_options]
+        websocket: [connect_info: [:peer_data, session: @session_options]]
 
   Those values can now be accessed on the connected mount as
   `get_connect_info/1`:
