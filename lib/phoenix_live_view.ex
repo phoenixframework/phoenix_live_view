@@ -822,8 +822,8 @@ defmodule Phoenix.LiveView do
       by `Phoenix.LiveView.Helpers.live_patch/2` or
       `Phoenix.LiveView.Helpers.live_redirect/2`
 
-    * From the server - this is done by replacing `redirect/2` calls
-      by `push_patch/2` or `push_redirect/2`.
+    * From the server - this is done by replacing `Phoenix.Controller.redirect/2` calls
+      by `Phoenix.LiveView.Helpers.push_patch/2` or `Phoenix.LiveView.Helpers.push_redirect/2`.
 
   For example, in a template you may write:
 
@@ -831,7 +831,7 @@ defmodule Phoenix.LiveView do
 
   or in a LiveView:
 
-      {:noreply, push_redirect(socket, to: Routes.live_path(socket, MyLive, page + 1))}
+      {:noreply, push_patch(socket, to: Routes.live_path(socket, MyLive, page + 1))}
 
   The "patch" operations must be used when you want to navigate to the
   current LiveView, simply updating the URL and the current parameters,
