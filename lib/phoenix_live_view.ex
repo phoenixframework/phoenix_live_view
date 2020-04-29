@@ -366,7 +366,7 @@ defmodule Phoenix.LiveView do
   | [Key Events](#module-key-events) | `phx-window-keydown`, `phx-window-keyup` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
-  | [JS Interop](#module-js-interop-and-client--controlled-dom) | `phx-hook` |
+  | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
 
   ### Click Events
 
