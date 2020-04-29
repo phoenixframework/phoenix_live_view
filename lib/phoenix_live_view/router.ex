@@ -158,6 +158,7 @@ defmodule Phoenix.LiveView.Router do
     |> Module.split()
     |> Enum.drop_while(&(not String.ends_with?(&1, "Live")))
     |> Enum.map(&(&1 |> String.replace_suffix("Live", "") |> Macro.underscore()))
+    |> Enum.reject(& &1 == "")
     |> Enum.join("_")
     |> case do
       "" ->
