@@ -41,8 +41,9 @@ defmodule Phoenix.LiveView.Renderer do
 
         :ok
 
-
       {false, []} ->
+        template = Path.join(root, filename <> ".leex")
+
         message = ~s'''
         render/1 was not implemented for #{inspect(env.module)}.
 
@@ -54,12 +55,13 @@ defmodule Phoenix.LiveView.Renderer do
               """
             end
 
-        Or create a file at #{inspect(Path.join(root, filename <> ".leex"))} with the LiveView template.
+        Or create a file at #{inspect(template)} with the LiveView template.
         '''
 
         IO.warn(message, Macro.Env.stacktrace(env))
 
         quote do
+          @external_resource unquote(template)
           def render(_assigns) do
             raise unquote(message)
           end
