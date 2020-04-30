@@ -917,13 +917,25 @@ defmodule Phoenix.LiveView do
   want certain events to change the URL but without polluting the browser's history.
   This can be done by passing the `replace: true` option to any of the navigation helpers.
 
+  ### Multiple LiveViews in the same page
+
+  LiveView allows you to have multiple LiveViews in the same page by calling
+  `Phoenix.LiveView.Helpers.live_render/3` in your templates. However, only
+  the LiveViews defined directly in your router and use the "Live Navigation"
+  functionality described here. This is important because LiveViews work
+  closely with your router, guaranteeing you can only navigate to known
+  routes.
+
   ## Live Layouts
 
   When working with LiveViews, there are usually three layouts to be
   considered:
 
     * the root layout - this is a layout used by both LiveView and
-      regular views
+      regular views. This layout typically contains the <html>
+      definition alongside the head and body tags. Any content define
+      in the root layout will remain the same, even as you live navigate
+      across LiveViews
 
     * the app layout - this is the default application layout which
       is not included or used by LiveViews;
@@ -945,19 +957,15 @@ defmodule Phoenix.LiveView do
 
       plug :put_root_layout, {MyAppWeb.LayoutView, :root}
 
-  Alternatively, the layout can be passed to the `live` macro
-  in the router:
+  Alternatively, the root layout can be passed to the `live`
+  macro to your **live routes**:
 
       live "/dashboard", MyApp.Dashboard, layout: {MyAppWeb.LayoutView, :root}
 
-  If you want the "root" layout to only apply to LiveViews, you
-  can pass it as a option or define it in a specific pipeline that
-  is only used by LiveView routes.
-
   The "app" and "live" layouts are often small and similar to each
-  other, but the "app" layout uses the `@conn` and used as part of
-  the regular request life-cycle, and the "live" layout is part of
-  the LiveView and therefore has direct access to the `@socket`.
+  other, but the "app" layout uses the `@conn` and is used as part
+  of the regular request life-cycle, and the "live" layout is part
+  of the LiveView and therefore has direct access to the `@socket`.
 
   For example, you can define a new `live.html.leex` layout with
   dynamic content. You must use `@inner_content` where the output
@@ -971,6 +979,9 @@ defmodule Phoenix.LiveView do
   option to `use Phoenix.LiveView`:
 
       use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
+
+  If you are using Phoenix v1.5, the layout is automatically set
+  when generating apps with the `mix phx.new --live` flag.
 
   The `:layout` option does not apply for LiveViews rendered within
   other LiveViews. If you are rendering child live views or if you
@@ -986,20 +997,21 @@ defmodule Phoenix.LiveView do
 
   ### Updating the HTML document title
 
-  Because the main layout from the Plug pipeline is rendered outside of LiveView,
-  the contents cannot be dynamically changed. The one exception is the `<title>`
-  of the HTML document. Phoenix LiveView special cases the `@page_title` assign
-  to allow dynamically updating the title of the page, which is useful when
-  using live navigation, or annotating the browser tab with a notification.
-  For example, to update the user's notification count in the browser's title bar,
-  first set the `page_title` assign on mount:
+  Because the root layout from the Plug pipeline is rendered outside of
+  LiveView, the contents cannot be dynamically changed. The one exception
+  is the `<title>` of the HTML document. Phoenix LiveView special cases
+  the `@page_title` assign to allow dynamically updating the title of the
+  page, which is useful when using live navigation, or annotating the browser
+  tab with a notification. For example, to update the user's notification
+  count in the browser's title bar, first set the `page_title` assign on
+  mount:
 
         def mount(_params, _session, socket) do
           socket = assign(socket, page_title: "Latest Posts")
           {:ok, socket}
         end
 
-  Then access `@page_title` in the app layout:
+  Then access `@page_title` in the root layout:
 
       <title><%= @page_title %></title>
 
@@ -1009,7 +1021,7 @@ defmodule Phoenix.LiveView do
 
       <%= live_title_tag @page_title, prefix: "MyApp – " %>
 
-  Now, although the app layout is not updated by LiveView, by simply assigning
+  Although the root layout is not updated by LiveView, by simply assigning
   to `page_title`, LiveView knows you want the title to be updated:
 
       def handle_info({:new_messages, count}, socket) do
