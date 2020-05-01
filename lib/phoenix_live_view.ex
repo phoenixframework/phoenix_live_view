@@ -266,8 +266,7 @@ defmodule Phoenix.LiveView do
   All of the data in a LiveView is stored in the socket as assigns.
   The `assign/2` and `assign/3` functions help store those values.
   Those values can be accessed in the LiveView as `socket.assigns.name`
-  but they are most commonly accessed inside LiveView templates as
-  `@name`.
+  but they are accessed inside LiveView templates as `@name`.
 
   `Phoenix.LiveView`'s built-in templates are identified by the `.leex`
   extension (Live EEx) or `~L` sigil. They are similar to regular `.eex`
@@ -299,8 +298,7 @@ defmodule Phoenix.LiveView do
   at all.
 
   The change tracking also works when rendering other templates as
-  long as they are also `.leex` templates and as long as all assigns
-  are passed to the child/inner template:
+  long as they are also `.leex` templates:
 
       <%= render "child_template.html", assigns %>
 
@@ -322,11 +320,16 @@ defmodule Phoenix.LiveView do
   regardless if you are using LiveView or not. The difference is that LiveView
   enforces this best practice.
 
-  Finally, note that change tracking works inside do/blocks, as long as those
-  blocks are given to Elixir's basic constructs, such as `if`, `case`, `for`,
-  and friends. If the do-block is given to a library function or user function,
-  such as `content_tag`, change tracking won't work. For example, imagine the
-  following template that renders a `div`:
+  ### LiveEEx pitfalls
+
+  There are two common pitfalls to keep in mind when using the `~L` sigil
+  or `.leex` templates.
+
+  When it comes to `do/end` blocks, change tracking is supported only on blocks
+  given to Elixir's basic constructs, such as `if`, `case`, `for`, and friends.
+  If the do/end block is given to a library function or user function, such as
+  `content_tag`, change tracking won't work. For example, imagine the following
+  template that renders a `div`:
 
       <%= content_tag :div, id: "user_#{@id}" do %>
         <%= @name %>
@@ -341,6 +344,51 @@ defmodule Phoenix.LiveView do
         <%= @name %>
         <%= @description %>
       </div>
+
+  Another pitfall of `.leex` templates is related to variables. Due to the scope
+  of variables, LiveView has to disable change tracking whenever variables are
+  used in the template, with the exception of variables introduced by Elixir
+  basic `case`, `for`, and other block constructs. Therefore, you **must avoid**
+  code like this in your LiveEEx:
+
+      <% some_var = @x + @y %>
+      <%= some_var %>
+
+  Instead, use a function:
+
+      <%= sum(@x, @y) %>
+
+  Or explicitly precompute the assign in your LiveView:
+
+      assign(socket, sum: socket.assigns.x + socket.assigns.y)
+
+  Similarly, **do not** define variables at the top of your `render` function:
+
+      def render(assigns) do
+        sum = assigns.x + assigns.y
+
+        ~L"""
+        <%= sum %>
+        """
+      end
+
+  Instead use functions inside the `~L` or preassign `sum` as explained above.
+
+  However, for completeness, note that variables introduced by Elixir's block
+  constructs are fine:
+
+      <%= for post <- @posts do %>
+        ...
+      <% end %>
+
+  To sum up:
+
+    1. Avoid passing block expressions to user and library functions
+
+    2. Never do anything on `def render(assigns)` besides rendering a template
+      or invoking the `~L` sigil
+
+    3. Avoid defining local variables, except within `for`, `case`, and friends
 
   ## Bindings
 
