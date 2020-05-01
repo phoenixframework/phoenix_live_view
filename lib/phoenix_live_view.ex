@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView do
       end
 
   The `render/1` callback receives the `socket.assigns` and is responsible
-  for returning rendered content. You can use `Phoenix.LiveView.sigil_L/2`
+  for returning rendered content. You can use `Phoenix.LiveView.Helpers.sigil_L/2`
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
 
@@ -818,12 +818,12 @@ defmodule Phoenix.LiveView do
 
   You can trigger live navigation in two ways:
 
-    * From the client - this is done by replacing `Phoenix.HTML.link/2`
+    * From the client - this is done by replacing `Phoenix.HTML.Link.link/2`
       by `Phoenix.LiveView.Helpers.live_patch/2` or
       `Phoenix.LiveView.Helpers.live_redirect/2`
 
     * From the server - this is done by replacing `Phoenix.Controller.redirect/2` calls
-      by `Phoenix.LiveView.Helpers.push_patch/2` or `Phoenix.LiveView.Helpers.push_redirect/2`.
+      by `Phoenix.LiveView.push_patch/2` or `Phoenix.LiveView.push_redirect/2`.
 
   For example, in a template you may write:
 
@@ -1631,8 +1631,8 @@ defmodule Phoenix.LiveView do
   in a component is only copied to its parent LiveView if the component
   calls `push_redirect/2` or `push_patch/2`.
 
-  *Note*: You must also place the `Phoenix.Router.fetch_live_flash/2` plug in
-  your browser's pipeline in place of `fetch_flash` to be supported,
+  *Note*: You must also place the `Phoenix.LiveView.Router.fetch_live_flash/2`
+  plug in your browser's pipeline in place of `fetch_flash` to be supported,
   for example:
 
       import Phoenix.LiveView.Router
