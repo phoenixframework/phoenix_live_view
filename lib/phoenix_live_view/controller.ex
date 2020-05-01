@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Controller do
 
   ## Options
 
-  See `Phoenix.LiveView.live_render/3` for all supported options.
+  See `Phoenix.LiveView.Helpers.live_render/3` for all supported options.
 
   ## Examples
 

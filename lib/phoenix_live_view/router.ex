@@ -59,7 +59,7 @@ defmodule Phoenix.LiveView.Router do
 
     * `:container` - the optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
-      See `Phoenix.LiveView.live_render/3` for more information on examples.
+      See `Phoenix.LiveView.Helpers.live_render/3` for more information on examples.
 
     * `:as` - optionally configures the named helper. Defaults to `:live` when
       using a LiveView without actions or default to the LiveView name when using
