@@ -644,7 +644,9 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|"utc_text" => "2020-04-17 14:15:16Z"|
 
       assert view
-             |> form("#form", hello: [utc_select: ~U"2020-04-17 14:15:16Z"])
+             |> form("#form",
+               hello: [utc_select: DateTime.from_naive!(~N"2020-04-17 14:15:16Z", "Etc/UTC")]
+             )
              |> render_change()
 
       assert last_event(view) =~
