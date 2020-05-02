@@ -846,8 +846,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     limited? = Enum.all?(types, &(&1 in @limited))
 
     cond do
-      value = calendar_value(types, non_string_value, name, node) ->
-        {:ok, value}
+      calendar_value = calendar_value(types, non_string_value, name, node) ->
+        {:ok, calendar_value}
 
       types == [] ->
         {:error, :invalid,
@@ -858,10 +858,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:error, :invalid,
          "cannot provide value to #{inspect(name)} because #{forbidden_type} inputs are never submitted"}
 
-      value = limited? && value |> List.wrap() |> Enum.find(&(&1 not in dom_values)) ->
+      forbidden_value = limited? && value |> List.wrap() |> Enum.find(&(&1 not in dom_values)) ->
         {:error, :invalid,
          "value for #{hd(types)} #{inspect(name)} must be one of #{inspect(dom_values)}, " <>
-           "got: #{inspect(value)}"}
+           "got: #{inspect(forbidden_value)}"}
 
       true ->
         {:ok, value}
