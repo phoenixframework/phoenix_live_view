@@ -608,5 +608,47 @@ defmodule Phoenix.LiveView.ElementsTest do
                      view |> form("#form", hello: [textarea: ["i lose"]]) |> render_change()
                    end
     end
+
+    test "fill in calendar types", %{live: view} do
+      assert_raise ArgumentError,
+                   ~r/could not find non-disabled input, select or textarea with name "hello\[unknown\]"/,
+                   fn ->
+                     view |> form("#form", hello: [unknown: ~D"2020-04-17"]) |> render_change()
+                   end
+
+      assert view |> form("#form", hello: [date_text: "2020-04-17"]) |> render_change()
+      assert last_event(view) =~ ~s|"date_text" => "2020-04-17"|
+
+      assert view |> form("#form", hello: [date_select: ~D"2020-04-17"]) |> render_change()
+
+      assert last_event(view) =~
+               ~s|"date_select" => %{"day" => "17", "month" => "4", "year" => "2020"}|
+
+      assert view |> form("#form", hello: [time_text: "14:15:16"]) |> render_change()
+      assert last_event(view) =~ ~s|"time_text" => "14:15:16"|
+
+      assert view |> form("#form", hello: [time_select: ~T"14:15:16"]) |> render_change()
+      assert last_event(view) =~ ~s|"time_select" => %{"hour" => "14", "minute" => "15"}|
+
+      assert view |> form("#form", hello: [naive_text: "2020-04-17 14:15:16"]) |> render_change()
+      assert last_event(view) =~ ~s|"naive_text" => "2020-04-17 14:15:16"|
+
+      assert view
+             |> form("#form", hello: [naive_select: ~N"2020-04-17 14:15:16"])
+             |> render_change()
+
+      assert last_event(view) =~
+               ~s|"naive_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "year" => "2020"}|
+
+      assert view |> form("#form", hello: [utc_text: "2020-04-17 14:15:16Z"]) |> render_change()
+      assert last_event(view) =~ ~s|"utc_text" => "2020-04-17 14:15:16Z"|
+
+      assert view
+             |> form("#form", hello: [utc_select: ~U"2020-04-17 14:15:16Z"])
+             |> render_change()
+
+      assert last_event(view) =~
+               ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "2020"}|
+    end
   end
 end

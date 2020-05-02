@@ -282,7 +282,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       case topic_or_element do
         {topic, event} ->
           view = fetch_view_by_topic!(state, topic)
-          {view, nil, event, stringify(:hook, value)}
+          {view, nil, event, stringify(value, & &1)}
 
         %Element{} = element ->
           view = fetch_view_by_topic!(state, proxy_topic(element))
@@ -293,7 +293,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, DOM.deep_merge(extra, stringify(type, value))}
+            {view, cid, event, DOM.deep_merge(extra, stringify_type(type, value))}
           end
       end
 
@@ -751,10 +751,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         |> Enum.reverse()
         |> Enum.reduce(%{}, &form_defaults/2)
 
-      stringified = stringify(type, element.form_data || %{})
-
-      case fill_in_map(Map.to_list(stringified), "", node) do
-        :ok -> {:ok, DOM.deep_merge(defaults, stringified)}
+      case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
+        {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
         {:error, _, _} = error -> error
       end
     else
@@ -815,27 +813,32 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp fill_in_map([{key, value} | rest], prefix, node) do
+  defp fill_in_map([{key, value} | rest], prefix, node, acc) do
+    key = to_string(key)
+
     case fill_in_type(value, fill_in_name(prefix, key), node) do
-      :ok -> fill_in_map(rest, prefix, node)
+      {:ok, value} -> fill_in_map(rest, prefix, node, [{key, value} | acc])
       {:error, _, _} = error -> error
     end
   end
 
-  defp fill_in_map([], _prefix, _node) do
-    :ok
+  defp fill_in_map([], _prefix, _node, acc) do
+    {:ok, Map.new(acc)}
   end
 
-  defp fill_in_type(%{} = value, key, node), do: fill_in_map(Map.to_list(value), key, node)
+  defp fill_in_type([{_, _} | _] = value, key, node), do: fill_in_map(value, key, node, [])
+  defp fill_in_type(%_{} = value, key, node), do: fill_in_value(value, key, node)
+  defp fill_in_type(%{} = value, key, node), do: fill_in_map(Map.to_list(value), key, node, [])
   defp fill_in_type(value, key, node), do: fill_in_value(value, key, node)
 
   @limited ["select", "multiple select", "checkbox", "radio", "hidden"]
   @forbidden ["submit", "image"]
 
-  defp fill_in_value(value, name, node) do
+  defp fill_in_value(non_string_value, name, node) do
+    value = stringify(non_string_value, &to_string/1)
     name = if is_list(value), do: name <> "[]", else: name
 
-    {types, values} =
+    {types, dom_values} =
       node
       |> DOM.all("[name=#{inspect(name)}]:not([disabled])")
       |> collect_values([], [])
@@ -843,6 +846,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     limited? = Enum.all?(types, &(&1 in @limited))
 
     cond do
+      value = calendar_value(types, non_string_value, name, node) ->
+        {:ok, value}
+
       types == [] ->
         {:error, :invalid,
          "could not find non-disabled input, select or textarea with name #{inspect(name)} within:\n\n" <>
@@ -852,14 +858,38 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:error, :invalid,
          "cannot provide value to #{inspect(name)} because #{forbidden_type} inputs are never submitted"}
 
-      value = limited? && value |> List.wrap() |> Enum.find(&(&1 not in values)) ->
+      value = limited? && value |> List.wrap() |> Enum.find(&(&1 not in dom_values)) ->
         {:error, :invalid,
-         "value for #{hd(types)} #{inspect(name)} must be one of #{inspect(values)}, " <>
+         "value for #{hd(types)} #{inspect(name)} must be one of #{inspect(dom_values)}, " <>
            "got: #{inspect(value)}"}
 
       true ->
-        :ok
+        {:ok, value}
     end
+  end
+
+  @calendar_fields ~w(year month day hour minute second)a
+
+  defp calendar_value([], %{calendar: _} = calendar_type, name, node) do
+    @calendar_fields
+    |> Enum.flat_map(fn field ->
+      string_field = Atom.to_string(field)
+
+      with value when not is_nil(value) <- Map.get(calendar_type, field),
+           {:ok, string_value} <- fill_in_value(value, name <> "[" <> string_field <> "]", node) do
+        [{string_field, string_value}]
+      else
+        _ -> []
+      end
+    end)
+    |> case do
+      [] -> nil
+      pairs -> Map.new(pairs)
+    end
+  end
+
+  defp calendar_value(_, _, _, _) do
+    nil
   end
 
   defp collect_values([{"textarea", _, _} | nodes], types, values) do
@@ -901,24 +931,24 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp encode(:form, value), do: Plug.Conn.Query.encode(value)
   defp encode(_, value), do: value
 
-  defp stringify(:hook, value), do: do_stringify(value, & &1)
-  defp stringify(_, value), do: do_stringify(value, &to_string/1)
+  defp stringify_type(:hook, value), do: stringify(value, & &1)
+  defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
-  defp do_stringify(%{__struct__: _} = struct, fun),
-    do: do_stringify_simple(struct, fun)
+  defp stringify(%{__struct__: _} = struct, fun),
+    do: stringify_value(struct, fun)
 
-  defp do_stringify(%{} = params, fun),
-    do: Enum.into(params, %{}, &do_stringify_kv(&1, fun))
+  defp stringify(%{} = params, fun),
+    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
 
-  defp do_stringify([{_, _} | _] = params, fun),
-    do: Enum.into(params, %{}, &do_stringify_kv(&1, fun))
+  defp stringify([{_, _} | _] = params, fun),
+    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
 
-  defp do_stringify(params, fun) when is_list(params),
-    do: Enum.map(params, &do_stringify(&1, fun))
+  defp stringify(params, fun) when is_list(params),
+    do: Enum.map(params, &stringify(&1, fun))
 
-  defp do_stringify(other, fun),
-    do: do_stringify_simple(other, fun)
+  defp stringify(other, fun),
+    do: stringify_value(other, fun)
 
-  defp do_stringify_simple(other, fun), do: fun.(other)
-  defp do_stringify_kv({k, v}, fun), do: {to_string(k), do_stringify(v, fun)}
+  defp stringify_value(other, fun), do: fun.(other)
+  defp stringify_kv({k, v}, fun), do: {to_string(k), stringify(v, fun)}
 end

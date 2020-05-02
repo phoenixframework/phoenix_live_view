@@ -92,6 +92,14 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <textarea name="hello[textarea]">Text</textarea>
       <input name="hello[ignore-submit]" type="submit" value="ignored">
       <input name="hello[ignore-image]" type="image" value="ignored">
+      <input name="hello[date_text]" type="text">
+      <%= Phoenix.HTML.Form.date_select :hello, :date_select %>
+      <input name="hello[time_text]" type="text">
+      <%= Phoenix.HTML.Form.time_select :hello, :time_select %>
+      <input name="hello[naive_text]" type="text">
+      <%= Phoenix.HTML.Form.datetime_select :hello, :naive_select %>
+      <input name="hello[utc_text]" type="text">
+      <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
     </form>
     """
   end
