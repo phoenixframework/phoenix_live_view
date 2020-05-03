@@ -9,8 +9,6 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import morphdom from "morphdom"
 
-const CLIENT_STALE = "stale"
-const JOIN_CRASHED = "join crashed"
 const CONSECUTIVE_RELOADS = "consecutive-reloads"
 const MAX_RELOADS = 10
 const RELOAD_JITTER = [1000, 3000]
@@ -1833,14 +1831,11 @@ export class View {
   }
 
   onJoinError(resp){
-    if(resp.reason === CLIENT_STALE){ return this.liveSocket.reloadWithJitter(this) }
-    if(resp.reason === JOIN_CRASHED){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.redirect || resp.live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
-    this.parent && this.parent.ackJoin(this)
-    this.displayError()
     this.log("error", () => ["unable to join", resp])
+    return this.liveSocket.reloadWithJitter(this)
   }
 
   onError(reason){
