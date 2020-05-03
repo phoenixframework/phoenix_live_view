@@ -1032,8 +1032,10 @@ defmodule Phoenix.LiveView do
 
   ### `handle_params/3`
 
-  The `c:handle_params/3` callback is invoked after `c:mount/3`. It receives the
-  request parameters as first argument, the url as second, and the socket as third.
+  The `c:handle_params/3` callback is invoked after `c:mount/3` and before
+  the initial render. It is also invoked every time `live_patch/2` or
+  `push_patch/2` are usedd. It receives the request parameters as first
+  argument, the url as second, and the socket as third.
 
   For example, imagine you have a `UserTable` LiveView to show all users in
   the system and you define it in the router as:
@@ -1067,26 +1069,33 @@ defmodule Phoenix.LiveView do
   is invoked once per LiveView life-cycle. Only the params you expect to be changed
   via `live_patch/2` or `push_patch/2` must be loaded on `c:handle_params/3`.
 
+  For example, imagine you have a blog. The URL for a single post is:
+  "/blog/posts/:post_id". In the post page, you have comments and they are paginated.
+  You use `live_patch/2` to update the shown posts every time the user paginates,
+  updating the URL to "/blog/posts/:post_id?page=X". In this example, you will access
+  `"post_id"`  on `c:mount/3` and the page on `c:handle_params/3`.
+
   Furthermore, it is very important to not access the same parameters on both
   `c:mount/3` and `c:handle_params/3`. For example, do NOT do this:
 
-      def mount(%{"organization_id" => org_id}, session, socket) do
-        # do something with org_id
+      def mount(%{"post_id" => post_id}, session, socket) do
+        # do something with post_id
       end
 
-      def handle_params(%{"organization_id" => org_id, "sort_by" => sort_by}, url, socket) do
-        # do something with org_id and sort_by
+      def handle_params(%{"post_id" => post_id, "page" => page}, url, socket) do
+        # do something with post_id and page
       end
 
   If you do that, because `c:mount/3` is called once and `c:handle_params/3` multiple
-  times, your state can get out of sync. So once a parameter is read on mount, it
-  should not be read elsewhere. Instead, do this:
+  times, the "post_id" read on mount can get out of sync if the one in `c:handle_params/3`.
+  So once a parameter is read on mount, it should not be read elsewhere. Instead, do this:
 
-      def mount(%{"organization_id" => org_id}, session, socket) do
-        # do something with org_id
+      def mount(%{"post_id" => post_id}, session, socket) do
+        # do something with post_id
       end
 
       def handle_params(%{"sort_by" => sort_by}, url, socket) do
+        post_id = socket.assigns.post.id
         # do something with sort_by
       end
 
