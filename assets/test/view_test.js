@@ -287,7 +287,6 @@ describe("View", function() {
     let el = liveViewDOM()
     let view = new View(el, liveSocket)
     expect(view.liveSocket).toBe(liveSocket)
-    expect(view.gracefullyClosed).toEqual(false)
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
     expect(view.id).toEqual("container")
