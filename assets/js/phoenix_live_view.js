@@ -9,7 +9,7 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import morphdom from "morphdom"
 
-const CLIENT_OUTDATED = "outdated"
+const CLIENT_STALE = "stale"
 const JOIN_CRASHED = "join crashed"
 const CONSECUTIVE_RELOADS = "consecutive-reloads"
 const MAX_RELOADS = 10
@@ -1845,7 +1845,7 @@ export class View {
   }
 
   onJoinError(resp){
-    if(resp.reason === CLIENT_OUTDATED){ return this.liveSocket.reloadWithJitter(this) }
+    if(resp.reason === CLIENT_STALE){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.reason === JOIN_CRASHED){ return this.liveSocket.reloadWithJitter(this) }
     if(resp.redirect || resp.live_redirect){ this.channel.leave() }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
