@@ -92,9 +92,9 @@ defmodule Phoenix.LiveView do
 
   First, a LiveView requires two callbacks: `mount/3` and `render/1`:
 
-      defmodule AppWeb.ThermostatLive do
+      defmodule MyAppWeb.ThermostatLive do
         # If you generated an app with mix phx.new --live,
-        # the line below would be: use AppWeb, :live_view
+        # the line below would be: use MyAppWeb, :live_view
         use Phoenix.LiveView
 
         def render(assigns) do
@@ -117,7 +117,7 @@ defmodule Phoenix.LiveView do
   With a LiveView defined, you first define the `socket` path in your endpoint,
   and point it to `Phoenix.LiveView.Socket`:
 
-      defmodule AppWeb.Endpoint do
+      defmodule MyAppWeb.Endpoint do
         use Phoenix.Endpoint
 
         socket "/live", Phoenix.LiveView.Socket,
@@ -131,7 +131,7 @@ defmodule Phoenix.LiveView do
 
   And configure its signing salt in the endpoint:
 
-      config :my_app, AppWeb.Endpoint,
+      config :my_app, MyAppWeb.Endpoint,
         ...,
         live_view: [signing_salt: ...]
 
@@ -141,11 +141,11 @@ defmodule Phoenix.LiveView do
 
   You can serve the LiveView directly from your router (recommended):
 
-      defmodule AppWeb.Router do
+      defmodule MyAppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
 
-        scope "/", AppWeb do
+        scope "/", MyAppWeb do
           live "/thermostat", ThermostatLive
         end
       end
@@ -153,16 +153,16 @@ defmodule Phoenix.LiveView do
   You can also `live_render` from any template:
 
       <h1>Temperature Control</h1>
-      <%= live_render(@conn, AppWeb.ThermostatLive) %>
+      <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
 
   Or you can `live_render` your view from any controller:
 
-      defmodule AppWeb.ThermostatController do
+      defmodule MyAppWeb.ThermostatController do
         ...
         import Phoenix.LiveView.Controller
 
         def show(conn, %{"id" => id}) do
-          live_render(conn, AppWeb.ThermostatLive)
+          live_render(conn, MyAppWeb.ThermostatLive)
         end
       end
 
@@ -177,7 +177,7 @@ defmodule Phoenix.LiveView do
       live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
 
       # In a view
-      <%= live_render(@conn, AppWeb.ThermostatLive, session: %{"extra_token" => "foo"}) %>
+      <%= live_render(@conn, MyAppWeb.ThermostatLive, session: %{"extra_token" => "foo"}) %>
 
   Notice the `:session` uses string keys as a reminder that session data
   is serialized and sent to the client. So you should always keep the data
@@ -234,7 +234,7 @@ defmodule Phoenix.LiveView do
   In the examples above, we have placed the template directly inside the
   LiveView:
 
-      defmodule AppWeb.ThermostatLive do
+      defmodule MyAppWeb.ThermostatLive do
         use Phoenix.LiveView
 
         def render(assigns) do
@@ -252,11 +252,11 @@ defmodule Phoenix.LiveView do
   Alternatively, you can keep the `render/1` callback but delegate to an
   existing `Phoenix.View` module in your application. For example:
 
-      defmodule AppWeb.ThermostatLive do
+      defmodule MyAppWeb.ThermostatLive do
         use Phoenix.LiveView
 
         def render(assigns) do
-          Phoenix.View.render(AppWeb.PageView, "page.html", assigns)
+          Phoenix.View.render(MyAppWeb.PageView, "page.html", assigns)
         end
       end
 
@@ -519,7 +519,7 @@ defmodule Phoenix.LiveView do
             {:noreply,
              socket
              |> put_flash(:info, "user created")
-             |> redirect(to: Routes.user_path(AppWeb.Endpoint, AppWeb.User.ShowView, user))}
+             |> redirect(to: Routes.user_path(MyAppWeb.Endpoint, MyAppWeb.User.ShowView, user))}
 
           {:error, %Ecto.Changeset{} = changeset} ->
             {:noreply, assign(socket, changeset: changeset)}
@@ -543,7 +543,7 @@ defmodule Phoenix.LiveView do
   messages for form fields that the user has not changed yet (e.g. required
   fields further down on the page.)
 
-  For example, your `AppWeb.ErrorHelpers` may use this function:
+  For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
       def error_tag(form, field) do
         form.errors
@@ -763,9 +763,9 @@ defmodule Phoenix.LiveView do
   Given almost all `c:mount/3` actions in your application will have to
   perform these exact steps, we recommend creating a function called
   `assign_defaults/2` or similar and put it in a module, such as
-  `AppWeb.LiveHelpers`, which you will use and import of every LiveView:
+  `MyAppWeb.LiveHelpers`, which you will use and import of every LiveView:
 
-      import AppWeb.LiveHelpers
+      import MyAppWeb.LiveHelpers
 
       def mount(params, session, socket) do
         {:ok, assign_default(session, socket)}
@@ -773,7 +773,7 @@ defmodule Phoenix.LiveView do
 
   where:
 
-      defmodule AppWeb.LiveHelpers do
+      defmodule MyAppWeb.LiveHelpers do
         import Phoenix.LiveView
 
         def assign_defaults(session, socket) do
@@ -846,7 +846,7 @@ defmodule Phoenix.LiveView do
   `live_socket_id`. You can disconnect all live users identified by said
   ID by broadcasting on the topic:
 
-      AppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
+      MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
   Once a LiveView is disconnected, the client will attempt to restablish
   the connection, re-executing the `c:mount/3` callback. In this case,
@@ -1157,7 +1157,7 @@ defmodule Phoenix.LiveView do
   To use the live layout, update your LiveView to pass the `:layout`
   option to `use Phoenix.LiveView`:
 
-      use Phoenix.LiveView, layout: {AppWeb.LayoutView, "live.html"}
+      use Phoenix.LiveView, layout: {MyAppWeb.LayoutView, "live.html"}
 
   If you are using Phoenix v1.5, the layout is automatically set
   when generating apps with the `mix phx.new --live` flag.
@@ -1169,7 +1169,7 @@ defmodule Phoenix.LiveView do
 
         def mount(_params, _session, socket) do
           socket = assign(socket, new_message_count: 0)
-          {:ok, socket, layout: {AppWeb.LayoutView, "live.html"}}
+          {:ok, socket, layout: {MyAppWeb.LayoutView, "live.html"}}
         end
 
   *Note*: The layout will be wrapped by the LiveView's `:container` tag.
@@ -1965,24 +1965,10 @@ defmodule Phoenix.LiveView do
       end
   """
   def get_connect_params(%Socket{private: private} = socket) do
-    cond do
-      connect_params = private[:connect_params] ->
-        if connected?(socket), do: connect_params, else: nil
-
-      child?(socket) ->
-        raise RuntimeError, """
-        attempted to read connect_params from a nested child LiveView #{inspect(socket.view)}.
-
-        Only the root LiveView has access to connect params.
-        """
-
-      true ->
-        raise RuntimeError, """
-        attempted to read connect_params outside of #{inspect(socket.view)}.mount/3.
-
-        connect_params only exist while mounting. If you require access to this information
-        after mount, store the state in socket assigns.
-        """
+    if connect_params = private[:connect_params] do
+      if connected?(socket), do: connect_params, else: nil
+    else
+      raise_connect_only!(socket, "connect_params")
     end
   end
 
@@ -2015,24 +2001,117 @@ defmodule Phoenix.LiveView do
       end
   """
   def get_connect_info(%Socket{private: private} = socket) do
-    cond do
-      connect_info = private[:connect_info] ->
-        if connected?(socket), do: connect_info, else: nil
+    if connect_info = private[:connect_info] do
+      if connected?(socket), do: connect_info, else: nil
+    else
+      raise_connect_only!(socket, "connect_info")
+    end
+  end
 
-      child?(socket) ->
-        raise RuntimeError, """
-        attempted to read connect_info from a nested child LiveView #{inspect(socket.view)}.
+  @doc """
+  Returns true if the socket is connected and the static manifest has changed.
 
-        Only the root LiveView has access to connect params.
-        """
+  This function is useful to detect if the client is running on an outdated
+  version of the static files. It works by comparing the static hash parameter
+  sent by the client with the one on the server.
 
-      true ->
-        raise RuntimeError, """
-        attempted to read connect_info outside of #{inspect(socket.view)}.mount/3.
+  **Important:** this functionality requires Phoenix v1.5.2 or later.
 
-        connect_info only exists while mounting. If you require access to this information
-        after mount, store the state in socket assigns.
-        """
+  To use this functionality, the first step is to configure the client to
+  submit the client cache static manifest hash as a connect parameter. This
+  is typically done by setting the "_cache_static_manifest_hash" key to the
+  value of "PHOENIX_CACHE_STATIC_MANIFEST_HASH":
+
+      ```js
+      let params = {
+        _csrf_token: document.querySelector("meta[name='csrf-token']").getAttribute("content"),
+        _cache_static_manifest_hash: "PHOENIX_CACHE_STATIC_MANIFEST_HASH"
+      }
+
+      let liveSocket = new LiveSocket("/live", Socket, {params: params});
+      ```
+
+  Now, whenever you run `mix phx.digest`, Phoenix will automatically replace
+  "PHOENIX_CACHE_STATIC_MANIFEST_HASH" by the actual hash. At the same time,
+  the server will automatically load the manifest hash from the
+  `:cache_static_manifest` file, typically configured in `config/prod.exs`
+  to point to "priv/static/cache_static_manifest.json".
+
+  The value of the hash on the server and on the client are the same in the
+  huge majority of times. However, if there is a new deployment, those values
+  may different. You can use this function to detect those cases and show a
+  banner to the user, asking them to reload the page. To do so, first set the
+  assign on mount:
+
+      def mount(params, session, socket) do
+        {:ok, assign(socket, static_changed?: static_changed?(socket))}
+      end
+
+  And then in your views:
+
+      <%= if @static_change do %>
+        <div id="reload-static">
+          The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
+        </div>
+      <% end %>
+
+  If you prefer, you can also send a JavaScript that directly reloads the
+  page.
+
+  ## Testing
+
+  In order to force this behaviour in development, you can explicitly set the
+  values of the hashes on the client and the server.
+
+  On the client, open up your `app.js` and replace the LiveSocket connect params
+  by this:
+
+      ```js
+      let params = {
+        _csrf_token: document.querySelector("meta[name='csrf-token']").getAttribute("content"),
+        _cache_static_manifest_hash: "0"
+      }
+      ```
+
+  Then on the server, open up `config/dev.exs` and set this under the endpoint
+  config:
+
+      config :app, MyAppWeb.Endpoint,
+        cache_static_manifest_hash: "1"
+
+  Now, as the values differ, `static_changed?/1` should return true.
+  """
+  def static_changed?(%Socket{private: private, endpoint: endpoint} = socket) do
+    if connect_params = private[:connect_params] do
+      connected?(socket) and
+        static_changed?(
+          connect_params["_cache_static_manifest_hash"],
+          endpoint.config(:cache_static_manifest_hash)
+        )
+    else
+      raise_connect_only!(socket, "static_changed?")
+    end
+  end
+
+  defp static_changed?("PHOENIX_CACHE_STATIC_MANIFEST_HASH", _), do: false
+  defp static_changed?(nil, _), do: false
+  defp static_changed?(_, nil), do: false
+  defp static_changed?(params, config), do: params != config
+
+  defp raise_connect_only!(socket, fun) do
+    if child?(socket) do
+      raise RuntimeError, """
+      attempted to read #{fun} from a nested child LiveView #{inspect(socket.view)}.
+
+      Only the root LiveView has access to #{fun}.
+      """
+    else
+      raise RuntimeError, """
+      attempted to read #{fun} outside of #{inspect(socket.view)}.mount/3.
+
+      #{fun} only exists while mounting. If you require access to this information
+      after mount, store the state in socket assigns.
+      """
     end
   end
 

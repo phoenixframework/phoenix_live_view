@@ -89,6 +89,62 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
+  describe "static_changed?" do
+    test "raises when not in mounting state and connected" do
+      socket = Utils.post_mount_prune(%{@socket | connected?: true})
+
+      assert_raise RuntimeError, ~r/attempted to read static_changed?/, fn ->
+        static_changed?(socket)
+      end
+    end
+
+    test "raises when not in mounting state and disconnected" do
+      socket = Utils.post_mount_prune(%{@socket | connected?: false})
+
+      assert_raise RuntimeError, ~r/attempted to read static_changed?/, fn ->
+        static_changed?(socket)
+      end
+    end
+
+    test "returns false when disconnected" do
+      socket = %{@socket | connected?: false}
+      assert static_changed?(socket) == false
+    end
+
+    test "returns true when connected and hashes match" do
+      socket = %{@socket | connected?: true}
+
+      socket = put_in(socket.private.connect_params["_cache_static_manifest_hash"], "0")
+      assert static_changed?(socket) == false
+
+      Process.put(:cache_static_manifest_hash, "1")
+      assert static_changed?(socket) == true
+
+      socket = put_in(socket.private.connect_params["_cache_static_manifest_hash"], "1")
+      assert static_changed?(socket) == false
+
+      # When disconnected, it is false
+      assert %{socket | connected?: false}
+             |> static_changed?() == false
+
+      # Default value is also false
+      assert put_in(
+               socket.private.connect_params["_cache_static_manifest_hash"],
+               "PHOENIX_CACHE_STATIC_MANIFEST_HASH"
+             )
+             |> static_changed?() == false
+
+      # Nil parameter is false
+      assert pop_in(socket.private.connect_params["_cache_static_manifest_hash"])
+             |> elem(1)
+             |> static_changed?() == false
+
+      # Nil config too
+      Process.delete(:cache_static_manifest_hash)
+      assert static_changed?(socket) == false
+    end
+  end
+
   describe "assign" do
     test "tracks changes" do
       socket = assign(@socket, existing: "foo")

@@ -12,7 +12,7 @@ defmodule Phoenix.LiveComponent do
 
       defmodule HeroComponent do
         # If you generated an app with mix phx.new --live,
-        # the line below would be: use AppWeb, :live_component
+        # the line below would be: use MyAppWeb, :live_component
         use Phoenix.LiveComponent
 
         def render(assigns) do
