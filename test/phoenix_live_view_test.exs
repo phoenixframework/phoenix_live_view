@@ -111,37 +111,64 @@ defmodule Phoenix.LiveViewUnitTest do
       assert static_changed?(socket) == false
     end
 
-    test "returns true when connected and hashes match" do
-      socket = %{@socket | connected?: true}
+    test "returns true when connected and static do not match" do
+      refute static_changed?([], %{})
+      refute static_changed?(["foo/bar.css"], nil)
 
-      socket = put_in(socket.private.connect_params["_cache_static_manifest_hash"], "0")
-      assert static_changed?(socket) == false
+      assert static_changed?(["foo/bar.css"], %{})
+      refute static_changed?(["foo/bar.css"], %{"foo/bar.css" => "foo/bar-123456.css"})
 
-      Process.put(:cache_static_manifest_hash, "1")
-      assert static_changed?(socket) == true
-
-      socket = put_in(socket.private.connect_params["_cache_static_manifest_hash"], "1")
-      assert static_changed?(socket) == false
-
-      # When disconnected, it is false
-      assert %{socket | connected?: false}
-             |> static_changed?() == false
-
-      # Default value is also false
-      assert put_in(
-               socket.private.connect_params["_cache_static_manifest_hash"],
-               "PHOENIX_CACHE_STATIC_MANIFEST_HASH"
+      refute static_changed?(
+               ["domain.com/foo/bar.css"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
              )
-             |> static_changed?() == false
 
-      # Nil parameter is false
-      assert pop_in(socket.private.connect_params["_cache_static_manifest_hash"])
-             |> elem(1)
-             |> static_changed?() == false
+      refute static_changed?(
+               ["//domain.com/foo/bar.css"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
 
-      # Nil config too
-      Process.delete(:cache_static_manifest_hash)
-      assert static_changed?(socket) == false
+      refute static_changed?(
+               ["//domain.com/foo/bar.css?vsn=d"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
+
+      refute static_changed?(
+               ["//domain.com/foo/bar-123456.css"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
+
+      refute static_changed?(
+               ["//domain.com/foo/bar-123456.css?vsn=d"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
+
+      assert static_changed?(
+               ["//domain.com/foo/bar-654321.css"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
+
+      assert static_changed?(
+               ["foo/bar.css", "baz/bat.js"],
+               %{"foo/bar.css" => "foo/bar-123456.css"}
+             )
+
+      assert static_changed?(
+               ["foo/bar.css", "baz/bat.js"],
+               %{"foo/bar.css" => "foo/bar-123456.css", "p/baz/bat.js" => "p/baz/bat-123456.js"}
+             )
+
+      refute static_changed?(
+               ["foo/bar.css", "baz/bat.js"],
+               %{"foo/bar.css" => "foo/bar-123456.css", "baz/bat.js" => "baz/bat-123456.js"}
+             )
+    end
+
+    defp static_changed?(client, latest) do
+      socket = %{@socket | connected?: true}
+      Process.put(:cache_static_manifest_latest, latest)
+      socket = put_in(socket.private.connect_params["_cache_static_manifest_latest"], client)
+      static_changed?(socket)
     end
   end
 

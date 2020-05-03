@@ -2009,37 +2009,27 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Returns true if the socket is connected and the static manifest has changed.
+  Returns true if the socket is connected and the tracked static assets have changed.
 
   This function is useful to detect if the client is running on an outdated
-  version of the static files. It works by comparing the static hash parameter
+  version of the marked static files. It works by comparing the static paths
   sent by the client with the one on the server.
 
-  **Important:** this functionality requires Phoenix v1.5.2 or later.
+  **Note:** this functionality requires Phoenix v1.5.2 or later.
 
-  To use this functionality, the first step is to configure the client to
-  submit the client cache static manifest hash as a connect parameter. This
-  is typically done by setting the "_cache_static_manifest_hash" key to the
-  value of "PHOENIX_CACHE_STATIC_MANIFEST_HASH":
+  To use this functionality, the first step is to annotate which static files
+  you want to be tracked by LiveView, with the `phx-track-static`. For example:
 
-      ```js
-      let params = {
-        _csrf_token: document.querySelector("meta[name='csrf-token']").getAttribute("content"),
-        _cache_static_manifest_hash: "PHOENIX_CACHE_STATIC_MANIFEST_HASH"
-      }
+      <link phx-track-static rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
+      <script defer phx-track-static type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 
-      let liveSocket = new LiveSocket("/live", Socket, {params: params});
-      ```
+  Now, whenever LiveView connects to the server, it will send a copy `src`
+  or `href` attributes of all tracked statics and compare those values with
+  the latest entries computed by `mix phx.digest` in the server.
 
-  Now, whenever you run `mix phx.digest`, Phoenix will automatically replace
-  "PHOENIX_CACHE_STATIC_MANIFEST_HASH" by the actual hash. At the same time,
-  the server will automatically load the manifest hash from the
-  `:cache_static_manifest` file, typically configured in `config/prod.exs`
-  to point to "priv/static/cache_static_manifest.json".
-
-  The value of the hash on the server and on the client are the same in the
+  The tracked statics on the client will match the ones on the server the
   huge majority of times. However, if there is a new deployment, those values
-  may different. You can use this function to detect those cases and show a
+  may differ. You can use this function to detect those cases and show a
   banner to the user, asking them to reload the page. To do so, first set the
   assign on mount:
 
@@ -2055,48 +2045,42 @@ defmodule Phoenix.LiveView do
         </div>
       <% end %>
 
-  If you prefer, you can also send a JavaScript that directly reloads the
-  page.
+  If you prefer, you can also send a JavaScript script that immediately
+  reloads the page.
 
-  ## Testing
+  **Note:** only set `phx-track-static` on your own assets. For example, do
+  not set it external JavaScript files:
 
-  In order to force this behaviour in development, you can explicitly set the
-  values of the hashes on the client and the server.
+      <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
-  On the client, open up your `app.js` and replace the LiveSocket connect params
-  by this:
-
-      ```js
-      let params = {
-        _csrf_token: document.querySelector("meta[name='csrf-token']").getAttribute("content"),
-        _cache_static_manifest_hash: "0"
-      }
-      ```
-
-  Then on the server, open up `config/dev.exs` and set this under the endpoint
-  config:
-
-      config :app, MyAppWeb.Endpoint,
-        cache_static_manifest_hash: "1"
-
-  Now, as the values differ, `static_changed?/1` should return true.
+  Because you don't actually serve the file above, LiveView will interpret
+  the static above as missing, and this function will return true.
   """
   def static_changed?(%Socket{private: private, endpoint: endpoint} = socket) do
     if connect_params = private[:connect_params] do
       connected?(socket) and
         static_changed?(
-          connect_params["_cache_static_manifest_hash"],
-          endpoint.config(:cache_static_manifest_hash)
+          connect_params["_cache_static_manifest_latest"],
+          endpoint.config(:cache_static_manifest_latest)
         )
     else
       raise_connect_only!(socket, "static_changed?")
     end
   end
 
-  defp static_changed?("PHOENIX_CACHE_STATIC_MANIFEST_HASH", _), do: false
-  defp static_changed?(nil, _), do: false
-  defp static_changed?(_, nil), do: false
-  defp static_changed?(params, config), do: params != config
+  defp static_changed?([_ | _] = statics, %{} = latest) do
+    latest = Map.to_list(latest)
+
+    not Enum.all?(statics, fn static ->
+      [static | _] = :binary.split(static, "?")
+
+      Enum.any?(latest, fn {non_digested, digested} ->
+        String.ends_with?(static, non_digested) or String.ends_with?(static, digested)
+      end)
+    end)
+  end
+
+  defp static_changed?(_, _), do: false
 
   defp raise_connect_only!(socket, fun) do
     if child?(socket) do
