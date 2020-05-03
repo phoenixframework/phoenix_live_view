@@ -1411,7 +1411,6 @@ export class View {
     this.flash = flash
     this.parent = parentView
     this.root = parentView ? parentView.root : this
-    this.gracefullyClosed = false
     this.el = el
     this.id = this.el.id
     this.view = this.el.getAttribute(PHX_VIEW)
@@ -1466,16 +1465,12 @@ export class View {
       callback()
       for(let id in this.viewHooks){ this.destroyHook(this.viewHooks[id]) }
     }
-    if(this.hasGracefullyClosed()){
-      this.log("destroyed", () => ["the server view has gracefully closed"])
-      onFinished()
-    } else {
-      this.log("destroyed", () => ["the child has been removed from the parent"])
-      this.channel.leave()
-        .receive("ok", onFinished)
-        .receive("error", onFinished)
-        .receive("timeout", onFinished)
-    }
+
+    this.log("destroyed", () => ["the child has been removed from the parent"])
+    this.channel.leave()
+      .receive("ok", onFinished)
+      .receive("error", onFinished)
+      .receive("timeout", onFinished)
   }
 
   setContainerClasses(...classes){
@@ -1795,18 +1790,13 @@ export class View {
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.onChannel("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
-    this.channel.onClose(() => this.onGracefulClose())
+    this.channel.onClose(() => this.onError({reason: "closed"}))
   }
 
   destroyAllChildren(){
     for(let id in this.root.children[this.id]){
       this.getChildById(id).destroy()
     }
-  }
-
-  onGracefulClose(){
-    this.gracefullyClosed = true
-    this.destroyAllChildren()
   }
 
   onLiveRedirect(redir){
@@ -1828,8 +1818,6 @@ export class View {
   onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
 
   isDestroyed(){ return this.destroyed }
-
-  hasGracefullyClosed(){ return this.gracefullyClosed }
 
   join(callback){
     if(!this.parent){
