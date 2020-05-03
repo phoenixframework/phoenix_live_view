@@ -11,6 +11,8 @@ defmodule Phoenix.LiveComponent do
   The simplest component only needs to define a `render` function:
 
       defmodule HeroComponent do
+        # If you generated an app with mix phx.new --live,
+        # the line below would be: use AppWeb, :live_component
         use Phoenix.LiveComponent
 
         def render(assigns) do
