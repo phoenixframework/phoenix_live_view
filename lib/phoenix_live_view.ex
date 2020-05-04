@@ -446,7 +446,7 @@ defmodule Phoenix.LiveView do
 
   *Reminder*: `form_for/3` is a `Phoenix.HTML` helper. Don't forget to include
   `use Phoenix.HTML` at the top of your LiveView, if using `Phoenix.HTML` helpers.
-  Also, if using `error_tag/2`, don't forget to `import AppWeb.ErrorHelpers`.
+  Also, if using `error_tag/2`, don't forget to `import MyAppWeb.ErrorHelpers`.
 
   Next, your LiveView picks up the events in `handle_event` callbacks:
 
