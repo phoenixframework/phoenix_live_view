@@ -8,6 +8,12 @@ let simulateInput = (input, val) => {
   DOM.dispatchEvent(input, "input")
 }
 
+let simulateKeyDown = (input, val) => {
+  input.value = input.value + val;
+  DOM.dispatchEvent(input, "keydown")
+  DOM.dispatchEvent(input, "input")
+}
+
 let container = () => {
   let div = document.createElement("div")
   div.innerHTML = `
@@ -58,19 +64,26 @@ describe("debounce", function() {
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => calls++)
     })
-    simulateInput(el, "one")
-    simulateInput(el, "two")
-    simulateInput(el, "three")
-    after(100, () => {
-      expect(calls).toBe(1)
-      expect(el.value).toBe("three")
-      simulateInput(el, "four")
-      simulateInput(el, "five")
-      simulateInput(el, "six")
-      after(100, () => {
-        expect(calls).toBe(2)
-        expect(el.value).toBe("six")
-        done()
+    simulateKeyDown(el, "1")
+    simulateKeyDown(el, "2")
+    simulateKeyDown(el, "3")
+    after(50, () => {
+      expect(calls).toBe(0)
+      simulateKeyDown(el, "4")
+      after(50, () => {
+        expect(calls).toBe(0)
+        after(50, () => {
+          expect(calls).toBe(1)
+          expect(el.value).toBe("1234")
+          simulateKeyDown(el, "5")
+          simulateKeyDown(el, "6")
+          simulateKeyDown(el, "7")
+          after(150, () => {
+            expect(calls).toBe(2)
+            expect(el.value).toBe("1234567")
+            done()
+          })
+        })
       })
     })
   })

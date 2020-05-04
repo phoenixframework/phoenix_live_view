@@ -1036,6 +1036,9 @@ export let DOM = {
             el.form.removeEventListener("submit", clearTimer)
           }
           el.removeEventListener("blur", this.private(el, DEBOUNCE_BLUR_TIMER))
+          if (!throttle) {
+            el.removeEventListener("keydown", clearTimer)
+          }
           this.deletePrivate(el, DEBOUNCE_BLUR_TIMER)
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
@@ -1046,6 +1049,9 @@ export let DOM = {
         }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(debounceCallback, timeout))
         el.addEventListener("blur", blurCallback)
+        if (!throttle) {
+          el.addEventListener("keydown", clearTimer)
+        }
         this.putPrivate(el, DEBOUNCE_BLUR_TIMER, blurCallback)
         if(el.form){
           el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
