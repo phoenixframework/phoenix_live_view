@@ -498,8 +498,9 @@ defmodule Phoenix.LiveViewTest do
   element on the page with a `phx-change` attribute in it. The event name
   given set on `phx-change` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
-  entries in the element are sent as values. Extra values can be given
-  with the `value` argument.
+  entries in the element are sent as values, and extra values can be given
+  with the `value` argument. Also note that metadata such as `_target`
+  needs to be passed explicitly on the `value` argument.
 
   It returns the contents of the whole LiveView or an `{:error, redirect}`
   tuple.
@@ -511,6 +512,14 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("form")
              |> render_change(%{deg: 123}) =~ "123 exceeds limits"
+
+
+      # Passing metadata
+      {:ok, view, html} = live(conn, "/thermo")
+
+      assert view
+             |> element("form")
+             |> render_change(%{_target: ["deg"], deg: 123}) =~ "123 exceeds limits"
   """
   def render_change(element, value \\ %{})
   def render_change(%Element{} = element, value), do: render_event(element, :change, value)
