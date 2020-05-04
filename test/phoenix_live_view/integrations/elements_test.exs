@@ -390,6 +390,14 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> element("#empty-form") |> render_change(%{"foo" => "bar"})
       assert last_event(view) =~ ~s|form-change: %{"foo" => "bar"}|
     end
+
+    test "render_change with _target", %{live: view} do
+      assert view |> element("#form") |> render_change(%{_target: ["foo"], foo: "bar"})
+      assert last_event(view) =~ ~s|form-change: %{"_target" => ["foo"], "foo" => "bar"|
+
+      assert view |> element("#form") |> render_change(%{"_target" => ["foo", "bar"], foo: "bar"})
+      assert last_event(view) =~ ~s|form-change: %{"_target" => ["foo", "bar"], "foo" => "bar"|
+    end
   end
 
   describe "render_submit" do

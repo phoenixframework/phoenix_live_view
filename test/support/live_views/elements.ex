@@ -105,7 +105,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :event, nil)}
+    {:ok, assign(socket, event: nil, target: nil)}
   end
 
   def handle_params(params, _uri, socket) do
