@@ -1034,7 +1034,7 @@ defmodule Phoenix.LiveView do
 
   The `c:handle_params/3` callback is invoked after `c:mount/3` and before
   the initial render. It is also invoked every time `live_patch/2` or
-  `push_patch/2` are usedd. It receives the request parameters as first
+  `push_patch/2` are used. It receives the request parameters as first
   argument, the url as second, and the socket as third.
 
   For example, imagine you have a `UserTable` LiveView to show all users in
