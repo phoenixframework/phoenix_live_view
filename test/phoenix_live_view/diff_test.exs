@@ -140,6 +140,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     test "empty comprehensions" do
+      # If they are empty on first render, we don't send them
       %{fingerprint: fingerprint} =
         rendered = comprehension_template(%{title: "Users", names: []})
 
@@ -154,8 +155,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert {^fingerprint, inner} = socket.fingerprints
       assert inner == %{}
 
+      # Making them non-empty adds a fingerprint
       rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
-      {socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      {socket, full_render, components} = render(rendered, socket.fingerprints, components)
 
       assert full_render == %{
                0 => "Users",
@@ -167,6 +169,17 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {^fingerprint, %{1 => comprehension_print}} = socket.fingerprints
       assert is_integer(comprehension_print)
+
+      # Making them empty again does not reset the fingerprint
+      rendered = comprehension_template(%{title: "Users", names: []})
+      {socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => "Users",
+               1 => %{d: []}
+             }
+
+      assert {^fingerprint, %{1 => ^comprehension_print}} = socket.fingerprints
     end
   end
 
