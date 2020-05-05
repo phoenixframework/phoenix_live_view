@@ -60,7 +60,7 @@ defmodule Phoenix.LiveViewTest do
     * `render_focus/2` - sends a phx-focus event and value and
       returns the rendered result of the `handle_event/3` callback.
 
-    * `render_blur/1` - sends a phx-focus event and value and
+    * `render_blur/1` - sends a phx-focus blur and value and
       returns the rendered result of the `handle_event/3` callback.
 
     * `render_submit/1` - sends a form phx-submit event and value and
