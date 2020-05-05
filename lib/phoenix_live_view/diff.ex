@@ -260,6 +260,11 @@ defmodule Phoenix.LiveView.Diff do
     {%{@dynamics => dynamics}, fingerprint, pending_components, components}
   end
 
+  defp traverse(_socket, %Comprehension{dynamics: []}, _, pending_components, components) do
+    # The comprehension has no elements and it was not rendered yet, so we skip it.
+    {"", nil, pending_components, components}
+  end
+
   defp traverse(
          socket,
          %Comprehension{static: static, dynamics: dynamics, fingerprint: fingerprint},

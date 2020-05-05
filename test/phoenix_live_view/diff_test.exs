@@ -138,6 +138,36 @@ defmodule Phoenix.LiveView.DiffTest do
       assert {^fingerprint, %{1 => comprehension_print}} = socket.fingerprints
       assert is_integer(comprehension_print)
     end
+
+    test "empty comprehensions" do
+      %{fingerprint: fingerprint} =
+        rendered = comprehension_template(%{title: "Users", names: []})
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => "Users",
+               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>\n"],
+               1 => ""
+             }
+
+      assert {^fingerprint, inner} = socket.fingerprints
+      assert inner == %{}
+
+      rendered = comprehension_template(%{title: "Users", names: ["phoenix", "elixir"]})
+      {socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => "Users",
+               1 => %{
+                 d: [["phoenix"], ["elixir"]],
+                 s: ["\n    <br/>", "\n  "]
+               }
+             }
+
+      assert {^fingerprint, %{1 => comprehension_print}} = socket.fingerprints
+      assert is_integer(comprehension_print)
+    end
   end
 
   describe "diffed render with fingerprints" do

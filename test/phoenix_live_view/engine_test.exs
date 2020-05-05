@@ -688,6 +688,11 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "renders live engine with comprehension to string" do
+      assigns = Map.put(@assigns, :points, [])
+
+      assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
+               "pre: pre\n\npost: post"
+
       assigns = Map.put(@assigns, :points, [%{x: 1, y: 2}, %{x: 3, y: 4}])
 
       assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
