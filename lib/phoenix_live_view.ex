@@ -864,15 +864,18 @@ defmodule Phoenix.LiveView do
   We can render another template directly from a LiveView template by simply
   calling `render`:
 
-      render SomeOtherView, "child_template", assigns
+      render SomeView, "child_template.html", assigns
 
-  If the other template has the `.leex` extension, LiveView change tracking
-  will also work across templates.
+  Where `SomeView` is a regular `Phoenix.View`, typically defined in
+  `lib/my_app_web/views/some_view.ex` and "child_template.html" is defined
+  at `lib/my_app_web/templates/some_view/child_template.html.leex`. As long
+  as the template has the `.leex` extension and all assigns are passed,
+  LiveView change tracking will also work across templates.
 
   When rendering a child template, any of the `phx-*` events in the child
-  template will be sent to the parent LiveView. In other words, similar to
-  regular Phoenix templates, a regular `render` call does not start another
-  LiveView. This means `render` is useful to sharing markup between views.
+  template will be sent to the LiveView. In other words, similar to regular
+  Phoenix templates, a regular `render` call does not start another LiveView.
+  This means `render` is useful for sharing markup between views.
 
   If you want to start a separate LiveView from within a LiveView, then you
   can call `live_render/3` instead of `render/3`. This child LiveView runs
@@ -1034,8 +1037,8 @@ defmodule Phoenix.LiveView do
 
     * `link/2` and `redirect/2` do full page reloads
 
-    * `live_redirect/2` and `push_redirect/2` reloads the LiveView but
-      keeps the current layout
+    * `live_redirect/2` and `push_redirect/2` mounts a new LiveView while
+      keeping the current layout
 
     * `live_patch/2` and `push_patch/2` updates the current LiveView and
       sends only the minimal diff
