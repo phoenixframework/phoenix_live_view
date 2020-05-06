@@ -374,11 +374,18 @@ defmodule Phoenix.LiveView do
       end
 
   If you access your assigns outside of the template, then LiveView can no
-  longer do change tracking.
+  longer do change tracking. However this restriction only applies to LiveView's
+  render. If you have a helper function that emits `~L`, then using variables
+  is fine:
 
-  However, for completeness, note that variables introduced by Elixir's block
-  constructs are fine. For example, the `post` variable defined by the
-  comprehension below is fine:
+      def title(title, small) do
+        ~L"""
+        <h3><%= title %><small><%= small %></small></h3>
+        """
+      end
+
+  Similarly, variables introduced by Elixir's block constructs are fine. For example,
+  the `post` variable defined by the comprehension below is fine:
 
       <%= for post <- @posts do %>
         ...
@@ -395,7 +402,7 @@ defmodule Phoenix.LiveView do
 
   To sum up:
 
-    1. Avoid passing block expressions to user and library functions
+    1. Avoid passing block expressions to library and custom functions
 
     2. Never do anything on `def render(assigns)` besides rendering a template
       or invoking the `~L` sigil
