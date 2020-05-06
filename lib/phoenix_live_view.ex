@@ -373,13 +373,21 @@ defmodule Phoenix.LiveView do
         """
       end
 
-  Instead use functions inside the `~L` or preassign `sum` as explained above.
-
   However, for completeness, note that variables introduced by Elixir's block
-  constructs are fine:
+  constructs are fine. For example, the `post` variable defined by the
+  comprehension below is fine:
 
       <%= for post <- @posts do %>
         ...
+      <% end %>
+
+  As are the variables matched defined in a `case` or `cond`:
+
+      <%= cond do %>
+        <% is_nil(@post) -> %>
+          ...
+        <% @post -> %>
+          ...
       <% end %>
 
   To sum up:
