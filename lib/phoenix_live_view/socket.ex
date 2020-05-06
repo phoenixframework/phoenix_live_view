@@ -38,7 +38,6 @@ defmodule Phoenix.LiveView.Socket do
             connected?: false
 
   @type t :: %__MODULE__{}
-  @type unsigned_params :: map
   @type assigns :: map | Phoenix.LiveView.Socket.AssignsNotInSocket.t()
 
   channel "lv:*", Phoenix.LiveView.Channel

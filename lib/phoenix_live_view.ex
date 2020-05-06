@@ -1597,6 +1597,8 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.Socket
 
+  @type unsigned_params :: map
+
   @doc """
   The LiveView entry-point.
 
@@ -1622,7 +1624,7 @@ defmodule Phoenix.LiveView do
 
   """
   @callback mount(
-              Socket.unsigned_params() | :not_mounted_at_router,
+              unsigned_params() | :not_mounted_at_router,
               session :: map,
               socket :: Socket.t()
             ) ::
@@ -1633,10 +1635,10 @@ defmodule Phoenix.LiveView do
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
-  @callback handle_params(Socket.unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
+  @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
-  @callback handle_event(event :: binary, Socket.unsigned_params(), socket :: Socket.t()) ::
+  @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
