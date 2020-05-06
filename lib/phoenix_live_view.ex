@@ -373,6 +373,9 @@ defmodule Phoenix.LiveView do
         """
       end
 
+  If you access your assigns outside of the template, then LiveView can no
+  longer do change tracking.
+
   However, for completeness, note that variables introduced by Elixir's block
   constructs are fine. For example, the `post` variable defined by the
   comprehension below is fine:
