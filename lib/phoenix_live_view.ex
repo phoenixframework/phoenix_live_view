@@ -1016,20 +1016,34 @@ defmodule Phoenix.LiveView do
   The "patch" operations must be used when you want to navigate to the
   current LiveView, simply updating the URL and the current parameters,
   without mounting a new LiveView. When patch is used, the `c:handle_params/3`
-  callback is invoked. See the next section for more information.
+  callback is invoked and the minimal set of changes are sent to the client.
+  See the next section for more information.
 
   The "redirect" operations must be used when you want to dismount the
-  current LiveView and mount a new one. In those cases, the existing root
-  LiveView is shutdown, and an Ajax request is made to request the necessary
-  information about the new LiveView without performing a full static render
-  (which reduces latency and improves performance). Once information is
-  retrieved, the new LiveView is mounted. While redirecting, a `phx-disconnected`
-  class is added to the root LiveView, which can be used to indicate to the
-  user a new page is being loaded.
+  current LiveView and mount a new one. In those cases, an Ajax request
+  is made to fetch the necessary information about the new LiveView,
+  which is mounted in place of the current one within the current layout.
+  While redirecting, a `phx-disconnected` class is added to the LiveView,
+  which can be used to indicate to the user a new page is being loaded.
 
-  `live_patch/2`, `live_redirect/2`, `push_redirect/2`, and `push_patch/2`
-  only work for LiveViews defined at the router with the `live/3` macro.
-  Once live navigation is triggered, the flash is automatically cleared.
+  At the end of the day, regardless if you invoke `link/2`, `live_patch/2`,
+  and `live_redirect/2` from the client, or `redirect/2`, `push_patch/2`,
+  and `push_redirect/2` from the server, the user will end-up on the same
+  page. The difference between those is mostly the amount of data sent over
+  the wire:
+
+    * `link/2` and `redirect/2` do full page reloads
+
+    * `live_redirect/2` and `push_redirect/2` reloads the LiveView but
+      keeps the current layout
+
+    * `live_patch/2` and `push_patch/2` updates the current LiveView and
+      sends only the minimal diff
+
+  An easy rule of thumb is to stick with `live_redirect/2` and `push_redirect/2`
+  and use the patch helpers only in the cases where you want to minimize the
+  amount of data sent when navigating within the same LiveView (for example,
+  if you want to change the sorting of a table while also updating the URL).
 
   ### `handle_params/3`
 

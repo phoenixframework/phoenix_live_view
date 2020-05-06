@@ -210,7 +210,7 @@ defmodule Phoenix.LiveView.Utils do
 
       :error ->
         raise ArgumentError,
-              "cannot invoke handle_params nor live_redirect/live_link to #{inspect(uri)} " <>
+              "cannot invoke handle_params nor live_redirect/live_patch to #{inspect(uri)} " <>
                 "because it isn't defined in #{inspect(router)}"
     end
   end
