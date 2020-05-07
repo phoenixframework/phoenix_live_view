@@ -1541,18 +1541,6 @@ export class View {
 
   dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
 
-  formsForRecovery(html){
-    let phxChange = this.binding("change")
-    let template = document.createElement("template")
-    template.innerHTML = html
-
-    return(
-      DOM.all(this.el, `form[${phxChange}], form[${this.binding("submit")}]`)
-         .filter(form => this.ownsElement(form))
-         .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
-    )
-  }
-
   onJoinComplete({live_patch}, html){
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
       return this.applyJoinPatch(live_patch, html)
