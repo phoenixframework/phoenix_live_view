@@ -15,6 +15,7 @@ defmodule Phoenix.LiveView.MixProject do
       xref: [exclude: [Floki]],
       deps: deps(),
       docs: docs(),
+      name: "Phoenix LiveView",
       homepage_url: "http://www.phoenixframework.org",
       description: """
       Rich, real-time user experiences with server-rendered HTML
