@@ -713,9 +713,6 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Sends a hook event to the view or an element and returns the rendered result.
 
-  The `element` is created with `element/3` and must point to a single
-  element on the page with a `phx-target` attribute in it.
-
   It returns the contents of the whole LiveView or an `{:error, redirect}`
   tuple.
 
@@ -724,6 +721,10 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_hook(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
+
+  If you are pushing events from a hook to a component, then you must pass
+  an `element`, created with `element/3`, as first argument and it must point
+  to a single element on the page with a `phx-target` attribute in it:
 
       {:ok, view, _html} = live(conn, "/thermo")
       assert view
