@@ -711,7 +711,10 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Sends a hook event to the view and returns the rendered result.
+  Sends a hook event to the view or an element and returns the rendered result.
+
+  The `element` is created with `element/3` and must point to a single
+  element on the page with a `phx-target` attribute in it.
 
   It returns the contents of the whole LiveView or an `{:error, redirect}`
   tuple.
@@ -721,6 +724,12 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 30℉"
       assert render_hook(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
+
+      {:ok, view, _html} = live(conn, "/thermo")
+      assert view
+             |> element("#thermo-component")
+             |> render_hook(:refresh, %{deg: 32}) =~ "The temp is: 32℉"
+
   """
   def render_hook(view_or_element, event, value \\ %{})
 
