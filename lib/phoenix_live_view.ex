@@ -2166,7 +2166,7 @@ defmodule Phoenix.LiveView do
   own state, as well as messaging between components mounted in the same
   LiveView.
 
-  **Note:** `send_update/2` Cannot update a LiveComponent that is mounted in a
+  **Note:** `send_update/2` cannot update a LiveComponent that is mounted in a
   different LiveView. To update a component in a different LiveView you must
   send a message to the LiveView process that the LiveComponent is mounted
   within (often via `Phoenix.PubSub`).
