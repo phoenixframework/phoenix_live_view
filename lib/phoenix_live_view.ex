@@ -2147,17 +2147,29 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Asynchronously updates a component with new assigns.
+  Asynchronously updates a `Phoenix.LiveComponent` with new assigns.
 
-  Requires a stateful component with a matching `:id` to send
-  the update to. Following the optional `preload/1` callback being invoked,
-  the updated values are merged with the component's assigns and `update/2`
-  is called for the updated component(s).
+  The component that is updated must be stateful (the `:id` in the assigns must
+  match the `:id` associated with the component) and the component must be
+  mounted within the current LiveView.
+
+  When the component receives the update, the optional
+  [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) callback is invoked, then
+  the updated values are merged with the component's assigns and
+  [`update/2`](`c:Phoenix.LiveComponent.update/2`) is called for the updated
+  component(s).
 
   While a component may always be updated from the parent by updating some
-  parent assigns which will re-render the child, thus invoking `update/2` on
-  the child component, `send_update/2` is useful for updating a component
-  that entirely manages its own state, as well as messaging between components.
+  parent assigns which will re-render the child, thus invoking
+  [`update/2`](`c:Phoenix.LiveComponent.update/2`) on the child component,
+  `send_update/2` is useful for updating a component that entirely manages its
+  own state, as well as messaging between components mounted in the same
+  LiveView.
+
+  **Note:** `send_update/2` cannot update a LiveComponent that is mounted in a
+  different LiveView. To update a component in a different LiveView you must
+  send a message to the LiveView process that the LiveComponent is mounted
+  within (often via `Phoenix.PubSub`).
 
   ## Examples
 
