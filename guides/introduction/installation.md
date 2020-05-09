@@ -29,8 +29,7 @@ def deps do
 ```
 
 Once installed, update your endpoint's configuration to include a signing salt.
-You can generate a signing salt by running `mix phx.gen.secret 32`. This is done
-by default in new Phoenix apps:
+You can generate a signing salt by running `mix phx.gen.secret 32`:
 
 ```elixir
 # config/config.exs
@@ -153,15 +152,13 @@ Then install the new npm dependency.
 
 ```bash
 npm install --prefix assets
-
-# or `cd assets && npm install` for Windows users if --prefix doesn't work
 ```
 
 If you had previously installed `phoenix_live_view` and want to get the
 latest javascript, then force an install.
 
 ```bash
-(cd assets && npm install --force phoenix_live_view)
+npm install --force phoenix_live_view --prefix assets
 ```
 
 Finally ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`), before `app.js` is included like so:
@@ -192,7 +189,83 @@ window.liveSocket = liveSocket
 
 ## Layouts
 
-LiveView no longer uses the default app layout. Instead, use `put_root_layout`. Note, however, that the layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>` and that the root layout will also be used by regular views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs.
+LiveView does not your the default app layout. Instead, you typically call `put_root_layout` in your router, to specify a layout that is used by both "regular" views and live views. In your router, do:
+
+```elixir
+pipeline :browser do
+  ...
+  plug :put_root_layout, {MyAppWeb.LayoutView, "root.html"}
+  ...
+end
+```
+
+The layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.eex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
+
+## phx.gen.live support
+
+While the instructions above are enough to install LiveView in a Phoenix app, if you want to use the `phx.gen.live` generators that come as part of Phoenix v1.5, you need to do one more change, as those generators assume your application was created with `mix phx.new --live`.
+
+The change is to define the `live_view` and `live_component` functions in your `web.ex` file, while refactoring the `view` function. At the end, they will look like this:
+
+```elixir
+  def view do
+    quote do
+      use Phoenix.View,
+        root: "lib/<%= lib_web_name %>/templates",
+        namespace: <%= web_namespace %>
+
+      # Import convenience functions from controllers
+      import Phoenix.Controller,
+        only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
+
+      # Include shared imports and aliases for views
+      unquote(view_helpers())
+    end
+  end
+
+  def live_view do
+    quote do
+      use Phoenix.LiveView,
+        layout: {<%= web_namespace %>.LayoutView, "live.html"}
+
+      unquote(view_helpers())
+    end
+  end
+
+  def live_component do
+    quote do
+      use Phoenix.LiveComponent
+
+      unquote(view_helpers())
+    end
+  end
+
+  defp view_helpers do
+    quote do
+      # Use all HTML functionality (forms, tags, etc)
+      use Phoenix.HTML
+
+      # Import LiveView helpers (live_render, live_component, live_patch, etc)
+      import Phoenix.LiveView.Helpers
+
+      # Import basic rendering functionality (render, render_layout, etc)
+      import Phoenix.View
+
+      import MyAppWeb.ErrorHelpers
+      import MyAppWeb.Gettext
+      alias MyAppWeb.Router.Helpers, as: Routes
+    end
+  end
+```
+
+Note that LiveViews are automatically configured to add use a "live.html.eex" layout in this line:
+
+```elixir
+use Phoenix.LiveView,
+  layout: {<%= web_namespace %>.LayoutView, "live.html"}
+```
+
+So make sure that you follow the steps outlined in the previous "Layouts" section.
 
 ## Progress animation
 
