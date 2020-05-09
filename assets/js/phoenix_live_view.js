@@ -607,7 +607,8 @@ export class LiveSocket {
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
-      if(matchKey && matchKey.toLowerCase() !== e.key.toLowerCase()){ return }
+      let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
+      if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
 
       view.pushKey(target, targetCtx, type, phxEvent, {
         altGraphKey: e.altGraphKey,
