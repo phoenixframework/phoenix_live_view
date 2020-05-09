@@ -358,6 +358,32 @@ describe("View", function() {
     // view.join()
     // still need a few tests
   })
+
+  test("sends _cache_static_manifest_latest for tracked assets", () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+    stubChannel(view)
+
+    expect(view.channel.params()).toEqual({
+      "flash": undefined, "joins": 0, "params": {}, "session": "abc123", "static": null, "url": undefined}
+    )
+
+    el.innerHTML += `<link rel="stylesheet" href="/css/app-123.css?vsn=d" phx-track-static="">`
+    el.innerHTML += `<link rel="stylesheet" href="/css/nontracked.css">`
+    el.innerHTML += `<img src="/img/tracked.png" phx-track-static>`
+    el.innerHTML += `<img src="/img/untracked.png">`
+
+    expect(view.channel.params()).toEqual({
+      "flash": undefined, "joins": 0, "session": "abc123", "static": null, "url": undefined,
+      "params": {
+        "_cache_static_manifest_latest": [
+          "http://localhost/css/app-123.css?vsn=d",
+          "http://localhost/img/tracked.png",
+        ]
+      }
+    })
+  })
 })
 
 describe("View Hooks", function() {

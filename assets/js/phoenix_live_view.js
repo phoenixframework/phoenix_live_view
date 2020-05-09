@@ -20,6 +20,7 @@ const PHX_EVENT_CLASSES = [
 ]
 const PHX_COMPONENT = "data-phx-component"
 const PHX_LIVE_LINK = "data-phx-link"
+const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_SKIP = "data-phx-skip"
@@ -1435,7 +1436,7 @@ export class View {
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         url: this.href,
-        params: this.liveSocket.params(this.view),
+        params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
         flash: this.flash,
@@ -1447,6 +1448,17 @@ export class View {
   }
 
   isMain(){ return this.liveSocket.main === this }
+
+  connectParams(){
+    let params = this.liveSocket.params(this.view)
+    let manifest =
+      DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
+      .map(node => node.src || node.href).filter(url => typeof(url) === "string")
+
+    if(manifest.length > 0){ params["_cache_static_manifest_latest"] = manifest }
+
+    return params
+  }
 
   name(){ return this.view }
 
