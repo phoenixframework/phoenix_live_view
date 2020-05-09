@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13-dev
+
+### Bug fixes
+  - Fix error caused by chrome sending a keydown event on native UI autocomplete without a `key`
+
+### Enhancements
+  - Add support for tracking static asset changes on the page across cold server deploys
+  - Add support for passing a `@myself` target to a hook's `pushEventTo` target
+
+
+
 ### Enhancements
   - Add `Phoenix.LiveView.get_connect_info/1`
   - Add `Phoenix.LiveViewTest.put_connect_info/2` and `Phoenix.LiveViewTest.put_connect_params/2`
