@@ -9,10 +9,19 @@ defmodule Phoenix.LiveView.Channel do
 
   @prefix :phoenix
 
+  # For backwards compatibility with Phoenix v1.4.x.
+  # TODO: Remove once we depend on Phoenix v1.5.2+.
   def start_link({auth_payload, from, phx_socket}) do
-    hibernate_after = phx_socket.endpoint.config(:live_view)[:hibernate_after] || 15000
+    with {:ok, pid} <- start_link({phx_socket.endpoint, from}) do
+      send(pid, {Phoenix.Channel, auth_payload, from, phx_socket})
+      {:ok, pid}
+    end
+  end
+
+  def start_link({endpoint, from}) do
+    hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
     opts = [hibernate_after: hibernate_after]
-    GenServer.start_link(__MODULE__, {auth_payload, from, phx_socket}, opts)
+    GenServer.start_link(__MODULE__, from, opts)
   end
 
   def send_update(module, id, assigns) do
@@ -24,17 +33,21 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   @impl true
-  def init(triplet) do
-    send(self(), {:mount, __MODULE__})
-    {:ok, triplet}
+  def init({pid, _ref}) do
+    {:ok, Process.monitor(pid)}
   end
 
   @impl true
-  def handle_info({:mount, __MODULE__}, triplet) do
-    mount(triplet)
+  def handle_info({Phoenix.Channel, auth_payload, from, phx_socket}, ref) do
+    Process.demonitor(ref)
+    mount(auth_payload, from, phx_socket)
   rescue
     # Normalize exceptions for better client debugging
     e -> reraise(e, __STACKTRACE__)
+  end
+
+  def handle_info({:DOWN, ref, _, _, _reason}, ref) do
+    {:stop, {:shutdown, :closed}, ref}
   end
 
   def handle_info({:DOWN, _, _, transport_pid, _reason}, %{transport_pid: transport_pid} = state) do
@@ -519,7 +532,7 @@ defmodule Phoenix.LiveView.Channel do
 
   ## Mount
 
-  defp mount({%{"session" => session_token} = params, from, phx_socket}) do
+  defp mount(%{"session" => session_token} = params, from, phx_socket) do
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
         %{private: %{connect_info: connect_info}} = phx_socket
@@ -567,7 +580,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount({%{}, from, phx_socket}) do
+  defp mount(%{}, from, phx_socket) do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
     GenServer.reply(from, {:error, %{reason: "stale"}})
     {:stop, :shutdown, :no_session}
