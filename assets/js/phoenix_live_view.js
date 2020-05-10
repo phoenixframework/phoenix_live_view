@@ -1205,6 +1205,10 @@ export let DOM = {
     return this.findPhxChildren(template.content, parentId)
   },
 
+  isIgnored(el, phxUpdate){
+    return el.getAttribute(phxUpdate) === "ignore" || el.files instanceof FileList
+  },
+
   isPhxUpdate(el, phxUpdate, updateTypes){
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0
   },
@@ -1586,7 +1590,7 @@ class DOMPatch {
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
-          if(fromEl.getAttribute(phxUpdate) === "ignore"){
+          if(DOM.isIgnored(fromEl, phxUpdate)){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl)
             updates.push(fromEl)
