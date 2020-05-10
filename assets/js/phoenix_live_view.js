@@ -483,7 +483,7 @@ export class LiveSocket {
     this.main.destroy()
     this.main.showLoader(this.loaderTimeout)
 
-    Browser.fetchPage(href, (status, html) => {
+    Browser.fetchPage(href, (status, url, html) => {
       if(status !== 200){ return this.redirect(href) }
 
       let template = document.createElement("template")
@@ -491,7 +491,8 @@ export class LiveSocket {
       let el = template.content.childNodes[0]
       if(!el || !this.isPhxView(el)){ return this.redirect(href) }
 
-      this.joinRootView(el, href, flash, (newMain, joinCount) => {
+      let location = url.origin + url.pathname
+      this.joinRootView(el, location, flash, (newMain, joinCount) => {
         if(joinCount !== 1){ return }
         if(!this.commitPendingLink(linkRef)){
           newMain.destroy()
@@ -895,7 +896,7 @@ export let Browser = {
       if(req.readyState !== 4){ return }
       if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400) }
       if(req.status !== 200){ return callback(req.status) }
-      callback(200, req.responseText)
+      callback(200, new URL(req.responseURL), req.responseText)
     }
     req.send()
   },
