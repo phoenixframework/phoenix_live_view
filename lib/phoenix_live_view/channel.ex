@@ -109,12 +109,13 @@ defmodule Phoenix.LiveView.Channel do
     event = "upload_progress"
     val = Plug.Conn.Query.decode_pair({path, Map.take(msg.payload, ["size", "uploaded", "percentage"])}, %{})
 
-    %{socket: socket} = state
-    %{view: view} = socket
-
-    event
-    |> view.handle_event(val, socket)
-    |> handle_result({:handle_event, 3, msg.ref}, state)
+    if cid = msg.payload["cid"] do
+      component_handle_event(state, cid, event, val, msg.ref)
+    else
+      state.socket
+      |> view_handle_event(event, val)
+      |> handle_result({:handle_event, 3, msg.ref}, state)
+    end
   end
 
   def handle_info(%Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg, %{topic: topic} = state) do
@@ -137,12 +138,13 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     try do
-      %{socket: socket} = state
-      %{view: view} = socket
-
-      event
-      |> view.handle_event(val, socket)
-      |> handle_result({:handle_event, 3, msg.ref}, state)
+      if cid = msg.payload["cid"] do
+        component_handle_event(state, cid, event, val, msg.ref)
+      else
+        state.socket
+        |> view_handle_event(event, val)
+        |> handle_result({:handle_event, 3, msg.ref}, state)
+      end
     after
       Enum.map(upload_channels, &GenServer.cast(&1, :stop))
     end
@@ -203,6 +205,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :register_file_upload, %{pid: pid, ref: ref}}, _from, state) do
+    # TODO: Expose these in mount options?
     config = [
       upload_limit: 3,
       file_size_limit: 100_000_000,
