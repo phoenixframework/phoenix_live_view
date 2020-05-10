@@ -37,7 +37,7 @@ const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_TRIGGER_ACTION = "trigger-action"
 const PHX_FEEDBACK_FOR = "feedback-for"
 const PHX_HAS_FOCUSED = "phx-has-focused"
-const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "file"]
+const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
@@ -136,7 +136,7 @@ let gatherFiles = (form) => {
   return files
 }
 
-let uploadFiles = (ctx, files, callback) => {
+let uploadFiles = (refGenerator, cid, ctx, files, callback) => {
   let numFiles = Object.keys(files).length;
   let results = {};
 
@@ -169,7 +169,13 @@ let uploadFiles = (ctx, files, callback) => {
         const uploadChunk = (chunk, finished, uploaded) => {
           if (!finished) {
             const percentage = Math.round((uploaded / file.size) * 100);
-            ctx.pushWithReply(null, "upload_progress", {path: key, size: file.size, uploaded, percentage})
+            ctx.pushWithReply(refGenerator, "upload_progress", {
+              cid: cid,
+              path: key,
+              size: file.size,
+              uploaded,
+              percentage
+            })
           }
 
           uploadChannel.push("file", {file: chunk})
@@ -2364,7 +2370,7 @@ export class View {
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }
 
-    if(fileData) { event.file_data = fileData }
+    if(fileData && fileData !== null) { event.file_data = fileData }
     this.pushWithReply(refGenerator, "event", event, callback)
   }
 
@@ -2388,17 +2394,18 @@ export class View {
     }
 
     this.uploadCount = 0
+    let cid = this.targetComponentID(formEl, targetCtx)
     let files = gatherFiles(formEl)
     let numFiles = Object.keys(files).length
 
     if(numFiles > 0) {
-      uploadFiles(this, files, (uploads) => {
+      uploadFiles(refGenerator, cid, this, files, (uploads) => {
         let {fileData, formData} = serializeForm(formEl, {__live_uploads: uploads})
         this.pushWithReply(refGenerator, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
-          cid: this.targetComponentID(formEl, targetCtx),
+          cid: cid,
           file_count: numFiles,
           file_data: fileData
         }, onReply)
@@ -2409,7 +2416,7 @@ export class View {
         type: "form",
         event: phxEvent,
         value: formData,
-        cid: this.targetComponentID(formEl, targetCtx)
+        cid: cid
       }, onReply)
     }
   }
