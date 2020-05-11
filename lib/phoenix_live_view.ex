@@ -67,30 +67,30 @@ defmodule Phoenix.LiveView do
   automatically re-rendered and the updates are pushed to the client.
 
   You begin by rendering a LiveView typically from your router.
-  When LiveView is first rendered, the `mount/3` callback is invoked
+  When LiveView is first rendered, the `c:mount/3` callback is invoked
   with the current params, the current session and the LiveView socket.
   As in a regular request, `params` contains public data that can be
   modified by the user. The `session` always contains private data set
-  by the application itself. The `mount/3` callback wires up socket
-  assigns necessary for rendering the view. After mounting, `render/1`
+  by the application itself. The `c:mount/3` callback wires up socket
+  assigns necessary for rendering the view. After mounting, `c:render/1`
   is invoked and the HTML is sent as a regular HTML response to the
   client.
 
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via phx bindings. Just like
-  the first rendering, `mount/3` is invoked  with params, session,
+  the first rendering, `c:mount/3` is invoked  with params, session,
   and socket state, where mount assigns values for rendering. However
   in the connected client case, a LiveView process is spawned on
-  the server, pushes the result of `render/1` to the client and
+  the server, pushes the result of `c:render/1` to the client and
   continues on for the duration of the connection. If at any point
   during the stateful life-cycle a crash is encountered, or the client
   connection drops, the client gracefully reconnects to the server,
-  calling `mount/3` once again.
+  calling `c:mount/3` once again.
 
   ## Example
 
-  First, a LiveView requires two callbacks: `mount/3` and `render/1`:
+  First, a LiveView requires two callbacks: `c:mount/3` and `c:render/1`:
 
       defmodule MyAppWeb.ThermostatLive do
         # If you generated an app with mix phx.new --live,
@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView do
         end
       end
 
-  The `render/1` callback receives the `socket.assigns` and is responsible
+  The `c:render/1` callback receives the `socket.assigns` and is responsible
   for returning rendered content. You can use `Phoenix.LiveView.Helpers.sigil_L/2`
   to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
   remember to `use Phoenix.HTML` at the top of your `LiveView`.
@@ -194,7 +194,7 @@ defmodule Phoenix.LiveView do
       let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
 
-  After the client connects, `mount/3` will be invoked inside a spawned
+  After the client connects, `c:mount/3` will be invoked inside a spawned
   LiveView process. At this point, you can use `connected?/1` to
   conditionally perform stateful work, such as subscribing to pubsub topics,
   sending messages, etc. For example, you can periodically update a LiveView
@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView do
   We used `connected?(socket)` on mount to send our view a message every 30s if
   the socket is in a connected state. We receive the `:update` message in the
   `handle_info/2` callback, just like in an Elixir's `GenServer`, and update our
-  socket assigns. Whenever a socket's assigns change, `render/1` is automatically
+  socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
   invoked, and the updates are sent to the client.
 
   ## Collocating templates
@@ -246,10 +246,10 @@ defmodule Phoenix.LiveView do
   For larger templates, you can place them in a file in the same directory
   and same name as the LiveView. For example, if the file above is placed
   at `lib/my_app_web/live/thermostat_live.ex`, you can also remove the
-  `render/1` definition above and instead put the template code at
+  `c:render/1` definition above and instead put the template code at
   `lib/my_app_web/live/thermostat_live.html.leex`.
 
-  Alternatively, you can keep the `render/1` callback but delegate to an
+  Alternatively, you can keep the `c:render/1` callback but delegate to an
   existing `Phoenix.View` module in your application. For example:
 
       defmodule MyAppWeb.ThermostatLive do
@@ -561,7 +561,7 @@ defmodule Phoenix.LiveView do
 
   The validate callback simply updates the changeset based on all form input
   values, then assigns the new changeset to the socket. If the changeset
-  changes, such as generating new errors, `render/1` is invoked and
+  changes, such as generating new errors, `c:render/1` is invoked and
   the form is re-rendered.
 
   Likewise for `phx-submit` bindings, the same callback is invoked and

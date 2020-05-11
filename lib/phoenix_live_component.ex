@@ -399,7 +399,7 @@ defmodule Phoenix.LiveComponent do
 
   @callback handle_event(
               event :: binary,
-              unsigned_params :: Socket.unsigned_params(),
+              unsigned_params :: Phoenix.LiveView.unsigned_params(),
               socket :: Socket.t()
             ) ::
               {:noreply, Socket.t()}
