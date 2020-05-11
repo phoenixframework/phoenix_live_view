@@ -452,9 +452,23 @@ defmodule Phoenix.LiveView do
       If the `phx-value-` prefix is used, the server payload will also contain a `"value"`
       if the element's value attribute exists.
 
-    * When receiving a map on the server, the payload will also contain metadata of the
-      client event, containing all literal keys of the event object, such as a click event's
-      `clientX`, a keydown event's `keyCode`, etc.
+    * When receiving a map on the server, the payload will also include user defined metadata
+      of the client event, or an empty map if none is set. For example, the following `LiveSocket`
+      client option would send the coordiantes and `altKey` information for all clicks:
+
+          let liveSocket = new LiveSocket("/live", Socket, {
+            params: {_csrf_token: csrfToken},
+            metadata: {
+              click: (e, el) => {
+                return {
+                  altKey: e.altKey,
+                  clientX: e.clientX,
+                  clientY: e.clientY
+                }
+              }
+            }
+          })
+
 
   The `phx-capture-click` event is just like `phx-click`, but instead of the click event
   being dispatched to the closest `phx-click` element as it bubbles up through the DOM, the event
@@ -644,14 +658,29 @@ defmodule Phoenix.LiveView do
   ### Key Events
 
   The `onkeydown`, and `onkeyup` events are supported via the `phx-keydown`,
-  and `phx-keyup` bindings. When pushed, the value sent to the server will
-  contain all the client event object's metadata. For example, pressing the
+  and `phx-keyup` bindings. Each binding supports a `phx-key` attribute, which triggers
+  the event for the specific key press. If no `phx-key` is provided, the event is triggered
+  for any key press. When pushed, the value sent to the server will contain the `"key"`
+  that was pressed, plus any user-defined metadata. For example, pressing the
   Escape key looks like this:
 
-      %{
-        "altKey" => false, "code" => "Escape", "ctrlKey" => false, "key" => "Escape",
-        "location" => 0, "metaKey" => false, "repeat" => false, "shiftKey" => false
-      }
+      %{"key" => "Escape"}
+
+  To capture additional user-defined meatadata, the `metadata` option for keydown events
+  may be provided to the `LiveSocket` constructor. For example:
+
+      let liveSocket = new LiveSocket("/live", Socket, {
+        params: {_csrf_token: csrfToken},
+        metadata: {
+          keydown: (e, el) => {
+            return {
+              key: e.key,
+              metaKey: e.metaKey,
+              repeat: e.repeat
+            }
+          }
+        }
+      })
 
   To determine which key has been pressed you should use `key` value. The
   available options can be found on
