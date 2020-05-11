@@ -3,7 +3,48 @@
 ## 0.13-dev
 
 ### Backwards incompatible changes
-  - No longer send event metadata by default
+  - No longer send event metadata by default. Metatdata is now opt-in and user defined at the `LiveSocket` level.
+  To maintain backwards compatiblity with pre 0.13 behaviour, you can provide the following metadata option:
+
+  ```javascript
+  let liveSocket = new LiveSocket("/live", Socket, {
+    params: {_csrf_token: csrfToken},
+    metadata: {
+      click: (e, el) => {
+        return {
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          x: e.x || e.clientX,
+          y: e.y || e.clientY,
+          pageX: e.pageX,
+          pageY: e.pageY,
+          screenX: e.screenX,
+          screenY: e.screenY,
+          offsetX: e.offsetX,
+          offsetY: e.offsetY,
+          detail: e.detail || 1,
+        }
+      },
+      keydown: (e, el) => {
+        return {
+          altGraphKey: e.altGraphKey,
+          altKey: e.altKey,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          key: e.key,
+          keyIdentifier: e.keyIdentifier,
+          keyLocation: e.keyLocation,
+          location: e.location,
+          metaKey: e.metaKey,
+          repeat: e.repeat,
+          shiftKey: e.shiftKey
+        }
+      }
+    }
+  })
+  ```
 
 ### Bug fixes
   - Fix error caused by chrome sending a keydown event on native UI autocomplete without a `key`
