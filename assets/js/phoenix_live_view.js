@@ -296,6 +296,27 @@ export class Rendered {
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
+ *
+ * @param {Object} [opts.metadata] - The optional object mapping event names to functions for
+ * populating event metadata. For example:
+ *
+ *     metadata: {
+ *       click: (e, el) => {
+ *         return {
+ *           ctrlKey: e.ctrlKey,
+ *           metaKey: e.metaKey,
+ *           detail: e.detail || 1,
+ *         }
+ *       },
+ *       keydown: (e, el) => {
+ *         return {
+ *           key: e.key,
+ *           ctrlKey: e.ctrlKey,
+ *           metaKey: e.metaKey,
+ *           shiftKey: e.shiftKey
+ *         }
+ *       }
+ *     }
 */
 export class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -314,6 +335,7 @@ export class LiveSocket {
     this.opts = opts
     this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
+    this.metadataCallbacks = opts.metadata || {}
     this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {})
     this.activeElement = null
     this.prevActive = null
@@ -610,32 +632,24 @@ export class LiveSocket {
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
 
-      view.pushKey(target, targetCtx, type, phxEvent, {
-        altGraphKey: e.altGraphKey,
-        altKey: e.altKey,
-        code: e.code,
-        ctrlKey: e.ctrlKey,
-        key: e.key,
-        keyIdentifier: e.keyIdentifier,
-        keyLocation: e.keyLocation,
-        location: e.location,
-        metaKey: e.metaKey,
-        repeat: e.repeat,
-        shiftKey: e.shiftKey
-      })
+      view.pushKey(target, targetCtx, type, phxEvent, this.eventMeta(type, e, target))
     })
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       if(!phxTarget){
-        view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: type})
+        view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
       }
     })
     this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget && !phxTarget !== "window"){
-        view.pushEvent(type, targetEl, targetCtx, phxEvent, {type: e.type})
+        view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
       }
     })
+  }
 
+  eventMeta(eventName, e, targetEl){
+    let callback = this.metadataCallbacks[eventName]
+    return callback ? callback(e, targetEl) : {}
   }
 
   setPendingLink(href){
@@ -700,25 +714,9 @@ export class LiveSocket {
         if(!phxEvent){ return }
         if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
-        let meta = {
-          altKey: e.altKey,
-          shiftKey: e.shiftKey,
-          ctrlKey: e.ctrlKey,
-          metaKey: e.metaKey,
-          x: e.x || e.clientX,
-          y: e.y || e.clientY,
-          pageX: e.pageX,
-          pageY: e.pageY,
-          screenX: e.screenX,
-          screenY: e.screenY,
-          offsetX: e.offsetX,
-          offsetY: e.offsetY,
-          detail: e.detail || 1,
-        }
-
         this.debounce(target, e, () => {
           this.withinOwners(target, (view, targetCtx) => {
-            view.pushEvent("click", target, targetCtx, phxEvent, meta)
+            view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target))
           })
         })
       }, capture)
