@@ -632,7 +632,7 @@ export class LiveSocket {
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
 
-      view.pushKey(target, targetCtx, type, phxEvent, this.eventMeta(type, e, target))
+      view.pushKey(target, targetCtx, type, phxEvent, {key: e.key, ...this.eventMeta(type, e, target)})
     })
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       if(!phxTarget){
