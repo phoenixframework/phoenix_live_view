@@ -3,7 +3,7 @@
 ## 0.13-dev
 
 ### Backwards incompatible changes
-  - No longer send event metadata by default. Metatdata is now opt-in and user defined at the `LiveSocket` level.
+  - No longer send event metadata by default. Metadata is now opt-in and user defined at the `LiveSocket` level.
   To maintain backwards compatiblity with pre 0.13 behaviour, you can provide the following metadata option:
 
   ```javascript
