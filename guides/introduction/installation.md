@@ -67,7 +67,7 @@ def router do
 end
 ```
 
-Then add the `Phoenix.LiveView.Router.fetch_live_flash` plug to your browser pipeline, in place of `:fetch_flash`:
+Then add the `Phoenix.LiveView.Router.fetch_live_flash/2` plug to your browser pipeline, in place of `:fetch_flash`:
 
 ```diff
 # lib/my_app_web/router.ex
