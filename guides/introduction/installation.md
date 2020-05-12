@@ -189,7 +189,7 @@ window.liveSocket = liveSocket
 
 ## Layouts
 
-LiveView does not your the default app layout. Instead, you typically call `put_root_layout` in your router, to specify a layout that is used by both "regular" views and live views. In your router, do:
+LiveView does not use the default app layout. Instead, you typically call `put_root_layout` in your router to specify a layout that is used by both "regular" views and live views. In your router, do:
 
 ```elixir
 pipeline :browser do
@@ -265,7 +265,10 @@ use Phoenix.LiveView,
   layout: {<%= web_namespace %>.LayoutView, "live.html"}
 ```
 
-So make sure that you follow the steps outlined in the previous "Layouts" section.
+This means "root.html.eex" is shared by regular and live views, "app.html.eex" is
+rendered inside the root layout for regular views, and "live.html.leex" is rendered
+inside the root layout for LiveViews. So make sure that you follow the steps outlined
+in the previous "Layouts" section.
 
 ## Progress animation
 
