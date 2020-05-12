@@ -29,7 +29,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-keydown-phx-value" phx-keydown="span-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     <span id="span-window-keydown-phx-value" phx-window-keydown="span-window-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
-    <button id="button-disabled-click" phx-click="button-click" disabled>This is a button</span>
+    <button id="button-disabled-click" phx-click="button-click" disabled>This is a button</button>
     <span id="span-click-no-value" phx-click="span-click">This is a span</span>
     <span id="span-click-value" phx-click="span-click" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
     <span id="span-click-phx-value" phx-click="span-click" phx-value-foo="123" phx-value-bar="456">This is a span</span>
