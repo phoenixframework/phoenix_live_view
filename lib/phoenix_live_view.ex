@@ -1199,7 +1199,7 @@ defmodule Phoenix.LiveView do
   Overall, those layouts are found in `templates/layout` with the
   following names:
 
-      * root.html.eex
+      * root.html.leex
       * app.html.eex
       * live.html.leex
 

@@ -265,7 +265,7 @@ use Phoenix.LiveView,
   layout: {<%= web_namespace %>.LayoutView, "live.html"}
 ```
 
-This means "root.html.eex" is shared by regular and live views, "app.html.eex" is
+This means "root.html.leex" is shared by regular and live views, "app.html.eex" is
 rendered inside the root layout for regular views, and "live.html.leex" is rendered
 inside the root layout for LiveViews. So make sure that you follow the steps outlined
 in the previous "Layouts" section.
