@@ -48,6 +48,8 @@
 
 ### Bug fixes
   - Fix error caused by chrome sending a keydown event on native UI autocomplete without a `key`
+  - Fix server error when a live navigation request issues a redirect
+  - Fix double window bindings when explicit calls to LiveSocket connect/disconnect/connect.
 
 ### Enhancements
   - Add `Phoenix.LiveView.get_connect_info/1`
