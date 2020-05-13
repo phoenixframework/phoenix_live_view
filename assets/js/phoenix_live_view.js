@@ -62,6 +62,7 @@ const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
+const RESPONSE_URL_HEADER = "x-response-url"
 const DEBOUNCE_BLUR = "debounce-blur"
 const DEBOUNCE_TIMER = "debounce-timer"
 const DEBOUNCE_BLUR_TIMER = "debounce-blur-timer"
@@ -348,16 +349,15 @@ export class LiveSocket {
     this.currentLocation = clone(window.location)
     this.hooks = opts.hooks || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
-
-    this.socket.onOpen(() => {
-      if(this.isUnloaded()){
-        this.destroyAllViews()
-        this.joinRootViews()
-      }
-      this.unloaded = false
-    })
+    this.boundTopLevelEvents = false
     window.addEventListener("unload", e => {
       this.unloaded = true
+    })
+    this.socket.onOpen(() => {
+      if(this.isUnloaded()){
+        // reload page if being restored from back/forward cache and browser does not emit "pageshow"
+        window.location.reload()
+      }
     })
   }
 
@@ -404,7 +404,7 @@ export class LiveSocket {
     }
   }
 
-  disconnect(){ this.socket.disconnect() }
+  disconnect(callback){ this.socket.disconnect(callback) }
 
   // private
 
@@ -502,8 +502,8 @@ export class LiveSocket {
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let mainEl = this.main.el
-    this.main.destroy()
     this.main.showLoader(this.loaderTimeout)
+    this.main.destroy()
 
     Browser.fetchPage(href, (status, html) => {
       if(status !== 200){ return this.redirect(href) }
@@ -624,6 +624,14 @@ export class LiveSocket {
   }
 
   bindTopLevelEvents(){
+    if(this.boundTopLevelEvents){ return }
+    this.boundTopLevelEvents = true
+    window.addEventListener("pageshow", e => {
+      if(e.persisted){ // reload page if being restored from back/forward cache
+        this.withPageLoading({to: window.location.href, kind: "redirect"})
+        window.location.reload()
+      }
+    })
     this.bindClicks()
     this.bindNav()
     this.bindForms()
@@ -891,9 +899,19 @@ export let Browser = {
     req.ontimeout = () => callback(504)
     req.onreadystatechange = () => {
       if(req.readyState !== 4){ return }
-      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){ return callback(400) }
-      if(req.status !== 200){ return callback(req.status) }
-      callback(200, req.responseText)
+      let requestURL = new URL(href)
+      let requestPath = requestURL.pathname + requestURL.search
+      let responseURL = new URL(req.getResponseHeader(RESPONSE_URL_HEADER))
+      let responsePath = responseURL.pathname + responseURL.search
+      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){
+        return callback(400)
+      } else if(responsePath != requestPath){
+        return callback(302)
+      } else if(req.status !== 200){
+        return callback(req.status)
+      } else {
+        callback(200, req.responseText)
+      }
     }
     req.send()
   },

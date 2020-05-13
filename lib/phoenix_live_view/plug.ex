@@ -6,6 +6,8 @@ defmodule Phoenix.LiveView.Plug do
   @behaviour Plug
 
   @link_header "x-requested-with"
+  @response_url_header "x-response-url"
+
   def link_header, do: @link_header
 
   @impl Plug
@@ -21,6 +23,7 @@ defmodule Phoenix.LiveView.Plug do
       conn
       |> put_cache_headers()
       |> Plug.Conn.put_resp_header(@link_header, "live-link")
+      |> Plug.Conn.put_resp_header(@response_url_header, Phoenix.Controller.current_url(conn))
       |> Phoenix.Controller.html(html)
     else
       conn
