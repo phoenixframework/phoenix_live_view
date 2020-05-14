@@ -13,9 +13,10 @@ defmodule Phoenix.LiveViewUnitTest do
               view: Phoenix.LiveViewTest.ParamCounterLive,
               root_view: Phoenix.LiveViewTest.ParamCounterLive
             },
-            %{host: "example.com", connect_params: %{}, connect_info: %{}},
+            %{connect_params: %{}, connect_info: %{}},
             nil,
-            %{}
+            %{},
+            "www.example.com"
           )
 
   describe "flash" do

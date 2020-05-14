@@ -658,9 +658,10 @@ defmodule Phoenix.LiveView.Channel do
     socket =
       Utils.configure_socket(
         socket,
-        mount_private(parent, assign_new, connect_params, connect_info, host),
+        mount_private(parent, assign_new, connect_params, connect_info),
         action,
-        flash
+        flash,
+        host
       )
 
     socket
@@ -678,21 +679,19 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_private(nil, assign_new, connect_params, connect_info, host) do
+  defp mount_private(nil, assign_new, connect_params, connect_info) do
     %{
-      host: host,
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {%{}, assign_new}
     }
   end
 
-  defp mount_private(parent, assign_new, connect_params, connect_info, host) do
+  defp mount_private(parent, assign_new, connect_params, connect_info) do
     parent_assigns = sync_with_parent(parent, assign_new)
 
     # Child live views always ignore the layout on `:use`.
     %{
-      host: host,
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {parent_assigns, assign_new},
