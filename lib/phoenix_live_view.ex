@@ -1968,7 +1968,7 @@ defmodule Phoenix.LiveView do
   Annotates the socket for navigation to another LiveView.
 
   The current LiveView will be shutdown and a new one will be mounted
-  in its place LiveView, without reloading the whole page. This can
+  in its place, without reloading the whole page. This can
   also be use to remount the same LiveView, in case you want to start
   fresh. If you want to navigate to the same LiveView without remounting
   it, use `push_patch/2` instead.
