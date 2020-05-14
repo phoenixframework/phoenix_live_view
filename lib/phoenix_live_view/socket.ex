@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.Socket do
 
   if Version.match?(System.version(), ">= 1.8.0") do
     @derive {Inspect,
-             only: [:id, :endpoint, :router, :view, :parent_pid, :root_pid, :assigns, :changed]}
+             only: [:id, :host, :endpoint, :router, :view, :parent_pid, :root_pid, :assigns, :changed]}
   end
 
   defstruct id: nil,
@@ -35,6 +35,7 @@ defmodule Phoenix.LiveView.Socket do
             private: %{},
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
+            host: nil,
             connected?: false
 
   @type t :: %__MODULE__{}

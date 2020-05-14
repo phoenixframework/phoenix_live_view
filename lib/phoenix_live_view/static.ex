@@ -113,14 +113,14 @@ defmodule Phoenix.LiveView.Static do
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
         %{
-          host: conn.host,
           assign_new: {conn.assigns, []},
           connect_params: %{},
           connect_info: %{},
           conn_session: conn_session
         },
         action,
-        flash
+        flash,
+        conn.host
       )
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
@@ -170,9 +170,10 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view},
-        %{host: conn.host, assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
+        %{assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
         action,
-        flash
+        flash,
+        conn.host
       )
 
     session_token = sign_root_session(socket, router, view, to_sign_session)
@@ -217,9 +218,10 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{host: Utils.get_host(parent), assign_new: {parent.assigns, []}, phoenix_live_layout: false},
+        %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
-        %{}
+        %{},
+        Utils.get_host(parent)
       )
 
     if connected? do

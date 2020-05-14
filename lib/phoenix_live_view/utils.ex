@@ -57,17 +57,19 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%{id: nil, assigns: assigns, view: view} = socket, private, action, flash) do
+  def configure_socket(%Socket{id: nil} = socket, private, action, flash, host) do
     %{
       socket
       | id: random_id(),
         private: private,
-        assigns: configure_assigns(assigns, view, action, flash)
+        assigns: configure_assigns(socket.assigns, socket.view, action, flash),
+        host: host
     }
   end
 
-  def configure_socket(%{assigns: assigns, view: view} = socket, private, action, flash) do
-    %{socket | private: private, assigns: configure_assigns(assigns, view, action, flash)}
+  def configure_socket(%Socket{} = socket, private, action, flash, host) do
+    assigns = configure_assigns(socket.assigns, socket.view, action, flash)
+    %{socket | host: host, private: private, assigns: assigns}
   end
 
   defp configure_assigns(assigns, view, action, flash) do
@@ -139,7 +141,7 @@ defmodule Phoenix.LiveView.Utils do
   Returns the socket's hosts.
   """
   def get_host(%Socket{} = socket) do
-    socket.private[:host] || raise ArgumentError, "no host set for socket"
+    socket.host || raise ArgumentError, "no host set for socket"
   end
 
   @doc """

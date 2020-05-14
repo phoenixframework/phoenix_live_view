@@ -354,7 +354,7 @@ defmodule Phoenix.LiveView.Diff do
       configure_socket_for_component(
         socket,
         assigns,
-        Map.take(socket.private, [:conn_session, :host]),
+        Map.take(socket.private, [:conn_session]),
         new_fingerprints()
       )
       |> Utils.assign(:flash, %{})
