@@ -99,7 +99,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{}}
     end
 
-    test "nested %Renderered{}'s" do
+    test "nested %Rendered{}'s" do
       {socket, full_render, _} = render(nested_rendered())
 
       assert full_render ==
