@@ -63,7 +63,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       html: root_html,
       session: session,
       test_supervisor: test_supervisor,
-      url: url,
+      url: url
     }
 
     try do
