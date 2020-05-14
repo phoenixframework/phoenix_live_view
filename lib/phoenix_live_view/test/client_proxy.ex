@@ -49,6 +49,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     root_view = Keyword.fetch!(opts, :proxy)
     session = Keyword.fetch!(opts, :session)
     url = Keyword.fetch!(opts, :url)
+    test_supervisor = Keyword.fetch!(opts, :test_supervisor)
 
     state = %{
       join_ref: 0,
@@ -60,7 +61,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       replies: %{},
       root_view: nil,
       html: root_html,
-      session: session
+      session: session,
+      test_supervisor: test_supervisor
     }
 
     try do
@@ -140,8 +142,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "joins" => 0
     }
 
-    spec = {Phoenix.LiveView.Channel, {params, {self(), ref}, socket}}
-    DynamicSupervisor.start_child(Phoenix.LiveView.DynamicSupervisor, spec)
+    spec = %{
+      id: make_ref(),
+      start: {Phoenix.LiveView.Channel, :start_link, [{params, {self(), ref}, socket}]},
+      restart: :temporary
+    }
+
+    Supervisor.start_child(state.test_supervisor, spec)
   end
 
   def handle_info({:sync_children, topic, from}, state) do
