@@ -630,7 +630,6 @@ defmodule Phoenix.LiveView.Channel do
     load_csrf_token(endpoint, socket_session)
 
     url = Map.fetch!(params, "url")
-    host = if url, do: URI.parse(url).host, else: "www.example.com" # for live_isolated
     # Optional parameter handling
     connect_params = params["params"]
 
@@ -650,10 +649,10 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     }
 
-    {params, parsed_uri, action} =
+    {params, parsed_uri, action, host} =
       case router && url && Utils.live_link_info!(socket, view, url) do
-        {:internal, params, action, parsed_uri} -> {params, parsed_uri, action}
-        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil}
+        {:internal, params, action, parsed_uri} -> {params, parsed_uri, action, parsed_uri.host}
+        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil, "www.example.com"}
       end
 
     socket =
