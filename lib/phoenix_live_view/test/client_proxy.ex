@@ -60,6 +60,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       replies: %{},
       root_view: nil,
       html: root_html,
+      url: url,
       session: session
     }
 
@@ -515,7 +516,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           static = static || Map.get(state.root_view.child_statics, id)
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
-          {child_view, rendered} = mount_view(acc, child_view, nil)
+          {child_view, rendered} = mount_view(acc, child_view, state.url)
 
           acc
           |> put_view(child_view, rendered)

@@ -113,6 +113,7 @@ defmodule Phoenix.LiveView.Static do
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
         %{
+          host: conn.host,
           assign_new: {conn.assigns, []},
           connect_params: %{},
           connect_info: %{},
@@ -169,7 +170,7 @@ defmodule Phoenix.LiveView.Static do
     socket =
       Utils.configure_socket(
         %Socket{endpoint: endpoint, view: view, root_view: view},
-        %{assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
+        %{host: conn.host, assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
         action,
         flash
       )
@@ -216,7 +217,7 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
+        %{host: Utils.get_host(parent), assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
         %{}
       )
