@@ -108,6 +108,7 @@ defmodule Phoenix.LiveView.Static do
     endpoint = Phoenix.Controller.endpoint_module(conn)
     flash = Map.get(conn.private, :phoenix_flash, %{})
     request_url = Plug.Conn.request_url(conn)
+    host_uri = URI.parse(request_url)
 
     socket =
       Utils.configure_socket(
@@ -120,7 +121,7 @@ defmodule Phoenix.LiveView.Static do
         },
         action,
         flash,
-        conn.host
+        host_uri
       )
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
@@ -166,6 +167,7 @@ defmodule Phoenix.LiveView.Static do
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
     flash = Map.get(conn.private, :phoenix_flash, %{})
+    host_uri = conn |> Plug.Conn.request_url() |> URI.parse()
 
     socket =
       Utils.configure_socket(
@@ -173,7 +175,7 @@ defmodule Phoenix.LiveView.Static do
         %{assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
         action,
         flash,
-        conn.host
+        host_uri
       )
 
     session_token = sign_root_session(socket, router, view, to_sign_session)
@@ -221,7 +223,7 @@ defmodule Phoenix.LiveView.Static do
         %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
         nil,
         %{},
-        Utils.get_host(parent)
+        parent.host_uri
       )
 
     if connected? do

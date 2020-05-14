@@ -57,24 +57,38 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Configures the socket for use.
   """
-  def configure_socket(%Socket{id: nil} = socket, private, action, flash, host) do
+  def configure_socket(%Socket{id: nil} = socket, private, action, flash, host_uri) do
     %{
       socket
       | id: random_id(),
         private: private,
         assigns: configure_assigns(socket.assigns, socket.view, action, flash),
-        host: host
+        host_uri: prune_uri(host_uri)
     }
   end
 
-  def configure_socket(%Socket{} = socket, private, action, flash, host) do
+  def configure_socket(%Socket{} = socket, private, action, flash, host_uri) do
     assigns = configure_assigns(socket.assigns, socket.view, action, flash)
-    %{socket | host: host, private: private, assigns: assigns}
+    %{socket | host_uri: prune_uri(host_uri), private: private, assigns: assigns}
   end
 
   defp configure_assigns(assigns, view, action, flash) do
     Map.merge(assigns, %{live_module: view, live_action: action, flash: flash})
   end
+
+  defp prune_uri(:not_mounted_at_router), do: :not_mounted_at_router
+
+  defp prune_uri(url) do
+    %URI{host: host, port: port, scheme: scheme} = url
+
+    if host == nil do
+      raise "client did not send full URL, missing host in #{url}"
+    end
+
+    %URI{host: host, port: port, scheme: scheme}
+  end
+
+
 
   @doc """
   Returns a random ID with valid DOM tokens
@@ -138,13 +152,6 @@ defmodule Phoenix.LiveView.Utils do
   def get_flash(%{} = flash, key), do: flash[key]
 
   @doc """
-  Returns the socket's hosts.
-  """
-  def get_host(%Socket{} = socket) do
-    socket.host || raise ArgumentError, "no host set for socket"
-  end
-
-  @doc """
   Puts a new flash with the socket's flash messages.
   """
   def replace_flash(%Socket{} = socket, %{} = new_flash) do
@@ -205,7 +212,7 @@ defmodule Phoenix.LiveView.Utils do
 
   def live_link_info!(%Socket{router: router, endpoint: endpoint} = socket, view, uri) do
     %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
-    host = host || get_host(socket)
+    host = host || socket.host_uri.host
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
     decoded_path = URI.decode(path || "")
     split_path = for segment <- String.split(decoded_path, "/"), segment != "", do: segment
@@ -216,7 +223,7 @@ defmodule Phoenix.LiveView.Utils do
         {:internal, Map.merge(query_params, path_params), action, parsed_uri}
 
       %{} ->
-        :external
+        {:external, parsed_uri}
 
       :error ->
         raise ArgumentError,

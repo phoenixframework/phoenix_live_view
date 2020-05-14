@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.Channel do
         |> view.handle_params(url, socket)
         |> handle_result({:handle_params, 3, msg.ref}, state)
 
-      :external ->
+      {:external, _uri} ->
         {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
     end
   end
@@ -649,10 +649,11 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     }
 
-    {params, parsed_uri, action, host} =
+    {params, host_uri, action} =
       case router && url && Utils.live_link_info!(socket, view, url) do
-        {:internal, params, action, parsed_uri} -> {params, parsed_uri, action, parsed_uri.host}
-        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil, "www.example.com"}
+        {:internal, params, action, host_uri} -> {params, host_uri, action}
+        {:external, host_uri} -> {:not_mounted_at_router, host_uri, nil}
+        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil}
       end
 
     socket =
@@ -661,12 +662,12 @@ defmodule Phoenix.LiveView.Channel do
         mount_private(parent, assign_new, connect_params, connect_info),
         action,
         flash,
-        host
+        host_uri
       )
 
     socket
     |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])
-    |> build_state(phx_socket, parsed_uri)
+    |> build_state(phx_socket)
     |> maybe_call_mount_handle_params(router, url, params)
     |> reply_mount(from)
   end
@@ -724,9 +725,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, parsed_uri) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
     %{
-      uri: prune_uri(parsed_uri),
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,
@@ -736,20 +736,8 @@ defmodule Phoenix.LiveView.Channel do
     }
   end
 
-  defp prune_uri(:not_mounted_at_router), do: :not_mounted_at_router
-
-  defp prune_uri(url) do
-    %URI{host: host, port: port, scheme: scheme} = url
-
-    if host == nil do
-      raise "client did not send full URL, missing host in #{url}"
-    end
-
-    %URI{host: host, port: port, scheme: scheme}
-  end
-
-  defp build_uri(%{uri: uri}, "/" <> _ = to) do
-    URI.to_string(%{uri | path: to})
+  defp build_uri(%{socket: socket}, "/" <> _ = to) do
+    URI.to_string(%{socket.host_uri | path: to})
   end
 
   defp post_mount_prune(%{socket: socket} = state) do

@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewUnitTest do
             %{connect_params: %{}, connect_info: %{}},
             nil,
             %{},
-            "www.example.com"
+            URI.parse("https://www.example.com")
           )
 
   describe "flash" do

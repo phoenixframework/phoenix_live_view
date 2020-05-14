@@ -1957,7 +1957,7 @@ defmodule Phoenix.LiveView do
       {:internal, params, action, _parsed_uri} ->
         put_redirect(socket, {:live, {params, action}, opts})
 
-      :external ->
+      {:external, _uri} ->
         raise ArgumentError,
               "cannot push_patch/2 to #{inspect(to)} because the given path " <>
                 "does not point to the current root view #{inspect(socket.root_view)}"
