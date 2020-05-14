@@ -136,6 +136,13 @@ defmodule Phoenix.LiveView.Utils do
   def get_flash(%{} = flash, key), do: flash[key]
 
   @doc """
+  Returns the socket's hosts.
+  """
+  def get_host(%Socket{} = socket) do
+    socket.private[:host] || raise ArgumentError, "no host set for socket"
+  end
+
+  @doc """
   Puts a new flash with the socket's flash messages.
   """
   def replace_flash(%Socket{} = socket, %{} = new_flash) do
@@ -188,14 +195,15 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri
   """
-  def live_link_info!(%{router: nil}, view, _uri) do
+  def live_link_info!(%Socket{router: nil}, view, _uri) do
     raise ArgumentError,
           "cannot invoke handle_params/3 on #{inspect(view)} " <>
             "because it is not mounted nor accessed through the router live/3 macro"
   end
 
-  def live_link_info!(%{router: router, endpoint: endpoint}, view, uri) do
+  def live_link_info!(%Socket{router: router, endpoint: endpoint} = socket, view, uri) do
     %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
+    host = host || get_host(socket)
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
     decoded_path = URI.decode(path || "")
     split_path = for segment <- String.split(decoded_path, "/"), segment != "", do: segment

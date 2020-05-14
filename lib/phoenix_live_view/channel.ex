@@ -629,8 +629,9 @@ defmodule Phoenix.LiveView.Channel do
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
 
+    url = Map.fetch!(params, "url")
+    host = if url, do: URI.parse(url).host, else: "www.example.com" # for live_isolated
     # Optional parameter handling
-    url = params["url"]
     connect_params = params["params"]
 
     case params do
@@ -658,7 +659,7 @@ defmodule Phoenix.LiveView.Channel do
     socket =
       Utils.configure_socket(
         socket,
-        mount_private(parent, assign_new, connect_params, connect_info),
+        mount_private(parent, assign_new, connect_params, connect_info, host),
         action,
         flash
       )
@@ -678,19 +679,21 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_private(nil, assign_new, connect_params, connect_info) do
+  defp mount_private(nil, assign_new, connect_params, connect_info, host) do
     %{
+      host: host,
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {%{}, assign_new}
     }
   end
 
-  defp mount_private(parent, assign_new, connect_params, connect_info) do
+  defp mount_private(parent, assign_new, connect_params, connect_info, host) do
     parent_assigns = sync_with_parent(parent, assign_new)
 
     # Child live views always ignore the layout on `:use`.
     %{
+      host: host,
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {parent_assigns, assign_new},
