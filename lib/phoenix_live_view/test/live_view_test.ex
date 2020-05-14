@@ -323,7 +323,8 @@ defmodule Phoenix.LiveViewTest do
       html: html,
       proxy: proxy,
       session: maybe_get_session(conn),
-      url: mount_url(endpoint, path)
+      url: mount_url(endpoint, path),
+      test_supervisor: fetch_test_supervisor!()
     ]
 
     case ClientProxy.start_link(opts) do
@@ -339,6 +340,23 @@ defmodule Phoenix.LiveViewTest do
         receive do
           {^ref, {:error, reason}} -> {:error, reason}
         end
+    end
+  end
+
+  # TODO: replace with ExUnit.Case.fetch_test_supervisor!() when we require Elixir v1.11.
+  defp fetch_test_supervisor!() do
+    case ExUnit.OnExitHandler.get_supervisor(self()) do
+      {:ok, nil} ->
+        opts = [strategy: :one_for_one, max_restarts: 1_000_000, max_seconds: 1]
+        {:ok, sup} = Supervisor.start_link([], opts)
+        ExUnit.OnExitHandler.put_supervisor(self(), sup)
+        sup
+
+      {:ok, sup} ->
+        sup
+
+      :error ->
+        raise ArgumentError, "fetch_test_supervisor!/0 can only be invoked from the test process"
     end
   end
 
