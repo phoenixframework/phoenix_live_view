@@ -88,8 +88,6 @@ defmodule Phoenix.LiveView.Utils do
     %URI{host: host, port: port, scheme: scheme}
   end
 
-
-
   @doc """
   Returns a random ID with valid DOM tokens
   """
