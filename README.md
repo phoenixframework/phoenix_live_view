@@ -86,7 +86,7 @@ anywhere else:
     the modified dynamic content is resent. This alongside diff tracking
     makes it so LiveView only sends a few bytes on every update, instead
     of sending kilobytes on every other user interaction - which would
-    be detrimental to the user experience;
+    be detrimental to the user experience.
 
 Finally, LiveView has been used by many developers and companies around
 the world, which helped us close the gaps in our feature set and make
