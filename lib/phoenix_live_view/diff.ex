@@ -293,10 +293,10 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, entry, Map.get(children, counter), pending_components, components)
 
         diff =
-          if serialized do
-            Map.put(diff, counter, serialized)
-          else
-            diff
+          case serialized do
+            nil -> diff
+            map when map == %{} -> diff
+            _ -> Map.put(diff, counter, serialized)
           end
 
         children =
@@ -465,9 +465,13 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
         socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-        {socket, pending_components, Map.put(component_diffs, cid, diff), components}
+        if diff == %{} do
+          {socket, pending_components, component_diffs, components}
+        else
+          {socket, pending_components, Map.put(component_diffs, cid, diff), components}
+        end
       else
-        {socket, pending_components, Map.put(component_diffs, cid, %{}), components}
+        {socket, pending_components, component_diffs, components}
       end
 
     id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
