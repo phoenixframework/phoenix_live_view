@@ -532,7 +532,7 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
 
-    test "fill in multile checkbox", %{live: view} do
+    test "fill in multiple checkbox", %{live: view} do
       assert_raise ArgumentError,
                    "value for checkbox \"hello[multiple-checkbox][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
                    fn ->
@@ -562,7 +562,7 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
 
-    test "fill in multile select", %{live: view} do
+    test "fill in multiple select", %{live: view} do
       assert_raise ArgumentError,
                    "value for multiple select \"hello[multiple-select][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
                    fn ->
