@@ -465,7 +465,7 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
         socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-        if diff == %{} do
+        if (diff == %{} && !new?) do
           {socket, pending_components, component_diffs, components}
         else
           {socket, pending_components, Map.put(component_diffs, cid, diff), components}
