@@ -301,7 +301,7 @@ defmodule Phoenix.LiveView do
   The change tracking also works when rendering other templates as
   long as they are also `.leex` templates:
 
-      <%= render "child_template.html", assigns %>
+      <%= render "child_template.html", socket: @socket, child: @child %>
 
   The assign tracking feature also implies that you MUST avoid performing
   direct operations in the template. For example, if you perform a database
@@ -359,10 +359,6 @@ defmodule Phoenix.LiveView do
 
       <%= sum(@x, @y) %>
 
-  Or explicitly precompute the assign in your LiveView:
-
-      assign(socket, sum: socket.assigns.x + socket.assigns.y)
-
   Similarly, **do not** define variables at the top of your `render` function:
 
       def render(assigns) do
@@ -373,10 +369,13 @@ defmodule Phoenix.LiveView do
         """
       end
 
-  If you access your assigns outside of the template, then LiveView can no
-  longer do change tracking. However this restriction only applies to LiveView's
-  render. If you have a helper function that emits `~L`, then using variables
-  is fine:
+  Instead explicitly precompute the assign in your LiveView, outside of render:
+
+      assign(socket, sum: socket.assigns.x + socket.assigns.y)
+
+  Generally speaking, avoid accessing variables, including the `assigns` variable,
+  inside LiveViews. However, if the `.leex` template or `~L` sigil exists outside
+  of the LiveView, such as helpers functions, then using variables is fine:
 
       def title(title, small) do
         ~L"""
@@ -911,7 +910,7 @@ defmodule Phoenix.LiveView do
   We can render another template directly from a LiveView template by simply
   calling `render`:
 
-      render SomeView, "child_template.html", assigns
+      render SomeView, "child_template.html", socket: @socket, child: @child
 
   Where `SomeView` is a regular `Phoenix.View`, typically defined in
   `lib/my_app_web/views/some_view.ex` and "child_template.html" is defined
