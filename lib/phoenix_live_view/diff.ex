@@ -457,7 +457,7 @@ defmodule Phoenix.LiveView.Diff do
   defp render_component(socket, id, cid, new?, pending_components, component_diffs, components) do
     {component, _} = id
 
-    {socket, pending_components, component_diffs, {id_to_components, cid_to_ids, uuids}} =
+    {socket, pending_components, diff, {id_to_components, cid_to_ids, uuids}} =
       if new? or Utils.changed?(socket) do
         rendered = Utils.to_rendered(socket, component)
 
@@ -465,9 +465,17 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, socket.fingerprints, pending_components, components)
 
         socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-        {socket, pending_components, Map.put(component_diffs, cid, diff), components}
+
+        {socket, pending_components, diff, components}
       else
-        {socket, pending_components, Map.put(component_diffs, cid, %{}), components}
+        {socket, pending_components, %{}, components}
+      end
+
+    component_diffs =
+      if diff != %{} or new? do
+        Map.put(component_diffs, cid, diff)
+      else
+        component_diffs
       end
 
     id_to_components = Map.put(id_to_components, id, dump_component(socket, cid))
