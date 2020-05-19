@@ -629,8 +629,8 @@ defmodule Phoenix.LiveView.Channel do
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
 
-    url = Map.fetch!(params, "url")
     # Optional parameter handling
+    url = params["url"]
     connect_params = params["params"]
 
     case params do
