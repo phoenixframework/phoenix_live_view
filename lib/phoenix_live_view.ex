@@ -375,7 +375,7 @@ defmodule Phoenix.LiveView do
 
   Generally speaking, avoid accessing variables inside LiveViews. This also applies
   to the `assigns` variable, except when rendering another .leex template. In such
-  cases, it is ok to pass the whole assigns, as LiveView will continue perform
+  cases, it is ok to pass the whole assigns, as LiveView will continue to perform
   change tracking in the called template:
 
       <%= render "sidebar.html", assigns %>
