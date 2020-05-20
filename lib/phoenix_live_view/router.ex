@@ -48,11 +48,15 @@ defmodule Phoenix.LiveView.Router do
   The current action will always be available inside the LiveView as
   the `@live_action` assign. `@live_action` will be `nil`
   if no action is given on the route definition.
+
   ## Options
 
-    * `:session` - a map of strings keys and values to be merged into the session.
-      May also be a "MFArgs" tuple that will receive the connection to compute
-      the session.
+    * `:session` - a map to be merged into the session, for example: `%{"my_key" => 123}`.
+      The map keys must be strings.
+      
+      Can also be a "MFA" (module, function, arguments) tuple. That function will receive
+      the connection and should return a map (with string keys) to be merged into the session.
+      For example, `{MyModule, :my_function, []}` means `MyModule.my_function(conn)` is called.
 
     * `:layout` - the optional tuple for specifying a layout to render the
       LiveView. If set, this option will replace the current root layout.
