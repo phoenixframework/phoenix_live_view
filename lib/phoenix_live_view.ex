@@ -791,7 +791,7 @@ defmodule Phoenix.LiveView do
   Then the `c:mount/3` callback of your LiveView should execute those same
   verifications:
 
-      def mount(params, %{"user_id" => user_id} = session, socket) do
+      def mount(params, %{"user_id" => user_id} = _session, socket) do
         socket = assign(socket, current_user: Accounts.get_user!(user_id))
 
         socket =
@@ -820,7 +820,7 @@ defmodule Phoenix.LiveView do
       defmodule MyAppWeb.LiveHelpers do
         import Phoenix.LiveView
 
-        def assign_defaults(session, socket) do
+        def assign_defaults(%{"user_id" => user_id}, socket) do
           socket = assign(socket, current_user: Accounts.get_user!(user_id))
 
           if socket.assigns.current_user.confirmed_at do
@@ -836,7 +836,7 @@ defmodule Phoenix.LiveView do
   `mount`. You can address this by using the `assign_new` function, that will
   reuse any of the connection assigns from the HTTP request:
 
-      def assign_defaults(session, socket) do
+      def assign_defaults(%{"user_id" => user_id}, socket) do
         socket = assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)
 
         if socket.assigns.current_user.confirmed_at do
