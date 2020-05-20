@@ -51,7 +51,7 @@ defmodule Phoenix.LiveView.Router do
   ## Options
 
     * `:session` - a map of strings keys and values to be merged into the session.
-      Maybe also be a "MFArgs" tuple that will receive the connection to compute
+      May also be a "MFArgs" tuple that will receive the connection to compute
       the session.
 
     * `:layout` - the optional tuple for specifying a layout to render the
