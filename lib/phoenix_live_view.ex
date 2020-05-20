@@ -812,7 +812,7 @@ defmodule Phoenix.LiveView do
       import MyAppWeb.LiveHelpers
 
       def mount(params, session, socket) do
-        {:ok, assign_default(session, socket)}
+        {:ok, assign_defaults(session, socket)}
       end
 
   where:
