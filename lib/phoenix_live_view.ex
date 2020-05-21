@@ -1435,6 +1435,10 @@ defmodule Phoenix.LiveView do
         </div>
       </form>
 
+  Additionally, we strongly recommend including a unique HTML "id" attribute on the form.
+  When DOM siblings change, elements without an ID will be replaced rather than moved,
+  which can cause issues such as form fields losing focus.
+
   ### Form Recovery following crashes or disconnects
 
   By default, all forms marked with `phx-change` will recover input values
