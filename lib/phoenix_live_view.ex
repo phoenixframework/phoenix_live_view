@@ -620,12 +620,6 @@ defmodule Phoenix.LiveView do
           end
       end
 
-  ### Avoiding issues by adding a form ID
-  
-  We strongly recommend putting a unique HTML "id" attribute on forms.
-  
-  When DOM siblings change, elements without an ID will be replaced rather than moved, which can cause issues such as form fields losing focus.
-
   ### Number inputs
 
   Number inputs are a special case in LiveView forms. On programmatic updates,
@@ -1440,6 +1434,10 @@ defmodule Phoenix.LiveView do
           <input type="text" name="text" value="<%= @text %>">
         </div>
       </form>
+
+  Additionally, we strongly recommend including a unique HTML "id" attribute on the form.
+  When DOM siblings change, elements without an ID will be replaced rather than moved,
+  which can cause issues such as form fields losing focus.
 
   ### Form Recovery following crashes or disconnects
 
