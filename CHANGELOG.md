@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13-dev
+## 0.13.0 (2020-05-21)
 
 ### Backwards incompatible changes
   - No longer send event metadata by default. Metadata is now opt-in and user defined at the `LiveSocket` level.
