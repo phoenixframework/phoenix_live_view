@@ -138,9 +138,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "session" => view.session_token,
       "static" => view.static_token,
       "url" => url,
-      "params" => view.connect_params,
-      "caller" => state.caller,
-      "joins" => 0
+      "params" => Map.put(view.connect_params, "_mounts", 0),
+      "caller" => state.caller
     }
 
     spec = %{

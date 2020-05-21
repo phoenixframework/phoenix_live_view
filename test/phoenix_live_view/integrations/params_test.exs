@@ -285,7 +285,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       {:ok, counter_live, _html} =
         conn |> put_connect_params(%{"connect1" => "1"}) |> live("/counter/123")
 
-      assert render(counter_live) =~ escape(~s|connect: %{"connect1" => "1"}|)
+      assert render(counter_live) =~ escape(~s|connect: %{"_mounts" => 0, "connect1" => "1"}|)
     end
   end
 

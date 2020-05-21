@@ -1456,8 +1456,7 @@ export class View {
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash,
-        joins: this.joinCount
+        flash: this.flash
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
@@ -1472,7 +1471,8 @@ export class View {
       DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
       .map(node => node.src || node.href).filter(url => typeof(url) === "string")
 
-    if(manifest.length > 0){ params["_cache_static_manifest_latest"] = manifest }
+    if(manifest.length > 0){ params["_track_static"] = manifest }
+    params["_mounts"] = this.joinCount
 
     return params
   }
