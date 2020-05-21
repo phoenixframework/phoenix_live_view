@@ -57,6 +57,7 @@
   - Add support for tracking static asset changes on the page across cold server deploys
   - Add support for passing a `@myself` target to a hook's `pushEventTo` target
   - Add configurable metadata for events with new `metadata` LiveSocket option
+  - Add `"_mounts"` key in connect params which specifies the number of times a LiveView has mounted
 
 ## 0.12.1 (2020-04-19)
 
@@ -139,13 +140,13 @@ The new implementation will check there is a button at `#term .buttons a`, with 
 ### Backwards incompatible changes
   - Remove `socket.assigns` during render to avoid change tracking bugs. If you were previously relying on passing `@socket` to functions then referencing socket assigns, pass the explicit assign instead to your functions from the template.
   - Removed `assets/css/live_view.css`. If you want to show a progress bar then in `app.css`, replace
-  
-  
+
+
     ```diff
     - @import "../../../../deps/phoenix_live_view/assets/css/live_view.css";
     + @import "../node_modules/nprogress/nprogress.css";
     ```
-    
+
     and add `nprogress` to `assets/package.json`. Full details in the [Progress animation guide](https://hexdocs.pm/phoenix_live_view/0.11.0/installation.html#progress-animation)
 
 ### Bug fixes
