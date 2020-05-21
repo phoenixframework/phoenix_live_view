@@ -586,15 +586,14 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verify_flash(endpoint, verified, params) do
-    flash_token = params["flash"]
+  defp verify_flash(endpoint, verified, flash_token, connect_params) do
     verified_flash = verified[:flash]
 
     # verified_flash is fetched from the disconnected render.
     # params["flash"] is sent on live redirects and therefore has higher priority.
     cond do
       flash_token -> Utils.verify_flash(endpoint, flash_token)
-      params["joins"] == 0 && verified_flash -> verified_flash
+      connect_params["_mounts"] == 0 && verified_flash -> verified_flash
       true -> %{}
     end
   end
@@ -621,17 +620,17 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
+    # Optional parameter handling
+    url = params["url"]
+    connect_params = params["params"]
+
     # Optional verified parts
     router = verified[:router]
-    flash = verify_flash(endpoint, verified, params)
+    flash = verify_flash(endpoint, verified, params["flash"], connect_params)
     socket_session = connect_info[:session] || %{}
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
-
-    # Optional parameter handling
-    url = params["url"]
-    connect_params = params["params"]
 
     case params do
       %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])

@@ -2030,6 +2030,19 @@ defmodule Phoenix.LiveView do
   only remain available during mount. `nil` is returned when called in a
   disconnected state and a `RuntimeError` is raised if called after mount.
 
+  ## Reserved params
+
+  The following params have special meaning in LiveView:
+
+    * "_csrf_token" - the CSRF Token which must be explicitly set by the user
+      when connecting
+    * "_mounts" - the number of times the current LiveView is mounted.
+      It is 0 on first mount, then increases on each reconnect. It resets
+      when navigating away from the current LiveView or on errors
+    * "_track_static" - set automatically with a list of all href/src from
+      tags with the "phx-track-static" annotation in them. If there are no
+      such tags, nothing is sent
+
   ## Examples
 
       def mount(_params, _session, socket) do
@@ -2132,7 +2145,7 @@ defmodule Phoenix.LiveView do
     if connect_params = private[:connect_params] do
       connected?(socket) and
         static_changed?(
-          connect_params["_cache_static_manifest_latest"],
+          connect_params["_track_static"],
           endpoint.config(:cache_static_manifest_latest)
         )
     else
