@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.4.17 or ~> 1.5.0"},
       {:phoenix_html, "~> 2.14"},
       {:jason, "~> 1.0", optional: true},
-      {:ex_doc, "~> 0.20", only: :docs},
+      {:ex_doc, "~> 0.22", only: :docs},
       {:floki, "~> 0.24.0", only: :test},
       {:html_entities, ">= 0.0.0", only: :test}
     ]
