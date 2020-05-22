@@ -262,7 +262,7 @@ defmodule Phoenix.LiveView do
 
   In all cases, each assign in the template will be accessible as `@assign`.
 
-  ## Assigns and LiveEEx Templates
+  ## Assigns and LiveEEx templates
 
   All of the data in a LiveView is stored in the socket as assigns.
   The `assign/2` and `assign/3` functions help store those values.
@@ -1175,7 +1175,7 @@ defmodule Phoenix.LiveView do
   closely with your router, guaranteeing you can only navigate to known
   routes.
 
-  ## Live Layouts
+  ## Live layouts
 
   When working with LiveViews, there are usually three layouts to be
   considered:
@@ -1306,7 +1306,7 @@ defmodule Phoenix.LiveView do
         {:ok socket}
       end
 
-  ## JavaScript Client Specific
+  ## JavaScript client specific
 
   As seen earlier, you start by instantiating a single LiveSocket instance to
   enable LiveView client/server interaction, for example:
