@@ -29,25 +29,25 @@ defmodule Phoenix.LiveView.Diff do
 
   It only accepts a full render diff.
   """
-  def to_iodata(map) do
-    to_iodata(map, Map.get(map, @components, %{}))
+  def to_iodata(map, component_mapper \\ fn _cid, content -> content end) do
+    to_iodata(map, Map.get(map, @components, %{}), component_mapper)
   end
 
-  defp to_iodata(%{@dynamics => dynamics, @static => static}, components) do
+  defp to_iodata(%{@dynamics => dynamics, @static => static}, components, mapper) do
     for dynamic <- dynamics do
-      comprehension_to_iodata(find_static(static, components), dynamic, components)
+      many_to_iodata(static, dynamic, components, mapper)
     end
   end
 
-  defp to_iodata(%{@static => static} = parts, components) do
-    parts_to_iodata(find_static(static, components), parts, 0, components)
+  defp to_iodata(%{@static => static} = parts, components, mapper) do
+    one_to_iodata(find_static(static, components), parts, 0, components, mapper)
   end
 
-  defp to_iodata(int, components) when is_integer(int) do
-    to_iodata(Map.fetch!(components, int), components)
+  defp to_iodata(cid, components, mapper) when is_integer(cid) do
+    mapper.(cid, to_iodata(Map.fetch!(components, cid), components, mapper))
   end
 
-  defp to_iodata(binary, _components) when is_binary(binary) do
+  defp to_iodata(binary, _components, _mapper) when is_binary(binary) do
     binary
   end
 
@@ -57,28 +57,28 @@ defmodule Phoenix.LiveView.Diff do
   defp find_static(list, _components) when is_list(list),
     do: list
 
-  defp parts_to_iodata([last], _parts, _counter, _components) do
+  defp one_to_iodata([last], _parts, _counter, _components, _mapper) do
     [last]
   end
 
-  defp parts_to_iodata([head | tail], parts, counter, components) do
+  defp one_to_iodata([head | tail], parts, counter, components, mapper) do
     [
       head,
-      to_iodata(Map.fetch!(parts, counter), components)
-      | parts_to_iodata(tail, parts, counter + 1, components)
+      to_iodata(Map.fetch!(parts, counter), components, mapper)
+      | one_to_iodata(tail, parts, counter + 1, components, mapper)
     ]
   end
 
-  defp comprehension_to_iodata([static_head | static_tail], [dyn_head | dyn_tail], components) do
+  defp many_to_iodata([shead | stail], [dhead | dtail], components, mapper) do
     [
-      static_head,
-      to_iodata(dyn_head, components)
-      | comprehension_to_iodata(static_tail, dyn_tail, components)
+      shead,
+      to_iodata(dhead, components, mapper)
+      | many_to_iodata(stail, dtail, components, mapper)
     ]
   end
 
-  defp comprehension_to_iodata([static_head], [], _components) do
-    [static_head]
+  defp many_to_iodata([shead], [], _components, _mapper) do
+    [shead]
   end
 
   @doc """
@@ -281,7 +281,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {dynamics, {pending, components}} =
-      comprehension_to_iodata(socket, dynamics, pending, components)
+      traverse_comprehension(socket, dynamics, pending, components)
 
     {%{@dynamics => dynamics}, fingerprint, pending, components}
   end
@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {dynamics, {pending, components}} =
-      comprehension_to_iodata(socket, dynamics, pending, components)
+      traverse_comprehension(socket, dynamics, pending, components)
 
     {%{@dynamics => dynamics, @static => static}, fingerprint, pending, components}
   end
@@ -336,7 +336,7 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  defp comprehension_to_iodata(socket, dynamics, pending, components) do
+  defp traverse_comprehension(socket, dynamics, pending, components) do
     Enum.map_reduce(dynamics, {pending, components}, fn list, acc ->
       Enum.map_reduce(list, acc, fn rendered, {pending, components} ->
         {diff, _, pending, components} =

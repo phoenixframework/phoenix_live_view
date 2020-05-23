@@ -3,7 +3,6 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   @phx_component "data-phx-component"
   @static :s
-  @dynamics :d
   @components :c
 
   def ensure_loaded! do
@@ -117,7 +116,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     end)
   end
 
-  # Diff rendering
+  # Diff merging
 
   def merge_diff(rendered, diff) do
     rendered = deep_merge(rendered, diff)
@@ -152,52 +151,21 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp find_static(list, _components) when is_list(list),
     do: list
 
-  def render_diff(rendered) do
-    render_diff(rendered, Map.get(rendered, @components, %{}))
-  end
+  # Diff rendering
 
-  def render_diff(rendered, components) do
+  def render_diff(rendered) do
     rendered
-    |> to_output_buffer(components, [])
-    |> Enum.reverse()
+    |> Phoenix.LiveView.Diff.to_iodata(fn cid, contents ->
+      contents
+      |> IO.iodata_to_binary()
+      |> parse()
+      |> List.wrap()
+      |> Enum.map(walk_fun(&inject_cid_attr(&1, cid)))
+      |> to_html()
+    end)
     |> IO.iodata_to_binary()
     |> parse()
     |> List.wrap()
-  end
-
-  # for comprehension
-  defp to_output_buffer(%{@dynamics => for_dynamics, @static => statics}, components, acc) do
-    Enum.reduce(for_dynamics, acc, fn dynamics, acc ->
-      dynamics
-      |> Enum.with_index()
-      |> Enum.into(%{@static => statics}, fn {val, key} -> {key, val} end)
-      |> to_output_buffer(components, acc)
-    end)
-  end
-
-  defp to_output_buffer(%{@static => [head | tail]} = rendered, components, acc) do
-    tail
-    |> Enum.with_index(0)
-    |> Enum.reduce([head | acc], fn {static, index}, acc ->
-      [static | dynamic_to_buffer(rendered[index], components, acc)]
-    end)
-  end
-
-  defp dynamic_to_buffer(%{} = rendered, components, acc) do
-    to_output_buffer(rendered, components, []) ++ acc
-  end
-
-  defp dynamic_to_buffer(str, _components, acc) when is_binary(str), do: [str | acc]
-
-  defp dynamic_to_buffer(cid, components, acc) when is_integer(cid) do
-    html_with_cids =
-      components
-      |> Map.fetch!(cid)
-      |> render_diff(components)
-      |> Enum.map(walk_fun(&inject_cid_attr(&1, cid)))
-      |> to_html()
-
-    [html_with_cids | acc]
   end
 
   defp inject_cid_attr({tag, attrs, children}, cid) do
