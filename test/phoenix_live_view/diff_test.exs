@@ -810,7 +810,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "another", 1 => "world", :s => ["FROM ", " ", "\n"]}
+                 1 => %{0 => "another", 1 => "world", :s => 0}
                }
              }
 
@@ -888,7 +888,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["FROM ", " ", "\n"]
+                   :s => 0
                  }
                },
                :s => ["<div>\n  ", "\n</div>\n"]
@@ -953,17 +953,17 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["FROM ", " ", "\n"]
+                   :s => 0
                  },
                  2 => %{
                    0 => "index_0",
                    1 => "world",
-                   :s => ["FROM ", " ", "\n"]
+                   :s => 0
                  },
                  3 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["FROM ", " ", "\n"]
+                   :s => 2
                  }
                },
                :s => ["<div>\n  ", "\n</div>\n"]
@@ -1026,7 +1026,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["FROM ", " ", "\n"]
+                   :s => 0
                  }
                },
                :s => ["<div>\n  ", "\n</div>\n"]

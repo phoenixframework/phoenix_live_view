@@ -35,12 +35,12 @@ defmodule Phoenix.LiveView.Diff do
 
   defp to_iodata(%{@dynamics => dynamics, @static => static}, components) do
     for dynamic <- dynamics do
-      comprehension_to_iodata(static, dynamic, components)
+      comprehension_to_iodata(find_static(static, components), dynamic, components)
     end
   end
 
   defp to_iodata(%{@static => static} = parts, components) do
-    parts_to_iodata(static, parts, 0, components)
+    parts_to_iodata(find_static(static, components), parts, 0, components)
   end
 
   defp to_iodata(int, components) when is_integer(int) do
@@ -50,6 +50,12 @@ defmodule Phoenix.LiveView.Diff do
   defp to_iodata(binary, _components) when is_binary(binary) do
     binary
   end
+
+  defp find_static(cid, components) when is_integer(cid),
+    do: find_static(components[cid][@static], components)
+
+  defp find_static(list, _components) when is_list(list),
+    do: list
 
   defp parts_to_iodata([last], _parts, _counter, _components) do
     [last]
@@ -476,7 +482,6 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, socket.fingerprints, pending, components)
 
         socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-
         {socket, pending, diff, components}
       else
         {socket, pending, %{}, components}
@@ -484,13 +489,39 @@ defmodule Phoenix.LiveView.Diff do
 
     component_diffs =
       if diff != %{} or new? do
-        Map.put(component_diffs, cid, diff)
+        Map.put(component_diffs, cid, reuse_static(diff, socket, component, id_to_components))
       else
         component_diffs
       end
 
     id_to_components = put_cid(id_to_components, component, id, dump_component(socket, cid))
     {pending, component_diffs, {id_to_components, cid_to_ids, uuids}}
+  end
+
+  @attempts 3
+
+  # If the component has a static part, we see if other component has the same
+  # static part. If so, we will simply point to the static part of the other cid.
+  # We don't want to traverse the all components, so we will try it @attempts times.
+  defp reuse_static(diff, socket, component, id_to_components) do
+    with %{@static => _} <- diff,
+         {print, _} = socket.fingerprints,
+         iterator = :maps.iterator(Map.fetch!(id_to_components, component)),
+         {:ok, cid} <- find_same_component_print(print, iterator, @attempts) do
+      Map.put(diff, @static, cid)
+    else
+      _ -> diff
+    end
+  end
+
+  defp find_same_component_print(_print, _iterator, 0), do: :none
+
+  defp find_same_component_print(print, iterator, attempts) do
+    case :maps.next(iterator) do
+      {_, {cid, _, _, {^print, _}}, _} -> {:ok, cid}
+      {_, _, iterator} -> find_same_component_print(print, iterator, attempts - 1)
+      :none -> :none
+    end
   end
 
   defp put_cid(id_to_components, component, id, contents) do

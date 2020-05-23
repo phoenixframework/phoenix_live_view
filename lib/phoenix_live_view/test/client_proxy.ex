@@ -103,7 +103,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         receive do
           {^ref, {:ok, %{rendered: rendered}}} ->
             Process.demonitor(mon_ref, [:flush])
-            {%{view | pid: pid}, rendered}
+            {%{view | pid: pid}, DOM.merge_diff(%{}, rendered)}
 
           {^ref, {:error, %{live_redirect: opts}}} ->
             throw(stop_redirect(state, view.topic, {:live_redirect, opts}))
@@ -478,7 +478,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
-        rendered = DOM.deep_merge(view.rendered, diff)
+        rendered = DOM.merge_diff(view.rendered, diff)
         new_view = %ClientProxy{view | rendered: rendered}
 
         %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}

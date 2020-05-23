@@ -119,6 +119,39 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   # Diff rendering
 
+  def merge_diff(rendered, diff) do
+    rendered = deep_merge(rendered, diff)
+
+    # If we have any component, we need to get the components
+    # sent by the diff and remove any link between components
+    # statics. We cannot let those links reside in the diff
+    # as components can be removed at any time.
+    if components = Map.get(rendered, @components) do
+      components =
+        diff
+        |> Map.get(@components, %{})
+        |> Enum.reduce(components, fn {cid, cdiff}, acc ->
+          case cdiff do
+            %{@static => pointer} when is_integer(pointer) ->
+              put_in(acc[cid][@static], find_static(pointer, acc))
+
+            %{} ->
+              acc
+          end
+        end)
+
+      Map.put(rendered, @components, components)
+    else
+      rendered
+    end
+  end
+
+  defp find_static(cid, components) when is_integer(cid),
+    do: find_static(components[cid][@static], components)
+
+  defp find_static(list, _components) when is_list(list),
+    do: list
+
   def render_diff(rendered) do
     render_diff(rendered, Map.get(rendered, @components, %{}))
   end
