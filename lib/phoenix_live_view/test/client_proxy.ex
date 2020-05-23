@@ -227,27 +227,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, merge_rendered(state, topic, diff)}
   end
 
-  def handle_info(%Phoenix.Socket.Reply{} = reply, state) do
-    %{ref: ref, payload: payload, topic: topic} = reply
-
+  def handle_info(%Phoenix.Socket.Reply{ref: ref} = reply, state) do
     case fetch_reply(state, ref) do
-      {:ok, {from, _pid}} ->
-        state = drop_reply(state, ref)
-
-        case payload do
-          %{live_redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:live_redirect, opts})
-
-          %{live_patch: %{to: _to} = opts} ->
-            send_patch(state, topic, opts)
-            {:noreply, render_reply(reply, from, state)}
-
-          %{redirect: %{to: _to} = opts} ->
-            stop_redirect(state, topic, {:redirect, opts})
-
-          %{} ->
-            {:noreply, render_reply(reply, from, state)}
-        end
+      {:ok, {_pid, callback}} ->
+        callback.(reply, drop_reply(state, ref))
 
       :error ->
         {:noreply, state}
@@ -328,18 +311,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_patch, topic, path}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    ref = to_string(state.ref + 1)
-
-    send(view.pid, %Phoenix.Socket.Message{
-      join_ref: state.join_ref,
-      topic: view.topic,
-      event: "link",
-      payload: %{"url" => path},
-      ref: ref
-    })
-
+    state = push_with_reply(state, from, view, "link", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
-    {:noreply, put_reply(%{state | ref: state.ref + 1}, ref, from, view.pid)}
+    {:noreply, state}
   end
 
   defp drop_view_by_id(state, id, reason) do
@@ -358,19 +332,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           views: Map.delete(state.views, view.topic),
           pids: Map.delete(state.pids, view.pid)
       },
-      view.pid,
-      reason
+      view.pid
     )
   end
 
-  defp flush_replies(state, pid, reason) do
+  defp flush_replies(state, pid) do
     Enum.reduce(state.replies, state, fn
-      {ref, {from, ^pid}}, acc ->
-        GenServer.reply(from, {:error, reason})
-        drop_reply(acc, ref)
-
-      {_ref, {_from, _pid}}, acc ->
-        acc
+      {ref, {^pid, _callback}}, acc -> drop_reply(acc, ref)
+      {_ref, {_pid, _callback}}, acc -> acc
     end)
   end
 
@@ -378,8 +347,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     Map.fetch(state.replies, ref)
   end
 
-  defp put_reply(state, ref, from, pid) do
-    %{state | replies: Map.put(state.replies, ref, {from, pid})}
+  defp put_reply(state, ref, pid, callback) do
+    %{state | replies: Map.put(state.replies, ref, {pid, callback})}
   end
 
   defp drop_reply(state, ref) do
@@ -387,14 +356,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp put_child(state, %ClientProxy{} = parent, id, session) do
-    update_in(state, [:views, parent.topic], fn %ClientProxy{} = parent ->
+    update_in(state.views[parent.topic], fn %ClientProxy{} = parent ->
       %ClientProxy{parent | children: [{id, session} | parent.children]}
     end)
   end
 
   defp drop_child(state, %ClientProxy{} = parent, id, reason) do
-    state
-    |> update_in([:views, parent.topic], fn %ClientProxy{} = parent ->
+    update_in(state.views[parent.topic], fn %ClientProxy{} = parent ->
       new_children = Enum.reject(parent.children, fn {cid, _session} -> id == cid end)
       %ClientProxy{parent | children: new_children}
     end)
@@ -425,7 +393,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
       {new_html, [_ | _] = deleted_cids} ->
-        push(%{state | html: new_html}, view, "cids_destroyed", %{"cids" => deleted_cids})
+        topic = view.topic
+
+        %{state | html: new_html}
+        |> push_with_callback(view, "cids_destroyed", %{"cids" => deleted_cids}, fn _, state ->
+          {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, deleted_cids))}
+        end)
 
       {new_html, [] = _deleted_cids} ->
         %{state | html: new_html}
@@ -555,11 +528,32 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp push_with_reply(state, from, view, event, payload) do
+    push_with_callback(state, view, event, payload, fn reply, state ->
+      %{payload: payload, topic: topic} = reply
+
+      case payload do
+        %{live_redirect: %{to: _to} = opts} ->
+          stop_redirect(state, topic, {:live_redirect, opts})
+
+        %{live_patch: %{to: _to} = opts} ->
+          send_patch(state, topic, opts)
+          {:noreply, render_reply(reply, from, state)}
+
+        %{redirect: %{to: _to} = opts} ->
+          stop_redirect(state, topic, {:redirect, opts})
+
+        %{} ->
+          {:noreply, render_reply(reply, from, state)}
+      end
+    end)
+  end
+
+  defp push_with_callback(state, view, event, payload, callback) do
     ref = to_string(state.ref + 1)
 
     state
     |> push(view, event, payload)
-    |> put_reply(ref, from, view.pid)
+    |> put_reply(ref, view.pid, callback)
   end
 
   def build(attrs) do

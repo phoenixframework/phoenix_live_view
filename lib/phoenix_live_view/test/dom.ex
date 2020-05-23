@@ -151,6 +151,10 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp find_static(list, _components) when is_list(list),
     do: list
 
+  def drop_cids(rendered, cids) do
+    update_in rendered[@components], &Map.drop(&1, cids)
+  end
+
   # Diff rendering
 
   def render_diff(rendered) do
