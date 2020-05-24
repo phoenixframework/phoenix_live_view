@@ -812,7 +812,7 @@ defmodule Phoenix.LiveView do
   
       def live_view do
         quote do
-          # …other stuff…
+          # ...other stuff...
           import MyAppWeb.LiveHelpers
         end
       end
