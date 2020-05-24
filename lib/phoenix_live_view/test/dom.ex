@@ -152,7 +152,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     do: list
 
   def drop_cids(rendered, cids) do
-    update_in rendered[@components], &Map.drop(&1, cids)
+    update_in(rendered[@components], &Map.drop(&1, cids))
   end
 
   # Diff rendering
