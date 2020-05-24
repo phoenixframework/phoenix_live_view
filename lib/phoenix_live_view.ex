@@ -806,16 +806,24 @@ defmodule Phoenix.LiveView do
 
   Given almost all `c:mount/3` actions in your application will have to
   perform these exact steps, we recommend creating a function called
-  `assign_defaults/2` or similar and put it in a module, such as
-  `MyAppWeb.LiveHelpers`, which you will use and import of every LiveView:
-
-      import MyAppWeb.LiveHelpers
+  `assign_defaults/2` or similar, putting it in a new module like
+  `MyAppWeb.LiveHelpers`, and modifying `lib/my_app_web.ex` so all
+  LiveViews automatically import it:
+  
+      def live_view do
+        quote do
+          # ...other stuff...
+          import MyAppWeb.LiveHelpers
+        end
+      end
+      
+  Then make sure to call it in every LiveView's `c:mount/3`:
 
       def mount(params, session, socket) do
         {:ok, assign_defaults(session, socket)}
       end
 
-  where:
+  Where `MyAppWeb.LiveHelpers` can be something like:
 
       defmodule MyAppWeb.LiveHelpers do
         import Phoenix.LiveView
