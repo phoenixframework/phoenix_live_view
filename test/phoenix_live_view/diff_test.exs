@@ -34,7 +34,7 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  defp nested_rendered do
+  defp nested_rendered(changed? \\ true) do
     %Rendered{
       static: ["<h2>", "</h2>", "<span>", "</span>"],
       dynamic: fn _ ->
@@ -42,12 +42,12 @@ defmodule Phoenix.LiveView.DiffTest do
           "hi",
           %Rendered{
             static: ["s1", "s2", "s3"],
-            dynamic: fn _ -> ["abc", "efg"] end,
+            dynamic: fn _ -> if changed?, do: ["abc", "efg"], else: [nil, nil] end,
             fingerprint: 456
           },
           %Rendered{
             static: ["s1", "s2"],
-            dynamic: fn _ -> ["efg"] end,
+            dynamic: fn _ -> if changed?, do: ["efg"], else: [nil] end,
             fingerprint: 789
           }
         ]
@@ -197,6 +197,14 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, diffed_render, _} = render(nested_rendered(), tree)
 
       assert diffed_render == %{0 => "hi", 1 => %{0 => "abc", 1 => "efg"}, 2 => %{0 => "efg"}}
+      assert socket.fingerprints == tree
+    end
+
+    test "does not emit nested %Rendered{}'s if they did not change" do
+      tree = {123, %{2 => {789, %{}}, 1 => {456, %{}}}}
+      {socket, diffed_render, _} = render(nested_rendered(false), tree)
+
+      assert diffed_render == %{0 => "hi"}
       assert socket.fingerprints == tree
     end
 

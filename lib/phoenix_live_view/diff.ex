@@ -313,10 +313,13 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, entry, Map.get(children, counter), pending, components)
 
         diff =
-          case serialized do
-            nil -> diff
-            map when map == %{} -> diff
-            _ -> Map.put(diff, counter, serialized)
+          # If serialized is nil, it means no changes.
+          # If it is an empty map, then it means it is a rendered struct
+          # that did not change, so we don't have to emit it either.
+          if serialized != nil and serialized != %{} do
+            Map.put(diff, counter, serialized)
+          else
+            diff
           end
 
         children =
