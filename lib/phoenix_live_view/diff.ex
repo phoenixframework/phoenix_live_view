@@ -313,10 +313,10 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, entry, Map.get(children, counter), pending, components)
 
         diff =
-          if serialized do
-            Map.put(diff, counter, serialized)
-          else
-            diff
+          case serialized do
+            nil -> diff
+            map when map == %{} -> diff
+            _ -> Map.put(diff, counter, serialized)
           end
 
         children =
