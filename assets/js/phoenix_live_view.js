@@ -1854,7 +1854,10 @@ export class View {
   }
 
   onJoinError(resp){
-    if(resp.redirect || resp.live_redirect){ this.channel.leave() }
+    if(resp.redirect || resp.live_redirect){
+      this.joinPending = false
+      this.channel.leave()
+    }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.log("error", () => ["unable to join", resp])
