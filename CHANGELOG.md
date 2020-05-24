@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1-dev
+
+### Bug fixes
+  - Fix forced page refresh when push_redirect from a live_redirect
+
 ## 0.13.0 (2020-05-21)
 
 ### Backwards incompatible changes
