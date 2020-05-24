@@ -364,6 +364,7 @@ export class LiveSocket {
     this.hooks = opts.hooks || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
+    this.domCallbacks = opts.dom || {onBeforeElUpdated: closure()}
     window.addEventListener("unload", e => {
       this.unloaded = true
     })
@@ -421,6 +422,8 @@ export class LiveSocket {
   disconnect(callback){ this.socket.disconnect(callback) }
 
   // private
+
+  triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
   time(name, func){
     if(!this.isProfileEnabled() || !console.time){ return func() }
@@ -1645,6 +1648,7 @@ export class View {
     patch.after("phxChildAdded", el => phxChildrenAdded = true)
 
     patch.before("updated", (fromEl, toEl) => {
+      this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
       let hook = this.getHook(fromEl)
       let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
       if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
