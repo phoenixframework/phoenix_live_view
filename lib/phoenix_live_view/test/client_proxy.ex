@@ -166,7 +166,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:sync_render, operation, topic_or_element, from}, state) do
+  def handle_info({:sync_render_element, operation, topic_or_element, from}, state) do
     view = fetch_view_by_topic!(state, proxy_topic(topic_or_element))
     result = state |> root(view) |> select_node(topic_or_element)
 
@@ -180,6 +180,49 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     GenServer.reply(from, reply)
     {:noreply, state}
+  end
+
+  def handle_info({:sync_render_event, topic_or_element, type, value, from}, state) do
+    result =
+      case topic_or_element do
+        {topic, event} ->
+          view = fetch_view_by_topic!(state, topic)
+          {view, nil, event, stringify(value, & &1)}
+
+        %Element{} = element ->
+          view = fetch_view_by_topic!(state, proxy_topic(element))
+          root = root(state, view)
+
+          with {:ok, node} <- select_node(root, element),
+               :ok <- maybe_enabled(type, node, element),
+               {:ok, event} <- maybe_event(type, node, element),
+               {:ok, extra} <- maybe_values(type, node, element),
+               {:ok, cid} <- maybe_cid(root, node) do
+            {view, cid, event, DOM.deep_merge(extra, stringify_type(type, value))}
+          end
+      end
+
+    case result do
+      {view, cid, event, values} ->
+        payload = %{
+          "cid" => cid,
+          "type" => Atom.to_string(type),
+          "event" => event,
+          "value" => encode(type, values)
+        }
+
+        {:noreply, push_with_reply(state, from, view, "event", payload)}
+
+      {:patch, topic, path} ->
+        handle_call({:render_patch, topic, path}, from, state)
+
+      {:stop, topic, reason} ->
+        stop_redirect(state, topic, reason)
+
+      {:error, _, message} ->
+        GenServer.reply(from, {:raise, ArgumentError.exception(message)})
+        {:noreply, state}
+    end
   end
 
   def handle_info(
@@ -276,54 +319,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render, operation, topic_or_element}, from, state) do
+  def handle_call({:render_element, operation, topic_or_element}, from, state) do
     topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render, operation, topic_or_element, from})
+    send(self(), {:sync_render_element, operation, topic_or_element, from})
     {:noreply, state}
   end
 
   def handle_call({:render_event, topic_or_element, type, value}, from, state) do
-    result =
-      case topic_or_element do
-        {topic, event} ->
-          view = fetch_view_by_topic!(state, topic)
-          {view, nil, event, stringify(value, & &1)}
-
-        %Element{} = element ->
-          view = fetch_view_by_topic!(state, proxy_topic(element))
-          root = root(state, view)
-
-          with {:ok, node} <- select_node(root, element),
-               :ok <- maybe_enabled(type, node, element),
-               {:ok, event} <- maybe_event(type, node, element),
-               {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, DOM.deep_merge(extra, stringify_type(type, value))}
-          end
-      end
-
-    case result do
-      {view, cid, event, values} ->
-        payload = %{
-          "cid" => cid,
-          "type" => Atom.to_string(type),
-          "event" => event,
-          "value" => encode(type, values)
-        }
-
-        {:noreply, push_with_reply(state, from, view, "event", payload)}
-
-      {:patch, topic, path} ->
-        handle_call({:render_patch, topic, path}, from, state)
-
-      {:stop, topic, reason} ->
-        stop_redirect(state, topic, reason)
-
-      {:error, _, message} ->
-        {:reply, {:raise, ArgumentError.exception(message)}, state}
-    end
+    topic = proxy_topic(topic_or_element)
+    %{pid: pid} = fetch_view_by_topic!(state, topic)
+    :ok = Phoenix.LiveView.Channel.ping(pid)
+    send(self(), {:sync_render_event, topic_or_element, type, value, from})
+    {:noreply, state}
   end
 
   def handle_call({:render_patch, topic, path}, from, state) do
@@ -583,7 +592,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   ## Element helpers
 
-  defp proxy_topic(topic) when is_binary(topic), do: topic
+  defp proxy_topic({topic, _}) when is_binary(topic), do: topic
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   defp root(state, view), do: DOM.by_id!(state.html, view.id)

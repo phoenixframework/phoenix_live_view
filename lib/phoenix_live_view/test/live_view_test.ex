@@ -814,7 +814,7 @@ defmodule Phoenix.LiveViewTest do
 
   """
   def has_element?(%Element{} = element) do
-    call(element, {:render, :has_element?, element})
+    call(element, {:render_element, :has_element?, element})
   end
 
   @doc """
@@ -847,20 +847,15 @@ defmodule Phoenix.LiveViewTest do
              |> render() == "Snooze"
   """
   def render(%View{} = view) do
-    render(view, proxy_topic(view))
+    render(view, {proxy_topic(view), "render"})
   end
 
   def render(%Element{} = element) do
     render(element, element)
   end
 
-  def render([%View{} = view | path]) do
-    IO.warn("invoking render/1 with a path is deprecated, pass a live_view or an element instead")
-    render(view, element(view, Path.join(path, " ")))
-  end
-
   defp render(view_or_element, topic_or_element) do
-    call(view_or_element, {:render, :find_element, topic_or_element}) |> DOM.to_html()
+    call(view_or_element, {:render_element, :find_element, topic_or_element}) |> DOM.to_html()
   end
 
   defp call(view_or_element, tuple) do

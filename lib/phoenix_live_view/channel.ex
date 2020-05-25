@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def ping(pid) do
-    GenServer.call(pid, {@prefix, :ping})
+    GenServer.call(pid, {@prefix, :ping}, :infinity)
   end
 
   @impl true
