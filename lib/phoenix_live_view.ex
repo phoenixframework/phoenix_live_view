@@ -450,7 +450,7 @@ defmodule Phoenix.LiveView do
 
     * When receiving a map on the server, the payload will also include user defined metadata
       of the client event, or an empty map if none is set. For example, the following `LiveSocket`
-      client option would send the coordiantes and `altKey` information for all clicks:
+      client option would send the coordinates and `altKey` information for all clicks:
 
           let liveSocket = new LiveSocket("/live", Socket, {
             params: {_csrf_token: csrfToken},
@@ -662,7 +662,7 @@ defmodule Phoenix.LiveView do
 
       %{"key" => "Escape"}
 
-  To capture additional user-defined meatadata, the `metadata` option for keydown events
+  To capture additional user-defined metadata, the `metadata` option for keydown events
   may be provided to the `LiveSocket` constructor. For example:
 
       let liveSocket = new LiveSocket("/live", Socket, {
@@ -744,7 +744,7 @@ defmodule Phoenix.LiveView do
 
   Unless held-down keys are required, a better approach is generally to use
   `phx-keyup` bindings which only trigger on key up, thereby being self-limiting.
-  However, `phx-keydown` is useful for games and other usecases where a constant
+  However, `phx-keydown` is useful for games and other use cases where a constant
   press on a key is desired. In such cases, throttle should always be used.
 
   #### Debounce and Throttle special behavior
@@ -809,14 +809,14 @@ defmodule Phoenix.LiveView do
   `assign_defaults/2` or similar, putting it in a new module like
   `MyAppWeb.LiveHelpers`, and modifying `lib/my_app_web.ex` so all
   LiveViews automatically import it:
-  
+
       def live_view do
         quote do
           # ...other stuff...
           import MyAppWeb.LiveHelpers
         end
       end
-      
+
   Then make sure to call it in every LiveView's `c:mount/3`:
 
       def mount(params, session, socket) do
@@ -900,7 +900,7 @@ defmodule Phoenix.LiveView do
 
       MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
-  Once a LiveView is disconnected, the client will attempt to restablish
+  Once a LiveView is disconnected, the client will attempt to reestablish
   the connection, re-executing the `c:mount/3` callback. In this case,
   if the user is no longer logged in or it no longer has access to its
   current resource, `c:mount/3` will fail and the user will be redirected
@@ -1178,7 +1178,7 @@ defmodule Phoenix.LiveView do
 
   LiveView allows you to have multiple LiveViews in the same page by calling
   `Phoenix.LiveView.Helpers.live_render/3` in your templates. However, only
-  the LiveViews defined directly in your router and use the "Live Navigation"
+  the LiveViews defined directly in your router can use the "Live Navigation"
   functionality described here. This is important because LiveViews work
   closely with your router, guaranteeing you can only navigate to known
   routes.
@@ -1293,9 +1293,9 @@ defmodule Phoenix.LiveView do
 
   ## Using Gettext for internationalization
 
-  For interationalization with [gettext](https://hexdocs.pm/gettext/Gettext.html),
+  For internationalization with [gettext](https://hexdocs.pm/gettext/Gettext.html),
   the locale used within your Plug pipeline can be stored in the Plug session and
-  restored within your LiveView mount. For example, after user signin or preference
+  restored within your LiveView mount. For example, after user signs in or preference
   changes, you can write the locale to the session:
 
       def put_user_session(conn, current_user) do
