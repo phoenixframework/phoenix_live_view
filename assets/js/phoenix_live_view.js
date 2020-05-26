@@ -1585,7 +1585,7 @@ export class View {
     this.joinPending = true
     this.flash = null
 
-    this.log("join", () => ["", rendered])
+    this.log("join", () => ["", clone(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = new Rendered(this.id, rendered)
@@ -1759,7 +1759,7 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", diff])
+    this.log("update", () => ["", clone(diff)])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
