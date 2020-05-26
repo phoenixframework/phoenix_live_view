@@ -58,6 +58,85 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint()).toEqual(false)
     })
+
+    test("expands shared static from cids", () => {
+      const mountDiff = {
+        "0": {
+          "0": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/new\">New Post</a>",
+          "1": "",
+          "2": {"d": [[0], [1]], "s": ["", ""]},
+          "s": [
+            "<h1>Timeline</h1>\n\n<span>",
+            "</span>\n\n",
+            "\n<div id=\"posts\" phx-update=\"prepend\">\n",
+            "</div>\n\n"
+          ]
+        },
+        "c": {
+          "0": {
+            "0": "1005",
+            "1": "chris_mccord",
+            "2": "new",
+            "3": "0",
+            "4": "0",
+            "5": "0",
+            "6": "0",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1005/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1005\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "s": [
+              "<div id=\"post-",
+              "\" class=\"post\">\n  <div class=\"row\">\n    <div class=\"column column-10\">\n      <div class=\"post-avatar\"></div>\n    </div>\n    <div class=\"column column-90 post-body\">\n      <b>@",
+              "</b>\n      <br/>\n      ",
+              "\n    </div>\n  </div>\n\n  <div class=\"row\">\n    <div class=\"column\">\n      <a href=\"#\" phx-click=\"like\" phx-target=\"",
+              "\">\n        <i class=\"far fa-heart\"></i> ",
+              "\n      </a>\n    </div>\n    <div class=\"column\">\n      <a href=\"#\" phx-click=\"repost\" phx-target=\"",
+              "\">\n        <i class=\"far fa-retweet\"></i> ",
+              "\n      </a>\n    </div>\n    <div class=\"column\">\n      ",
+              "\n      ",
+              "\n    </div>\n  </div>\n</div>\n"
+            ]
+          },
+          "1": {
+            "0": "1004",
+            "1": "chris_mccord",
+            "2": "tesitnglkjsldkfjsf",
+            "3": "1",
+            "4": "3",
+            "5": "1",
+            "6": "8",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1004/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1004\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "s": 0
+          }
+        },
+        "s": ["<main>\n", "</main>\n"],
+        "title": "Listing Posts"
+      }
+      const updateDiff = {
+        "0": {"2": {"d": [[2]]}},
+        "c": {
+          "2": {
+            "0": "1006",
+            "1": "chris_mccord",
+            "2": "new",
+            "3": "2",
+            "4": "0",
+            "5": "2",
+            "6": "0",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1006/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1006\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "s": 1
+          }
+        }
+      }
+      let rendered = new Rendered("123", mountDiff)
+      expect(rendered.get()["c"]["0"][STATIC]).toEqual(rendered.get()["c"]["1"][STATIC])
+      rendered.mergeDiff(updateDiff)
+      let sharedStatic = rendered.get()["c"]["0"][STATIC]
+      expect(sharedStatic).toBeTruthy()
+      expect(sharedStatic).toEqual(rendered.get()["c"]["1"][STATIC])
+      expect(sharedStatic).toEqual(rendered.get()["c"]["2"][STATIC])
+    })
   })
 
   describe("toString", () => {
