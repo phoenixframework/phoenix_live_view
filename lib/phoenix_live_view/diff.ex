@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Diff do
   Returns the diff component state.
   """
   def new_components(uuids \\ 0) do
-    {_ids_to_state = %{}, _cids_to_id = %{}, uuids}
+    {_cid_to_component = %{}, _id_to_cid = %{}, uuids}
   end
 
   @doc """
@@ -124,13 +124,13 @@ defmodule Phoenix.LiveView.Diff do
   `:error` if the component cid does not exist.
   """
   def with_component(socket, cid, component_diffs, components, fun) when is_integer(cid) do
-    {id_to_components, cid_to_ids, _} = components
+    {cid_to_component, _id_to_cid, _} = components
 
-    case cid_to_ids do
-      %{^cid => {component, id}} ->
+    case cid_to_component do
+      %{^cid => {component, id, assigns, private, fingerprints}} ->
         {component_socket, extra} =
           socket
-          |> fetch_socket_for_component(id_to_components, component, id)
+          |> configure_socket_for_component(assigns, private, fingerprints)
           |> fun.(component)
 
         {pending, component_diffs, components} =
@@ -190,22 +190,22 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Deletes a component by `cid`.
   """
-  def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
-    {{component, id}, cid_to_ids} = Map.pop(cid_to_ids, cid)
+  def delete_component(cid, {cid_to_component, id_to_cid, uuids}) do
+    {{component, id, _, _, _}, cid_to_component} = Map.pop(cid_to_component, cid)
 
-    id_to_components =
-      case id_to_components do
+    id_to_cid =
+      case id_to_cid do
         %{^component => inner} ->
           case Map.delete(inner, id) do
-            inner when inner == %{} -> Map.delete(id_to_components, component)
-            inner -> Map.put(id_to_components, component, inner)
+            inner when inner == %{} -> Map.delete(id_to_cid, component)
+            inner -> Map.put(id_to_cid, component, inner)
           end
 
         %{} ->
-          id_to_components
+          id_to_cid
       end
 
-    {id_to_components, cid_to_ids, uuids}
+    {cid_to_component, id_to_cid, uuids}
   end
 
   @doc """
@@ -351,17 +351,12 @@ defmodule Phoenix.LiveView.Diff do
          _socket,
          %Component{id: id, assigns: assigns, component: component},
          pending,
-         {id_to_components, cid_to_ids, uuids}
+         {cid_to_component, id_to_cid, uuids}
        ) do
     {cid, new?, components} =
-      case id_to_components do
-        %{^component => %{^id => {cid, _assigns, _private, _component_prints}}} ->
-          {cid, false, {id_to_components, cid_to_ids, uuids}}
-
-        %{} ->
-          cid = uuids
-          cid_to_ids = Map.put(cid_to_ids, cid, {component, id})
-          {cid, true, {id_to_components, cid_to_ids, uuids + 1}}
+      case id_to_cid do
+        %{^component => %{^id => cid}} -> {cid, false, {cid_to_component, id_to_cid, uuids}}
+        %{} -> {uuids, true, {cid_to_component, id_to_cid, uuids + 1}}
       end
 
     entry = {cid, id, new?, assigns}
@@ -377,7 +372,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp render_pending_components(socket, pending, seen_ids, component_diffs, components) do
-    {id_to_components, _, _} = components
+    {cid_to_component, _, _} = components
     acc = {{%{}, component_diffs, components}, seen_ids}
 
     {{pending, component_diffs, components}, seen_ids} =
@@ -392,11 +387,15 @@ defmodule Phoenix.LiveView.Diff do
                     "for component #{inspect(component)} when rendering template"
           end
 
-          socket =
-            if new? do
-              mount_component(socket, component, %{myself: cid})
-            else
-              fetch_socket_for_component(socket, id_to_components, component, id)
+          {socket, components} =
+            case cid_to_component do
+              %{^cid => {_component, _id, assigns, private, prints}} ->
+                {configure_socket_for_component(socket, assigns, private, prints),
+                 components}
+
+              %{} ->
+                {mount_component(socket, component, %{myself: cid}),
+                 put_cid(components, component, id, cid)}
             end
 
           triplet =
@@ -446,7 +445,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp render_component(socket, component, id, cid, new?, pending, component_diffs, components) do
-    {socket, pending, diff, {id_to_components, cid_to_ids, uuids}} =
+    {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
       if new? or Utils.changed?(socket) do
         rendered = Utils.to_rendered(socket, component)
 
@@ -461,15 +460,14 @@ defmodule Phoenix.LiveView.Diff do
 
     component_diffs =
       if diff != %{} or new? do
-        Map.put(component_diffs, cid, reuse_static(diff, socket, component, id_to_components))
+        diff = reuse_static(diff, socket, component, cid_to_component, id_to_cid)
+        Map.put(component_diffs, cid, diff)
       else
         component_diffs
       end
 
-    id_to_components =
-      put_component_id(id_to_components, component, id, dump_component(socket, cid))
-
-    {pending, component_diffs, {id_to_components, cid_to_ids, uuids}}
+    cid_to_component = Map.put(cid_to_component, cid, dump_component(socket, component, id))
+    {pending, component_diffs, {cid_to_component, id_to_cid, uuids}}
   end
 
   @attempts 3
@@ -477,40 +475,41 @@ defmodule Phoenix.LiveView.Diff do
   # If the component has a static part, we see if other component has the same
   # static part. If so, we will simply point to the static part of the other cid.
   # We don't want to traverse the all components, so we will try it @attempts times.
-  defp reuse_static(diff, socket, component, id_to_components) do
+  defp reuse_static(diff, socket, component, cid_to_component, id_to_cid) do
     with %{@static => _} <- diff,
          {print, _} = socket.fingerprints,
-         iterator = :maps.iterator(Map.get(id_to_components, component, %{})),
-         {:ok, cid} <- find_same_component_print(print, iterator, @attempts) do
+         iterator = :maps.iterator(Map.fetch!(id_to_cid, component)),
+         {:ok, cid} <- find_same_component_print(print, iterator, cid_to_component, @attempts) do
       Map.put(diff, @static, cid)
     else
       _ -> diff
     end
   end
 
-  defp find_same_component_print(_print, _iterator, 0), do: :none
+  defp find_same_component_print(_print, _iterator, _cid_to_component, 0), do: :none
 
-  defp find_same_component_print(print, iterator, attempts) do
+  defp find_same_component_print(print, iterator, cid_to_component, attempts) do
     case :maps.next(iterator) do
-      {_, {cid, _, _, {^print, _}}, _} -> {:ok, cid}
-      {_, _, iterator} -> find_same_component_print(print, iterator, attempts - 1)
-      :none -> :none
+      {_, cid, iterator} ->
+        case cid_to_component do
+          %{^cid => {_, _, _, _, {^print, _}}} -> {:ok, cid}
+          %{} -> find_same_component_print(print, iterator, cid_to_component, attempts - 1)
+        end
+
+      :none ->
+        :none
     end
   end
 
-  defp put_component_id(id_to_components, component, id, contents) do
-    inner = Map.get(id_to_components, component, %{})
-    Map.put(id_to_components, component, Map.put(inner, id, contents))
+  defp put_cid({id_to_components, id_to_cid, uuids}, component, id, cid) do
+    inner = Map.get(id_to_cid, component, %{})
+    {id_to_components, Map.put(id_to_cid, component, Map.put(inner, id, cid)), uuids}
   end
 
-  defp fetch_cid(component, id, {id_to_components, _cid_to_ids, _} = _components) do
-    case id_to_components do
-      %{^component => %{^id => inner}} ->
-        {cid, _, _, _} = inner
-        {:ok, cid}
-
-      %{} ->
-        :error
+  defp fetch_cid(component, id, {_cid_to_components, id_to_cid, _} = _components) do
+    case id_to_cid do
+      %{^component => %{^id => cid}} -> {:ok, cid}
+      %{} -> :error
     end
   end
 
@@ -527,11 +526,6 @@ defmodule Phoenix.LiveView.Diff do
     Utils.maybe_call_mount!(socket, component, [socket])
   end
 
-  defp fetch_socket_for_component(socket, id_to_components, component, id) do
-    %{^component => %{^id => {_cid, assigns, private, prints}}} = id_to_components
-    configure_socket_for_component(socket, assigns, private, prints)
-  end
-
   defp configure_socket_for_component(socket, assigns, private, prints) do
     %{
       socket
@@ -542,7 +536,7 @@ defmodule Phoenix.LiveView.Diff do
     }
   end
 
-  defp dump_component(socket, cid) do
-    {cid, socket.assigns, socket.private, socket.fingerprints}
+  defp dump_component(socket, component, id) do
+    {component, id, socket.assigns, socket.private, socket.fingerprints}
   end
 end
