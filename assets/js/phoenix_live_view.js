@@ -171,8 +171,25 @@ export class Rendered {
   expandStatics(diff){
     if(isEmpty(this.rendered[COMPONENTS])){ return }
 
-    for(let cid in diff){
-      let pointer = diff[cid]
+    // if components = Map.get(rendered, @components) do
+    //   components =
+    //     diff
+    //     |> Map.get(@components, %{})
+    //     |> Enum.reduce(components, fn {cid, cdiff}, acc ->
+    //       case cdiff do
+    //         %{@static => pointer} when is_integer(pointer) ->
+    //           put_in(acc[cid][@static], find_static(pointer, acc))
+
+    //         %{} ->
+    //           acc
+    //       end
+    //     end)
+
+    //   Map.put(rendered, @components, components)
+
+    for(let cid in diff[COMPONENTS]){
+      let cdiff = diff[COMPONENTS][cid]
+      let pointer = cdiff[STATIC]
       if(typeof(pointer) === "number"){
         this.rendered[COMPONENTS][cid][STATIC] = this.findStatic(pointer)
       }
