@@ -173,8 +173,10 @@ export class Rendered {
 
     for(let cid in diff[COMPONENTS]){
       let pointer = diff[COMPONENTS][cid][STATIC]
-      while(typeof(pointer) === "number"){ pointer = this.rendered[COMPONENTS][pointer][STATIC] }
-      this.rendered[COMPONENTS][cid][STATIC] = pointer
+      if(typeof(pointer) === "number"){
+        while(typeof(pointer) === "number"){ pointer = this.rendered[COMPONENTS][pointer][STATIC] }
+        this.rendered[COMPONENTS][cid][STATIC] = pointer
+      }
     }
   }
 
