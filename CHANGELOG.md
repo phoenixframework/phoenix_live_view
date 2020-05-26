@@ -5,6 +5,11 @@
 ### Bug fixes
   - Fix forced page refresh when push_redirect from a live_redirect
 
+### Enhancements
+  - Optimize component diffs to avoid sending empty diffs
+  - Optimize components to share static values
+  - [LiveViewTest] Automatically synchronize before render events
+
 ## 0.13.0 (2020-05-21)
 
 ### Backwards incompatible changes
