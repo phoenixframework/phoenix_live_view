@@ -86,7 +86,10 @@ defmodule Phoenix.LiveView.Channel do
     %{"cids" => cids} = msg.payload
 
     new_components =
-      Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
+      case state.components do
+        {%{}, %{}, _} -> Diff.new_components
+        _ -> Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
+      end
 
     {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
   end
