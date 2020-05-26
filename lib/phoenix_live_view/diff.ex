@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Diff do
   Returns the diff component state.
   """
   def new_components(uuids \\ 0) do
-    {_ids_to_state = %{}, _cids_to_id = %{}, uuids}
+    {_cid_to_component = %{}, _id_to_cid = %{}, uuids}
   end
 
   @doc """
@@ -29,50 +29,56 @@ defmodule Phoenix.LiveView.Diff do
 
   It only accepts a full render diff.
   """
-  def to_iodata(map) do
-    to_iodata(map, Map.get(map, @components, %{}))
+  def to_iodata(map, component_mapper \\ fn _cid, content -> content end) do
+    to_iodata(map, Map.get(map, @components, %{}), component_mapper)
   end
 
-  defp to_iodata(%{@dynamics => dynamics, @static => static}, components) do
+  defp to_iodata(%{@dynamics => dynamics, @static => static}, components, mapper) do
     for dynamic <- dynamics do
-      comprehension_to_iodata(static, dynamic, components)
+      many_to_iodata(static, dynamic, components, mapper)
     end
   end
 
-  defp to_iodata(%{@static => static} = parts, components) do
-    parts_to_iodata(static, parts, 0, components)
+  defp to_iodata(%{@static => static} = parts, components, mapper) do
+    one_to_iodata(find_static(static, components), parts, 0, components, mapper)
   end
 
-  defp to_iodata(int, components) when is_integer(int) do
-    to_iodata(Map.fetch!(components, int), components)
+  defp to_iodata(cid, components, mapper) when is_integer(cid) do
+    mapper.(cid, to_iodata(Map.fetch!(components, cid), components, mapper))
   end
 
-  defp to_iodata(binary, _components) when is_binary(binary) do
+  defp to_iodata(binary, _components, _mapper) when is_binary(binary) do
     binary
   end
 
-  defp parts_to_iodata([last], _parts, _counter, _components) do
+  defp find_static(cid, components) when is_integer(cid),
+    do: find_static(components[cid][@static], components)
+
+  defp find_static(list, _components) when is_list(list),
+    do: list
+
+  defp one_to_iodata([last], _parts, _counter, _components, _mapper) do
     [last]
   end
 
-  defp parts_to_iodata([head | tail], parts, counter, components) do
+  defp one_to_iodata([head | tail], parts, counter, components, mapper) do
     [
       head,
-      to_iodata(Map.fetch!(parts, counter), components)
-      | parts_to_iodata(tail, parts, counter + 1, components)
+      to_iodata(Map.fetch!(parts, counter), components, mapper)
+      | one_to_iodata(tail, parts, counter + 1, components, mapper)
     ]
   end
 
-  defp comprehension_to_iodata([static_head | static_tail], [dyn_head | dyn_tail], components) do
+  defp many_to_iodata([shead | stail], [dhead | dtail], components, mapper) do
     [
-      static_head,
-      to_iodata(dyn_head, components)
-      | comprehension_to_iodata(static_tail, dyn_tail, components)
+      shead,
+      to_iodata(dhead, components, mapper)
+      | many_to_iodata(stail, dtail, components, mapper)
     ]
   end
 
-  defp comprehension_to_iodata([static_head], [], _components) do
-    [static_head]
+  defp many_to_iodata([shead], [], _components, _mapper) do
+    [shead]
   end
 
   @doc """
@@ -118,12 +124,10 @@ defmodule Phoenix.LiveView.Diff do
   `:error` if the component cid does not exist.
   """
   def with_component(socket, cid, component_diffs, components, fun) when is_integer(cid) do
-    {id_to_components, cid_to_ids, _} = components
+    {cid_to_component, _id_to_cid, _} = components
 
-    case cid_to_ids do
-      %{^cid => {component, id}} ->
-        %{^component => %{^id => {^cid, assigns, private, fingerprints}}} = id_to_components
-
+    case cid_to_component do
+      %{^cid => {component, id, assigns, private, fingerprints}} ->
         {component_socket, extra} =
           socket
           |> configure_socket_for_component(assigns, private, fingerprints)
@@ -186,22 +190,22 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Deletes a component by `cid`.
   """
-  def delete_component(cid, {id_to_components, cid_to_ids, uuids}) do
-    {{component, id}, cid_to_ids} = Map.pop(cid_to_ids, cid)
+  def delete_component(cid, {cid_to_component, id_to_cid, uuids}) do
+    {{component, id, _, _, _}, cid_to_component} = Map.pop(cid_to_component, cid)
 
-    id_to_components =
-      case id_to_components do
+    id_to_cid =
+      case id_to_cid do
         %{^component => inner} ->
           case Map.delete(inner, id) do
-            inner when inner == %{} -> Map.delete(id_to_components, component)
-            inner -> Map.put(id_to_components, component, inner)
+            inner when inner == %{} -> Map.delete(id_to_cid, component)
+            inner -> Map.put(id_to_cid, component, inner)
           end
 
         %{} ->
-          id_to_components
+          id_to_cid
       end
 
-    {Map.delete(id_to_components, id), cid_to_ids, uuids}
+    {cid_to_component, id_to_cid, uuids}
   end
 
   @doc """
@@ -275,7 +279,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {dynamics, {pending, components}} =
-      comprehension_to_iodata(socket, dynamics, pending, components)
+      traverse_comprehension(socket, dynamics, pending, components)
 
     {%{@dynamics => dynamics}, fingerprint, pending, components}
   end
@@ -293,7 +297,7 @@ defmodule Phoenix.LiveView.Diff do
          components
        ) do
     {dynamics, {pending, components}} =
-      comprehension_to_iodata(socket, dynamics, pending, components)
+      traverse_comprehension(socket, dynamics, pending, components)
 
     {%{@dynamics => dynamics, @static => static}, fingerprint, pending, components}
   end
@@ -333,7 +337,7 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  defp comprehension_to_iodata(socket, dynamics, pending, components) do
+  defp traverse_comprehension(socket, dynamics, pending, components) do
     Enum.map_reduce(dynamics, {pending, components}, fn list, acc ->
       Enum.map_reduce(list, acc, fn rendered, {pending, components} ->
         {diff, _, pending, components} =
@@ -347,28 +351,168 @@ defmodule Phoenix.LiveView.Diff do
   ## Stateful components helpers
 
   defp traverse_component(
-         socket,
+         _socket,
          %Component{id: id, assigns: assigns, component: component},
          pending,
-         components
+         {cid_to_component, id_to_cid, uuids}
        ) do
-    {cid, new?, components} = ensure_component(socket, component, id, components)
-    entry = {id, new?, assigns}
+    {cid, new?, components} =
+      case id_to_cid do
+        %{^component => %{^id => cid}} -> {cid, false, {cid_to_component, id_to_cid, uuids}}
+        %{} -> {uuids, true, {cid_to_component, id_to_cid, uuids + 1}}
+      end
+
+    entry = {cid, id, new?, assigns}
     pending = Map.update(pending, component, [entry], &[entry | &1])
     {cid, pending, components}
   end
 
-  defp ensure_component(socket, component, id, {id_to_components, cid_to_ids, uuids}) do
-    case id_to_components do
-      %{^component => %{^id => {cid, _assigns, _private, _component_prints}}} ->
-        {cid, false, {id_to_components, cid_to_ids, uuids}}
+  ## Component rendering
 
-      %{} ->
-        cid = uuids
-        socket = mount_component(socket, component, %{myself: cid})
-        id_to_components = put_cid(id_to_components, component, id, dump_component(socket, cid))
-        cid_to_ids = Map.put(cid_to_ids, cid, {component, id})
-        {cid, true, {id_to_components, cid_to_ids, uuids + 1}}
+  defp render_pending_components(_, pending, _seen_ids, component_diffs, components)
+       when map_size(pending) == 0 do
+    {component_diffs, components}
+  end
+
+  defp render_pending_components(socket, pending, seen_ids, component_diffs, components) do
+    {cid_to_component, _, _} = components
+    acc = {{%{}, component_diffs, components}, seen_ids}
+
+    {{pending, component_diffs, components}, seen_ids} =
+      Enum.reduce(pending, acc, fn {component, entries}, acc ->
+        entries = maybe_preload_components(component, Enum.reverse(entries))
+
+        Enum.reduce(entries, acc, fn {cid, id, new?, new_assigns}, {triplet, seen_ids} ->
+          {pending, component_diffs, components} = triplet
+
+          if Map.has_key?(seen_ids, [component | id]) do
+            raise "found duplicate ID #{inspect(id)} " <>
+                    "for component #{inspect(component)} when rendering template"
+          end
+
+          {socket, components} =
+            case cid_to_component do
+              %{^cid => {_component, _id, assigns, private, prints}} ->
+                {configure_socket_for_component(socket, assigns, private, prints),
+                 components}
+
+              %{} ->
+                {mount_component(socket, component, %{myself: cid}),
+                 put_cid(components, component, id, cid)}
+            end
+
+          triplet =
+            socket
+            |> Utils.maybe_call_update!(component, new_assigns)
+            |> render_component(component, id, cid, new?, pending, component_diffs, components)
+
+          {triplet, Map.put(seen_ids, [component | id], true)}
+        end)
+      end)
+
+    render_pending_components(socket, pending, seen_ids, component_diffs, components)
+  end
+
+  defp maybe_preload_components(component, entries) do
+    if function_exported?(component, :preload, 1) do
+      list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
+      result = component.preload(list_of_assigns)
+      zip_preloads(result, entries, component, result)
+    else
+      entries
+    end
+  end
+
+  defp maybe_call_preload!(module, assigns) do
+    if function_exported?(module, :preload, 1) do
+      [new_assigns] = module.preload([assigns])
+      new_assigns
+    else
+      assigns
+    end
+  end
+
+  defp zip_preloads([new_assigns | assigns], [{cid, id, new?, _} | entries], component, preloaded)
+       when is_map(new_assigns) do
+    [{cid, id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
+  end
+
+  defp zip_preloads([], [], _component, _preloaded) do
+    []
+  end
+
+  defp zip_preloads(_, _, component, preloaded) do
+    raise ArgumentError,
+          "expected #{inspect(component)}.preload/1 to return a list of maps of the same length " <>
+            "as the list of assigns given, got: #{inspect(preloaded)}"
+  end
+
+  defp render_component(socket, component, id, cid, new?, pending, component_diffs, components) do
+    {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
+      if new? or Utils.changed?(socket) do
+        rendered = Utils.to_rendered(socket, component)
+
+        {diff, component_prints, pending, components} =
+          traverse(socket, rendered, socket.fingerprints, pending, components)
+
+        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
+        {socket, pending, diff, components}
+      else
+        {socket, pending, %{}, components}
+      end
+
+    component_diffs =
+      if diff != %{} or new? do
+        diff = reuse_static(diff, socket, component, cid_to_component, id_to_cid)
+        Map.put(component_diffs, cid, diff)
+      else
+        component_diffs
+      end
+
+    cid_to_component = Map.put(cid_to_component, cid, dump_component(socket, component, id))
+    {pending, component_diffs, {cid_to_component, id_to_cid, uuids}}
+  end
+
+  @attempts 3
+
+  # If the component has a static part, we see if other component has the same
+  # static part. If so, we will simply point to the static part of the other cid.
+  # We don't want to traverse the all components, so we will try it @attempts times.
+  defp reuse_static(diff, socket, component, cid_to_component, id_to_cid) do
+    with %{@static => _} <- diff,
+         {print, _} = socket.fingerprints,
+         iterator = :maps.iterator(Map.fetch!(id_to_cid, component)),
+         {:ok, cid} <- find_same_component_print(print, iterator, cid_to_component, @attempts) do
+      Map.put(diff, @static, cid)
+    else
+      _ -> diff
+    end
+  end
+
+  defp find_same_component_print(_print, _iterator, _cid_to_component, 0), do: :none
+
+  defp find_same_component_print(print, iterator, cid_to_component, attempts) do
+    case :maps.next(iterator) do
+      {_, cid, iterator} ->
+        case cid_to_component do
+          %{^cid => {_, _, _, _, {^print, _}}} -> {:ok, cid}
+          %{} -> find_same_component_print(print, iterator, cid_to_component, attempts - 1)
+        end
+
+      :none ->
+        :none
+    end
+  end
+
+  defp put_cid({id_to_components, id_to_cid, uuids}, component, id, cid) do
+    inner = Map.get(id_to_cid, component, %{})
+    {id_to_components, Map.put(id_to_cid, component, Map.put(inner, id, cid)), uuids}
+  end
+
+  defp fetch_cid(component, id, {_cid_to_components, id_to_cid, _} = _components) do
+    case id_to_cid do
+      %{^component => %{^id => cid}} -> {:ok, cid}
+      %{} -> :error
     end
   end
 
@@ -395,120 +539,7 @@ defmodule Phoenix.LiveView.Diff do
     }
   end
 
-  defp dump_component(socket, cid) do
-    {cid, socket.assigns, socket.private, socket.fingerprints}
-  end
-
-  ## Component rendering
-
-  defp render_pending_components(_, pending, _seen_ids, component_diffs, components)
-       when map_size(pending) == 0 do
-    {component_diffs, components}
-  end
-
-  defp render_pending_components(socket, pending, seen_ids, component_diffs, components) do
-    {id_to_components, _, _} = components
-    acc = {{%{}, component_diffs, components}, seen_ids}
-
-    {{pending, component_diffs, components}, seen_ids} =
-      Enum.reduce(pending, acc, fn {component, entries}, acc ->
-        entries = maybe_preload_components(component, Enum.reverse(entries))
-
-        Enum.reduce(entries, acc, fn {id, new?, new_assigns}, {triplet, seen_ids} ->
-          {pending, component_diffs, components} = triplet
-          %{^component => %{^id => {cid, assigns, private, component_prints}}} = id_to_components
-
-          if Map.has_key?(seen_ids, {component, id}) do
-            raise "found duplicate ID #{inspect(id)} " <>
-                    "for component #{inspect(component)} when rendering template"
-          end
-
-          triplet =
-            socket
-            |> configure_socket_for_component(assigns, private, component_prints)
-            |> Utils.maybe_call_update!(component, new_assigns)
-            |> render_component(component, id, cid, new?, pending, component_diffs, components)
-
-          {triplet, Map.put(seen_ids, {component, id}, true)}
-        end)
-      end)
-
-    render_pending_components(socket, pending, seen_ids, component_diffs, components)
-  end
-
-  defp maybe_preload_components(component, entries) do
-    if function_exported?(component, :preload, 1) do
-      list_of_assigns = Enum.map(entries, fn {_id, _new?, new_assigns} -> new_assigns end)
-      result = component.preload(list_of_assigns)
-      zip_preloads(result, entries, component, result)
-    else
-      entries
-    end
-  end
-
-  defp maybe_call_preload!(module, assigns) do
-    if function_exported?(module, :preload, 1) do
-      [new_assigns] = module.preload([assigns])
-      new_assigns
-    else
-      assigns
-    end
-  end
-
-  defp zip_preloads([new_assigns | assigns], [{id, new?, _} | entries], component, preloaded)
-       when is_map(new_assigns) do
-    [{id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
-  end
-
-  defp zip_preloads([], [], _component, _preloaded) do
-    []
-  end
-
-  defp zip_preloads(_, _, component, preloaded) do
-    raise ArgumentError,
-          "expected #{inspect(component)}.preload/1 to return a list of maps of the same length " <>
-            "as the list of assigns given, got: #{inspect(preloaded)}"
-  end
-
-  defp render_component(socket, component, id, cid, new?, pending, component_diffs, components) do
-    {socket, pending, diff, {id_to_components, cid_to_ids, uuids}} =
-      if new? or Utils.changed?(socket) do
-        rendered = Utils.to_rendered(socket, component)
-
-        {diff, component_prints, pending, components} =
-          traverse(socket, rendered, socket.fingerprints, pending, components)
-
-        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
-
-        {socket, pending, diff, components}
-      else
-        {socket, pending, %{}, components}
-      end
-
-    component_diffs =
-      if diff != %{} or new? do
-        Map.put(component_diffs, cid, diff)
-      else
-        component_diffs
-      end
-
-    id_to_components = put_cid(id_to_components, component, id, dump_component(socket, cid))
-    {pending, component_diffs, {id_to_components, cid_to_ids, uuids}}
-  end
-
-  defp put_cid(id_to_components, component, id, contents) do
-    inner = Map.get(id_to_components, component, %{})
-    Map.put(id_to_components, component, Map.put(inner, id, contents))
-  end
-
-  defp fetch_cid(component, id, {id_to_components, _cid_to_ids, _} = _components) do
-    case id_to_components do
-      %{^component => %{^id => inner}} ->
-        {cid, _, _, _} = inner
-        {:ok, cid}
-
-      %{} ->
-        :error
-    end
+  defp dump_component(socket, component, id) do
+    {component, id, socket.assigns, socket.private, socket.fingerprints}
   end
 end

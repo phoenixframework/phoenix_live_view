@@ -164,6 +164,19 @@ export class Rendered {
       this.replaceRendered(diff)
     } else {
       this.recursiveMerge(this.rendered, diff)
+      this.expandStatics(diff)
+    }
+  }
+
+  expandStatics(diff){
+    if(isEmpty(this.rendered[COMPONENTS])){ return }
+
+    for(let cid in diff[COMPONENTS]){
+      let pointer = diff[COMPONENTS][cid][STATIC]
+      if(typeof(pointer) === "number"){
+        while(typeof(pointer) === "number"){ pointer = this.rendered[COMPONENTS][pointer][STATIC] }
+        this.rendered[COMPONENTS][cid][STATIC] = pointer
+      }
     }
   }
 
@@ -193,6 +206,7 @@ export class Rendered {
   replaceRendered(rendered){
     this.rendered = rendered
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
+    this.expandStatics(rendered)
   }
 
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
@@ -1547,7 +1561,7 @@ export class View {
     this.joinPending = true
     this.flash = null
 
-    this.log("join", () => ["", rendered])
+    this.log("join", () => ["", clone(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
     this.rendered = new Rendered(this.id, rendered)
@@ -1721,7 +1735,7 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", diff])
+    this.log("update", () => ["", clone(diff)])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
