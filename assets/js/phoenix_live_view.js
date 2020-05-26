@@ -164,6 +164,26 @@ export class Rendered {
       this.replaceRendered(diff)
     } else {
       this.recursiveMerge(this.rendered, diff)
+      this.expandStatics(diff)
+    }
+  }
+
+  expandStatics(diff){
+    if(isEmpty(this.rendered[COMPONENTS])){ return }
+
+    for(let cid in diff){
+      let pointer = diff[cid]
+      if(typeof(pointer) === "number"){
+        this.rendered[COMPONENTS][cid][STATIC] = this.findStatic(pointer)
+      }
+    }
+  }
+
+  findStatic(pointer){
+    if(typeof(pointer) === "number"){ // cid
+      return this.findStatic(this.rendered[COMPONENTS][pointer][STATIC])
+    } else { // array
+      return pointer
     }
   }
 
@@ -193,6 +213,7 @@ export class Rendered {
   replaceRendered(rendered){
     this.rendered = rendered
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
+    this.expandStatics(rendered)
   }
 
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
@@ -1854,7 +1875,10 @@ export class View {
   }
 
   onJoinError(resp){
-    if(resp.redirect || resp.live_redirect){ this.channel.leave() }
+    if(resp.redirect || resp.live_redirect){
+      this.joinPending = false
+      this.channel.leave()
+    }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.log("error", () => ["unable to join", resp])
