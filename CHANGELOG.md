@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.2 (2020-05-27)
+
+### Bug fixes
+  - Fix a bug where swapping a root template with components would cause the LiveView to crash
+
 ## 0.13.1 (2020-05-26)
 
 ### Bug fixes
