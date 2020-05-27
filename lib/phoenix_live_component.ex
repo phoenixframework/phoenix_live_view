@@ -208,7 +208,7 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  The LiveView then receive this event using `handle_info`:
+  The LiveView then receives this event using `handle_info`:
 
       defmodule BoardView do
         ...
