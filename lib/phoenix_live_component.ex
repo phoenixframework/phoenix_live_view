@@ -122,7 +122,7 @@ defmodule Phoenix.LiveComponent do
   ### Preloading and update
 
   Every time a stateful component is rendered, both `c:preload/1` and
-  `c:update/2` is called. To understand why both callbacks are necessary,
+  `c:update/2` are called. To understand why both callbacks are necessary,
   imagine that you implement a component and the component needs to load
   some state from the database. For example:
 
@@ -172,7 +172,7 @@ defmodule Phoenix.LiveComponent do
   Generally speaking, you want to avoid both the parent LiveView and the
   LiveComponent working on two different copies of the state. Instead, you
   should assume only one of them to be the source of truth. Let's discuss
-  these approaches in detail.
+  the two different approaches in detail.
 
   Imagine a scenario where LiveView represents a board with each card in
   it as a separate component. Each card has a form that allows to update
@@ -181,7 +181,7 @@ defmodule Phoenix.LiveComponent do
 
   ### LiveView as the source of truth
 
-  If the LiveView is the source of truth, the LiveView will be responsible
+  If the LiveView is the source of truth, it will be responsible
   for fetching all of the cards in a board. Then it will call `live_component/3`
   for each card, passing the card struct as argument to CardComponent:
 
@@ -193,8 +193,8 @@ defmodule Phoenix.LiveComponent do
   card, `CardComponent.handle_event/3` will be triggered. However, if the
   update succeeds, you must not change the card struct inside the component.
   If you do so, the card struct in the component will get out of sync with
-  the LiveView. Since the LiveView is the source of truth, we should instead
-  tell the LiveView the card was updated.
+  the LiveView. Since the LiveView is the source of truth, you should instead
+  tell the LiveView that the card was updated.
 
   Luckily, because the component and the view run in the same process,
   sending a message from the component to the parent LiveView is as simple
@@ -208,7 +208,7 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  The LiveView can receive this event using `handle_info`:
+  The LiveView then receive this event using `handle_info`:
 
       defmodule BoardView do
         ...
@@ -242,7 +242,7 @@ defmodule Phoenix.LiveComponent do
 
   As long as the parent LiveView subscribes to the "board:ID" topic,
   it will receive updates. The advantage of using PubSub is that we get
-  distributed updates out of the box. Now if any user connected to the
+  distributed updates out of the box. Now, if any user connected to the
   board changes a card, all other users will see the change.
 
   ### LiveComponent as the source of truth
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveComponent do
         {:ok, assign(socket, inner_content: inner_content)}
       end
 
-  The approach above is the preferred one when passing blocks to `do/end`.
+  The above approach is the preferred one when passing blocks to `do/end`.
   However, if you are outside of a .leex template and you want to invoke a
   component passing `do/end` blocks, you will have to explicitly handle the
   assigns by giving it a clause:
