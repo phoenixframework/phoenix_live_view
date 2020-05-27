@@ -1190,7 +1190,7 @@ defmodule Phoenix.LiveView do
 
     * the root layout - this is a layout used by both LiveView and
       regular views. This layout typically contains the <html>
-      definition alongside the head and body tags. Any content define
+      definition alongside the head and body tags. Any content defined
       in the root layout will remain the same, even as you live navigate
       across LiveViews
 
@@ -1240,9 +1240,8 @@ defmodule Phoenix.LiveView do
   If you are using Phoenix v1.5, the layout is automatically set
   when generating apps with the `mix phx.new --live` flag.
 
-  The `:layout` option does not apply for LiveViews rendered within
-  other LiveViews. If you are rendering child live views or if you
-  want to opt-in to a layout only in certain occasions, use the
+  The `:layout` option does not apply for LiveViews rendered within other
+  LiveViews. If you want to render child live views or opt-in to a layout, use
   `:layout` as an option in mount:
 
         def mount(_params, _session, socket) do
@@ -1386,10 +1385,10 @@ defmodule Phoenix.LiveView do
 
   For these use cases, the `phx-change` input does not concern itself with disabling
   input editing while an event to the server is in flight. When a `phx-change` event
-  is sent to the server the input tag and parent form tag receive the `phx-change-loading`
-  css class, then the payload is pushed to the server with a `"_target"` param in the
-  root payload containing the keyspace of the input name which triggered the change
-  event.
+  is sent to the server, the input tag and parent form tag receive the
+  `phx-change-loading` css class, then the payload is pushed to the server with a
+  `"_target"` param in the root payload containing the keyspace of the input name
+  which triggered the change event.
 
   For example, if the following input triggered a change event:
 
@@ -1532,7 +1531,8 @@ defmodule Phoenix.LiveView do
       window.addEventListener("phx:page-loading-start", info => NProgress.start())
       window.addEventListener("phx:page-loading-stop", info => NProgress.done())
 
-  The `info` object will contain a `kind` key, with values one of:
+  The `info` object will contain a `kind` key, with a value in one of the
+  following events:
 
     - `"redirect"` - the event was triggered by a redirect
     - `"patch"` - the event was triggered by a patch
@@ -1542,8 +1542,9 @@ defmodule Phoenix.LiveView do
   For all kinds of page loading events, all but `"element"` will receive an additional `to`
   key in the info metadata pointing to the href associated with the page load.
 
-  In the case of an `"element"` page loading, the info will contain a `"target"` key containing
-  the DOM element which triggered the page loading state.
+  In the case of an `"element"` page loading event, the info will contain a
+  `"target"` key containing the DOM element which triggered the page loading
+  state.
 
   ### JS Interop and client-controlled DOM
 
@@ -1568,7 +1569,7 @@ defmodule Phoenix.LiveView do
   The above life-cycle callbacks have in-scope access to the following attributes:
 
     * `el` - attribute referencing the bound DOM node,
-    * `viewName` - attribute matching the dom node's phx-view value
+    * `viewName` - attribute matching the DOM node's phx-view value
     * `pushEvent(event, payload)` - method to push an event from the client to the LiveView server
     * `pushEventTo(selector, event, payload)` - method to push targeted events from the client
       to LiveViews and LiveComponents.
@@ -1596,7 +1597,7 @@ defmodule Phoenix.LiveView do
       ...
 
   The hook can push events to the LiveView by using the `pushEvent` function.
-  Communication with hook can be done by using data attributes on the container.
+  Communication with the hook can be done by using data attributes on the container.
   For example, to implement infinite scrolling, one might do:
 
       <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>" />
