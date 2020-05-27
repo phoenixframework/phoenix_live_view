@@ -59,6 +59,12 @@ end
 defmodule Phoenix.LiveViewTest.WithComponentLive do
   use Phoenix.LiveView
 
+  def render(%{disabled: true} = assigns) do
+    ~L"""
+    Disabled
+    """
+  end
+
   def render(assigns) do
     ~L"""
     Redirect: <%= @redirect %>
@@ -69,7 +75,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
   end
 
   def mount(_params, %{"names" => names, "from" => from}, socket) do
-    {:ok, assign(socket, names: names, from: from)}
+    {:ok, assign(socket, names: names, from: from, disabled: false)}
   end
 
   def handle_params(params, _url, socket) do
@@ -83,5 +89,9 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
 
   def handle_event("delete-name", %{"name" => name}, socket) do
     {:noreply, update(socket, :names, &List.delete(&1, name))}
+  end
+
+  def handle_event("disable", %{}, socket) do
+    {:noreply, assign(socket, :disabled, true)}
   end
 end

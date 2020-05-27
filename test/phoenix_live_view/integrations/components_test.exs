@@ -52,6 +52,13 @@ defmodule Phoenix.LiveView.ComponentTest do
     refute view |> element("#chris") |> has_element?()
   end
 
+  test "tracks removals when whole root changes", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/components")
+    assert render_click(view, "disable", %{}) =~ "Disabled\n"
+    # Sync to make sure it is still alive
+    assert render(view) =~ "Disabled\n"
+  end
+
   test "preloads", %{conn: conn} do
     conn =
       conn

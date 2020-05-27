@@ -191,21 +191,25 @@ defmodule Phoenix.LiveView.Diff do
   Deletes a component by `cid`.
   """
   def delete_component(cid, {cid_to_component, id_to_cid, uuids}) do
-    {{component, id, _, _, _}, cid_to_component} = Map.pop(cid_to_component, cid)
+    case Map.pop(cid_to_component, cid) do
+      {{component, id, _, _, _}, cid_to_component} ->
+        id_to_cid =
+          case id_to_cid do
+            %{^component => inner} ->
+              case Map.delete(inner, id) do
+                inner when inner == %{} -> Map.delete(id_to_cid, component)
+                inner -> Map.put(id_to_cid, component, inner)
+              end
 
-    id_to_cid =
-      case id_to_cid do
-        %{^component => inner} ->
-          case Map.delete(inner, id) do
-            inner when inner == %{} -> Map.delete(id_to_cid, component)
-            inner -> Map.put(id_to_cid, component, inner)
+            %{} ->
+              id_to_cid
           end
 
-        %{} ->
-          id_to_cid
-      end
+        {cid_to_component, id_to_cid, uuids}
 
-    {cid_to_component, id_to_cid, uuids}
+      _ ->
+        {cid_to_component, id_to_cid, uuids}
+    end
   end
 
   @doc """
@@ -316,10 +320,10 @@ defmodule Phoenix.LiveView.Diff do
         {serialized, child_fingerprint, pending, components} =
           traverse(socket, entry, Map.get(children, counter), pending, components)
 
+        # If serialized is nil, it means no changes.
+        # If it is an empty map, then it means it is a rendered struct
+        # that did not change, so we don't have to emit it either.
         diff =
-          # If serialized is nil, it means no changes.
-          # If it is an empty map, then it means it is a rendered struct
-          # that did not change, so we don't have to emit it either.
           if serialized != nil and serialized != %{} do
             Map.put(diff, counter, serialized)
           else
@@ -393,8 +397,7 @@ defmodule Phoenix.LiveView.Diff do
           {socket, components} =
             case cid_to_component do
               %{^cid => {_component, _id, assigns, private, prints}} ->
-                {configure_socket_for_component(socket, assigns, private, prints),
-                 components}
+                {configure_socket_for_component(socket, assigns, private, prints), components}
 
               %{} ->
                 {mount_component(socket, component, %{myself: cid}),
