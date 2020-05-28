@@ -2270,7 +2270,7 @@ defmodule Phoenix.LiveView do
   reloads the page.
 
   **Note:** only set `phx-track-static` on your own assets. For example, do
-  not set it external JavaScript files:
+  not set it in external JavaScript files:
 
       <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 

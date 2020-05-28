@@ -27,7 +27,7 @@ defmodule Phoenix.LiveView.Router do
   edit, the URL changes to "/articles/1/edit", even though you are still
   within the same LiveView. Similarly, you may also want to show a "New"
   button, which opens up the modal to create new entries, and you want
-  that to reflect in the URL as "/articles/new".
+  this to be reflected in the URL as "/articles/new".
 
   In order to make it easier to recognize the current "action" your
   LiveView is on, you can pass the action option when defining LiveViews
@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.Router do
       live "/articles/1/edit", ArticleLive.Index, :edit
 
   When an action is given, the generated route helpers are named after
-  the LiveView itself (the same as in a controller). For the example
+  the LiveView itself (in the same way as for a controller). For the example
   above, we will have:
 
       article_index_path(@socket, :index)
@@ -53,23 +53,23 @@ defmodule Phoenix.LiveView.Router do
 
     * `:session` - a map to be merged into the session, for example: `%{"my_key" => 123}`.
       The map keys must be strings.
-      
+
       Can also be a "MFA" (module, function, arguments) tuple. That function will receive
       the connection and should return a map (with string keys) to be merged into the session.
       For example, `{MyModule, :my_function, []}` means `MyModule.my_function(conn)` is called.
 
-    * `:layout` - the optional tuple for specifying a layout to render the
-      LiveView. If set, this option will replace the current root layout.
+    * `:layout` - an optional tuple to specify the rendering layout for the LiveView.
+      If set, this option will replace the current root layout.
 
-    * `:container` - the optional tuple for the HTML tag and DOM attributes to
+    * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
-      See `Phoenix.LiveView.Helpers.live_render/3` for more information on examples.
+      See `Phoenix.LiveView.Helpers.live_render/3` for more information and examples.
 
     * `:as` - optionally configures the named helper. Defaults to `:live` when
-      using a LiveView without actions or default to the LiveView name when using
+      using a LiveView without actions or defaults to the LiveView name when using
       actions.
 
-    * `:metadata` - a map to optional feed metadata used on telemetry events and route info
+    * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
       for example: `%{route_name: :foo, access: :user}`.
 
   ## Examples

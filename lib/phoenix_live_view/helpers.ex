@@ -121,15 +121,15 @@ defmodule Phoenix.LiveView.Helpers do
   ## Options
 
     * `:session` - the map of extra session data to be serialized
-      and sent to the client. Note all session data currently in
+      and sent to the client. Note that all session data currently in
       the connection is automatically available in LiveViews. You
-      can use this option to provide extra data. Also note the keys
+      can use this option to provide extra data. Also note that the keys
       in the session are strings keys, as a reminder that data has
       to be serialized first.
-    * `:container` - the optional tuple for the HTML tag and DOM
+    * `:container` - an optional tuple for the HTML tag and DOM
       attributes to be used for the LiveView container. For example:
       `{:li, style: "color: blue;"}`. By default it uses the module
-      definition container. See the "Containers" section for more
+      definition container. See the "Containers" section below for more
       information.
     * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
       One `:id` is automatically generated when rendering root LiveViews
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
 
   Note the `:id` won't necessarily be used as the DOM ID.
-  That's up to the component. However, note the `:id` has
+  That's up to the component. However, note that the `:id` has
   a special meaning: whenever an `:id` is given, the component
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
