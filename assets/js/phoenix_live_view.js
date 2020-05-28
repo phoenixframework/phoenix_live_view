@@ -1057,8 +1057,13 @@ export let DOM = {
         }
         if(this.private(el, DEBOUNCE_TIMER)){ return }
 
+        let blurCallback = () => {
+          clearTimeout(this.private(el, DEBOUNCE_TIMER))
+          debounceCallback()
+        }
         let clearTimer = (e) => {
           if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
+          el.removeEventListener("blur", blurCallback)
           clearTimeout(this.private(el, DEBOUNCE_TIMER))
           this.deletePrivate(el, DEBOUNCE_TIMER)
         }
@@ -1074,10 +1079,6 @@ export let DOM = {
           this.deletePrivate(el, DEBOUNCE_BLUR_TIMER)
           this.deletePrivate(el, DEBOUNCE_TIMER)
           if(!throttle){ callback() }
-        }
-        let blurCallback = () => {
-          clearTimeout(this.private(el, DEBOUNCE_TIMER))
-          debounceCallback()
         }
         this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(debounceCallback, timeout))
         el.addEventListener("blur", blurCallback)
