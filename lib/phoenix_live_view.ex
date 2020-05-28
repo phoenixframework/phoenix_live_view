@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView do
   LiveView provides rich, real-time user experiences with
   server-rendered HTML.
 
-  LiveView programming model is declarative: instead of
+  The LiveView programming model is declarative: instead of
   saying "once event X happens, change Y on the page",
   events in LiveView are regular messages which may cause
   changes to its state. Once the state changes, LiveView will
@@ -225,7 +225,7 @@ defmodule Phoenix.LiveView do
 
   We used `connected?(socket)` on mount to send our view a message every 30s if
   the socket is in a connected state. We receive the `:update` message in the
-  `handle_info/2` callback, just like in an Elixir's `GenServer`, and update our
+  `handle_info/2` callback, just like in an Elixir `GenServer`, and update our
   socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
   invoked, and the updates are sent to the client.
 
@@ -374,7 +374,7 @@ defmodule Phoenix.LiveView do
       assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
   Generally speaking, avoid accessing variables inside LiveViews. This also applies
-  to the `assigns` variable, except when rendering another .leex template. In such
+  to the `assigns` variable, except when rendering another `.leex` template. In such
   cases, it is ok to pass the whole assigns, as LiveView will continue to perform
   change tracking in the called template:
 
@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView do
   input it belongs to. This is accomplished with the `phx-feedback-for` attribute.
   Failing to add the `phx-feedback-for` attribute will result in displaying error
   messages for form fields that the user has not changed yet (e.g. required
-  fields further down on the page.)
+  fields further down on the page).
 
   For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
