@@ -1294,7 +1294,7 @@ defmodule Phoenix.LiveView do
 
   As with any other ELixir code, exceptions may happen during the LiveView
   life-cycle. In this section we will describe how LiveView reacts to errors
-  in different stages.
+  at different stages.
 
   ### Expected scenarios
 
@@ -1304,7 +1304,7 @@ defmodule Phoenix.LiveView do
   a change in the LiveView state, which causes the LiveView to be re-rendered
   with the error message.
 
-  We may also use `flash` messages for such. For example, imagine you have a
+  We may also use `flash` messages for this. For example, imagine you have a
   page to manage all "Team members" in an organization. However, if there is
   only one member left in the organization, they should not be allowed to
   leave. You may want to handle this by using flash messages:
@@ -1326,7 +1326,7 @@ defmodule Phoenix.LiveView do
       true = MyApp.Org.leave(socket.assigns.current_org, member)
       {:noreply, socket}
 
-  If `leave` returns false for any chance, it will just raise. Or you can
+  If `leave` returns false by any chance, it will just raise. Or you can
   even provide a `leave!` function that raises a specific exception:
 
       MyApp.Org.leave!(socket.assigns.current_org, member)
@@ -1345,12 +1345,12 @@ defmodule Phoenix.LiveView do
       {:noreply, socket}
 
   If `leave` fails and returns `false`, an exception is raised. It is common
-  for Elixir developers to use exceptions for unexpected scenarios in our
+  for Elixir developers to use exceptions for unexpected scenarios in their
   Phoenix applications.
 
   For example, if you are building an application where a user may belong to
-  one or more organizations, when accessing the organization page, you may to
-  verify the user has access to it like this:
+  one or more organizations, when accessing the organization page, you may want to
+  check that the user has access to it like this:
 
       organizations_query = Ecto.assoc(socket.assigns.current_user, :organizations)
       Repo.get!(organizations_query, params["org_id"])
@@ -1361,7 +1361,7 @@ defmodule Phoenix.LiveView do
   `Ecto.NotFoundError` exception is raised.
 
   During a regular controller request, this exception will be converted to a
-  404 exception and rendering to a custom error page, as
+  404 exception and rendered as a custom error page, as
   [detailed here](https://hexdocs.pm/phoenix/custom_error_pages.html).
   To understand how a LiveView reacts to exceptions, we need to consider two
   scenarios: exceptions on mount and during any event.
@@ -1374,12 +1374,12 @@ defmodule Phoenix.LiveView do
   Exceptions during disconnected render:
 
     1. An exception on mount is caught and converted to an exception page
-      by Phoenix error views - pretty much like it works with controllers
+      by Phoenix error views - pretty much like the way it works with controllers
 
   Exceptions during connected render:
 
     1. An exception on mount will crash the LiveView process - which will be logged
-    2. Once the client notices the crash during `mount`, it will fully reload the page
+    2. Once the client has noticed the crash during `mount`, it will fully reload the page
     3. Reloading the page will start a disconnected render, that will cause `mount`
       to be invoked again and most likely raise the same exception. Except this time
       it will be caught and converted to an exception page by Phoenix error views
@@ -1406,11 +1406,11 @@ defmodule Phoenix.LiveView do
   we often update the state of the page, allowing exceptions to be automatically
   handled.
 
-  Note the choice between conditionally checking on the result of the `leave`
+  Note that the choice between conditionally checking on the result of the `leave`
   function with an `if`, or simply asserting it returns `true`, is completely
   up to you. If the likelihood of everyone leaving the organization at the same
   time is low, then you may as well treat it as an unexpected scenario. Although
-  other developers will be more comfortable with explicitly handling those cases.
+  other developers will be more comfortable by explicitly handling those cases.
   In both scenarios, LiveView has you covered.
 
   ## Using Gettext for internationalization
