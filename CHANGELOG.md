@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.3
+
+### Bug fixes
+  - Fix duplicate debounced evenets from being triggered on blur with tim
+
 ## 0.13.2 (2020-05-27)
 
 ### Bug fixes
