@@ -5,7 +5,7 @@ your application with `mix phx.new my_app --live`. If you are using earlier Phoe
 versions or your app already exists, keep on reading.
 
 The instructions below will serve if you are installing the latest stable version
-from Hex. To start using LiveView, add one of the following dependency to your `mix.exs`
+from Hex. To start using LiveView, add one of the following dependencies to your `mix.exs`
 and run `mix deps.get`.
 
 If installing from Hex, use the latest version from there:
