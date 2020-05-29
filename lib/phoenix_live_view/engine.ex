@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.Engine do
   @moduledoc ~S"""
   The `.leex` (Live EEx) template engine that tracks changes.
 
-  On the docs below, we will explain how it works internally.
+  In the documentation below, we will explain how it works internally.
   For user-facing documentation, see `Phoenix.LiveView`.
 
   ## Phoenix.LiveView.Rendered
@@ -249,7 +249,7 @@ defmodule Phoenix.LiveView.Engine do
   struct with the static parts, that are shared across all
   points, and a list of dynamics to be interpolated inside
   the static parts. If `@points` is a list with `%{x: 1, y: 2}`
-  and `%{x: 3, y: 4}`, the expression above would return:
+  and `%{x: 3, y: 4}`, the above expression would return:
 
       %Phoenix.LiveView.Comprehension{
         static: ["\n  x: ", "\n  y: ", "\n"],
@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.Engine do
 
   This allows `.leex` templates to drastically optimize
   the data sent by comprehensions, as the static parts
-  are emitted once, regardless of the number of items.
+  are emitted only once, regardless of the number of items.
 
   The list of dynamics is always a list of iodatas or components,
   as we don't perform change tracking inside the comprehensions
