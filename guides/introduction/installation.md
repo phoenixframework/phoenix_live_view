@@ -5,14 +5,15 @@ your application with `mix phx.new my_app --live`. If you are using earlier Phoe
 versions or your app already exists, keep on reading.
 
 The instructions below will serve if you are installing the latest stable version
-from Hex. To start using LiveView, add to your `mix.exs` and run `mix deps.get`.
+from Hex. To start using LiveView, add one of the following dependency to your `mix.exs`
+and run `mix deps.get`.
 
 If installing from Hex, use the latest version from there:
 
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.12.1"},
+    {:phoenix_live_view, "~> 0.13.2"},
     {:floki, ">= 0.0.0", only: :test}
   ]
 end
@@ -97,7 +98,7 @@ defmodule MyAppWeb.Endpoint do
 end
 ```
 
-Where `@session_options` are the options given to `plug Plug.Session` extracted to a module attribute. If you don't have a `@session_options` in your endpoint yet, here is how to extract it out:
+Where `@session_options` are the options given to `plug Plug.Session` by using a module attribute. If you don't have a `@session_options` in your endpoint yet, here is how to create one:
 
 1. Find plug Plug.Session in your endpoint.ex
 
@@ -118,13 +119,13 @@ Where `@session_options` are the options given to `plug Plug.Session` extracted 
   ]
 ```
 
-3. Change the plug Plug.Session to use the attribute:
+3. Change the plug Plug.Session to use that attribute:
 
 ```elixir
   plug Plug.Session, @session_options
 ```
 
-Add LiveView NPM dependencies in your `assets/package.json`. For a regular project, do:
+Add LiveView NPM dependencies to your `assets/package.json`. For a regular project, do:
 
 ```json
 {
@@ -148,20 +149,20 @@ However, if you're adding `phoenix_live_view` to an umbrella project, the depend
 }
 ```
 
-Then install the new npm dependency.
+Then install the new NPM dependency:
 
 ```bash
 npm install --prefix assets
 ```
 
 If you had previously installed `phoenix_live_view` and want to get the
-latest javascript, then force an install.
+latest javascript, then force an install with:
 
 ```bash
 npm install --force phoenix_live_view --prefix assets
 ```
 
-Finally ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.eex`), before `app.js` is included like so:
+Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/root.html.leex`), before `app.js` is included like so:
 
 ```html
 <%= csrf_meta_tag() %>
@@ -194,16 +195,16 @@ LiveView does not use the default app layout. Instead, you typically call `put_r
 ```elixir
 pipeline :browser do
   ...
-  plug :put_root_layout, {MyAppWeb.LayoutView, "root.html"}
+  plug :put_root_layout, {MyAppWeb.LayoutView, :root}
   ...
 end
 ```
 
-The layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.eex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
+The layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.leex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
 
 ## phx.gen.live support
 
-While the instructions above are enough to install LiveView in a Phoenix app, if you want to use the `phx.gen.live` generators that come as part of Phoenix v1.5, you need to do one more change, as those generators assume your application was created with `mix phx.new --live`.
+While the above instructions are enough to install LiveView in a Phoenix app, if you want to use the `phx.gen.live` generators that come as part of Phoenix v1.5, you need to do one more change, as those generators assume your application was created with `mix phx.new --live`.
 
 The change is to define the `live_view` and `live_component` functions in your `web.ex` file, while refactoring the `view` function. At the end, they will look like this:
 
@@ -258,7 +259,7 @@ The change is to define the `live_view` and `live_component` functions in your `
   end
 ```
 
-Note that LiveViews are automatically configured to add use a "live.html.eex" layout in this line:
+Note that LiveViews are automatically configured to add use a "live.html.leex" layout in this line:
 
 ```elixir
 use Phoenix.LiveView,
