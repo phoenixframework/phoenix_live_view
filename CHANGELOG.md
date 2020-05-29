@@ -3,7 +3,7 @@
 ## 0.13.3
 
 ### Bug fixes
-  - Fix duplicate debounced evenets from being triggered on blur with tim
+  - Fix duplicate debounced events from being triggered on blur with timed debounce
 
 ## 0.13.2 (2020-05-27)
 
