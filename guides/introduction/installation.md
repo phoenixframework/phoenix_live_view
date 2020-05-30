@@ -262,7 +262,7 @@ The change is to define the `live_view` and `live_component` functions in your `
   end
 ```
 
-Note that LiveViews are automatically configured to add use a "live.html.leex" layout in this line:
+Note that LiveViews are automatically configured to use a "live.html.leex" layout in this line:
 
 ```elixir
 use Phoenix.LiveView,
