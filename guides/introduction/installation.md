@@ -209,7 +209,7 @@ The layout given to `put_root_layout` must use `@inner_content` instead of `<%= 
 
 While the above instructions are enough to install LiveView in a Phoenix app, if you want to use the `phx.gen.live` generators that come as part of Phoenix v1.5, you need to do one more change, as those generators assume your application was created with `mix phx.new --live`.
 
-The change is to define the `live_view` and `live_component` functions in your `web.ex` file, while refactoring the `view` function. At the end, they will look like this:
+The change is to define the `live_view` and `live_component` functions in your `my_app_web.ex` file, while refactoring the `view` function. At the end, they will look like this:
 
 ```elixir
   def view do
