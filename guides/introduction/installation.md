@@ -203,7 +203,7 @@ pipeline :browser do
 end
 ```
 
-The layout given to `put_root_layout` must use `@inner_content` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.leex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
+The layout given to `put_root_layout` must use `<%= @inner_content %>` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.leex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
 
 ## phx.gen.live support
 
