@@ -1140,9 +1140,9 @@ defmodule Phoenix.LiveView do
 
   For example, imagine you have a blog. The URL for a single post is:
   "/blog/posts/:post_id". In the post page, you have comments and they are paginated.
-  You use `live_patch/2` to update the shown posts every time the user paginates,
+  You use `live_patch/2` to update the shown comments every time the user paginates,
   updating the URL to "/blog/posts/:post_id?page=X". In this example, you will access
-  `"post_id"`  on `c:mount/3` and the page on `c:handle_params/3`.
+  `"post_id"` on `c:mount/3` and the page of comments on `c:handle_params/3`.
 
   Furthermore, it is very important to not access the same parameters on both
   `c:mount/3` and `c:handle_params/3`. For example, do NOT do this:
