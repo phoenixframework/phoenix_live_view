@@ -373,6 +373,18 @@ defmodule Phoenix.LiveView.EngineTest do
                [""]
     end
 
+    test "converts if-do with var into rendered" do
+      template = "<%= if var = @foo do %>one<%= var %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, nil)
+
+      assert changed(template, %{foo: true}, %{}) ==
+               [nil]
+
+      assert [""] = changed(template, %{foo: false}, %{foo: true})
+    end
+
     test "converts if-do-else into rendered with dynamic condition" do
       template = "<%= if @bar do %>one<%= @foo %>two<% else %>uno<%= @baz %>dos<% end %>"
 
