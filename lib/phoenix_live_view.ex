@@ -1156,7 +1156,7 @@ defmodule Phoenix.LiveView do
       end
 
   If you do that, because `c:mount/3` is called once and `c:handle_params/3` multiple
-  times, the "post_id" read on mount can get out of sync if the one in `c:handle_params/3`.
+  times, the "post_id" read on mount can get out of sync with the one in `c:handle_params/3`.
   So once a parameter is read on mount, it should not be read elsewhere. Instead, do this:
 
       def mount(%{"post_id" => post_id}, session, socket) do
