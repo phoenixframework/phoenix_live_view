@@ -1761,8 +1761,6 @@ defmodule Phoenix.LiveView do
         },
       })
 
-
-
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under
