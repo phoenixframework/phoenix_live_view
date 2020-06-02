@@ -1743,6 +1743,26 @@ defmodule Phoenix.LiveView do
 
   *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
+  For integration with client-side libraries which require a broader access to full
+  DOM management, the `LiveSocket` constructor accepts a `dom` option with an
+  `onbeforeElUpdated` callback. The `fromEl` and `toEl` DOM nodes are passed to the
+  function just before the DOM patch operations occurs in LiveView. This allows external
+  libraries to (re)initialize DOM elements or copy attributes as necessary as LiveView
+  performs its own patch operations. The update operation cannot be cancelled or deferred,
+  and the return value is ignored. For example, the following option could be used to add
+  [Alpine.js](https://github.com/alpinejs/alpine) support to your project:
+
+      let liveSocket = new LiveSocket("/live", Socket, {
+        ...,
+        dom: {
+          onBeforeElUpdated(from, to){
+            if(from.__x){ window.Alpine.clone(from.__x, to) }
+          }
+        },
+      })
+
+
+
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under
