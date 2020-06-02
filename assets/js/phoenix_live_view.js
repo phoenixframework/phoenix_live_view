@@ -918,11 +918,11 @@ export let Browser = {
       if(req.readyState !== 4){ return }
       let requestURL = new URL(href)
       let requestPath = requestURL.pathname + requestURL.search
-      let responseURL = new URL(req.getResponseHeader(RESPONSE_URL_HEADER))
-      let responsePath = responseURL.pathname + responseURL.search
+      let responseURL = maybe(req.getResponseHeader(RESPONSE_URL_HEADER) || req.responseURL, url => new URL(url))
+      let responsePath = responseURL ? responseURL.pathname + responseURL.search : null
       if(req.getResponseHeader(LINK_HEADER) !== "live-link"){
         return callback(400)
-      } else if(responsePath != requestPath){
+      } else if(responseURL === null || responsePath != requestPath){
         return callback(302)
       } else if(req.status !== 200){
         return callback(req.status)
