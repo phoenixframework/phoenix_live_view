@@ -4,6 +4,7 @@
 
 ### Bug fixes
   - Fix duplicate debounced events from being triggered on blur with timed debounce
+  - Fix client error when live_redirected'd route results in a redirect to a non-live route on the server
 
 ### Enhancements
   - Add `dom` option to `LiveSocket` with `onBeforeElUpdated` callback for external client library support of broad DOM operations
