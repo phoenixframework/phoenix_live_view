@@ -5,6 +5,9 @@
 ### Bug fixes
   - Fix duplicate debounced events from being triggered on blur with timed debounce
 
+### Enhancements
+  - Add `dom` option to `LiveSocket` with `onBeforeElUpdated` callback for external client library support of broad DOM operations
+
 ## 0.13.2 (2020-05-27)
 
 ### Bug fixes
