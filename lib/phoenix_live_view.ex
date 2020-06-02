@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView do
 
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
-  to the browser, and receive client events via phx bindings. Just like
+  to the browser, and receive client events via `phx-` bindings. Just like
   the first rendering, `c:mount/3` is invoked  with params, session,
   and socket state, where mount assigns values for rendering. However
   in the connected client case, a LiveView process is spawned on
@@ -878,7 +878,7 @@ defmodule Phoenix.LiveView do
       end
 
   In the example above, the Blog context receives the user on both `get` and
-  `update` operations, and always validates according that the user has access,
+  `update` operations, and always validates accordingly that the user has access,
   raising an error otherwise.
 
   ### Disconnecting all instances of a given live user
@@ -1207,7 +1207,7 @@ defmodule Phoenix.LiveView do
       * app.html.eex
       * live.html.leex
 
-  The "root" layout is shared by both "app" and "live" layout. It
+  The "root" layout is shared by both "app" and "live" layouts. It
   is rendered only on the initial request and therefore it has
   access to the `@conn` assign. The root layout must be defined
   in your router:
@@ -1215,7 +1215,7 @@ defmodule Phoenix.LiveView do
       plug :put_root_layout, {MyAppWeb.LayoutView, :root}
 
   Alternatively, the root layout can be passed to the `live`
-  macro to your **live routes**:
+  macro of your **live routes**:
 
       live "/dashboard", MyApp.Dashboard, layout: {MyAppWeb.LayoutView, :root}
 
