@@ -198,7 +198,7 @@ defmodule Phoenix.LiveComponent do
 
   Luckily, because the component and the view run in the same process,
   sending a message from the component to the parent LiveView is as simple
-  as sending a message to self:
+  as sending a message to `self()`:
 
       defmodule CardComponent do
         ...
