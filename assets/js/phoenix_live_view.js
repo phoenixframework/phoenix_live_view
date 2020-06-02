@@ -1433,7 +1433,8 @@ class DOMPatch {
       template.innerHTML = html
       rest.forEach(el => el.remove())
       Array.from(diffContainer.childNodes).forEach(child => {
-        if(child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+        // we can only skip trackable nodes with an ID
+        if(child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }
