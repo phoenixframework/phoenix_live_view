@@ -1065,6 +1065,7 @@ export let DOM = {
           debounceCallback()
         }
         let clearTimer = (e) => {
+          if(e.key === "Tab"){ return }
           if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
           el.removeEventListener("blur", blurCallback)
           clearTimeout(this.private(el, DEBOUNCE_TIMER))

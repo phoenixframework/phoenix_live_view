@@ -57,6 +57,21 @@ describe("debounce", function() {
     expect(el.value).toBe("three")
   })
 
+  test("triggers debounce on input blur caused by tab", async () => {
+    let calls = 0
+    let el = container().querySelector("input[name=debounce-200]")
+
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => calls++)
+    })
+    simulateInput(el, "one")
+    simulateInput(el, "two")
+    el.dispatchEvent(new KeyboardEvent("keydown", {bubbles: true, cancelable: true, key: "Tab"}))
+    DOM.dispatchEvent(el, "blur")
+    expect(calls).toBe(1)
+    expect(el.value).toBe("two")
+  })
+
   test("triggers on timeout", done => {
     let calls = 0
     let el = container().querySelector("input[name=debounce-200]")
