@@ -6,7 +6,7 @@
   - Fix duplicate debounced events from being triggered on blur with timed debounce
   - Fix client error when live_redirected'd route results in a redirect to a non-live route on the server
   - Fix DOM siblings being removed when a rootless component is updated
-  - Fix debounced input failing to send last change when blurred via Tab key
+  - Fix debounced input failing to send last change when blurred via Tab, Meta, or other non-printable keys
 
 ### Enhancements
   - Add `dom` option to `LiveSocket` with `onBeforeElUpdated` callback for external client library support of broad DOM operations
