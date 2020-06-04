@@ -424,9 +424,9 @@ defmodule Phoenix.LiveView do
   |------------------------|------------|
   | [Params](#module-click-events) | `phx-value-*` |
   | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` |
-  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus` |
-  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with` |
-  | [Key Events](#module-key-events) | `phx-window-keydown`, `phx-window-keyup` |
+  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action` |
+  | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
   | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
@@ -684,7 +684,7 @@ defmodule Phoenix.LiveView do
   or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
 
   By default, the bound element will be the event listener, but a
-  window-level binding may be provided via `phx-window-keydown`,
+  window-level binding may be provided via `phx-window-keydown` or `phx-window-keyup`,
   for example:
 
       def render(assigns) do
@@ -695,12 +695,12 @@ defmodule Phoenix.LiveView do
         """
       end
 
-      def handle_event("update_temp", %{"code" => "ArrowUp"}, socket) do
+      def handle_event("update_temp", %{"key" => "ArrowUp"}, socket) do
         {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", %{"code" => "ArrowDown"}, socket) do
+      def handle_event("update_temp", %{"key" => "ArrowDown"}, socket) do
         {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
