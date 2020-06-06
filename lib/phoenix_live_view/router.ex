@@ -33,21 +33,37 @@ defmodule Phoenix.LiveView.Router do
   LiveView is on, you can pass the action option when defining LiveViews
   too:
 
-      live "/articles", ArticleLive.Index, :index
-      live "/articles/new", ArticleLive.Index, :new
-      live "/articles/1/edit", ArticleLive.Index, :edit
+      live "/articles", ArticleLive, :index
+      live "/articles/new", ArticleLive, :new
+      live "/articles/1/edit", ArticleLive, :edit
 
   When an action is given, the generated route helpers are named after
   the LiveView itself (in the same way as for a controller). For the example
   above, we will have:
 
-      article_index_path(@socket, :index)
-      article_index_path(@socket, :new)
-      article_index_path(@socket, :edit, 123)
+      article_path(@socket, :index)
+      article_path(@socket, :new)
+      article_path(@socket, :edit, 123)
 
   The current action will always be available inside the LiveView as
-  the `@live_action` assign. `@live_action` will be `nil`
-  if no action is given on the route definition.
+  the `@live_action` assign, that can be used to render LiveComponents:
+
+      <%= if @live_action == :new do %>
+        <%= live_component @socket, MyAppWeb.ArticleLive.FormComponent %>
+      <% end %>
+
+  Or can be used to show or hide parts of the template:
+
+      <%= if @live_action == :edit do %>
+        <%= render("form.html", user: @user) %>
+      <% end %>
+
+  Note that `@live_action` will be `nil` if no action is given on the route definition.
+
+  In our example, the form component could be displayed as a popup and closing it
+  would be as simple as adding a link to return to the `:index` path:
+
+      <%= live_patch "Close", to: Routes.article_path(@socket, :index) %>
 
   ## Options
 
