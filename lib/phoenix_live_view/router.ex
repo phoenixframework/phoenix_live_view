@@ -46,8 +46,19 @@ defmodule Phoenix.LiveView.Router do
       article_index_path(@socket, :edit, 123)
 
   The current action will always be available inside the LiveView as
-  the `@live_action` assign. `@live_action` will be `nil`
-  if no action is given on the route definition.
+  the `@live_action` assign, that can be used to render a LiveComponent:
+
+      <%= if @live_action == :new do %>
+        <%= live_component @socket, MyAppWeb.ArticleLive.FormComponent %>
+      <% end %>
+
+  Or can be used to show or hide parts of the template:
+
+      <%= if @live_action == :edit do %>
+        <%= render("form.html", user: @user) %>
+      <% end %>
+
+  Note that `@live_action` will be `nil` if no action is given on the route definition.
 
   ## Options
 
