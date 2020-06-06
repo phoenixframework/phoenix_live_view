@@ -110,6 +110,15 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, push_render(%{state | components: new_components}, diff, nil)}
 
       :noop ->
+        {module, id, _} = update
+
+        if function_exported?(module, :__info__, 1) do
+          # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
+          Logger.debug "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
+        else
+          raise ArgumentError, "send_update failed (module #{inspect(module)} is not available)"
+        end
+
         {:noreply, state}
     end
   end
