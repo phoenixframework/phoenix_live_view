@@ -60,11 +60,6 @@ defmodule Phoenix.LiveView.Router do
 
   Note that `@live_action` will be `nil` if no action is given on the route definition.
 
-  In our example, the form component could be displayed on a popup and closing it
-  would be as simple as adding a link to navigate back to the `:index` path:
-
-      <%= live_patch "Close", to: Routes.article_index_path(@socket, :index) %>
-
   ## Options
 
     * `:session` - a map to be merged into the session, for example: `%{"my_key" => 123}`.
