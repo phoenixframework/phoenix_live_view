@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                send(view.pid, {:send_update, [{StatefulComponent, id: "nemo", name: "NEW-nemo"}]})
                render(view)
-               refute_receive {:updated, _}
+               refute_received {:updated, _}
              end) =~ "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
     end
 
