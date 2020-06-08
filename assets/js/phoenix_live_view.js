@@ -556,7 +556,7 @@ export class LiveSocket {
   }
 
   withinTargets(el, phxTarget, callback){
-    if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
+    if(/^(0|[1-9]\d*)$/.test(phxTarget)){
       let myselfTarget = el || DOM.findFirstComponentNode(document, phxTarget)
       if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
       this.owner(myselfTarget , view => callback(view, myselfTarget))
