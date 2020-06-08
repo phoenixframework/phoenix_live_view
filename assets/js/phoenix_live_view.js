@@ -56,6 +56,9 @@ const PHX_AUTO_RECOVER = "auto-recover"
 const PHX_LV_DEBUG = "phx:live-socket:debug"
 const PHX_LV_PROFILE = "phx:live-socket:profiling"
 const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
+const PHX_FILE_DONE = "phx:live-file:done"
+const PHX_FILE_INIT = "phx:live-file:init"
+const PHX_FILE_PROGRESS = "phx:live-file:progress"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 const BINDING_PREFIX = "phx-"
@@ -125,93 +128,153 @@ let isEmpty = (obj) => {
 
 let maybe = (el, callback) => el && callback(el)
 
-let gatherFiles = (form) => {
-  const formData = new FormData(form)
-  let files = {}
-  formData.forEach((val, key) => {
-    if (val instanceof File && val.size > 0) {
-      files[key] = val
+// File Inputs
+let countFiles = (inputEl) => gatherFiles(inputEl).length
+let countAllFiles = (formEl) => gatherFileInputs(formEl).reduce((total, inputEl) => total + countFiles(inputEl), 0)
+let gatherFileInputs = (formEl) => Array.from(formEl).filter((el) => el.files instanceof FileList && el.files.length > 0)
+let gatherFiles = (inputEl) => Array.from(inputEl.files || []).filter((f) => f instanceof File && f.size > 0)
+
+function LiveFileIterator(inputEl) {
+  let files = gatherFiles(inputEl)
+  let nextIndex = 0
+
+  function newContext(_inputEl, index) {
+    return {
+      done(data) { DOM.dispatchEvent(_inputEl, PHX_FILE_DONE, {data, index, key: _inputEl.name}) },
+      progress(data) { DOM.dispatchEvent(_inputEl, PHX_FILE_PROGRESS, {data, index, key: _inputEl.name}) }
     }
-  })
-  return files
+  }
+
+  return {
+    next: function() {
+      let result
+      if(nextIndex < files.length){
+        let file = files[nextIndex]
+        let context = newContext(inputEl, nextIndex)
+        result = {value: {file, context}, done: false}
+
+        nextIndex++
+        return result
+      }
+      return {done: true}
+    }
+  }
 }
 
-let uploadFiles = (refGenerator, cid, ctx, files, callback) => {
-  let numFiles = Object.keys(files).length;
-  let results = {};
+class LiveUpload {
+  constructor(inputEl, view){
+    this._inputEl = inputEl
+    this._view = view
+    this._channels = []
+    this._files = new LiveFileIterator(inputEl)
+    this._next = null
+
+    this._joinStartUpload = this._joinStartUpload.bind(this)
+    inputEl.addEventListener(PHX_FILE_INIT, this._joinStartUpload)
+    inputEl.addEventListener(PHX_FILE_DONE, this._joinStartUpload)
+  }
+
+  _joinStartUpload(){
+    this._next = this._files.next()
+    if(!this._next.done){
+      let {file, context} = this._next.value
+      this._view.channel.push("get_upload_ref").receive("ok", ({ref}) => {
+        let uploadChannel = this._newUploadChannel(ref)
+        this._channels.push(uploadChannel)
+        this.constructor.upload(uploadChannel, file, context)
+      })
+    }
+  }
+
+  _newUploadChannel(ref){
+    let topic = `lvu:${this._view.id}-${this._view.uploadCount++}`
+    return this._view.liveSocket.channel(topic, () => {
+      return {session: this._view.getSession(), ref}
+    })
+  }
+
+  // live upload channel callback
+  static upload(uploadChannel, file, context) {
+    const chunkReaderBlock = function(_offset, length, _file, handler) {
+      var r = new window.FileReader()
+      var blob = _file.slice(_offset, length + _offset)
+      r.onload = handler
+      r.readAsArrayBuffer(blob)
+    }
+
+    uploadChannel.join().receive("ok", (data) => {
+      const uploadChunk = (chunk, finished, loaded) => {
+        if (!finished) {
+          const total = file.size
+          const percentage = Math.round((loaded / total) * 100)
+          context.progress({loaded, percentage, total})
+        }
+
+        uploadChannel.push("file", {file: chunk})
+          .receive("ok", (data) => {
+            if(finished){ context.done({...data, topic: uploadChannel.topic}) }
+          })
+      }
+
+      const { chunkSize } = data
+      let offset = 0
+
+      const readEventHandler = function(e){
+        if (e.target.error === null) {
+          const done = offset >= file.size
+          offset += e.target.result.byteLength
+          uploadChunk(e.target.result, done, offset)
+          if(!done){
+            setTimeout(() => chunkReaderBlock(offset, chunkSize, file, readEventHandler), 100)
+          }
+        } else {
+          console.log("Read error: " + e.target.error)
+          return
+        }
+      }
+
+      chunkReaderBlock(offset, chunkSize, file, readEventHandler)
+    })
+  }
+}
+
+let uploadFiles = (formEl, view, refGenerator, cid, callback) => {
+  let numFiles = countAllFiles(formEl)
+  let results = {}
+  let channelUploads = {}
 
   // TODO: leaves channels on error and rejoins when main live view joins
-  // ctx.channel.onError(() => {
+  // view.channel.onError(() => {
   // uploadChannels.leave()
   // }
-  // i
+  //
   // onJoined(() => {
   // uploadChannels.reJoin()
   // }
-  for(let key in files){
-    ctx.channel.push("get_upload_ref").receive("ok", ({ ref }) => {
 
-      const uploadChannel = ctx.liveSocket.channel(`lvu:${ctx.id}-${ctx.uploadCount++}`, () => {
-        return {session: ctx.getSession(), ref}
-      });
+  let inputEls = gatherFileInputs(formEl)
 
-      // ctx.files.push(uploadChannel);
+  // register the form listeners
+  // these are responsible for sending messages to the server
+  // in response to events dispatched from the file inputs
+  formEl.addEventListener(PHX_FILE_PROGRESS, ({detail: {data, key, index}}) => {
+    let progress = Object.assign({}, data, {cid: cid, path: key})
+    view.pushWithReply(refGenerator, "upload_progress", progress)
+  }, false)
 
-      const chunkReaderBlock = function(_offset, length, _file, handler) {
-        var r = new window.FileReader();
-        var blob = _file.slice(_offset, length + _offset);
-        r.onload = handler;
-        r.readAsArrayBuffer(blob);
-      }
+  formEl.addEventListener(PHX_FILE_DONE, ({detail: {data, key, index}}) => {
+    results[key] = Object.assign({}, data, {cid: cid, path: key})
+    numFiles--
+    // all files are done. run the form callback
+    if(numFiles === 0) { callback(results) }
+  }, false)
 
-      uploadChannel.join().receive("ok", (data) => {
-        let file = files[key]
-        const uploadChunk = (chunk, finished, uploaded) => {
-          if (!finished) {
-            const percentage = Math.round((uploaded / file.size) * 100);
-            ctx.pushWithReply(refGenerator, "upload_progress", {
-              cid: cid,
-              path: key,
-              size: file.size,
-              uploaded,
-              percentage
-            })
-          }
-
-          uploadChannel.push("file", {file: chunk})
-            .receive("ok", (data) => {
-              if (finished) {
-                results[key] = Object.assign(data, { topic: uploadChannel.topic });
-                numFiles--;
-                if (numFiles === 0) {
-                  callback(results);
-                }
-              }
-            })
-        }
-
-        const fileSize   = file.size;
-        const { chunkSize } = data;
-        let offset     = 0;
-
-        const readEventHandler = function(e) {
-          if (e.target.error === null) {
-            const done = offset >= file.size;
-            offset += e.target.result.byteLength;
-            uploadChunk(e.target.result, done, offset);
-            if (!done) {
-              setTimeout(() => chunkReaderBlock(offset, chunkSize, file, readEventHandler), 100);
-            }
-          } else {
-            console.log("Read error: " + e.target.error);
-            return;
-          }
-        }
-
-        chunkReaderBlock(offset, chunkSize, file, readEventHandler);
-      })
-    })
-  }
+  // get each file input
+  inputEls.forEach((inputEl) => {
+    let hook = view.getHook(inputEl)
+    if(!hook){ channelUploads[inputEl.name] = new LiveUpload(inputEl, view) }
+    inputEl.dispatchEvent(new CustomEvent(PHX_FILE_INIT))
+  })
 }
 
 let serializeForm = (form, meta = {}) => {
@@ -221,7 +284,7 @@ let serializeForm = (form, meta = {}) => {
   let readerCount = 0
   let toRemove = []
 
-  formData.forEach((val, key) => {
+  formData.forEach((val, key, index) => {
     if(val instanceof File) {
       toRemove.push(key)
       let fileWithMeta = {path: key}
@@ -233,6 +296,7 @@ let serializeForm = (form, meta = {}) => {
         if(meta.__live_uploads) {
           fileWithMeta.file_ref = meta.__live_uploads[key]["file_ref"]
           fileWithMeta.topic = meta.__live_uploads[key]["topic"]
+
         }
         fileData.push(fileWithMeta)
       }
@@ -2327,11 +2391,11 @@ export class View {
 
     this.uploadCount = 0
     let cid = this.targetComponentID(formEl, targetCtx)
-    let files = gatherFiles(formEl)
-    let numFiles = Object.keys(files).length
+    let numFiles = countAllFiles(formEl)
 
     if(numFiles > 0) {
-      uploadFiles(refGenerator, cid, this, files, (uploads) => {
+      uploadFiles(formEl, this, refGenerator, cid, (uploads) => {
+        // debugger
         let {fileData, formData} = serializeForm(formEl, {__live_uploads: uploads})
         this.pushWithReply(refGenerator, "event", {
           type: "form",
@@ -2462,6 +2526,56 @@ class ViewHook {
   __trigger__(kind){
     let callback = this.__callbacks[kind]
     callback && callback.call(this)
+  }
+}
+
+/** Initializes a LiveFile Hook
+ *
+ * @param {Function} [handler] - The function to perform the upload.
+ *
+ *     (file, index, el) => {
+ *       // perform the upload
+ *       // optionally, report progress:
+ *       this.progress({loaded: 512, total: 1024, percentage: 50})
+ *       // on complete, call done:
+ *       this.done({url: myContentUrl})
+ *     }
+ *
+*/
+export function LiveFile(callback){
+  if(typeof callback !== "function"){
+    throw new TypeError("LiveFile expects a callback function")
+  }
+
+  return {
+    mounted() {
+      //TODO: raise if not attached to a file input
+      this.el.addEventListener(PHX_FILE_INIT, () => {
+        this.__files = new LiveFileIterator(this.el, this.__view)
+        this._nextFile()
+      })
+    },
+    updated() {
+      if (!this.next) { return }
+      if (this.next && this.next.done) { return }
+
+      let {file, context} = this.next.value
+      let dataset = Object.assign({}, this.el.dataset)
+      callback.call(context, file, dataset)
+    },
+    _nextFile() {
+      this.next = this.__files.next()
+      if(!this.next.done){
+        let {file} = this.next.value
+        this._pushFileForUrl(file)
+      }
+    },
+    _pushFileForUrl(file) {
+      let payload = {}
+      payload[this.el.name] = {name: file.name, size: file.size, type: file.type}
+      // TODO: targeting a component?
+      this.pushEvent("phx:file", payload)
+    }
   }
 }
 
