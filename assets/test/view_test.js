@@ -54,7 +54,7 @@ describe("View + DOM", function() {
     view.update(updateDiff)
 
     expect(view.el.firstChild.tagName).toBe("H2")
-    expect(view.rendered.get()).toBe(updateDiff)
+    expect(view.rendered.get()).toEqual({...updateDiff, c: {}})
   })
 
   test("pushWithReply", function() {

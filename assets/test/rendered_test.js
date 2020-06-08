@@ -21,7 +21,7 @@ describe("Rendered", () => {
       const diff2 = { 0: ["c"], [STATIC]: "c"}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual(diff2)
+      expect(rendered.get()).toEqual({...diff2, c: {}})
     })
 
     test("replaces a string when a map is returned", () => {
@@ -61,10 +61,15 @@ describe("Rendered", () => {
 
     test("expands shared static from cids", () => {
       const mountDiff = {
-        "0": {
+        "0": "",
+        "1": "",
+        "2": {
           "0": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/new\">New Post</a>",
           "1": "",
-          "2": {"d": [[0], [1]], "s": ["", ""]},
+          "2": {
+            "d": [[1], [2]],
+            "s": ["", ""]
+          },
           "s": [
             "<h1>Timeline</h1>\n\n<span>",
             "</span>\n\n",
@@ -73,16 +78,16 @@ describe("Rendered", () => {
           ]
         },
         "c": {
-          "0": {
-            "0": "1005",
+          "1": {
+            "0": "1008",
             "1": "chris_mccord",
-            "2": "new",
-            "3": "0",
+            "2": "My post",
+            "3": "1",
             "4": "0",
-            "5": "0",
+            "5": "1",
             "6": "0",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1005/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1005\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1008/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1008\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
             "s": [
               "<div id=\"post-",
               "\" class=\"post\">\n  <div class=\"row\">\n    <div class=\"column column-10\">\n      <div class=\"post-avatar\"></div>\n    </div>\n    <div class=\"column column-90 post-body\">\n      <b>@",
@@ -96,46 +101,58 @@ describe("Rendered", () => {
               "\n    </div>\n  </div>\n</div>\n"
             ]
           },
-          "1": {
-            "0": "1004",
-            "1": "chris_mccord",
-            "2": "tesitnglkjsldkfjsf",
-            "3": "1",
-            "4": "3",
-            "5": "1",
-            "6": "8",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1004/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1004\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
-            "s": 0
-          }
-        },
-        "s": ["<main>\n", "</main>\n"],
-        "title": "Listing Posts"
-      }
-      const updateDiff = {
-        "0": {"2": {"d": [[2]]}},
-        "c": {
           "2": {
-            "0": "1006",
+            "0": "1007",
             "1": "chris_mccord",
-            "2": "new",
+            "2": "My post",
             "3": "2",
             "4": "0",
             "5": "2",
             "6": "0",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1006/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1006\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1007/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1007\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
             "s": 1
+          }
+        },
+        "s": [
+          "<main role=\"main\" class=\"container\">\n  <p class=\"alert alert-info\" role=\"alert\"\n    phx-click=\"lv:clear-flash\"\n    phx-value-key=\"info\">",
+          "</p>\n\n  <p class=\"alert alert-danger\" role=\"alert\"\n    phx-click=\"lv:clear-flash\"\n    phx-value-key=\"error\">",
+          "</p>\n\n",
+          "</main>\n"
+        ],
+        "title": "Listing Posts"
+      }
+
+      const updateDiff = {
+        "2": {
+          "2": {
+            "d": [[3]]
+          }
+        },
+        "c": {
+          "3": {
+            "0": "1009",
+            "1": "chris_mccord",
+            "2": "newnewnewnewnewnewnewnew",
+            "3": "3",
+            "4": "0",
+            "5": "3",
+            "6": "0",
+            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1009/edit\">\n        Edit\n      </a>",
+            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1009\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "s": -2
           }
         }
       }
+
       let rendered = new Rendered("123", mountDiff)
-      expect(rendered.get()["c"]["0"][STATIC]).toEqual(rendered.get()["c"]["1"][STATIC])
+      expect(rendered.getComponent(rendered.get(), 1)[STATIC]).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
       rendered.mergeDiff(updateDiff)
-      let sharedStatic = rendered.get()["c"]["0"][STATIC]
+      let sharedStatic = rendered.getComponent(rendered.get(), 1)[STATIC]
+
       expect(sharedStatic).toBeTruthy()
-      expect(sharedStatic).toEqual(rendered.get()["c"]["1"][STATIC])
-      expect(sharedStatic).toEqual(rendered.get()["c"]["2"][STATIC])
+      expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
+      expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 3)[STATIC])
     })
   })
 

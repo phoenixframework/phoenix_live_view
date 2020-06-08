@@ -136,7 +136,8 @@ let serializeForm = (form, meta = {}) => {
 export class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
-    this.replaceRendered(rendered)
+    this.rendered = {}
+    this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
@@ -159,23 +160,33 @@ export class Rendered {
     return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
   }
 
-  mergeDiff(diff){
-    if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
-      this.replaceRendered(diff)
-    } else {
-      this.recursiveMerge(this.rendered, diff)
-      this.expandStatics(diff)
+  getComponent(diff, cid){ return diff[COMPONENTS][cid] }
+
+  mergeDiff(sourceDiff){
+    let diff = clone(sourceDiff)
+    if(isEmpty(this.rendered) || (!diff[COMPONENTS] && this.isNewFingerprint(diff))){
+      this.rendered = {}
+      this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
     }
-  }
 
-  expandStatics(diff){
-    if(isEmpty(this.rendered[COMPONENTS])){ return }
-
-    for(let cid in diff[COMPONENTS]){
-      let pointer = diff[COMPONENTS][cid][STATIC]
-      if(typeof(pointer) === "number"){
-        while(typeof(pointer) === "number"){ pointer = this.rendered[COMPONENTS][pointer][STATIC] }
-        this.rendered[COMPONENTS][cid][STATIC] = pointer
+    let newc = diff[COMPONENTS]
+    delete diff[COMPONENTS]
+    this.recursiveMerge(this.rendered, diff)
+    if(newc){
+      let oldc = this.rendered[COMPONENTS]
+      for(let cid in newc){
+        let cdiff = newc[cid]
+        let pointer = cdiff[STATIC]
+        let component = oldc[cid] || {}
+        if(typeof(pointer) === "number"){
+          component = pointer
+          delete cdiff[STATIC]
+          while(typeof(component) === "number"){
+            component = component > 0 ? newc[component] : oldc[-component]
+          }
+        }
+        this.recursiveMerge(component, cdiff)
+        this.rendered[COMPONENTS][cid] = component
       }
     }
   }
@@ -184,8 +195,7 @@ export class Rendered {
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && isObject(targetVal)){
-        if(targetVal[DYNAMICS] && !val[DYNAMICS]){ delete targetVal[DYNAMICS] }
+      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         this.recursiveMerge(targetVal, val)
       } else {
         target[key] = val
@@ -202,12 +212,6 @@ export class Rendered {
   // private
 
   get(){ return this.rendered }
-
-  replaceRendered(rendered){
-    this.rendered = rendered
-    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
-    this.expandStatics(rendered)
-  }
 
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
@@ -1736,7 +1740,7 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", clone(diff)])
+    this.log("update", () => ["", diff])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
@@ -1745,13 +1749,13 @@ export class View {
     // containers found in the diff. Otherwise, patch entire LV container.
     if(typeof(cidAck) === "number"){
       this.liveSocket.time("component ack patch complete", () => {
-        if(this.componentPatch(diff[COMPONENTS][cidAck], cidAck, ref)){ phxChildrenAdded = true }
+        if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
     } else if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
-          if(this.componentPatch(diff[COMPONENTS][parentCID], parentCID, ref)){ phxChildrenAdded = true }
+          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID, ref)){ phxChildrenAdded = true }
         })
       })
     } else if(!isEmpty(diff)){
