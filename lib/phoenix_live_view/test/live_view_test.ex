@@ -409,7 +409,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, component, assigns) do
     socket = %Socket{endpoint: endpoint}
     assigns = Map.new(assigns)
-    mount_assigns = if assigns[:id], do: %{myself: -1}, else: %{}
+    mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
     rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
