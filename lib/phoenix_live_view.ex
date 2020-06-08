@@ -1292,7 +1292,7 @@ defmodule Phoenix.LiveView do
 
   ## Error and exception handling
 
-  As with any other ELixir code, exceptions may happen during the LiveView
+  As with any other Elixir code, exceptions may happen during the LiveView
   life-cycle. In this section we will describe how LiveView reacts to errors
   at different stages.
 
