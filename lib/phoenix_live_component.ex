@@ -380,6 +380,21 @@ defmodule Phoenix.LiveComponent do
   to build the markup.
   """
 
+  defmodule CID do
+    @moduledoc """
+    The struct representing an internal unique reference to the component instance,
+    available as the `@myself` assign in stateful components.
+
+    Read more about the uses of `@myself` in the `Phoenix.LiveComponent` docs.
+    """
+
+    defstruct [:cid]
+
+    defimpl Phoenix.HTML.Safe do
+      def to_iodata(%{cid: cid}), do: Integer.to_string(cid)
+    end
+  end
+
   alias Phoenix.LiveView.Socket
 
   defmacro __using__(_) do

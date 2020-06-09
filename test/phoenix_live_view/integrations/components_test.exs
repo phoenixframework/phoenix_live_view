@@ -280,11 +280,11 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "full life-cycle with id" do
       assert render_component(MyComponent, from: "test", id: "stateful") =~ "FROM test world"
-      assert_received {:mount, %{assigns: %{flash: %{}, myself: -1}}}
+      assert_received {:mount, %{assigns: %{flash: %{}, myself: %Phoenix.LiveComponent.CID{cid: -1}}}}
       assert_received {:preload, [%{from: "test", id: "stateful"}]}
 
       assert_received {:update, %{from: "test", id: "stateful"},
-                       %{assigns: %{flash: %{}, myself: -1}}}
+                       %{assigns: %{flash: %{}, myself: %Phoenix.LiveComponent.CID{cid: -1}}}}
     end
 
     test "render only" do
