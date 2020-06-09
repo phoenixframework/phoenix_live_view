@@ -16,8 +16,8 @@ defmodule Phoenix.LiveView.Helpers do
   When navigating to the current LiveView, `c:handle_params/3` is
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
-  whole page. For live redirects to another LiveView, use
-  `live_redirect/2`.
+  whole page while also maintaining the current scroll position.
+  For live redirects to another LiveView, use `live_redirect/2`.
 
   ## Options
 

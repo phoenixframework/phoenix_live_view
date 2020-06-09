@@ -1092,7 +1092,7 @@ defmodule Phoenix.LiveView do
       keeping the current layout
 
     * `live_patch/2` and `push_patch/2` updates the current LiveView and
-      sends only the minimal diff
+      sends only the minimal diff while also maintaining the scroll position
 
   An easy rule of thumb is to stick with `live_redirect/2` and `push_redirect/2`
   and use the patch helpers only in the cases where you want to minimize the
@@ -2085,8 +2085,8 @@ defmodule Phoenix.LiveView do
   When navigating to the current LiveView, `c:handle_params/3` is
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
-  whole page. For live redirects to another LiveView, use
-  `push_redirect/2`.
+  whole page while also maintaining the current scroll position.
+  For live redirects to another LiveView, use `push_redirect/2`.
 
   ## Options
 
