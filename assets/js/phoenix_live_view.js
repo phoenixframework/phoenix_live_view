@@ -1524,7 +1524,10 @@ export class View {
     clearTimeout(this.loaderTimer)
     let onFinished = () => {
       callback()
-      for(let id in this.viewHooks){ this.destroyHook(this.viewHooks[id]) }
+      for(let id in this.viewHooks){
+        this.viewHooks[id].__trigger__("beforeDestroy")
+        this.destroyHook(this.viewHooks[id])
+      }
     }
 
     this.log("destroyed", () => ["the child has been removed from the parent"])
