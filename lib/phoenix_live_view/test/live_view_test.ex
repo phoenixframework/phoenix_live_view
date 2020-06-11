@@ -98,7 +98,7 @@ defmodule Phoenix.LiveViewTest do
   messages, simply message the view and use the `render` function to test the
   result:
 
-      send(view.pid, {:set_temp: 50})
+      send(view.pid, {:set_temp, 50})
       assert render(view) =~ "The temperature is: 50℉"
 
   ## Testing components
