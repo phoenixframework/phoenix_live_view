@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.Channel do
 
   alias Phoenix.LiveView.{Socket, Utils, Diff, Static, Upload, UploadConfig}
   alias Phoenix.Socket.Message
+  import Phoenix.LiveView.MixProject, only: [project: 0]
 
   @prefix :phoenix
 
@@ -724,6 +725,8 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
+    check_version_match(params)
+
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
         %{private: %{connect_info: connect_info}} = phx_socket
@@ -775,6 +778,19 @@ defmodule Phoenix.LiveView.Channel do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
     GenServer.reply(from, {:error, %{reason: "stale"}})
     {:stop, :shutdown, :no_session}
+  end
+
+  defp check_version_match(params) do
+    server_version = Keyword.get(project(), :version, :not_found)
+    client_version = Map.get(params, "lv_version", :not_found)
+    should_display_warning = Application.get_env(:phoenix_live_view, :warn_version_mismatch, true)
+
+    if should_display_warning && server_version != client_version do
+      Logger.warn("""
+      There is a mismatch between the LiveView version on the server (#{server_version}) and the client (#{client_version}).
+      The client side can be updated to match by running `npm install --prefix assets`.
+      """)
+    end
   end
 
   defp verify_flash(endpoint, verified, flash_token, connect_params) do

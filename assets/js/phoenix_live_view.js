@@ -9,6 +9,7 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import morphdom from "morphdom"
 
+const PACKAGE_INFO = require('../package.json');
 const CONSECUTIVE_RELOADS = "consecutive-reloads"
 const MAX_RELOADS = 10
 const RELOAD_JITTER = [1000, 3000]
@@ -1967,7 +1968,8 @@ export class View {
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
+        lv_version: PACKAGE_INFO.version
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
