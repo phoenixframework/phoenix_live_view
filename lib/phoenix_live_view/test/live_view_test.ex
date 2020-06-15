@@ -54,28 +54,28 @@ defmodule Phoenix.LiveViewTest do
   browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
 
-    * `render_click/1` - sends a phx-click event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_click/1` - sends a phx-click event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_focus/2` - sends a phx-focus event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_focus/2` - sends a phx-focus event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_blur/1` - sends a phx-blur event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_blur/1` - sends a phx-blur event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_submit/1` - sends a form phx-submit event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_submit/1` - sends a form phx-submit event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_change/1` - sends a form phx-change event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_change/1` - sends a form phx-change event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keydown/1` - sends a form phx-keydown event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keydown/1` - sends a form phx-keydown event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keyup/1` - sends a form phx-keyup event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keyup/1` - sends a form phx-keyup event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_hook/3` - sends a hook event and value and returns
+    * `render_hook/3` - sends a hook event and value, returning
       the rendered result of the `handle_event/3` callback.
 
   For example:
