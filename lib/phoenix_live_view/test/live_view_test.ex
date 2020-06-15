@@ -75,6 +75,9 @@ defmodule Phoenix.LiveViewTest do
     * `render_keyup/1` - sends a form phx-keyup event and value and
       returns the rendered result of the `handle_event/3` callback.
 
+    * `render_hook/3` - sends a hook event and value and returns
+      the rendered result of the `handle_event/3` callback.
+
   For example:
 
       {:ok, view, _html} = live(conn, "/thermo")
