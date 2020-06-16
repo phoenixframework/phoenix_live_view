@@ -57,10 +57,14 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp value_key("value"), do: "value"
   defp value_key(_), do: nil
 
-  def attribute({_tag, attrs, _children}, key) do
-    case List.keyfind(attrs, key, 0) do
-      {_, value} -> value
-      nil -> nil
+  def tag(node), do: elem(node, 0)
+
+  def attribute(node, key) do
+    with {tag, attrs, _children} when is_binary(tag) <- node,
+         {_, value} <- List.keyfind(attrs, key, 0) do
+      value
+    else
+      _ -> nil
     end
   end
 
@@ -115,6 +119,18 @@ defmodule Phoenix.LiveViewTest.DOM do
       _, %{} = target, %{} = source -> deep_merge(target, source)
       _, _target, source -> source
     end)
+  end
+
+  def filter(node, fun) do
+    node |> reverse_filter(fun) |> Enum.reverse()
+  end
+
+  def reverse_filter(node, fun) do
+    node
+    |> Floki.traverse_and_update([], fn node, acc ->
+      if fun.(node), do: {node, [node | acc]}, else: {node, acc}
+    end)
+    |> elem(1)
   end
 
   # Diff merging
@@ -204,7 +220,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp inner_component_ids(id, html) do
     html
     |> by_id!(id)
-    |> all("[#{@phx_component}]")
+    |> filter(&attribute(&1, @phx_component))
     |> all_attributes(@phx_component)
   end
 

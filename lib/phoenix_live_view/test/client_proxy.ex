@@ -500,7 +500,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     ids_after =
       new_state.html
-      |> DOM.all("[data-phx-view]")
+      |> DOM.reverse_filter(&DOM.attribute(&1, "data-phx-view"))
       |> DOM.all_attributes("id")
       |> MapSet.new()
 
@@ -767,8 +767,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     if tag == "form" do
       defaults =
         node
-        |> DOM.all("input, select, textarea")
-        |> Enum.reverse()
+        |> DOM.reverse_filter(fn node ->
+          DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
+        end)
         |> Enum.reduce(%{}, &form_defaults/2)
 
       case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
@@ -785,15 +786,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp form_defaults(node, acc) do
-    cond do
-      DOM.attribute(node, "disabled") -> acc
-      name = DOM.attribute(node, "name") -> form_defaults(node, name, acc)
-      true -> acc
+    if name = DOM.attribute(node, "name") do
+      form_defaults(node, name, acc)
+    else
+      acc
     end
   end
 
   defp form_defaults({"select", _, _} = node, name, acc) do
-    options = DOM.all(node, "option")
+    options = DOM.filter(node, &DOM.tag(&1) == "option")
 
     all_selected =
       if DOM.attribute(node, "multiple") do
@@ -860,7 +861,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     {types, dom_values} =
       node
-      |> DOM.all("[name=#{inspect(name)}]:not([disabled])")
+      |> DOM.filter(fn node ->
+        DOM.attribute(node, "name") == name and is_nil(DOM.attribute(node, "disabled"))
+      end)
       |> collect_values([], [])
 
     limited? = Enum.all?(types, &(&1 in @limited))
@@ -928,7 +931,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp collect_values([{"select", _, _} = node | nodes], types, values) do
-    options = node |> DOM.all("option") |> Enum.map(&(DOM.attribute(&1, "value") || ""))
+    options =
+      node
+      |> DOM.filter(&DOM.tag(&1) == "option")
+      |> Enum.map(&(DOM.attribute(&1, "value") || ""))
 
     if DOM.attribute(node, "multiple") do
       collect_values(nodes, ["multiple select" | types], Enum.reverse(options, values))
