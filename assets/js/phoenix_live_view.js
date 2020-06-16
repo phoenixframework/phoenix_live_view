@@ -748,7 +748,7 @@ export class LiveSocket {
 
   bindNav(){
     if(!Browser.canPushState()){ return }
-    window.onpopstate = (event) => {
+    window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
       let {type, id, root} = event.state || {}
       let href = window.location.href
@@ -760,7 +760,7 @@ export class LiveSocket {
           if(root){ this.replaceRootHistory() }
         })
       }
-    }
+    }, false)
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let type = target && target.getAttribute(PHX_LIVE_LINK)
