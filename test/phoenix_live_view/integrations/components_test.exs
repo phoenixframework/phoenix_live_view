@@ -175,7 +175,8 @@ defmodule Phoenix.LiveView.ComponentTest do
                send(view.pid, {:send_update, [{StatefulComponent, id: "nemo", name: "NEW-nemo"}]})
                render(view)
                refute_received {:updated, _}
-             end) =~ "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
+             end) =~
+               "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
     end
 
     test "raises if component module is not available", %{conn: conn} do
@@ -183,10 +184,15 @@ defmodule Phoenix.LiveView.ComponentTest do
       {:ok, view, _html} = live(conn, "/components")
 
       assert ExUnit.CaptureLog.capture_log(fn ->
-               send(view.pid, {:send_update, [{NonexistentComponent, id: "chris", name: "NEW-chris"}]})
+               send(
+                 view.pid,
+                 {:send_update, [{NonexistentComponent, id: "chris", name: "NEW-chris"}]}
+               )
+
                ref = Process.monitor(view.pid)
                assert_receive {:DOWN, ^ref, _, _, _}
-             end) =~ "** (ArgumentError) send_update failed (module NonexistentComponent is not available)"
+             end) =~
+               "** (ArgumentError) send_update failed (module NonexistentComponent is not available)"
     end
   end
 
@@ -280,7 +286,10 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "full life-cycle with id" do
       assert render_component(MyComponent, from: "test", id: "stateful") =~ "FROM test world"
-      assert_received {:mount, %{assigns: %{flash: %{}, myself: %Phoenix.LiveComponent.CID{cid: -1}}}}
+
+      assert_received {:mount,
+                       %{assigns: %{flash: %{}, myself: %Phoenix.LiveComponent.CID{cid: -1}}}}
+
       assert_received {:preload, [%{from: "test", id: "stateful"}]}
 
       assert_received {:update, %{from: "test", id: "stateful"},

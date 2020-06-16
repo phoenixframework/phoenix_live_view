@@ -39,17 +39,39 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def init(opts) do
-    # Since we are always running in the test client,
-    # we will disable our own logging and let the client
-    # do the job.
+    # Since we are always running in the test client, we will disable
+    # our own logging and let the client do the job.
     Logger.disable(self())
 
-    {_caller_pid, _caller_ref} = caller = Keyword.fetch!(opts, :caller)
-    root_html = Keyword.fetch!(opts, :html)
-    root_view = Keyword.fetch!(opts, :proxy)
-    session = Keyword.fetch!(opts, :session)
-    url = Keyword.fetch!(opts, :url)
-    test_supervisor = Keyword.fetch!(opts, :test_supervisor)
+    %{
+      caller: {_, ref} = caller,
+      html: response_html,
+      connect_params: connect_params,
+      connect_info: connect_info,
+      live_module: module,
+      endpoint: endpoint,
+      session: session,
+      url: url,
+      test_supervisor: test_supervisor
+    } = opts
+
+    # We can assume there is at least one LiveView
+    # because the live_module assign was set.
+    root_html = DOM.parse(response_html)
+    [{id, session_token, static_token} | _] = DOM.find_live_views(root_html)
+
+    root_view = %ClientProxy{
+      id: id,
+      ref: ref,
+      connect_params: connect_params,
+      connect_info: connect_info,
+      session_token: session_token,
+      static_token: static_token,
+      module: module,
+      endpoint: endpoint,
+      child_statics: Map.delete(DOM.find_static_views(root_html), id),
+      topic: Phoenix.LiveView.Utils.random_id()
+    }
 
     state = %{
       join_ref: 0,
@@ -75,7 +97,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         |> put_view(root_view, rendered)
         |> detect_added_or_removed_children(root_view, root_html)
 
-      send_caller(new_state, {:ok, build_view(root_view), DOM.to_html(new_state.html)})
+      send_caller(new_state, {:ok, build_client_view(root_view), DOM.to_html(new_state.html)})
       {:ok, new_state}
     catch
       :throw, {:stop, {:shutdown, reason}, _state} ->
@@ -88,7 +110,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp build_view(%ClientProxy{} = proxy) do
+  defp build_client_view(%ClientProxy{} = proxy) do
     %{id: id, ref: ref, topic: topic, module: module, endpoint: endpoint, pid: pid} = proxy
     %View{id: id, pid: pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
   end
@@ -157,7 +179,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     children =
       Enum.flat_map(view.children, fn {id, _session} ->
         case fetch_view_by_id(state, id) do
-          {:ok, child} -> [build_view(child)]
+          {:ok, child} -> [build_client_view(child)]
           :error -> []
         end
       end)
@@ -565,23 +587,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> put_reply(ref, view.pid, callback)
   end
 
-  def build(attrs) do
+  defp build_child(%ClientProxy{ref: ref, proxy: proxy, endpoint: endpoint}, attrs) do
     attrs_with_defaults =
-      attrs
-      |> Keyword.merge(topic: Phoenix.LiveView.Utils.random_id())
-      |> Keyword.put_new_lazy(:ref, fn -> make_ref() end)
+      Keyword.merge(attrs,
+        ref: ref,
+        proxy: proxy,
+        endpoint: endpoint,
+        topic: Phoenix.LiveView.Utils.random_id()
+      )
 
-    struct(__MODULE__, attrs_with_defaults)
-  end
-
-  def build_child(%ClientProxy{ref: ref, proxy: proxy} = parent, attrs) do
-    attrs
-    |> Keyword.merge(
-      ref: ref,
-      proxy: proxy,
-      endpoint: parent.endpoint
-    )
-    |> build()
+    struct!(__MODULE__, attrs_with_defaults)
   end
 
   ## Element helpers

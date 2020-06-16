@@ -102,11 +102,12 @@ defmodule Phoenix.LiveViewTest.DOM do
       found = {id, session, static}
 
       if main == "true" do
-        [found | acc]
-      else
         acc ++ [found]
+      else
+        [found | acc]
       end
     end)
+    |> Enum.reverse()
   end
 
   def deep_merge(target, source) do
