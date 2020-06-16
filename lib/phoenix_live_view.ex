@@ -211,8 +211,8 @@ defmodule Phoenix.LiveView do
             {:ok, temperature} ->
               {:ok, assign(socket, temperature: temperature, user_id: user_id)}
 
-            {:error, reason} ->
-              {:error, reason}
+            {:error, _reason} ->
+              {:ok, redirect(socket, to: "/error")}
           end
         end
 
