@@ -256,22 +256,28 @@ defmodule Phoenix.LiveView.Utils do
     arity = length(args)
 
     if function_exported?(view, :mount, arity) do
-      case apply(view, :mount, args) do
-        {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-          validate_mount_redirect!(socket.redirected)
-          Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+      :telemetry.span([:phoenix_live_view, :mount], %{socket: socket}, fn ->
+        case apply(view, :mount, args) do
+          {:ok, %Socket{} = socket, opts} when is_list(opts) ->
+            validate_mount_redirect!(socket.redirected)
 
-        {:ok, %Socket{} = socket} ->
-          validate_mount_redirect!(socket.redirected)
-          socket
+            socket =
+              Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
 
-        other ->
-          raise ArgumentError, """
-          invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+            {socket, %{socket: socket}}
 
-          Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-          """
-      end
+          {:ok, %Socket{} = socket} ->
+            validate_mount_redirect!(socket.redirected)
+            {socket, %{socket: socket}}
+
+          other ->
+            raise ArgumentError, """
+            invalid result returned from #{inspect(view)}.mount/#{length(args)}.
+
+            Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
+            """
+        end
+      end)
     else
       socket
     end

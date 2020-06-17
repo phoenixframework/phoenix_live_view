@@ -292,3 +292,10 @@ defmodule Phoenix.LiveViewTest.AssignsNotInSocketLive do
   def mount(_params, _session, socket), do: {:ok, socket}
   defp boom(socket), do: socket.assigns.boom
 end
+
+defmodule Phoenix.LiveViewTest.ErrorInMountLive do
+  use Phoenix.LiveView
+
+  def render(assigns), do: ~L|<div>I crash in mount</div>|
+  def mount(_params, _session, _socket), do: raise("boom")
+end

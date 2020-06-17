@@ -40,6 +40,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:phoenix, "~> 1.4.17 or ~> 1.5.2"},
       {:phoenix_html, "~> 2.14"},
+      {:telemetry, github: "beam-telemetry/telemetry", override: true},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
       {:floki, "~> 0.26.0", only: :test},
