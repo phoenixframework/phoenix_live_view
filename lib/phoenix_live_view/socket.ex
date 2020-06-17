@@ -38,8 +38,25 @@ defmodule Phoenix.LiveView.Socket do
             host_uri: nil,
             connected?: false
 
-  @type t :: %__MODULE__{}
   @type assigns :: map | Phoenix.LiveView.Socket.AssignsNotInSocket.t()
+  @type fingerprints :: {nil, map} | {binary, map}
+
+  @type t :: %__MODULE__{
+    id: binary(),
+    endpoint: module(),
+    view: module(),
+    root_view: module(),
+    parent_pid: nil | pid(),
+    root_pid: pid(),
+    router: module(),
+    assigns: assigns,
+    changed: map(),
+    private: map(),
+    fingerprints: fingerprints,
+    redirected: nil | tuple(),
+    host_uri: URI.t(),
+    connected?: boolean()
+  }
 
   channel "lv:*", Phoenix.LiveView.Channel
 
