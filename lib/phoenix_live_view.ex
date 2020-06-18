@@ -1777,19 +1777,19 @@ defmodule Phoenix.LiveView do
 
   LiveView currently exposes the following events:
 
-    * `[:phoenix_live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
+    * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
 
       * Measurement: `%{system_time: System.monotonic_time}`
 
       * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
 
-    * `[:phoenix_live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+    * `[:phoenix, :live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
 
       * Measurement: `%{duration: native_time}`
 
       * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
 
-    * `[:phoenix_live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+    * `[:phoenix, :live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
 
       * Measurement: `%{duration: native_time}`
 

@@ -41,14 +41,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
-  defp attach_telemetry() do
+  defp attach_telemetry(prefix) when is_list(prefix) do
     unique_name = :"PID#{System.unique_integer()}"
     Process.register(self(), unique_name)
 
     for suffix <- [:start, :stop, :exception] do
       :telemetry.attach(
         {suffix, unique_name},
-        [:phoenix_live_view, :mount, suffix],
+        prefix ++ [suffix],
         fn event, measurements, metadata, :none ->
           send(unique_name, {:event, event, measurements, metadata})
         end,
@@ -65,38 +65,38 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "mounting" do
     test "static mount followed by connected mount", %{conn: conn} do
-      attach_telemetry()
+      attach_telemetry([:phoenix, :live_view, :mount])
 
       conn = get(conn, "/thermo")
       assert html_response(conn, 200) =~ "The temp is: 0"
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :start], %{system_time: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
                       %{socket: %Phoenix.LiveView.Socket{connected?: false}}}
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :stop], %{duration: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
                       %{socket: %Phoenix.LiveView.Socket{connected?: false}}}
 
       {:ok, _view, html} = live(conn)
       assert html =~ "The temp is: 1"
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :start], %{system_time: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
                       %{socket: %Phoenix.LiveView.Socket{connected?: true}}}
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :stop], %{duration: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
                       %{socket: %Phoenix.LiveView.Socket{connected?: true}}}
     end
 
     test "live mount raises exception", %{conn: conn} do
-      attach_telemetry()
+      attach_telemetry([:phoenix, :live_view, :mount])
 
       assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
         live(conn, "/error-in-mount")
       end
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :start], %{system_time: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
                       %{socket: _}}
 
-      assert_receive {:event, [:phoenix_live_view, :mount, :exception], %{duration: _},
+      assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
                       %{kind: :error, reason: %RuntimeError{message: "boom"}, socket: _}}
     end
 

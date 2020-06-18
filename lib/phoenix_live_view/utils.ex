@@ -256,7 +256,7 @@ defmodule Phoenix.LiveView.Utils do
     arity = length(args)
 
     if function_exported?(view, :mount, arity) do
-      :telemetry.span([:phoenix_live_view, :mount], %{socket: socket}, fn ->
+      :telemetry.span([:phoenix, :live_view, :mount], %{socket: socket}, fn ->
         case apply(view, :mount, args) do
           {:ok, %Socket{} = socket, opts} when is_list(opts) ->
             validate_mount_redirect!(socket.redirected)
