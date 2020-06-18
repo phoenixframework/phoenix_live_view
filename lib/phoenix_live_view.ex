@@ -1413,34 +1413,6 @@ defmodule Phoenix.LiveView do
   other developers will be more comfortable by explicitly handling those cases.
   In both scenarios, LiveView has you covered.
 
-  ## Telemetry
-
-  LiveView currently exposes the following events:
-
-    * `[:phoenix_live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
-
-      * Measurement: `%{system_time: System.monotonic_time}`
-
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
-
-    * `[:phoenix_live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
-
-      * Measurement: `%{duration: native_time}`
-
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
-
-    * `[:phoenix_live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
-
-      * Measurement: `%{duration: native_time}`
-
-      * Metadata:
-
-            %{
-              socket: Phoenix.LiveView.Socket.t,
-              kind: atom,
-              reason: term
-            }
-
   ## Using Gettext for internationalization
 
   For internationalization with [gettext](https://hexdocs.pm/gettext/Gettext.html),
@@ -1800,6 +1772,35 @@ defmodule Phoenix.LiveView do
     * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
     the LiveView before compressing its own memory and state.
     Defaults to 15000ms (15 seconds)
+
+  ## Telemetry
+
+  LiveView currently exposes the following events:
+
+    * `[:phoenix_live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
+
+      * Measurement: `%{system_time: System.monotonic_time}`
+
+      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+
+    * `[:phoenix_live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+
+      * Measurement: `%{duration: native_time}`
+
+      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+
+    * `[:phoenix_live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+
+      * Measurement: `%{duration: native_time}`
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              kind: atom,
+              reason: term
+            }
+
   '''
 
   alias Phoenix.LiveView.Socket
