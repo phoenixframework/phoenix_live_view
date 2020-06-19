@@ -232,7 +232,8 @@ defmodule Phoenix.LiveView.Channel do
                 " was not mounted at the router with the live/3 macro under URL #{inspect(url)}"
 
       true ->
-        Utils.call_handle_params!(socket, view, params, url)
+        socket
+        |> Utils.call_handle_params!(view, params, url)
         |> mount_handle_params_result(state, :mount)
     end
   end
