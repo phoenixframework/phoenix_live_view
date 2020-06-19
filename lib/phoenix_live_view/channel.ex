@@ -104,20 +104,6 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, state}
   end
 
-  def handle_info(%Message{topic: topic, event: "upload_progress"} = msg, %{topic: topic} = state) do
-    %{"path" => path} = msg.payload
-    event = "upload_progress"
-    val = Plug.Conn.Query.decode_pair({path, Map.take(msg.payload, ["loaded", "percentage", "total"])}, %{})
-
-    if cid = msg.payload["cid"] do
-      component_handle_event(state, cid, event, val, msg.ref)
-    else
-      state.socket
-      |> view_handle_event(event, val)
-      |> handle_result({:handle_event, 3, msg.ref}, state)
-    end
-  end
-
   def handle_info(%Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg, %{topic: topic} = state) do
     %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode_event_type(type, raw_val)
