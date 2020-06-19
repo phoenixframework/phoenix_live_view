@@ -1628,7 +1628,13 @@ export class View {
       return this.applyJoinPatch(live_patch, html)
     }
 
-    let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(c => this.joinChild(c))
+    let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
+      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
+      let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
+      if(phxStatic) toEl.setAttribute(PHX_STATIC, phxStatic)
+      return this.joinChild(toEl)
+    })
+
     if(newChildren.length === 0){
       if(this.parent){
         this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
