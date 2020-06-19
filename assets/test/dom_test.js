@@ -77,18 +77,22 @@ describe("DOM", () => {
     })
   })
 
-  describe("findFirstComponentNode", () => {
-    test("returns the first node with cid ID", () => {
-      let component = tag("div", {"data-phx-component": 0}, `
+  describe("findComponentNodeList", () => {
+    test("returns nodes with cid ID (except indirect children)", () => {
+      let component1 = tag("div", {"data-phx-component": 0}, `Hello`)
+      let component2 = tag("div", {"data-phx-component": 0}, `World`)
+      let component3 = tag("div", {"data-phx-view": "Example"}, `
         <div data-phx-component="0"></div>
       `)
-      document.body.appendChild(component )
+      document.body.appendChild(component1)
+      document.body.appendChild(component2)
+      document.body.appendChild(component3)
 
-      expect(DOM.findFirstComponentNode(document, 0)).toBe(component)
+      expect(DOM.findComponentNodeList(document, 0)).toEqual([component1, component2])
     })
 
-    test("returns null with no matching cid", () => {
-      expect(DOM.findFirstComponentNode(document, 123)).toBe(null)
+    test("returns empty list with no matching cid", () => {
+      expect(DOM.findComponentNodeList(document, 123)).toEqual([])
     })
   })
 
