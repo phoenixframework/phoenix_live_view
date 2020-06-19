@@ -731,6 +731,33 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
+    test "on update with stateless/stateful swap" do
+      component = %Component{assigns: %{from: :component}, component: MyComponent}
+      rendered = component_template(%{component: component})
+      {socket, diff, components} = render(rendered)
+
+      assert diff == %{
+               0 => %{0 => "component", 1 => "world", :s => ["FROM ", " ", "\n"]},
+               :s => ["<div>\n  ", "\n</div>\n"]
+             }
+
+      assert {root_prints, %{0 => {_, %{}}}} = socket.fingerprints
+      assert {_, _, 1} = components
+
+      component = %Component{id: "hello", assigns: %{from: :rerender}, component: MyComponent}
+      rendered = component_template(%{component: component})
+
+      {socket, diff, components} = render(rendered, socket.fingerprints, components)
+
+      assert diff == %{
+               0 => 1,
+               :c => %{1 => %{0 => "rerender", 1 => "world", :s => ["FROM ", " ", "\n"]}}
+             }
+
+      assert socket.fingerprints == {root_prints, %{}}
+      assert {_, _, 2} = components
+    end
+
     test "on preload" do
       alias Component, as: C
 

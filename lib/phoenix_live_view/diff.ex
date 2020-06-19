@@ -281,13 +281,13 @@ defmodule Phoenix.LiveView.Diff do
   defp traverse(
          socket,
          %Component{} = component,
-         fingerprints_tree,
+         _fingerprints_tree,
          pending,
          components,
          _changed?
        ) do
     {cid, pending, components} = traverse_component(socket, component, pending, components)
-    {cid, fingerprints_tree, pending, components}
+    {cid, nil, pending, components}
   end
 
   defp traverse(
