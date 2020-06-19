@@ -164,9 +164,8 @@ export class Rendered {
     let newc = diff[COMPONENTS]
     delete diff[COMPONENTS]
     this.rendered = this.recursiveMerge(this.rendered, diff)
-    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
     if(newc){
-      let oldc = this.rendered[COMPONENTS]
+      let oldc = this.rendered[COMPONENTS] || {}
       for(let cid in newc){
         let cdiff = newc[cid]
         let component = cdiff[STATIC]
@@ -181,8 +180,9 @@ export class Rendered {
           component = oldc[cid] || {}
           component = this.recursiveMerge(component, cdiff)
         }
-        this.rendered[COMPONENTS][cid] = component
+        newc[cid] = component
       }
+      this.rendered[COMPONENTS] = this.recursiveMerge(oldc, newc)
     }
     diff[COMPONENTS] = newc
   }

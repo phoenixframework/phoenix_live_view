@@ -9,11 +9,11 @@ describe("Rendered", () => {
     test("recursively merges two diffs", () => {
       let simple = new Rendered("123", simpleDiff1)
       simple.mergeDiff(simpleDiff2)
-      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}})
+      expect(simple.get()).toEqual(simpleDiffResult)
 
       let deep = new Rendered("123", deepDiff1)
       deep.mergeDiff(deepDiff2)
-      expect(deep.get()).toEqual({...deepDiffResult, [COMPONENTS]: {}})
+      expect(deep.get()).toEqual(deepDiffResult)
     })
 
     test("merges the latter diff if it contains a `static` key", () => {
@@ -21,7 +21,35 @@ describe("Rendered", () => {
       const diff2 = { 0: ["c"], [STATIC]: "c"}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({...diff2, c: {}})
+      expect(rendered.get()).toEqual(diff2)
+    })
+
+    test("merges the latter diff if it contains a `static` key even when nested", () => {
+      const diff1 = { 0: { 0: ["a"], 1: ["b"] } }
+      const diff2 = { 0: { 0: ["c"], [STATIC]: "c"} }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual(diff2)
+    })
+
+    test("merges components considering links", () => {
+      const diff1 = { }
+      const diff2 = { [COMPONENTS]: { 1: { [STATIC]: ["c"] }, 2: { [STATIC]: 1 } } }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual({ [COMPONENTS]: { 1: { [STATIC]: ["c"] }, 2: { [STATIC]: ["c"] } } })
+    })
+
+    test("merges components considering old and new links", () => {
+      const diff1 = { [COMPONENTS]: { 1: { [STATIC]: ["old"] } } }
+      const diff2 = { [COMPONENTS]: { 1: { [STATIC]: ["new"] }, 2: { [STATIC]: -1 }, 3: { [STATIC]: 1 } } }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual({ [COMPONENTS]: {
+        1: { [STATIC]: ["new"] },
+        2: { [STATIC]: ["old"] },
+        3: { [STATIC]: ["new"] }
+      } })
     })
 
     test("replaces a string when a map is returned", () => {
@@ -29,7 +57,7 @@ describe("Rendered", () => {
       const diff2 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: ""} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
+      expect(rendered.get()).toEqual(diff2)
     })
 
     test("replaces a map when a string is returned", () => {
@@ -37,7 +65,7 @@ describe("Rendered", () => {
       const diff2 = { 0: { 0: "<button>Press Me</button>", [STATIC]: ""} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
+      expect(rendered.get()).toEqual(diff2)
     })
   })
 
