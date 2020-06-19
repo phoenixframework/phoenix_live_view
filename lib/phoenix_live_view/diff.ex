@@ -530,7 +530,7 @@ defmodule Phoenix.LiveView.Diff do
       )
       |> Utils.assign(:flash, %{})
 
-    Utils.maybe_call_mount!(socket, component, [socket])
+    Utils.maybe_call_live_component_mount!(socket, component)
   end
 
   defp configure_socket_for_component(socket, assigns, private, prints) do

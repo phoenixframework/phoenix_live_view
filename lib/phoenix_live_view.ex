@@ -1781,13 +1781,27 @@ defmodule Phoenix.LiveView do
 
       * Measurement: `%{system_time: System.monotonic_time}`
 
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
+            }
+
 
     * `[:phoenix, :live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
 
       * Measurement: `%{duration: native_time}`
 
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
+            }
+
 
     * `[:phoenix, :live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
 
@@ -1798,7 +1812,9 @@ defmodule Phoenix.LiveView do
             %{
               socket: Phoenix.LiveView.Socket.t,
               kind: atom,
-              reason: term
+              reason: term,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
             }
 
     * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_params/3` is invoked

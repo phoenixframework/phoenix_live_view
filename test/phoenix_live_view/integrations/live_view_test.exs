@@ -45,28 +45,36 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "mounting" do
     test "static mount followed by connected mount", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
       conn = get(conn, "/thermo")
       assert html_response(conn, 200) =~ "The temp is: 0"
 
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: false}}}
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{connected?: false}}}
-
       {:ok, _view, html} = live(conn)
       assert html =~ "The temp is: 1"
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: true}}}
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{connected?: true}}}
     end
 
-    test "disconnected mount with exception emits telemetry event", %{conn: conn} do
+    @tag session: %{current_user_id: "1"}
+    test "static mount emits telemetry events are emitted on successful callback", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :mount])
+
+      conn
+      |> get("/thermo?foo=bar")
+      |> html_response(200)
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
+                      %{socket: %Socket{connected?: false}} = metadata}
+
+      assert metadata.params == %{"foo" => "bar"}
+      assert metadata.session == %{"current_user_id" => "1"}
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
+                      %{socket: %Socket{connected?: false}} = metadata}
+
+      assert metadata.params == %{"foo" => "bar"}
+      assert metadata.session == %{"current_user_id" => "1"}
+    end
+
+    @tag session: %{current_user_id: "1"}
+    test "static mount emits telemetry events when callback raises an exception", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :mount])
 
       assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
@@ -74,22 +82,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
       end
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: _}}
+                      %{socket: %Socket{connected?: false}} = metadata}
+
+      assert metadata.params == %{"crash_on" => "disconnected_mount"}
+      assert metadata.session == %{"current_user_id" => "1"}
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{kind: :error, reason: %RuntimeError{}, socket: %Socket{connected?: false}}}
-    end
+                      %{socket: %Socket{connected?: false}} = metadata}
 
-    test "live mount with exception emits telemetry event", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
-      assert catch_exit(live(conn, "/errors?crash_on=connected_mount"))
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: _}}
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{kind: :error, reason: %RuntimeError{}, socket: %Socket{connected?: true}}}
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.params == %{"crash_on" => "disconnected_mount"}
+      assert metadata.session == %{"current_user_id" => "1"}
     end
 
     test "live mount in single call", %{conn: conn} do
@@ -115,6 +119,46 @@ defmodule Phoenix.LiveView.LiveViewTest do
         |> get("/not_found")
         |> live()
       end
+    end
+
+    @tag session: %{current_user_id: "1"}
+    test "live mount emits telemetry events are emitted on successful callback", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :mount])
+
+      {:ok, _view, _html} = live(conn, "/thermo?foo=bar")
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
+                      %{socket: %Socket{connected?: true}} = metadata}
+
+      assert metadata.params == %{"foo" => "bar"}
+      assert metadata.session == %{"current_user_id" => "1"}
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
+                      %{socket: %Socket{connected?: true}} = metadata}
+
+      assert metadata.params == %{"foo" => "bar"}
+      assert metadata.session == %{"current_user_id" => "1"}
+    end
+
+    @tag session: %{current_user_id: "1"}
+    test "live mount emits telemetry events when callback raises an exception", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :mount])
+
+      assert catch_exit(live(conn, "/errors?crash_on=connected_mount"))
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
+                      %{socket: %Socket{connected?: true}} = metadata}
+
+      assert metadata.params == %{"crash_on" => "connected_mount"}
+      assert metadata.session == %{"current_user_id" => "1"}
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
+                      %{socket: %Socket{connected?: true}} = metadata}
+
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.params == %{"crash_on" => "connected_mount"}
+      assert metadata.session == %{"current_user_id" => "1"}
     end
 
     test "push_redirect when disconnected", %{conn: conn} do

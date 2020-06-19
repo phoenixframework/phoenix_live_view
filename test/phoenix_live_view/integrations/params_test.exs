@@ -41,13 +41,15 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       get(conn, "/counter/123", query1: "query1", query2: "query2")
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _}, metadata}
+      assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
+                      metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
       assert metadata.uri == "http://www.example.com/counter/123"
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _}, metadata}
+      assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
+                      metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
@@ -61,13 +63,15 @@ defmodule Phoenix.LiveView.ParamsTest do
         get(conn, "/errors", crash_on: "disconnected_handle_params")
       end
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _}, metadata}
+      assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
+                      metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}
       assert metadata.uri == "http://www.example.com/errors"
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _}, metadata}
+      assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _},
+                      metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}

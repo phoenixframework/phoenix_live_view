@@ -250,37 +250,59 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `mount/N` callback, otherwise returns the socket as is.
+  Calls the `c:Phoenix.LiveView.mount/3` callback, otherwise returns the socket as is.
   """
-  def maybe_call_mount!(socket, view, args) do
-    arity = length(args)
+  def maybe_call_live_view_mount!(%Socket{} = socket, view, params, session) do
+    if function_exported?(view, :mount, 3) do
+      :telemetry.span(
+        [:phoenix, :live_view, :mount],
+        %{socket: socket, params: params, session: session},
+        fn ->
+          socket =
+            params
+            |> view.mount(session, socket)
+            |> handle_result!({:mount, 3, view})
 
-    if function_exported?(view, :mount, arity) do
-      :telemetry.span([:phoenix, :live_view, :mount], %{socket: socket}, fn ->
-        case apply(view, :mount, args) do
-          {:ok, %Socket{} = socket, opts} when is_list(opts) ->
-            validate_mount_redirect!(socket.redirected)
-
-            socket =
-              Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
-
-            {socket, %{socket: socket}}
-
-          {:ok, %Socket{} = socket} ->
-            validate_mount_redirect!(socket.redirected)
-            {socket, %{socket: socket}}
-
-          other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(view)}.mount/#{length(args)}.
-
-            Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(other)}
-            """
+          {socket, %{socket: socket, params: params, session: session}}
         end
-      end)
+      )
     else
       socket
     end
+  end
+
+  @doc """
+  Calls the `c:Phoenix.LiveComponent.mount/1` callback, otherwise returns the socket as is.
+  """
+  def maybe_call_live_component_mount!(%Socket{} = socket, view) do
+    if function_exported?(view, :mount, 1) do
+      socket
+      |> view.mount()
+      |> handle_result!({:mount, 1, view})
+    else
+      socket
+    end
+  end
+
+  defp handle_result!({:ok, %Socket{} = socket, opts}, {:mount, arity, _view})
+       when is_list(opts) do
+    validate_mount_redirect!(socket.redirected)
+
+    Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+  end
+
+  defp handle_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
+    validate_mount_redirect!(socket.redirected)
+
+    socket
+  end
+
+  defp handle_result!(response, {:mount, arity, view}) do
+    raise ArgumentError, """
+    invalid result returned from #{inspect(view)}.mount/#{arity}.
+
+    Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(response)}
+    """
   end
 
   defp validate_mount_redirect!({:live, {_, _}, _}), do: raise_bad_mount_and_live_patch!()
@@ -293,19 +315,23 @@ defmodule Phoenix.LiveView.Utils do
   been exported. Raises an `ArgumentError` on unexpected return types.
   """
   def call_handle_params!(%Socket{} = socket, view, params, uri) do
-    :telemetry.span([:phoenix, :live_view, :handle_params], %{socket: socket, params: params, uri: uri}, fn ->
-      case view.handle_params(params, uri, socket) do
-        {:noreply, %Socket{} = socket} ->
-          {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_params],
+      %{socket: socket, params: params, uri: uri},
+      fn ->
+        case view.handle_params(params, uri, socket) do
+          {:noreply, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
 
-        other ->
-          raise ArgumentError, """
-          invalid result returned from #{inspect(view)}.handle_params/3.
+          other ->
+            raise ArgumentError, """
+            invalid result returned from #{inspect(view)}.handle_params/3.
 
-          Expected {:noreply, socket}, got: #{inspect(other)}
-          """
+            Expected {:noreply, socket}, got: #{inspect(other)}
+            """
+        end
       end
-    end)
+    )
   end
 
   @doc """

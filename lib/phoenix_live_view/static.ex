@@ -241,7 +241,7 @@ defmodule Phoenix.LiveView.Static do
     socket = put_in(socket.private[:conn_session], conn_session)
 
     socket =
-      Utils.maybe_call_mount!(socket, view, [:not_mounted_at_router, mount_session, socket])
+      Utils.maybe_call_live_view_mount!(socket, view, :not_mounted_at_router, mount_session)
 
     if redir = socket.redirected do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.Static do
     mount_params = if socket.router, do: params, else: :not_mounted_at_router
 
     socket
-    |> Utils.maybe_call_mount!(view, [mount_params, session, socket])
+    |> Utils.maybe_call_live_view_mount!(view, mount_params, session)
     |> mount_handle_params(view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: {:live, _, _}} = socket} ->

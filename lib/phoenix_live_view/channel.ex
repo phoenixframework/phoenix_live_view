@@ -667,7 +667,7 @@ defmodule Phoenix.LiveView.Channel do
       )
 
     socket
-    |> Utils.maybe_call_mount!(view, [params, Map.merge(socket_session, session), socket])
+    |> Utils.maybe_call_live_view_mount!(view, params, Map.merge(socket_session, session))
     |> build_state(phx_socket)
     |> maybe_call_mount_handle_params(router, url, params)
     |> reply_mount(from)
