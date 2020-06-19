@@ -213,15 +213,19 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp call_live_view_handle_event!(%Socket{} = socket, event, val) do
-    :telemetry.span([:phoenix, :live_view, :handle_event], %{socket: socket, event: event, params: val}, fn ->
-      case socket.view.handle_event(event, val, socket) do
-        {:noreply, %Socket{} = socket} ->
-          {{:noreply, socket}, %{socket: socket, event: event, params: val}}
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_event],
+      %{socket: socket, event: event, params: val},
+      fn ->
+        case socket.view.handle_event(event, val, socket) do
+          {:noreply, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, event: event, params: val}}
 
-        other ->
-          raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+          other ->
+            raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+        end
       end
-    end)
+    )
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do

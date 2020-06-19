@@ -316,5 +316,5 @@ defmodule Phoenix.LiveViewTest.ErrorsLive do
 
   def handle_params(_params, _session, socket), do: {:noreply, socket}
 
-  def handle_event("crash", _params, _socket), do: raise "boom handle_event"
+  def handle_event("crash", _params, _socket), do: raise("boom handle_event")
 end
