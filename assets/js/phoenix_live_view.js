@@ -586,7 +586,7 @@ export class LiveSocket {
       if(phxTarget === null){
         callback(view, childEl)
       } else {
-        view.withinTargets(phxTarget, targetEl => callback(view, targetEl))
+        view.withinTargets(phxTarget, callback)
       }
     })
   }
@@ -1594,12 +1594,12 @@ export class View {
       if(targets.length === 0){
         logError(`no phx-target's found matching @myself of ${phxTarget}`)
       } else {
-        callback(targets[0])
+        callback(this, targets[0])
       }
     } else {
-      let targets = Array.from(this.el.querySelectorAll(phxTarget))
+      let targets = Array.from(document.querySelectorAll(phxTarget))
       if(targets.length === 0){ logError(`no phx-target's found for selector "${phxTarget}"`) }
-      targets.forEach(callback)
+      targets.forEach(target => this.liveSocket.owner(target, view => callback(view, target)))
     }
   }
 
@@ -2172,8 +2172,8 @@ class ViewHook {
   }
 
   pushEventTo(phxTarget, event, payload = {}){
-    this.__view.withinTargets(phxTarget, targetCtx => {
-      this.__view.pushHookEvent(targetCtx, event, payload)
+    this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+      view.pushHookEvent(targetCtx, event, payload)
     })
   }
 
