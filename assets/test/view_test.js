@@ -264,6 +264,67 @@ describe("View + DOM", function() {
     expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()
   })
+
+  test("empty diff undoes refs and pending attributes", () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+    let ref = 456
+    let html = `<form phx-submit="submit" phx-page-loading=""><input type="text"></form>`
+
+    stubChannel(view)
+    view.onJoin({rendered: {
+      s: [html],
+      fingerprint: 123
+    }})
+    expect(view.el.innerHTML).toBe(html)
+
+    let form = view.el.querySelector("form")
+    view.pushFormSubmit(form, null, "submit", function(){})
+
+    expect(view.el.innerHTML).toBe(`<form phx-submit="submit" phx-page-loading="" class="phx-submit-loading" data-phx-ref="0"><input type="text" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="0"></form>`)
+
+    view.update({}, null, ref) // empty diff update
+
+    expect(view.el.innerHTML).toBe(html)
+  })
+
+  describe("phx-trigger-action", () => {
+    test("triggers external submit on updated DOM el", (done) => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+      let html = `<form id="form" phx-submit="submit"><input type="text"></form>`
+
+      stubChannel(view)
+      view.onJoin({rendered: {s: [html], fingerprint: 123}})
+      expect(view.el.innerHTML).toBe(html)
+
+      let formEl = document.getElementById("form")
+      formEl.submit = () => done()
+      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
+      view.update({s: [updatedHtml]}, null, null)
+
+      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
+    })
+
+    test("triggers external submit on added DOM el", (done) => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+      let html = `<div>not a form</div>`
+      HTMLFormElement.prototype.submit = done
+
+      stubChannel(view)
+      view.onJoin({rendered: {s: [html], fingerprint: 123}})
+      expect(view.el.innerHTML).toBe(html)
+
+      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
+      view.update({s: [updatedHtml]}, null, null)
+
+      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
+    })
+  })
 })
 
 let submitBefore
@@ -522,95 +583,68 @@ describe("View + Component", function() {
     view.pushEvent("keyup", input, targetCtx, "click", {})
   })
 
-  test("empty diff undoes refs and pending attributes", () => {
+  test("adds auto ID to prevent teardown/re-add", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let view = new View(el, liveSocket)
-    let ref = 456
-    let html = `<form phx-submit="submit" phx-page-loading=""><input type="text"></form>`
 
     stubChannel(view)
-    view.onJoin({rendered: {
-      s: [html],
-      fingerprint: 123
-    }})
-    expect(view.el.innerHTML).toBe(html)
 
-    let form = view.el.querySelector("form")
-    view.pushFormSubmit(form, null, "submit", function(){})
+    let joinDiff = {
+      "0": {"0": "", "1": 0, "s": ["", "", "<h2>2</h2>\n"]},
+      "c": {
+        "0": {"s": ["<div phx-click=\"show-rect\">Menu</div>\n"]}
+      },
+      "s": ["", ""]
+    }
 
-    expect(view.el.innerHTML).toBe(`<form phx-submit="submit" phx-page-loading="" class="phx-submit-loading" data-phx-ref="0"><input type="text" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="0"></form>`)
+    let updateDiff = {
+      "0": {
+        "0": {"s": ["  <h1>1</h1>\n"]}
+      }
+    }
 
-    view.update({}, null, ref) // empty diff update
+    view.onJoin({rendered: joinDiff})
+    expect(view.el.innerHTML.trim()).toBe(`<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
 
-    expect(view.el.innerHTML).toBe(html)
+    view.update(updateDiff, null, null)
+    expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
   })
 
-  describe("phx-trigger-action", () => {
-    test("triggers external submit on updated DOM el", (done) => {
-      let liveSocket = new LiveSocket("/live", Socket)
-      let el = liveViewDOM()
-      let view = new View(el, liveSocket)
-      let html = `<form id="form" phx-submit="submit"><input type="text"></form>`
+  test("wraps non-empty text nodes in span tags", () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
 
-      stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}})
-      expect(view.el.innerHTML).toBe(html)
+    stubChannel(view)
 
-      let formEl = document.getElementById("form")
-      formEl.submit = () => done()
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, null, null)
+    let joinDiff = {
+      "0": 0,
+      "c": {"0": {"s": ["Hello<div>World</div>\n"]}},
+      "s": ["", ""]
+    }
 
-      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
-    })
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    view.onJoin({rendered: joinDiff})
+    expect(view.el.innerHTML.trim()).toBe(`<span data-phx-component="0"></span><div data-phx-component="0" id="container-0-1">World</div>`)
+  })
 
-    test("triggers external submit on added DOM el", (done) => {
-      let liveSocket = new LiveSocket("/live", Socket)
-      let el = liveViewDOM()
-      let view = new View(el, liveSocket)
-      let html = `<div>not a form</div>`
-      HTMLFormElement.prototype.submit = done
+  test("wraps empty component in a single span tag", () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
 
-      stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}})
-      expect(view.el.innerHTML).toBe(html)
+    stubChannel(view)
 
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, null, null)
+    let joinDiff = {
+      "0": 0,
+      "c": {"0": {"s": ["\n"]}},
+      "s": ["", ""]
+    }
 
-      expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
-    })
-
-    test("new DOM component sibling uses auto ID to prevent teardown/re-add", () => {
-      let liveSocket = new LiveSocket("/live", Socket)
-      let el = liveViewDOM()
-      let view = new View(el, liveSocket)
-
-      stubChannel(view)
-
-      let joinDiff = {
-        "0": {"0": "", "1": 0, "s": ["", "", "<h2>2</h2>\n"]},
-        "c": {
-          "0": {"s": ["<div phx-click=\"show-rect\">Menu</div>\n"]}
-        },
-        "s": ["", ""]
-      }
-
-      let updateDiff = {
-        "0": {
-          "0": {"s": ["  <h1>1</h1>\n"]}
-        }
-      }
-
-      view.onJoin({rendered: joinDiff})
-      expect(view.el.innerHTML.trim()).toBe(`<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
-
-      view.update(updateDiff, null, null)
-
-      expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
-    })
-
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    view.onJoin({rendered: joinDiff})
+    expect(view.el.innerHTML.trim()).toBe(`<span data-phx-component="0"></span>`)
   })
 })
 
