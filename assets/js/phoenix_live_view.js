@@ -623,7 +623,7 @@ export class LiveSocket {
 
   destroyViewByEl(el){
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
-    root.destroyDescendent(el.id)
+    if(root) root.destroyDescendent(el.id)
   }
 
   setActiveElement(target){
