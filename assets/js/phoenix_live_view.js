@@ -249,7 +249,8 @@ export class Rendered {
     template.innerHTML = this.recursiveToString(component, components, onlyCids)
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
-    Array.from(container.childNodes).forEach((child, i) => {
+
+    let children = Array.from(container.childNodes).filter((child, i) => {
       if(child.nodeType === Node.ELEMENT_NODE){
         child.setAttribute(PHX_COMPONENT, cid)
         if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
@@ -257,23 +258,35 @@ export class Rendered {
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }
+        return true
       } else {
         if(child.nodeValue.trim() !== ""){
           logError(`only HTML element tags are allowed at the root of components.\n\n` +
                    `got: "${child.nodeValue.trim()}"\n\n` +
                    `within:\n`, template.innerHTML.trim())
-
-          let span = document.createElement("span")
-          span.innerText = child.nodeValue
-          span.setAttribute(PHX_COMPONENT, cid)
-          child.replaceWith(span)
+          child.replaceWith(this.createSpan(child.nodeValue, cid))
+          return true
         } else {
           child.remove()
+          return false
         }
       }
     })
 
-    return template.innerHTML
+    if(children.length === 0) {
+      logError(`expected at least one HTML element tag inside a component, but the component is empty:\n`,
+               template.innerHTML.trim())
+      return this.createSpan("", cid).outerHTML
+    } else {
+      return template.innerHTML
+    }
+  }
+
+  createSpan(text, cid) {
+    let span = document.createElement("span")
+    span.innerText = text
+    span.setAttribute(PHX_COMPONENT, cid)
+    return span
   }
 }
 
