@@ -287,6 +287,28 @@ defmodule Phoenix.LiveView.Utils do
   defp validate_mount_redirect!(_), do: :ok
 
   @doc """
+  Calls the `handle_params/3` callback, and returns the result.
+
+  This function expects the calling code has checked to see if this function has
+  been exported. Raises an `ArgumentError` on unexpected return types.
+  """
+  def call_handle_params!(%Socket{} = socket, view, params, uri) do
+    :telemetry.span([:phoenix, :live_view, :handle_params], %{socket: socket}, fn ->
+      case view.handle_params(params, uri, socket) do
+        {:noreply, %Socket{} = socket} ->
+          {{:noreply, socket}, %{socket: socket}}
+
+        other ->
+          raise ArgumentError, """
+          invalid result returned from #{inspect(view)}.handle_params/3.
+
+          Expected {:noreply, socket}, got: #{inspect(other)}
+          """
+      end
+    end)
+  end
+
+  @doc """
   Calls the optional `update/2` callback, otherwise update the socket directly.
   """
   def maybe_call_update!(socket, component, assigns) do

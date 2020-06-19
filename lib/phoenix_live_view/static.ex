@@ -310,13 +310,6 @@ defmodule Phoenix.LiveView.Static do
 
       {:noreply, %Socket{redirected: nil} = new_socket} ->
         {:ok, new_socket}
-
-      other ->
-        raise ArgumentError, """
-        invalid result returned from #{inspect(view)}.handle_params/3.
-
-        Expected {:noreply, socket}, got: #{inspect(other)}
-        """
     end
   end
 
@@ -333,7 +326,7 @@ defmodule Phoenix.LiveView.Static do
         Utils.live_link_info!(socket, view, uri)
 
       true ->
-        view.handle_params(params, uri, socket)
+        Utils.call_handle_params!(socket, view, params, uri)
     end
   end
 

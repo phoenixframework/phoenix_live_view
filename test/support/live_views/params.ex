@@ -96,3 +96,11 @@ defmodule Phoenix.LiveViewTest.ActionLive do
     {:noreply, push_patch(socket, to: to)}
   end
 end
+
+defmodule Phoenix.LiveViewTest.ErrorInHandleParamsLive do
+  use Phoenix.LiveView
+
+  def render(assigns), do: ~L|<div>I crash in handle_params</div>|
+  def mount(_params, _session, socket), do: {:ok, socket}
+  def handle_params(_params, _uri, _socket), do: raise("boom")
+end
