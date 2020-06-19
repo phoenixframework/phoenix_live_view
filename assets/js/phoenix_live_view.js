@@ -160,41 +160,48 @@ export class Rendered {
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
-  mergeDiff(sourceDiff){
-    let diff = clone(sourceDiff)
-    if(isEmpty(this.rendered) || (!diff[COMPONENTS] && this.isNewFingerprint(diff))){
-      this.rendered = {}
-      this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
-    }
-
+  mergeDiff(diff){
     let newc = diff[COMPONENTS]
     delete diff[COMPONENTS]
-    this.recursiveMerge(this.rendered, diff)
+    this.rendered = this.recursiveMerge(this.rendered, diff)
+    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
     if(newc){
       let oldc = this.rendered[COMPONENTS]
       for(let cid in newc){
         let cdiff = newc[cid]
-        let pointer = cdiff[STATIC]
-        let component = oldc[cid] || {}
-        if(typeof(pointer) === "number"){
-          component = pointer
-          delete cdiff[STATIC]
+        let component = cdiff[STATIC]
+        if(typeof(component) === "number"){
           while(typeof(component) === "number"){
             component = component > 0 ? newc[component] : oldc[-component]
           }
+          let stat = component[STATIC]
+          component = this.recursiveMerge(component, cdiff)
+          component[STATIC] = stat
+        } else {
+          component = oldc[cid] || {}
+          component = this.recursiveMerge(component, cdiff)
         }
-        this.recursiveMerge(component, cdiff)
         this.rendered[COMPONENTS][cid] = component
       }
     }
+    diff[COMPONENTS] = newc
   }
 
   recursiveMerge(target, source){
+    if(source[STATIC] !== undefined){
+      return source
+    } else {
+      this.doRecursiveMerge(target, source)
+      return target
+    }
+  }
+
+  doRecursiveMerge(target, source){
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
-        this.recursiveMerge(targetVal, val)
+        this.doRecursiveMerge(targetVal, val)
       } else {
         target[key] = val
       }
