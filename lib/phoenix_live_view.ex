@@ -1779,7 +1779,9 @@ defmodule Phoenix.LiveView do
 
     * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
 
-      * Measurement: `%{system_time: System.monotonic_time}`
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
 
       * Metadata:
 
@@ -1792,7 +1794,9 @@ defmodule Phoenix.LiveView do
 
     * `[:phoenix, :live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
 
-      * Measurement: `%{duration: native_time}`
+      * Measurement:
+
+            %{duration: native_time}
 
       * Metadata:
 
@@ -1819,7 +1823,9 @@ defmodule Phoenix.LiveView do
 
     * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_params/3` is invoked
 
-      * Measurement: `%{system_time: System.monotonic_time}`
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
 
       * Metadata:
 
@@ -1832,7 +1838,9 @@ defmodule Phoenix.LiveView do
 
     * `[:phoenix, :live_view, :handle_params, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
 
-      * Measurement: `%{duration: native_time}`
+      * Measurement:
+
+            %{duration: native_time}
 
       * Metadata:
 
@@ -1844,7 +1852,9 @@ defmodule Phoenix.LiveView do
 
     * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
 
-      * Measurement: `%{duration: native_time}`
+      * Measurement:
+
+            %{duration: native_time}
 
       * Metadata:
 
