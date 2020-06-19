@@ -141,7 +141,7 @@ function LiveFileIterator(inputEl) {
   function newContext(_inputEl, index) {
     return {
       done(data) { DOM.dispatchEvent(_inputEl, PHX_FILE_DONE, {data, index, key: _inputEl.name}) },
-      progress(data) { DOM.dispatchEvent(_inputEl, PHX_FILE_PROGRESS, {data, index, key: _inputEl.name}) }
+      progress(value) { DOM.dispatchEvent(_inputEl, PHX_FILE_PROGRESS, value) }
     }
   }
 
@@ -205,9 +205,7 @@ class LiveUpload {
     uploadChannel.join().receive("ok", (data) => {
       const uploadChunk = (chunk, finished, loaded) => {
         if (!finished) {
-          const total = file.size
-          const percentage = Math.round((loaded / total) * 100)
-          context.progress({loaded, percentage, total})
+          context.progress(Math.round((loaded / file.size) * 100))
         }
 
         uploadChannel.push("file", {file: chunk})
@@ -257,11 +255,6 @@ let uploadFiles = (formEl, view, refGenerator, cid, callback) => {
   // register the form listeners
   // these are responsible for sending messages to the server
   // in response to events dispatched from the file inputs
-  formEl.addEventListener(PHX_FILE_PROGRESS, ({detail: {data, key, index}}) => {
-    let progress = Object.assign({}, data, {cid: cid, path: key})
-    view.pushWithReply(refGenerator, "upload_progress", progress)
-  }, false)
-
   formEl.addEventListener(PHX_FILE_DONE, ({detail: {data, key, index}}) => {
     results[key] = Object.assign({}, data, {cid: cid, path: key})
     numFiles--
@@ -919,6 +912,7 @@ export class LiveSocket {
     })
     this.bindClicks()
     this.bindNav()
+    this.bindFileEvents()
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
@@ -1093,6 +1087,14 @@ export class LiveSocket {
       this.currentLocation = clone(newLocation)
       return true
     }
+  }
+
+  bindFileEvents(){
+    this.on(PHX_FILE_PROGRESS, e => {
+      let phxEvent = e.target.getAttribute(this.binding("file-progress"))
+      if(!phxEvent){ return }
+      this.withinOwners(e.target, (view, targetCtx) => view.pushFileProgress(e.target, targetCtx, phxEvent, e.detail))
+    }, false)
   }
 
   bindForms(){
@@ -2355,8 +2357,19 @@ export class View {
     })
   }
 
+  pushFileProgress(targetEl, targetCtx, phxEvent, progressValue){
+    let value = new URLSearchParams()
+    value.append(targetEl.name, ""+progressValue)
+    this.pushWithReply(() => this.putRef([targetEl, targetEl.form], "file-progress"), "event", {
+      _target: targetEl.name,
+      type: "form",
+      event: phxEvent,
+      value: value.toString(),
+      cid: this.targetComponentID(targetEl.form || targetEl, targetCtx),
+    })
+  }
+
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
     let {fileData, formData} = serializeForm(inputEl.form, {_target: eventTarget.name})
     let event = {
