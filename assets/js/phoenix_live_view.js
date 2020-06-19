@@ -1624,10 +1624,16 @@ export class View {
   dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
 
   onJoinComplete({live_patch}, html){
+    // In order to provide a better experience, we want to join
+    // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
       return this.applyJoinPatch(live_patch, html)
     }
 
+    // One downside of this approach is that we need to find phxChildren
+    // in the html fragment, instead of directly on the DOM. The fragment
+    // also does not incldue PHX_STATIC, so we need to copy it over from
+    // the DOM.
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
       let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
       let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
