@@ -49,7 +49,6 @@ const PHX_DISABLE_WITH_RESTORE = "data-phx-disable-with-restore"
 const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
-const PHX_CHANGE_EVENT = "phx-change"
 const PHX_UPDATE = "update"
 const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
@@ -63,9 +62,8 @@ const BINDING_PREFIX = "phx-"
 const PUSH_TIMEOUT = 30000
 const LINK_HEADER = "x-requested-with"
 const RESPONSE_URL_HEADER = "x-response-url"
-const DEBOUNCE_BLUR = "debounce-blur"
-const DEBOUNCE_TIMER = "debounce-timer"
-const DEBOUNCE_BLUR_TIMER = "debounce-blur-timer"
+const DEBOUNCE_TRIGGER = "debounce-trigger"
+const THROTTLED = "throttled"
 const DEBOUNCE_PREV_KEY = "debounce-prev-key"
 const DEFAULTS = {
   debounce: 300,
@@ -368,6 +366,7 @@ export class LiveSocket {
     this.hooks = opts.hooks || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
+    this.domCallbacks = opts.dom || {onBeforeElUpdated: closure()}
     window.addEventListener("unload", e => {
       this.unloaded = true
     })
@@ -425,6 +424,8 @@ export class LiveSocket {
   disconnect(callback){ this.socket.disconnect(callback) }
 
   // private
+
+  triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
   time(name, func){
     if(!this.isProfileEnabled() || !console.time){ return func() }
@@ -919,11 +920,11 @@ export let Browser = {
       if(req.readyState !== 4){ return }
       let requestURL = new URL(href)
       let requestPath = requestURL.pathname + requestURL.search
-      let responseURL = new URL(req.getResponseHeader(RESPONSE_URL_HEADER))
-      let responsePath = responseURL.pathname + responseURL.search
+      let responseURL = maybe(req.getResponseHeader(RESPONSE_URL_HEADER) || req.responseURL, url => new URL(url))
+      let responsePath = responseURL ? responseURL.pathname + responseURL.search : null
       if(req.getResponseHeader(LINK_HEADER) !== "live-link"){
         return callback(400)
-      } else if(responsePath != requestPath){
+      } else if(responseURL === null || responsePath != requestPath){
         return callback(302)
       } else if(req.status !== 200){
         return callback(req.status)
@@ -1046,56 +1047,67 @@ export let DOM = {
       case null: return callback()
 
       case "blur":
-        if(this.private(el, DEBOUNCE_BLUR)){ return }
-        el.addEventListener("blur", () => callback())
-        this.putPrivate(el, DEBOUNCE_BLUR, value)
+        if(this.once(el, "debounce-blur")){
+          el.addEventListener("blur", () => callback())
+        }
         return
 
       default:
         let timeout = parseInt(value)
+        let trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback()
+        let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
-        if(throttle && event.type === "keydown"){
-          let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
-          this.putPrivate(el, DEBOUNCE_PREV_KEY, event.which)
-          if(prevKey !== event.which){ return callback() }
+        if(throttle){
+          if(event.type === "keydown"){
+            let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
+            this.putPrivate(el, DEBOUNCE_PREV_KEY, event.which)
+            if(prevKey !== event.which){ return callback() }
+          } else if(this.private(el, THROTTLED)){
+            return false
+          } else {
+            callback()
+            this.putPrivate(el, THROTTLED, true)
+            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout)
+          }
+        } else {
+          setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout)
         }
-        if(this.private(el, DEBOUNCE_TIMER)){ return }
 
-        let blurCallback = () => {
-          clearTimeout(this.private(el, DEBOUNCE_TIMER))
-          debounceCallback()
+        if(el.form && this.once(el.form, "bind-debounce")){
+          el.form.addEventListener("submit", (e) => {
+            Array.from((new FormData(el.form)).entries(), ([name, val]) => {
+              let input = el.form.querySelector(`[name="${name}"]`)
+              this.incCycle(input, DEBOUNCE_TRIGGER)
+              this.deletePrivate(input, THROTTLED)
+            })
+          })
         }
-        let clearTimer = (e) => {
-          if(throttle && e.type === PHX_CHANGE_EVENT && e.detail.triggeredBy.name === el.name){ return }
-          el.removeEventListener("blur", blurCallback)
-          clearTimeout(this.private(el, DEBOUNCE_TIMER))
-          this.deletePrivate(el, DEBOUNCE_TIMER)
+        if(this.once(el, "bind-debounce")){
+          el.addEventListener("blur", (e) => this.triggerCycle(el, DEBOUNCE_TRIGGER))
         }
-        let debounceCallback = () => {
-          if(el.form){
-            el.form.removeEventListener(PHX_CHANGE_EVENT, clearTimer)
-            el.form.removeEventListener("submit", clearTimer)
-          }
-          el.removeEventListener("blur", this.private(el, DEBOUNCE_BLUR_TIMER))
-          if (!throttle) {
-            el.removeEventListener("keydown", clearTimer)
-          }
-          this.deletePrivate(el, DEBOUNCE_BLUR_TIMER)
-          this.deletePrivate(el, DEBOUNCE_TIMER)
-          if(!throttle){ callback() }
-        }
-        this.putPrivate(el, DEBOUNCE_TIMER, setTimeout(debounceCallback, timeout))
-        el.addEventListener("blur", blurCallback)
-        if (!throttle) {
-          el.addEventListener("keydown", clearTimer)
-        }
-        this.putPrivate(el, DEBOUNCE_BLUR_TIMER, blurCallback)
-        if(el.form){
-          el.form.addEventListener(PHX_CHANGE_EVENT, clearTimer)
-          el.form.addEventListener("submit", clearTimer)
-        }
-        if(throttle){ callback() }
     }
+  },
+
+  triggerCycle(el, key, currentCycle){
+    let [cycle, trigger] = this.private(el, key)
+    if(!currentCycle){ currentCycle = cycle }
+    if(currentCycle === cycle){
+      this.incCycle(el, key)
+      trigger()
+    }
+  },
+
+  once(el, key){
+    if(this.private(el, key) === true){ return false }
+    this.putPrivate(el, key, true)
+    return true
+  },
+
+  incCycle(el, key, trigger = function(){}){
+    let [currentCycle, oldTrigger] = this.private(el, key) || [0, trigger]
+    currentCycle++
+    this.putPrivate(el, key, [currentCycle, trigger])
+    return currentCycle
   },
 
   discardError(container, el, phxFeedbackFor){
@@ -1434,7 +1446,8 @@ class DOMPatch {
       template.innerHTML = html
       rest.forEach(el => el.remove())
       Array.from(diffContainer.childNodes).forEach(child => {
-        if(child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+        // we can only skip trackable nodes with an ID
+        if(child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }
@@ -1649,6 +1662,7 @@ export class View {
     patch.after("phxChildAdded", el => phxChildrenAdded = true)
 
     patch.before("updated", (fromEl, toEl) => {
+      this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
       let hook = this.getHook(fromEl)
       let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
       if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
@@ -2007,7 +2021,6 @@ export class View {
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
-    DOM.dispatchEvent(inputEl.form, PHX_CHANGE_EVENT, {triggeredBy: inputEl})
     this.pushWithReply(() => this.putRef([inputEl, inputEl.form], "change"), "event", {
       type: "form",
       event: phxEvent,

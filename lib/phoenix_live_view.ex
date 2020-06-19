@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView do
 
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
-  to the browser, and receive client events via phx bindings. Just like
+  to the browser, and receive client events via `phx-` bindings. Just like
   the first rendering, `c:mount/3` is invoked  with params, session,
   and socket state, where mount assigns values for rendering. However
   in the connected client case, a LiveView process is spawned on
@@ -211,8 +211,8 @@ defmodule Phoenix.LiveView do
             {:ok, temperature} ->
               {:ok, assign(socket, temperature: temperature, user_id: user_id)}
 
-            {:error, reason} ->
-              {:error, reason}
+            {:error, _reason} ->
+              {:ok, redirect(socket, to: "/error")}
           end
         end
 
@@ -424,9 +424,9 @@ defmodule Phoenix.LiveView do
   |------------------------|------------|
   | [Params](#module-click-events) | `phx-value-*` |
   | [Click Events](#module-click-events) | `phx-click`, `phx-capture-click` |
-  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus` |
-  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with` |
-  | [Key Events](#module-key-events) | `phx-window-keydown`, `phx-window-keyup` |
+  | [Focus/Blur Events](#module-focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
+  | [Form Events](#module-form-events) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action` |
+  | [Key Events](#module-key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup` |
   | [Rate Limiting](#module-rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
   | [DOM Patching](#module-dom-patching-and-temporary-assigns) | `phx-update` |
   | [JS Interop](#module-js-interop-and-client-controlled-dom) | `phx-hook` |
@@ -684,7 +684,7 @@ defmodule Phoenix.LiveView do
   or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
 
   By default, the bound element will be the event listener, but a
-  window-level binding may be provided via `phx-window-keydown`,
+  window-level binding may be provided via `phx-window-keydown` or `phx-window-keyup`,
   for example:
 
       def render(assigns) do
@@ -695,12 +695,12 @@ defmodule Phoenix.LiveView do
         """
       end
 
-      def handle_event("update_temp", %{"code" => "ArrowUp"}, socket) do
+      def handle_event("update_temp", %{"key" => "ArrowUp"}, socket) do
         {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-      def handle_event("update_temp", %{"code" => "ArrowDown"}, socket) do
+      def handle_event("update_temp", %{"key" => "ArrowDown"}, socket) do
         {:ok, new_temp} = Thermostat.dec_temperature(socket.assigns.id)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
@@ -878,7 +878,7 @@ defmodule Phoenix.LiveView do
       end
 
   In the example above, the Blog context receives the user on both `get` and
-  `update` operations, and always validates according that the user has access,
+  `update` operations, and always validates accordingly that the user has access,
   raising an error otherwise.
 
   ### Disconnecting all instances of a given live user
@@ -1092,7 +1092,7 @@ defmodule Phoenix.LiveView do
       keeping the current layout
 
     * `live_patch/2` and `push_patch/2` updates the current LiveView and
-      sends only the minimal diff
+      sends only the minimal diff while also maintaining the scroll position
 
   An easy rule of thumb is to stick with `live_redirect/2` and `push_redirect/2`
   and use the patch helpers only in the cases where you want to minimize the
@@ -1140,9 +1140,9 @@ defmodule Phoenix.LiveView do
 
   For example, imagine you have a blog. The URL for a single post is:
   "/blog/posts/:post_id". In the post page, you have comments and they are paginated.
-  You use `live_patch/2` to update the shown posts every time the user paginates,
+  You use `live_patch/2` to update the shown comments every time the user paginates,
   updating the URL to "/blog/posts/:post_id?page=X". In this example, you will access
-  `"post_id"`  on `c:mount/3` and the page on `c:handle_params/3`.
+  `"post_id"` on `c:mount/3` and the page of comments on `c:handle_params/3`.
 
   Furthermore, it is very important to not access the same parameters on both
   `c:mount/3` and `c:handle_params/3`. For example, do NOT do this:
@@ -1156,7 +1156,7 @@ defmodule Phoenix.LiveView do
       end
 
   If you do that, because `c:mount/3` is called once and `c:handle_params/3` multiple
-  times, the "post_id" read on mount can get out of sync if the one in `c:handle_params/3`.
+  times, the "post_id" read on mount can get out of sync with the one in `c:handle_params/3`.
   So once a parameter is read on mount, it should not be read elsewhere. Instead, do this:
 
       def mount(%{"post_id" => post_id}, session, socket) do
@@ -1207,7 +1207,7 @@ defmodule Phoenix.LiveView do
       * app.html.eex
       * live.html.leex
 
-  The "root" layout is shared by both "app" and "live" layout. It
+  The "root" layout is shared by both "app" and "live" layouts. It
   is rendered only on the initial request and therefore it has
   access to the `@conn` assign. The root layout must be defined
   in your router:
@@ -1215,7 +1215,7 @@ defmodule Phoenix.LiveView do
       plug :put_root_layout, {MyAppWeb.LayoutView, :root}
 
   Alternatively, the root layout can be passed to the `live`
-  macro to your **live routes**:
+  macro of your **live routes**:
 
       live "/dashboard", MyApp.Dashboard, layout: {MyAppWeb.LayoutView, :root}
 
@@ -1292,7 +1292,7 @@ defmodule Phoenix.LiveView do
 
   ## Error and exception handling
 
-  As with any other ELixir code, exceptions may happen during the LiveView
+  As with any other Elixir code, exceptions may happen during the LiveView
   life-cycle. In this section we will describe how LiveView reacts to errors
   at different stages.
 
@@ -1743,6 +1743,24 @@ defmodule Phoenix.LiveView do
 
   *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
+  For integration with client-side libraries which require a broader access to full
+  DOM management, the `LiveSocket` constructor accepts a `dom` option with an
+  `onBeforeElUpdated` callback. The `fromEl` and `toEl` DOM nodes are passed to the
+  function just before the DOM patch operations occurs in LiveView. This allows external
+  libraries to (re)initialize DOM elements or copy attributes as necessary as LiveView
+  performs its own patch operations. The update operation cannot be cancelled or deferred,
+  and the return value is ignored. For example, the following option could be used to add
+  [Alpine.js](https://github.com/alpinejs/alpine) support to your project:
+
+      let liveSocket = new LiveSocket("/live", Socket, {
+        ...,
+        dom: {
+          onBeforeElUpdated(from, to){
+            if(from.__x){ window.Alpine.clone(from.__x, to) }
+          }
+        },
+      })
+
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under
@@ -2067,8 +2085,8 @@ defmodule Phoenix.LiveView do
   When navigating to the current LiveView, `c:handle_params/3` is
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
-  whole page. For live redirects to another LiveView, use
-  `push_redirect/2`.
+  whole page while also maintaining the current scroll position.
+  For live redirects to another LiveView, use `push_redirect/2`.
 
   ## Options
 
@@ -2101,7 +2119,7 @@ defmodule Phoenix.LiveView do
 
   The current LiveView will be shutdown and a new one will be mounted
   in its place, without reloading the whole page. This can
-  also be use to remount the same LiveView, in case you want to start
+  also be used to remount the same LiveView, in case you want to start
   fresh. If you want to navigate to the same LiveView without remounting
   it, use `push_patch/2` instead.
 

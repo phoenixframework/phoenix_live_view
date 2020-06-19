@@ -173,14 +173,14 @@ defmodule Phoenix.LiveView.Diff do
   Like `with_component/5`, it will store the result under the `cid
    key in the `component_diffs` map.
 
-  If the component exists, a `{:diff, component_diff, updated_components}` tuple
+  If the component exists, a `{diff, new_components}` tuple
   is returned. Otherwise, `:noop` is returned.
 
   The component is preloaded before the update callback is invoked.
 
   ## Example
 
-      {:diff, diff, new_components} = Diff.update_components(socket, state.components, update)
+      {diff, new_components} = Diff.update_component(socket, state.components, update)
   """
   def update_component(socket, components, {module, id, updated_assigns}) do
     case fetch_cid(module, id, components) do
@@ -424,8 +424,9 @@ defmodule Phoenix.LiveView.Diff do
                 {configure_socket_for_component(socket, assigns, private, prints), components}
 
               %{} ->
-                {mount_component(socket, component, %{myself: cid}),
-                 put_cid(components, component, id, cid)}
+                {mount_component(socket, component, %{
+                   myself: %Phoenix.LiveComponent.CID{cid: cid}
+                 }), put_cid(components, component, id, cid)}
             end
 
           triplet =

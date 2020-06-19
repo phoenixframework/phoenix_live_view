@@ -78,8 +78,16 @@ defmodule Phoenix.LiveComponent do
       end
 
   In stateful components, `c:mount/1` is called only once, when the
-  component is first rendered. Then for each rendering, the optional
+  component is first rendered. For each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
+
+  So on first render, the following callbacks will be invoked:
+
+      preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
+      
+  On subsequent renders, these callbacks will be invoked:
+
+      preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
 
   ## Targeting Component Events
 
@@ -198,7 +206,7 @@ defmodule Phoenix.LiveComponent do
 
   Luckily, because the component and the view run in the same process,
   sending a message from the component to the parent LiveView is as simple
-  as sending a message to self:
+  as sending a message to `self()`:
 
       defmodule CardComponent do
         ...
@@ -371,6 +379,21 @@ defmodule Phoenix.LiveComponent do
   In this case, the solution is to not use `content_tag` and rely on LiveEEx
   to build the markup.
   """
+
+  defmodule CID do
+    @moduledoc """
+    The struct representing an internal unique reference to the component instance,
+    available as the `@myself` assign in stateful components.
+
+    Read more about the uses of `@myself` in the `Phoenix.LiveComponent` docs.
+    """
+
+    defstruct [:cid]
+
+    defimpl Phoenix.HTML.Safe do
+      def to_iodata(%{cid: cid}), do: Integer.to_string(cid)
+    end
+  end
 
   alias Phoenix.LiveView.Socket
 

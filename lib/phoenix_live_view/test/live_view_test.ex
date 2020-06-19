@@ -54,26 +54,29 @@ defmodule Phoenix.LiveViewTest do
   browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
 
-    * `render_click/1` - sends a phx-click event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_click/1` - sends a phx-click event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_focus/2` - sends a phx-focus event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_focus/2` - sends a phx-focus event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_blur/1` - sends a phx-blur event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_blur/1` - sends a phx-blur event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_submit/1` - sends a form phx-submit event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_submit/1` - sends a form phx-submit event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_change/1` - sends a form phx-change event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_change/1` - sends a form phx-change event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keydown/1` - sends a form phx-keydown event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keydown/1` - sends a form phx-keydown event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keyup/1` - sends a form phx-keyup event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keyup/1` - sends a form phx-keyup event and value, returning
+      the rendered result of the `handle_event/3` callback.
+
+    * `render_hook/3` - sends a hook event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
   For example:
 
@@ -98,7 +101,7 @@ defmodule Phoenix.LiveViewTest do
   messages, simply message the view and use the `render` function to test the
   result:
 
-      send(view.pid, {:set_temp: 50})
+      send(view.pid, {:set_temp, 50})
       assert render(view) =~ "The temperature is: 50℉"
 
   ## Testing components
@@ -261,27 +264,50 @@ defmodule Phoenix.LiveViewTest do
     connect_from_static_token(conn, path)
   end
 
+  defp connect_from_static_token(
+         %Plug.Conn{status: 200, assigns: %{live_module: live_module}} = conn,
+         path
+       ) do
+    DOM.ensure_loaded!()
+    html = Phoenix.ConnTest.html_response(conn, 200)
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+    ref = make_ref()
+
+    opts = %{
+      caller: {self(), ref},
+      html: html,
+      connect_params: conn.private[:live_view_connect_params] || %{},
+      connect_info: conn.private[:live_view_connect_info] || %{},
+      live_module: live_module,
+      endpoint: endpoint,
+      session: maybe_get_session(conn),
+      url: mount_url(endpoint, path),
+      test_supervisor: fetch_test_supervisor!()
+    }
+
+    case ClientProxy.start_link(opts) do
+      {:ok, _} ->
+        receive do
+          {^ref, {:ok, view, html}} -> {:ok, view, html}
+        end
+
+      {:error, reason} ->
+        exit({reason, {__MODULE__, :live, [path]}})
+
+      :ignore ->
+        receive do
+          {^ref, {:error, reason}} -> {:error, reason}
+        end
+    end
+  end
+
+  defp connect_from_static_token(%Plug.Conn{status: 200}, _path) do
+    {:error, :nosession}
+  end
+
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
        when redir in [301, 302] do
     error_redirect_conn(conn)
-  end
-
-  defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path) do
-    DOM.ensure_loaded!()
-
-    html =
-      conn
-      |> Phoenix.ConnTest.html_response(200)
-      |> IO.iodata_to_binary()
-      |> DOM.parse()
-
-    case DOM.find_live_views(html) do
-      [{id, session_token, static_token} | _] ->
-        do_connect(conn, path, html, session_token, static_token, id)
-
-      [] ->
-        {:error, :nosession}
-    end
   end
 
   defp error_redirect_conn(conn) do
@@ -300,48 +326,6 @@ defmodule Phoenix.LiveViewTest do
 
   defp error_redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
   defp error_redirect_key(_), do: :redirect
-
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id) do
-    child_statics = Map.delete(DOM.find_static_views(html), id)
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    %ClientProxy{ref: ref} =
-      proxy =
-      ClientProxy.build(
-        id: id,
-        connect_params: conn.private[:live_view_connect_params] || %{},
-        connect_info: conn.private[:live_view_connect_info] || %{},
-        session_token: session_token,
-        static_token: static_token,
-        module: conn.assigns.live_module,
-        endpoint: endpoint,
-        child_statics: child_statics
-      )
-
-    opts = [
-      caller: {self(), ref},
-      html: html,
-      proxy: proxy,
-      session: maybe_get_session(conn),
-      url: mount_url(endpoint, path),
-      test_supervisor: fetch_test_supervisor!()
-    ]
-
-    case ClientProxy.start_link(opts) do
-      {:ok, _} ->
-        receive do
-          {^ref, {:ok, view, html}} -> {:ok, view, html}
-        end
-
-      {:error, reason} ->
-        exit({reason, {__MODULE__, :live, [path]}})
-
-      :ignore ->
-        receive do
-          {^ref, {:error, reason}} -> {:error, reason}
-        end
-    end
-  end
 
   # TODO: replace with ExUnit.Case.fetch_test_supervisor!() when we require Elixir v1.11.
   defp fetch_test_supervisor!() do
@@ -409,7 +393,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, component, assigns) do
     socket = %Socket{endpoint: endpoint}
     assigns = Map.new(assigns)
-    mount_assigns = if assigns[:id], do: %{myself: -1}, else: %{}
+    mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
     rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()

@@ -439,6 +439,23 @@ describe("View Hooks", function() {
     expect(upcaseBeforeDestroy).toBe(true)
     expect(upcaseWasDestroyed).toBe(true)
   })
+
+  test("dom hooks", async () => {
+    let fromHTML, toHTML = null
+    let liveSocket = new LiveSocket("/live", Socket, {dom: {
+      onBeforeElUpdated(from, to){ fromHTML = from.innerHTML; toHTML = to.innerHTML }
+    }})
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+
+    view.onJoin({rendered: {s: [`<div>initial</div>`], fingerprint: 123}})
+    expect(view.el.firstChild.innerHTML).toBe("initial")
+
+    view.update({s: [`<div>updated</div>`], fingerprint: 123})
+    expect(fromHTML).toBe("initial")
+    expect(toHTML).toBe("updated")
+    expect(view.el.firstChild.innerHTML).toBe("updated")
+  })
 })
 
 function liveViewComponent() {

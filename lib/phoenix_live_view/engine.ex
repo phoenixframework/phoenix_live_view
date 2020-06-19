@@ -355,7 +355,7 @@ defmodule Phoenix.LiveView.Engine do
          dynamic = fn track_changes? ->
            changed =
              case var!(assigns) do
-               %{socket: %{changed: changed}} when track_changes? -> changed
+               %{__changed__: changed} when track_changes? -> changed
                _ -> nil
              end
 
