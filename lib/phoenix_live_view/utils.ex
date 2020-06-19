@@ -293,10 +293,10 @@ defmodule Phoenix.LiveView.Utils do
   been exported. Raises an `ArgumentError` on unexpected return types.
   """
   def call_handle_params!(%Socket{} = socket, view, params, uri) do
-    :telemetry.span([:phoenix, :live_view, :handle_params], %{socket: socket}, fn ->
+    :telemetry.span([:phoenix, :live_view, :handle_params], %{socket: socket, params: params, uri: uri}, fn ->
       case view.handle_params(params, uri, socket) do
         {:noreply, %Socket{} = socket} ->
-          {{:noreply, socket}, %{socket: socket}}
+          {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
 
         other ->
           raise ArgumentError, """

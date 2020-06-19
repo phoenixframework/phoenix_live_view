@@ -1805,13 +1805,26 @@ defmodule Phoenix.LiveView do
 
       * Measurement: `%{system_time: System.monotonic_time}`
 
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params,
+              uri: String.t()
+            }
+
 
     * `[:phoenix, :live_view, :handle_params, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
 
       * Measurement: `%{duration: native_time}`
 
-      * Metadata: `%{socket: Phoenix.LiveView.Socket.t}`
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params,
+              uri: String.t()
+            }
 
     * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
 
