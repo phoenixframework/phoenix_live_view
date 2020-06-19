@@ -220,7 +220,7 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{assign_new: {parent.assigns, []}, phoenix_live_layout: false},
+        %{assign_new: {parent.assigns.__assigns__, []}, phoenix_live_layout: false},
         nil,
         %{},
         parent.host_uri

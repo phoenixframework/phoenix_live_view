@@ -383,8 +383,10 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp render_assigns(%{assigns: assigns, changed: changed} = socket) do
+    socket = %Socket{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
+
     assigns
-    |> Map.put(:socket, %Socket{socket | assigns: %Socket.AssignsNotInSocket{}})
+    |> Map.put(:socket, socket)
     |> Map.put(:__changed__, changed)
   end
 
