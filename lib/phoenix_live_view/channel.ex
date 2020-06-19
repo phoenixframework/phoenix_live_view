@@ -209,7 +209,19 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp view_handle_event(%Socket{} = socket, event, val) do
-    socket.view.handle_event(event, val, socket)
+    call_live_view_handle_event!(socket, event, val)
+  end
+
+  defp call_live_view_handle_event!(%Socket{} = socket, event, val) do
+    :telemetry.span([:phoenix, :live_view, :handle_event], %{socket: socket, event: event, params: val}, fn ->
+      case socket.view.handle_event(event, val, socket) do
+        {:noreply, %Socket{} = socket} ->
+          {{:noreply, socket}, %{socket: socket, event: event, params: val}}
+
+        other ->
+          raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+      end
+    end)
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
@@ -267,9 +279,15 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, ref)
   end
 
-  defp handle_result(result, {:handle_call, 3, _ref}, state) do
+  defp handle_result(result, {name, arity, _ref}, state) do
+    raise_bad_callback_response!(result, state.socket.view, name, arity)
+  end
+
+  defp raise_bad_callback_response!(result, view, name, arity)
+
+  defp raise_bad_callback_response!(result, view, :handle_call, 3) do
     raise ArgumentError, """
-    invalid noreply from #{inspect(state.socket.view)}.handle_call/3 callback.
+    invalid noreply from #{inspect(view)}.handle_call/3 callback.
 
     Expected one of:
 
@@ -280,9 +298,9 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp handle_result(result, {name, arity, _ref}, state) do
+  defp raise_bad_callback_response!(result, view, name, arity) do
     raise ArgumentError, """
-    invalid noreply from #{inspect(state.socket.view)}.#{name}/#{arity} callback.
+    invalid noreply from #{inspect(view)}.#{name}/#{arity} callback.
 
     Expected one of:
 

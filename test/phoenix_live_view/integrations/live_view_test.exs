@@ -392,6 +392,47 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_hook(view, :save, %{temp: 20}) =~ "The temp is: 20"
     end
+
+    test "render_* with a successful handle_event callback emits telemetry metrics",  %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_event])
+
+      {:ok, view, _} = live(conn, "/thermo")
+      render_submit(view, :save, %{temp: 20})
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _}, metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.event == "save"
+      assert metadata.params == %{"temp" => "20"}
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_event, :stop], %{duration: _}, metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.event == "save"
+      assert metadata.params == %{"temp" => "20"}
+    end
+
+    test "render_* with crashing handle_event callback emits telemetry metrics",  %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      attach_telemetry([:phoenix, :live_view, :handle_event])
+
+      {:ok, view, _} = live(conn, "/errors")
+      catch_exit(render_submit(view, :crash, %{"foo" => "bar"}))
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _}, metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.event == "crash"
+      assert metadata.params == %{"foo" => "bar"}
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_event, :exception], %{duration: _}, metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.event == "crash"
+      assert metadata.params == %{"foo" => "bar"}
+    end
   end
 
   describe "container" do
