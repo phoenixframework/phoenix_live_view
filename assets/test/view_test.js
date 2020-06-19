@@ -611,6 +611,26 @@ describe("View + Component", function() {
     expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
   })
 
+  test("respects nested components", () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let view = new View(el, liveSocket)
+
+    stubChannel(view)
+
+    let joinDiff = {
+      "0": 0,
+      "c": {
+        "0": {"0": 1, "s": ["<div>Hello</div>", ""]},
+        "1": {"s": ["<div>World</div>"]}
+      },
+      "s": ["", ""]
+    }
+
+    view.onJoin({rendered: joinDiff})
+    expect(view.el.innerHTML.trim()).toBe(`<div data-phx-component="0" id="container-0-0">Hello</div><div data-phx-component="1" id="container-1-0">World</div>`)
+  })
+
   test("wraps non-empty text nodes in span tags", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
