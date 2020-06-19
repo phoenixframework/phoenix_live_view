@@ -1777,7 +1777,7 @@ defmodule Phoenix.LiveView do
 
   LiveView currently exposes the following events:
 
-    * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked
+    * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked.
 
       * Measurement:
 
@@ -1807,7 +1807,7 @@ defmodule Phoenix.LiveView do
             }
 
 
-    * `[:phoenix, :live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+    * `[:phoenix, :live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when an exception is raised in the `c:mount/3` callback.
 
       * Measurement: `%{duration: native_time}`
 
@@ -1821,7 +1821,7 @@ defmodule Phoenix.LiveView do
               session: map
             }
 
-    * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_params/3` is invoked
+    * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_params/3` is invoked.
 
       * Measurement:
 
@@ -1850,7 +1850,7 @@ defmodule Phoenix.LiveView do
               uri: String.t()
             }
 
-    * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
+    * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView` when the when an exception is raised in the `c:handle_params/3` callback.
 
       * Measurement:
 
@@ -1862,8 +1862,8 @@ defmodule Phoenix.LiveView do
               socket: Phoenix.LiveView.Socket.t,
               kind: atom,
               reason: term,
-              socket: Phoenix.LiveView.Socket.t,
-              params: unsigned_params
+              params: unsigned_params,
+              uri: String.t()
             }
 
     * `[:phoenix, :live_view, :handle_event, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_event/3` is invoked.
