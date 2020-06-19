@@ -1851,7 +1851,9 @@ defmodule Phoenix.LiveView do
             %{
               socket: Phoenix.LiveView.Socket.t,
               kind: atom,
-              reason: term
+              reason: term,
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params
             }
 
   '''
