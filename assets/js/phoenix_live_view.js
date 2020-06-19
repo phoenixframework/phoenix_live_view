@@ -182,7 +182,8 @@ export class Rendered {
         }
         newc[cid] = component
       }
-      this.rendered[COMPONENTS] = this.recursiveMerge(oldc, newc)
+      for (var key in newc) { oldc[key] = newc[key] }
+      this.rendered[COMPONENTS] = oldc
     }
     diff[COMPONENTS] = newc
   }
