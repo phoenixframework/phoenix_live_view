@@ -84,7 +84,7 @@ defmodule Phoenix.LiveComponent do
   So on first render, the following callbacks will be invoked:
 
       preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
-      
+
   On subsequent renders, these callbacks will be invoked:
 
       preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
@@ -386,7 +386,7 @@ defmodule Phoenix.LiveComponent do
   ### SVG support
 
   Given components compartmentalize markup on the server, they are also
-  rendered in isolation on the client, which provide great performance
+  rendered in isolation on the client, which provides great performance
   benefits on the client too.
 
   However, when rendering components on the client, the client needs to
@@ -401,7 +401,7 @@ defmodule Phoenix.LiveComponent do
 
   Luckily, there is a solution to this problem. Since SVG allows `<svg>`
   tags to be nested, you can wrap the component content into an `<svg>`
-  tag. This will make it so it is properly interpreted by the browser.
+  tag. This will ensure that it is correctly interpreted by the browser.
   """
 
   defmodule CID do
