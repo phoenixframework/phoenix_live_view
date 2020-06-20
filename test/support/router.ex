@@ -57,6 +57,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
     live "/assigns-not-in-socket", AssignsNotInSocketLive
+    live "/errors", ErrorsLive
 
     # integration layout
     scope "/" do
