@@ -530,7 +530,7 @@ defmodule Phoenix.LiveViewTest do
              |> element("form")
              |> render_change(%{_target: ["deg"], deg: 123}) =~ "123 exceeds limits"
 
-  As with render_submit, hidden input field values can be provided like so:
+  As with `render_submit/2`, hidden input field values can be provided like so:
 
       refute view
             |> form("#term", user: %{name: "hello"})
@@ -905,16 +905,15 @@ defmodule Phoenix.LiveViewTest do
   make sure the data you are changing/submitting actually exists, failing
   otherwise.
 
-
   ## Examples
 
       assert view
             |> form("#term", user: %{name: "hello"})
             |> render_submit() =~ "Name updated"
 
-  This function is meant to mimic what the user can actually do, so hidden input
-  values not supported. See instead render_submit/2 or render_change/2.
-
+  This function is meant to mimic what the user can actually do, so you cannot
+   set hidden input values. However, hidden values can be given when calling
+   `render_submit/2` or `render_change/2`, see their docs for examples.
   """
   def form(%View{proxy: proxy}, selector, form_data \\ %{}) when is_binary(selector) do
     %Element{proxy: proxy, selector: selector, form_data: form_data}
