@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.Utils do
           socket =
             params
             |> view.mount(session, socket)
-            |> handle_result!({:mount, 3, view})
+            |> handle_mount_result!({:mount, 3, view})
 
           {socket, %{socket: socket, params: params, session: session}}
         end
@@ -278,26 +278,26 @@ defmodule Phoenix.LiveView.Utils do
     if function_exported?(view, :mount, 1) do
       socket
       |> view.mount()
-      |> handle_result!({:mount, 1, view})
+      |> handle_mount_result!({:mount, 1, view})
     else
       socket
     end
   end
 
-  defp handle_result!({:ok, %Socket{} = socket, opts}, {:mount, arity, _view})
+  defp handle_mount_result!({:ok, %Socket{} = socket, opts}, {:mount, arity, _view})
        when is_list(opts) do
     validate_mount_redirect!(socket.redirected)
 
     Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
   end
 
-  defp handle_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
+  defp handle_mount_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
     validate_mount_redirect!(socket.redirected)
 
     socket
   end
 
-  defp handle_result!(response, {:mount, arity, view}) do
+  defp handle_mount_result!(response, {:mount, arity, view}) do
     raise ArgumentError, """
     invalid result returned from #{inspect(view)}.mount/#{arity}.
 

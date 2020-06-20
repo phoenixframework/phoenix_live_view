@@ -153,9 +153,6 @@ defmodule Phoenix.LiveView.Channel do
           {:stop, reason, new_state} -> {:stop, reason, reply, new_state}
         end
 
-      {:noreply, %Socket{} = new_socket} ->
-        handle_changed(state, new_socket, nil)
-
       other ->
         handle_result(other, {:handle_call, 3, nil}, state)
     end
@@ -209,10 +206,6 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp view_handle_event(%Socket{} = socket, event, val) do
-    call_live_view_handle_event!(socket, event, val)
-  end
-
-  defp call_live_view_handle_event!(%Socket{} = socket, event, val) do
     :telemetry.span(
       [:phoenix, :live_view, :handle_event],
       %{socket: socket, event: event, params: val},
@@ -286,8 +279,6 @@ defmodule Phoenix.LiveView.Channel do
   defp handle_result(result, {name, arity, _ref}, state) do
     raise_bad_callback_response!(result, state.socket.view, name, arity)
   end
-
-  defp raise_bad_callback_response!(result, view, name, arity)
 
   defp raise_bad_callback_response!(result, view, :handle_call, 3) do
     raise ArgumentError, """
@@ -485,10 +476,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_live_patch(state, nil), do: state
-
-  defp push_live_patch(state, opts) do
-    push(state, "live_patch", opts)
-  end
+  defp push_live_patch(state, opts), do: push(state, "live_patch", opts)
 
   defp push_redirect(state, opts, nil = _ref) do
     push(state, "redirect", opts)
