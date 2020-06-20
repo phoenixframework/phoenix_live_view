@@ -459,8 +459,8 @@ defmodule Phoenix.LiveViewTest do
   element on the page with a `phx-submit` attribute in it. The event name
   given set on `phx-submit` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
-  entries in the element are sent as values. Extra values can be given
-  with the `value` argument.
+  entries in the element are sent as values. Extra values, including hidden
+  input fields, can be given with the `value` argument.
 
   It returns the contents of the whole LiveView or an `{:error, redirect}`
   tuple.
@@ -472,6 +472,13 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("form")
              |> render_submit(%{deg: 123}) =~ "123 exceeds limits"
+
+  To submit a form along with some with hidden input values:
+
+      assert view
+            |> form("#term", user: %{name: "hello"})
+            |> render_submit(%{"hidden_value" => "example"}) =~ "Name updated"
+
   """
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
@@ -522,6 +529,13 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("form")
              |> render_change(%{_target: ["deg"], deg: 123}) =~ "123 exceeds limits"
+
+  As with `render_submit/2`, hidden input field values can be provided like so:
+
+      refute view
+            |> form("#term", user: %{name: "hello"})
+            |> render_change(%{"hidden_value" => "example"}) =~ "can't be blank"
+
   """
   def render_change(element, value \\ %{})
   def render_change(%Element{} = element, value), do: render_event(element, :change, value)
@@ -891,10 +905,15 @@ defmodule Phoenix.LiveViewTest do
   make sure the data you are changing/submitting actually exists, failing
   otherwise.
 
+  ## Examples
+
       assert view
             |> form("#term", user: %{name: "hello"})
             |> render_submit() =~ "Name updated"
 
+  This function is meant to mimic what the user can actually do, so you cannot
+   set hidden input values. However, hidden values can be given when calling
+   `render_submit/2` or `render_change/2`, see their docs for examples.
   """
   def form(%View{proxy: proxy}, selector, form_data \\ %{}) when is_binary(selector) do
     %Element{proxy: proxy, selector: selector, form_data: form_data}
