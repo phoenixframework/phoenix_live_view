@@ -583,11 +583,11 @@ export class LiveSocket {
   withinTargets(el, phxTarget, callback){
     if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
       let myselfTarget = el || DOM.findFirstComponentNode(document, phxTarget)
-      if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
+      if(!myselfTarget){ throw new Error(`nothing found matching the phx-target @myself value ${phxTarget}`) }
       this.owner(myselfTarget , view => callback(view, myselfTarget))
     } else {
       let targets = Array.from(document.querySelectorAll(phxTarget))
-      if(targets.length === 0){ throw new Error(`no phx-target's found for selector "${phxTarget}"`) }
+      if(targets.length === 0){ throw new Error(`nothing found matching the phx-target selector "${phxTarget}"`) }
       targets.forEach(targetEl => {
         this.owner(targetEl, view => callback(view, targetEl))
       })
