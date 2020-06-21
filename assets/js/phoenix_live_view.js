@@ -996,7 +996,7 @@ export let DOM = {
   },
 
   findComponentNodeList(node, cid){
-    let phxChildren = this.all(node, `${PHX_VIEW_SELECTOR}`)
+    let phxChildren = this.all(node, PHX_VIEW_SELECTOR)
     let result = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
 
     if(phxChildren.length === 0) {
