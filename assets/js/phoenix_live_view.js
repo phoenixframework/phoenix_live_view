@@ -1592,13 +1592,13 @@ export class View {
     if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
       let targets = DOM.findComponentNodeList(this.el, phxTarget)
       if(targets.length === 0){
-        logError(`no phx-target's found matching @myself of ${phxTarget}`)
+        logError(`no component found matching phx-target of ${phxTarget}`)
       } else {
         callback(this, targets[0])
       }
     } else {
       let targets = Array.from(document.querySelectorAll(phxTarget))
-      if(targets.length === 0){ logError(`no phx-target's found for selector "${phxTarget}"`) }
+      if(targets.length === 0){ logError(`nothing found matching the phx-target selector "${phxTarget}"`) }
       targets.forEach(target => this.liveSocket.owner(target, view => callback(view, target)))
     }
   }
