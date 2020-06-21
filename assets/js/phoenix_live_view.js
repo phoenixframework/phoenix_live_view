@@ -175,7 +175,18 @@ export class Rendered {
             component = stat > 0 ? newc[stat] : oldc[-stat]
             stat = component[STATIC]
           }
-          component = this.recursiveMerge(component, cdiff)
+          // We need to clone because multiple components may point
+          // to the same shared component, and since recursive merge
+          // is destructive, we need to keep the original intact.
+          //
+          // Then we do a direct recursive merge because we always
+          // want to merge the first level, even if cdiff[STATIC]
+          // is not undefined. We put the proper static in place after
+          // merge.
+          //
+          // The test suite covers those corner cases.
+          component = clone(component)
+          this.doRecursiveMerge(component, cdiff)
           component[STATIC] = stat
         } else {
           component = oldc[cid] || {}
@@ -190,7 +201,7 @@ export class Rendered {
   }
 
   recursiveMerge(target, source){
-    if(typeof(source[STATIC]) === "object"){
+    if(source[STATIC] !== undefined){
       return source
     } else {
       this.doRecursiveMerge(target, source)
@@ -202,7 +213,7 @@ export class Rendered {
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && typeof(val[STATIC]) !== "object" && isObject(targetVal)){
+      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         this.doRecursiveMerge(targetVal, val)
       } else {
         target[key] = val
