@@ -168,12 +168,13 @@ export class Rendered {
       let oldc = this.rendered[COMPONENTS] || {}
       for(let cid in newc){
         let cdiff = newc[cid]
-        let component = cdiff[STATIC]
-        if(typeof(component) === "number"){
-          while(typeof(component) === "number"){
-            component = component > 0 ? newc[component] : oldc[-component]
+        let component = cdiff
+        let stat = component[STATIC]
+        if(typeof(stat) === "number"){
+          while(typeof(stat) === "number"){
+            component = stat > 0 ? newc[stat] : oldc[-stat]
+            stat = component[STATIC]
           }
-          let stat = component[STATIC]
           component = this.recursiveMerge(component, cdiff)
           component[STATIC] = stat
         } else {
@@ -189,7 +190,7 @@ export class Rendered {
   }
 
   recursiveMerge(target, source){
-    if(source[STATIC] !== undefined){
+    if(typeof(source[STATIC]) === "object"){
       return source
     } else {
       this.doRecursiveMerge(target, source)
@@ -201,7 +202,7 @@ export class Rendered {
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+      if(isObject(val) && typeof(val[STATIC]) !== "object" && isObject(targetVal)){
         this.doRecursiveMerge(targetVal, val)
       } else {
         target[key] = val

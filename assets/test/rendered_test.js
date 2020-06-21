@@ -18,7 +18,7 @@ describe("Rendered", () => {
 
     test("merges the latter diff if it contains a `static` key", () => {
       const diff1 = { 0: ["a"], 1: ["b"] }
-      const diff2 = { 0: ["c"], [STATIC]: "c"}
+      const diff2 = { 0: ["c"], [STATIC]: ["c"]}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual(diff2)
@@ -26,7 +26,7 @@ describe("Rendered", () => {
 
     test("merges the latter diff if it contains a `static` key even when nested", () => {
       const diff1 = { 0: { 0: ["a"], 1: ["b"] } }
-      const diff2 = { 0: { 0: ["c"], [STATIC]: "c"} }
+      const diff2 = { 0: { 0: ["c"], [STATIC]: ["c"]} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual(diff2)
@@ -52,6 +52,18 @@ describe("Rendered", () => {
       } })
     })
 
+    test("merges components whole tree considering old and new links", () => {
+      const diff1 = { [COMPONENTS]: { 1: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] } } }
+      const diff2 = { [COMPONENTS]: { 1: { [STATIC]: ["new"] }, 2: { [STATIC]: -1 }, 3: { [STATIC]: 1 } } }
+      let rendered = new Rendered("123", diff1)
+      rendered.mergeDiff(diff2)
+      expect(rendered.get()).toEqual({ [COMPONENTS]: {
+        1: { [STATIC]: ["new"] },
+        2: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] },
+        3: { [STATIC]: ["new"] }
+      } })
+    })
+
     test("replaces a string when a map is returned", () => {
       const diff1 = { 0: { 0: "<button>Press Me</button>", [STATIC]: "" } }
       const diff2 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: ""} }
@@ -66,25 +78,6 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual(diff2)
-    })
-  })
-
-  describe("isNewFingerprint", () => {
-    test("returns true if `diff.static` is truthy", () => {
-      const diff = { [STATIC]: ["<h2>"] }
-      let rendered = new Rendered("123", {})
-      expect(rendered.isNewFingerprint(diff)).toEqual(true)
-    })
-
-    test("returns false if `diff.static` is falsy", () => {
-      const diff = { [STATIC]: undefined }
-      let rendered = new Rendered("123", {})
-      expect(rendered.isNewFingerprint(diff)).toEqual(false)
-    })
-
-    test("returns false if `diff` is undefined", () => {
-      let rendered = new Rendered("123", {})
-      expect(rendered.isNewFingerprint()).toEqual(false)
     })
 
     test("expands shared static from cids", () => {
@@ -181,6 +174,25 @@ describe("Rendered", () => {
       expect(sharedStatic).toBeTruthy()
       expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
       expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 3)[STATIC])
+    })
+  })
+
+  describe("isNewFingerprint", () => {
+    test("returns true if `diff.static` is truthy", () => {
+      const diff = { [STATIC]: ["<h2>"] }
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint(diff)).toEqual(true)
+    })
+
+    test("returns false if `diff.static` is falsy", () => {
+      const diff = { [STATIC]: undefined }
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint(diff)).toEqual(false)
+    })
+
+    test("returns false if `diff` is undefined", () => {
+      let rendered = new Rendered("123", {})
+      expect(rendered.isNewFingerprint()).toEqual(false)
     })
   })
 
