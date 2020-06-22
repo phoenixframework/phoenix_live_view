@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         otp: [21.x, 22.x]
-        elixir: [1.8.x, 1.9.x]
+        elixir: [1.8.x, 1.9.x, 1.10.x]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
