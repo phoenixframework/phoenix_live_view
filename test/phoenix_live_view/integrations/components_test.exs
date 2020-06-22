@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.ComponentTest do
   use Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.TelemetryTestHelpers
   alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
 
   @endpoint Endpoint
@@ -148,6 +149,56 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     assert view |> element("#jose #Jose-dup") |> render() ==
              "<div data-phx-component=\"3\" id=\"Jose-dup\" phx-target=\"#Jose-dup\" phx-click=\"transform\">\n  JOSE-DUP says hi\n  \n</div>"
+  end
+
+  test "handle_event emits telemetry events when callback is successful", %{conn: conn} do
+    attach_telemetry([:phoenix, :live_component, :handle_event])
+    {:ok, view, _html} = live(conn, "/components")
+
+    view |> element("#chris") |> render_click(%{"op" => "upcase"})
+
+    assert_receive {:event, [:phoenix, :live_component, :handle_event, :start], %{system_time: _},
+                    metadata}
+
+    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+    assert metadata.event == "transform"
+    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+    assert metadata.params == %{"op" => "upcase"}
+
+    assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
+                    metadata}
+
+    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+    assert metadata.event == "transform"
+    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+    assert metadata.params == %{"op" => "upcase"}
+  end
+
+  test "handle_event emits telemetry events when callback fails", %{conn: conn} do
+    Process.flag(:trap_exit, true)
+
+    attach_telemetry([:phoenix, :live_component, :handle_event])
+    {:ok, view, _html} = live(conn, "/components")
+
+    assert view |> element("#chris") |> render_click(%{"op" => "boom"}) |> catch_exit
+
+    assert_receive {:event, [:phoenix, :live_component, :handle_event, :start], %{system_time: _},
+                    metadata}
+
+    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+    assert metadata.event == "transform"
+    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+    assert metadata.params == %{"op" => "boom"}
+
+    assert_receive {:event, [:phoenix, :live_component, :handle_event, :exception],
+                    %{duration: _}, metadata}
+
+    assert metadata.kind == :error
+    assert metadata.reason == {:case_clause, "boom"}
+    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+    assert metadata.event == "transform"
+    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+    assert metadata.params == %{"op" => "boom"}
   end
 
   describe "send_update" do
