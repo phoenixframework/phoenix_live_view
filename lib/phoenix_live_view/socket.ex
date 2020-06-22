@@ -7,7 +7,14 @@ defmodule Phoenix.LiveView.Socket.AssignsNotInSocket do
   should be done using the assigns in the template where proper change
   tracking takes place.
   """
-  defstruct []
+
+  defimpl Inspect do
+    def inspect(_, _) do
+      "#Phoenix.LiveView.Socket.AssignsNotInSocket<>"
+    end
+  end
+
+  defstruct [:__assigns__]
   @type t :: %__MODULE__{}
 end
 
