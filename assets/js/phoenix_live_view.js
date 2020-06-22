@@ -276,6 +276,7 @@ export class Rendered {
 
     let children = Array.from(container.childNodes).filter((child, i) => {
       if(child.nodeType === Node.ELEMENT_NODE){
+        if(child.getAttribute(PHX_COMPONENT)){ return false }
         child.setAttribute(PHX_COMPONENT, cid)
         if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
         if(skip){
