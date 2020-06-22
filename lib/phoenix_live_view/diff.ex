@@ -391,8 +391,8 @@ defmodule Phoenix.LiveView.Diff do
   ## Component rendering
 
   defp render_pending_components(socket, pending, diffs, components) do
-    # We keep the original `cid_to_component`. This help us guarantee
-    # we are not rebuilding the same component multiple times and it
+    # We keep the original `cid_to_component`. This helps us to guarantee
+    # that we are not rebuilding the same component multiple times and it
     # also helps with optimizations.
     {cid_to_component, _, _} = components
     render_pending_components(socket, pending, %{}, cid_to_component, diffs, components)
@@ -506,15 +506,15 @@ defmodule Phoenix.LiveView.Diff do
 
   @attempts 3
 
-  # If the component is new or is getting a new static root, we see if other component
-  # has the same tree root. If so, we will point to the whole existing component tree
-  # but say all entries require a full render.
+  # If the component is new or is getting a new static root, we search if another
+  # component has the same tree root. If so, we will point to the whole existing
+  # component tree but say all entries require a full render.
   #
   # When looking up for an existing component, we first look into the tree from the
   # previous render, then we look at the new render. This is to avoid using a tree
   # that will be changed before it is sent to the client.
   #
-  # We don't want to traverse the all components, so we will try it @attempts times.
+  # We don't want to traverse all of the components, so we will try it @attempts times.
   defp maybe_reuse_static(rendered, socket, component, old_cids, components) do
     {new_cids, id_to_cid, _uuids} = components
     %{fingerprint: print} = rendered
