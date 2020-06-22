@@ -1654,8 +1654,8 @@ defmodule Phoenix.LiveView do
       window.addEventListener("phx:page-loading-start", info => NProgress.start())
       window.addEventListener("phx:page-loading-stop", info => NProgress.done())
 
-  The `info` object will contain a `kind` key, with a value in one of the
-  following events:
+  Within the callback `info.detail` will be an object that contains a `kind`
+  key, with a value that depends on the triggering event:
 
     - `"redirect"` - the event was triggered by a redirect
     - `"patch"` - the event was triggered by a patch
