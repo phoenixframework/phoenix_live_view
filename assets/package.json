@@ -3,7 +3,6 @@
   "version": "0.13.3",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
-  "main": "./priv/static/_live_view.js",
   "repository": {},
   "scripts": {
     "build": "webpack --mode production",
@@ -13,8 +12,7 @@
     "test.watch": "jest --watch"
   },
   "dependencies": {
-    "morphdom": "2.6.1",
-    "phoenix_html": "file:../deps/phoenix_html"
+    "morphdom": "2.6.1"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",
