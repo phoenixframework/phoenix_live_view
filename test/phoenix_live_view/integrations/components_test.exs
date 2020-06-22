@@ -96,109 +96,111 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
   end
 
-  test "handle_event delegates event to component", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/components")
+  describe "handle_event" do
+    test "delegates event to component", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
 
-    html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
+      html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
-    assert [
-             _,
-             {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-              ["\n  CHRIS says hi\n" <> _]},
-             {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
-              ["\n  jose says hi\n" <> _]}
-           ] = DOM.parse(html)
+      assert [
+               _,
+               {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                ["\n  CHRIS says hi\n" <> _]},
+               {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                ["\n  jose says hi\n" <> _]}
+             ] = DOM.parse(html)
 
-    html = view |> element("#jose") |> render_click(%{"op" => "title-case"})
+      html = view |> element("#jose") |> render_click(%{"op" => "title-case"})
 
-    assert [
-             _,
-             {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-              ["\n  CHRIS says hi\n" <> _]},
-             {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
-              ["\n  Jose says hi\n" <> _]}
-           ] = DOM.parse(html)
+      assert [
+               _,
+               {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                ["\n  CHRIS says hi\n" <> _]},
+               {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                ["\n  Jose says hi\n" <> _]}
+             ] = DOM.parse(html)
 
-    html = view |> element("#jose") |> render_click(%{"op" => "dup"})
+      html = view |> element("#jose") |> render_click(%{"op" => "dup"})
 
-    assert [
-             _,
-             {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-              ["\n  CHRIS says hi\n" <> _]},
-             {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
-              [
-                "\n  Jose says hi\n  ",
-                {"div", [{"data-phx-component", "3"}, {"id", "Jose-dup"} | _],
-                 ["\n  Jose-dup says hi\n" <> _]}
-              ]}
-           ] = DOM.parse(html)
+      assert [
+               _,
+               {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                ["\n  CHRIS says hi\n" <> _]},
+               {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                [
+                  "\n  Jose says hi\n  ",
+                  {"div", [{"data-phx-component", "3"}, {"id", "Jose-dup"} | _],
+                   ["\n  Jose-dup says hi\n" <> _]}
+                ]}
+             ] = DOM.parse(html)
 
-    html = view |> element("#jose #Jose-dup") |> render_click(%{"op" => "upcase"})
+      html = view |> element("#jose #Jose-dup") |> render_click(%{"op" => "upcase"})
 
-    assert [
-             _,
-             {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-              ["\n  CHRIS says hi\n" <> _]},
-             {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
-              [
-                "\n  Jose says hi\n  ",
-                {"div", [{"data-phx-component", "3"}, {"id", "Jose-dup"} | _],
-                 ["\n  JOSE-DUP says hi\n" <> _]}
-              ]}
-           ] = DOM.parse(html)
+      assert [
+               _,
+               {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                ["\n  CHRIS says hi\n" <> _]},
+               {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                [
+                  "\n  Jose says hi\n  ",
+                  {"div", [{"data-phx-component", "3"}, {"id", "Jose-dup"} | _],
+                   ["\n  JOSE-DUP says hi\n" <> _]}
+                ]}
+             ] = DOM.parse(html)
 
-    assert view |> element("#jose #Jose-dup") |> render() ==
-             "<div data-phx-component=\"3\" id=\"Jose-dup\" phx-target=\"#Jose-dup\" phx-click=\"transform\">\n  JOSE-DUP says hi\n  \n</div>"
-  end
+      assert view |> element("#jose #Jose-dup") |> render() ==
+               "<div data-phx-component=\"3\" id=\"Jose-dup\" phx-target=\"#Jose-dup\" phx-click=\"transform\">\n  JOSE-DUP says hi\n  \n</div>"
+    end
 
-  test "handle_event emits telemetry events when callback is successful", %{conn: conn} do
-    attach_telemetry([:phoenix, :live_component, :handle_event])
-    {:ok, view, _html} = live(conn, "/components")
+    test "emits telemetry events when callback is successful", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_component, :handle_event])
+      {:ok, view, _html} = live(conn, "/components")
 
-    view |> element("#chris") |> render_click(%{"op" => "upcase"})
+      view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
-    assert_receive {:event, [:phoenix, :live_component, :handle_event, :start], %{system_time: _},
-                    metadata}
+      assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
+                      %{system_time: _}, metadata}
 
-    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
-    assert metadata.event == "transform"
-    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-    assert metadata.params == %{"op" => "upcase"}
+      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.event == "transform"
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.params == %{"op" => "upcase"}
 
-    assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
-                    metadata}
+      assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
+                      metadata}
 
-    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
-    assert metadata.event == "transform"
-    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-    assert metadata.params == %{"op" => "upcase"}
-  end
+      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.event == "transform"
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.params == %{"op" => "upcase"}
+    end
 
-  test "handle_event emits telemetry events when callback fails", %{conn: conn} do
-    Process.flag(:trap_exit, true)
+    test "emits telemetry events when callback fails", %{conn: conn} do
+      Process.flag(:trap_exit, true)
 
-    attach_telemetry([:phoenix, :live_component, :handle_event])
-    {:ok, view, _html} = live(conn, "/components")
+      attach_telemetry([:phoenix, :live_component, :handle_event])
+      {:ok, view, _html} = live(conn, "/components")
 
-    assert view |> element("#chris") |> render_click(%{"op" => "boom"}) |> catch_exit
+      assert view |> element("#chris") |> render_click(%{"op" => "boom"}) |> catch_exit
 
-    assert_receive {:event, [:phoenix, :live_component, :handle_event, :start], %{system_time: _},
-                    metadata}
+      assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
+                      %{system_time: _}, metadata}
 
-    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
-    assert metadata.event == "transform"
-    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-    assert metadata.params == %{"op" => "boom"}
+      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.event == "transform"
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.params == %{"op" => "boom"}
 
-    assert_receive {:event, [:phoenix, :live_component, :handle_event, :exception],
-                    %{duration: _}, metadata}
+      assert_receive {:event, [:phoenix, :live_component, :handle_event, :exception],
+                      %{duration: _}, metadata}
 
-    assert metadata.kind == :error
-    assert metadata.reason == {:case_clause, "boom"}
-    assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
-    assert metadata.event == "transform"
-    assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-    assert metadata.params == %{"op" => "boom"}
+      assert metadata.kind == :error
+      assert metadata.reason == {:case_clause, "boom"}
+      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.event == "transform"
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.params == %{"op" => "boom"}
+    end
   end
 
   describe "send_update" do
