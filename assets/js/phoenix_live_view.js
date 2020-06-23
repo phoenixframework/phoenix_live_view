@@ -999,7 +999,7 @@ export let DOM = {
     let phxChildren = this.all(node, PHX_VIEW_SELECTOR)
     let result = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
 
-    if(phxChildren.length === 0) {
+    if(phxChildren.length === 0){
       return result
     } else {
       return result.filter(element => !phxChildren.some(node => node.contains(element)))
