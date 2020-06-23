@@ -593,27 +593,15 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  withinTargets(el, phxTarget, callback){
-    if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
-      let myselfTarget = el || DOM.findFirstComponentNode(document, phxTarget)
-      if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
-      this.owner(myselfTarget , view => callback(view, myselfTarget))
-    } else {
-      let targets = Array.from(document.querySelectorAll(phxTarget))
-      if(targets.length === 0){ throw new Error(`no phx-target's found for selector "${phxTarget}"`) }
-      targets.forEach(targetEl => {
-        this.owner(targetEl, view => callback(view, targetEl))
-      })
-    }
-  }
-
   withinOwners(childEl, callback){
-    let phxTarget = childEl.getAttribute(this.binding("target"))
-    if(phxTarget === null){
-      this.owner(childEl, view => callback(view, childEl))
-    } else {
-      this.withinTargets(childEl, phxTarget, callback)
-    }
+    this.owner(childEl, view => {
+      let phxTarget = childEl.getAttribute(this.binding("target"))
+      if(phxTarget === null){
+        callback(view, childEl)
+      } else {
+        view.withinTargets(phxTarget, callback)
+      }
+    })
   }
 
   getViewByEl(el){
@@ -1020,9 +1008,16 @@ export let DOM = {
     return callback ? array.forEach(callback) : array
   },
 
-  findFirstComponentNode(node, cid){ return node.querySelector(`[${PHX_COMPONENT}="${cid}"]`) },
+  findComponentNodeList(node, cid){
+    let phxChildren = this.all(node, PHX_VIEW_SELECTOR)
+    let result = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
 
-  findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
+    if(phxChildren.length === 0){
+      return result
+    } else {
+      return result.filter(element => !phxChildren.some(node => node.contains(element)))
+    }
+  },
 
   findPhxChildrenInFragment(html, parentId){
     let template = document.createElement("template")
@@ -1606,6 +1601,21 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
+  withinTargets(phxTarget, callback){
+    if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
+      let targets = DOM.findComponentNodeList(this.el, phxTarget)
+      if(targets.length === 0){
+        logError(`no component found matching phx-target of ${phxTarget}`)
+      } else {
+        callback(this, targets[0])
+      }
+    } else {
+      let targets = Array.from(document.querySelectorAll(phxTarget))
+      if(targets.length === 0){ logError(`nothing found matching the phx-target selector "${phxTarget}"`) }
+      targets.forEach(target => this.liveSocket.owner(target, view => callback(view, target)))
+    }
+  }
+
   onJoin(resp){
     let {rendered} = resp
     this.joinCount++
@@ -2187,7 +2197,7 @@ class ViewHook {
   }
 
   pushEventTo(phxTarget, event, payload = {}){
-    this.__liveSocket.withinTargets(null, phxTarget, (view, targetCtx) => {
+    this.__view.withinTargets(phxTarget, (view, targetCtx) => {
       view.pushHookEvent(targetCtx, event, payload)
     })
   }
