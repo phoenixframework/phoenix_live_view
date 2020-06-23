@@ -1686,7 +1686,6 @@ export class View {
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     patch.markPrunableContentForRemoval()
-    this.joinPending = false
     this.performPatch(patch, false)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
@@ -1694,6 +1693,7 @@ export class View {
       if(hook){ hook.__trigger__("mounted") }
     })
 
+    this.joinPending = false
     this.applyPendingUpdates()
 
     if(live_patch){
@@ -1903,11 +1903,12 @@ export class View {
   }
 
   bindChannel(){
-    this.onChannel("diff", (diff) => this.update(diff))
+    // The diff event should be handled by the regular update operations.
+    // All other operations are queued to be applied only after join.
+    this.liveSocket.onChannel(this.channel, "diff", (diff) => this.update(diff))
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
-    this.onChannel("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onError({reason: "closed"}))
   }
