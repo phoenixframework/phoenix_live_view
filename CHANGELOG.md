@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14-dev
+
+### Enhancements
+  - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
+
 ## 0.13.3 (2020-06-04)
 
 ### Bug fixes
