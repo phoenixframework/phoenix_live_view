@@ -1687,7 +1687,7 @@ export class View {
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     patch.markPrunableContentForRemoval()
     this.joinPending = false
-    this.performPatch(patch)
+    this.performPatch(patch, false)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
@@ -1705,7 +1705,7 @@ export class View {
     this.stopCallback()
   }
 
-  performPatch(patch){
+  performPatch(patch, pruneCids){
     let destroyedCIDs = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
@@ -1745,7 +1745,13 @@ export class View {
     })
 
     patch.perform()
-    this.maybePushComponentsDestroyed(destroyedCIDs)
+
+    // We should not pruneCids on joins. Otherwise, in case of
+    // rejoins, we may notify cids that no longer belong to the
+    // current LiveView to be removed.
+    if(pruneCids) {
+      this.maybePushComponentsDestroyed(destroyedCIDs)
+    }
 
     return phxChildrenAdded
   }
@@ -1814,10 +1820,13 @@ export class View {
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
-    // when we don't have an acknowledgement CID and the diff only contains
+    // When we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
     if(typeof(cidAck) === "number"){
+      // However, if the component diff itself is empty, it means
+      // the component was removed on the server, so we noop here.
+      if(diff[COMPONENTS] === undefined) { return }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
@@ -1832,7 +1841,7 @@ export class View {
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
-        phxChildrenAdded = this.performPatch(patch)
+        phxChildrenAdded = this.performPatch(patch, true)
       })
     }
 
@@ -1853,7 +1862,7 @@ export class View {
     if(isEmpty(diff)) return false
     let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
-    let childrenAdded = this.performPatch(patch)
+    let childrenAdded = this.performPatch(patch, true)
     return childrenAdded
   }
 
