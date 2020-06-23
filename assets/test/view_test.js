@@ -501,6 +501,30 @@ describe("View Hooks", function() {
     expect(upcaseWasDestroyed).toBe(true)
   })
 
+  test("view destroyed", async () => {
+    let values = []
+    let Hooks = {
+      Check: {
+        beforeDestroy(){ values.push("beforeDestroy") },
+        destroyed(){ values.push("destroyed") },
+      }
+    }
+    let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+    let el = liveViewDOM()
+
+    let view = new View(el, liveSocket)
+
+    view.onJoin({rendered: {
+      s: [`<h2 phx-hook="Check">test mount</h2>`],
+      fingerprint: 123
+    }})
+    expect(view.el.firstChild.innerHTML).toBe("test mount")
+
+    view.destroy()
+
+    expect(values).toEqual(["beforeDestroy", "destroyed"])
+  })
+
   test("dom hooks", async () => {
     let fromHTML, toHTML = null
     let liveSocket = new LiveSocket("/live", Socket, {dom: {
