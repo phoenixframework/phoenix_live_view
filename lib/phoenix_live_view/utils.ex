@@ -162,7 +162,11 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Clears the flash.
   """
-  def clear_flash(%Socket{} = socket), do: assign(socket, :flash, %{})
+  def clear_flash(%Socket{} = socket) do
+    socket
+    |> assign(:flash, %{})
+    |> Map.update!(:changed, &Map.delete(&1, {:private, :flash}))
+  end
 
   @doc """
   Clears the key from the flash.
@@ -170,20 +174,37 @@ defmodule Phoenix.LiveView.Utils do
   def clear_flash(%Socket{} = socket, key) do
     key = flash_key(key)
     new_flash = Map.delete(socket.assigns.flash, key)
-    assign(socket, :flash, new_flash)
+
+    socket
+    |> assign(:flash, new_flash)
+    |> update_changed({:private, :flash}, &Map.delete(&1 || %{}, key))
   end
 
   @doc """
   Puts a flash message in the socket.
   """
-  def put_flash(%Socket{assigns: assigns} = socket, kind, msg) do
-    kind = flash_key(kind)
-    new_flash = Map.put(assigns.flash, kind, msg)
-    assign(socket, :flash, new_flash)
+  def put_flash(%Socket{assigns: assigns} = socket, key, msg) do
+    key = flash_key(key)
+    new_flash = Map.put(assigns.flash, key, msg)
+
+    socket
+    |> assign(:flash, new_flash)
+    |> update_changed({:private, :flash}, &Map.put(&1 || %{}, key, msg))
+  end
+
+  @doc """
+  Returns a map of the flash messages which have changed.
+  """
+  def changed_flash(%Socket{} = socket) do
+    socket.changed[{:private, :flash}] || %{}
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
   defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
+
+  defp update_changed(%Socket{} = socket, key, func) do
+    update_in(socket.changed[key], func)
+  end
 
   @doc """
   Returns the configured signing salt for the endpoint.

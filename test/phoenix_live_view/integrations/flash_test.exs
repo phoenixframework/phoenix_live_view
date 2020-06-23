@@ -56,6 +56,36 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert flash == %{"info" => "ok!"}
     end
 
+    test "back to back redirect with same flash", %{conn: conn} do
+      {:ok, flash_root, _} = live(conn, "/flash-root")
+
+      {:ok, conn} =
+        flash_root
+        |> render_click("redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn, "/flash-root")
+
+      flash = assert_redirected(flash_root, "/flash-root")
+      assert flash == %{"info" => "ok!"}
+
+      assert conn.resp_body =~ "root[ok!]:info"
+
+      # repeat
+
+      {:ok, flash_root, html} = live(conn)
+
+      assert html =~ "root[ok!]:info"
+
+      {:ok, conn} =
+        flash_root
+        |> render_click("redirect", %{"to" => "/flash-root", "info" => "ok!"})
+        |> follow_redirect(conn, "/flash-root")
+
+      flash = assert_redirected(flash_root, "/flash-root")
+      assert flash == %{"info" => "ok!"}
+
+      assert conn.resp_body =~ "root[ok!]:info"
+   end
+
     test "push_redirect with flash on mount", %{conn: conn} do
       {:ok, _, html} =
         conn

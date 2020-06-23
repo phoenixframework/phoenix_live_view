@@ -419,7 +419,7 @@ defmodule Phoenix.LiveView.Channel do
          |> push_noop(ref)}
 
       result ->
-        handle_redirect(new_state, result, flash_diff(new_socket, state.socket), ref)
+        handle_redirect(new_state, result, Utils.changed_flash(new_socket), ref)
     end
   end
 
@@ -512,12 +512,6 @@ defmodule Phoenix.LiveView.Channel do
 
   defp push_render(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_render(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
-
-  defp flash_diff(new_socket, old_socket) do
-    Enum.reduce(Utils.get_flash(old_socket), Utils.get_flash(new_socket), fn {k, _}, acc ->
-      Map.delete(acc, k)
-    end)
-  end
 
   defp copy_flash(_state, flash, opts) when flash == %{},
     do: opts
