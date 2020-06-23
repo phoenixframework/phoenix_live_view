@@ -211,8 +211,8 @@ defmodule Phoenix.LiveView do
             {:ok, temperature} ->
               {:ok, assign(socket, temperature: temperature, user_id: user_id)}
 
-            {:error, reason} ->
-              {:error, reason}
+            {:error, _reason} ->
+              {:ok, redirect(socket, to: "/error")}
           end
         end
 
@@ -1654,8 +1654,8 @@ defmodule Phoenix.LiveView do
       window.addEventListener("phx:page-loading-start", info => NProgress.start())
       window.addEventListener("phx:page-loading-stop", info => NProgress.done())
 
-  The `info` object will contain a `kind` key, with a value in one of the
-  following events:
+  Within the callback, `info.detail` will be an object that contains a `kind`
+  key, with a value that depends on the triggering event:
 
     - `"redirect"` - the event was triggered by a redirect
     - `"patch"` - the event was triggered by a patch
@@ -1772,6 +1772,145 @@ defmodule Phoenix.LiveView do
     * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
     the LiveView before compressing its own memory and state.
     Defaults to 15000ms (15 seconds)
+
+  ## Telemetry
+
+  LiveView currently exposes the following events:
+
+    * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:mount/3` is invoked.
+
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
+            }
+
+
+    * `[:phoenix, :live_view, :mount, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:mount/3` callback completes successfully.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
+            }
+
+
+    * `[:phoenix, :live_view, :mount, :exception]` - Dispatched by a `Phoenix.LiveView` when an exception is raised in the `c:mount/3` callback.
+
+      * Measurement: `%{duration: native_time}`
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              kind: atom,
+              reason: term,
+              params: unsigned_params | :not_mounted_at_router,
+              session: map
+            }
+
+    * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_params/3` is invoked.
+
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params,
+              uri: String.t()
+            }
+
+
+    * `[:phoenix, :live_view, :handle_params, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_params/3` callback completes successfully.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              params: unsigned_params,
+              uri: String.t()
+            }
+
+    * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView` when the when an exception is raised in the `c:handle_params/3` callback.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              kind: atom,
+              reason: term,
+              params: unsigned_params,
+              uri: String.t()
+            }
+
+    * `[:phoenix, :live_view, :handle_event, :start]` - Dispatched by a `Phoenix.LiveView` immediately before `c:handle_event/3` is invoked.
+
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              event: String.t(),
+              params: unsigned_params
+            }
+
+
+    * `[:phoenix, :live_view, :handle_event, :stop]` - Dispatched by a `Phoenix.LiveView` when the `c:handle_event/3` callback completes successfully.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              event: String.t(),
+              params: unsigned_params
+            }
+
+    * `[:phoenix, :live_view, :handle_event, :exception]` - Dispatched by a `Phoenix.LiveView` when an exception is raised in the `c:handle_event/3` callback.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              kind: atom,
+              reason: term,
+              event: String.t(),
+              params: unsigned_params
+            }
+
   '''
 
   alias Phoenix.LiveView.Socket

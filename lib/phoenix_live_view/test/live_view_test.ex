@@ -54,26 +54,29 @@ defmodule Phoenix.LiveViewTest do
   browser and assert on the rendered side effect of the event, use the
   `render_*` functions:
 
-    * `render_click/1` - sends a phx-click event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_click/1` - sends a phx-click event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_focus/2` - sends a phx-focus event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_focus/2` - sends a phx-focus event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_blur/1` - sends a phx-blur event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_blur/1` - sends a phx-blur event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_submit/1` - sends a form phx-submit event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_submit/1` - sends a form phx-submit event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_change/1` - sends a form phx-change event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_change/1` - sends a form phx-change event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keydown/1` - sends a form phx-keydown event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keydown/1` - sends a form phx-keydown event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
-    * `render_keyup/1` - sends a form phx-keyup event and value and
-      returns the rendered result of the `handle_event/3` callback.
+    * `render_keyup/1` - sends a form phx-keyup event and value, returning
+      the rendered result of the `handle_event/3` callback.
+
+    * `render_hook/3` - sends a hook event and value, returning
+      the rendered result of the `handle_event/3` callback.
 
   For example:
 
@@ -261,27 +264,50 @@ defmodule Phoenix.LiveViewTest do
     connect_from_static_token(conn, path)
   end
 
+  defp connect_from_static_token(
+         %Plug.Conn{status: 200, assigns: %{live_module: live_module}} = conn,
+         path
+       ) do
+    DOM.ensure_loaded!()
+    html = Phoenix.ConnTest.html_response(conn, 200)
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+    ref = make_ref()
+
+    opts = %{
+      caller: {self(), ref},
+      html: html,
+      connect_params: conn.private[:live_view_connect_params] || %{},
+      connect_info: conn.private[:live_view_connect_info] || %{},
+      live_module: live_module,
+      endpoint: endpoint,
+      session: maybe_get_session(conn),
+      url: mount_url(endpoint, path),
+      test_supervisor: fetch_test_supervisor!()
+    }
+
+    case ClientProxy.start_link(opts) do
+      {:ok, _} ->
+        receive do
+          {^ref, {:ok, view, html}} -> {:ok, view, html}
+        end
+
+      {:error, reason} ->
+        exit({reason, {__MODULE__, :live, [path]}})
+
+      :ignore ->
+        receive do
+          {^ref, {:error, reason}} -> {:error, reason}
+        end
+    end
+  end
+
+  defp connect_from_static_token(%Plug.Conn{status: 200}, _path) do
+    {:error, :nosession}
+  end
+
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
        when redir in [301, 302] do
     error_redirect_conn(conn)
-  end
-
-  defp connect_from_static_token(%Plug.Conn{status: 200} = conn, path) do
-    DOM.ensure_loaded!()
-
-    html =
-      conn
-      |> Phoenix.ConnTest.html_response(200)
-      |> IO.iodata_to_binary()
-      |> DOM.parse()
-
-    case DOM.find_live_views(html) do
-      [{id, session_token, static_token} | _] ->
-        do_connect(conn, path, html, session_token, static_token, id)
-
-      [] ->
-        {:error, :nosession}
-    end
   end
 
   defp error_redirect_conn(conn) do
@@ -300,48 +326,6 @@ defmodule Phoenix.LiveViewTest do
 
   defp error_redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
   defp error_redirect_key(_), do: :redirect
-
-  defp do_connect(%Plug.Conn{} = conn, path, html, session_token, static_token, id) do
-    child_statics = Map.delete(DOM.find_static_views(html), id)
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    %ClientProxy{ref: ref} =
-      proxy =
-      ClientProxy.build(
-        id: id,
-        connect_params: conn.private[:live_view_connect_params] || %{},
-        connect_info: conn.private[:live_view_connect_info] || %{},
-        session_token: session_token,
-        static_token: static_token,
-        module: conn.assigns.live_module,
-        endpoint: endpoint,
-        child_statics: child_statics
-      )
-
-    opts = [
-      caller: {self(), ref},
-      html: html,
-      proxy: proxy,
-      session: maybe_get_session(conn),
-      url: mount_url(endpoint, path),
-      test_supervisor: fetch_test_supervisor!()
-    ]
-
-    case ClientProxy.start_link(opts) do
-      {:ok, _} ->
-        receive do
-          {^ref, {:ok, view, html}} -> {:ok, view, html}
-        end
-
-      {:error, reason} ->
-        exit({reason, {__MODULE__, :live, [path]}})
-
-      :ignore ->
-        receive do
-          {^ref, {:error, reason}} -> {:error, reason}
-        end
-    end
-  end
 
   # TODO: replace with ExUnit.Case.fetch_test_supervisor!() when we require Elixir v1.11.
   defp fetch_test_supervisor!() do
@@ -475,8 +459,8 @@ defmodule Phoenix.LiveViewTest do
   element on the page with a `phx-submit` attribute in it. The event name
   given set on `phx-submit` is then sent to the appropriate LiveView
   (or component if `phx-target` is set accordingly). All `phx-value-*`
-  entries in the element are sent as values. Extra values can be given
-  with the `value` argument.
+  entries in the element are sent as values. Extra values, including hidden
+  input fields, can be given with the `value` argument.
 
   It returns the contents of the whole LiveView or an `{:error, redirect}`
   tuple.
@@ -488,6 +472,13 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("form")
              |> render_submit(%{deg: 123}) =~ "123 exceeds limits"
+
+  To submit a form along with some with hidden input values:
+
+      assert view
+            |> form("#term", user: %{name: "hello"})
+            |> render_submit(%{"hidden_value" => "example"}) =~ "Name updated"
+
   """
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
@@ -538,6 +529,13 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("form")
              |> render_change(%{_target: ["deg"], deg: 123}) =~ "123 exceeds limits"
+
+  As with `render_submit/2`, hidden input field values can be provided like so:
+
+      refute view
+            |> form("#term", user: %{name: "hello"})
+            |> render_change(%{"hidden_value" => "example"}) =~ "can't be blank"
+
   """
   def render_change(element, value \\ %{})
   def render_change(%Element{} = element, value), do: render_event(element, :change, value)
@@ -907,10 +905,15 @@ defmodule Phoenix.LiveViewTest do
   make sure the data you are changing/submitting actually exists, failing
   otherwise.
 
+  ## Examples
+
       assert view
             |> form("#term", user: %{name: "hello"})
             |> render_submit() =~ "Name updated"
 
+  This function is meant to mimic what the user can actually do, so you cannot
+   set hidden input values. However, hidden values can be given when calling
+   `render_submit/2` or `render_change/2`, see their docs for examples.
   """
   def form(%View{proxy: proxy}, selector, form_data \\ %{}) when is_binary(selector) do
     %Element{proxy: proxy, selector: selector, form_data: form_data}

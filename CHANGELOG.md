@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14-dev
+
+### Bug fixes
+  - Fix IE11 issue where `document.activeElement` creates a null reference
+
+### Enhancements
+  - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
+
 ## 0.13.3 (2020-06-04)
 
 ### Bug fixes

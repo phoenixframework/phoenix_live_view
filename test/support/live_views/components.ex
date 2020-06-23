@@ -21,10 +21,16 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     lists_of_assigns
   end
 
-  def render(assigns) do
+  def render(%{disabled: true} = assigns) do
+    ~L"""
+    DISABLED
+    """
+  end
+
+  def render(%{socket: _} = assigns) do
     ~L"""
     <div id="<%= @id %>" phx-target="#<%= @id %>" phx-click="transform">
-      <%= @name %> says hi with socket: <%= !!@socket %>
+      <%= @name %> says hi
       <%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
     """
@@ -59,7 +65,7 @@ end
 defmodule Phoenix.LiveViewTest.WithComponentLive do
   use Phoenix.LiveView
 
-  def render(%{disabled: true} = assigns) do
+  def render(%{disabled: :all} = assigns) do
     ~L"""
     Disabled
     """
@@ -69,13 +75,14 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     ~L"""
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
-      <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent, id: name, name: name, from: @from %>
+      <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent,
+            id: name, name: name, from: @from, disabled: name in @disabled  %>
     <% end %>
     """
   end
 
   def mount(_params, %{"names" => names, "from" => from}, socket) do
-    {:ok, assign(socket, names: names, from: from, disabled: false)}
+    {:ok, assign(socket, names: names, from: from, disabled: [])}
   end
 
   def handle_params(params, _url, socket) do
@@ -91,7 +98,12 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     {:noreply, update(socket, :names, &List.delete(&1, name))}
   end
 
-  def handle_event("disable", %{}, socket) do
-    {:noreply, assign(socket, :disabled, true)}
+  def handle_event("disable-all", %{}, socket) do
+    {:noreply, assign(socket, :disabled, :all)}
+  end
+
+  def handle_event("dup-and-disable", %{}, socket) do
+    names = socket.assigns.names
+    {:noreply, assign(socket, disabled: names, names: names ++ Enum.map(names, &(&1 <> "-new")))}
   end
 end

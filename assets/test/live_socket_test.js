@@ -116,12 +116,17 @@ describe('LiveSocket', () => {
     document.body.appendChild(secondLiveView)
 
     let liveSocket = new LiveSocket('/live', Socket)
-
     liveSocket.connect()
 
-    expect(liveSocket.getViewByEl(container(1))).toBeDefined()
+    let el = container(1)
+    expect(liveSocket.getViewByEl(el)).toBeDefined()
 
     liveSocket.destroyAllViews()
+    expect(liveSocket.roots).toEqual({})
+
+    // Simulate a race condition which may attempt to
+    // destroy an element that no longer exists
+    liveSocket.destroyViewByEl(el)
     expect(liveSocket.roots).toEqual({})
   })
 

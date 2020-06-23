@@ -57,10 +57,14 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp value_key("value"), do: "value"
   defp value_key(_), do: nil
 
-  def attribute({_tag, attrs, _children}, key) do
-    case List.keyfind(attrs, key, 0) do
-      {_, value} -> value
-      nil -> nil
+  def tag(node), do: elem(node, 0)
+
+  def attribute(node, key) do
+    with {tag, attrs, _children} when is_binary(tag) <- node,
+         {_, value} <- List.keyfind(attrs, key, 0) do
+      value
+    else
+      _ -> nil
     end
   end
 
@@ -102,11 +106,12 @@ defmodule Phoenix.LiveViewTest.DOM do
       found = {id, session, static}
 
       if main == "true" do
-        [found | acc]
-      else
         acc ++ [found]
+      else
+        [found | acc]
       end
     end)
+    |> Enum.reverse()
   end
 
   def deep_merge(target, source) do
@@ -116,40 +121,59 @@ defmodule Phoenix.LiveViewTest.DOM do
     end)
   end
 
+  def filter(node, fun) do
+    node |> reverse_filter(fun) |> Enum.reverse()
+  end
+
+  def reverse_filter(node, fun) do
+    node
+    |> Floki.traverse_and_update([], fn node, acc ->
+      if fun.(node), do: {node, [node | acc]}, else: {node, acc}
+    end)
+    |> elem(1)
+  end
+
   # Diff merging
 
   def merge_diff(rendered, diff) do
+    {new, diff} = Map.pop(diff, @components)
     rendered = deep_merge(rendered, diff)
 
     # If we have any component, we need to get the components
     # sent by the diff and remove any link between components
     # statics. We cannot let those links reside in the diff
     # as components can be removed at any time.
-    if components = Map.get(rendered, @components) do
-      components =
-        diff
-        |> Map.get(@components, %{})
-        |> Enum.reduce(components, fn {cid, cdiff}, acc ->
-          case cdiff do
-            %{@static => pointer} when is_integer(pointer) ->
-              put_in(acc[cid][@static], find_static(pointer, acc))
+    if new do
+      old = Map.get(rendered, @components, %{})
 
-            %{} ->
-              acc
-          end
+      acc =
+        Enum.reduce(new, old, fn {cid, cdiff}, acc ->
+          value =
+            case cdiff do
+              %{@static => pointer} when is_integer(pointer) ->
+                deep_merge(find_component(cdiff, old, new), Map.delete(cdiff, @static))
+
+              %{} ->
+                deep_merge(Map.get(old, cid, %{}), cdiff)
+            end
+
+          Map.put(acc, cid, value)
         end)
 
-      Map.put(rendered, @components, components)
+      Map.put(rendered, @components, acc)
     else
       rendered
     end
   end
 
-  defp find_static(cid, components) when is_integer(cid),
-    do: find_static(components[cid][@static], components)
+  defp find_component(%{@static => cid}, old, new) when is_integer(cid) and cid > 0,
+    do: find_component(new[cid], old, new)
 
-  defp find_static(list, _components) when is_list(list),
-    do: list
+  defp find_component(%{@static => cid}, old, new) when is_integer(cid) and cid < 0,
+    do: find_component(old[-cid], old, new)
+
+  defp find_component(%{} = component, _old, _new),
+    do: component
 
   def drop_cids(rendered, cids) do
     update_in(rendered[@components], &Map.drop(&1, cids))
@@ -203,7 +227,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp inner_component_ids(id, html) do
     html
     |> by_id!(id)
-    |> all("[#{@phx_component}]")
+    |> filter(&attribute(&1, @phx_component))
     |> all_attributes(@phx_component)
   end
 
@@ -297,6 +321,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp walk_fun(fun) when is_function(fun, 1) do
     fn
+      text when is_binary(text) -> text
       {:pi, _, _} = xml -> xml
       {:comment, _children} = comment -> comment
       {:doctype, _, _, _} = doctype -> doctype

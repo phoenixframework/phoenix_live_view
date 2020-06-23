@@ -747,8 +747,7 @@ defmodule Phoenix.LiveView.EngineTest do
   end
 
   defp changed(string, assigns, changed, track_changes? \\ true) do
-    socket = %{changed: changed}
-    %{dynamic: dynamic} = eval(string, Map.put(assigns, :socket, socket))
+    %{dynamic: dynamic} = eval(string, Map.put(assigns, :__changed__, changed))
     expand_dynamic(dynamic, track_changes?)
   end
 

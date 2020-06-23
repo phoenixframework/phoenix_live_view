@@ -80,13 +80,13 @@ defmodule Phoenix.LiveComponent do
   In stateful components, `c:mount/1` is called only once, when the
   component is first rendered. For each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
-  
+
   So on first render, the following callbacks will be invoked:
 
       preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
-      
+
   On subsequent renders, these callbacks will be invoked:
-  
+
       preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
 
   ## Targeting Component Events
@@ -345,9 +345,13 @@ defmodule Phoenix.LiveComponent do
 
   ## Limitations
 
+  ### Components require at least one HTML tag
+
   Components must only contain HTML tags at their root. At least one HTML
   tag must be present. It is not possible to have components that render
   only text or text mixed with tags at the root.
+
+  ### Change tracking requirement
 
   Another limitation of components is that they must always be change
   tracked. For example, if you render a component inside `form_for`, like
@@ -378,6 +382,26 @@ defmodule Phoenix.LiveComponent do
 
   In this case, the solution is to not use `content_tag` and rely on LiveEEx
   to build the markup.
+
+  ### SVG support
+
+  Given components compartmentalize markup on the server, they are also
+  rendered in isolation on the client, which provides great performance
+  benefits on the client too.
+
+  However, when rendering components on the client, the client needs to
+  choose the mime type of the component contents, which defaults to HTML.
+  This is the best default but in some cases it may lead to unexpected
+  results.
+
+  For example, if you are rendering SVG, the SVG will be interpreted as
+  HTML. This may work just fine for most components but you may run into
+  corner cases. For example, the `<image>` SVG tag may be rewritten to
+  the `<img>` tag, since `<image>` is an obsolete HTML tag.
+
+  Luckily, there is a solution to this problem. Since SVG allows `<svg>`
+  tags to be nested, you can wrap the component content into an `<svg>`
+  tag. This will ensure that it is correctly interpreted by the browser.
   """
 
   defmodule CID do

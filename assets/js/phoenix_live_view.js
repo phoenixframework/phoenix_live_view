@@ -134,7 +134,8 @@ let serializeForm = (form, meta = {}) => {
 export class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
-    this.replaceRendered(rendered)
+    this.rendered = {}
+    this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
@@ -157,34 +158,63 @@ export class Rendered {
     return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
   }
 
+  getComponent(diff, cid){ return diff[COMPONENTS][cid] }
+
   mergeDiff(diff){
-    if(!diff[COMPONENTS] && this.isNewFingerprint(diff)){
-      this.replaceRendered(diff)
-    } else {
-      this.recursiveMerge(this.rendered, diff)
-      this.expandStatics(diff)
-    }
-  }
-
-  expandStatics(diff){
-    if(isEmpty(this.rendered[COMPONENTS])){ return }
-
-    for(let cid in diff[COMPONENTS]){
-      let pointer = diff[COMPONENTS][cid][STATIC]
-      if(typeof(pointer) === "number"){
-        while(typeof(pointer) === "number"){ pointer = this.rendered[COMPONENTS][pointer][STATIC] }
-        this.rendered[COMPONENTS][cid][STATIC] = pointer
+    let newc = diff[COMPONENTS]
+    delete diff[COMPONENTS]
+    this.rendered = this.recursiveMerge(this.rendered, diff)
+    if(newc){
+      let oldc = this.rendered[COMPONENTS] || {}
+      for(let cid in newc){
+        let cdiff = newc[cid]
+        let component = cdiff
+        let stat = component[STATIC]
+        if(typeof(stat) === "number"){
+          while(typeof(stat) === "number"){
+            component = stat > 0 ? newc[stat] : oldc[-stat]
+            stat = component[STATIC]
+          }
+          // We need to clone because multiple components may point
+          // to the same shared component, and since recursive merge
+          // is destructive, we need to keep the original intact.
+          //
+          // Then we do a direct recursive merge because we always
+          // want to merge the first level, even if cdiff[STATIC]
+          // is not undefined. We put the proper static in place after
+          // merge.
+          //
+          // The test suite covers those corner cases.
+          component = clone(component)
+          this.doRecursiveMerge(component, cdiff)
+          component[STATIC] = stat
+        } else {
+          component = oldc[cid] || {}
+          component = this.recursiveMerge(component, cdiff)
+        }
+        newc[cid] = component
       }
+      for (var key in newc) { oldc[key] = newc[key] }
+      this.rendered[COMPONENTS] = oldc
     }
+    diff[COMPONENTS] = newc
   }
 
   recursiveMerge(target, source){
+    if(source[STATIC] !== undefined){
+      return source
+    } else {
+      this.doRecursiveMerge(target, source)
+      return target
+    }
+  }
+
+  doRecursiveMerge(target, source){
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && isObject(targetVal)){
-        if(targetVal[DYNAMICS] && !val[DYNAMICS]){ delete targetVal[DYNAMICS] }
-        this.recursiveMerge(targetVal, val)
+      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+        this.doRecursiveMerge(targetVal, val)
       } else {
         target[key] = val
       }
@@ -200,12 +230,6 @@ export class Rendered {
   // private
 
   get(){ return this.rendered }
-
-  replaceRendered(rendered){
-    this.rendered = rendered
-    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
-    this.expandStatics(rendered)
-  }
 
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
@@ -249,31 +273,45 @@ export class Rendered {
     template.innerHTML = this.recursiveToString(component, components, onlyCids)
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
-    Array.from(container.childNodes).forEach((child, i) => {
+
+    let children = Array.from(container.childNodes).filter((child, i) => {
       if(child.nodeType === Node.ELEMENT_NODE){
+        if(child.getAttribute(PHX_COMPONENT)){ return false }
         child.setAttribute(PHX_COMPONENT, cid)
         if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
         if(skip){
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }
+        return true
       } else {
         if(child.nodeValue.trim() !== ""){
           logError(`only HTML element tags are allowed at the root of components.\n\n` +
                    `got: "${child.nodeValue.trim()}"\n\n` +
                    `within:\n`, template.innerHTML.trim())
-
-          let span = document.createElement("span")
-          span.innerText = child.nodeValue
-          span.setAttribute(PHX_COMPONENT, cid)
-          child.replaceWith(span)
+          child.replaceWith(this.createSpan(child.nodeValue, cid))
+          return true
         } else {
           child.remove()
+          return false
         }
       }
     })
 
-    return template.innerHTML
+    if(children.length === 0) {
+      logError(`expected at least one HTML element tag inside a component, but the component is empty:\n`,
+               template.innerHTML.trim())
+      return this.createSpan("", cid).outerHTML
+    } else {
+      return template.innerHTML
+    }
+  }
+
+  createSpan(text, cid) {
+    let span = document.createElement("span")
+    span.innerText = text
+    span.setAttribute(PHX_COMPONENT, cid)
+    return span
   }
 }
 
@@ -555,27 +593,15 @@ export class LiveSocket {
     if(view){ callback(view) }
   }
 
-  withinTargets(el, phxTarget, callback){
-    if(/^(0|[1-9]\d*)$/.test(phxTarget)){
-      let myselfTarget = el || DOM.findFirstComponentNode(document, phxTarget)
-      if(!myselfTarget){ throw new Error(`no phx-target's found matching @myself of ${phxTarget}`) }
-      this.owner(myselfTarget , view => callback(view, myselfTarget))
-    } else {
-      let targets = Array.from(document.querySelectorAll(phxTarget))
-      if(targets.length === 0){ throw new Error(`no phx-target's found for selector "${phxTarget}"`) }
-      targets.forEach(targetEl => {
-        this.owner(targetEl, view => callback(view, targetEl))
-      })
-    }
-  }
-
   withinOwners(childEl, callback){
-    let phxTarget = childEl.getAttribute(this.binding("target"))
-    if(phxTarget === null){
-      this.owner(childEl, view => callback(view, childEl))
-    } else {
-      this.withinTargets(childEl, phxTarget, callback)
-    }
+    this.owner(childEl, view => {
+      let phxTarget = childEl.getAttribute(this.binding("target"))
+      if(phxTarget === null){
+        callback(view, childEl)
+      } else {
+        view.withinTargets(phxTarget, callback)
+      }
+    })
   }
 
   getViewByEl(el){
@@ -598,7 +624,7 @@ export class LiveSocket {
 
   destroyViewByEl(el){
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
-    root.destroyDescendent(el.id)
+    if(root) root.destroyDescendent(el.id)
   }
 
   setActiveElement(target){
@@ -617,7 +643,8 @@ export class LiveSocket {
     if(document.activeElement === document.body){
       return this.activeElement || document.activeElement
     } else {
-      return document.activeElement
+      // document.activeElement can be null in Internet Explorer 11
+      return document.activeElement || document.body;
     }
   }
 
@@ -748,7 +775,7 @@ export class LiveSocket {
 
   bindNav(){
     if(!Browser.canPushState()){ return }
-    window.onpopstate = (event) => {
+    window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
       let {type, id, root} = event.state || {}
       let href = window.location.href
@@ -760,7 +787,7 @@ export class LiveSocket {
           if(root){ this.replaceRootHistory() }
         })
       }
-    }
+    }, false)
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
       let type = target && target.getAttribute(PHX_LIVE_LINK)
@@ -982,9 +1009,16 @@ export let DOM = {
     return callback ? array.forEach(callback) : array
   },
 
-  findFirstComponentNode(node, cid){ return node.querySelector(`[${PHX_COMPONENT}="${cid}"]`) },
+  findComponentNodeList(node, cid){
+    let phxChildren = this.all(node, PHX_VIEW_SELECTOR)
+    let result = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
 
-  findComponentNodeList(node, cid){ return this.all(node, `[${PHX_COMPONENT}="${cid}"]`) },
+    if(phxChildren.length === 0){
+      return result
+    } else {
+      return result.filter(element => !phxChildren.some(node => node.contains(element)))
+    }
+  },
 
   findPhxChildrenInFragment(html, parentId){
     let template = document.createElement("template")
@@ -1568,6 +1602,21 @@ export class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
+  withinTargets(phxTarget, callback){
+    if(/^(0|[1-9]\d*)$/.test(phxTarget)){
+      let targets = DOM.findComponentNodeList(this.el, phxTarget)
+      if(targets.length === 0){
+        logError(`no component found matching phx-target of ${phxTarget}`)
+      } else {
+        callback(this, targets[0])
+      }
+    } else {
+      let targets = Array.from(document.querySelectorAll(phxTarget))
+      if(targets.length === 0){ logError(`nothing found matching the phx-target selector "${phxTarget}"`) }
+      targets.forEach(target => this.liveSocket.owner(target, view => callback(view, target)))
+    }
+  }
+
   onJoin(resp){
     let {rendered} = resp
     this.joinCount++
@@ -1599,11 +1648,23 @@ export class View {
   dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
 
   onJoinComplete({live_patch}, html){
+    // In order to provide a better experience, we want to join
+    // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
       return this.applyJoinPatch(live_patch, html)
     }
 
-    let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(c => this.joinChild(c))
+    // One downside of this approach is that we need to find phxChildren
+    // in the html fragment, instead of directly on the DOM. The fragment
+    // also does not incldue PHX_STATIC, so we need to copy it over from
+    // the DOM.
+    let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
+      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
+      let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
+      if(phxStatic){ toEl.setAttribute(PHX_STATIC, phxStatic) }
+      return this.joinChild(toEl)
+    })
+
     if(newChildren.length === 0){
       if(this.parent){
         this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
@@ -1626,14 +1687,14 @@ export class View {
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     patch.markPrunableContentForRemoval()
-    this.joinPending = false
-    this.performPatch(patch)
+    this.performPatch(patch, false)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
     })
 
+    this.joinPending = false
     this.applyPendingUpdates()
 
     if(live_patch){
@@ -1645,7 +1706,7 @@ export class View {
     this.stopCallback()
   }
 
-  performPatch(patch){
+  performPatch(patch, pruneCids){
     let destroyedCIDs = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
@@ -1685,7 +1746,13 @@ export class View {
     })
 
     patch.perform()
-    this.maybePushComponentsDestroyed(destroyedCIDs)
+
+    // We should not pruneCids on joins. Otherwise, in case of
+    // rejoins, we may notify cids that no longer belong to the
+    // current LiveView to be removed.
+    if(pruneCids) {
+      this.maybePushComponentsDestroyed(destroyedCIDs)
+    }
 
     return phxChildrenAdded
   }
@@ -1750,29 +1817,32 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", clone(diff)])
+    this.log("update", () => ["", diff])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
-    // when we don't have an acknowledgement CID and the diff only contains
+    // When we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
     // containers found in the diff. Otherwise, patch entire LV container.
     if(typeof(cidAck) === "number"){
+      // However, if the component diff itself is empty, it means
+      // the component was removed on the server, so we noop here.
+      if(this.rendered.componentCIDs(diff).length === 0){ return }
       this.liveSocket.time("component ack patch complete", () => {
-        if(this.componentPatch(diff[COMPONENTS][cidAck], cidAck, ref)){ phxChildrenAdded = true }
+        if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
     } else if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
-          if(this.componentPatch(diff[COMPONENTS][parentCID], parentCID, ref)){ phxChildrenAdded = true }
+          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID, ref)){ phxChildrenAdded = true }
         })
       })
     } else if(!isEmpty(diff)){
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
         let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
-        phxChildrenAdded = this.performPatch(patch)
+        phxChildrenAdded = this.performPatch(patch, true)
       })
     }
 
@@ -1793,7 +1863,7 @@ export class View {
     if(isEmpty(diff)) return false
     let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
-    let childrenAdded = this.performPatch(patch)
+    let childrenAdded = this.performPatch(patch, true)
     return childrenAdded
   }
 
@@ -1834,11 +1904,12 @@ export class View {
   }
 
   bindChannel(){
-    this.onChannel("diff", (diff) => this.update(diff))
+    // The diff event should be handled by the regular update operations.
+    // All other operations are queued to be applied only after join.
+    this.liveSocket.onChannel(this.channel, "diff", (diff) => this.update(diff))
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
-    this.onChannel("session", ({token}) => this.el.setAttribute(PHX_SESSION, token))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(() => this.onError({reason: "closed"}))
   }
@@ -1898,7 +1969,8 @@ export class View {
     this.destroyAllChildren()
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
-    document.activeElement.blur()
+    // document.activeElement can be null in Internet Explorer 11
+    if(document.activeElement){ document.activeElement.blur() }
     if(this.liveSocket.isUnloaded()){
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT)
     } else {
@@ -2137,7 +2209,7 @@ class ViewHook {
   }
 
   pushEventTo(phxTarget, event, payload = {}){
-    this.__liveSocket.withinTargets(null, phxTarget, (view, targetCtx) => {
+    this.__view.withinTargets(phxTarget, (view, targetCtx) => {
       view.pushHookEvent(targetCtx, event, payload)
     })
   }
