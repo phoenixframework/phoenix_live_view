@@ -643,7 +643,8 @@ export class LiveSocket {
     if(document.activeElement === document.body){
       return this.activeElement || document.activeElement
     } else {
-      return document.activeElement
+      // document.activeElement can be null in Internet Explorer 11
+      return document.activeElement || document.body;
     }
   }
 
@@ -1968,7 +1969,8 @@ export class View {
     this.destroyAllChildren()
     this.log("error", () => ["view crashed", reason])
     this.liveSocket.onViewError(this)
-    document.activeElement.blur()
+    // document.activeElement can be null in Internet Explorer 11
+    if(document.activeElement){ document.activeElement.blur() }
     if(this.liveSocket.isUnloaded()){
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT)
     } else {
