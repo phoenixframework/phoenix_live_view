@@ -349,18 +349,27 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp inner_component_handle_event(component_socket, component, event, val) do
-    case component.handle_event(event, val, component_socket) do
-      {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
-        {component_socket, {redirected, assigns.flash}}
+    :telemetry.span(
+      [:phoenix, :live_component, :handle_event],
+      %{socket: component_socket, component: component, event: event, params: val},
+      fn ->
+        case component.handle_event(event, val, component_socket) do
+          {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
+            {
+              {component_socket, {redirected, assigns.flash}},
+              %{socket: component_socket, component: component, event: event, params: val}
+            }
 
-      other ->
-        raise ArgumentError, """
-        invalid return from #{inspect(component)}.handle_event/3 callback.
+          other ->
+            raise ArgumentError, """
+            invalid return from #{inspect(component)}.handle_event/3 callback.
 
-        Expected: {:noreply, %Socket{}}
-        Got: #{inspect(other)}
-        """
-    end
+            Expected: {:noreply, %Socket{}}
+            Got: #{inspect(other)}
+            """
+        end
+      end
+    )
   end
 
   defp decode_event_type("form", url_encoded) do

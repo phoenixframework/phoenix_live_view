@@ -1911,6 +1911,54 @@ defmodule Phoenix.LiveView do
               params: unsigned_params
             }
 
+    * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent` immediately before `c:handle_event/3` is invoked.
+
+      * Measurement:
+
+            %{system_time: System.monotonic_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              component: atom,
+              event: String.t(),
+              params: unsigned_params
+            }
+
+
+    * `[:phoenix, :live_component, :handle_event, :stop]` - Dispatched by a `Phoenix.LiveComponent` when the `c:handle_event/3` callback completes successfully.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              component: atom,
+              event: String.t(),
+              params: unsigned_params
+            }
+
+    * `[:phoenix, :live_component, :handle_event, :exception]` - Dispatched by a `Phoenix.LiveComponent` when an exception is raised in the `c:handle_event/3` callback.
+
+      * Measurement:
+
+            %{duration: native_time}
+
+      * Metadata:
+
+            %{
+              socket: Phoenix.LiveView.Socket.t,
+              kind: atom,
+              reason: term,
+              component: atom,
+              event: String.t(),
+              params: unsigned_params
+            }
+
   '''
 
   alias Phoenix.LiveView.Socket
