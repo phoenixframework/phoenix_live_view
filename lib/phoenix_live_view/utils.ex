@@ -203,7 +203,7 @@ defmodule Phoenix.LiveView.Utils do
   defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
   defp update_changed(%Socket{} = socket, key, func) do
-    %Socket{socket | changed: update_in(socket.changed, [key], func)}
+    update_in(socket.changed[key], func)
   end
 
   @doc """
