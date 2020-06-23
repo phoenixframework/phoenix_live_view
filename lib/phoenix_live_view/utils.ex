@@ -177,7 +177,7 @@ defmodule Phoenix.LiveView.Utils do
 
     socket
     |> assign(:flash, new_flash)
-    |> update_changed({:private, :flash}, &MapSet.delete(&1 || MapSet.new(), key))
+    |> update_changed({:private, :flash}, &Map.delete(&1 || %{}, key))
   end
 
   @doc """
@@ -189,14 +189,14 @@ defmodule Phoenix.LiveView.Utils do
 
     socket
     |> assign(:flash, new_flash)
-    |> update_changed({:private, :flash}, &MapSet.put(&1 || MapSet.new(), key))
+    |> update_changed({:private, :flash}, &Map.put(&1 || %{}, key, msg))
   end
 
   @doc """
   Returns a map of the flash messages which have changed.
   """
   def changed_flash(%Socket{} = socket) do
-    Map.take(get_flash(socket), Enum.to_list(socket.changed[{:private, :flash}] || []))
+    socket.changed[{:private, :flash}] || %{}
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
