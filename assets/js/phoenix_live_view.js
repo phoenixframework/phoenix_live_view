@@ -1603,7 +1603,7 @@ export class View {
   }
 
   withinTargets(phxTarget, callback){
-    if(/^(0|[1-9](\d?)+)$/.test(phxTarget)){
+    if(/^(0|[1-9]\d*)$/.test(phxTarget)){
       let targets = DOM.findComponentNodeList(this.el, phxTarget)
       if(targets.length === 0){
         logError(`no component found matching phx-target of ${phxTarget}`)
