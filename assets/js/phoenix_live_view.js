@@ -1830,7 +1830,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       // However, if the component diff itself is empty, it means
       // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return }
+      if(this.rendered.componentCIDs(diff).length === 0){ return DOM.undoRefs(ref, this.el) }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
