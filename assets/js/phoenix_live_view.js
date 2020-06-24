@@ -2135,7 +2135,6 @@ export class View {
   }
 
   pushLinkPatch(href, targetEl, callback){
-    if(!this.isLoading()){ this.showLoader(this.liveSocket.loaderTimeout) }
     let linkRef = this.liveSocket.setPendingLink(href)
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
 
@@ -2145,8 +2144,6 @@ export class View {
       } else if(this.liveSocket.commitPendingLink(linkRef)){
         this.href = href
         this.applyPendingUpdates()
-        this.hideLoader()
-        this.triggerReconnected()
         callback && callback()
       }
     }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
