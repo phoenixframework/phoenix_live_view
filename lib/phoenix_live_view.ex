@@ -2036,6 +2036,16 @@ defmodule Phoenix.LiveView do
 
   """
   defmacro __using__(opts) do
+    # Expand layout if possible to avoid compile-time dependencies
+    opts =
+      with true <- Keyword.keyword?(opts),
+           {layout, template} <- Keyword.get(opts, :layout) do
+        layout = Macro.expand(layout, %{__CALLER__ | function: {:__live__, 0}})
+        Keyword.replace!(opts, :layout, {layout, template})
+      else
+        _ -> opts
+      end
+
     quote bind_quoted: [opts: opts] do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
