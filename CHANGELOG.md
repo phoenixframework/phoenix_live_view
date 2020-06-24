@@ -6,6 +6,7 @@
   - Fix IE11 issue where `document.activeElement` creates a null reference
   - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
   - Fix error_tag failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
+  - Fix `phx-error` class being applied on `live_redirect`
 
 ### Enhancements
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers

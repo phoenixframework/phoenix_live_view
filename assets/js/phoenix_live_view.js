@@ -613,10 +613,6 @@ export class LiveSocket {
 
   getRootById(id){ return this.roots[id] }
 
-  onViewError(view){
-    this.dropActiveElement(view)
-  }
-
   destroyAllViews(){
     for(let id in this.roots){
       this.roots[id].destroy()
