@@ -227,19 +227,4 @@ describe('LiveSocket', () => {
     // this fails.  Is this correct?
     // expect(liveSocket.getActiveElement()).not.toEqual(input)
   })
-
-  test('onViewError unsets prevActive', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
-
-    liveSocket.connect()
-
-    let input = document.querySelector('input')
-    liveSocket.setActiveElement(input)
-    liveSocket.blurActiveElement()
-
-    let view = liveSocket.getViewByEl(container(1))
-    expect(view).toBeDefined()
-    liveSocket.onViewError(view)
-    expect(liveSocket.prevActive).toBeNull()
-  })
 })
