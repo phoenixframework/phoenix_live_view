@@ -880,9 +880,8 @@ export class LiveSocket {
 
         this.debounce(input, e, () => {
           this.withinOwners(input.form, (view, targetCtx) => {
-            if(DOM.isTextualInput(input)){
-              DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
-            } else {
+            DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
+            if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
             view.pushInput(input, targetCtx, phxEvent, e.target)
