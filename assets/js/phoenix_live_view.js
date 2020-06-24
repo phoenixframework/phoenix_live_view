@@ -1661,7 +1661,7 @@ export class View {
 
     // One downside of this approach is that we need to find phxChildren
     // in the html fragment, instead of directly on the DOM. The fragment
-    // also does not incldue PHX_STATIC, so we need to copy it over from
+    // also does not include PHX_STATIC, so we need to copy it over from
     // the DOM.
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
       let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
