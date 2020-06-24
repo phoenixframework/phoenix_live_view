@@ -4,6 +4,7 @@
 
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
+  - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
 
 ### Enhancements
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
