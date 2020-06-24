@@ -540,9 +540,11 @@ export class LiveSocket {
   joinRootViews(){
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
-      let view = this.joinRootView(rootEl, this.getHref())
-      this.root = this.root || view
-      if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
+      if(!this.getRootById(rootEl.id)){
+        let view = this.joinRootView(rootEl, this.getHref())
+        this.root = this.root || view
+        if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
+      }
       rootsFound = true
     })
     return rootsFound
