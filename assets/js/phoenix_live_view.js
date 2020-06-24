@@ -1915,7 +1915,7 @@ export class View {
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.channel.onError(reason => this.onError(reason))
-    this.channel.onClose(() => this.onError({reason: "closed"}))
+    this.channel.onClose(() => this.onClose())
   }
 
   destroyAllChildren(){
@@ -1968,16 +1968,21 @@ export class View {
     return this.liveSocket.reloadWithJitter(this)
   }
 
-  onError(reason){
+  onClose(){
     if(this.isJoinPending()){ return this.liveSocket.reloadWithJitter(this) }
     this.destroyAllChildren()
-    this.log("error", () => ["view crashed", reason])
-    this.liveSocket.onViewError(this)
+    this.liveSocket.dropActiveElement(this)
     // document.activeElement can be null in Internet Explorer 11
     if(document.activeElement){ document.activeElement.blur() }
     if(this.liveSocket.isUnloaded()){
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT)
-    } else {
+    }
+  }
+
+  onError(reason){
+    this.onClose()
+    this.log("error", () => ["view crashed", reason])
+    if(!this.liveSocket.isUnloaded()){
       this.displayError()
     }
   }
