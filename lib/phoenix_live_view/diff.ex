@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Diff do
   @components :c
   @static :s
   @dynamics :d
+  @events :e
 
   @doc """
   Returns the diff component state.
@@ -113,16 +114,29 @@ defmodule Phoenix.LiveView.Diff do
     socket = %{socket | fingerprints: prints}
 
     diff =
-      if Utils.changed?(socket, :page_title) do
-        Map.put(diff, :title, socket.assigns.page_title)
-      else
-        diff
-      end
+      diff
+      |> maybe_put_title(socket)
+      |> maybe_put_events(socket)
 
     if map_size(component_diffs) == 0 do
       {socket, diff, components}
     else
       {socket, Map.put(diff, @components, component_diffs), components}
+    end
+  end
+
+  defp maybe_put_title(diff, socket) do
+    if Utils.changed?(socket, :page_title) do
+      Map.put(diff, :title, socket.assigns.page_title)
+    else
+      diff
+    end
+  end
+
+  defp maybe_put_events(diff, socket) do
+    case Utils.get_push_events(socket) do
+      [] -> diff
+      [_|_] = events -> Map.put(diff, @events, events)
     end
   end
 
@@ -486,8 +500,9 @@ defmodule Phoenix.LiveView.Diff do
         {diff, component_prints, pending, components} =
           traverse(socket, rendered, prints, pending, components, changed?)
 
-        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
+        diff = maybe_put_events(diff, socket)
+        socket = Utils.clear_changed(%{socket | fingerprints: component_prints})
         {socket, pending, diff, components}
       else
         {socket, pending, %{}, components}
