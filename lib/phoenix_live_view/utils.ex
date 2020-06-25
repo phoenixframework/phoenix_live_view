@@ -202,6 +202,20 @@ defmodule Phoenix.LiveView.Utils do
   defp flash_key(binary) when is_binary(binary), do: binary
   defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
+  @doc """
+  TODO
+  """
+  def push_event(%Socket{} = socket, event, payload) do
+    update_changed(socket, {:private, :push_events}, &([[event, payload] | &1 || []]))
+  end
+
+  @doc """
+  TODO
+  """
+  def get_push_events(%Socket{} = socket) do
+    Enum.reverse(socket.changed[{:private, :push_events}] || [])
+  end
+
   defp update_changed(%Socket{} = socket, key, func) do
     update_in(socket.changed[key], func)
   end

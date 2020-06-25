@@ -74,6 +74,7 @@ const DEFAULTS = {
 const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
+const EVENTS = "e"
 
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
@@ -135,6 +136,7 @@ export class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
+    this.events = []
     this.mergeDiff(rendered)
   }
 
@@ -161,6 +163,11 @@ export class Rendered {
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
   mergeDiff(diff){
+    let newEvents = diff[EVENTS] || []
+    if(newEvents){
+      this.events = this.events.concat(newEvents)
+      delete diff[EVENTS]
+    }
     let newc = diff[COMPONENTS]
     delete diff[COMPONENTS]
     this.rendered = this.recursiveMerge(this.rendered, diff)
@@ -168,6 +175,11 @@ export class Rendered {
       let oldc = this.rendered[COMPONENTS] || {}
       for(let cid in newc){
         let cdiff = newc[cid]
+        let componentDispatches = cdiff[EVENTS]
+        if(componentDispatches){
+          this.events = this.events.concat(componentDispatches)
+          delete cdiff[EVENTS]
+        }
         let component = cdiff
         let stat = component[STATIC]
         if(typeof(stat) === "number"){
@@ -198,6 +210,11 @@ export class Rendered {
       this.rendered[COMPONENTS] = oldc
     }
     diff[COMPONENTS] = newc
+  }
+
+  flushEvents(callback){
+    this.events.forEach(([event, payload]) => callback(event, payload))
+    this.events = []
   }
 
   recursiveMerge(target, source){
@@ -1683,6 +1700,12 @@ export class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
+  flushEvents(){
+    this.rendered.flushEvents((event, payload) => {
+      window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, {detail: payload}))
+    })
+  }
+
   applyJoinPatch(live_patch, html){
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
@@ -1696,6 +1719,7 @@ export class View {
 
     this.joinPending = false
     this.applyPendingUpdates()
+    this.flushEvents()
 
     if(live_patch){
       let {kind, to} = live_patch
@@ -1817,9 +1841,14 @@ export class View {
     if(diff.title){ DOM.putTitle(diff.title) }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
-    this.log("update", () => ["", diff])
+    this.log("update", () => ["", clone(diff)])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
+
+    let onComplete = () => {
+      this.flushEvents()
+      DOM.undoRefs(ref, this.el)
+    }
 
     // When we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
@@ -1827,7 +1856,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       // However, if the component diff itself is empty, it means
       // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return DOM.undoRefs(ref, this.el) }
+      if(this.rendered.componentCIDs(diff).length === 0){ return onComplete() }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
@@ -1846,7 +1875,7 @@ export class View {
       })
     }
 
-    DOM.undoRefs(ref, this.el)
+    onComplete()
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -1885,6 +1914,7 @@ export class View {
 
   destroyHook(hook){
     hook.__trigger__("destroyed")
+    hook.__cleanup__()
     delete this.viewHooks[ViewHook.elementID(hook.el)]
   }
 
@@ -2200,6 +2230,7 @@ class ViewHook {
     this.__view = view
     this.__liveSocket = view.liveSocket
     this.__callbacks = callbacks
+    this.__listeners = new Set()
     this.el = el
     this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
@@ -2214,6 +2245,23 @@ class ViewHook {
     this.__view.withinTargets(phxTarget, (view, targetCtx) => {
       view.pushHookEvent(targetCtx, event, payload)
     })
+  }
+
+  handleEvent(event, callback){
+    let callbackRef = (customEvent, bypass) => bypass ? event : callback(customEvent.detail)
+    window.addEventListener(`phx:hook:${event}`, callbackRef)
+    this.__listeners.add(callbackRef)
+    return callbackRef
+  }
+
+  removeHandleEvent(callbackRef){
+    let event = callbackRef(null, true)
+    window.removeEventListener(`phx:hook:${event}`, callbackRef)
+    this.__listeners.delete(callbackRef)
+  }
+
+  __cleanup__(){
+    this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
   }
 
   __trigger__(kind){
