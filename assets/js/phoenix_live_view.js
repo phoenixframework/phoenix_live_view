@@ -1232,53 +1232,47 @@ export let DOM = {
   },
 
   undoRefs(ref, container){
-    DOM.all(container, `[${PHX_REF}]`, el => this.syncPendingRef(ref, el, el))
+    DOM.all(container, `[${PHX_REF}="${ref}"]`, el => {
+      // remove refs
+      el.removeAttribute(PHX_REF)
+      // retore inputs
+      if(el.getAttribute(PHX_READONLY) !== null){
+        el.readOnly = false
+        el.removeAttribute(PHX_READONLY)
+      }
+      if(el.getAttribute(PHX_DISABLED) !== null){
+        el.disabled = false
+        el.removeAttribute(PHX_DISABLED)
+      }
+      // remove classes
+      PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+      // restore disables
+      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+      if(disableRestore !== null){
+        el.innerText = disableRestore
+        el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+      }
+    })
   },
 
-  syncPendingRef(ref, fromEl, toEl){
-    let fromRefAttr = fromEl.getAttribute && fromEl.getAttribute(PHX_REF)
-    if(fromRefAttr === null){ return true }
+  syncPendingRef(fromEl, toEl){
+    let ref = fromEl.getAttribute(PHX_REF)
+    if(ref === null){ return true }
 
-    let fromRef = parseInt(fromRefAttr)
-    if(ref !== null && ref >= fromRef){
-      [fromEl, toEl].forEach(el => {
-        // remove refs
-        el.removeAttribute(PHX_REF)
-        // retore inputs
-        if(el.getAttribute(PHX_READONLY) !== null){
-          el.readOnly = false
-          el.removeAttribute(PHX_READONLY)
-        }
-        if(el.getAttribute(PHX_DISABLED) !== null){
-          el.disabled = false
-          el.removeAttribute(PHX_DISABLED)
-        }
-        // remove classes
-        PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
-        // restore disables
-        let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-        if(disableRestore !== null){
-          el.innerText = disableRestore
-          el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-        }
-      })
-      return true
+    PHX_EVENT_CLASSES.forEach(className => {
+      fromEl.classList.contains(className) && toEl.classList.add(className)
+    })
+    toEl.setAttribute(PHX_REF, ref)
+    if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+      return false
     } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
-      if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
-        return false
-      } else {
-        return true
-      }
+      return true
     }
   }
 }
 
 class DOMPatch {
-  constructor(view, container, id, html, targetCID, ref){
+  constructor(view, container, id, html, targetCID){
     this.view = view
     this.liveSocket = view.liveSocket
     this.container = container
@@ -1286,7 +1280,6 @@ class DOMPatch {
     this.rootID = view.root.id
     this.html = html
     this.targetCID = targetCID
-    this.ref = ref
     this.cidPatch = typeof(this.targetCID) === "number"
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
@@ -1374,7 +1367,7 @@ class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!DOM.syncPendingRef(this.ref, fromEl, toEl)){ return false }
+          if(!DOM.syncPendingRef(fromEl, toEl)){ return false }
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
@@ -1837,18 +1830,16 @@ export class View {
   }
 
   update(diff, cidAck, ref){
-    if(isEmpty(diff) && ref === null){ return }
-    if(diff.title){ DOM.putTitle(diff.title) }
+    if(diff.title){
+      DOM.putTitle(diff.title)
+      delete diff.title
+    }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
 
     this.log("update", () => ["", clone(diff)])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
-
-    let onComplete = () => {
-      this.flushEvents()
-      DOM.undoRefs(ref, this.el)
-    }
+    if(typeof(ref) === "number"){ DOM.undoRefs(ref, this.el) }
 
     // When we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
@@ -1856,7 +1847,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       // However, if the component diff itself is empty, it means
       // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return onComplete() }
+      if(this.rendered.componentCIDs(diff).length === 0){ return this.flushEvents() }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
@@ -1870,12 +1861,12 @@ export class View {
     } else if(!isEmpty(diff)){
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
-        let patch = new DOMPatch(this, this.el, this.id, html, null, ref)
+        let patch = new DOMPatch(this, this.el, this.id, html, null)
         phxChildrenAdded = this.performPatch(patch, true)
       })
     }
 
-    onComplete()
+    this.flushEvents()
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -1891,7 +1882,7 @@ export class View {
   componentPatch(diff, cid, ref){
     if(isEmpty(diff)) return false
     let html = this.rendered.componentToString(cid)
-    let patch = new DOMPatch(this, this.el, this.id, html, cid, ref)
+    let patch = new DOMPatch(this, this.el, this.id, html, cid)
     let childrenAdded = this.performPatch(patch, true)
     return childrenAdded
   }
