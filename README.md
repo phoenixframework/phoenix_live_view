@@ -36,6 +36,10 @@ require more stability, it is recommended that you install using the
 If you want to use the latest features, you should follow the instructions
 given in the markdown file [here](guides/introduction/installation.md).
 
+### Requirements
+
+Although LiveView supports Elixir 1.7, which is [compatible](https://hexdocs.pm/elixir/compatibility-and-deprecations.html#compatibility-between-elixir-and-erlang-otp) with Erlang/OTP 19–22, [LiveView requires Erlang/OTP 21+](https://github.com/phoenixframework/phoenix_live_view/blob/7fbdcef6e46135fa111ea3fda29d5e91f9aa7b0e/lib/phoenix_live_view/application.ex#L11).
+
 ## What makes LiveView unique?
 
 LiveView is server centric. You no longer have to worry about managing
