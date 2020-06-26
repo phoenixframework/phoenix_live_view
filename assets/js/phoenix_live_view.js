@@ -1630,7 +1630,8 @@ export class View {
     this.log("join", () => ["", clone(rendered)])
     if(rendered.title){ DOM.putTitle(rendered.title) }
     Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
-    this.rendered = new Rendered(this.id, rendered)
+    let [newDiff, reply, events] = Rendered.extractReplyEvents(rendered)
+    this.rendered = new Rendered(this.id, newDiff)
     let html = this.renderContainer(null, "join")
     this.dropPendingRefs()
     let forms = this.formsForRecovery(html)
@@ -1639,22 +1640,22 @@ export class View {
       forms.forEach((form, i) => {
         this.pushFormRecovery(form, resp => {
           if(i === forms.length - 1){
-            this.onJoinComplete(resp, html)
+            this.onJoinComplete(resp, html, events)
           }
         })
       })
     } else {
-      this.onJoinComplete(resp, html)
+      this.onJoinComplete(resp, html, events)
     }
   }
 
   dropPendingRefs(){ DOM.all(this.el, `[${PHX_REF}]`, el => el.removeAttribute(PHX_REF)) }
 
-  onJoinComplete({live_patch}, html){
+  onJoinComplete({live_patch}, html, events){
     // In order to provide a better experience, we want to join
     // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
-      return this.applyJoinPatch(live_patch, html)
+      return this.applyJoinPatch(live_patch, html, events)
     }
 
     // One downside of this approach is that we need to find phxChildren
@@ -1670,14 +1671,14 @@ export class View {
 
     if(newChildren.length === 0){
       if(this.parent){
-        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
+        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)])
         this.parent.ackJoin(this)
       } else {
         this.onAllChildJoinsComplete()
-        this.applyJoinPatch(live_patch, html)
+        this.applyJoinPatch(live_patch, html, events)
       }
     } else {
-      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html)])
+      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)])
     }
   }
 
@@ -1686,14 +1687,13 @@ export class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
-  flushEvents(events){
+  dispatchEvents(events){
     events.forEach(([event, payload]) => {
-      console.log("dispatch", event)
       window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, {detail: payload}))
     })
   }
 
-  applyJoinPatch(live_patch, html){
+  applyJoinPatch(live_patch, html, events){
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
     patch.markPrunableContentForRemoval()
@@ -1705,6 +1705,7 @@ export class View {
     })
 
     this.joinPending = false
+    this.dispatchEvents(events)
     this.applyPendingUpdates()
 
     if(live_patch){
@@ -1842,7 +1843,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       // However, if the component diff itself is empty, it means
       // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return this.flushEvents(events) }
+      if(this.rendered.componentCIDs(diff).length === 0){ return this.dispatchEvents(events) }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
@@ -1861,7 +1862,7 @@ export class View {
       })
     }
 
-    this.flushEvents(events)
+    this.dispatchEvents(events)
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
