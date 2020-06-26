@@ -1823,19 +1823,18 @@ export class View {
     this.pendingJoinOps = []
   }
 
-  update(diff, cidAck, ref, reply, events){
+  update(diff, cidAck, reply, events){
     if(diff.title){
       DOM.putTitle(diff.title)
       delete diff.title
     }
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
-      return this.pendingDiffs.push({diff, cid: cidAck, ref, reply, events})
+      return this.pendingDiffs.push({diff, cid: cidAck, reply, events})
     }
 
     this.log("update", () => ["", clone(diff), {reply: reply, events: events}])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
-    if(typeof(ref) === "number"){ DOM.undoRefs(ref, this.el) }
 
     // When we don't have an acknowledgement CID and the diff only contains
     // component diffs, then walk components and patch only the parent component
@@ -1845,13 +1844,13 @@ export class View {
       // the component was removed on the server, so we noop here.
       if(this.rendered.componentCIDs(diff).length === 0){ return this.dispatchEvents(events) }
       this.liveSocket.time("component ack patch complete", () => {
-        if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
+        if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck)){ phxChildrenAdded = true }
       })
     } else if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
-          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID, ref)){ phxChildrenAdded = true }
+          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)){ phxChildrenAdded = true }
         })
       })
     } else if(!isEmpty(diff)){
@@ -1875,7 +1874,7 @@ export class View {
     })
   }
 
-  componentPatch(diff, cid, ref){
+  componentPatch(diff, cid){
     if(isEmpty(diff)) return false
     let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid)
@@ -1906,7 +1905,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, cid, ref, reply, events}) => this.update(diff, cid, ref, reply, events))
+    this.pendingDiffs.forEach(({diff, cid, reply, events}) => this.update(diff, cid, reply, events))
     this.pendingDiffs = []
   }
 
@@ -1925,7 +1924,7 @@ export class View {
     // All other operations are queued to be applied only after join.
     this.liveSocket.onChannel(this.channel, "diff", (diff) => {
       let [newDiff, reply, events] = Rendered.extractReplyEvents(diff)
-      this.update(newDiff, null, null, reply, events)
+      this.update(newDiff, null, reply, events)
     })
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
@@ -2020,8 +2019,14 @@ export class View {
     return(
       this.liveSocket.wrapPush(() => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-          let [newDiff, reply, events] = resp.diff ? Rendered.extractReplyEvents(resp.diff) : [{}, null, []]
-          if(resp.diff || ref !== null){ this.update(newDiff, payload.cid, ref, reply, events) }
+          let reply = null
+          if(ref !== null){ DOM.undoRefs(ref, this.el) }
+          // todo extract to function and perform logging here
+          if(resp.diff){
+            let [newDiff, diffReply, events] = Rendered.extractReplyEvents(resp.diff)
+            this.update(newDiff, payload.cid, reply, events)
+            reply = diffReply
+          }
           if(resp.redirect){ this.onRedirect(resp.redirect) }
           if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
           if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
