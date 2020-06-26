@@ -205,8 +205,33 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def push_event(%Socket{} = socket, event, payload) do
-    update_changed(socket, {:private, :push_events}, &([[event, payload] | &1 || []]))
+  def push_event(%Socket{} = socket, event, %{} = payload) do
+    update_changed(socket, {:private, :push_events}, &[[event, payload] | &1 || []])
+  end
+
+  @doc """
+  TODO
+  """
+  def push_reply(%Socket{} = socket, %{} = payload) do
+    update_changed(socket, {:private, :push_reply}, fn
+      nil ->
+        payload
+
+      reply ->
+        raise ArgumentError, """
+        a reply is already prepared.
+
+        Only a single reply is allowed per callback.
+
+          Existing reply:
+
+            #{inspect(reply)}
+
+          Provided reply:
+
+            #{inspect(payload)}
+        """
+    end)
   end
 
   @doc """
@@ -214,6 +239,13 @@ defmodule Phoenix.LiveView.Utils do
   """
   def get_push_events(%Socket{} = socket) do
     Enum.reverse(socket.changed[{:private, :push_events}] || [])
+  end
+
+  @doc """
+  TODO
+  """
+  def get_push_reply(%Socket{} = socket) do
+    socket.changed[{:private, :push_reply}]
   end
 
   defp update_changed(%Socket{} = socket, key, func) do

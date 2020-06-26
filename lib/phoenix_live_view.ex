@@ -668,6 +668,11 @@ defmodule Phoenix.LiveView do
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
+  @doc """
+  TODO
+  """
+  defdelegate push_reply(socket, payload), to: Phoenix.LiveView.Utils
+
 
   @doc """
   Annotates the socket for redirect to a destination path.
