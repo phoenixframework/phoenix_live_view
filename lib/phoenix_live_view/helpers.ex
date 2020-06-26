@@ -29,6 +29,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
+      <%= live_patch "home", to: Routes.page_path(@socket, :index) %>
       <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
       <%= live_patch to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
         Sort By Price
@@ -76,6 +77,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
+      <%= live_redirect "home", to: Routes.page_path(@socket, :index) %>
       <%= live_redirect "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
       <%= live_redirect to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
         Sort By Price
