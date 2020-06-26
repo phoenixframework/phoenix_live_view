@@ -134,12 +134,17 @@ let serializeForm = (form, meta = {}) => {
 }
 
 export class Rendered {
-  static extractReply(diff){ return diff[REPLY] }
+  static extractReplyEvents(diff){
+    let reply = diff[REPLY] || null
+    let events = diff[EVENTS] || []
+    delete diff[REPLY]
+    delete diff[EVENTS]
+    return [diff, reply, events]
+  }
 
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
-    this.events = []
     this.mergeDiff(rendered)
   }
 
@@ -166,12 +171,6 @@ export class Rendered {
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
   mergeDiff(diff){
-    delete diff[REPLY]
-    let newEvents = diff[EVENTS] || []
-    if(newEvents){
-      this.events = this.events.concat(newEvents)
-      delete diff[EVENTS]
-    }
     let newc = diff[COMPONENTS]
     delete diff[COMPONENTS]
     this.rendered = this.recursiveMerge(this.rendered, diff)
@@ -209,11 +208,6 @@ export class Rendered {
       this.rendered[COMPONENTS] = oldc
     }
     diff[COMPONENTS] = newc
-  }
-
-  flushEvents(callback){
-    this.events.forEach(([event, payload]) => callback(event, payload))
-    this.events = []
   }
 
   recursiveMerge(target, source){
@@ -1692,8 +1686,9 @@ export class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
-  flushEvents(){
-    this.rendered.flushEvents((event, payload) => {
+  flushEvents(events){
+    events.forEach(([event, payload]) => {
+      console.log("dispatch", event)
       window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, {detail: payload}))
     })
   }
@@ -1711,7 +1706,6 @@ export class View {
 
     this.joinPending = false
     this.applyPendingUpdates()
-    this.flushEvents()
 
     if(live_patch){
       let {kind, to} = live_patch
@@ -1828,14 +1822,16 @@ export class View {
     this.pendingJoinOps = []
   }
 
-  update(diff, cidAck, ref){
+  update(diff, cidAck, ref, reply, events){
     if(diff.title){
       DOM.putTitle(diff.title)
       delete diff.title
     }
-    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.pendingDiffs.push({diff, cid: cidAck, ref}) }
+    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
+      return this.pendingDiffs.push({diff, cid: cidAck, ref, reply, events})
+    }
 
-    this.log("update", () => ["", clone(diff)])
+    this.log("update", () => ["", clone(diff), {reply: reply, events: events}])
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
     if(typeof(ref) === "number"){ DOM.undoRefs(ref, this.el) }
@@ -1846,7 +1842,7 @@ export class View {
     if(typeof(cidAck) === "number"){
       // However, if the component diff itself is empty, it means
       // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return this.flushEvents() }
+      if(this.rendered.componentCIDs(diff).length === 0){ return this.flushEvents(events) }
       this.liveSocket.time("component ack patch complete", () => {
         if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck, ref)){ phxChildrenAdded = true }
       })
@@ -1865,7 +1861,7 @@ export class View {
       })
     }
 
-    this.flushEvents()
+    this.flushEvents(events)
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -1909,7 +1905,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, cid, ref}) => this.update(diff, cid, ref))
+    this.pendingDiffs.forEach(({diff, cid, ref, reply, events}) => this.update(diff, cid, ref, reply, events))
     this.pendingDiffs = []
   }
 
@@ -1926,7 +1922,10 @@ export class View {
   bindChannel(){
     // The diff event should be handled by the regular update operations.
     // All other operations are queued to be applied only after join.
-    this.liveSocket.onChannel(this.channel, "diff", (diff) => this.update(diff))
+    this.liveSocket.onChannel(this.channel, "diff", (diff) => {
+      let [newDiff, reply, events] = Rendered.extractReplyEvents(diff)
+      this.update(newDiff, null, null, reply, events)
+    })
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
@@ -2020,8 +2019,8 @@ export class View {
     return(
       this.liveSocket.wrapPush(() => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-          let reply = Rendered.extractReply(resp.diff || {})
-          if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
+          let [newDiff, reply, events] = resp.diff ? Rendered.extractReplyEvents(resp.diff) : [{}, null, []]
+          if(resp.diff || ref !== null){ this.update(newDiff, payload.cid, ref, reply, events) }
           if(resp.redirect){ this.onRedirect(resp.redirect) }
           if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
           if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
