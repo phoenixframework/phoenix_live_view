@@ -120,10 +120,7 @@ defmodule Phoenix.LiveView.Diff do
       |> maybe_put_events(socket)
       |> maybe_put_reply(socket)
 
-    {diff, component_diffs} =
-      {diff, component_diffs}
-      |> extract_events()
-      |> extract_reply()
+    {diff, component_diffs} = extract_events({diff, component_diffs})
 
     if map_size(component_diffs) == 0 do
       {socket, diff, components}
@@ -164,16 +161,6 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp extract_reply({diff, component_diffs}) do
-    case component_diffs do
-      %{@reply => component_reply} ->
-        {Map.put(diff, @reply, component_reply), Map.delete(component_diffs, @reply)}
-
-      %{} ->
-        {diff, component_diffs}
-    end
-  end
-
   @doc """
   Execute the `fun` with the component `cid` with the given `socket` as template.
 
@@ -205,13 +192,12 @@ defmodule Phoenix.LiveView.Diff do
             components
           )
 
+        diff = maybe_put_reply(%{}, socket)
+
         {component_diffs, components} =
           render_pending_components(socket, pending, component_diffs, components)
 
-        {diff, component_diffs} =
-          {%{}, component_diffs}
-          |> extract_events()
-          |> extract_reply()
+        {diff, component_diffs} = extract_events({diff, component_diffs})
 
         {Map.put(diff, @components, component_diffs), components, extra}
 
@@ -529,10 +515,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp render_component(socket, component, id, cid, new?, pending, cids, diffs, components) do
-    diffs =
-      diffs
-      |> maybe_put_events(socket)
-      |> maybe_put_reply(socket)
+    diffs = maybe_put_events(diffs, socket)
 
     {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
       if new? or Utils.changed?(socket) do
