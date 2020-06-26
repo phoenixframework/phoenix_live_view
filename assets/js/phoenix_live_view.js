@@ -75,6 +75,7 @@ const DYNAMICS = "d"
 const STATIC = "s"
 const COMPONENTS = "c"
 const EVENTS = "e"
+const REPLY = "r"
 
 
 let logError = (msg, obj) => console.error && console.error(msg, obj)
@@ -133,6 +134,8 @@ let serializeForm = (form, meta = {}) => {
 }
 
 export class Rendered {
+  static extractReply(diff){ return diff[REPLY] }
+
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
@@ -163,6 +166,7 @@ export class Rendered {
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
   mergeDiff(diff){
+    delete diff[REPLY]
     let newEvents = diff[EVENTS] || []
     if(newEvents){
       this.events = this.events.concat(newEvents)
@@ -175,11 +179,6 @@ export class Rendered {
       let oldc = this.rendered[COMPONENTS] || {}
       for(let cid in newc){
         let cdiff = newc[cid]
-        let componentDispatches = cdiff[EVENTS]
-        if(componentDispatches){
-          this.events = this.events.concat(componentDispatches)
-          delete cdiff[EVENTS]
-        }
         let component = cdiff
         let stat = component[STATIC]
         if(typeof(stat) === "number"){
@@ -2021,12 +2020,13 @@ export class View {
     return(
       this.liveSocket.wrapPush(() => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+          let reply = Rendered.extractReply(resp.diff || {})
           if(resp.diff || ref !== null){ this.update(resp.diff || {}, payload.cid, ref) }
           if(resp.redirect){ this.onRedirect(resp.redirect) }
           if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
           if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
           onLoadingDone()
-          onReply(resp)
+          onReply(resp, reply)
         })
       })
     )
@@ -2071,13 +2071,13 @@ export class View {
     }
   }
 
-  pushHookEvent(targetCtx, event, payload){
-    this.pushWithReply(null, "event", {
+  pushHookEvent(targetCtx, event, payload, onReply){
+    this.pushWithReply(() => this.putRef([], "hook"), "event", {
       type: "hook",
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    })
+    }, (resp, reply) => onReply(reply))
   }
 
   extractMeta(el, meta){
@@ -2228,13 +2228,13 @@ class ViewHook {
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
-  pushEvent(event, payload = {}){
-    this.__view.pushHookEvent(null, event, payload)
+  pushEvent(event, payload = {}, onReply = function(){}){
+    this.__view.pushHookEvent(null, event, payload, onReply)
   }
 
-  pushEventTo(phxTarget, event, payload = {}){
+  pushEventTo(phxTarget, event, payload = {}, onReply = function(){}){
     this.__view.withinTargets(phxTarget, (view, targetCtx) => {
-      view.pushHookEvent(targetCtx, event, payload)
+      view.pushHookEvent(targetCtx, event, payload, onReply)
     })
   }
 
