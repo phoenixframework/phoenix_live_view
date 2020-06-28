@@ -42,7 +42,7 @@ jobs:
           mix local.rebar --force
           mix local.hex --force
           mix deps.get
-      - name: Setup Node.js 12.x
+      - name: Set up Node.js 12.x
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
