@@ -230,6 +230,12 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{}, %{}) == ["3", "3"]
     end
 
+    test "does not render dynamic for special variables" do
+      template = "<%= __MODULE__ %>"
+      assert changed(template, %{}, nil) == [""]
+      assert changed(template, %{}, %{}) == [nil]
+    end
+
     test "renders dynamic if it has variables from assigns" do
       template = "<%= foo = @foo %><%= foo %>"
       assert changed(template, %{foo: 123}, nil) == ["123", "123"]

@@ -656,6 +656,12 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, assigns}
   end
 
+  # Also skip special variables
+  defp analyze({name, _, context} = expr, vars, assigns)
+       when name in [:__MODULE__, :__ENV__, :__STACKTRACE__, :__DIR__] and is_atom(context) do
+    {expr, vars, assigns}
+  end
+
   # Vars always taint unless we are in restricted mode.
   defp analyze({name, _, context} = expr, {:restricted, map}, assigns)
        when is_atom(name) and is_atom(context) do
