@@ -90,7 +90,15 @@ defmodule Phoenix.LiveView do
 
   ## Example
 
-  First, a LiveView requires two callbacks: `c:mount/3` and `c:render/1`:
+  Before writing our first example, make sure that Phoenix LiveView
+  is properly installed. If you are just getting started, this can
+  be easily done by running `mix phx.new my_app --live`. The `phx.new`
+  command with the `--live` flag will create a new project with
+  LiveView installed and configured. Otherwise, please follow the steps
+  in the [installation guide](installation.md) before continuing.
+
+  A LiveView is a simple module that requires two callbacks: `c:mount/3`
+  and `c:render/1`:
 
       defmodule MyAppWeb.ThermostatLive do
         # If you generated an app with mix phx.new --live,
@@ -111,36 +119,12 @@ defmodule Phoenix.LiveView do
 
   The `c:render/1` callback receives the `socket.assigns` and is responsible
   for returning rendered content. You can use `Phoenix.LiveView.Helpers.sigil_L/2`
-  to inline LiveView templates. If you want to use `Phoenix.HTML` helpers,
-  remember to `use Phoenix.HTML` at the top of your `LiveView`.
-
-  With a LiveView defined, you first define the `socket` path in your endpoint,
-  and point it to `Phoenix.LiveView.Socket`:
-
-      defmodule MyAppWeb.Endpoint do
-        use Phoenix.Endpoint
-
-        socket "/live", Phoenix.LiveView.Socket,
-          websocket: [connect_info: [session: @session_options]]
-
-        ...
-      end
-
-  Where `@session_options` are the options given to `plug Plug.Session` extracted
-  to a module attribute.
-
-  And configure its signing salt in the endpoint:
-
-      config :my_app, MyAppWeb.Endpoint,
-        ...,
-        live_view: [signing_salt: ...]
-
-  You can generate a secure, random signing salt with the `mix phx.gen.secret 32` task.
+  to inline LiveView templates.
 
   Next, decide where you want to use your LiveView.
 
   You can serve the LiveView directly from your router (recommended):
-
+  
       defmodule MyAppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
@@ -150,7 +134,14 @@ defmodule Phoenix.LiveView do
         end
       end
 
-  You can also `live_render` from any template:
+  *Note:* the above assumes there is `plug :put_root_layout` call
+  in your router that configures the LiveView layout. This call is
+  automatically included by `mix phx.new --live` and described in
+  the installation guide. If you don't want to configure a root layout,
+  you must pass `layout: {MyAppWeb.LayoutView, "app.html"}` as an
+  option to the `live` macro.
+
+  Alternatively, you can `live_render` from any template:
 
       <h1>Temperature Control</h1>
       <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
@@ -184,8 +175,8 @@ defmodule Phoenix.LiveView do
   in the session to a minimum. For example, instead of storing a User struct,
   you should store the "user_id" and load the User when the LiveView mounts.
 
-  Once the LiveView is rendered, a regular HTML response is sent. Next, your
-  client code connects to the server:
+  Once the LiveView is rendered, a regular HTML response is sent. In your
+  app.js file, you should find the following:
 
       import {Socket} from "phoenix"
       import LiveSocket from "phoenix_live_view"

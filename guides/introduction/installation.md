@@ -36,9 +36,7 @@ You can generate a signing salt by running `mix phx.gen.secret 32`:
 # config/config.exs
 
 config :my_app, MyAppWeb.Endpoint,
-   live_view: [
-     signing_salt: "SECRET_SALT"
-   ]
+   live_view: [signing_salt: "SECRET_SALT"]
 ```
 
 Next, add the following imports to your web file in `lib/my_app_web.ex`:
@@ -203,7 +201,25 @@ pipeline :browser do
 end
 ```
 
-The layout given to `put_root_layout` must use `<%= @inner_content %>` instead of `<%= render(@view_module, @view_template, assigns) %>`. Then you can use "app.html.eex" for a layout specific to "regular" views and a "live.html.leex" that is specific to live views. Check the [Live Layouts](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
+The layout given to `put_root_layout` must use `<%= @inner_content %>` instead of `<%= render(@view_module, @view_template, assigns) %>`. It is typically very barebones, with mostly
+`<head>` and `<body>` tags. For example:
+
+```elixir
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%= csrf_meta_tag() %>
+    <%= live_title_tag assigns[:page_title] || "MyApp" %>
+    <link rel="stylesheet" href="<%%= Routes.static_path(@conn, "/css/app.css") %>"/>
+    <script defer type="text/javascript" src="<%%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+  </head>
+  <body>
+    <%%= @inner_content %>
+  </body>
+</html>
+```
+
+Once you specify a root layout, "app.html.eex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.leex" layout to be used across all LiveViews, as we will describe in the next section.
 
 ## phx.gen.live support
 
@@ -269,10 +285,7 @@ use Phoenix.LiveView,
   layout: {<%= web_namespace %>.LayoutView, "live.html"}
 ```
 
-This means "root.html.leex" is shared by regular and live views, "app.html.eex" is
-rendered inside the root layout for regular views, and "live.html.leex" is rendered
-inside the root layout for LiveViews. So make sure that you follow the steps outlined
-in the previous "Layouts" section.
+"root.html.leex" is shared by regular and live views, "app.html.eex" is rendered inside the root layout for regular views, and "live.html.leex" is rendered inside the root layout for LiveViews. "live.html.leex" typically starts out as a copy of "app.html.eex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
 
 ## Progress animation
 
