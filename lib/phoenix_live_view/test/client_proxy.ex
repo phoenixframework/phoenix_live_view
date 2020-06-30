@@ -480,6 +480,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
+    case diff do
+      %{e: events} ->
+        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
+        state
+
+      %{} -> state
+    end
+
+    case diff do
+      %{r: reply} -> send_caller(state, {:reply, reply})
+      %{} -> state
+    end
+
     state =
       case diff do
         %{t: new_title} -> %{state | page_title: new_title}

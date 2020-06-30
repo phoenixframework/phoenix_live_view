@@ -214,6 +214,9 @@ defmodule Phoenix.LiveView.Channel do
           {:noreply, %Socket{} = socket} ->
             {{:noreply, socket}, %{socket: socket, event: event, params: val}}
 
+          {:reply, reply, %Socket{} = socket} ->
+            {{:reply, reply, socket}, %{socket: socket, event: event, params: val}}
+
           other ->
             raise_bad_callback_response!(other, socket.view, :handle_event, 3)
         end
@@ -272,6 +275,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  defp handle_result({:reply, %{} = reply, %Socket{} = new_socket}, {:handle_event, 3, ref}, state) do
+    handle_changed(state, Utils.put_reply(new_socket, reply), ref)
+  end
+
   defp handle_result({:noreply, %Socket{} = new_socket}, {_from, _arity, ref}, state) do
     handle_changed(state, new_socket, ref)
   end
@@ -288,6 +295,19 @@ defmodule Phoenix.LiveView.Channel do
 
         {:noreply, %Socket{}}
         {:reply, reply, %Socket}
+
+    Got: #{inspect(result)}
+    """
+  end
+
+  defp raise_bad_callback_response!(result, view, :handle_event, arity) do
+    raise ArgumentError, """
+    invalid return from #{inspect(view)}.handle_event/#{arity} callback.
+
+    Expected one of:
+
+        {:noreply, %Socket{}}
+        {:reply, map, %Socket{}}
 
     Got: #{inspect(result)}
     """

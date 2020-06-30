@@ -1028,6 +1028,29 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Asserts an event will be pushed within `timeout`.
+
+  ## Examples
+
+      assert_push_event view, "scores", %{points: 100, user: "josé"}
+  """
+  defmacro assert_push_event(view, event, payload, timeout \\ 100) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      assert_receive {^ref, {:push_event, unquote(event), unquote(payload)}}, unquote(timeout)
+    end
+  end
+
+  defmacro assert_hook_reply(view, payload, timeout \\ 100) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      assert_receive {^ref, {:reply, unquote(payload)}}, unquote(timeout)
+    end
+  end
+
+  @doc """
   Follows the redirect from a `render_*` action.
 
   Imagine you have a LiveView that redirects on a `render_click`

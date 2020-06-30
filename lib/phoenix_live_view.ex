@@ -664,15 +664,13 @@ defmodule Phoenix.LiveView do
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
   @doc """
-  TODO
+  Pushes an event to the client to be consumed by hooks.
+
+  ## Examples
+
+    {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}}
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
-
-  @doc """
-  TODO
-  """
-  defdelegate push_reply(socket, payload), to: Phoenix.LiveView.Utils
-
 
   @doc """
   Annotates the socket for redirect to a destination path.
