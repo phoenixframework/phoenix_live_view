@@ -219,7 +219,7 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
 </html>
 ```
 
-Once you specify a root layout, "app.html.eex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.leex" layout to be used across all LiveViews, as we will describe in the next section.
+Once you have specified a root layout, "app.html.eex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.leex" layout to be used across all LiveViews, as we will describe in the next section.
 
 ## phx.gen.live support
 
