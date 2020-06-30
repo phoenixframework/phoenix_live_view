@@ -210,41 +210,23 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  TODO
+  Annotates the reply in the socket changes.
   """
-  def push_reply(%Socket{} = socket, %{} = payload) do
-    update_changed(socket, {:private, :push_reply}, fn
-      nil ->
-        payload
-
-      reply ->
-        raise ArgumentError, """
-        a reply is already prepared.
-
-        Only a single reply is allowed per callback.
-
-          Existing reply:
-
-            #{inspect(reply)}
-
-          Provided reply:
-
-            #{inspect(payload)}
-        """
-    end)
+  def put_reply(%Socket{} = socket, %{} = payload) do
+    update_changed(socket, {:private, :push_reply}, fn _ -> payload end)
   end
 
   @doc """
-  TODO
+  Returns the push events in the socket.
   """
   def get_push_events(%Socket{} = socket) do
     Enum.reverse(socket.changed[{:private, :push_events}] || [])
   end
 
   @doc """
-  TODO
+  Returns the reply in the socket.
   """
-  def get_push_reply(%Socket{} = socket) do
+  def get_reply(%Socket{} = socket) do
     socket.changed[{:private, :push_reply}]
   end
 

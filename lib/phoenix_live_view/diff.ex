@@ -156,7 +156,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp maybe_put_reply(diff, socket) do
-    case Utils.get_push_reply(socket) do
+    case Utils.get_reply(socket) do
       nil -> diff
       reply -> Map.put(diff, @reply, reply)
     end
