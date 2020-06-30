@@ -11,6 +11,7 @@ defmodule Phoenix.LiveView.Diff do
   @dynamics :d
   @events :e
   @reply :r
+  @title :t
 
   @doc """
   Returns the diff component state.
@@ -131,7 +132,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_put_title(diff, socket) do
     if Utils.changed?(socket, :page_title) do
-      Map.put(diff, :title, socket.assigns.page_title)
+      Map.put(diff, @title, socket.assigns.page_title)
     else
       diff
     end

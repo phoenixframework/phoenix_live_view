@@ -920,6 +920,19 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Returns the most recent title that was updated via a `page_title` assign.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_page_title_update)
+      assert page_title(view) =~ "my title"
+
+  """
+  def page_title(view) do
+    call(view, :page_title)
+  end
+
+  @doc """
   Asserts a live patch will happen within `timeout`.
 
   It always returns `:ok`. To assert on the flash message,
