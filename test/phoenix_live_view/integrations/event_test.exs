@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.EventTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case
 
   import Phoenix.ConnTest
 
@@ -45,13 +45,13 @@ defmodule Phoenix.LiveView.EventTest do
     test "sends reply from handle_event with general assigns diff", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events")
       assert render_hook(view, :reply, %{count: 456, reply: %{"val" => "my-reply"}}) =~ "count: 456"
-      assert_hook_reply(view, %{"val" => "my-reply"})
+      assert_reply(view, %{"val" => "my-reply"})
     end
 
     test "sends reply from handle_event with no assigns diff", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events")
       assert render_hook(view, :reply, %{reply: %{"val" => "nodiff"}}) =~ "count: 0"
-      assert_hook_reply(view, %{"val" => "nodiff"})
+      assert_reply(view, %{"val" => "nodiff"})
     end
 
     test "raises when trying to reply outside of handle_event", %{conn: conn} do
