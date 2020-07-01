@@ -51,7 +51,7 @@ describe("View + DOM", function() {
     }
 
     let view = simulateJoinedView(el, liveSocket)
-    view.update(updateDiff)
+    view.update(updateDiff, [])
 
     expect(view.el.firstChild.tagName).toBe("H2")
     expect(view.rendered.get()).toEqual(updateDiff)
@@ -265,30 +265,6 @@ describe("View + DOM", function() {
     expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()
   })
 
-  test("empty diff undoes refs and pending attributes", () => {
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let view = new View(el, liveSocket)
-    let ref = 456
-    let html = `<form phx-submit="submit" phx-page-loading=""><input type="text"></form>`
-
-    stubChannel(view)
-    view.onJoin({rendered: {
-      s: [html],
-      fingerprint: 123
-    }})
-    expect(view.el.innerHTML).toBe(html)
-
-    let form = view.el.querySelector("form")
-    view.pushFormSubmit(form, null, "submit", function(){})
-
-    expect(view.el.innerHTML).toBe(`<form phx-submit="submit" phx-page-loading="" class="phx-submit-loading" data-phx-ref="0"><input type="text" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="0"></form>`)
-
-    view.update({}, null, ref) // empty diff update
-
-    expect(view.el.innerHTML).toBe(html)
-  })
-
   describe("phx-trigger-action", () => {
     test("triggers external submit on updated DOM el", (done) => {
       let liveSocket = new LiveSocket("/live", Socket)
@@ -303,7 +279,7 @@ describe("View + DOM", function() {
       let formEl = document.getElementById("form")
       formEl.submit = () => done()
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, null, null)
+      view.update({s: [updatedHtml]}, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
@@ -320,7 +296,7 @@ describe("View + DOM", function() {
       expect(view.el.innerHTML).toBe(html)
 
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, null, null)
+      view.update({s: [updatedHtml]}, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
@@ -486,7 +462,7 @@ describe("View Hooks", function() {
     view.update({
       s: [`<h2 phx-hook="Upcase">test update</h2>`],
       fingerprint: 123
-    })
+    }, [])
     expect(upcaseBeforeUpdate).toBe(true)
     expect(view.el.firstChild.innerHTML).toBe("test update updated")
 
@@ -496,7 +472,7 @@ describe("View Hooks", function() {
     view.triggerReconnected()
     expect(view.el.firstChild.innerHTML).toBe("connected")
 
-    view.update({s: ["<div></div>"], fingerprint: 123})
+    view.update({s: ["<div></div>"], fingerprint: 123}, [])
     expect(upcaseBeforeDestroy).toBe(true)
     expect(upcaseWasDestroyed).toBe(true)
   })
@@ -536,7 +512,7 @@ describe("View Hooks", function() {
     view.onJoin({rendered: {s: [`<div>initial</div>`], fingerprint: 123}})
     expect(view.el.firstChild.innerHTML).toBe("initial")
 
-    view.update({s: [`<div>updated</div>`], fingerprint: 123})
+    view.update({s: [`<div>updated</div>`], fingerprint: 123}, [])
     expect(fromHTML).toBe("initial")
     expect(toHTML).toBe("updated")
     expect(view.el.firstChild.innerHTML).toBe("updated")
@@ -631,7 +607,7 @@ describe("View + Component", function() {
     view.onJoin({rendered: joinDiff})
     expect(view.el.innerHTML.trim()).toBe(`<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
 
-    view.update(updateDiff, null, null)
+    view.update(updateDiff, [])
     expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
   })
 

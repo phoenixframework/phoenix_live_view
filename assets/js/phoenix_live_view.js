@@ -2025,8 +2025,7 @@ export class View {
           let hookReply = null
           if(ref !== null){ DOM.undoRefs(ref, this.el) }
           if(resp.diff){
-            this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
-              hookReply = reply
+            hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
               this.update(diff, events, payload.cid)
             })
           }
