@@ -1882,7 +1882,7 @@ export class View {
       let callbacks = this.liveSocket.getHookCallbacks(hookName.trim())
 
       if(callbacks){
-        hooks.push(new ViewHook(this, el, callbacks))
+        hooks.push(callbacks)
       } else if(hookName !== null){
         logError(`unknown hook found for "${hookName.trim()}"`, el)
       }
