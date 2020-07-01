@@ -1,7 +1,7 @@
 # JavaScript interoperability
 
-As seen earlier, you start by instantiating a single LiveSocket instance to
-enable LiveView client/server interaction, for example:
+As seen earlier, you start by instantiating a single LiveSocket to enable LiveView
+client/server interaction, for example:
 
     import {Socket} from "phoenix"
     import LiveSocket from "phoenix_live_view"
