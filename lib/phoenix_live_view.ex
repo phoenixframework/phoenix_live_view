@@ -124,7 +124,7 @@ defmodule Phoenix.LiveView do
   Next, decide where you want to use your LiveView.
 
   You can serve the LiveView directly from your router (recommended):
-  
+
       defmodule MyAppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
@@ -220,7 +220,7 @@ defmodule Phoenix.LiveView do
   socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
   invoked, and the updates are sent to the client.
 
-  ## Collocating templates
+  ## Colocating templates
 
   In the examples above, we have placed the template directly inside the
   LiveView:
