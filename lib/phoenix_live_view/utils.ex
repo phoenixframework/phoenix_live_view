@@ -203,7 +203,7 @@ defmodule Phoenix.LiveView.Utils do
   defp flash_key(atom) when is_atom(atom), do: Atom.to_string(atom)
 
   @doc """
-  Annotes the changes with the event to be pushed.
+  Annotates the changes with the event to be pushed.
   """
   def push_event(%Socket{} = socket, event, %{} = payload) do
     update_changed(socket, {:private, :push_events}, &[[event, payload] | &1 || []])
