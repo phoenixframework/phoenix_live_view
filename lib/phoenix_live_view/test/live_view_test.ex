@@ -1042,7 +1042,14 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defmacro assert_hook_reply(view, payload, timeout \\ 100) do
+  @doc """
+  Asserts a hook reply was returned from a `handle_event` callback.
+
+  ## Examples
+
+      assert_reply view, "charge", %{amount: 100}, %{result: "ok", transaction_id: _}
+  """
+  defmacro assert_reply(view, payload, timeout \\ 100) do
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
