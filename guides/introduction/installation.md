@@ -285,7 +285,7 @@ use Phoenix.LiveView,
   layout: {<%= web_namespace %>.LayoutView, "live.html"}
 ```
 
-"root.html.leex" is shared by regular and live views, "app.html.eex" is rendered inside the root layout for regular views, and "live.html.leex" is rendered inside the root layout for LiveViews. "live.html.leex" typically starts out as a copy of "app.html.eex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](Phoenix.LiveView.html#module-live-layouts) section of the docs for more information.
+"root.html.leex" is shared by regular and live views, "app.html.eex" is rendered inside the root layout for regular views, and "live.html.leex" is rendered inside the root layout for LiveViews. "live.html.leex" typically starts out as a copy of "app.html.eex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
 
 ## Progress animation
 

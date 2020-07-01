@@ -62,13 +62,26 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp extras do
     [
-      "guides/introduction/installation.md"
+      "guides/introduction/installation.md",
+      "guides/client/bindings.md",
+      "guides/client/form-bindings.md",
+      "guides/client/dom-patching.md",
+      "guides/client/js-interop.md",
+      "guides/server/assigns-eex.md",
+      "guides/server/error-handling.md",
+      "guides/server/live-layouts.md",
+      "guides/server/live-navigation.md",
+      "guides/server/security-model.md",
+      "guides/server/telemetry.md",
+      "guides/server/using-gettext.md"
     ]
   end
 
   defp groups_for_extras do
     [
-      Introduction: ~r/guides\/introduction\/.?/
+      Introduction: ~r/guides\/introduction\/.?/,
+      "Server-side features": ~r/guides\/server\/.?/,
+      "Client-side integration": ~r/guides\/client\/.?/
     ]
   end
 
