@@ -416,7 +416,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()}
 
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()}
+              {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()}
@@ -667,6 +667,10 @@ defmodule Phoenix.LiveView do
 
   @doc """
   Pushes an event to the client to be consumed by hooks.
+
+  *Note*: events are global and will be dispatched to all active hooks on the
+  client who are handling the event. Scoped events can be achieved by namespacing
+  your event names.
 
   ## Examples
 

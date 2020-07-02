@@ -142,9 +142,10 @@ The above life-cycle callbacks have in-scope access to the following attributes:
 
   * `el` - attribute referencing the bound DOM node,
   * `viewName` - attribute matching the DOM node's phx-view value
-  * `pushEvent(event, payload)` - method to push an event from the client to the LiveView server
+  * `pushEvent(event, payload, (reply) => ...)` - method to push an event from the client to the LiveView server
   * `pushEventTo(selector, event, payload)` - method to push targeted events from the client
     to LiveViews and LiveComponents.
+  * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
 
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
@@ -168,11 +169,16 @@ Then a hook callback object could be defined and passed to the socket:
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
     ...
 
-The hook can push events to the LiveView by using the `pushEvent` function.
-Communication with the hook can be done by using data attributes on the container.
+The hook can push events to the LiveView by using the `pushEvent` function and receive a
+reply from the server via a `{:reply, map, socket}` return value. The reply payload will be
+passed to the optional `pushEvent` response callback.
+
+Communication with the hook from the server can be done by reading data attributes on the
+hook element, or by using `push_event` on the server and `handleEvent` on the client.
+
 For example, to implement infinite scrolling, one might do:
 
-    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>" />
+    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>">
 
 And then in the client:
 
@@ -189,6 +195,23 @@ And then in the client:
       },
       updated(){ this.pending = this.page() }
     }
+
+To push out-of-band events to the client, for example to render charting points, one could do:
+
+    <div id="chart" phx-hook="Chart">
+
+    {:noreply, push_event(socket, "points", %{points: new_points})}
+
+And then on the client:
+
+    Hooks.Chart = {
+      mounted(){
+        this.handlEvent("points", ({points}) => MyChartLib.addPoints(points))
+      }
+    }
+
+*Note*: events pushed from the server via `push_event` are global and will be dispatched
+to all active hooks on the client who are handling that event.
 
 *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
