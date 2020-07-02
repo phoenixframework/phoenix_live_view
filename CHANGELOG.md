@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.14.0 (2020-07-02)
+## 0.14.0-dev
 
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
