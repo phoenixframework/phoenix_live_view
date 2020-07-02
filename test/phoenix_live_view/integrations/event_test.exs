@@ -55,6 +55,7 @@ defmodule Phoenix.LiveView.EventTest do
     end
 
     test "raises when trying to reply outside of handle_event", %{conn: conn} do
+      Process.flag(:trap_exit, true)
       {:ok, view, _html} = live(conn, "/events")
       pid = view.pid
       Process.monitor(pid)
@@ -63,7 +64,7 @@ defmodule Phoenix.LiveView.EventTest do
         send(view.pid, {:run, fn socket ->
           {:reply, :boom, socket}
         end})
-        assert_receive {:DOWN, _ref, :process, ^pid, reason}
+        assert_receive {:DOWN, _ref, :process, ^pid, _reason}
       end) =~ "Got: {:reply, :boom"
     end
   end
