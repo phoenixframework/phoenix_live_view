@@ -10,7 +10,7 @@
 
 ### Enhancements
   - Add `push_event` for pushing events and data from the server to the client
-  - Add client `handleEvent` hook method for receiving events pushed from th server
+  - Add client `handleEvent` hook method for receiving events pushed from the server
   - Add ability to receive a reply to a `pushEvent` from the server via `{:reply, map, socket}`
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
 
