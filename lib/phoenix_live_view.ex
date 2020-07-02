@@ -668,8 +668,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Pushes an event to the client to be consumed by hooks.
 
-  *Note*: events are global and will be dispatched to all active hooks on the
-  client who are handling the event. Scoped events can be achieved by namespacing
+  *Note*: events will be dispatched to all active hooks on the client who are
+  handling the given `event`. Scoped events can be achieved by namespacing
   your event names.
 
   ## Examples
