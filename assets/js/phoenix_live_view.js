@@ -2033,7 +2033,7 @@ export class View {
           if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
           if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
           onLoadingDone()
-          onReply(resp, hookReply)
+          onReply(resp, hookReply, ref)
         })
       })
     )
@@ -2079,12 +2079,15 @@ export class View {
   }
 
   pushHookEvent(targetCtx, event, payload, onReply){
-    this.pushWithReply(() => this.putRef([], "hook"), "event", {
+    let [ref, els] = this.putRef([], "hook")
+    this.pushWithReply(() => [ref, els], "event", {
       type: "hook",
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }, (resp, reply) => onReply(reply))
+    }, (resp, reply, ref) => onReply(reply, ref))
+
+    return ref
   }
 
   extractMeta(el, meta){
@@ -2236,12 +2239,12 @@ class ViewHook {
   }
 
   pushEvent(event, payload = {}, onReply = function(){}){
-    this.__view.pushHookEvent(null, event, payload, onReply)
+    return this.__view.pushHookEvent(null, event, payload, onReply)
   }
 
   pushEventTo(phxTarget, event, payload = {}, onReply = function(){}){
-    this.__view.withinTargets(phxTarget, (view, targetCtx) => {
-      view.pushHookEvent(targetCtx, event, payload, onReply)
+    return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+      return view.pushHookEvent(targetCtx, event, payload, onReply)
     })
   }
 

@@ -142,12 +142,13 @@ describe("pushEvent replies", () => {
 
   test("reply", () => {
     let view
+    let pushedRef = null
     let liveSocket = new LiveSocket("/live", Socket, {hooks: {
       Gateway: {
         mounted(){
           stubNextChannelReply(view, {transactionID: "1001"})
-          this.pushEvent("charge", {amount: 123}, resp => {
-            processedReplies.push(resp)
+          pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
+            processedReplies.push({resp, ref})
           })
         }
       }
@@ -158,6 +159,7 @@ describe("pushEvent replies", () => {
       </div>
     `]}, [])
 
-    expect(processedReplies).toEqual([{transactionID: "1001"}])
+    expect(pushedRef).toEqual(0)
+    expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
   })
 })
