@@ -426,6 +426,8 @@ defmodule Phoenix.LiveComponent do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveComponent
+
+      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false

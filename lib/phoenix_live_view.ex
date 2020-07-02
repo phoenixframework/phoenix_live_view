@@ -461,6 +461,8 @@ defmodule Phoenix.LiveView do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveView
+
+      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false
