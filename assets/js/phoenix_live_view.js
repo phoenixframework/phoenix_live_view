@@ -1832,25 +1832,18 @@ export class View {
     this.pendingJoinOps = []
   }
 
-  update(diff, events, cidAck){
+  update(diff, events){
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
-      return this.pendingDiffs.push({diff, cid: cidAck, events})
+      return this.pendingDiffs.push({diff, events})
     }
 
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
-    // When we don't have an acknowledgement CID and the diff only contains
-    // component diffs, then walk components and patch only the parent component
-    // containers found in the diff. Otherwise, patch entire LV container.
-    if(typeof(cidAck) === "number"){
-      // However, if the component diff itself is empty, it means
-      // the component was removed on the server, so we noop here.
-      if(this.rendered.componentCIDs(diff).length === 0){ return this.dispatchEvents(events) }
-      this.liveSocket.time("component ack patch complete", () => {
-        if(this.componentPatch(this.rendered.getComponent(diff, cidAck), cidAck)){ phxChildrenAdded = true }
-      })
-    } else if(this.rendered.isComponentOnlyDiff(diff)){
+    // When the diff only contains component diffs, then walk components
+    // and patch only the parent component containers found in the diff.
+    // Otherwise, patch entire LV container.
+    if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
@@ -1909,7 +1902,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, cid, events}) => this.update(diff, events, cid))
+    this.pendingDiffs.forEach(({diff, events}) => this.update(diff, events))
     this.pendingDiffs = []
   }
 
@@ -2026,7 +2019,7 @@ export class View {
           if(ref !== null){ DOM.undoRefs(ref, this.el) }
           if(resp.diff){
             hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
-              this.update(diff, events, payload.cid)
+              this.update(diff, events)
             })
           }
           if(resp.redirect){ this.onRedirect(resp.redirect) }
