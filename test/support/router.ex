@@ -78,6 +78,9 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration flash
     live "/flash-root", FlashLive
     live "/flash-child", FlashChildLive
+
+    # integration events
+    live "/events", EventsLive
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do

@@ -736,7 +736,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "sends page title updates", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/thermo")
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
-      assert_receive {_ref, {:title, "New Title"}}
+      assert page_title(view) =~ "New Title"
     end
   end
 

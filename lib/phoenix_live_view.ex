@@ -124,7 +124,7 @@ defmodule Phoenix.LiveView do
   Next, decide where you want to use your LiveView.
 
   You can serve the LiveView directly from your router (recommended):
-  
+
       defmodule MyAppWeb.Router do
         use Phoenix.Router
         import Phoenix.LiveView.Router
@@ -220,7 +220,7 @@ defmodule Phoenix.LiveView do
   socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
   invoked, and the updates are sent to the client.
 
-  ## Collocating templates
+  ## Colocating templates
 
   In the examples above, we have placed the template directly inside the
   LiveView:
@@ -416,7 +416,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()}
 
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()}
+              {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()}
@@ -461,6 +461,8 @@ defmodule Phoenix.LiveView do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveView
+
+      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false
@@ -662,6 +664,19 @@ defmodule Phoenix.LiveView do
       iex> clear_flash(socket, :info)
   """
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
+
+  @doc """
+  Pushes an event to the client to be consumed by hooks.
+
+  *Note*: events will be dispatched to all active hooks on the client who are
+  handling the given `event`. Scoped events can be achieved by namespacing
+  your event names.
+
+  ## Examples
+
+    {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}}
+  """
+  defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
   @doc """
   Annotates the socket for redirect to a destination path.

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.14-dev
+## 0.14.0-dev
 
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
@@ -9,6 +9,9 @@
   - Fix `phx-error` class being applied on `live_redirect`
 
 ### Enhancements
+  - Add `push_event` for pushing events and data from the server to the client
+  - Add client `handleEvent` hook method for receiving events pushed from the server
+  - Add ability to receive a reply to a `pushEvent` from the server via `{:reply, map, socket}`
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
 
 ## 0.13.3 (2020-06-04)

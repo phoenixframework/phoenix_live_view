@@ -10,24 +10,34 @@ considered:
     regular views. This layout typically contains the `<html>`
     definition alongside the head and body tags. Any content defined
     in the root layout will remain the same, even as you live navigate
-    across LiveViews
+    across LiveViews. All LiveViews defined at the router must have
+    a root layout. The root layout is typically declared on the
+    router with `put_root_layout` and defined as "root.html.eex"
+    in your `MyAppWeb.LayoutView`. It may also be given via the
+    the `:layout` option to the router's `live` macro.
 
   * the app layout - this is the default application layout which
-    is not included or used by LiveViews;
+    is not included or used by LiveViews. It defaults to "app.html.eex"
+    in your `MyAppWeb.LayoutView`.
 
   * the live layout - this is the layout which wraps a LiveView and
-    is rendered as part of the LiveView life-cycle
+    is rendered as part of the LiveView life-cycle. It must be opt-in
+    by passing the `:layout` option on `use Phoenix.LiveView`. It is
+    typically set to "live.html.leex"in your `MyAppWeb.LayoutView`.
 
 Overall, those layouts are found in `templates/layout` with the
 following names:
 
-    * root.html.leex
+    * root.html.eex
     * app.html.eex
     * live.html.leex
 
-The "root" layout is shared by both "app" and "live" layouts. It
-is rendered only on the initial request and therefore it has
-access to the `@conn` assign. The root layout must be defined
+All layouts must call `<%= @inner_content %>` to inject the
+content rendered by the layout.
+
+The "root" layout is shared by both "app" and "live" layouts.
+It is rendered only on the initial request and therefore it
+has access to the `@conn` assign. The root layout must be defined
 in your router:
 
     plug :put_root_layout, {MyAppWeb.LayoutView, :root}
@@ -35,12 +45,12 @@ in your router:
 Alternatively, the root layout can be passed individually to the
 `live` macro of your **live routes**:
 
-    live "/dashboard", MyApp.Dashboard, layout: {MyAppWeb.LayoutView, :root}
+    live "/dashboard", MyAppWeb.Dashboard, layout: {MyAppWeb.LayoutView, :root}
 
 The "app" and "live" layouts are often small and similar to each
 other, but the "app" layout uses the `@conn` and is used as part
-of the regular request life-cycle, and the "live" layout is part
-of the LiveView and therefore has direct access to the `@socket`.
+of the regular request life-cycle. The "live" layout is part of
+the LiveView and therefore has direct access to the `@socket`.
 
 For example, you can define a new `live.html.leex` layout with
 dynamic content. You must use `@inner_content` where the output
@@ -58,16 +68,16 @@ option to `use Phoenix.LiveView`:
 If you are using Phoenix v1.5, the layout is automatically set
 when generating apps with the `mix phx.new --live` flag.
 
-The `:layout` option on `use` does not apply for LiveViews rendered within
-other LiveViews. If you want to render child live views or opt-in to a layout,
-use `:layout` as an option in mount:
+The `:layout` option on `use` does not apply to LiveViews rendered
+within other LiveViews. If you want to render child live views or
+opt-in to a layout, use `:layout` as an option in mount:
 
       def mount(_params, _session, socket) do
         socket = assign(socket, new_message_count: 0)
         {:ok, socket, layout: {MyAppWeb.LayoutView, "live.html"}}
       end
 
-*Note*: The layout will be wrapped by the LiveView's `:container` tag.
+*Note*: The live layout is always wrapped by the LiveView's `:container` tag.
 
 ## Updating the HTML document title
 

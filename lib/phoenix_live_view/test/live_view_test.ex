@@ -920,6 +920,19 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Returns the most recent title that was updated via a `page_title` assign.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_page_title_update)
+      assert page_title(view) =~ "my title"
+
+  """
+  def page_title(view) do
+    call(view, :page_title)
+  end
+
+  @doc """
   Asserts a live patch will happen within `timeout`.
 
   It always returns `:ok`. To assert on the flash message,
@@ -1011,6 +1024,36 @@ defmodule Phoenix.LiveViewTest do
         flush_navigation(ref, topic, {kind, to})
     after
       0 -> last
+    end
+  end
+
+  @doc """
+  Asserts an event will be pushed within `timeout`.
+
+  ## Examples
+
+      assert_push_event view, "scores", %{points: 100, user: "josé"}
+  """
+  defmacro assert_push_event(view, event, payload, timeout \\ 100) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      assert_receive {^ref, {:push_event, unquote(event), unquote(payload)}}, unquote(timeout)
+    end
+  end
+
+  @doc """
+  Asserts a hook reply was returned from a `handle_event` callback.
+
+  ## Examples
+
+      assert_reply view, "charge", %{amount: 100}, %{result: "ok", transaction_id: _}
+  """
+  defmacro assert_reply(view, payload, timeout \\ 100) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      assert_receive {^ref, {:reply, unquote(payload)}}, unquote(timeout)
     end
   end
 

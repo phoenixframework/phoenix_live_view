@@ -426,6 +426,8 @@ defmodule Phoenix.LiveComponent do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       @behaviour Phoenix.LiveComponent
+
+      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @doc false
@@ -449,7 +451,7 @@ defmodule Phoenix.LiveComponent do
               unsigned_params :: Phoenix.LiveView.unsigned_params(),
               socket :: Socket.t()
             ) ::
-              {:noreply, Socket.t()}
+              {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @optional_callbacks mount: 1, preload: 1, update: 2, handle_event: 3
 end

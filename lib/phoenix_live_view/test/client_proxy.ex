@@ -85,7 +85,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       html: root_html,
       session: session,
       test_supervisor: test_supervisor,
-      url: url
+      url: url,
+      page_title: nil,
     }
 
     try do
@@ -317,6 +318,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
+  def handle_call(:page_title, _from, state) do
+    {:reply, {:ok, state.page_title}, state}
+  end
+
   def handle_call({:live_children, topic}, from, state) do
     view = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(view.pid)
@@ -476,9 +481,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
     case diff do
-      %{title: new_title} -> send_caller(state, {:title, new_title})
-      %{} -> :noop
+      %{e: events} ->
+        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
+        state
+
+      %{} -> state
     end
+
+    case diff do
+      %{r: reply} -> send_caller(state, {:reply, reply})
+      %{} -> state
+    end
+
+    state =
+      case diff do
+        %{t: new_title} -> %{state | page_title: new_title}
+        %{} -> state
+      end
 
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
