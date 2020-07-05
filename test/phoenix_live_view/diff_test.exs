@@ -70,6 +70,29 @@ defmodule Phoenix.LiveView.DiffTest do
     map |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
 
+  describe "to_iodata" do
+    test "with subtrees chain" do
+      assert rendered_to_binary(%{
+               0 => %{d: [["1", 1], ["2", 2], ["3", 3]], s: ["\n", ":", ""]},
+               :c => %{
+                 1 => %{0 => %{0 => "index_1", :s => ["\nIF ", ""]}, :s => ["", ""]},
+                 2 => %{0 => %{0 => "index_2", :s => ["\nELSE ", ""]}, :s => 1},
+                 3 => %{0 => %{0 => "index_3"}, :s => 2}
+               },
+               :s => ["<div>", "\n</div>\n"]
+             }) == """
+             <div>
+             1:
+             IF index_1
+             2:
+             ELSE index_2
+             3:
+             ELSE index_3
+             </div>
+             """
+    end
+  end
+
   describe "full renders without fingerprints" do
     test "basic template" do
       rendered = basic_template(%{time: "10:30", subtitle: "Sunny"})
@@ -950,7 +973,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert {IfComponent, "index_1", _, _, _} = cid_to_component[1]
       assert {IfComponent, "index_2", _, _, _} = cid_to_component[2]
 
-      # Now let's add a third component, it shall reuse index_0
+      # Now let's add a third component, it shall reuse index_1
       components = [
         %Component{id: "index_3", assigns: %{from: :index_3}, component: IfComponent}
       ]

@@ -33,30 +33,56 @@ defmodule Phoenix.LiveView.Diff do
   It only accepts a full render diff.
   """
   def to_iodata(map, component_mapper \\ fn _cid, content -> content end) do
-    to_iodata(map, Map.get(map, @components, %{}), component_mapper)
+    to_iodata(map, Map.get(map, @components, %{}), component_mapper) |> elem(0)
   end
 
   defp to_iodata(%{@dynamics => dynamics, @static => static}, components, mapper) do
-    for dynamic <- dynamics do
-      many_to_iodata(static, dynamic, components, mapper)
-    end
-  end
-
-  defp to_iodata(%{@static => static} = parts, components, mapper) when is_integer(static) do
-    parts = deep_merge(find_component(parts, components), Map.delete(parts, @static))
-    to_iodata(parts, components, mapper)
+    Enum.map_reduce(dynamics, components, fn dynamic, components ->
+      many_to_iodata(static, dynamic, [], components, mapper)
+    end)
   end
 
   defp to_iodata(%{@static => static} = parts, components, mapper) do
-    one_to_iodata(static, parts, 0, components, mapper)
+    one_to_iodata(static, parts, 0, [], components, mapper)
   end
 
   defp to_iodata(cid, components, mapper) when is_integer(cid) do
-    mapper.(cid, to_iodata(Map.fetch!(components, cid), components, mapper))
+    # Resolve component pointers and update the component entries
+    components =
+      update_in(components[cid], fn
+        %{@static => static} = diff when is_integer(static) ->
+          diff
+          |> find_component(components)
+          |> deep_merge(Map.delete(diff, @static))
+
+        %{} = diff ->
+          diff
+      end)
+
+    {iodata, components} = to_iodata(Map.fetch!(components, cid), components, mapper)
+    {mapper.(cid, iodata), components}
   end
 
-  defp to_iodata(binary, _components, _mapper) when is_binary(binary) do
-    binary
+  defp to_iodata(binary, components, _mapper) when is_binary(binary) do
+    {binary, components}
+  end
+
+  defp one_to_iodata([last], _parts, _counter, acc, components, _mapper) do
+    {Enum.reverse([last | acc]), components}
+  end
+
+  defp one_to_iodata([head | tail], parts, counter, acc, components, mapper) do
+    {iodata, components} = to_iodata(Map.fetch!(parts, counter), components, mapper)
+    one_to_iodata(tail, parts, counter + 1, [iodata, head | acc], components, mapper)
+  end
+
+  defp many_to_iodata([shead | stail], [dhead | dtail], acc, components, mapper) do
+    {iodata, components} = to_iodata(dhead, components, mapper)
+    many_to_iodata(stail, dtail, [iodata, shead | acc], components, mapper)
+  end
+
+  defp many_to_iodata([shead], [], acc, components, _mapper) do
+    {Enum.reverse([shead | acc]), components}
   end
 
   defp find_component(%{@static => cid}, components) when is_integer(cid),
@@ -70,30 +96,6 @@ defmodule Phoenix.LiveView.Diff do
       _, %{} = original, %{} = extra -> deep_merge(original, extra)
       _, _original, extra -> extra
     end)
-  end
-
-  defp one_to_iodata([last], _parts, _counter, _components, _mapper) do
-    [last]
-  end
-
-  defp one_to_iodata([head | tail], parts, counter, components, mapper) do
-    [
-      head,
-      to_iodata(Map.fetch!(parts, counter), components, mapper)
-      | one_to_iodata(tail, parts, counter + 1, components, mapper)
-    ]
-  end
-
-  defp many_to_iodata([shead | stail], [dhead | dtail], components, mapper) do
-    [
-      shead,
-      to_iodata(dhead, components, mapper)
-      | many_to_iodata(stail, dtail, components, mapper)
-    ]
-  end
-
-  defp many_to_iodata([shead], [], _components, _mapper) do
-    [shead]
   end
 
   @doc """
@@ -148,7 +150,8 @@ defmodule Phoenix.LiveView.Diff do
   defp extract_events({diff, component_diffs}) do
     case component_diffs do
       %{@events => component_events} ->
-        {Map.update(diff, @events, component_events, &(&1 ++ component_events)), Map.delete(component_diffs, @events)}
+        {Map.update(diff, @events, component_events, &(&1 ++ component_events)),
+         Map.delete(component_diffs, @events)}
 
       %{} ->
         {diff, component_diffs}
