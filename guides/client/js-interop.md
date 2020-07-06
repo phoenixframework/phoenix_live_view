@@ -121,7 +121,7 @@ state.
 ## Client hooks
 
 To handle custom client-side JavaScript when an element is added, updated,
-or removed by the server, a hook object may be provided with the following
+or removed by the server, one or more hook objects may be provided with the following
 life-cycle callbacks:
 
   * `mounted` - the element has been added to the DOM and its server
@@ -168,6 +168,13 @@ Then a hook callback object could be defined and passed to the socket:
 
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
     ...
+
+Multiple hooks can be specified per-element, and each set of hook callbacks will be associated
+with a separate object. For example:
+
+    <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber, SomeOtherHook" />
+
+In this case, both the `PhoneNumber` and `SomeOtherHook` hooks will be associated with this `input` element.
 
 The hook can push events to the LiveView by using the `pushEvent` function and receive a
 reply from the server via a `{:reply, map, socket}` return value. The reply payload will be

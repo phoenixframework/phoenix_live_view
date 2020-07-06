@@ -1560,8 +1560,8 @@ export class View {
     let onFinished = () => {
       callback()
       for(let id in this.viewHooks){
-        this.viewHooks[id].__trigger__("beforeDestroy")
-        this.destroyHook(this.viewHooks[id])
+        this.viewHooks[id].trigger("beforeDestroy")
+        this.destroyHooks(this.viewHooks[id])
       }
     }
 
@@ -1588,7 +1588,7 @@ export class View {
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
-      for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
+      for(let id in this.viewHooks){ this.viewHooks[id].trigger("disconnected") }
       this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     }
   }
@@ -1599,7 +1599,7 @@ export class View {
   }
 
   triggerReconnected(){
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
+    for(let id in this.viewHooks){ this.viewHooks[id].trigger("reconnected") }
   }
 
   log(kind, msgCallback){
@@ -1709,8 +1709,8 @@ export class View {
     this.performPatch(patch, false)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
-      let hook = this.addHook(hookEl)
-      if(hook){ hook.__trigger__("mounted") }
+      let hooks = this.addHooks(hookEl)
+      if(hooks){ hooks.trigger("mounted") }
     })
 
     this.joinPending = false
@@ -1732,37 +1732,41 @@ export class View {
     let updatedHookIds = new Set()
 
     patch.after("added", el => {
-      let newHook = this.addHook(el)
-      if(newHook){ newHook.__trigger__("mounted") }
+      let newHooks = this.addHooks(el)
+      if(newHooks){ newHooks.trigger("mounted") }
     })
 
     patch.after("phxChildAdded", el => phxChildrenAdded = true)
 
     patch.before("updated", (fromEl, toEl) => {
       this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
-      let hook = this.getHook(fromEl)
-      let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
-      if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
+      let hooks = this.getHooks(fromEl)
+      let isIgnored = hooks && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
+      if(hooks && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
         updatedHookIds.add(fromEl.id)
-        hook.__trigger__("beforeUpdate")
+        hooks.trigger("beforeUpdate")    
       }
     })
 
     patch.after("updated", el => {
-      let hook = this.getHook(el)
-      if(hook && updatedHookIds.has(el.id)){ hook.__trigger__("updated") }
+      let hooks = this.getHooks(el)
+      if(hooks && updatedHookIds.has(el.id)) { 
+        hooks.trigger("updated")
+      }
     })
 
     patch.before("discarded", (el) => {
-      let hook = this.getHook(el)
-      if(hook){ hook.__trigger__("beforeDestroy") }
+      let hooks = this.getHooks(el)
+      if(hooks){ 
+        hooks.trigger("beforeDestroy")
+      }
     })
 
     patch.after("discarded", (el) => {
       let cid = this.componentID(el)
       if(typeof(cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
-      let hook = this.getHook(el)
-      hook && this.destroyHook(hook)
+      let hooks = this.getHooks(el)
+      hooks && this.destroyHooks(hooks)
     })
 
     patch.perform()
@@ -1879,26 +1883,31 @@ export class View {
     return childrenAdded
   }
 
-  getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
+  getHooks(el){ return this.viewHooks[ViewHookList.elementID(el)] }
 
-  addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let hookName = el.getAttribute(this.binding(PHX_HOOK))
-    if(hookName && !this.ownsElement(el)){ return }
-    let callbacks = this.liveSocket.getHookCallbacks(hookName)
+  addHooks(el){ if(ViewHookList.elementID(el) || !el.getAttribute){ return }
+    let hookNames = el.getAttribute(this.binding(PHX_HOOK))
+    if((hookNames && !this.ownsElement(el)) || typeof hookNames !== 'string'){ return }
 
-    if(callbacks){
-      let hook = new ViewHook(this, el, callbacks)
-      this.viewHooks[ViewHook.elementID(hook.el)] = hook
-      return hook
-    } else if(hookName !== null){
-      logError(`unknown hook found for "${hookName}"`, el)
+    let hooks = new ViewHookList(this, el)
+    for(let hookName of hookNames.split(",")) {
+      let callbacks = this.liveSocket.getHookCallbacks(hookName.trim())
+
+      if(callbacks){
+        hooks.push(callbacks)
+      } else if(hookName !== null){
+        logError(`unknown hook found for "${hookName.trim()}"`, el)
+      }
     }
+
+    this.viewHooks[ViewHookList.elementID(hooks.el)] = hooks
+    return hooks
   }
 
-  destroyHook(hook){
-    hook.__trigger__("destroyed")
-    hook.__cleanup__()
-    delete this.viewHooks[ViewHook.elementID(hook.el)]
+  destroyHooks(hooks){
+    hooks.trigger("destroyed")
+    hooks.cleanup()
+    delete this.viewHooks[ViewHookList.elementID(hooks.el)]
   }
 
   applyPendingUpdates(){
@@ -2215,11 +2224,32 @@ export class View {
   binding(kind){ return this.liveSocket.binding(kind)}
 }
 
-let viewHookID = 1
-class ViewHook {
+class ViewHookList {
   static makeID(){ return viewHookID++ }
   static elementID(el){ return el.phxHookId }
 
+  constructor(view, el) {
+    this.view = view
+    this.el = el
+    this.el.phxHookId = this.constructor.makeID()
+    this.hooks = []
+  }
+
+  push(callbacks) {
+    this.hooks.push(new ViewHook(this.view, this.el, callbacks))
+  }
+
+  trigger(kind) {
+    this.hooks.forEach(viewHook => viewHook.__trigger__(kind))
+  }
+
+  cleanup() {
+    this.hooks.forEach(viewHook => viewHook.__cleanup__())
+  }
+}
+
+let viewHookID = 1
+class ViewHook {
   constructor(view, el, callbacks){
     this.__view = view
     this.__liveSocket = view.liveSocket
@@ -2227,7 +2257,6 @@ class ViewHook {
     this.__listeners = new Set()
     this.el = el
     this.viewName = view.name()
-    this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
