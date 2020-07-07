@@ -17,7 +17,8 @@ defmodule Phoenix.LiveViewTest do
   socket state, and the view continues statefully. The LiveView test functions
   support testing both disconnected and connected mounts separately, for example:
 
-      use Phoenix.ConnTest
+      import Plug.Conn
+      import Phoenix.ConnTest
       import Phoenix.LiveViewTest
       @endpoint MyEndpoint
 
