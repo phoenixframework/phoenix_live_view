@@ -2033,7 +2033,7 @@ export class View {
           if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
           if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
           onLoadingDone()
-          onReply(resp, hookReply, ref)
+          onReply(resp, hookReply)
         })
       })
     )
@@ -2085,7 +2085,7 @@ export class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }, (resp, reply, ref) => onReply(reply, ref))
+    }, (resp, reply) => onReply(reply, ref))
 
     return ref
   }
