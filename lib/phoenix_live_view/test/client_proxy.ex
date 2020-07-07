@@ -165,13 +165,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "caller" => state.caller
     }
 
+    from = {self(), ref}
+
     spec = %{
       id: make_ref(),
-      start: {Phoenix.LiveView.Channel, :start_link, [{params, {self(), ref}, socket}]},
+      start: {Phoenix.LiveView.Channel, :start_link, [{view.endpoint, from}]},
       restart: :temporary
     }
 
-    Supervisor.start_child(state.test_supervisor, spec)
+    with {:ok, pid} <- Supervisor.start_child(state.test_supervisor, spec) do
+      send(pid, {Phoenix.Channel, params, from, socket})
+      {:ok, pid}
+    end
   end
 
   def handle_info({:sync_children, topic, from}, state) do

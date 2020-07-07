@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.ParamsTest do
   use ExUnit.Case
-  use Phoenix.ConnTest
+  import Plug.Conn
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
@@ -46,14 +47,14 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       refute metadata.socket.connected?
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
-      assert metadata.uri == "http://www.example.com/counter/123"
+      assert metadata.uri == "http://www.example.com/counter/123?query1=query1&query2=query2"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
                       metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
-      assert metadata.uri == "http://www.example.com/counter/123"
+      assert metadata.uri == "http://www.example.com/counter/123?query1=query1&query2=query2"
     end
 
     test "telemetry events are emitted on exception", %{conn: conn} do
@@ -68,14 +69,14 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       refute metadata.socket.connected?
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}
-      assert metadata.uri == "http://www.example.com/errors"
+      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_handle_params"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _},
                       metadata}
 
       refute metadata.socket.connected?
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}
-      assert metadata.uri == "http://www.example.com/errors"
+      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_handle_params"
     end
 
     test "hard redirects", %{conn: conn} do
@@ -133,8 +134,8 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?q1=1", q2: "2")
         |> live()
 
-      assert html =~ escape(~s|params: %{"id" => "123", "q1" => "1"}|)
-      assert html =~ escape(~s|mount: %{"id" => "123", "q1" => "1"}|)
+      assert html =~ escape(~s|params: %{"id" => "123", "q1" => "1", "q2" => "2"}|)
+      assert html =~ escape(~s|mount: %{"id" => "123", "q1" => "1", "q2" => "2"}|)
     end
 
     test "is called on connected mount with query string params from live", %{conn: conn} do

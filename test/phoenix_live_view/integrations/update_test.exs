@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.UpdateTest do
   use ExUnit.Case, async: true
-  use Phoenix.ConnTest
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, DOM}

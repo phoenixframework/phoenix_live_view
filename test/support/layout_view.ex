@@ -33,6 +33,6 @@ defmodule Phoenix.LiveViewTest.AssignsLayoutView do
   use Phoenix.View, root: ""
 
   def render("app.html", assigns) do
-    ["title: #{assigns.title}", render(assigns.view_module, assigns.view_template, assigns)]
+    ["title: #{assigns.title}", assigns.inner_content]
   end
 end

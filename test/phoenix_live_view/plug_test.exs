@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.PlugTest do
   use ExUnit.Case, async: true
-  use Phoenix.ConnTest
+  import Plug.Conn
+  import Phoenix.ConnTest
 
   alias Phoenix.LiveView.Plug, as: LiveViewPlug
   alias Phoenix.LiveViewTest.{ThermostatLive, DashboardLive, Endpoint}

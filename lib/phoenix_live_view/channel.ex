@@ -9,15 +9,6 @@ defmodule Phoenix.LiveView.Channel do
 
   @prefix :phoenix
 
-  # For backwards compatibility with Phoenix v1.4.x.
-  # TODO: Remove once we depend on Phoenix v1.5.2+.
-  def start_link({auth_payload, from, phx_socket}) do
-    with {:ok, pid} <- start_link({phx_socket.endpoint, from}) do
-      send(pid, {Phoenix.Channel, auth_payload, from, phx_socket})
-      {:ok, pid}
-    end
-  end
-
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
     opts = [hibernate_after: hibernate_after]

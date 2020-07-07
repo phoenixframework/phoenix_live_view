@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.ComponentTest do
   use ExUnit.Case, async: false
-  use Phoenix.ConnTest
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
