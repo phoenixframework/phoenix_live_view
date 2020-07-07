@@ -285,34 +285,41 @@ export class Rendered {
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
 
-    let children = Array.from(container.childNodes).filter((child, i) => {
-      if(child.nodeType === Node.ELEMENT_NODE){
-        if(child.getAttribute(PHX_COMPONENT)){ return false }
-        child.setAttribute(PHX_COMPONENT, cid)
-        if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
-        if(skip){
-          child.setAttribute(PHX_SKIP, "")
-          child.innerHTML = ""
-        }
-        return true
-      } else {
-        if(child.nodeValue.trim() !== ""){
-          logError(`only HTML element tags are allowed at the root of components.\n\n` +
-                   `got: "${child.nodeValue.trim()}"\n\n` +
-                   `within:\n`, template.innerHTML.trim())
-          child.replaceWith(this.createSpan(child.nodeValue, cid))
-          return true
+    let [hasChildNodes, hasChildComponents] =
+      Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
+        if(child.nodeType === Node.ELEMENT_NODE){
+          if(child.getAttribute(PHX_COMPONENT)){
+            return [hasNodes, true]
+          }
+          child.setAttribute(PHX_COMPONENT, cid)
+          if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}`}
+          if(skip){
+            child.setAttribute(PHX_SKIP, "")
+            child.innerHTML = ""
+          }
+          return [true, hasComponents]
         } else {
-          child.remove()
-          return false
+          if(child.nodeValue.trim() !== ""){
+            logError(`only HTML element tags are allowed at the root of components.\n\n` +
+                    `got: "${child.nodeValue.trim()}"\n\n` +
+                    `within:\n`, template.innerHTML.trim())
+            child.replaceWith(this.createSpan(child.nodeValue, cid))
+            return [true, hasComponents]
+          } else {
+            child.remove()
+            return [hasNodes, hasComponents]
+          }
         }
-      }
-    })
+      }, [false, false])
 
-    if(children.length === 0) {
+    if(!hasChildNodes && !hasChildComponents){
       logError(`expected at least one HTML element tag inside a component, but the component is empty:\n`,
                template.innerHTML.trim())
       return this.createSpan("", cid).outerHTML
+    } else if(!hasChildNodes && hasChildComponents){
+      logError(`expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.`,
+               template.innerHTML.trim())
+      return template.innerHTML
     } else {
       return template.innerHTML
     }
