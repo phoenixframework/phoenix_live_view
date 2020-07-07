@@ -206,7 +206,7 @@ And then on the client:
 
     Hooks.Chart = {
       mounted(){
-        this.handlEvent("points", ({points}) => MyChartLib.addPoints(points))
+        this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
       }
     }
 
