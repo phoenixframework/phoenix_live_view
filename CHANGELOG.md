@@ -1,18 +1,20 @@
 # Changelog
 
-## 0.14.0-dev
+## 0.14.0 (2020-07-07)
 
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
   - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
   - Fix error_tag failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
   - Fix `phx-error` class being applied on `live_redirect`
+  - Properly resolve components recursively on the serve to fix `Phoenix.LiveView.Diff.to_iodata` error
 
 ### Enhancements
   - Add `push_event` for pushing events and data from the server to the client
   - Add client `handleEvent` hook method for receiving events pushed from the server
   - Add ability to receive a reply to a `pushEvent` from the server via `{:reply, map, socket}`
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
+  - Log error on client when rendering a component with no direct DOM children
 
 ## 0.13.3 (2020-06-04)
 
