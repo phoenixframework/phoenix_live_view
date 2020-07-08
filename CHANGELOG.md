@@ -10,10 +10,10 @@
   - Properly handle Elixir's special variables, such as `__MODULE__`
   - No longer set disconnected class during patch
   - Track flash keys to fix back-to-back flashes from being discarded
-  - Properly handle empty component diffs in the client for cases the component has already been removed on the server
+  - Properly handle empty component diffs in the client for cases where the component has already been removed on the server
   - Make sure components in nested live views do not conflict
   - Fix `phx-static` not being sent from the client for child views
-  - Do not fail when deleting a view that was already deleted
+  - Do not fail when trying to delete a view that was already deleted
   - Ensure `beforeDestroy` is called on hooks in children of a removed element
 
 ### Enhancements
