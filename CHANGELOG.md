@@ -7,7 +7,6 @@
   - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
   - Fix error_tag failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
   - Fix `phx-error` class being applied on `live_redirect`
-  - Properly resolve components recursively on the serve to fix `Phoenix.LiveView.Diff.to_iodata` error
 
 ### Enhancements
   - Add `push_event` for pushing events and data from the server to the client
