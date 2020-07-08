@@ -143,7 +143,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `el` - attribute referencing the bound DOM node,
   * `viewName` - attribute matching the DOM node's phx-view value
   * `pushEvent(event, payload, (reply) => ...)` - method to push an event from the client to the LiveView server
-  * `pushEventTo(selector, event, payload, (reply) => ...)` - method to push targeted events from the client
+  * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
 
