@@ -5,15 +5,27 @@
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
   - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
-  - Fix error_tag failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
+  - Fix `error_tag` failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
   - Fix `phx-error` class being applied on `live_redirect`
+  - Properly handle Elixir's special variables, such as `__MODULE__`
+  - No longer set disconnected class during patch
+  - Track flash keys to fix back-to-back flashes from being discarded
+  - Properly handle empty component diffs in the client for cases the component has already been removed on the server
+  - Make sure components in nested live views do not conflict
+  - Fix `phx-static` not being sent from the client for child views
+  - Do not fail when deleting a view that was already deleted
+  - Ensure `beforeDestroy` is called on hooks in children of a removed element
 
 ### Enhancements
+  - Allow the whole component static subtree to be shared when the component already exists on the client
+  - Add telemetry events to `mount`, `handle_params`, and `handle_event`
   - Add `push_event` for pushing events and data from the server to the client
   - Add client `handleEvent` hook method for receiving events pushed from the server
   - Add ability to receive a reply to a `pushEvent` from the server via `{:reply, map, socket}`
   - Use event listener for popstate to avoid conflicting with user-defined popstate handlers
   - Log error on client when rendering a component with no direct DOM children
+  - Make `assigns.myself` a struct to catch mistakes
+  - Log if component doesn't exist on `send_update`, raise if module is unavailable
 
 ## 0.13.3 (2020-06-04)
 
