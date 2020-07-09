@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.1 (2020-07-09)
+
+### Bug fixes
+  - Fix nested `live_render`'s failing to be torn down when removed from the DOM in cetrain cases
+  - Fix LEEx issue for nested conditions failing to be re-evaluated
+
 ## 0.14.0 (2020-07-07)
 
 ### Bug fixes
