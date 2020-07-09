@@ -628,7 +628,7 @@ export class LiveSocket {
 
   getViewByEl(el){
     let rootId = el.getAttribute(PHX_ROOT_ID)
-    return this.getRootById(rootId).getDescendentByEl(el)
+    return maybe(this.getRootById(rootId), root => root.getDescendentByEl(el))
   }
 
   getRootById(id){ return this.roots[id] }
