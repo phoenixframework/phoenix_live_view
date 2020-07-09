@@ -442,7 +442,7 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(macro) do
     if classify_taint(macro, args) == :live do
       {args, [opts]} = Enum.split(args, -1)
-      {args, vars, _} = analyze_with_restricted_vars(args, vars, assigns)
+      {args, vars, _} = analyze_list(args, vars, assigns, [])
 
       opts =
         for {key, value} <- opts do
