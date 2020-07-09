@@ -9,11 +9,11 @@ describe("Rendered", () => {
     test("recursively merges two diffs", () => {
       let simple = new Rendered("123", simpleDiff1)
       simple.mergeDiff(simpleDiff2)
-      expect(simple.get()).toEqual(simpleDiffResult)
+      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}})
 
       let deep = new Rendered("123", deepDiff1)
       deep.mergeDiff(deepDiff2)
-      expect(deep.get()).toEqual(deepDiffResult)
+      expect(deep.get()).toEqual({...deepDiffResult, [COMPONENTS]: {}})
     })
 
     test("merges the latter diff if it contains a `static` key", () => {
@@ -21,7 +21,7 @@ describe("Rendered", () => {
       const diff2 = { 0: ["c"], [STATIC]: ["c"]}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("merges the latter diff if it contains a `static` key even when nested", () => {
@@ -29,7 +29,7 @@ describe("Rendered", () => {
       const diff2 = { 0: { 0: ["c"], [STATIC]: ["c"]} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("merges components considering links", () => {
@@ -81,7 +81,7 @@ describe("Rendered", () => {
       const diff2 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: ""} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("replaces a map when a string is returned", () => {
@@ -89,7 +89,7 @@ describe("Rendered", () => {
       const diff2 = { 0: { 0: "<button>Press Me</button>", [STATIC]: ""} }
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual(diff2)
+      expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("expands shared static from cids", () => {

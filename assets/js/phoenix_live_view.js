@@ -155,7 +155,7 @@ export class Rendered {
     return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
   }
 
-  recursiveToString(rendered, components = rendered[COMPONENTS] || {}, onlyCids){
+  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
     let output = {buffer: "", components: components, onlyCids: onlyCids}
     this.toOutputBuffer(rendered, output)
@@ -175,8 +175,11 @@ export class Rendered {
     let newc = diff[COMPONENTS]
     delete diff[COMPONENTS]
     this.rendered = this.recursiveMerge(this.rendered, diff)
+    this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
+
     if(newc){
-      let oldc = this.rendered[COMPONENTS] || {}
+      let oldc = this.rendered[COMPONENTS]
+
       for(let cid in newc){
         let cdiff = newc[cid]
         let component = cdiff
@@ -206,9 +209,8 @@ export class Rendered {
         newc[cid] = component
       }
       for (var key in newc) { oldc[key] = newc[key] }
-      this.rendered[COMPONENTS] = oldc
+      diff[COMPONENTS] = newc
     }
-    diff[COMPONENTS] = newc
   }
 
   recursiveMerge(target, source){
