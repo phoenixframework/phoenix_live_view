@@ -1,8 +1,11 @@
 import {Socket} from "phoenix"
 import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
 
+
 let simulateJoinedView = (el, liveSocket) => {
   let view = new View(el, liveSocket)
+  stubChannel(view)
+  liveSocket.roots[view.id] = view
   view.onJoin({rendered: {s: []}})
   return view
 }
@@ -666,6 +669,35 @@ describe("View + Component", function() {
     view.onJoin({rendered: joinDiff})
     expect(view.el.innerHTML.trim()).toBe(`<span data-phx-component="0"></span>`)
   })
+
+  test("destroys children when they are removed by an update", () => {
+    let id = "root"
+    let childHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BarLive" id="bar" data-phx-root-id="${id}"></div>`
+    let newChildHTML =`<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BazLive" id="baz" data-phx-root-id="${id}"></div>`
+    let el = document.createElement("div")
+    el.setAttribute("data-phx-view", "Root")
+    el.setAttribute("data-phx-session", "abc123")
+    el.setAttribute("id", id)
+    document.body.appendChild(el)
+
+    let liveSocket = new LiveSocket("/live", Socket)
+
+    let view = simulateJoinedView(el, liveSocket)
+
+    let joinDiff = {"s": [childHTML]}
+
+    let updateDiff = {"s": [newChildHTML]}
+
+    view.onJoin({rendered: joinDiff})
+    expect(view.el.innerHTML.trim()).toEqual(childHTML)
+    expect(view.getChildById("bar")).toBeDefined()
+
+    view.update(updateDiff, [])
+    expect(view.el.innerHTML.trim()).toEqual(newChildHTML)
+    expect(view.getChildById("baz")).toBeDefined()
+    expect(view.getChildById("bar")).toBeUndefined()
+  })
+
 })
 
 describe("DOM", function() {

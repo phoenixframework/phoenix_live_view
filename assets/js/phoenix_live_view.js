@@ -642,7 +642,7 @@ export class LiveSocket {
 
   destroyViewByEl(el){
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
-    if(root) root.destroyDescendent(el.id)
+    if(root){ root.destroyDescendent(el.id) }
   }
 
   setActiveElement(target){
@@ -1345,17 +1345,17 @@ class DOMPatch {
           }
           added.push(el)
         },
-        onNodeDiscarded: (el) => { this.trackAfter("discarded", el) },
+        onNodeDiscarded: (el) => {
+          // nested view handling
+          if(DOM.isPhxChild(el)){ liveSocket.destroyViewByEl(el) }
+          this.trackAfter("discarded", el)
+        },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"])){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
-          // nested view handling
-          if(DOM.isPhxChild(el)){
-            liveSocket.destroyViewByEl(el)
-            return true
-          }
+          return true
         },
         onElUpdated: (el) => {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){ el.submit() }
