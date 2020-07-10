@@ -107,7 +107,7 @@ defmodule Phoenix.LiveView.Rendered do
   @type t :: %__MODULE__{
           static: [String.t()],
           dynamic:
-            (map | nil ->
+            (boolean() ->
                [
                  nil
                  | iodata()
