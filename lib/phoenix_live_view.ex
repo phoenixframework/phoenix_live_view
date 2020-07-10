@@ -679,6 +679,16 @@ defmodule Phoenix.LiveView do
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
   @doc """
+  TODO
+  """
+  defdelegate allow_upload(socket, name, options), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO
+  """
+  defdelegate disallow_upload(socket, name), to: Phoenix.LiveView.Utils
+
+  @doc """
   Annotates the socket for redirect to a destination path.
 
   *Note*: LiveView redirects rely on instructing client

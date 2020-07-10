@@ -3,8 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.Rendered
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Rendered, Socket, UploadConfig, UploadEntry}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -232,6 +231,40 @@ defmodule Phoenix.LiveView.Utils do
 
   defp update_changed(%Socket{} = socket, key, func) do
     update_in(socket.changed[key], func)
+  end
+
+  @doc """
+  TODO
+  """
+  def allow_upload(%Socket{} = socket, name, opts) when is_atom(name) and is_list(opts) do
+    # TODO raise on non-canceled active upload for existing name?
+    uploads = socket.assigns[:uploads] || %{}
+    upload_config = UploadConfig.build(name, opts)
+    new_uploads = Map.put(uploads, :name, upload_config)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
+  """
+  def disallow_upload(%Socket{} = socket, name) when is_atom(name) do
+    # TODO raise or cancel active upload for existing name?
+    uploads = socket.assigns[:uploads] || %{}
+    upload_config =
+      uploads
+      |> Map.fetch!(name)
+      |> UploadConfig.disallow()
+
+    new_uploads = Map.put(uploads, :name, upload_config)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
+  """
+  def get_uploaded_entries(%Socket{} = socket, name) when is_atom(name) do
+    upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
+    UploadConfig.uploaded_entries(upload_config)
   end
 
   @doc """
