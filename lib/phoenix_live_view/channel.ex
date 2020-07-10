@@ -99,8 +99,8 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "get_upload_ref"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{endpoint: endpoint} = socket
-    response = Static.sign_token(endpoint, %{pid: self()})
-    reply(state, msg.ref, :ok, %{ref: response})
+    token = Static.sign_token(endpoint, %{pid: self()})
+    reply(state, msg.ref, :ok, %{token: token})
     {:noreply, state}
   end
 
