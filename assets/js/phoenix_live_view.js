@@ -161,40 +161,8 @@ function LiveFileIterator(inputEl) {
   }
 }
 
-class LiveUpload {
-  constructor(inputEl, view){
-    this._inputEl = inputEl
-    this._view = view
-    this._channels = []
-    this._files = new LiveFileIterator(inputEl)
-    this._next = null
-
-    this._joinStartUpload = this._joinStartUpload.bind(this)
-    inputEl.addEventListener(PHX_FILE_INIT, this._joinStartUpload)
-    inputEl.addEventListener(PHX_FILE_DONE, this._joinStartUpload)
-  }
-
-  _joinStartUpload(){
-    this._next = this._files.next()
-    if(!this._next.done){
-      let {file, context} = this._next.value
-      this._view.channel.push("get_upload_ref").receive("ok", ({ref}) => {
-        let uploadChannel = this._newUploadChannel(ref)
-        this._channels.push(uploadChannel)
-        this.constructor.upload(uploadChannel, file, context)
-      })
-    }
-  }
-
-  _newUploadChannel(ref){
-    let topic = `lvu:${this._view.id}-${this._view.uploadCount++}`
-    return this._view.liveSocket.channel(topic, () => {
-      return {session: this._view.getSession(), ref}
-    })
-  }
-
-  // live upload channel callback
-  static upload(uploadChannel, file, context) {
+let ChannelUploader = new LiveUploader(function (entries, {token}, liveSocket) {
+  function uploadToChannel(entry, uploadChannel) {
     const chunkReaderBlock = function(_offset, length, _file, handler) {
       var r = new window.FileReader()
       var blob = _file.slice(_offset, length + _offset)
@@ -205,13 +173,11 @@ class LiveUpload {
     uploadChannel.join().receive("ok", (data) => {
       const uploadChunk = (chunk, finished, loaded) => {
         if (!finished) {
-          context.progress(Math.round((loaded / file.size) * 100))
+          entry.progress(Math.round((loaded / entry.file.size) * 100))
         }
 
         uploadChannel.push("file", {file: chunk})
-          .receive("ok", (data) => {
-            if(finished){ context.done({...data, topic: uploadChannel.topic}) }
-          })
+          .receive("ok", () => { if(finished){ entry.done() } })
       }
 
       const { chunkSize } = data
@@ -231,10 +197,15 @@ class LiveUpload {
         }
       }
 
-      chunkReaderBlock(offset, chunkSize, file, readEventHandler)
+      chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
     })
   }
-}
+
+  for(let entry in entries){
+    let uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, () => { return {token} })
+    uploadToChannel(entry, uploadChannel)
+  }
+})
 
 let uploadFiles = (formEl, view, refGenerator, cid, callback) => {
   let numFiles = countAllFiles(formEl)
@@ -263,10 +234,19 @@ let uploadFiles = (formEl, view, refGenerator, cid, callback) => {
   }, false)
 
   // get each file input
-  inputEls.forEach((inputEl) => {
-    let hook = view.getHook(inputEl)
-    if(!hook){ channelUploads[inputEl.name] = new LiveUpload(inputEl, view) }
-    inputEl.dispatchEvent(new CustomEvent(PHX_FILE_INIT))
+  inputEls.forEach(inputEl => {
+    let uploadEntries = gatherFiles(inputEl)
+
+    let event = {
+      type: "upload",
+      event: "phx:upload:preflight",
+      cid: view.targetComponentID(inputEl.form, targetCtx),
+      value: uploadEntries
+    }
+
+    view.pushWithReply(refGenerator, "get_upload_ref", event, reply => {
+      view.uploaders[inputEl] = ChannelUploader(uploadEntries, reply, view.liveSocket)
+    })
   })
 }
 
@@ -1786,6 +1766,7 @@ export class View {
     this.stopCallback = function(){}
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
+    this.uploaders = {}
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
