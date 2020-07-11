@@ -417,6 +417,10 @@ defmodule Phoenix.LiveComponent do
     defimpl Phoenix.HTML.Safe do
       def to_iodata(%{cid: cid}), do: Integer.to_string(cid)
     end
+
+    defimpl String.Chars do
+      def to_string(%{cid: cid}), do: Integer.to_string(cid)
+    end
   end
 
   alias Phoenix.LiveView.Socket

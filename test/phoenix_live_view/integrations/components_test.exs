@@ -14,6 +14,12 @@ defmodule Phoenix.LiveView.ComponentTest do
      conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
   end
 
+  test "@myself" do
+    cid = %Phoenix.LiveComponent.CID{cid: 123}
+    assert String.Chars.to_string(cid) == "123"
+    assert Phoenix.HTML.Safe.to_iodata(cid) == "123"
+  end
+
   test "renders successfully when disconnected", %{conn: conn} do
     conn = get(conn, "/components")
 
