@@ -54,6 +54,7 @@ defmodule Phoenix.LiveView.RouterTest do
     assert Routes.foo_bar_nested_index_path(conn, :show) == "/router/foobarbaz/nested/show"
     assert Routes.custom_foo_bar_path(conn, :index) == "/router/foobarbaz/custom"
     assert Routes.nested_module_path(conn, :action) == "/router/foobarbaz/with_live"
+    assert Routes.custom_route_path(conn, :index) == "/router/foobarbaz/nosuffix"
   end
 
   test "user-defined metadata is available inside of metadata key" do

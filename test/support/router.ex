@@ -41,6 +41,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
     live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
     live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Live.Nested.Module, :action
+    live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     live "/thermo", ThermostatLive
     live "/thermo/:id", ThermostatLive
