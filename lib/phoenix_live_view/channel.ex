@@ -96,6 +96,7 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
   end
 
+  # TODO call into optional user-defined progress callback
   def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
@@ -104,10 +105,11 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, msg.ref)
   end
 
+  # TODO validate payloads against socket uploads config and sign token if using channel uploader
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    # TODO validate payloads against socket uploads config and sign token if using channel uploader
     case msg.payload do
       %{"external" => true, "ref" => _ref} ->
+        # TODO after validation, call into user defined event for prefligt/init upload
         raise "TODO"
 
       %{"ref" => ref} ->
@@ -124,6 +126,12 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  # TODO replace the ahead of time :get_file call by allowing the user to
+  # perform the looked via `uploaded_entries`, which can accept a function
+  # which performs the file move withint the upload channel process, ie:
+  #
+  #  mv_upload(socket, :avatar, fn %Plug.Upload{} = upload -> ... end)
+  #
   def handle_info(
         %Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg,
         %{topic: topic} = state
