@@ -1108,8 +1108,8 @@ export let DOM = {
           let newKeyDown = false;
           if(event.type === "keydown"){
             let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
-            this.putPrivate(el, DEBOUNCE_PREV_KEY, event.which)
-            newKeyDown = prevKey !== event.which
+            this.putPrivate(el, DEBOUNCE_PREV_KEY, event.key)
+            newKeyDown = prevKey !== event.key
           } 
           
           if(!newKeyDown && this.private(el, THROTTLED)){

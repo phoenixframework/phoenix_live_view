@@ -250,7 +250,7 @@ describe("throttle keydown", function() {
       })
     })
 
-    let pressA = new KeyboardEvent("keydown", {key: "a", which: 65})
+    let pressA = new KeyboardEvent("keydown", {key: "a"})
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressA)
@@ -276,8 +276,8 @@ describe("throttle keydown", function() {
       })
     })
 
-    let pressA = new KeyboardEvent("keydown", {key: "a", which: 65})
-    let pressB = new KeyboardEvent("keydown", {key: "b", which: 66})
+    let pressA = new KeyboardEvent("keydown", {key: "a"})
+    let pressB = new KeyboardEvent("keydown", {key: "b"})
 
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressB)
