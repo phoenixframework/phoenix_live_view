@@ -57,7 +57,6 @@ const PHX_AUTO_RECOVER = "auto-recover"
 const PHX_LV_DEBUG = "phx:live-socket:debug"
 const PHX_LV_PROFILE = "phx:live-socket:profiling"
 const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
-const PHX_FILE_DONE = "phx:live-file:done"
 const PHX_PROGRESS = "progress"
 const LOADER_TIMEOUT = 1
 const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
@@ -141,17 +140,23 @@ class UploadEntry {
     this.view = view
     this.ref = ref
     this.meta = null
+    this._onDone = function(){}
   }
 
   metadata(){ return this.meta }
 
   progress(progress){ this.view.pushFileProgress(this.fileEl, this.ref, progress) }
 
-  done(){ this.view.pushFileProgress(this.fileEl, this.ref, 100) }
+  done(){
+    this.view.pushFileProgress(this.fileEl, this.ref, 100)
+    this._onDone()
+  }
 
   // error(){ this.view.pushFileProgress(...) } // TODO
 
   //private
+
+  onDone(callback){ this._onDone = callback }
 
   toPreflightPayload(){
     return {
@@ -174,19 +179,32 @@ let liveUploaderFileRef = 0
 class LiveUploader {
   static genFileRef(){ return liveUploaderFileRef++ }
 
-  static buildEntries(inputEl, view){
-    return Array.from(inputEl.files || [])
-      .filter(f => f instanceof File && f.size > 0)
-      .map(file => new UploadEntry(inputEl, file, this.genFileRef(), view))
+  constructor(inputEl, view, onComplete, uploaderCallback){
+    this.view = view
+    this.onComplete = onComplete
+    this.uploaderCallback = uploaderCallback
+    this._entries =
+      Array.from(inputEl.files || [])
+        .filter(f => f instanceof File && f.size > 0)
+        .map(file => new UploadEntry(inputEl, file, LiveUploader.genFileRef(), view))
+
+    this.numEntriesInProgress = this._entries.length
   }
 
-  constructor(callback){
-    this.callback = callback
-  }
+  entries(){ return this._entries }
 
-  initAdapterUpload(preflighEntries, resp, onError, liveSocket){
-    let entries = preflighEntries.map(entry => entry.zipPostFlight(resp))
-    this.callback(entries, resp, onError, liveSocket)
+  initAdapterUpload(resp, onError, liveSocket){
+    this._entries =
+      this._entries.map(entry => {
+        entry.zipPostFlight(resp)
+        entry.onDone(() => {
+          this.numEntriesInProgress--
+          if(this.numEntriesInProgress === 0){ this.onComplete() }
+        })
+        return entry
+      })
+
+    this.uploaderCallback(this._entries, resp, onError, liveSocket)
   }
 }
 
@@ -2390,24 +2408,19 @@ export class View {
     }
   }
 
-  uploadFiles(formEl, targetCtx, refGenerator, cid, callback){
+  uploadFiles(formEl, targetCtx, refGenerator, cid, onComplete){
     let joinCountAtUpload = this.joinCount
-    let numFiles = countAllFiles(formEl)
-    let results = {}
     let inputEls = gatherFileInputs(formEl)
-
-    // TODO trigger form submit (callback) when all files entries have reported done
 
     // get each file input
     inputEls.forEach(inputEl => {
-      let uploadEntries = LiveUploader.buildEntries(inputEl, this)
-      let uploader = new LiveUploader(channelUploader) // TODO external uploaders
+      let uploader = new LiveUploader(inputEl, this, onComplete, channelUploader) // TODO external uploaders
       this.uploaders[inputEl] = uploader
 
       let payload = {
         external: false, // TODO external uploaders
         ref: inputEl.getAttribute(PHX_UPLOAD_REF),
-        entries: uploadEntries.map(entry => entry.toPreflightPayload()),
+        entries: uploader.entries().map(entry => entry.toPreflightPayload()),
         cid: this.targetComponentID(inputEl.form, targetCtx)
       }
 
@@ -2420,7 +2433,7 @@ export class View {
             if(this.joinCount === joinCountAtUpload){ callback() }
           })
         }
-        uploader.initAdapterUpload(uploadEntries, resp, onError, this.liveSocket)
+        uploader.initAdapterUpload(resp, onError, this.liveSocket)
       })
     })
   }
