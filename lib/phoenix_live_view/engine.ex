@@ -162,11 +162,12 @@ defmodule Phoenix.LiveView.Engine do
   allows the Elixir compiler to optimize this list and avoid
   allocating its strings on every render.
 
-  The `:dynamic` field contains a list of dynamic content.
+  The `:dynamic` field contains a function that takes a boolean argument
+  (see "Tracking changes" below), and returns alist of dynamic content.
   Each element in the list is either one of:
 
     1. iodata - which is the dynamic content
-    2. nil - the dynamic content did not change, see "Tracking changes" below
+    2. nil - the dynamic content did not change
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
     4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
     4. a `Phoenix.LiveView.Component` struct, see "Component" below
@@ -179,7 +180,7 @@ defmodule Phoenix.LiveView.Engine do
 
       %Phoenix.LiveView.Rendered{
         static: ["foo", "bar", "baz"],
-        dynamic: ["left", "right"]
+        dynamic: fn track_changes? -> ["left", "right"] end
       }
 
   Results in the following content to be sent over the wire
@@ -197,11 +198,12 @@ defmodule Phoenix.LiveView.Engine do
   ## Tracking changes
 
   By default, a `.leex` template does not track changes.
-  Change tracking can be enabled by passing a changed
-  map when invoking the dynamic parts. The map should
-  contain the name of any changed field as key and the
-  boolean true as value. If a field is not listed in
-  `:changed`, then it is always considered unchanged.
+  Change tracking can be enabled by including a changed
+  map in the assigns with the key `__changed__` and passing
+  `true` to the dynamic parts. The map should contain
+  the name of any changed field as key and the boolean
+  true as value. If a field is not listed in `:changed`,
+  then it is always considered unchanged.
 
   If a field is unchanged and `.leex` believes a dynamic
   expression no longer needs to be computed, its value
