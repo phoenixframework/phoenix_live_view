@@ -26,21 +26,28 @@ defmodule Phoenix.LiveView.UploadConfig do
             ref: nil
 
   @type t :: %__MODULE__{
-    name: atom(),
-    pid_to_refs: map,
-    client_key: String.t(),
-    entries: list(),
-    allowed_extensions: list() | :any,
-    external: (Socket.t() -> Socket.t()) | nil,
-    allowed?: boolean
-  }
+          name: atom(),
+          pid_to_refs: map,
+          client_key: String.t(),
+          entries: list(),
+          allowed_extensions: list() | :any,
+          external: (Socket.t() -> Socket.t()) | nil,
+          allowed?: boolean
+        }
 
   @doc false
-  def build(name, random_ref, [_|_] = opts) when is_atom(name) do
+  # we require a random_ref in order to ensure unique calls to `allow_upload`
+  # invalidate old uploads on the client and expire old tokens for the same
+  # upload name
+  def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
     exts =
       case Keyword.fetch(opts, :extensions) do
-        {:ok, [_|_]} = non_empty_list -> non_empty_list
-        {:ok, :any} -> :any
+        {:ok, [_ | _]} = non_empty_list ->
+          non_empty_list
+
+        {:ok, :any} ->
+          :any
+
         {:ok, other} ->
           raise ArgumentError, """
           invalid extensions provided to allow_upload.
@@ -60,7 +67,9 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     external =
       case Keyword.fetch(opts, :external) do
-        {:ok, func} when is_function(func, 1) -> func
+        {:ok, func} when is_function(func, 1) ->
+          func
+
         {:ok, other} ->
           raise ArgumentError, """
           invalid :external value provided to allow_upload.
@@ -73,7 +82,6 @@ defmodule Phoenix.LiveView.UploadConfig do
         :error ->
           nil
       end
-
 
     %UploadConfig{
       ref: random_ref,
@@ -93,7 +101,8 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
-  def update_progress(%UploadConfig{} = conf, entry_ref, progress) do
+  def update_progress(%UploadConfig{} = conf, entry_ref, progress)
+      when is_integer(progress) and progress >= 0 and progress <= 100 do
     new_entries =
       Enum.map(conf.entries, fn
         %UploadEntry{ref: ^entry_ref} = entry -> %UploadEntry{entry | progress: progress}
@@ -104,8 +113,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   def put_entries(%UploadConfig{} = conf, entries) do
-    new_entries =
-      Enum.map(entries, fn %{"ref" => ref} -> %UploadEntry{ref: ref} end)
+    new_entries = Enum.map(entries, fn %{"ref" => ref} -> %UploadEntry{ref: ref} end)
 
     %UploadConfig{conf | entries: new_entries}
   end
