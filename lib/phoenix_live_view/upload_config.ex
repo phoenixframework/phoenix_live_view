@@ -22,7 +22,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             entries: [],
             allowed_extensions: [],
             external: nil,
-            allowed?: false
+            allowed?: false,
+            ref: nil
 
   @type t :: %__MODULE__{
     name: atom(),
@@ -35,7 +36,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   }
 
   @doc false
-  def build(name, [_|_] = opts) when is_atom(name) do
+  def build(name, random_ref, [_|_] = opts) when is_atom(name) do
     exts =
       case Keyword.fetch(opts, :extensions) do
         {:ok, [_|_]} = non_empty_list -> non_empty_list
@@ -75,6 +76,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
 
     %UploadConfig{
+      ref: random_ref,
       name: name,
       allowed_extensions: exts,
       external: external,

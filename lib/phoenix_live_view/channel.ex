@@ -98,36 +98,46 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
-    %{"upload_config_name" => conf_name, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
-    new_socket = Utils.update_progress(socket, conf_name, entry_ref, progress)
+    %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
+    new_socket = Utils.update_progress(socket, ref, entry_ref, progress)
 
-    IO.inspect({:progress, new_socket.assigns.uploads.avatar})
     handle_changed(state, new_socket, msg.ref)
   end
 
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
     # TODO validate payloads against socket uploads config and sign token if using channel uploader
     case msg.payload do
-      %{"external" => true} ->  raise "TODO"
-      _ ->
-      conf_name = Map.fetch!(msg.payload, "upload_config_name") # TODO validate
-      IO.inspect({:allow_upload, conf_name, msg.payload})
-      token = Static.sign_token(state.socket.endpoint, %{pid: self(), upload_config_name: conf_name})
-      reply_entries = for entry <- msg.payload["entries"], into: %{}, do: {entry["ref"], token}
-      new_socket = Utils.put_entries(state.socket, conf_name, msg.payload["entries"])
-      new_state = %{state | socket: new_socket}
-      reply(new_state, msg.ref, :ok, %{entries: reply_entries})
-      {:noreply, new_state}
+      %{"external" => true, "ref" => _ref} ->
+        raise "TODO"
+
+      %{"ref" => ref} ->
+        # TODO validate
+        {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
+        token = Static.sign_token(state.socket.endpoint, %{pid: self(), ref: upload_conf.ref})
+
+        reply_entries = for entry <- msg.payload["entries"], into: %{}, do: {entry["ref"], token}
+        new_socket = Utils.put_entries(state.socket, upload_conf, msg.payload["entries"])
+        new_state = %{state | socket: new_socket}
+
+        reply(new_state, msg.ref, :ok, %{entries: reply_entries})
+        {:noreply, new_state}
     end
   end
 
-  def handle_info(%Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg, %{topic: topic} = state) do
-    %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} = msg.payload
+  def handle_info(
+        %Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg,
+        %{topic: topic} = state
+      ) do
+    %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} =
+      msg.payload
+
     val = decode_event_type(type, raw_val)
+
     {val, upload_channels} =
       Enum.reduce(file_data, {val, []}, fn fd, {val_acc, upload_chans} ->
         {path, _meta} = Map.pop(fd, "path")
         meta = Map.take(fd, ["name", "size", "type"])
+
         case Map.get(state.uploads, fd["topic"]) do
           pid when is_pid(pid) ->
             {:ok, file_path} = GenServer.call(pid, {:get_file, fd["file_ref"]})
@@ -135,8 +145,7 @@ defmodule Phoenix.LiveView.Channel do
             {Plug.Conn.Query.decode_pair({path, meta}, val_acc), [pid | upload_chans]}
 
           _ ->
-          {Plug.Conn.Query.decode_pair({path, meta}, val_acc), upload_chans}
-
+            {Plug.Conn.Query.decode_pair({path, meta}, val_acc), upload_chans}
         end
       end)
 
@@ -208,16 +217,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :register_file_upload, %{pid: pid, ref: ref}}, _from, state) do
+    IO.inspect({:register_file_upload, ref})
     # TODO: Expose these in mount options?
     config = [
       upload_limit: 3,
       file_size_limit: 100_000_000,
-      chunk_size: 64_000,
+      chunk_size: 64_000
     ]
 
     Process.monitor(pid)
     # TODO: get that from config
-    if (Enum.count(state.uploads)) > Keyword.fetch!(config, :upload_limit) do
+    if Enum.count(state.uploads) > Keyword.fetch!(config, :upload_limit) do
       {:reply, {:error, :limit_exceeded}, state}
     else
       state = %{state | uploads: Map.put(state.uploads, ref, pid)}
@@ -356,7 +366,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp handle_result({:reply, %{} = reply, %Socket{} = new_socket}, {:handle_event, 3, ref}, state) do
+  defp handle_result(
+         {:reply, %{} = reply, %Socket{} = new_socket},
+         {:handle_event, 3, ref},
+         state
+       ) do
     handle_changed(state, Utils.put_reply(new_socket, reply), ref)
   end
 

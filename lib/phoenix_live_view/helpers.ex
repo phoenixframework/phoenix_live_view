@@ -334,7 +334,7 @@ defmodule Phoenix.LiveView.Helpers do
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
     assigns = %{conf: conf}
-    ~L|<input type="file" name="<%= @conf.name %>"/>|
+    ~L|<input type="file" name="<%= @conf.name %>" data-phx-upload-ref="<%= conf.ref %>"/>|
   end
 
   @doc """

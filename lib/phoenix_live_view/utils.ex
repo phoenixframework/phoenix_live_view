@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Utils do
   @mount_opts [:temporary_assigns, :layout]
 
   @max_flash_age :timer.seconds(60)
+  @refs_to_names :phoenix_refs_to_names
 
   @doc """
   Assigns a value if it changed change.
@@ -238,9 +239,14 @@ defmodule Phoenix.LiveView.Utils do
   """
   def allow_upload(%Socket{} = socket, name, opts) when is_atom(name) and is_list(opts) do
     # TODO raise on non-canceled active upload for existing name?
+    ref = random_id()
     uploads = socket.assigns[:uploads] || %{}
-    upload_config = UploadConfig.build(name, opts)
-    new_uploads = Map.put(uploads, name, upload_config)
+    upload_config = UploadConfig.build(name, ref, opts)
+    new_uploads =
+      uploads
+      |> Map.put(name, upload_config)
+      |> Map.update(@refs_to_names, %{ref => name}, fn refs -> Map.put(refs, ref, name) end)
+
     assign(socket, :uploads, new_uploads)
   end
 
@@ -255,7 +261,16 @@ defmodule Phoenix.LiveView.Utils do
       |> Map.fetch!(name)
       |> UploadConfig.disallow()
 
-    new_uploads = Map.put(uploads, name, upload_config)
+    new_refs =
+      Enum.reduce(uploads[@refs_to_names], uploads[@refs_to_names], fn
+        {ref, ^name}, acc -> Map.drop(acc, ref)
+        {_ref, _name}, acc -> acc
+      end)
+
+    new_uploads =
+      uploads
+      |> Map.put(name, upload_config)
+      |> Map.update!(@refs_to_names, fn _ -> new_refs end)
     assign(socket, :uploads, new_uploads)
   end
 
@@ -270,29 +285,32 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def update_progress(%Socket{} = socket, name, entry_ref, progress) when is_binary(name) do
-    uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
-    case Enum.find(uploads, fn {key, _} -> to_string(key) == name end) do
-      {name, upload_config} ->
-        new_config = UploadConfig.update_progress(upload_config, entry_ref, progress)
-        new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
-        assign(socket, :uploads, new_uploads)
-      nil -> raise ArgumentError, "no allowed uploads for #{inspect(name)}"
-    end
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress) do
+    {uploads, name, upload_config} = get_upload_by_ref!(socket, config_ref)
+    new_config = UploadConfig.update_progress(upload_config, entry_ref, progress)
+    new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
+
+    assign(socket, :uploads, new_uploads)
   end
 
   @doc """
   TODO
   """
-  def put_entries(%Socket{} = socket, name, entries) do
+  def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries) do
+    new_config = UploadConfig.put_entries(conf, entries)
+    new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
+  """
+  def get_upload_by_ref!(%Socket{} = socket, config_ref) do
     uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
-    case Enum.find(uploads, fn {key, _} -> to_string(key) == name end) do
-      {name, upload_config} ->
-        new_config = UploadConfig.put_entries(upload_config, entries)
-        new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
-        assign(socket, :uploads, new_uploads)
-      nil -> raise ArgumentError, "no allowed uploads for #{inspect(name)}"
-    end
+    name = Map.fetch!(uploads[@refs_to_names], config_ref)
+    config = Map.fetch!(uploads, name)
+
+    {uploads, name, config}
   end
 
   @doc """

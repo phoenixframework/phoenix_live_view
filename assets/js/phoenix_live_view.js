@@ -23,6 +23,7 @@ const PHX_LIVE_LINK = "data-phx-link"
 const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
+const PHX_UPLOAD_REF = "data-phx-upload-ref"
 const PHX_SKIP = "data-phx-skip"
 const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
@@ -183,14 +184,13 @@ class LiveUploader {
     this.callback = callback
   }
 
-  initAdapterUpload(preflighEntries, resp, view, liveSocket){
+  initAdapterUpload(preflighEntries, resp, onError, liveSocket){
     let entries = preflighEntries.map(entry => entry.zipPostFlight(resp))
-    this.callback(entries, resp, view, liveSocket)
+    this.callback(entries, resp, onError, liveSocket)
   }
 }
 
-
-let ChannelUploader = new LiveUploader(function(entries, resp, onError, liveSocket) {
+let channelUploader = function(entries, resp, onError, liveSocket){
   function uploadToChannel(entry, uploadChannel) {
     const chunkReaderBlock = function(_offset, length, _file, handler) {
       var r = new window.FileReader()
@@ -199,7 +199,7 @@ let ChannelUploader = new LiveUploader(function(entries, resp, onError, liveSock
       r.readAsArrayBuffer(blob)
     }
 
-    view.channel.onError(() => uploadChannel.leave()) // TODO don't pass view in
+    onError(() => uploadChannel.leave())
 
     uploadChannel.join()
       .receive("error", reason => uploadChannel.leave()) // TODO
@@ -237,7 +237,7 @@ let ChannelUploader = new LiveUploader(function(entries, resp, onError, liveSock
     let uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
     uploadToChannel(entry, uploadChannel)
   })
-})
+}
 
 let serializeForm = (form, meta = {}) => {
   let fileData = []
@@ -2322,7 +2322,7 @@ export class View {
   pushFileProgress(fileEl, entryRef, progress){
     console.log("progress", fileEl, progress)
     this.pushWithReply(() => this.putRef([fileEl, fileEl.form], "file-progress"), "progress", {
-      upload_config_name: fileEl.getAttribute("name"),
+      ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),
       entry_ref: entryRef,
       progress: progress
@@ -2391,6 +2391,7 @@ export class View {
   }
 
   uploadFiles(formEl, targetCtx, refGenerator, cid, callback){
+    let joinCountAtUpload = this.joinCount
     let numFiles = countAllFiles(formEl)
     let results = {}
     let inputEls = gatherFileInputs(formEl)
@@ -2400,20 +2401,26 @@ export class View {
     // get each file input
     inputEls.forEach(inputEl => {
       let uploadEntries = LiveUploader.buildEntries(inputEl, this)
-      let uploader = ChannelUploader // TODO external uploaders
+      let uploader = new LiveUploader(channelUploader) // TODO external uploaders
       this.uploaders[inputEl] = uploader
 
       let payload = {
         external: false, // TODO external uploaders
-        upload_config_name: inputEl.getAttribute("name"),
+        ref: inputEl.getAttribute(PHX_UPLOAD_REF),
         entries: uploadEntries.map(entry => entry.toPreflightPayload()),
         cid: this.targetComponentID(inputEl.form, targetCtx)
       }
 
       this.log("upload", () => [`sending preflight request`, payload])
+
       this.pushWithReply(refGenerator, "allow_upload", payload, resp => {
         this.log("upload", () => [`got preflight response`, resp])
-        uploader.initAdapterUpload(uploadEntries, resp, this, this.liveSocket)
+        let onError = (callback) => {
+          this.channel.onError(() => {
+            if(this.joinCount === joinCountAtUpload){ callback() }
+          })
+        }
+        uploader.initAdapterUpload(uploadEntries, resp, onError, this.liveSocket)
       })
     })
   }

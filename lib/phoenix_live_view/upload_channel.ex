@@ -7,12 +7,12 @@ defmodule Phoenix.LiveView.UploadChannel do
   alias Phoenix.LiveView.Static
 
   @impl true
-  def join(topic, auth_payload, socket) do
+  def join(_topic, auth_payload, socket) do
     %{"token" => token} = auth_payload
 
-    with {:ok, %{pid: pid}} <- Static.verify_token(socket.endpoint, token),
+    with {:ok, %{pid: pid, ref: ref}} <- Static.verify_token(socket.endpoint, token),
          {:ok, %{file_size_limit: file_size_limit, chunk_size: chunk_size}} <-
-           GenServer.call(pid, {:phoenix, :register_file_upload, %{pid: self(), ref: topic}}),
+           GenServer.call(pid, {:phoenix, :register_file_upload, %{pid: self(), ref: ref}}),
          {:ok, path} <- Plug.Upload.random_file("live_view_upload"),
          {:ok, handle} <- File.open(path, [:binary, :write]) do
       Process.monitor(pid)
