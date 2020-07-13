@@ -106,6 +106,9 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   # TODO validate payloads against socket uploads config and sign token if using channel uploader
+  # in addition to validating extensions, file size, and other metadata, here is where will
+  # will enforce the max_files count for a given upload. We can do this by inspecting the
+  # `entries` of the upload_config. The list of entries is the previously allowed/in progress uploads
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
     case msg.payload do
       %{"external" => true, "ref" => _ref} ->
