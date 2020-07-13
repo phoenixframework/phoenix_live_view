@@ -674,7 +674,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}}
+      {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
