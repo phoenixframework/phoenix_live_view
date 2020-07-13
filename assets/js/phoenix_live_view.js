@@ -1105,11 +1105,14 @@ export let DOM = {
         let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
         if(throttle){
+          let newKeyDown = false;
           if(event.type === "keydown"){
             let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
             this.putPrivate(el, DEBOUNCE_PREV_KEY, event.which)
-            if(prevKey !== event.which){ return callback() }
-          } else if(this.private(el, THROTTLED)){
+            newKeyDown = prevKey !== event.which
+          } 
+          
+          if(!newKeyDown && this.private(el, THROTTLED)){
             return false
           } else {
             callback()
