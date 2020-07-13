@@ -229,7 +229,9 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_call({@prefix, :register_file_upload, %{pid: pid, ref: ref}}, _from, state) do
     IO.inspect({:register_file_upload, ref})
-    # TODO: Expose these in mount options?
+    # TODO
+    #  - pull upload config from socket.assigns.uploads
+    #  - verify upload config ref matches existing ref
     config = [
       upload_limit: 3,
       file_size_limit: 100_000_000,
