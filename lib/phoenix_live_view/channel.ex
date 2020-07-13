@@ -50,6 +50,7 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :parent_exited}, state}
   end
 
+  # TODO reconcile (or replace) state.uploads with state stored in socket.assigns.uploads
   def handle_info({:DOWN, _, :process, maybe_child_pid, _} = msg, %{socket: socket} = state) do
     cond do
       entry = Enum.find(state.uploads, &match?({_, ^maybe_child_pid}, &1)) ->
