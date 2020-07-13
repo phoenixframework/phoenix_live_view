@@ -330,6 +330,14 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
+  TODO
+  """
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
+    assigns = %{conf: conf}
+    ~L|<input type="file" name="<%= @conf.name %>"/>|
+  end
+
+  @doc """
   Renders a title tag with automatic prefix/suffix on `@page_title` updates.
 
   ## Examples
