@@ -35,7 +35,7 @@ defmodule Phoenix.LiveView.Router do
 
       live "/articles", ArticleLive.Index, :index
       live "/articles/new", ArticleLive.Index, :new
-      live "/articles/1/edit", ArticleLive.Index, :edit
+      live "/articles/:id/edit", ArticleLive.Index, :edit
 
   When an action is given, the generated route helpers are named after
   the LiveView itself (in the same way as for a controller). For the example
