@@ -1,8 +1,20 @@
-defmodule Phoenix.LiveView.UploadConfig do
-  alias Phoenix.LiveView.UploadConfig
+defmodule Phoenix.LiveView.UploadEntry do
   @moduledoc """
   TODO
   """
+
+  defstruct progress: 0,
+            name: nil,
+            ref: nil
+end
+
+defmodule Phoenix.LiveView.UploadConfig do
+  @moduledoc """
+  TODO
+  """
+
+  alias Phoenix.LiveView.UploadConfig
+  alias Phoenix.LiveView.UploadEntry
 
   defstruct name: nil,
             pid_to_refs: %{},
@@ -46,9 +58,8 @@ defmodule Phoenix.LiveView.UploadConfig do
       end
 
     external =
-      case Keyword.fetch(opts, :extensions) do
+      case Keyword.fetch(opts, :external) do
         {:ok, func} when is_function(func, 1) -> func
-        {:ok, func} when is_function(func) ->
         {:ok, other} ->
           raise ArgumentError, """
           invalid :external value provided to allow_upload.
@@ -78,14 +89,22 @@ defmodule Phoenix.LiveView.UploadConfig do
   def uploaded_entries(%UploadConfig{} = conf) do
     Enum.filter(conf.entries, fn %UploadEntry{} = entry -> entry.progress == 100 end)
   end
-end
 
-defmodule Phoenix.LiveView.UploadEntry do
-  @moduledoc """
-  TODO
-  """
+  @doc false
+  def update_progress(%UploadConfig{} = conf, entry_ref, progress) do
+    new_entries =
+      Enum.map(conf.entries, fn
+        %UploadEntry{ref: ^entry_ref} = entry -> %UploadEntry{entry | progress: progress}
+        %UploadEntry{ref: _ef} = entry -> entry
+      end)
 
-  defstruct progess: 0,
-            name: nil,
-            ref: nil
+    %UploadConfig{conf | entries: new_entries}
+  end
+
+  def put_entries(%UploadConfig{} = conf, entries) do
+    new_entries =
+      Enum.map(entries, fn %{"ref" => ref} -> %UploadEntry{ref: ref} end)
+
+    %UploadConfig{conf | entries: new_entries}
+  end
 end

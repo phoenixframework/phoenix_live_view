@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket, UploadConfig, UploadEntry}
+  alias Phoenix.LiveView.{Rendered, Socket, UploadConfig}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -240,7 +240,7 @@ defmodule Phoenix.LiveView.Utils do
     # TODO raise on non-canceled active upload for existing name?
     uploads = socket.assigns[:uploads] || %{}
     upload_config = UploadConfig.build(name, opts)
-    new_uploads = Map.put(uploads, :name, upload_config)
+    new_uploads = Map.put(uploads, name, upload_config)
     assign(socket, :uploads, new_uploads)
   end
 
@@ -255,7 +255,7 @@ defmodule Phoenix.LiveView.Utils do
       |> Map.fetch!(name)
       |> UploadConfig.disallow()
 
-    new_uploads = Map.put(uploads, :name, upload_config)
+    new_uploads = Map.put(uploads, name, upload_config)
     assign(socket, :uploads, new_uploads)
   end
 
@@ -265,6 +265,34 @@ defmodule Phoenix.LiveView.Utils do
   def get_uploaded_entries(%Socket{} = socket, name) when is_atom(name) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
     UploadConfig.uploaded_entries(upload_config)
+  end
+
+  @doc """
+  TODO
+  """
+  def update_progress(%Socket{} = socket, name, entry_ref, progress) when is_binary(name) do
+    uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
+    case Enum.find(uploads, fn {key, _} -> to_string(key) == name end) do
+      {name, upload_config} ->
+        new_config = UploadConfig.update_progress(upload_config, entry_ref, progress)
+        new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
+        assign(socket, :uploads, new_uploads)
+      nil -> raise ArgumentError, "no allowed uploads for #{inspect(name)}"
+    end
+  end
+
+  @doc """
+  TODO
+  """
+  def put_entries(%Socket{} = socket, name, entries) do
+    uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
+    case Enum.find(uploads, fn {key, _} -> to_string(key) == name end) do
+      {name, upload_config} ->
+        new_config = UploadConfig.put_entries(upload_config, entries)
+        new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
+        assign(socket, :uploads, new_uploads)
+      nil -> raise ArgumentError, "no allowed uploads for #{inspect(name)}"
+    end
   end
 
   @doc """

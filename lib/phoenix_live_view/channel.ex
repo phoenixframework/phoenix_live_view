@@ -96,12 +96,29 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
   end
 
-  def handle_info(%Message{topic: topic, event: "get_upload_ref"} = msg, %{topic: topic} = state) do
+  def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
-    %{endpoint: endpoint} = socket
-    token = Static.sign_token(endpoint, %{pid: self()})
-    reply(state, msg.ref, :ok, %{token: token})
-    {:noreply, state}
+    %{"upload_config_name" => conf_name, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
+    new_socket = Utils.update_progress(socket, conf_name, entry_ref, progress)
+
+    IO.inspect({:progress, new_socket.assigns.uploads.avatar})
+    handle_changed(state, new_socket, msg.ref)
+  end
+
+  def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
+    # TODO validate payloads against socket uploads config and sign token if using channel uploader
+    case msg.payload do
+      %{"external" => true} ->  raise "TODO"
+      _ ->
+      conf_name = Map.fetch!(msg.payload, "upload_config_name") # TODO validate
+      IO.inspect({:allow_upload, conf_name, msg.payload})
+      token = Static.sign_token(state.socket.endpoint, %{pid: self(), upload_config_name: conf_name})
+      reply_entries = for entry <- msg.payload["entries"], into: %{}, do: {entry["ref"], token}
+      new_socket = Utils.put_entries(state.socket, conf_name, msg.payload["entries"])
+      new_state = %{state | socket: new_socket}
+      reply(new_state, msg.ref, :ok, %{entries: reply_entries})
+      {:noreply, new_state}
+    end
   end
 
   def handle_info(%Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg, %{topic: topic} = state) do
