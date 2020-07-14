@@ -17,6 +17,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   def put_progress(%UploadEntry{} = entry, 100) do
     %UploadEntry{entry | progress: 100, done?: true}
   end
+
   def put_progress(%UploadEntry{} = entry, progress) do
     %UploadEntry{entry | progress: progress}
   end
@@ -35,7 +36,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             client_key: nil,
             max_entries: 1,
             entries: [],
-            allowed_extensions: [],
+            acceptable_extensions: [],
+            acceptable_types: [],
             external: nil,
             allowed?: false,
             ref: nil
@@ -46,7 +48,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           client_key: String.t(),
           max_entries: pos_integer(),
           entries: list(),
-          allowed_extensions: list() | :any,
+          acceptable_extensions: list() | :any,
+          acceptable_types: list() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
           allowed?: boolean
         }
@@ -56,28 +59,35 @@ defmodule Phoenix.LiveView.UploadConfig do
   # invalidate old uploads on the client and expire old tokens for the same
   # upload name
   def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
-    exts =
-      case Keyword.fetch(opts, :extensions) do
-        {:ok, [_ | _] = non_empty_list} ->
-          non_empty_list
+    {exts, mimes} =
+      case Keyword.fetch(opts, :accept) do
+        {:ok, [_ | _] = filters} ->
+          validate_split_acceptable(filters)
 
         {:ok, :any} ->
-          []
+          {:any, :any}
 
         {:ok, other} ->
           raise ArgumentError, """
-          invalid extensions provided to allow_upload.
+          invalid accept filter provided to allow_upload.
 
-          Only a list of extension strings or the atom :any are supported. Got:
+          A list of the following file type specifiers are supported:
+
+            * A valid case-insensitive filename extension, starting with a period (".") character.
+              For example: .jpg, .pdf, or .doc.
+
+            * A valid MIME type string, with no extensions.
+
+          Alternately, you can provide the atom :any to allow any kind of file. Got:
 
           #{inspect(other)}
           """
 
         :error ->
           raise ArgumentError, """
-          the :extensions option is required when allowing uploads
+          the :accept option is required when allowing uploads.
 
-          Provide a list of extension strings or the atom :any to allow any kind of file extension.
+          Provide a list of unique file type specifiers or the atom :any to allow any kind of file.
           """
       end
 
@@ -103,10 +113,43 @@ defmodule Phoenix.LiveView.UploadConfig do
       ref: random_ref,
       name: name,
       max_entries: opts[:max_entries] || 1,
-      allowed_extensions: exts,
+      acceptable_extensions: exts,
+      acceptable_types: mimes,
       external: external,
       allowed?: true
     }
+  end
+
+  defp validate_split_acceptable(filters) do
+    Enum.reduce(filters, {[], []}, fn filter, {exts, mimes} ->
+      case validate_accept_filter(filter) do
+        {:ext, ext} -> {exts ++ [ext], mimes}
+        {:mime, mime} -> {exts, mimes ++ [mime]}
+      end
+    end)
+  end
+
+  defp validate_accept_filter(<<"." <> _>> = ext), do: {:ext, ext}
+
+  defp validate_accept_filter(filter) when is_binary(filter) do
+    if String.contains?(filter, "/") do
+      {:mime, filter}
+    else
+      raise ArgumentError, """
+      invalid accept filter provided to allow_upload.
+
+      The following file type specifiers are supported:
+
+        * A valid case-insensitive filename extension, starting with a period (".") character.
+          For example: .jpg, .pdf, or .doc.
+
+        * A valid MIME type string, with no extensions.
+
+      Got:
+
+      #{inspect(filter)}
+      """
+    end
   end
 
   @doc false
@@ -155,8 +198,9 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_name: Map.fetch!(client_entry, "name"),
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),
-      client_last_modified: Map.fetch!(client_entry, "last_modified"),
+      client_last_modified: Map.fetch!(client_entry, "last_modified")
     }
+
     {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
   end
 end
