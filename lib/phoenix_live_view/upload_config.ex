@@ -58,11 +58,11 @@ defmodule Phoenix.LiveView.UploadConfig do
   def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
     exts =
       case Keyword.fetch(opts, :extensions) do
-        {:ok, [_ | _]} = non_empty_list ->
+        {:ok, [_ | _] = non_empty_list} ->
           non_empty_list
 
         {:ok, :any} ->
-          :any
+          []
 
         {:ok, other} ->
           raise ArgumentError, """
@@ -144,6 +144,11 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   # TODO validate against config constraints
+  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max}, _)
+       when length(entries) >= max do
+    {:error, :too_many_files}
+  end
+
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
       ref: ref,
