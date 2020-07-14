@@ -2140,7 +2140,7 @@ export class View {
     let refGenerator = () => {
       let disables = DOM.all(formEl, `[${this.binding(PHX_DISABLE_WITH)}]`)
       let buttons = DOM.all(formEl, "button").filter(filterIgnored)
-      let inputs = DOM.all(formEl, "input").filter(filterIgnored)
+      let inputs = DOM.all(formEl, "input,textarea").filter(filterIgnored)
 
       buttons.forEach(button => {
         button.setAttribute(PHX_DISABLED, button.disabled)

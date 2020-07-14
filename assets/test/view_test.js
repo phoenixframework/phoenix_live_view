@@ -28,6 +28,7 @@ function liveViewDOM() {
     <form>
       <label for="plus">Plus</label>
       <input id="plus" value="1" name="increment" />
+      <textarea id="note" name="note">2</textarea>
       <input type="checkbox" phx-click="toggle_me" />
       <button phx-click="inc_temperature">Inc Temperature</button>
     </form>
@@ -230,7 +231,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1&_target=increment")
+        expect(payload.value).toBe("increment=1&note=2&_target=increment")
         return {
           receive() {}
         }
@@ -242,7 +243,7 @@ describe("View + DOM", function() {
   })
 
   test("submitForm", function() {
-    expect.assertions(7)
+    expect.assertions(8)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
@@ -253,7 +254,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1")
+        expect(payload.value).toBe("increment=1&note=2")
         return {
           receive() {}
         }
@@ -266,6 +267,7 @@ describe("View + DOM", function() {
     expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
     expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
     expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()
+    expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
   })
 
   describe("phx-trigger-action", () => {
