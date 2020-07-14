@@ -297,9 +297,14 @@ defmodule Phoenix.LiveView.Utils do
   TODO
   """
   def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries) do
-    new_config = UploadConfig.put_entries(conf, entries)
-    new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-    assign(socket, :uploads, new_uploads)
+    case UploadConfig.put_entries(conf, entries) do
+      {:ok, new_config} ->
+        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
+        {:ok, assign(socket, :uploads, new_uploads)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """
