@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.Engine do
   allocating its strings on every render.
 
   The `:dynamic` field contains a function that takes a boolean argument
-  (see "Tracking changes" below), and returns alist of dynamic content.
+  (see "Tracking changes" below), and returns a list of dynamic content.
   Each element in the list is either one of:
 
     1. iodata - which is the dynamic content
