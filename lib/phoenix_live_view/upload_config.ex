@@ -129,22 +129,29 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{conf | entries: new_entries}
   end
 
-  # TODO validate against config constraints during reduce
   def put_entries(%UploadConfig{} = conf, entries) do
     entries
-    |> Enum.reduce_while({:ok, []}, fn %{"ref" => ref} = client_entry, {:ok, acc} ->
-      entry = %UploadEntry{
-        ref: ref,
-        client_name: Map.fetch!(client_entry, "name"),
-        client_size: Map.fetch!(client_entry, "size"),
-        client_type: Map.fetch!(client_entry, "type"),
-        client_last_modified: Map.fetch!(client_entry, "last_modified"),
-      }
-      {:cont, {:ok, [entry | acc]}}
+    |> Enum.reduce_while({:ok, conf}, fn client_entry, {:ok, acc} ->
+      case cast_and_validate_entry(acc, client_entry) do
+        {:ok, new_conf} -> {:cont, {:ok, new_conf}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
     end)
     |> case do
-      {:ok, new_entries} -> {:ok, %UploadConfig{conf | entries: Enum.reverse(new_entries)}}
+      {:ok, new_conf} -> {:ok, new_conf}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # TODO validate against config constraints
+  defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
+    entry = %UploadEntry{
+      ref: ref,
+      client_name: Map.fetch!(client_entry, "name"),
+      client_size: Map.fetch!(client_entry, "size"),
+      client_type: Map.fetch!(client_entry, "type"),
+      client_last_modified: Map.fetch!(client_entry, "last_modified"),
+    }
+    {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
   end
 end
