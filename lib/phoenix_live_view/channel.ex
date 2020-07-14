@@ -122,11 +122,16 @@ defmodule Phoenix.LiveView.Channel do
         token = Static.sign_token(state.socket.endpoint, %{pid: self(), ref: upload_conf.ref})
 
         reply_entries = for entry <- msg.payload["entries"], into: %{}, do: {entry["ref"], token}
-        new_socket = Utils.put_entries(state.socket, upload_conf, msg.payload["entries"])
-        new_state = %{state | socket: new_socket}
+        case Utils.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
+          {:ok, new_socket} ->
+            new_state = %{state | socket: new_socket}
+            reply(new_state, msg.ref, :ok, %{entries: reply_entries})
+            {:noreply, new_state}
 
-        reply(new_state, msg.ref, :ok, %{entries: reply_entries})
-        {:noreply, new_state}
+          {:error, _reason} ->
+            reply(state, msg.ref, :error, %{reason: "disallowed"})
+            {:noreply, state}
+        end
     end
   end
 

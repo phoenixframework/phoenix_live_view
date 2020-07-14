@@ -3,9 +3,23 @@ defmodule Phoenix.LiveView.UploadEntry do
   TODO
   """
 
+  alias Phoenix.LiveView.UploadEntry
+
   defstruct progress: 0,
-            name: nil,
-            ref: nil
+            ref: nil,
+            done?: false,
+            client_name: nil,
+            client_size: nil,
+            client_type: nil,
+            client_last_modified: nil
+
+  @doc false
+  def put_progress(%UploadEntry{} = entry, 100) do
+    %UploadEntry{entry | progress: 100, done?: true}
+  end
+  def put_progress(%UploadEntry{} = entry, progress) do
+    %UploadEntry{entry | progress: progress}
+  end
 end
 
 defmodule Phoenix.LiveView.UploadConfig do
@@ -19,6 +33,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   defstruct name: nil,
             pid_to_refs: %{},
             client_key: nil,
+            max_entries: 1,
             entries: [],
             allowed_extensions: [],
             external: nil,
@@ -29,6 +44,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           name: atom(),
           pid_to_refs: map,
           client_key: String.t(),
+          max_entries: pos_integer(),
           entries: list(),
           allowed_extensions: list() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
@@ -86,6 +102,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{
       ref: random_ref,
       name: name,
+      max_entries: opts[:max_entries] || 1,
       allowed_extensions: exts,
       external: external,
       allowed?: true
@@ -105,16 +122,29 @@ defmodule Phoenix.LiveView.UploadConfig do
       when is_integer(progress) and progress >= 0 and progress <= 100 do
     new_entries =
       Enum.map(conf.entries, fn
-        %UploadEntry{ref: ^entry_ref} = entry -> %UploadEntry{entry | progress: progress}
+        %UploadEntry{ref: ^entry_ref} = entry -> UploadEntry.put_progress(entry, progress)
         %UploadEntry{ref: _ef} = entry -> entry
       end)
 
     %UploadConfig{conf | entries: new_entries}
   end
 
+  # TODO validate against config constraints during reduce
   def put_entries(%UploadConfig{} = conf, entries) do
-    new_entries = Enum.map(entries, fn %{"ref" => ref} -> %UploadEntry{ref: ref} end)
-
-    %UploadConfig{conf | entries: new_entries}
+    entries
+    |> Enum.reduce_while({:ok, []}, fn %{"ref" => ref} = client_entry, {:ok, acc} ->
+      entry = %UploadEntry{
+        ref: ref,
+        client_name: Map.fetch!(client_entry, "name"),
+        client_size: Map.fetch!(client_entry, "size"),
+        client_type: Map.fetch!(client_entry, "type"),
+        client_last_modified: Map.fetch!(client_entry, "last_modified"),
+      }
+      {:cont, {:ok, [entry | acc]}}
+    end)
+    |> case do
+      {:ok, new_entries} -> {:ok, %UploadConfig{conf | entries: Enum.reverse(new_entries)}}
+      {:error, reason} -> {:error, reason}
+    end
   end
 end
