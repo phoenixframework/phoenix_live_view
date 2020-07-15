@@ -251,9 +251,9 @@ defmodule Phoenix.LiveView.Helpers do
 
       Please pass a function clause to do/end instead, for example:
 
-      live_component @socket, GridComponent, entries: @entries do
-        new_assigns -> "New entry: " <> new_assigns[:entry]
-      end
+          live_component @socket, GridComponent, entries: @entries do
+            new_assigns -> "New entry: " <> new_assigns[:entry]
+          end
       """
     end
 
