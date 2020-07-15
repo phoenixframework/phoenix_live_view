@@ -36,8 +36,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             client_key: nil,
             max_entries: 1,
             entries: [],
-            acceptable_extensions: [],
-            acceptable_types: [],
+            accept: %{},
             external: nil,
             allowed?: false,
             ref: nil
@@ -48,8 +47,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           client_key: String.t(),
           max_entries: pos_integer(),
           entries: list(),
-          acceptable_extensions: list() | :any,
-          acceptable_types: list() | :any,
+          accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
           allowed?: boolean
         }
@@ -59,19 +57,19 @@ defmodule Phoenix.LiveView.UploadConfig do
   # invalidate old uploads on the client and expire old tokens for the same
   # upload name
   def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
-    {exts, mimes} =
+    accept =
       case Keyword.fetch(opts, :accept) do
-        {:ok, [_ | _] = filters} ->
-          validate_split_acceptable(filters)
+        {:ok, [_ | _] = accept} ->
+          validate_accept_option(accept)
 
         {:ok, :any} ->
-          {:any, :any}
+          :any
 
         {:ok, other} ->
           raise ArgumentError, """
           invalid accept filter provided to allow_upload.
 
-          A list of the following file type specifiers are supported:
+          A list of the following unique file type specifiers are supported:
 
             * A valid case-insensitive filename extension, starting with a period (".") character.
               For example: .jpg, .pdf, or .doc.
@@ -113,41 +111,66 @@ defmodule Phoenix.LiveView.UploadConfig do
       ref: random_ref,
       name: name,
       max_entries: opts[:max_entries] || 1,
-      acceptable_extensions: exts,
-      acceptable_types: mimes,
+      accept: accept,
       external: external,
       allowed?: true
     }
   end
 
-  defp validate_split_acceptable(filters) do
-    Enum.reduce(filters, {[], []}, fn filter, {exts, mimes} ->
-      case validate_accept_filter(filter) do
-        {:ext, ext} -> {exts ++ [ext], mimes}
-        {:mime, mime} -> {exts, mimes ++ [mime]}
-      end
-    end)
+  # specifics on the `accept` attribute are illuminated in the spec:
+  # https://html.spec.whatwg.org/multipage/input.html#attr-input-accept
+  @accept_wildcards ~w(audio/* image/* video/*)
+
+  defp validate_accept_option(accept) do
+    accept
+    |> Enum.map(&accept_option!/1)
+    |> Enum.group_by(fn {key, _} -> key end, fn {_, value} -> value end)
+    |> Enum.into(%{}, fn {key, value} -> {key, Enum.flat_map(value, & &1)} end)
   end
 
-  defp validate_accept_filter(<<"." <> _>> = ext), do: {:ext, ext}
+  # wildcards for media files
+  defp accept_option!(key) when key in @accept_wildcards, do: {key, [key]}
 
-  defp validate_accept_filter(filter) when is_binary(filter) do
-    if String.contains?(filter, "/") do
-      {:mime, filter}
+  defp accept_option!(<<"." <> extname::binary>> = ext) do
+    if MIME.has_type?(extname) do
+      {MIME.type(extname), [ext]}
     else
       raise ArgumentError, """
-      invalid accept filter provided to allow_upload.
+        invalid accept filter provided to allow_upload.
 
-      The following file type specifiers are supported:
+        Expected a file extension with a known MIME type.
 
-        * A valid case-insensitive filename extension, starting with a period (".") character.
-          For example: .jpg, .pdf, or .doc.
+        MIME types can be extended in your application configuration as follows:
 
-        * A valid MIME type string, with no extensions.
+        config :mime, :types, %{
+          "application/vnd.api+json" => ["json-api"]
+        }
 
-      Got:
+        Got:
 
-      #{inspect(filter)}
+        #{inspect(extname)}
+      """
+    end
+  end
+
+  defp accept_option!(filter) when is_binary(filter) do
+    if MIME.valid?(filter) do
+      {filter, [filter]}
+    else
+      raise ArgumentError, """
+        invalid accept filter provided to allow_upload.
+
+        Expected a known MIME type without parameters.
+
+        MIME types can be extended in your application configuration as follows:
+
+        config :mime, :types, %{
+          "application/vnd.api+json" => ["json-api"]
+        }
+
+        Got:
+
+        #{inspect(filter)}
       """
     end
   end
@@ -201,6 +224,18 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_last_modified: Map.fetch!(client_entry, "last_modified")
     }
 
-    {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
+    if accepted?(conf, entry) do
+      {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
+    else
+      {:error, :not_accepted}
+    end
+  end
+
+  defp accepted?(%UploadConfig{accept: :any}, _entry), do: true
+  defp accepted?(%UploadConfig{accept: %{"image/*" => _}}, %UploadEntry{client_type: <<"image/" <> _>>}), do: true
+  defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{client_type: <<"audio/" <> _>>}), do: true
+  defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{client_type: <<"video/" <> _>>}), do: true
+  defp accepted?(%UploadConfig{accept: accept}, %UploadEntry{} = entry) do
+    raise "boom"
   end
 end

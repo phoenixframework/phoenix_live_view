@@ -31,18 +31,65 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       end
 
       assert_raise ArgumentError, ~r/invalid accept filter provided/, fn ->
-        LiveView.allow_upload(build_socket(), :avatar, accept: ~w(.jpg image/jpg bad))
+        LiveView.allow_upload(build_socket(), :avatar, accept: ~w(.foobarbaz))
+      end
+
+      assert_raise ArgumentError, ~r/invalid accept filter provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: ~w(.jpg image/jpeg bad))
+      end
+
+      assert_raise ArgumentError, ~r/invalid accept filter provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: ~w(foo/*))
       end
     end
 
-    test ":accept supports list of extensions" do
+    test ":accept supports list of extensions and mime types" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(.jpg .jpeg))
-      assert %UploadConfig{name: :avatar} = socket.assigns.uploads.avatar
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"image/jpeg" => ~w(.jpg .jpeg)}
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(image/png image/jpeg))
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"image/png" => ["image/png"], "image/jpeg" => ["image/jpeg"]}
+
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept:
+            ~w(.doc .docx .xml application/msword application/vnd.openxmlformats-officedocument.wordprocessingml.document)
+        )
+
+      assert %UploadConfig{
+               name: :avatar,
+               accept: %{
+                 "application/msword" => ~w(.doc application/msword),
+                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =>
+                   ~w(.docx application/vnd.openxmlformats-officedocument.wordprocessingml.document),
+                 "text/xml" => ~w(.xml)
+               }
+             } = socket.assigns.uploads.avatar
     end
 
     test ":accept supports :any file" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
-      assert %UploadConfig{name: :avatar} = socket.assigns.uploads.avatar
+      assert %UploadConfig{name: :avatar, accept: :any} = socket.assigns.uploads.avatar
+    end
+
+    test ":accept supports wildcard types" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(image/*))
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"image/*" => ["image/*"]}
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(audio/*))
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"audio/*" => ["audio/*"]}
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(video/*))
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"video/*" => ["video/*"]}
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(video/* .gif))
+      assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
+      assert accept == %{"image/gif" => ~w(.gif), "video/*" => ["video/*"]}
     end
   end
 
@@ -66,38 +113,40 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     end
 
     test "returns error when file not accepted" do
-      socket = LiveView.allow_upload(build_socket(), :avatar,
-        accept: ~w(.jpg .jpeg image/jpg image/jpeg .png image/png)
-      )
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: ~w(.jpg .jpeg image/jpeg .png image/png)
+        )
 
       config = socket.assigns.uploads.avatar
 
       assert UploadConfig.put_entries(config, [
-        build_client_entry(:avatar, %{"name" => "file.gif", "type" => "image/gif"}),
-      ]) == {:error, :not_accepted}
+               build_client_entry(:avatar, %{"name" => "file.gif", "type" => "image/gif"})
+             ]) == {:error, :not_accepted}
 
       assert UploadConfig.put_entries(config, [
-        build_client_entry(:avatar, %{"name" => "file", "type" => "image/gif"}),
-      ]) == {:error, :not_accepted}
+               build_client_entry(:avatar, %{"name" => "file", "type" => "image/gif"})
+             ]) == {:error, :not_accepted}
     end
 
     test "puts list of acceptable entries" do
-      socket = LiveView.allow_upload(build_socket(), :avatar,
-        accept: ~w(.jpg .jpeg image/jpg image/jpeg .png image/png),
-        max_entries: 10
-      )
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: ~w(.jpg .jpeg image/jpeg .png image/png),
+          max_entries: 10
+        )
 
-      assert {:ok, config} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [
-        build_client_entry(:avatar, %{"name" => "photo", "type" => "image/jpg"}),
-        build_client_entry(:avatar, %{"name" => "photo", "type" => "image/jpeg"}),
-        build_client_entry(:avatar, %{"name" => "photo", "type" => "image/png"}),
-        build_client_entry(:avatar, %{"name" => "photo.jpg", "type" => "image/jpg"}),
-        build_client_entry(:avatar, %{"name" => "photo.jpeg", "type" => "image/jpeg"}),
-        build_client_entry(:avatar, %{"name" => "photo.png", "type" => "image/png"}),
-        build_client_entry(:avatar, %{"name" => "photo.JPG", "type" => "image/jpg"}),
-        build_client_entry(:avatar, %{"name" => "photo.JPEG", "type" => "image/jpeg"}),
-        build_client_entry(:avatar, %{"name" => "photo.PNG", "type" => "image/png"}),
-      ])
+      assert {:ok, config} =
+               UploadConfig.put_entries(socket.assigns.uploads.avatar, [
+                 build_client_entry(:avatar, %{"name" => "photo", "type" => "image/jpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo", "type" => "image/png"}),
+                 build_client_entry(:avatar, %{"name" => "photo.jpg", "type" => "image/jpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo.jpeg", "type" => "image/jpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo.png", "type" => "image/png"}),
+                 build_client_entry(:avatar, %{"name" => "photo.JPG", "type" => "image/jpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo.JPEG", "type" => "image/jpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo.PNG", "type" => "image/png"})
+               ])
 
       assert [%UploadEntry{} | _] = config.entries
     end
