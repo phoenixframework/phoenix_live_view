@@ -330,8 +330,8 @@ defmodule Phoenix.LiveComponent do
 
   The above approach is the preferred one when passing blocks to `do/end`.
   However, if you are outside of a .leex template and you want to invoke a
-  component passing `do/end` blocks, you will have to explicitly handle the
-  assigns by giving it a clause:
+  component passing a `do/end` block, you will have to explicitly handle the
+  assigns by giving it a `->` clause:
 
       live_component @socket, GridComponent, entries: @entries do
         new_assigns -> "New entry: " <> new_assigns[:entry]
