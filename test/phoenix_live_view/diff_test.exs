@@ -545,7 +545,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~L"""
-      <%= live_component @socket, BlockComponent, id: "TRACKING" do %>
+      <%= live_component @socket, BlockComponent, %{id: "TRACKING"} do %>
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= @value %>
       <% end %>

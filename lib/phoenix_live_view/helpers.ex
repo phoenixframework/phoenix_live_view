@@ -214,36 +214,25 @@ defmodule Phoenix.LiveView.Helpers do
         {_, _} -> {nil, assigns}
       end
 
-    assigns = rewrite_do(do_block, assigns, __CALLER__)
+    {assigns, inner_content} = rewrite_do(do_block, assigns, __CALLER__)
 
     quote do
       Phoenix.LiveView.Helpers.__live_component__(
         unquote(socket),
         unquote(component).__live__(),
-        unquote(assigns)
+        unquote(assigns),
+        unquote(inner_content)
       )
     end
   end
 
-  defp rewrite_do(nil, opts, _caller), do: opts
+  defp rewrite_do(nil, opts, _caller), do: {opts, nil}
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block, opts, _caller) do
+    {opts, {:fn, meta, do_block}}
+  end
 
   defp rewrite_do(do_block, opts, caller) do
-    do_fun = rewrite_do(do_block, caller)
-
-    if Keyword.keyword?(opts) do
-      Keyword.put(opts, :inner_content, do_fun)
-    else
-      quote do
-        Keyword.put(unquote(opts), :inner_content, unquote(do_fun))
-      end
-    end
-  end
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, _caller) do
-    {:fn, meta, do_block}
-  end
-
-  defp rewrite_do(do_block, caller) do
     unless Macro.Env.has_var?(caller, {:assigns, nil}) and
              Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
       raise ArgumentError, """
@@ -257,34 +246,38 @@ defmodule Phoenix.LiveView.Helpers do
       """
     end
 
-    quote do
-      fn extra_assigns ->
-        var!(assigns) =
-          case extra_assigns do
-            [] ->
-              var!(assigns)
+    quoted =
+      quote do
+        fn extra_assigns ->
+          var!(assigns) =
+            case extra_assigns do
+              [] ->
+                var!(assigns)
 
-            _ ->
-              assigns = Enum.into(extra_assigns, var!(assigns))
+              _ ->
+                assigns = Enum.into(extra_assigns, var!(assigns))
 
-              if var = var!(changed, Phoenix.LiveView.Engine) do
-                changed =
-                  for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
+                if var = var!(changed, Phoenix.LiveView.Engine) do
+                  changed =
+                    for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
 
-                put_in(assigns.socket.changed, changed)
-              else
-                assigns
-              end
-          end
+                  put_in(assigns.socket.changed, changed)
+                else
+                  assigns
+                end
+            end
 
-        unquote(do_block)
+          unquote(do_block)
+        end
       end
-    end
+
+    {opts, quoted}
   end
 
-  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
+  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
+    assigns = if inner, do: Map.put(assigns, :inner_content, inner), else: assigns
     id = assigns[:id]
 
     if is_nil(id) and
