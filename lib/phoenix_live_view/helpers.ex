@@ -246,9 +246,15 @@ defmodule Phoenix.LiveView.Helpers do
   defp rewrite_do(do_block, caller) do
     unless Macro.Env.has_var?(caller, {:assigns, nil}) and
              Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
-      raise ArgumentError,
-            "cannot use live_compoment do/end blocks because we could not find existing assigns. " <>
-              "Please pass a clause to do/end instead"
+      raise ArgumentError, """
+      cannot use live_component do/end blocks because we could not find existing assigns.
+
+      Please pass a function clause to do/end instead, for example:
+
+          live_component @socket, GridComponent, entries: @entries do
+            new_assigns -> "New entry: " <> new_assigns[:entry]
+          end
+      """
     end
 
     quote do
