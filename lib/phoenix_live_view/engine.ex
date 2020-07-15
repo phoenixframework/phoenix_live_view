@@ -170,7 +170,7 @@ defmodule Phoenix.LiveView.Engine do
     2. nil - the dynamic content did not change
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
     4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
-    4. a `Phoenix.LiveView.Component` struct, see "Component" below
+    5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a `.leex` template, you can convert the
   rendered structure to iodata by intercalating the static
