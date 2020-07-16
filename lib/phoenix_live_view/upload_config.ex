@@ -33,6 +33,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @default_max_file_size 8_000_000
 
+  # TODO add option for :chunk_size
   defstruct name: nil,
             pid_to_refs: %{},
             client_key: nil,
