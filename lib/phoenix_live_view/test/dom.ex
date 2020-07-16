@@ -81,6 +81,8 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def child_nodes({_, _, nodes}), do: nodes
 
+  def attrs({_, attrs, _}), do: attrs
+
   def inner_html!(html, id), do: html |> by_id!(id) |> child_nodes()
 
   def component_id(html_tree), do: Floki.attribute(html_tree, @phx_component) |> List.first()
@@ -250,9 +252,11 @@ defmodule Phoenix.LiveViewTest.DOM do
     {updated_existing_children, updated_appended} =
       Enum.reduce(dup_ids, {children_before, appended_children}, fn dup_id, {before, appended} ->
         patched_before =
-          walk(before, fn {tag, attrs, _} = node ->
+          walk(before, fn {tag, _, _} = node ->
             cond do
-              attribute(node, "id") == dup_id -> {tag, attrs, inner_html!(appended, dup_id)}
+              attribute(node, "id") == dup_id ->
+                new_node = by_id!(appended, dup_id)
+                {tag, attrs(new_node), child_nodes(new_node)}
               true -> node
             end
           end)
