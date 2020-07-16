@@ -238,7 +238,7 @@ defmodule Phoenix.LiveView.Helpers do
       raise ArgumentError, """
       cannot use live_component do/end blocks because we could not find existing assigns.
 
-      Please pass a function clause to do/end instead, for example:
+      Please pass a `->` clause to do/end instead, for example:
 
           live_component @socket, GridComponent, entries: @entries do
             new_assigns -> "New entry: " <> new_assigns[:entry]
