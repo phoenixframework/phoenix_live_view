@@ -236,6 +236,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{client_type: <<"audio/" <> _>>}), do: true
   defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{client_type: <<"video/" <> _>>}), do: true
   defp accepted?(%UploadConfig{accept: accept}, %UploadEntry{} = entry) do
-    raise "boom"
+    cond do
+      Map.has_key?(accept, entry.client_type) -> true
+      Path.extname(entry.client_name) in (accept |> Map.values() |> Enum.concat()) -> true
+      true -> false
+    end
   end
 end
