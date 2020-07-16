@@ -54,7 +54,7 @@ describe("View + DOM", function() {
     }
 
     let view = simulateJoinedView(el, liveSocket)
-    view.update(updateDiff, [])
+    view.update(updateDiff, null, null, [])
 
     expect(view.el.firstChild.tagName).toBe("H2")
     expect(view.rendered.get()).toEqual(updateDiff)
@@ -282,7 +282,7 @@ describe("View + DOM", function() {
       let formEl = document.getElementById("form")
       formEl.submit = () => done()
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, [])
+      view.update({s: [updatedHtml]}, null, null, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
@@ -299,7 +299,7 @@ describe("View + DOM", function() {
       expect(view.el.innerHTML).toBe(html)
 
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
-      view.update({s: [updatedHtml]}, [])
+      view.update({s: [updatedHtml]}, null, null, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
@@ -465,7 +465,7 @@ describe("View Hooks", function() {
     view.update({
       s: [`<h2 phx-hook="Upcase">test update</h2>`],
       fingerprint: 123
-    }, [])
+    }, null, null, [])
     expect(upcaseBeforeUpdate).toBe(true)
     expect(view.el.firstChild.innerHTML).toBe("test update updated")
 
@@ -475,7 +475,7 @@ describe("View Hooks", function() {
     view.triggerReconnected()
     expect(view.el.firstChild.innerHTML).toBe("connected")
 
-    view.update({s: ["<div></div>"], fingerprint: 123}, [])
+    view.update({s: ["<div></div>"], fingerprint: 123}, null, null, [])
     expect(upcaseBeforeDestroy).toBe(true)
     expect(upcaseWasDestroyed).toBe(true)
   })
@@ -515,7 +515,7 @@ describe("View Hooks", function() {
     view.onJoin({rendered: {s: [`<div>initial</div>`], fingerprint: 123}})
     expect(view.el.firstChild.innerHTML).toBe("initial")
 
-    view.update({s: [`<div>updated</div>`], fingerprint: 123}, [])
+    view.update({s: [`<div>updated</div>`], fingerprint: 123}, null, null, [])
     expect(fromHTML).toBe("initial")
     expect(toHTML).toBe("updated")
     expect(view.el.firstChild.innerHTML).toBe("updated")
@@ -610,7 +610,7 @@ describe("View + Component", function() {
     view.onJoin({rendered: joinDiff})
     expect(view.el.innerHTML.trim()).toBe(`<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
 
-    view.update(updateDiff, [])
+    view.update(updateDiff, null, null, [])
     expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
   })
 
@@ -692,7 +692,7 @@ describe("View + Component", function() {
     expect(view.el.innerHTML.trim()).toEqual(childHTML)
     expect(view.getChildById("bar")).toBeDefined()
 
-    view.update(updateDiff, [])
+    view.update(updateDiff, null, null, [])
     expect(view.el.innerHTML.trim()).toEqual(newChildHTML)
     expect(view.getChildById("baz")).toBeDefined()
     expect(view.getChildById("bar")).toBeUndefined()

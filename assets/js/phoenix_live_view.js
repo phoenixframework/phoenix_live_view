@@ -166,7 +166,7 @@ export class Rendered {
 
   isComponentOnlyDiff(diff){
     if(!diff[COMPONENTS]){ return false }
-    return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
+    return Object.keys(diff).length === 1
   }
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
@@ -1841,11 +1841,12 @@ export class View {
     this.pendingJoinOps = []
   }
 
-  update(diff, events){
+  update(diff, ref, cid, events){
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
-      return this.pendingDiffs.push({diff, events})
+      return this.pendingDiffs.push({diff, ref, cid, events})
     }
 
+    if(ref !== null) DOM.undoRefs(ref, this.el)
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
 
@@ -1855,11 +1856,16 @@ export class View {
     if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
         let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
+
+        // If there are no parents (empty patch) but there is a cid,
+        // we need to apply a patch to undo refs.
+        if(parentCids.size === 0 && cid !== null) { parentCids = new Set([cid]) }
+
         parentCids.forEach(parentCID => {
-          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)){ phxChildrenAdded = true }
+          if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID, ref)){ phxChildrenAdded = true }
         })
       })
-    } else if(!isEmpty(diff)){
+    } else if(!isEmpty(diff) || ref !== null){
       this.liveSocket.time("full patch complete", () => {
         let html = this.renderContainer(diff, "update")
         let patch = new DOMPatch(this, this.el, this.id, html, null)
@@ -1880,8 +1886,8 @@ export class View {
     })
   }
 
-  componentPatch(diff, cid){
-    if(isEmpty(diff)) return false
+  componentPatch(diff, cid, ref){
+    if(isEmpty(diff) && ref === null) { return false }
     let html = this.rendered.componentToString(cid)
     let patch = new DOMPatch(this, this.el, this.id, html, cid)
     let childrenAdded = this.performPatch(patch, true)
@@ -1911,7 +1917,7 @@ export class View {
   }
 
   applyPendingUpdates(){
-    this.pendingDiffs.forEach(({diff, events}) => this.update(diff, events))
+    this.pendingDiffs.forEach(({diff, ref, cid, events}) => this.update(diff, ref, cid, events))
     this.pendingDiffs = []
   }
 
@@ -1929,7 +1935,7 @@ export class View {
     // The diff event should be handled by the regular update operations.
     // All other operations are queued to be applied only after join.
     this.liveSocket.onChannel(this.channel, "diff", (rawDiff) => {
-      this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, events))
+      this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, null, null, events))
     })
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
@@ -2025,10 +2031,9 @@ export class View {
       this.liveSocket.wrapPush(() => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
           let hookReply = null
-          if(ref !== null){ DOM.undoRefs(ref, this.el) }
-          if(resp.diff){
+          if(resp.diff || ref !== null){
             hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
-              this.update(diff, events)
+              this.update(diff, ref, payload.cid, events)
             })
           }
           if(resp.redirect){ this.onRedirect(resp.redirect) }

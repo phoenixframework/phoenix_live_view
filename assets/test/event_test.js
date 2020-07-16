@@ -70,7 +70,7 @@ describe("events", () => {
 
     expect(processedEvents).toEqual([])
 
-    view.update({}, [["scores", {values: [1, 2, 3]}]])
+    view.update({}, null, null, [["scores", {values: [1, 2, 3]}]])
     expect(processedEvents).toEqual([{event: "scores", data: {values: [1, 2, 3]}}])
   })
 
@@ -91,14 +91,14 @@ describe("events", () => {
 
     expect(processedEvents).toEqual([])
 
-    view.update({}, [["my-event", {val: 1}]])
+    view.update({}, null, null, [["my-event", {val: 1}]])
     expect(processedEvents).toEqual([
       {id: "handler1", event: "my-event", data: {val: 1}},
       {id: "handler2", event: "my-event", data: {val: 1}}
     ])
 
     let newHTML = `<div id="handler1" phx-hook="Handler"></div>`
-    view.update({s: [newHTML]}, [["my-event", {val: 2}]])
+    view.update({s: [newHTML]}, null, null, [["my-event", {val: 2}]])
 
     expect(destroyed).toEqual(["handler2"])
 
@@ -126,10 +126,10 @@ describe("events", () => {
 
     expect(processedEvents).toEqual([])
 
-    view.update({}, [["remove", {val: 1}]])
+    view.update({}, null, null, [["remove", {val: 1}]])
     expect(processedEvents).toEqual([{event: "remove", data: {val: 1}}])
 
-    view.update({}, [["remove", {val: 1}]])
+    view.update({}, null, null, [["remove", {val: 1}]])
     expect(processedEvents).toEqual([{event: "remove", data: {val: 1}}])
   })
 })
@@ -157,7 +157,7 @@ describe("pushEvent replies", () => {
     view.update({s: [`
       <div id="gateway" phx-hook="Gateway">
       </div>
-    `]}, [])
+    `]}, null, null, [])
 
     expect(pushedRef).toEqual(0)
     expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
