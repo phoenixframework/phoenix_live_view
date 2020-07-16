@@ -173,7 +173,7 @@ defmodule Phoenix.LiveView.Engine do
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a `.leex` template, you can convert the
-  rendered structure to iodata by interlacing the static
+  rendered structure to iodata by alternating the static
   and dynamic fields, always starting with a static entry
   followed by a dynamic entry. The last entry will always
   be static too. So the following structure:
