@@ -91,6 +91,33 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert %UploadConfig{name: :avatar, accept: accept} = socket.assigns.uploads.avatar
       assert accept == %{"image/gif" => ~w(.gif), "video/*" => ["video/*"]}
     end
+
+    test "raises when invalid :max_file_size provided" do
+      assert_raise ArgumentError, ~r/invalid :max_file_size value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: -1)
+      end
+
+      assert_raise ArgumentError, ~r/invalid :max_file_size value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: 0)
+      end
+
+      assert_raise ArgumentError, ~r/invalid :max_file_size value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: "bad")
+      end
+    end
+
+    test "supports optional :max_file_size" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+      assert %UploadConfig{max_file_size: 8_000_000} = socket.assigns.uploads.avatar
+
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: :any,
+          max_file_size: 10_000_000
+        )
+
+      assert %UploadConfig{max_file_size: 10_000_000} = socket.assigns.uploads.avatar
+    end
   end
 
   describe "put_entries/2" do
@@ -110,6 +137,31 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       assert UploadConfig.put_entries(config, [build_client_entry(:avatar)]) ==
                {:error, :too_many_files}
+    end
+
+    test "returns error when entry with greater than max_file_size provided" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+
+      assert UploadConfig.put_entries(socket.assigns.uploads.avatar, [
+               build_client_entry(:avatar, %{"size" => 8_000_001})
+             ]) == {:error, :too_large}
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: 1024)
+
+      assert UploadConfig.put_entries(socket.assigns.uploads.avatar, [
+               build_client_entry(:avatar, %{"size" => 2048})
+             ]) == {:error, :too_large}
+    end
+
+    test "validates client size less than :max_file_size" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+
+      {:ok, config} =
+        UploadConfig.put_entries(socket.assigns.uploads.avatar, [
+          build_client_entry(:avatar, %{"size" => 1024})
+        ])
+
+      assert [%UploadEntry{client_size: 1024}] = config.entries
     end
 
     test "validates entries accepted by extension" do
@@ -192,7 +244,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
                  build_client_entry(:avatar, %{"name" => "photo", "type" => "image/webp"}),
                  build_client_entry(:avatar, %{"name" => "photo.pdf"}),
                  build_client_entry(:avatar, %{"name" => "photo.pdf", "type" => "application/pdf"}),
-                 build_client_entry(:avatar, %{"name" => "photo.mp4", "type" => "audio/mpeg"}),
+                 build_client_entry(:avatar, %{"name" => "photo.mp4", "type" => "audio/mpeg"})
                ])
 
       assert length(config.entries) == 7

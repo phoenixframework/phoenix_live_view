@@ -31,10 +31,13 @@ defmodule Phoenix.LiveView.UploadConfig do
   alias Phoenix.LiveView.UploadConfig
   alias Phoenix.LiveView.UploadEntry
 
+  @default_max_file_size 8_000_000
+
   defstruct name: nil,
             pid_to_refs: %{},
             client_key: nil,
             max_entries: 1,
+            max_file_size: @default_max_file_size,
             entries: [],
             accept: %{},
             external: nil,
@@ -46,6 +49,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           pid_to_refs: map,
           client_key: String.t(),
           max_entries: pos_integer(),
+          max_file_size: pos_integer(),
           entries: list(),
           accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
@@ -107,10 +111,29 @@ defmodule Phoenix.LiveView.UploadConfig do
           nil
       end
 
+    max_file_size =
+      case Keyword.fetch(opts, :max_file_size) do
+        {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
+          pos_integer
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :max_file_size value provided to allow_upload.
+
+          Only a positive integer is supported (Defaults to #{@default_max_file_size} bytes). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_max_file_size
+      end
+
     %UploadConfig{
       ref: random_ref,
       name: name,
       max_entries: opts[:max_entries] || 1,
+      max_file_size: max_file_size,
       accept: accept,
       external: external,
       allowed?: true
@@ -224,17 +247,36 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_last_modified: Map.fetch!(client_entry, "last_modified")
     }
 
+    {:ok, entry}
+    |> validate_max_file_size(conf)
+    |> validate_accepted(conf)
+    |> case do
+      {:ok, entry} -> {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
+      {:error, _} = error -> error
+    end
+  end
+
+  defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{max_file_size: max})
+       when size > max,
+       do: {:error, :too_large}
+
+  defp validate_max_file_size(entry, _conf), do: entry
+
+  defp validate_accepted({:ok, %UploadEntry{} = entry}, conf) do
     if accepted?(conf, entry) do
-      {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
+      {:ok, entry}
     else
       {:error, :not_accepted}
     end
   end
 
+  defp validate_accepted({:error, _} = error, _conf), do: error
+
   defp accepted?(%UploadConfig{accept: :any}, _entry), do: true
   defp accepted?(%UploadConfig{accept: %{"image/*" => _}}, %UploadEntry{client_type: <<"image/" <> _>>}), do: true
   defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{client_type: <<"audio/" <> _>>}), do: true
   defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{client_type: <<"video/" <> _>>}), do: true
+
   defp accepted?(%UploadConfig{accept: accept}, %UploadEntry{} = entry) do
     cond do
       Map.has_key?(accept, entry.client_type) -> true
