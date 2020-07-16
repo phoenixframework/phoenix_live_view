@@ -1258,6 +1258,9 @@ export let DOM = {
         el.innerText = disableRestore
         el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
       }
+      let toEl = DOM.private(el, PHX_REF)
+      if(toEl) { el.replaceWith(toEl) }
+      DOM.deletePrivate(el, PHX_REF)
     })
   },
 
@@ -1265,13 +1268,14 @@ export let DOM = {
     let ref = fromEl.getAttribute(PHX_REF)
     if(ref === null){ return true }
 
-    PHX_EVENT_CLASSES.forEach(className => {
-      fromEl.classList.contains(className) && toEl.classList.add(className)
-    })
-    toEl.setAttribute(PHX_REF, ref)
     if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+      DOM.putPrivate(fromEl, PHX_REF, toEl)
       return false
     } else {
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.contains(className) && toEl.classList.add(className)
+      })
+      toEl.setAttribute(PHX_REF, ref)
       return true
     }
   },
