@@ -128,8 +128,8 @@ defmodule Phoenix.LiveView.Channel do
             reply(new_state, msg.ref, :ok, %{entries: reply_entries})
             {:noreply, new_state}
 
-          {:error, _reason} ->
-            reply(state, msg.ref, :error, %{reason: "disallowed"})
+          {:error, reason} ->
+            reply(state, msg.ref, :ok, %{error: reason})
             {:noreply, state}
         end
     end
