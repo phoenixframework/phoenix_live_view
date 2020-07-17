@@ -210,8 +210,8 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
   <head>
     <%= csrf_meta_tag() %>
     <%= live_title_tag assigns[:page_title] || "MyApp" %>
-    <link rel="stylesheet" href="<%%= Routes.static_path(@conn, "/css/app.css") %>"/>
-    <script defer type="text/javascript" src="<%%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+    <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
+    <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
   </head>
   <body>
     <%= @inner_content %>
