@@ -214,7 +214,7 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
     <script defer type="text/javascript" src="<%%= Routes.static_path(@conn, "/js/app.js") %>"></script>
   </head>
   <body>
-    <%%= @inner_content %>
+    <%= @inner_content %>
   </body>
 </html>
 ```
