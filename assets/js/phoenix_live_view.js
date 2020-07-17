@@ -2500,12 +2500,16 @@ export class View {
 
       this.pushWithReply(refGenerator, "allow_upload", payload, resp => {
         this.log("upload", () => [`got preflight response`, resp])
-        let onError = (callback) => {
-          this.channel.onError(() => {
-            if(this.joinCount === joinCountAtUpload){ callback() }
-          })
+        if(resp.error){
+          this.log("upload", () => ["error", resp.error])
+        } else {
+          let onError = (callback) => {
+            this.channel.onError(() => {
+              if(this.joinCount === joinCountAtUpload){ callback() }
+            })
+          }
+          uploader.initAdapterUpload(resp, onError, this.liveSocket)
         }
-        uploader.initAdapterUpload(resp, onError, this.liveSocket)
       })
     })
   }
