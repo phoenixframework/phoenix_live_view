@@ -43,7 +43,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             accept: %{},
             external: nil,
             allowed?: false,
-            ref: nil
+            ref: nil,
+            errors: []
 
   @type t :: %__MODULE__{
           name: atom(),
@@ -54,7 +55,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           entries: list(),
           accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
-          allowed?: boolean
+          allowed?: boolean,
+          errors: list()
         }
 
   @doc false
@@ -224,19 +226,19 @@ defmodule Phoenix.LiveView.UploadConfig do
     |> Enum.reduce_while({:ok, conf}, fn client_entry, {:ok, acc} ->
       case cast_and_validate_entry(acc, client_entry) do
         {:ok, new_conf} -> {:cont, {:ok, new_conf}}
-        {:error, reason} -> {:halt, {:error, reason}}
+        {:error, ref, reason} -> {:halt, {:error, ref, reason}}
       end
     end)
     |> case do
       {:ok, new_conf} -> {:ok, new_conf}
-      {:error, reason} -> {:error, reason}
+      {:error, ref, reason} -> {:error, ref, reason}
     end
   end
 
   # TODO validate against config constraints
-  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max}, _)
+  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max}, %{"ref" => ref})
        when length(entries) >= max do
-    {:error, :too_many_files}
+    {:error, ref, :too_many_files}
   end
 
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
@@ -253,7 +255,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     |> validate_accepted(conf)
     |> case do
       {:ok, entry} -> {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
-      {:error, _} = error -> error
+      {:error, reason} -> {:error, ref, reason}
     end
   end
 
@@ -284,5 +286,16 @@ defmodule Phoenix.LiveView.UploadConfig do
       Path.extname(entry.client_name) in (accept |> Map.values() |> Enum.concat()) -> true
       true -> false
     end
+  end
+
+  @doc """
+  TODO
+  """
+  def put_error(%UploadConfig{} = conf, _entry_ref, :too_many_files = reason) do
+    %UploadConfig{conf | errors: conf.errors ++ [reason]}
+  end
+
+  def put_error(%UploadConfig{} = conf, entry_ref, reason) do
+    %UploadConfig{conf | errors: conf.errors ++ [{entry_ref, reason}]}
   end
 end

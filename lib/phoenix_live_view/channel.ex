@@ -128,8 +128,10 @@ defmodule Phoenix.LiveView.Channel do
             reply(new_state, msg.ref, :ok, %{entries: reply_entries})
             {:noreply, new_state}
 
-          {:error, reason} ->
-            reply(state, msg.ref, :ok, %{error: reason})
+          {:error, ref, reason} ->
+            new_socket = Utils.put_upload_error(state.socket, upload_conf, ref, reason)
+            new_state = %{state | socket: new_socket}
+            reply(new_state, msg.ref, :ok, %{error: [ref, reason]})
             {:noreply, state}
         end
     end

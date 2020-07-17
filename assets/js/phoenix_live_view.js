@@ -2501,7 +2501,8 @@ export class View {
       this.pushWithReply(refGenerator, "allow_upload", payload, resp => {
         this.log("upload", () => [`got preflight response`, resp])
         if(resp.error){
-          this.log("upload", () => ["error", resp.error])
+          let [entry_ref, reason] = resp.error
+          this.log("upload", () => [`error for entry ${entry_ref}`, reason])
         } else {
           let onError = (callback) => {
             this.channel.onError(() => {
