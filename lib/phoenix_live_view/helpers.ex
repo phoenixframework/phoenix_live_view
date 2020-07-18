@@ -321,6 +321,7 @@ defmodule Phoenix.LiveView.Helpers do
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
       line: __CALLER__.line + 1,
       indentation: meta[:indentation] || 0
     ]
