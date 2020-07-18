@@ -374,8 +374,11 @@ defmodule Phoenix.LiveViewTest do
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
 
+      assert render_component(MyComponent, %{id: 123, user: %User{}}, router: SomeRouter) =~
+               "some markup in component"
+
   """
-  defmacro render_component(component, assigns) do
+  defmacro render_component(component, assigns, opts \\ []) do
     endpoint =
       Module.get_attribute(__CALLER__.module, :endpoint) ||
         raise ArgumentError,
@@ -385,14 +388,15 @@ defmodule Phoenix.LiveViewTest do
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
         unquote(component),
-        unquote(assigns)
+        unquote(assigns),
+        unquote(opts)
       )
     end
   end
 
   @doc false
-  def __render_component__(endpoint, component, assigns) do
-    socket = %Socket{endpoint: endpoint}
+  def __render_component__(endpoint, component, assigns, opts) do
+    socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
     rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)

@@ -315,7 +315,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     use Phoenix.LiveComponent
 
     # Assert endpoint was set
-    def mount(%{endpoint: Endpoint} = socket) do
+    def mount(%{endpoint: Endpoint, router: SomeRouter} = socket) do
       send(self(), {:mount, socket})
       {:ok, assign(socket, hello: "world")}
     end
@@ -361,14 +361,17 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   describe "render_component/2" do
     test "full life-cycle without id" do
-      assert render_component(MyComponent, from: "test") =~ "FROM test world"
+      assert render_component(MyComponent, [from: "test"], router: SomeRouter) =~
+               "FROM test world"
+
       assert_received {:mount, %{assigns: %{flash: %{}}}}
       assert_received {:preload, [%{from: "test"}]}
       assert_received {:update, %{from: "test"}, %{assigns: %{flash: %{}}}}
     end
 
     test "full life-cycle with id" do
-      assert render_component(MyComponent, from: "test", id: "stateful") =~ "FROM test world"
+      assert render_component(MyComponent, %{from: "test", id: "stateful"}, router: SomeRouter) =~
+               "FROM test world"
 
       assert_received {:mount,
                        %{assigns: %{flash: %{}, myself: %Phoenix.LiveComponent.CID{cid: -1}}}}
