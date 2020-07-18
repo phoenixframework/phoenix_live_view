@@ -166,7 +166,7 @@ export class Rendered {
 
   isComponentOnlyDiff(diff){
     if(!diff[COMPONENTS]){ return false }
-    return Object.keys(diff).filter(k => k !== "title" && k !== COMPONENTS).length === 0
+    return Object.keys(diff).length === 1
   }
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
