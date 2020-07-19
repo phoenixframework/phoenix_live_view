@@ -45,6 +45,16 @@ function liveViewDOM() {
 }
 
 describe("View + DOM", function() {
+  beforeEach(() => {
+    submitBefore = HTMLFormElement.prototype.submit
+    global.Phoenix = { Socket }
+    global.document.body.innerHTML = liveViewDOM().outerHTML
+  })
+
+  afterAll(() => {
+    global.document.body.innerHTML = ""
+  })
+
   test("update", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
@@ -302,6 +312,140 @@ describe("View + DOM", function() {
       view.update({s: [updatedHtml]}, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
+    })
+  })
+
+  describe("phx-update", function() {
+    let childIds = () => Array.from(document.getElementById("list").children).map(child => parseInt(child.id))
+
+    let createView = (updateType, initialDynamics) => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+
+      stubChannel(view)
+
+      let joinDiff = {
+        "0": {"d": initialDynamics, "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="${updateType}">`, `</div>`]
+      }
+
+      view.onJoin({rendered: joinDiff})
+
+      return view
+    }
+
+    let updateDynamics = (view, dynamics) => {
+      let updateDiff = {
+        "0": {
+          "d": dynamics
+        }
+      }
+
+      view.update(updateDiff, [])
+    }
+
+    test("replace", async () => {
+      let view = createView("replace", [["1", "1"]])
+      expect(childIds()).toEqual([1])
+
+      updateDynamics(view, 
+        [["2", "2"], ["3", "3"]]
+      )
+      expect(childIds()).toEqual([2,3])
+    })
+
+    test("append", async () => {
+      let view = createView("append", [["1", "1"]])
+      expect(childIds()).toEqual([1])
+
+      // Append two elements
+      updateDynamics(view, 
+        [["2", "2"], ["3", "3"]]
+      )
+      expect(childIds()).toEqual([1,2,3])
+
+      // Update the last element
+      updateDynamics(view,
+        [["3", "3"]]
+      )
+      expect(childIds()).toEqual([1,2,3])
+
+      // Update the first element
+      updateDynamics(view,
+        [["1", "1"]]
+      )
+      expect(childIds()).toEqual([1,2,3])
+
+      // Update before new elements
+      updateDynamics(view,
+         [["4", "4"], ["5", "5"]]
+      )
+      expect(childIds()).toEqual([1,2,3,4,5])
+
+      // Update after new elements
+      updateDynamics(view,
+         [["6", "6"], ["7", "7"], ["5", "modified"]]
+      )
+      expect(childIds()).toEqual([1,2,3,4,5,6,7])
+
+      // Sandwich an update between two new elements
+      updateDynamics(view,
+        [["8", "8"], ["7", "modified"],  ["9", "9"]]
+      )
+      expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+    })
+
+    test("prepend", async () => {
+      let view = createView("prepend", [["1", "1"]])
+      expect(childIds()).toEqual([1])
+
+      // Append two elements
+      updateDynamics(view, 
+        [["2", "2"], ["3", "3"]]
+      )
+      expect(childIds()).toEqual([2,3,1])
+
+      // Update the last element
+      updateDynamics(view,
+        [["3", "3"]]
+      )
+      expect(childIds()).toEqual([2,3,1])
+
+      // Update the first element
+      updateDynamics(view,
+        [["1", "1"]]
+      )
+      expect(childIds()).toEqual([2,3,1])
+
+      // Update before new elements
+      updateDynamics(view,
+         [["4", "4"], ["5", "5"]]
+      )
+      expect(childIds()).toEqual([4,5,2,3,1])
+
+      // Update after new elements
+      updateDynamics(view,
+         [["6", "6"], ["7", "7"], ["5", "modified"]]
+      )
+      expect(childIds()).toEqual([6,7,4,5,2,3,1])
+
+      // Sandwich an update between two new elements
+      updateDynamics(view,
+        [["8", "8"], ["7", "modified"],  ["9", "9"]]
+      )
+      expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
+    })
+
+    test("ignore", async () => {
+      let view = createView("ignore", [["1", "1"]])
+      expect(childIds()).toEqual([1])
+
+      // Append two elements
+      updateDynamics(view, 
+        [["2", "2"], ["3", "3"]]
+      )
+      expect(childIds()).toEqual([1])
     })
   })
 })
