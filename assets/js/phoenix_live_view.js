@@ -1295,6 +1295,58 @@ export let DOM = {
   }
 }
 
+class DOMAppendPrependUpdate {
+  constructor(fromEl, toEl, updateType) {
+    let idsAfter = Array.from(toEl.children).map(child => child.id)
+    let idsBefore = []
+
+    let modifiedIds = []
+
+    Array.from(fromEl.children).forEach(child => {
+      // TODO make sure these all have IDs
+      idsBefore.push(child.id)
+      if (idsAfter.indexOf(child.id) >= 0) {
+        modifiedIds.push([child.id, child.previousElementSibling && child.previousElementSibling.id])
+      }
+    })
+
+    this.containerID = toEl.id
+    this.updateType = updateType
+    this.modifiedIds = modifiedIds
+    this.newIds = idsAfter.filter(id => idsBefore.indexOf(id) < 0)
+  }
+
+  // We do the following to optimize append/prepend operations:
+  //   1) Track ids of modified elements & of new elements
+  //   2) Any modified elements are put back in the correct position in the DOM tree
+  //      by storing the id of their previous sibling
+  //   3) New elements are going to be put in the right place by morphdom during append. 
+  //      For prepend, we move them to the first position in the container
+  perform() {
+    let el = DOM.byId(this.containerID)
+    this.modifiedIds.forEach(([id, siblingId]) => {
+      if (siblingId) {
+        maybe(document.getElementById(siblingId), sibling => {
+          maybe(document.getElementById(id), child => {
+            sibling.insertAdjacentElement("afterend", child)
+          })
+        })
+      } else {
+        // This is the first element in the container
+        maybe(document.getElementById(id), child => {
+          el.insertAdjacentElement("afterbegin", child)
+        })
+      }
+    })
+
+    if(this.updateType == "prepend"){
+      this.newIds.reverse().forEach(id => {
+        maybe(document.getElementById(id), child => el.insertAdjacentElement("afterbegin", child))
+      })
+    }
+  }
+}
+
 class DOMPatch {
   constructor(view, container, id, html, targetCID){
     this.view = view
@@ -1415,23 +1467,8 @@ class DOMPatch {
             updates.push(fromEl)
             return false
           } else {
-            // we optimize append/prepend operations in two ways:
-            //   1) By tracking the previously appended ids. If the ids don't
-            //     change b/w patches, we know that we are going to re-arrange
-            //     the same appendPrependUpdates so we can skip the post-morph
-            //     append/prepend ops.
-            //   2) for appends, we can skip post-morph re-arranging if the
-            //     new content contains only new ids, because it will simply
-            //     be appended to the container
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              let isAppend = toEl.getAttribute(phxUpdate) === "append"
-              let idsBefore = Array.from(fromEl.children).map(child => child.id)
-              let newIds = Array.from(toEl.children).map(child => child.id)
-              let isOnlyNewIds = isAppend && !newIds.find(id => idsBefore.indexOf(id) >= 0)
-
-              if(!isOnlyNewIds){
-                appendPrependUpdates.push([toEl.id, idsBefore])
-              }
+                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
@@ -1445,19 +1482,7 @@ class DOMPatch {
 
     if(appendPrependUpdates.length > 0){
       liveSocket.time("post-morph append/prepend restoration", () => {
-        appendPrependUpdates.forEach(([containerID, idsBefore]) => {
-          let el = DOM.byId(containerID)
-          let isAppend = el.getAttribute(phxUpdate) === "append"
-          if(isAppend){
-            idsBefore.reverse().forEach(id => {
-              maybe(document.getElementById(id), child => el.insertBefore(child, el.firstChild))
-            })
-          } else {
-            idsBefore.forEach(id => {
-              maybe(document.getElementById(id), child => el.appendChild(child))
-            })
-          }
-        })
+        appendPrependUpdates.forEach(update => update.perform())
       })
     }
 
