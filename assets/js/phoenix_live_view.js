@@ -1271,6 +1271,21 @@ export let DOM = {
     } else {
       return true
     }
+  },
+
+  cleanChildNodes(container, phxUpdate){
+    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+      Array.from(container.childNodes).forEach(childNode => {
+        if (childNode.nodeType == Node.TEXT_NODE && childNode.nodeValue.trim() == "") {
+          //silently remove whitespace-only text nodes
+          childNode.remove()
+        } else if (!childNode.id) {
+          logError(`only HTML element tags with an id are allowed inside containers with phx-update.\n\n` +
+                  `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
+          childNode.remove()
+        }
+      })
+    }
   }
 }
 
@@ -1362,6 +1377,7 @@ class DOMPatch {
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
             this.trackBefore("updated", fromEl, toEl)
