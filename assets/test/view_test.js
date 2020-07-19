@@ -45,6 +45,18 @@ function liveViewDOM() {
 }
 
 describe("View + DOM", function() {
+  beforeEach(() => {
+    global.document.body.innerHTML = liveViewDOM().outerHTML
+  })
+
+  // afterEach(() => {
+  //   HTMLFormElement.prototype.submit = submitBefore
+  // })
+
+  afterAll(() => {
+    global.document.body.innerHTML = ""
+  })
+
   test("update", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
@@ -302,6 +314,181 @@ describe("View + DOM", function() {
       view.update({s: [updatedHtml]}, [])
 
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
+    })
+  })
+
+  describe("phx-update", function() {
+    test("replace", async () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+  
+      stubChannel(view)
+  
+      let joinDiff = {
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="replace">`, `</div>`]
+      }
+
+      view.onJoin({rendered: joinDiff})
+      
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="replace"><div id="1">1</div></div>`)
+  
+      let updateDiff = {
+        "0": {
+          "d": [["2", "2"], ["3", "3"]]
+        }
+      }
+    
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="replace"><div id="2">2</div><div id="3">3</div></div>`)
+      expect(view.el.innerHTML.trim().match(/\n/g).length).toBe(4)
+    })
+
+    test("append", async () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+  
+      stubChannel(view)
+  
+      let joinDiff = {
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="append">`, `</div>`]
+      }
+
+      view.onJoin({rendered: joinDiff})
+      
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="append"><div id="1">1</div></div>`)
+      let updateDiff = {
+        "0": {
+          "d": [["2", "2"], ["3","3"]]
+        }
+      }
+    
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="append"><div id="1">1</div><div id="2">2</div><div id="3">3</div></div>`)
+      
+      // Each of the inner divs is surrounded by newlines and we can't track them while rearranging the DOM.
+      // We want to make sure that we aren't adding extra new lines on each update
+
+      updateDiff = {
+        "0": {
+          "d": [["1", "modified"], ["2", "modified"], ["3", "modified"]]
+        }
+      }
+
+      // Do the same update several times to test whether we're not growing the DOM on each update
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(
+        `<div id="list" phx-update="append"><div id="1">modified</div><div id="2">modified</div><div id="3">modified</div></div>`
+      )
+
+      let childNodes = view.el.querySelector("#list").childNodes // includes text nodes
+      let children = view.el.querySelector("#list").children // includes only element nodes
+
+      expect(childNodes.length).toBeLessThanOrEqual(children.length * 2 +1)
+
+      updateDiff = {
+        "0": {
+          "d": [["4", "4"], ["2", "modified again"], ["5", "5"]]
+        }
+      }
+
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(
+        `<div id="list" phx-update="append"><div id="1">modified</div><div id="2">modified again</div><div id="3">modified</div><div id="4">4</div><div id="5">5</div></div>`
+      )
+    })
+
+    test("prepend", async () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+  
+      stubChannel(view)
+  
+      let joinDiff = {
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="prepend">`, `</div>`]
+      }
+
+      view.onJoin({rendered: joinDiff})
+      
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="prepend"><div id="1">1</div></div>`)
+      let updateDiff = {
+        "0": {
+          "d": [["2", "2"], ["3","3"]]
+        }
+      }
+    
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="prepend"><div id="2">2</div><div id="3">3</div><div id="1">1</div></div>`)
+     
+      
+      // Each of the inner divs is surrounded by newlines and we can't track them while rearranging the DOM.
+      // We want to make sure that we aren't adding extra new lines on each update
+
+      updateDiff = {
+        "0": {
+          "d": [["1", "modified"], ["2", "modified"], ["3", "modified"]]
+        }
+      }
+
+      // Do the same update several times to test whether we're not growing the DOM on each update
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+      view.update(updateDiff, [])
+
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(
+        `<div id="list" phx-update="prepend"><div id="2">modified</div><div id="3">modified</div><div id="1">modified</div></div>`
+      )
+
+      let childNodes = view.el.querySelector("#list").childNodes // includes text nodes
+      let children = view.el.querySelector("#list").children // includes only element nodes
+
+      expect(childNodes.length).toBeLessThanOrEqual(children.length * 2 +1)
+
+      updateDiff = {
+        "0": {
+          "d": [["4", "4"], ["2", "modified again"], ["5", "5"]]
+        }
+      }
+
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(
+        `<div id="list" phx-update="prepend"><div id="4">4</div><div id="5">5</div><div id="2">modified again</div><div id="3">modified</div><div id="1">modified</div></div>`
+      )
+    })
+
+    test("ignore", async () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+
+      stubChannel(view)
+
+      let joinDiff = {
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="ignore">`, `</div>`]
+      }
+
+      view.onJoin({rendered: joinDiff})
+      
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="ignore"><div id="1">1</div></div>`)
+      let updateDiff = {
+        "0": {
+          "d": [["2", "2"], ["3","3"]]
+        }
+      }
+    
+      view.update(updateDiff, [])
+      expect(view.el.innerHTML.trim().replace(/\n/g, "")).toBe(`<div id="list" phx-update="ignore"><div id="1">1</div></div>`)
     })
   })
 })
