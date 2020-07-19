@@ -1352,8 +1352,17 @@ class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
-          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
+          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.nodeType == Node.ELEMENT_NODE){
+            if (el.id) {
+              return false
+            } else {
+              logError(`When using phx-update="append" or "prepend", a DOM ID must be set
+                for each child..\n\n` +
+                `got: "${el.innerHTML.trim()}"\n\n` +
+                `it will be discarded\n\n`)          
+            }
+          }
           this.trackBefore("discarded", el)
           return true
         },
