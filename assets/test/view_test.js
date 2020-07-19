@@ -317,6 +317,7 @@ describe("View + DOM", function() {
 
   describe("phx-update", function() {
     let childIds = () => Array.from(document.getElementById("list").children).map(child => parseInt(child.id))
+    let countChildNodes = () => document.getElementById("list").childNodes.length
 
     let createView = (updateType, initialDynamics) => {
       let liveSocket = new LiveSocket("/live", Socket)
@@ -435,6 +436,23 @@ describe("View + DOM", function() {
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
       )
       expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
+
+      // Make sure we don't have a memory leak when doing updates
+      let initalCount = countChildNodes()
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+
+      expect(countChildNodes()).toBe(initalCount)
     })
 
     test("ignore", async () => {
