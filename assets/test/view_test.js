@@ -54,6 +54,7 @@ describe("View + DOM", function() {
   afterAll(() => {
     global.document.body.innerHTML = ""
   })
+
   test("update", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
@@ -321,9 +322,9 @@ describe("View + DOM", function() {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let view = new View(el, liveSocket)
-  
+
       stubChannel(view)
-  
+
       let joinDiff = {
         "0": {"d": initialDynamics, "s": [`\n<div id="`, `">`, `</div>\n`]},
         "s": [`<div id="list" phx-update="${updateType}">`, `</div>`]
@@ -340,14 +341,14 @@ describe("View + DOM", function() {
           "d": dynamics
         }
       }
-    
+
       view.update(updateDiff, [])
     }
-  
+
     test("replace", async () => {
       let view = createView("replace", [["1", "1"]])
       expect(childIds()).toEqual([1])
-  
+
       updateDynamics(view, 
         [["2", "2"], ["3", "3"]]
       )
@@ -357,19 +358,18 @@ describe("View + DOM", function() {
     test("append", async () => {
       let view = createView("append", [["1", "1"]])
       expect(childIds()).toEqual([1])
-      
+
       // Append two elements
       updateDynamics(view, 
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([1,2,3])
-      
+
       // Update the last element
       updateDynamics(view,
         [["3", "3"]]
       )
       expect(childIds()).toEqual([1,2,3])
-      
 
       // Update the first element
       updateDynamics(view,
@@ -389,7 +389,6 @@ describe("View + DOM", function() {
       )
       expect(childIds()).toEqual([1,2,3,4,5,6,7])
 
-
       // Sandwich an update between two new elements
       updateDynamics(view,
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
@@ -400,19 +399,18 @@ describe("View + DOM", function() {
     test("prepend", async () => {
       let view = createView("prepend", [["1", "1"]])
       expect(childIds()).toEqual([1])
-       
+
       // Append two elements
       updateDynamics(view, 
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([2,3,1])
-      
+
       // Update the last element
       updateDynamics(view,
         [["3", "3"]]
       )
       expect(childIds()).toEqual([2,3,1])
-      
 
       // Update the first element
       updateDynamics(view,
@@ -432,7 +430,6 @@ describe("View + DOM", function() {
       )
       expect(childIds()).toEqual([6,7,4,5,2,3,1])
 
-
       // Sandwich an update between two new elements
       updateDynamics(view,
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
@@ -443,7 +440,7 @@ describe("View + DOM", function() {
     test("ignore", async () => {
       let view = createView("ignore", [["1", "1"]])
       expect(childIds()).toEqual([1])
-       
+
       // Append two elements
       updateDynamics(view, 
         [["2", "2"], ["3", "3"]]
