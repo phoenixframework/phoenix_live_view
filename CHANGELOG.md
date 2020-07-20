@@ -1,11 +1,27 @@
 # Changelog
 
+## 0.14.2
+
+### Bug fixes
+  - Fix Map of assigns together with `@inner_content` causing `no function clause matching in Keyword.put/3` error
+  - Fix `LiveViewTest` failing to patch children properly for append/prepend based phx-update's
+  - Fix page becoming unresponsive when the server crashes while handling a live patch
+  - Fix empty diff causing pending data-ref based updates, such as classes and disable-with content to not be updated
+  - Fix bug where throttling keydown events would eat key presses
+  - Fix textarea's failing to be disabled on form submit
+  - Fix text node DOM memory leak when using phx-update append/prepend
+
+### Enhancements
+  - Allow `:router` to be given to `render_component`
+  - Display file on compile warning for `~L`
+  - Log error on client when using a hook without a DOM ID
+  - Optimize phx-update append/prepend based DOM updates
+
 ## 0.14.1 (2020-07-09)
 
 ### Bug fixes
   - Fix nested `live_render`'s failing to be torn down when removed from the DOM in certain cases
   - Fix LEEx issue for nested conditions failing to be re-evaluated
-  - Fix page becoming unresponsive when the server crashes while handling a live patch
 
 ## 0.14.0 (2020-07-07)
 
