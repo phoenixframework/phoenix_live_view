@@ -527,6 +527,7 @@ export class LiveSocket {
   }
 
   reloadWithJitter(view){
+    view.destroy()
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
@@ -1258,20 +1259,26 @@ export let DOM = {
         el.innerText = disableRestore
         el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
       }
+      let toEl = DOM.private(el, PHX_REF)
+      if(toEl){
+        DOMPatch.patchEl(el, toEl)
+        DOM.deletePrivate(el, PHX_REF)
+      }
     })
   },
 
-  syncPendingRef(fromEl, toEl){
+  syncPendingRef(fromEl, toEl, disableWith){
     let ref = fromEl.getAttribute(PHX_REF)
     if(ref === null){ return true }
 
-    PHX_EVENT_CLASSES.forEach(className => {
-      fromEl.classList.contains(className) && toEl.classList.add(className)
-    })
-    toEl.setAttribute(PHX_REF, ref)
-    if(DOM.isFormInput(fromEl) || /submit/i.test(fromEl.type)){
+    if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
+      DOM.putPrivate(fromEl, PHX_REF, toEl)
       return false
     } else {
+      PHX_EVENT_CLASSES.forEach(className => {
+        fromEl.classList.contains(className) && toEl.classList.add(className)
+      })
+      toEl.setAttribute(PHX_REF, ref)
       return true
     }
   },
@@ -1355,6 +1362,8 @@ class DOMAppendPrependUpdate {
 }
 
 class DOMPatch {
+  static patchEl(fromEl, toEl){ morphdom(fromEl, toEl, {childrenOnly: false}) }
+
   constructor(view, container, id, html, targetCID){
     this.view = view
     this.liveSocket = view.liveSocket
@@ -1396,6 +1405,7 @@ class DOMPatch {
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
+    let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
     let updates = []
@@ -1451,7 +1461,7 @@ class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!DOM.syncPendingRef(fromEl, toEl)){ return false }
+          if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){ return false }
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
@@ -2043,7 +2053,8 @@ export class View {
   }
 
   onClose(){
-    if(this.isJoinPending()){ return this.liveSocket.reloadWithJitter(this) }
+    if(this.isDestroyed()){ return }
+    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.liveSocket.reloadWithJitter(this) }
     this.destroyAllChildren()
     this.liveSocket.dropActiveElement(this)
     // document.activeElement can be null in Internet Explorer 11
@@ -2056,9 +2067,7 @@ export class View {
   onError(reason){
     this.onClose()
     this.log("error", () => ["view crashed", reason])
-    if(!this.liveSocket.isUnloaded()){
-      this.displayError()
-    }
+    if(!this.liveSocket.isUnloaded()){ this.displayError() }
   }
 
   displayError(){

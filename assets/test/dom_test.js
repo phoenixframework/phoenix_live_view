@@ -140,6 +140,18 @@ describe("DOM", () => {
     `.trim())
   })
 
+  test("undoRefs replaces any previous applied component", () => {
+    let fromEl = tag("span", {"data-phx-ref": "1"}, "hello")
+    let toEl = tag("span", {"class": "new"}, "world")
+    let div = document.createElement("div")
+
+    DOM.putPrivate(fromEl, "data-phx-ref", toEl)
+    div.appendChild(fromEl)
+
+    DOM.undoRefs(1, div)
+    expect(div.innerHTML).toBe(`<span class="new">world</span>`)
+  })
+
   describe("cleanChildNodes", () => {
     test("only cleans when phx-update is append or prepend", () => {
       let content = `
