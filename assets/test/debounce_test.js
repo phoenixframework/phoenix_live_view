@@ -22,6 +22,7 @@ let container = () => {
     <input type="text" name="throttle-200" phx-throttle="200" />
     <button id="throttle-200" phx-throttle="200" />+</button>
   </form>
+  <div id="throttle-keydown" phx-keydown="keydown" phx-throttle="200"></div>
   `
   return div
 }
@@ -238,3 +239,53 @@ describe("throttle", function() {
 })
 
 
+describe("throttle keydown", function() {
+  test("when the same key is pressed triggers immediately, then on timeout", done => {
+    let keyPresses = {}
+    let el = container().querySelector("#throttle-keydown")
+
+    el.addEventListener("keydown", e => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => {
+        keyPresses[e.key] = (keyPresses[e.key] || 0) + 1
+      })
+    })
+
+    let pressA = new KeyboardEvent("keydown", {key: "a"})
+    el.dispatchEvent(pressA)
+    el.dispatchEvent(pressA)
+    el.dispatchEvent(pressA)
+
+    expect(keyPresses["a"]).toBe(1)
+    after(250, () => {
+      expect(keyPresses["a"]).toBe(1)
+      el.dispatchEvent(pressA)
+      el.dispatchEvent(pressA)
+      el.dispatchEvent(pressA)
+      expect(keyPresses["a"]).toBe(2)
+      done()
+    })
+  })
+
+  test("when different key is pressed triggers immediately", done => {
+    let keyPresses = {}
+    let el = container().querySelector("#throttle-keydown")
+
+    el.addEventListener("keydown", e => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => {
+        keyPresses[e.key] = (keyPresses[e.key] || 0) + 1
+      })
+    })
+
+    let pressA = new KeyboardEvent("keydown", {key: "a"})
+    let pressB = new KeyboardEvent("keydown", {key: "b"})
+
+    el.dispatchEvent(pressA)
+    el.dispatchEvent(pressB)
+    el.dispatchEvent(pressA)
+    el.dispatchEvent(pressB)
+
+    expect(keyPresses["a"]).toBe(2)
+    expect(keyPresses["b"]).toBe(2)
+    done()
+  })
+})
