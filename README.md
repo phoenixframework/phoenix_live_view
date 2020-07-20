@@ -151,3 +151,18 @@ import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 ...
 ```
+
+## Contributing
+
+We appreciate any contribution to LiveView.
+
+Please see the Phoenix [Code of Conduct](https://github.com/phoenixframework/phoenix/blob/master/CODE_OF_CONDUCT.md) and [Contributing](https://github.com/phoenixframework/phoenix/blob/master/CONTRIBUTING.md) guide.
+
+Running the tests:
+
+```bash
+$ mix deps.get
+$ mix test
+```
+
+JS contributions are very welcome, but please do not include an updated `priv/static/phoenix_live_view.js` in pull requests. The maintainers will update it as part of the release process.
