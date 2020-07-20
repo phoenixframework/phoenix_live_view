@@ -1275,16 +1275,19 @@ export let DOM = {
 
   cleanChildNodes(container, phxUpdate){
     if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
-      Array.from(container.childNodes).forEach(childNode => {
-        if (childNode.nodeType == Node.TEXT_NODE && childNode.nodeValue.trim() == "") {
-          //silently remove whitespace-only text nodes
-          childNode.remove()
-        } else if (!childNode.id) {
-          logError(`only HTML element tags with an id are allowed inside containers with phx-update.\n\n` +
-                  `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
-          childNode.remove()
+      let toRemove = []
+      container.childNodes.forEach(childNode => {
+        if (!childNode.id) {
+          // Skip warning if it's an empty text node (e.g. a new-line)
+          let isEmptyTextNode = childNode.nodeType == Node.TEXT_NODE && childNode.nodeValue.trim() == ""
+          if (!isEmptyTextNode) {
+            logError(`only HTML element tags with an id are allowed inside containers with phx-update.\n\n` +
+                    `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
+          }
+          toRemove.push(childNode)
         }
       })
+      toRemove.forEach(childNode => childNode.remove())
     }
   }
 }
