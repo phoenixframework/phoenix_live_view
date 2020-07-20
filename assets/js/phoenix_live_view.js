@@ -1329,13 +1329,19 @@ class DOMAppendPrependUpdate {
       if (siblingId) {
         maybe(document.getElementById(siblingId), sibling => {
           maybe(document.getElementById(id), child => {
-            sibling.insertAdjacentElement("afterend", child)
+            let isInRightPlace = child.previousElementSibling && child.previousElementSibling.id == sibling.id
+            if (!isInRightPlace) {
+              sibling.insertAdjacentElement("afterend", child)
+            }
           })
         })
       } else {
         // This is the first element in the container
         maybe(document.getElementById(id), child => {
-          el.insertAdjacentElement("afterbegin", child)
+          let isInRightPlace = child.previousElementSibling == null
+          if (!isInRightPlace) {
+            el.insertAdjacentElement("afterbegin", child)
+          }
         })
       }
     })
