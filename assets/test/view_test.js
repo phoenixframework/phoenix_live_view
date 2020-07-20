@@ -397,6 +397,29 @@ describe("View + DOM", function() {
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
       )
       expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+
+      // Update all elements in reverse order
+      updateDynamics(view,
+        [["9", "9"], ["8", "8"],  ["7", "7"], ["6", "6"], ["5", "5"], ["4", "4"], ["3", "3"], ["2", "2"], ["1", "1"]]
+      )
+      expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+
+      // Make sure we don't have a memory leak when doing updates
+      let initalCount = countChildNodes()
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+
+      expect(countChildNodes()).toBe(initalCount)
     })
 
     test("prepend", async () => {
@@ -436,6 +459,12 @@ describe("View + DOM", function() {
       // Sandwich an update between two new elements
       updateDynamics(view,
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
+      )
+      expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
+
+      // Update all elements in reverse order
+      updateDynamics(view,
+        [["1", "1"], ["3", "3"],  ["2", "2"], ["5", "5"], ["4", "4"], ["7", "7"], ["6", "6"], ["9", "9"], ["8", "8"]]
       )
       expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
 
