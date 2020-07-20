@@ -1302,10 +1302,12 @@ class DOMAppendPrependUpdate {
 
     let modifiedIds = []
 
-    Array.from(fromEl.children).forEach(child => {
-      idsBefore.push(child.id)
-      if (idsAfter.indexOf(child.id) >= 0) {
-        modifiedIds.push([child.id, child.previousElementSibling && child.previousElementSibling.id])
+    fromEl.childNodes.forEach(child => {
+      if (child.id) { // all of our children should be elements with ids
+        idsBefore.push(child.id)
+        if (idsAfter.indexOf(child.id) >= 0) {
+          modifiedIds.push([child.id, child.previousElementSibling && child.previousElementSibling.id])
+        }
       }
     })
 
