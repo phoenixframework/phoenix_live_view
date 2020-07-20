@@ -1111,8 +1111,8 @@ export let DOM = {
             let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
             this.putPrivate(el, DEBOUNCE_PREV_KEY, event.key)
             newKeyDown = prevKey !== event.key
-          } 
-          
+          }
+
           if(!newKeyDown && this.private(el, THROTTLED)){
             return false
           } else {
@@ -1238,35 +1238,6 @@ export let DOM = {
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
   },
 
-  undoRefs(ref, container){
-    DOM.all(container, `[${PHX_REF}="${ref}"]`, el => {
-      // remove refs
-      el.removeAttribute(PHX_REF)
-      // retore inputs
-      if(el.getAttribute(PHX_READONLY) !== null){
-        el.readOnly = false
-        el.removeAttribute(PHX_READONLY)
-      }
-      if(el.getAttribute(PHX_DISABLED) !== null){
-        el.disabled = false
-        el.removeAttribute(PHX_DISABLED)
-      }
-      // remove classes
-      PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
-      // restore disables
-      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-      if(disableRestore !== null){
-        el.innerText = disableRestore
-        el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-      }
-      let toEl = DOM.private(el, PHX_REF)
-      if(toEl){
-        DOMPatch.patchEl(el, toEl)
-        DOM.deletePrivate(el, PHX_REF)
-      }
-    })
-  },
-
   syncPendingRef(fromEl, toEl, disableWith){
     let ref = fromEl.getAttribute(PHX_REF)
     if(ref === null){ return true }
@@ -1328,7 +1299,7 @@ class DOMAppendPrependUpdate {
   //   1) Track ids of modified elements & of new elements
   //   2) Any modified elements are put back in the correct position in the DOM tree
   //      by storing the id of their previous sibling
-  //   3) New elements are going to be put in the right place by morphdom during append. 
+  //   3) New elements are going to be put in the right place by morphdom during append.
   //      For prepend, we move them to the first position in the container
   perform() {
     let el = DOM.byId(this.containerID)
@@ -1799,6 +1770,18 @@ export class View {
     this.stopCallback()
   }
 
+  triggerBeforeUpdateHook(fromEl, toEl){
+    this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
+    let hook = this.getHook(fromEl)
+    let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
+    if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
+      hook.__trigger__("beforeUpdate")
+      return hook
+    }
+  }
+
+  triggerUpdatedHook(hook){ hook.__trigger__("updated") }
+
   performPatch(patch, pruneCids){
     let destroyedCIDs = []
     let phxChildrenAdded = false
@@ -1812,18 +1795,12 @@ export class View {
     patch.after("phxChildAdded", el => phxChildrenAdded = true)
 
     patch.before("updated", (fromEl, toEl) => {
-      this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
-      let hook = this.getHook(fromEl)
-      let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
-      if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
-        updatedHookIds.add(fromEl.id)
-        hook.__trigger__("beforeUpdate")
-      }
+      let hook = this.triggerBeforeUpdateHook(fromEl, toEl)
+      if(hook){ updatedHookIds.add(fromEl.id) }
     })
 
     patch.after("updated", el => {
-      let hook = this.getHook(el)
-      if(hook && updatedHookIds.has(el.id)){ hook.__trigger__("updated") }
+      if(updatedHookIds.has(el.id)){ this.triggerUpdatedHook(this.getHook(el)) }
     })
 
     patch.before("discarded", (el) => {
@@ -1960,6 +1937,7 @@ export class View {
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
     if(callbacks){
+      if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el)}
       let hook = new ViewHook(this, el, callbacks)
       this.viewHooks[ViewHook.elementID(hook.el)] = hook
       return hook
@@ -2088,7 +2066,7 @@ export class View {
       this.liveSocket.wrapPush(() => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
           let hookReply = null
-          if(ref !== null){ DOM.undoRefs(ref, this.el) }
+          if(ref !== null){ this.undoRefs(ref) }
           if(resp.diff){
             hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
               this.update(diff, events)
@@ -2102,6 +2080,37 @@ export class View {
         })
       })
     )
+  }
+
+  undoRefs(ref){
+    DOM.all(this.el, `[${PHX_REF}="${ref}"]`, el => {
+      // remove refs
+      el.removeAttribute(PHX_REF)
+      // retore inputs
+      if(el.getAttribute(PHX_READONLY) !== null){
+        el.readOnly = false
+        el.removeAttribute(PHX_READONLY)
+      }
+      if(el.getAttribute(PHX_DISABLED) !== null){
+        el.disabled = false
+        el.removeAttribute(PHX_DISABLED)
+      }
+      // remove classes
+      PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+      // restore disables
+      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+      if(disableRestore !== null){
+        el.innerText = disableRestore
+        el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+      }
+      let toEl = DOM.private(el, PHX_REF)
+      if(toEl){
+        let hook = this.triggerBeforeUpdateHook(el, toEl)
+        DOMPatch.patchEl(el, toEl)
+        if(hook){ this.triggerUpdatedHook(hook) }
+        DOM.deletePrivate(el, PHX_REF)
+      }
+    })
   }
 
   putRef(elements, event){

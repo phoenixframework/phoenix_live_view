@@ -1,22 +1,7 @@
 import {Socket} from "phoenix"
 import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
 
-
-let simulateJoinedView = (el, liveSocket) => {
-  let view = new View(el, liveSocket)
-  stubChannel(view)
-  liveSocket.roots[view.id] = view
-  view.onJoin({rendered: {s: []}})
-  return view
-}
-
-let stubChannel = view => {
-  let fakePush = {
-    receives: [],
-    receive(kind, cb){ this.receives.push([kind, cb])}
-  }
-  view.channel.push = () => fakePush
-}
+import {tag, simulateJoinedView, stubChannel} from "./test_helpers"
 
 function liveViewDOM() {
   const div = document.createElement("div")
@@ -352,7 +337,7 @@ describe("View + DOM", function() {
       let view = createView("replace", [["1", "1"]])
       expect(childIds()).toEqual([1])
 
-      updateDynamics(view, 
+      updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([2,3])
@@ -363,7 +348,7 @@ describe("View + DOM", function() {
       expect(childIds()).toEqual([1])
 
       // Append two elements
-      updateDynamics(view, 
+      updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([1,2,3])
@@ -427,7 +412,7 @@ describe("View + DOM", function() {
       expect(childIds()).toEqual([1])
 
       // Append two elements
-      updateDynamics(view, 
+      updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([2,3,1])
@@ -491,7 +476,7 @@ describe("View + DOM", function() {
       expect(childIds()).toEqual([1])
 
       // Append two elements
-      updateDynamics(view, 
+      updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
       expect(childIds()).toEqual([1])
@@ -650,13 +635,13 @@ describe("View Hooks", function() {
     let view = new View(el, liveSocket)
 
     view.onJoin({rendered: {
-      s: [`<h2 phx-hook="Upcase">test mount</h2>`],
+      s: [`<h2 id="up" phx-hook="Upcase">test mount</h2>`],
       fingerprint: 123
     }})
     expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT")
 
     view.update({
-      s: [`<h2 phx-hook="Upcase">test update</h2>`],
+      s: [`<h2 id="up" phx-hook="Upcase">test update</h2>`],
       fingerprint: 123
     }, [])
     expect(upcaseBeforeUpdate).toBe(true)
@@ -687,7 +672,7 @@ describe("View Hooks", function() {
     let view = new View(el, liveSocket)
 
     view.onJoin({rendered: {
-      s: [`<h2 phx-hook="Check">test mount</h2>`],
+      s: [`<h2 id="check" phx-hook="Check">test mount</h2>`],
       fingerprint: 123
     }})
     expect(view.el.firstChild.innerHTML).toBe("test mount")
@@ -891,6 +876,86 @@ describe("View + Component", function() {
     expect(view.getChildById("bar")).toBeUndefined()
   })
 
+  describe("undoRefs", () => {
+    test("restores phx specific attributes awaiting a ref", () => {
+      let content = `
+        <span data-phx-ref="1"></span>
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+          <datalist id="results">
+          </datalist>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+        </form>
+      `.trim()
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = tag("div", {}, content)
+      let view = new View(el, liveSocket)
+
+      view.undoRefs(1)
+      expect(el.innerHTML).toBe(`
+        <span></span>
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+          <datalist id="results">
+          </datalist>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+        </form>
+      `.trim())
+
+      view.undoRefs(38)
+      expect(el.innerHTML).toBe(`
+        <span></span>
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
+          <datalist id="results">
+          </datalist>
+          <button type="submit" phx-disable-with="Searching...">Searching...</button>
+        </form>
+      `.trim())
+    })
+
+    test("replaces any previous applied component", () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = tag("div", {}, "")
+      let view = new View(el, liveSocket)
+
+      let fromEl = tag("span", {"data-phx-ref": "1"}, "hello")
+      let toEl = tag("span", {"class": "new"}, "world")
+
+      DOM.putPrivate(fromEl, "data-phx-ref", toEl)
+      el.appendChild(fromEl)
+
+      view.undoRefs(1)
+      expect(el.innerHTML).toBe(`<span class="new">world</span>`)
+    })
+
+    test("triggers beforeUpdate and updated hooks", () => {
+      global.document.body.innerHTML = ""
+      let beforeUpdate = false
+      let updated = false
+      let Hooks = {
+        MyHook: {
+          beforeUpdate(){ beforeUpdate = true },
+          updated(){ updated = true},
+        }
+      }
+      let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+      let el = liveViewDOM()
+      let view = new View(el, liveSocket)
+      stubChannel(view)
+      view.onJoin({rendered: {s: [`<span id="myhook" phx-hook="MyHook">Hello</span>`]}})
+      view.update({s: [`<span id="myhook" data-phx-ref="1" phx-hook="MyHook">Hello</span>`]}, [])
+
+      let toEl = tag("span", {"id": "myhook", "phx-hook": "MyHook"}, "world")
+      DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref", toEl)
+
+      view.undoRefs(1)
+
+      expect(el.querySelector("#myhook").outerHTML).toBe(`<span id="myhook" phx-hook="MyHook">world</span>`)
+      expect(beforeUpdate).toBe(true)
+      expect(updated).toBe(true)
+    })
+  })
 })
 
 describe("DOM", function() {

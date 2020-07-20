@@ -5,6 +5,7 @@
 ### Bug fixes
   - Fix nested `live_render`'s failing to be torn down when removed from the DOM in certain cases
   - Fix LEEx issue for nested conditions failing to be re-evaluated
+  - Fix page becoming unresponsive when the server crashes while handling a live patch
 
 ## 0.14.0 (2020-07-07)
 

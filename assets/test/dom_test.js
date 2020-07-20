@@ -1,19 +1,5 @@
 import {DOM} from "../js/phoenix_live_view"
-
-let appendTitle = opts => {
-  let title = document.createElement("title")
-  let {prefix, suffix} = opts
-  if(prefix){ title.setAttribute("data-prefix", prefix) }
-  if(suffix){ title.setAttribute("data-suffix", suffix) }
-  document.head.appendChild(title)
-}
-
-let tag = (tagName, attrs, innerHTML) => {
-  let el = document.createElement(tagName)
-  el.innerHTML = innerHTML
-  for(let key in attrs){ el.setAttribute(key, attrs[key]) }
-  return el
-}
+import {appendTitle, tag} from "./test_helpers"
 
 describe("DOM", () => {
   beforeEach(() => {
@@ -103,53 +89,6 @@ describe("DOM", () => {
 
     form = tag("form", {}, "")
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
-  })
-
-  test("undoRefs restores phx specific attributes awaiting a ref", () => {
-    let content = `
-      <span data-phx-ref="1"></span>
-      <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
-        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
-        <datalist id="results">
-        </datalist>
-        <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
-      </form>
-    `.trim()
-    let div = tag("div", {}, content)
-
-    DOM.undoRefs(1, div)
-    expect(div.innerHTML).toBe(`
-      <span></span>
-      <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
-        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
-        <datalist id="results">
-        </datalist>
-        <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
-      </form>
-    `.trim())
-
-    DOM.undoRefs(38, div)
-    expect(div.innerHTML).toBe(`
-      <span></span>
-      <form phx-change="suggest" phx-submit="search" phx-page-loading="">
-        <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
-        <datalist id="results">
-        </datalist>
-        <button type="submit" phx-disable-with="Searching...">Searching...</button>
-      </form>
-    `.trim())
-  })
-
-  test("undoRefs replaces any previous applied component", () => {
-    let fromEl = tag("span", {"data-phx-ref": "1"}, "hello")
-    let toEl = tag("span", {"class": "new"}, "world")
-    let div = document.createElement("div")
-
-    DOM.putPrivate(fromEl, "data-phx-ref", toEl)
-    div.appendChild(fromEl)
-
-    DOM.undoRefs(1, div)
-    expect(div.innerHTML).toBe(`<span class="new">world</span>`)
   })
 
   describe("cleanChildNodes", () => {
