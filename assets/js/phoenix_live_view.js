@@ -1271,6 +1271,24 @@ export let DOM = {
     } else {
       return true
     }
+  },
+
+  cleanChildNodes(container, phxUpdate){
+    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+      let toRemove = []
+      container.childNodes.forEach(childNode => {
+        if (!childNode.id) {
+          // Skip warning if it's an empty text node (e.g. a new-line)
+          let isEmptyTextNode = childNode.nodeType == Node.TEXT_NODE && childNode.nodeValue.trim() == ""
+          if (!isEmptyTextNode) {
+            logError(`only HTML element tags with an id are allowed inside containers with phx-update.\n\n` +
+                    `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
+          }
+          toRemove.push(childNode)
+        }
+      })
+      toRemove.forEach(childNode => childNode.remove())
+    }
   }
 }
 
@@ -1352,7 +1370,7 @@ class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
-          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"])){ return false }
+          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
           return true
@@ -1362,6 +1380,7 @@ class DOMPatch {
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(fromEl.getAttribute(phxUpdate) === "ignore"){
             this.trackBefore("updated", fromEl, toEl)
