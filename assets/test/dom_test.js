@@ -147,7 +147,8 @@ describe("DOM", () => {
       <div>no id</div>
 
       some test
-    `.trim()
+      `.trim()
+
       let div = tag("div", {}, content)
       DOM.cleanChildNodes(div, "phx-update")
 
@@ -157,10 +158,11 @@ describe("DOM", () => {
     test("silently removes empty text nodes", () => {
       let content = `
       <div id="1">1</div>
-      
+
 
       <div id="2">2</div>
-    `.trim()
+      `.trim()
+
       let div = tag("div", {"phx-update": "append"}, content)
       DOM.cleanChildNodes(div, "phx-update")
 
@@ -173,13 +175,12 @@ describe("DOM", () => {
       <div>no id</div>
 
       some test
-    `.trim()
+      `.trim()
+
       let div = tag("div", {"phx-update": "append"}, content)
 
       let errorCount = 0
-      jest.spyOn(console, 'error').mockImplementation(() => {
-        errorCount  += 1
-      })
+      jest.spyOn(console, "error").mockImplementation(() => errorCount += 1)
       DOM.cleanChildNodes(div, "phx-update")
 
       expect(div.innerHTML).toBe(`<div id="1">1</div>`)
