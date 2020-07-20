@@ -397,6 +397,23 @@ describe("View + DOM", function() {
         [["8", "8"], ["7", "modified"],  ["9", "9"]]
       )
       expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+
+      // Make sure we don't have a memory leak when doing updates
+      let initalCount = countChildNodes()
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+      updateDynamics(view,
+        [["1", "1"], ["2", "2"],  ["3", "3"]]
+      )
+
+      expect(countChildNodes()).toBe(initalCount)
     })
 
     test("prepend", async () => {
