@@ -5,6 +5,7 @@
 ### Bug fixes
   - Fix Map of assigns together with `@inner_content` causing `no function clause matching in Keyword.put/3` error
   - Fix `LiveViewTest` failing to patch children properly for append/prepend based phx-update's
+  - Fix argument error when providing `:as` option to a `live` route
   - Fix page becoming unresponsive when the server crashes while handling a live patch
   - Fix empty diff causing pending data-ref based updates, such as classes and disable-with content to not be updated
   - Fix bug where throttling keydown events would eat key presses
