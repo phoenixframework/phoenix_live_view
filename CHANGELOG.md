@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.14.2
+## 0.14.2 (2020-07-21)
 
 ### Bug fixes
   - Fix Map of assigns together with `@inner_content` causing `no function clause matching in Keyword.put/3` error
