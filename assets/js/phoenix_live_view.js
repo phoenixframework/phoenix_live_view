@@ -2054,7 +2054,7 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(refGenerator, event, payload, onReply = function(){ }){
+  pushWithReply(refGenerator, event, payload, onReply = function(){}){
     let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
     let onLoadingDone = function(){}
     if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){
