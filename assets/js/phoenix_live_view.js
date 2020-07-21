@@ -1297,7 +1297,7 @@ class DOMAppendPrependUpdate {
 
   // We do the following to optimize append/prepend operations:
   //   1) Track ids of modified elements & of new elements
-  //   2) Any modified elements are put back in the correct position in the DOM tree
+  //   2) All the modified elements are put back in the correct position in the DOM tree
   //      by storing the id of their previous sibling
   //   3) New elements are going to be put in the right place by morphdom during append.
   //      For prepend, we move them to the first position in the container
@@ -2086,7 +2086,7 @@ export class View {
     DOM.all(this.el, `[${PHX_REF}="${ref}"]`, el => {
       // remove refs
       el.removeAttribute(PHX_REF)
-      // retore inputs
+      // restore inputs
       if(el.getAttribute(PHX_READONLY) !== null){
         el.readOnly = false
         el.removeAttribute(PHX_READONLY)
