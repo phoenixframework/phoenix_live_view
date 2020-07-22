@@ -24,7 +24,6 @@ const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_SKIP = "data-phx-skip"
-const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -50,6 +49,7 @@ const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_UPDATE = "update"
+const PHX_REMOVE = "remove"
 const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
 const PHX_AUTO_RECOVER = "auto-recover"
@@ -1363,7 +1363,7 @@ class DOMPatch {
 
   markPrunableContentForRemoval(){
     DOM.all(this.container, `[${this.binding(PHX_UPDATE)}=append] > *, [${this.binding(PHX_UPDATE)}=prepend] > *`, el => {
-      el.setAttribute(PHX_REMOVE, "")
+      el.setAttribute(this.binding(PHX_REMOVE), "")
     })
   }
 
@@ -1411,7 +1411,7 @@ class DOMPatch {
           this.trackAfter("discarded", el)
         },
         onBeforeNodeDiscarded: (el) => {
-          if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
+          if(el.getAttribute && el.getAttribute(this.binding(PHX_REMOVE)) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, this.binding(PHX_UPDATE), ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
