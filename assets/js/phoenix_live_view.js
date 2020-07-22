@@ -1362,7 +1362,7 @@ class DOMPatch {
   }
 
   markPrunableContentForRemoval(){
-    DOM.all(this.container, `[phx-update=append] > *, [phx-update=prepend] > *`, el => {
+    DOM.all(this.container, `[${this.binding(PHX_UPDATE)}=append] > *, [${this.binding(PHX_UPDATE)}=prepend] > *`, el => {
       el.setAttribute(PHX_REMOVE, "")
     })
   }
