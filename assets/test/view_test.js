@@ -306,17 +306,12 @@ describe("View + DOM", function() {
     let childIds = () => Array.from(document.getElementById("list").children).map(child => parseInt(child.id))
     let countChildNodes = () => document.getElementById("list").childNodes.length
 
-    let createView = (updateType, initialDynamics) => {
+    let createView = (joinDiff) => {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let view = new View(el, liveSocket)
 
       stubChannel(view)
-
-      let joinDiff = {
-        "0": {"d": initialDynamics, "s": [`\n<div id="`, `">`, `</div>\n`]},
-        "s": [`<div id="list" phx-update="${updateType}">`, `</div>`]
-      }
 
       view.onJoin({rendered: joinDiff})
 
@@ -334,7 +329,10 @@ describe("View + DOM", function() {
     }
 
     test("replace", async () => {
-      let view = createView("replace", [["1", "1"]])
+      let view = createView({
+          "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+          "s": [`<div id="list" phx-update="replace">`, `</div>`]
+        })
       expect(childIds()).toEqual([1])
 
       updateDynamics(view,
@@ -344,7 +342,10 @@ describe("View + DOM", function() {
     })
 
     test("append", async () => {
-      let view = createView("append", [["1", "1"]])
+      let view = createView({
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="append">`, `</div>`]
+      })
       expect(childIds()).toEqual([1])
 
       // Append two elements
@@ -408,7 +409,10 @@ describe("View + DOM", function() {
     })
 
     test("prepend", async () => {
-      let view = createView("prepend", [["1", "1"]])
+      let view = createView({
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="prepend">`, `</div>`]
+      })
       expect(childIds()).toEqual([1])
 
       // Append two elements
@@ -472,7 +476,10 @@ describe("View + DOM", function() {
     })
 
     test("ignore", async () => {
-      let view = createView("ignore", [["1", "1"]])
+      let view = createView({
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="ignore">`, `</div>`]
+      })
       expect(childIds()).toEqual([1])
 
       // Append two elements
