@@ -1374,7 +1374,6 @@ class DOMPatch {
 
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
-    let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
@@ -1383,7 +1382,7 @@ class DOMPatch {
     let appendPrependUpdates = []
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
-      return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
+      return this.buildDiffHTML(container, html, targetContainer)
     })
 
     this.trackBefore("added", container)
@@ -1413,7 +1412,7 @@ class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
-          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, this.binding(PHX_UPDATE), ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
           return true
@@ -1423,9 +1422,9 @@ class DOMPatch {
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
-          DOM.cleanChildNodes(toEl, phxUpdate)
+          DOM.cleanChildNodes(toEl, this.binding(PHX_UPDATE))
           if(this.skipCIDSibling(toEl)){ return false }
-          if(fromEl.getAttribute(phxUpdate) === "ignore"){
+          if(fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl)
             updates.push(fromEl)
@@ -1455,8 +1454,8 @@ class DOMPatch {
             updates.push(fromEl)
             return false
           } else {
-            if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+            if(DOM.isPhxUpdate(toEl, this.binding(PHX_UPDATE), ["append", "prepend"])){
+                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(this.binding(PHX_UPDATE))))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
@@ -1507,7 +1506,7 @@ class DOMPatch {
   // - for patches of a component with multiple root nodes, the
   //   parent node becomes the target container and non-component
   //   siblings are marked as skip.
-  buildDiffHTML(container, html, phxUpdate, targetContainer){
+  buildDiffHTML(container, html, targetContainer){
     let isCIDPatch = this.isCIDPatch()
     let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()
     if(!isCIDPatch || isCIDWithSingleRoot){
@@ -1532,6 +1531,8 @@ class DOMPatch {
       return diffContainer.outerHTML
     }
   }
+
+  binding(kind){ return this.liveSocket.binding(kind)}
 }
 
 export class View {
