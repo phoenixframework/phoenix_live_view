@@ -328,6 +328,20 @@ describe("View + DOM", function() {
       view.update(updateDiff, [])
     }
 
+    test("ignore", async () => {
+      let view = createView({
+        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
+        "s": [`<div id="list" phx-update="ignore">`, `</div>`]
+      })
+      expect(childIds()).toEqual([1])
+
+      // Append two elements
+      updateDynamics(view,
+        [["2", "2"], ["3", "3"]]
+      )
+      expect(childIds()).toEqual([1])
+    })
+
     test("replace", async () => {
       let view = createView({
           "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
@@ -475,18 +489,38 @@ describe("View + DOM", function() {
       expect(countChildNodes()).toBe(initalCount)
     })
 
-    test("ignore", async () => {
+    test("removing elements", async () => {
       let view = createView({
-        "0": {"d": [["1", "1"]], "s": [`\n<div id="`, `">`, `</div>\n`]},
-        "s": [`<div id="list" phx-update="ignore">`, `</div>`]
+        "0": {"d": [["", "1", "1"]], "s": [`\n<div `, ` id="`, `">`, `</div>\n`]},
+        "1": "hello",
+        "s": [`<div id="list" phx-update="append">`, `</div><div>`,`</div>`]
       })
       expect(childIds()).toEqual([1])
 
-      // Append two elements
+      // Append four elements
       updateDynamics(view,
-        [["2", "2"], ["3", "3"]]
+        [["", "2", "2"], ["", "3", "3"], ["", "4", "4"], ["", "5", "5"]]
       )
-      expect(childIds()).toEqual([1])
+      expect(childIds()).toEqual([1,2,3,4,5])
+
+      // Remove an element
+      updateDynamics(view,
+        [["phx-remove", "2", ""]]
+      )
+      expect(childIds()).toEqual([1,3,4,5])
+
+       // Remove an element while updating retains order
+      updateDynamics(view,
+        [["", "4", "4"], ["", "1", "1"], ["phx-remove", "3", ""]]
+      )
+      expect(childIds()).toEqual([1,4,5])
+
+      // Updating another dynamic
+      view.update({
+        "1": "hello world"
+      }, [])
+
+      expect(childIds()).toEqual([1,4,5])
     })
   })
 })

@@ -1274,7 +1274,7 @@ export let DOM = {
 }
 
 class DOMAppendPrependUpdate {
-  constructor(fromEl, toEl, updateType) {
+  constructor(fromEl, toEl, binding) {
     let idsAfter = Array.from(toEl.children).map(child => child.id)
     let idsBefore = []
 
@@ -1290,7 +1290,7 @@ class DOMAppendPrependUpdate {
     })
 
     this.containerID = toEl.id
-    this.updateType = updateType
+    this.binding = binding
     this.modifiedIds = modifiedIds
     this.newIds = idsAfter.filter(id => idsBefore.indexOf(id) < 0)
   }
@@ -1303,32 +1303,40 @@ class DOMAppendPrependUpdate {
   //      For prepend, we move them to the first position in the container
   perform() {
     let el = DOM.byId(this.containerID)
+    let toRemove = []
     this.modifiedIds.forEach(([id, siblingId]) => {
-      if (siblingId) {
-        maybe(document.getElementById(siblingId), sibling => {
-          maybe(document.getElementById(id), child => {
+      maybe(document.getElementById(id), child => {
+        if (child.getAttribute(this.binding(PHX_REMOVE)) !== null) {
+          toRemove.push(child)
+        }
+
+        // We still want to put the element in the correct place before removing it in order to keep order of other elements correct
+        if (siblingId) {
+          maybe(document.getElementById(siblingId), sibling => {
             let isInRightPlace = child.previousElementSibling && child.previousElementSibling.id == sibling.id
             if (!isInRightPlace) {
               sibling.insertAdjacentElement("afterend", child)
             }
           })
-        })
-      } else {
-        // This is the first element in the container
-        maybe(document.getElementById(id), child => {
+        } else {
+          // This is the first element in the container
           let isInRightPlace = child.previousElementSibling == null
           if (!isInRightPlace) {
             el.insertAdjacentElement("afterbegin", child)
           }
-        })
-      }
+        }
+      })
     })
 
-    if(this.updateType == "prepend"){
+    if(el.getAttribute(this.binding(PHX_UPDATE)) === "prepend"){
       this.newIds.reverse().forEach(id => {
         maybe(document.getElementById(id), child => el.insertAdjacentElement("afterbegin", child))
       })
     }
+
+    toRemove.forEach(el => {
+      el.remove()
+    })
   }
 }
 
@@ -1392,6 +1400,8 @@ class DOMPatch {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         onBeforeNodeAdded: (el) => {
+          // Handle PHX_REMOVE
+          if(el.getAttribute && el.getAttribute(this.binding(PHX_REMOVE)) !== null){ return false }
           //input handling
           DOM.discardError(targetContainer, el, phxFeedbackFor)
           this.trackBefore("added", el)
@@ -1452,10 +1462,10 @@ class DOMPatch {
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
-            return false
+            return false  
           } else {
             if(DOM.isPhxUpdate(toEl, this.binding(PHX_UPDATE), ["append", "prepend"])){
-                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(this.binding(PHX_UPDATE))))
+                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, this.binding.bind(this)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
