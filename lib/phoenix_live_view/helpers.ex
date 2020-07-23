@@ -250,7 +250,7 @@ defmodule Phoenix.LiveView.Helpers do
       quote do
         fn extra_assigns ->
           var!(assigns) =
-            case extra_assigns do
+            case Enum.to_list(extra_assigns) do
               [] ->
                 var!(assigns)
 
@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.Helpers do
                   changed =
                     for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
 
-                  put_in(assigns.socket.changed, changed)
+                  put_in(assigns.__changed__, changed)
                 else
                   assigns
                 end
