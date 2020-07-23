@@ -764,53 +764,48 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(ast, false)
   end
 
-  defp to_safe(ast, false) do
-    to_safe(ast, line_from_expr(ast), [])
-  end
-
-  defp to_safe(ast, true) do
-    line = line_from_expr(ast)
-
-    extra_clauses =
-      quote generated: true do
-        %{__struct__: Phoenix.LiveView.Rendered} = other -> other
-        %{__struct__: Phoenix.LiveView.Component} = other -> other
-        %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
-      end
-
-    to_safe(ast, line, extra_clauses)
+  defp to_safe(ast, bool) do
+    to_safe(ast, line_from_expr(ast), bool)
   end
 
   defp line_from_expr({_, meta, _}) when is_list(meta), do: Keyword.get(meta, :line, 0)
   defp line_from_expr(_), do: 0
 
-  # We can do the work at compile time
-  defp to_safe(literal, _line, _extra_clauses)
+  defp to_safe(literal, _line, _extra_clauses?)
        when is_binary(literal) or is_atom(literal) or is_number(literal) do
     Phoenix.HTML.Safe.to_iodata(literal)
   end
 
-  # We can do the work at runtime
-  defp to_safe(literal, line, _extra_clauses) when is_list(literal) do
+  defp to_safe(literal, line, _extra_clauses?) when is_list(literal) do
     quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
   end
 
-  defp to_safe(expr, line, extra_clauses) do
-    # Keep stacktraces for protocol dispatch and coverage
-    safe_return = quote line: line, do: data
-    bin_return = quote line: line, do: Plug.HTML.html_escape_to_iodata(bin)
-    other_return = quote line: line, do: Phoenix.HTML.Safe.to_iodata(other)
+  defp to_safe(expr, line, false) do
+    quote line: line, do: unquote(__MODULE__).safe_to_iodata(unquote(expr))
+  end
 
-    # However ignore them for the generated clauses to avoid warnings
-    clauses =
-      quote generated: true do
-        {:safe, data} -> unquote(safe_return)
-        bin when is_binary(bin) -> unquote(bin_return)
-        other -> unquote(other_return)
-      end
+  defp to_safe(expr, line, true) do
+    quote line: line, do: unquote(__MODULE__).live_to_iodata(unquote(expr))
+  end
 
-    quote generated: true do
-      case unquote(expr), do: unquote(extra_clauses ++ clauses)
+  @doc false
+  def safe_to_iodata(expr) do
+    case expr do
+      {:safe, data} -> data
+      bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
+      other -> Phoenix.HTML.Safe.to_iodata(other)
+    end
+  end
+
+  @doc false
+  def live_to_iodata(expr) do
+    case expr do
+      {:safe, data} -> data
+      %{__struct__: Phoenix.LiveView.Rendered} = other -> other
+      %{__struct__: Phoenix.LiveView.Component} = other -> other
+      %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
+      bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
+      other -> Phoenix.HTML.Safe.to_iodata(other)
     end
   end
 
