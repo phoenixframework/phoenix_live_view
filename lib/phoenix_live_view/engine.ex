@@ -407,18 +407,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  defp to_live_struct({:live_component, meta, [_ | _] = args} = expr, vars, assigns) do
-    case Enum.split(args, -1) do
-      {args, [[do: do_block]]} ->
-        {args, vars, _} = analyze_list(args, vars, assigns, [])
-        do_block = maybe_block_to_rendered(do_block, vars)
-        to_safe({:live_component, meta, args ++ [[do: do_block]]}, true)
-
-      _ ->
-        to_safe(expr, true)
-    end
-  end
-
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns) do
     with {:for, meta, [_ | _] = args} <- expr,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
@@ -442,7 +430,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct({macro, meta, [_ | _] = args} = expr, vars, assigns)
        when is_atom(macro) do
-    if classify_taint(macro, args) == :live do
+    if classify_taint(macro, args) in [:live, :render] do
       {args, [opts]} = Enum.split(args, -1)
       {args, vars, _} = analyze_list(args, vars, assigns, [])
 
@@ -694,7 +682,7 @@ defmodule Phoenix.LiveView.Engine do
           {_, map} -> {expr, {:tainted, map}, assigns}
         end
 
-      :component ->
+      :render ->
         {args, [opts]} = Enum.split(args, -1)
         {args, vars, assigns} = analyze_list(args, vars, assigns, [])
         {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns)
@@ -889,8 +877,9 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:receive, [_]), do: :live
   defp classify_taint(:with, _), do: :live
 
-  defp classify_taint(:live_component, [_, _, [do: _]]), do: :component
-  defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :component
+  defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
+  defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :render
+  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always
   defp classify_taint(:import, [_]), do: :always

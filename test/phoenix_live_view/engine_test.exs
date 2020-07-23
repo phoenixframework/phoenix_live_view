@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.EngineTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{Engine, Rendered}
+  alias Phoenix.LiveView.{Engine, Rendered, Component}
 
   def safe(do: {:safe, _} = safe), do: safe
   def unsafe(do: {:safe, content}), do: content
@@ -713,7 +713,21 @@ defmodule Phoenix.LiveView.EngineTest do
       use Phoenix.View, root: "test/fixtures/templates", path: ""
     end
 
-    @assigns %{pre: "pre", inner: "inner", post: "post"}
+    defmodule SampleComponent do
+      use Phoenix.LiveComponent
+      def render(assigns), do: ~L"FROM COMPONENT"
+    end
+
+    defmacrop compile(string) do
+      EEx.compile_string(string, engine: Engine, file: __CALLER__.file, line: __CALLER__.line + 1)
+    end
+
+    @assigns %{
+      pre: "pre",
+      inner_content: "inner",
+      post: "post",
+      socket: %Phoenix.LiveView.Socket{}
+    }
 
     test "renders live engine to string" do
       assert Phoenix.View.render_to_string(View, "inner_live.html", @assigns) == "live: inner"
@@ -764,6 +778,20 @@ defmodule Phoenix.LiveView.EngineTest do
     test "renders dead engine with nested live view" do
       assert Phoenix.View.render(View, "dead_with_live.html", @assigns) ==
                {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
+    end
+
+    test "renders inside render_layout/4" do
+      import Phoenix.View
+      assigns = @assigns
+
+      assert %Rendered{} =
+               compile("""
+               <%= render_layout(View, "inner_live.html", %{}) do %>
+                 WITH COMPONENT:
+                 <%= %Component{assigns: %{}, component: SampleComponent} %>
+               <% end %>
+               """)
+               |> expand_rendered(true)
     end
   end
 

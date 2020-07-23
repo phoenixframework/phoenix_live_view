@@ -1,1 +1,1 @@
-dead: <%= @inner %>
+dead: <%= @inner_content %>
