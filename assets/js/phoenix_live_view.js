@@ -1333,7 +1333,13 @@ class DOMAppendPrependUpdate {
 }
 
 class DOMPatch {
-  static patchEl(fromEl, toEl){ morphdom(fromEl, toEl, {childrenOnly: false}) }
+  static patchEl(fromEl, toEl, activeElement){
+    if(activeElement && activeElement.isSameNode(fromEl)){
+      DOM.mergeFocusedInput(fromEl, toEl)
+    } else {
+      morphdom(fromEl, toEl, {childrenOnly: false})
+    }
+  }
 
   constructor(view, container, id, html, targetCID){
     this.view = view
@@ -1456,7 +1462,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-                appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
@@ -2106,7 +2112,7 @@ export class View {
       let toEl = DOM.private(el, PHX_REF)
       if(toEl){
         let hook = this.triggerBeforeUpdateHook(el, toEl)
-        DOMPatch.patchEl(el, toEl)
+        DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement())
         if(hook){ this.triggerUpdatedHook(hook) }
         DOM.deletePrivate(el, PHX_REF)
       }
