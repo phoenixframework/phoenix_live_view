@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.3 (2020-07-24)
+
+### Bug fixes
+  - Fix focused inputs being overwritten by latent patch
+  - Fix LiveView error when `"_target"` input name contains array
+
 ## 0.14.2 (2020-07-21)
 
 ### Bug fixes
