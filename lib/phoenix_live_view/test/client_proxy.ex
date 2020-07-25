@@ -86,7 +86,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       test_supervisor: test_supervisor,
       url: url,
-      page_title: nil,
+      page_title: nil
     }
 
     try do
@@ -232,13 +232,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case result do
       {view, cid, event, values} ->
-        payload = %{
-          "cid" => cid,
-          "type" => Atom.to_string(type),
-          "event" => event,
-          "value" => encode(type, values)
-        }
-
+        {type, value} = encode_event_type(type, values)
+        payload = %{"cid" => cid, "type" => type, "event" => event, "value" => value}
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
       {:patch, topic, path} ->
@@ -490,7 +485,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
         state
 
-      %{} -> state
+      %{} ->
+        state
     end
 
     case diff do
@@ -624,6 +620,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   ## Element helpers
+
+  defp encode_event_type(type, value) when type in [:change, :submit],
+    do: {"form", Plug.Conn.Query.encode(value)}
+
+  defp encode_event_type(type, value),
+    do: {Atom.to_string(type), value}
 
   defp proxy_topic({topic, _}) when is_binary(topic), do: topic
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
@@ -818,7 +820,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp form_defaults({"select", _, _} = node, name, acc) do
-    options = DOM.filter(node, &DOM.tag(&1) == "option")
+    options = DOM.filter(node, &(DOM.tag(&1) == "option"))
 
     all_selected =
       if DOM.attribute(node, "multiple") do
@@ -957,7 +959,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp collect_values([{"select", _, _} = node | nodes], types, values) do
     options =
       node
-      |> DOM.filter(&DOM.tag(&1) == "option")
+      |> DOM.filter(&(DOM.tag(&1) == "option"))
       |> Enum.map(&(DOM.attribute(&1, "value") || ""))
 
     if DOM.attribute(node, "multiple") do
@@ -977,9 +979,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
-
-  defp encode(:form, value), do: Plug.Conn.Query.encode(value)
-  defp encode(_, value), do: value
 
   defp stringify_type(:hook, value), do: stringify(value, & &1)
   defp stringify_type(_, value), do: stringify(value, &to_string/1)

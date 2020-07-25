@@ -458,6 +458,13 @@ defmodule Phoenix.LiveView.ElementsTest do
       refute form =~ "ignore-image"
     end
 
+    test "fill in target", %{live: view} do
+      view |> form("#form") |> render_change(%{"_target" => "order_item[addons][][name]"})
+      form = last_event(view)
+      assert form =~ ~s|"hello" => %{|
+      assert form =~ ~s|%{"_target" => ["order_item", "addons", "name"]|
+    end
+
     test "fill in missing", %{live: view} do
       assert_raise ArgumentError,
                    ~r/could not find non-disabled input, select or textarea with name "hello\[unknown\]"/,
