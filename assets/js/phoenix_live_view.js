@@ -1334,11 +1334,21 @@ class DOMAppendPrependUpdate {
 
 class DOMPatch {
   static patchEl(fromEl, toEl, activeElement){
-    if(activeElement && activeElement.isSameNode(fromEl)){
-      DOM.mergeFocusedInput(fromEl, toEl)
-    } else {
-      morphdom(fromEl, toEl, {childrenOnly: false})
-    }
+    let selection
+    morphdom(fromEl, toEl, {
+      childrenOnly: false,
+      onElUpdated: (el) => {
+        if(selection){ el.setSelectionRange(selection.start, selection.end) }
+        selection = null
+      },
+      onBeforeElUpdated: (fromEl, toEl) => {
+        selection = fromEl.setSelectionRange && {start: fromEl.selectionStart, end: fromEl.selectionEnd}
+        if(activeElement && activeElement.isSameNode(fromEl)){
+          DOM.mergeFocusedInput(fromEl, toEl)
+          return false
+        }
+      }
+    })
   }
 
   constructor(view, container, id, html, targetCID){
