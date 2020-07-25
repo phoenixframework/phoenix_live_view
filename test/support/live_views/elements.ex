@@ -90,6 +90,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
         <option value="3" selected>Three</option>
       </select>
       <textarea name="hello[textarea]">Text</textarea>
+      <!-- Mimic textarea from Phoenix.HTML -->
+      <textarea name="hello[textarea_nl]">
+    Text</textarea>
       <input name="hello[ignore-submit]" type="submit" value="ignored">
       <input name="hello[ignore-image]" type="image" value="ignored">
       <input name="hello[date_text]" type="text">

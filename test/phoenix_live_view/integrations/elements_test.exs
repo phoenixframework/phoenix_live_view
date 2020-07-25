@@ -450,6 +450,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       # Text area
       assert form =~ ~s|"textarea" => "Text"|
+      assert form =~ ~s|"textarea_nl" => "Text"|
 
       # Ignore everything with no name, disabled, or submits
       refute form =~ "no-name"
