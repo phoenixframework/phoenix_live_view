@@ -142,6 +142,10 @@ annotate the `phx-trigger-action` with a boolean assign:
 Then in your LiveView, you can toggle the assign to trigger the form with the current
 fields on next render:
 
+    def mount(_params, _session, socket) do
+      {:ok, socket, [temporary_assigns: [trigger_submit: false]]}
+    end
+
     def handle_event("save", params, socket) do
       case validate_change_password(socket.assigns.user, params) do
         {:ok, changeset} ->
@@ -151,6 +155,12 @@ fields on next render:
           {:noreply, assign(socket, changeset: changeset)}
         end
     end
+
+We set up `trigger_submit` in `temporary_assigns` so the form will only be
+submitted on the next DOM patch. This is especially helpful when working with forms
+that submit to actions triggering file downloads. If `trigger_submit` was
+treated as a regular `assigns` key, after the initial form submission, any
+subsequent DOM patches would trigger additional form submissions.
 
 ## Recovery following crashes or disconnects
 
