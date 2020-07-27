@@ -142,10 +142,6 @@ annotate the `phx-trigger-action` with a boolean assign:
 Then in your LiveView, you can toggle the assign to trigger the form with the current
 fields on next render:
 
-    def mount(_params, _session, socket) do
-      {:ok, socket, [temporary_assigns: [trigger_submit: false]]}
-    end
-
     def handle_event("save", params, socket) do
       case validate_change_password(socket.assigns.user, params) do
         {:ok, changeset} ->
@@ -156,11 +152,23 @@ fields on next render:
         end
     end
 
-We set up `trigger_submit` in `temporary_assigns` so the form will only be
-submitted on the next DOM patch. This is especially helpful when working with forms
-that submit to actions triggering file downloads. If `trigger_submit` was
-treated as a regular `assigns` key, after the initial form submission, any
-subsequent DOM patches would trigger additional form submissions.
+### Forms triggering file downloads
+
+In scenarios where the LiveView is left open in the browser after form
+submission (ex: a form submitting to a controller to trigger a file download),
+it's important that `phx-trigger-action` is only set for the current DOM patch.
+If `phx-trigger-action` is left on the form after the initial form submission,
+any subsequent DOM patches will re-trigger the form submission.
+
+Prevent this, we need to set `trigger_submit: false` in temporary assigns in
+`c:Phoenix.LiveView.mount/3`.
+
+    def mount(_params, _session, socket) do
+      {:ok, socket, [temporary_assigns: [trigger_submit: false]]}
+    end
+
+Now when `:trigger_submit` is set in `handle_event/3`, it will only be set for
+the next DOM patch and removed in subsequent patches.
 
 ## Recovery following crashes or disconnects
 
