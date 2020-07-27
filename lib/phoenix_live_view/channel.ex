@@ -408,9 +408,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp gather_keys([], acc), do: acc
-
   defp gather_keys([%{} = map], acc), do: gather_keys(map, acc)
-
   defp gather_keys(nil, acc), do: acc
 
   defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do

@@ -450,12 +450,20 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       # Text area
       assert form =~ ~s|"textarea" => "Text"|
+      assert form =~ ~s|"textarea_nl" => "Text"|
 
       # Ignore everything with no name, disabled, or submits
       refute form =~ "no-name"
       refute form =~ "disabled"
       refute form =~ "ignore-submit"
       refute form =~ "ignore-image"
+    end
+
+    test "fill in target", %{live: view} do
+      view |> form("#form") |> render_change(%{"_target" => "order_item[addons][][name]"})
+      form = last_event(view)
+      assert form =~ ~s|"hello" => %{|
+      assert form =~ ~s|%{"_target" => ["order_item", "addons", "name"]|
     end
 
     test "fill in missing", %{live: view} do

@@ -502,7 +502,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_submit(view, :refresh, %{deg: 32}) =~ "The temp is: 32℉"
   """
   def render_submit(view, event, value) do
-    render_event(view, :form, event, value)
+    render_event(view, :submit, event, value)
   end
 
   @doc """
@@ -559,7 +559,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_change(view, :validate, %{deg: 123}) =~ "123 exceeds limits"
   """
   def render_change(view, event, value) do
-    render_event(view, :form, event, value)
+    render_event(view, :change, event, value)
   end
 
   @doc """
