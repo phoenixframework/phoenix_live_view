@@ -209,6 +209,7 @@ class LiveUploader {
 }
 
 let channelUploader = function(entries, resp, onError, liveSocket){
+  let chunkSize = resp.config.chunk_size
   function uploadToChannel(entry, uploadChannel) {
     const chunkReaderBlock = function(_offset, length, _file, handler) {
       var r = new window.FileReader()
@@ -222,7 +223,6 @@ let channelUploader = function(entries, resp, onError, liveSocket){
     uploadChannel.join()
       .receive("error", reason => uploadChannel.leave()) // TODO
       .receive("ok", data => {
-        let {chunkSize} = data
         let offset = 0
         const uploadChunk = (chunk, finished, loaded) => {
           if (!finished) {
@@ -2410,7 +2410,6 @@ export class View {
   }
 
   pushFileProgress(fileEl, entryRef, progress){
-    console.log("progress", fileEl, progress)
     this.pushWithReply(() => this.putRef([fileEl, fileEl.form], "file-progress"), "progress", {
       ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),

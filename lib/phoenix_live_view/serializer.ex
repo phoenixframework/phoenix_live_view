@@ -1,15 +1,12 @@
 defmodule Phoenix.LiveView.Serializer do
   @moduledoc false
   @behaviour Phoenix.Socket.Serializer
-  @short 0
-  @file_part 1
 
-  alias Phoenix.Socket.Message
   defdelegate fastlane!(msg), to: Phoenix.Socket.V2.JSONSerializer
   defdelegate encode!(msg), to: Phoenix.Socket.V2.JSONSerializer
 
 
-  def decode!(<<0::size(8), rest :: binary>> = raw_message, _opts) do
+  def decode!(<<0::size(8), rest :: binary>> = _raw_message, _opts) do
     decode_binary(rest)
   end
 

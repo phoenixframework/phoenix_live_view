@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   defstruct progress: 0,
             ref: nil,
             done?: false,
+            channel_pid: nil,
             client_name: nil,
             client_size: nil,
             client_type: nil,
@@ -32,13 +33,14 @@ defmodule Phoenix.LiveView.UploadConfig do
   alias Phoenix.LiveView.UploadEntry
 
   @default_max_file_size 8_000_000
+  @default_chunk_size 64_000
 
   # TODO add option for :chunk_size
   defstruct name: nil,
-            pid_to_refs: %{},
             client_key: nil,
             max_entries: 1,
             max_file_size: @default_max_file_size,
+            chunk_size: @default_chunk_size,
             entries: [],
             accept: %{},
             external: nil,
@@ -48,7 +50,6 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @type t :: %__MODULE__{
           name: atom(),
-          pid_to_refs: map,
           client_key: String.t(),
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
@@ -141,6 +142,19 @@ defmodule Phoenix.LiveView.UploadConfig do
       external: external,
       allowed?: true
     }
+  end
+
+  def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
+    conf.entries
+    |> get_and_update_in([Access.filter(fn %UploadEntry{ref: ref} -> ref == entry_ref end)], fn
+      %UploadEntry{channel_pid: nil} = entry -> {:ok, %UploadEntry{entry | channel_pid: channel_pid}}
+      %UploadEntry{channel_pid: _existing} = entry -> {{:error, :already_registered}, entry}
+    end)
+    |> case do
+      {[:ok], new_entries} -> {:ok, %UploadConfig{conf | entries: new_entries}}
+      {[{:error, reason} | _], _} -> {:error, reason}
+      {[], _} -> {:error, :disallowed}
+    end
   end
 
   # specifics on the `accept` attribute are illuminated in the spec:

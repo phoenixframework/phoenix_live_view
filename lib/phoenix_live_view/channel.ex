@@ -23,6 +23,10 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(pid, {@prefix, :ping}, :infinity)
   end
 
+  def register_upload(pid, {upload_config_ref, entry_ref} = _ref) do
+    GenServer.call(pid, {:phoenix, :register_entry_upload, %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}})
+  end
+
   @impl true
   def init({pid, _ref}) do
     {:ok, Process.monitor(pid)}
@@ -119,13 +123,22 @@ defmodule Phoenix.LiveView.Channel do
       %{"ref" => ref} ->
         # TODO validate
         {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
-        token = Static.sign_token(state.socket.endpoint, %{pid: self(), ref: upload_conf.ref})
+        config = %{
+          max_file_size: upload_conf.max_file_size,
+          max_entries: upload_conf.max_entries,
+          chunk_size: upload_conf.chunk_size,
+        }
 
-        reply_entries = for entry <- msg.payload["entries"], into: %{}, do: {entry["ref"], token}
         case Utils.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
           {:ok, new_socket} ->
+            reply_entries =
+              for entry <- msg.payload["entries"], entry_ref = entry["ref"], into: %{} do
+                token = Static.sign_token(state.socket.endpoint, %{pid: self(), ref: {upload_conf.ref, entry_ref}})
+                {entry_ref, token}
+              end
+
             new_state = %{state | socket: new_socket}
-            reply(new_state, msg.ref, :ok, %{entries: reply_entries})
+            reply(new_state, msg.ref, :ok, %{config: config, entries: reply_entries})
             {:noreply, new_state}
 
           {:error, ref, reason} ->
@@ -235,25 +248,17 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, assigns, state}
   end
 
-  def handle_call({@prefix, :register_file_upload, %{pid: pid, ref: ref}}, _from, state) do
-    IO.inspect({:register_file_upload, ref})
-    # TODO
-    #  - pull upload config from socket.assigns.uploads
-    #  - verify upload config ref matches existing ref
-    config = [
-      upload_limit: 3,
-      file_size_limit: 100_000_000,
-      chunk_size: 64_000
-    ]
+  def handle_call({@prefix, :register_entry_upload, %{channel_pid: pid, ref: ref, entry_ref: entry_ref}}, _from, state) do
+    {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
 
-    Process.monitor(pid)
-    # TODO: get that from config
-    if Enum.count(state.uploads) > Keyword.fetch!(config, :upload_limit) do
-      {:reply, {:error, :limit_exceeded}, state}
-    else
-      state = %{state | uploads: Map.put(state.uploads, ref, pid)}
-      reply = Keyword.take(config, [:file_size_limit, :chunk_size]) |> Map.new()
-      {:reply, {:ok, reply}, state}
+    case Utils.register_entry_upload(state.socket, upload_conf, pid, entry_ref) do
+      {:ok, new_socket} ->
+        Process.monitor(pid)
+        {:noreply, new_state} = handle_changed(state, new_socket, nil)
+        {:reply, {:ok, %{max_file_size: upload_conf.max_file_size}}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
     end
   end
 

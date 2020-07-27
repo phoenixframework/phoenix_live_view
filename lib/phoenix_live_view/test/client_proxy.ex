@@ -241,6 +241,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
+      {:allow_upload, topic, ref} ->
+        handle_call({:render_allow_upload, topic, ref, value}, from, state)
+
       {:patch, topic, path} ->
         handle_call({:render_patch, topic, path}, from, state)
 
@@ -354,6 +357,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     view = fetch_view_by_topic!(state, topic)
     state = push_with_reply(state, from, view, "link", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
+    {:noreply, state}
+  end
+
+  def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
+    view = fetch_view_by_topic!(state, topic)
+    state = push_with_callback(state, view, "allow_upload", %{"ref" => ref, "entries" => entries}, fn reply, state ->
+      %{payload: payload, topic: _topic} = reply
+      GenServer.reply(from, {:ok, payload})
+      {:noreply, state}
+    end)
     {:noreply, state}
   end
 
@@ -706,6 +719,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_event(:allow_upload, node, %Element{event: event} = element) do
+    upload_ref = "data-phx-upload-ref"
+    if ref = DOM.attribute(node, upload_ref) do
+      {:allow_upload, proxy_topic(element), ref}
+    else
+      {:error, :invalid,
+       "element selected by #{inspect(element.selector)} does not have a #{upload_ref} attribute"}
+    end
+  end
   defp maybe_event(:hook, node, %Element{event: event} = element) do
     true = is_binary(event)
 

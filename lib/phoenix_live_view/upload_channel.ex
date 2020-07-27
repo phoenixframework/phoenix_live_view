@@ -1,52 +1,49 @@
 defmodule Phoenix.LiveView.UploadChannel do
   @moduledoc false
-  use Phoenix.Channel
+  use Phoenix.Channel, log: false
 
   require Logger
 
-  alias Phoenix.LiveView.Static
+  alias Phoenix.LiveView.{Static, Channel}
 
   @impl true
   def join(_topic, auth_payload, socket) do
     %{"token" => token} = auth_payload
 
     with {:ok, %{pid: pid, ref: ref}} <- Static.verify_token(socket.endpoint, token),
-         {:ok, %{file_size_limit: file_size_limit, chunk_size: chunk_size}} <-
-           GenServer.call(pid, {:phoenix, :register_file_upload, %{pid: self(), ref: ref}}),
+         {:ok, %{max_file_size: max_file_size}} <- Channel.register_upload(pid, ref),
          {:ok, path} <- Plug.Upload.random_file("live_view_upload"),
          {:ok, handle} <- File.open(path, [:binary, :write]) do
       Process.monitor(pid)
 
-      socket = Phoenix.Socket.assign(socket, %{
+      socket = assign(socket, %{
         path: path,
         handle: handle,
         live_view_pid: pid,
-        file_size_limit: file_size_limit,
+        max_file_size: max_file_size,
         uploaded_size: 0
       })
 
-      {:ok, %{"chunkSize" => chunk_size}, socket}
+      # TODO remove chunk size and handle on client allow_upload
+      {:ok, socket}
     else
       {:error, :limit_exceeded} -> {:error, %{reason: :limit_exceeded}}
-      _ -> {:error, %{reason: :invalid_token}}
+      _ -> {:error, %{reason: "invalid_token"}}
     end
   end
 
   @impl true
-  def handle_in(
-        "event",
-        {:frame, payload},
-        %{assigns: %{uploaded_size: uploaded_size, file_size_limit: file_size_limit}} = socket
-      )
-      when byte_size(payload) + uploaded_size > file_size_limit do
-    reply = %{message: "file size limit exceeded", limit: file_size_limit}
-    {:stop, :normal, {:error, reply}, socket}
-  end
-
   def handle_in("event", {:frame, payload}, socket) do
-    IO.binwrite(socket.assigns.handle, payload)
-    socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
-    {:reply, {:ok, %{file_ref: socket.join_ref}}, socket}
+    %{uploaded_size: uploaded_size, max_file_size: max_file_size} = socket.assigns
+
+    if byte_size(payload) + uploaded_size <= max_file_size do
+      IO.binwrite(socket.assigns.handle, payload)
+      socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
+      {:reply, {:ok, %{file_ref: socket.join_ref}}, socket}
+    else
+      reply = %{message: "file size limit exceeded", limit: max_file_size}
+      {:stop, :normal, {:error, reply}, socket}
+    end
   end
 
   @impl true
@@ -66,8 +63,6 @@ defmodule Phoenix.LiveView.UploadChannel do
         %{assigns: %{live_view_pid: live_view_pid}} = socket
       ) do
     reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
-    # {:stop, reason, :live_view_down, socket}
-    # TODO: stop the socket here
-    {:noreply, socket}
+    {:stop, reason, socket}
   end
 end

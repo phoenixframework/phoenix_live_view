@@ -308,6 +308,19 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  """
+  def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref) when is_pid(pid) do
+    case UploadConfig.register_entry_upload(conf, pid, entry_ref) do
+      {:ok, new_config} ->
+        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
+        {:ok, assign(socket, :uploads, new_uploads)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   TODO
   """
   def put_upload_error(%Socket{} = socket, %UploadConfig{} = conf, entry_ref, reason) do

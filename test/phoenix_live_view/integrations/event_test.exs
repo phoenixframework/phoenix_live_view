@@ -10,6 +10,11 @@ defmodule Phoenix.LiveView.EventTest do
 
   @endpoint Endpoint
 
+  setup_all do
+    ExUnit.CaptureLog.capture_log(fn -> Endpoint.start_link() end)
+    :ok
+  end
+
   setup config do
     {:ok,
      conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
