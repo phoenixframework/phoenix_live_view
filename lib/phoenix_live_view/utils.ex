@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.Utils do
   @max_flash_age :timer.seconds(60)
 
   @doc """
-  Assigns a value if it changed change.
+  Assigns a value if it changed.
   """
   def assign(%Socket{} = socket, key, value) do
     case socket do
