@@ -1223,7 +1223,7 @@ export let DOM = {
     let wasFocused = focused.matches(":focus")
     if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
-    if(hasSelectionRange(focused)){
+    if(this.hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
     }
   },
