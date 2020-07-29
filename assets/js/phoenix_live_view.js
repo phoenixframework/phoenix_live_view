@@ -1214,12 +1214,16 @@ export let DOM = {
     }
   },
 
+  hasSelectionRange(el){
+    return el.setSelectionRange && (el.type === "text" || el.type === "textarea")
+  },
+
   restoreFocus(focused, selectionStart, selectionEnd){
     if(!DOM.isTextualInput(focused)){ return }
     let wasFocused = focused.matches(":focus")
     if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
-    if(focused.setSelectionRange && focused.type === "text" || focused.type === "textarea"){
+    if(hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
     }
   },
@@ -1342,7 +1346,7 @@ class DOMPatch {
         selection = null
       },
       onBeforeElUpdated: (fromEl, toEl) => {
-        selection = fromEl.setSelectionRange && {start: fromEl.selectionStart, end: fromEl.selectionEnd}
+        selection = DOM.hasSelectionRange(fromEl) && {start: fromEl.selectionStart, end: fromEl.selectionEnd}
         if(activeElement && activeElement.isSameNode(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
