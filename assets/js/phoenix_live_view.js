@@ -1214,12 +1214,16 @@ export let DOM = {
     }
   },
 
+  hasSelectionRange(el) {
+    return el.setSelectionRange && (el.type === "text" || el.type === "textarea")
+  },
+
   restoreFocus(focused, selectionStart, selectionEnd){
     if(!DOM.isTextualInput(focused)){ return }
     let wasFocused = focused.matches(":focus")
     if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
-    if(focused.setSelectionRange && (focused.type === "text" || focused.type === "textarea")){
+    if(this.hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
     }
   },
@@ -1337,7 +1341,7 @@ class DOMPatch {
     morphdom(fromEl, toEl, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
-        if(activeElement && activeElement.isSameNode(fromEl)){
+        if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
         }
@@ -1383,7 +1387,7 @@ class DOMPatch {
     if(this.isCIDPatch() && !targetContainer){ return }
 
     let focused = liveSocket.getActiveElement()
-    let {selectionStart, selectionEnd} = focused && DOM.isTextualInput(focused) ? focused : {}
+    let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
