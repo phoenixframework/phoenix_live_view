@@ -160,8 +160,8 @@ it's important that `phx-trigger-action` is only set for the current DOM patch.
 If `phx-trigger-action` is left on the form after the initial form submission,
 any subsequent DOM patches will re-trigger the form submission.
 
-Prevent this, we need to set `trigger_submit: false` in temporary assigns in
-`c:Phoenix.LiveView.mount/3`.
+To prevent this, we need to set `trigger_submit: false` in temporary assigns in
+`c:mount/3`.
 
     def mount(_params, _session, socket) do
       {:ok, socket, [temporary_assigns: [trigger_submit: false]]}
