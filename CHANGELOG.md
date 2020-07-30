@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.4 (2020-07-30)
+
+### Bug fixes
+  - Fix hidden inputs throwing selection range error
+
 ## 0.14.3 (2020-07-24)
 
 ### Enhancements
