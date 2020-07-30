@@ -2,9 +2,13 @@
 
 ## 0.14.3 (2020-07-24)
 
+### Enhancements
+  - Support `render_layout` with LiveEEx
+
 ### Bug fixes
   - Fix focused inputs being overwritten by latent patch
   - Fix LiveView error when `"_target"` input name contains array
+  - Fix change tracking when passing a do-block to components
 
 ## 0.14.2 (2020-07-21)
 
