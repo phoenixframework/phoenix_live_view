@@ -621,7 +621,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Adds a flash message to the socket to be displayed on redirect.
+  Adds a flash message to the socket to be displayed.
 
   *Note*: While you can use `put_flash/3` inside a `Phoenix.LiveComponent`,
   components have their own `@flash` assigns. The `@flash` assign
