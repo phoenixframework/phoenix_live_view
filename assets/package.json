@@ -30,6 +30,9 @@
     "webpack-cli": "^2.0.10"
   },
   "jest": {
-    "testRegex": "/test/.*_test\\.js$"
+    "testRegex": "/test/.*_test\\.js$",
+    "globals": {
+      "__PACKAGE_VERSION__": "test_mock_version"
+    }
   }
 }

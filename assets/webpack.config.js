@@ -1,4 +1,6 @@
 const path = require('path')
+const webpack = require('webpack')
+const package = require("./package.json")
 
 module.exports = {
   entry: './js/phoenix_live_view.js',
@@ -27,5 +29,9 @@ module.exports = {
       }
     ]
   },
-  plugins: []
+  plugins: [
+    new webpack.DefinePlugin({
+      __PACKAGE_VERSION__: JSON.stringify(package.version)
+    })
+  ]
 }
