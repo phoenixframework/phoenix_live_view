@@ -1273,10 +1273,10 @@ export let DOM = {
   }
 }
 
-class DOMAppendPrependUpdate {
   constructor(fromEl, toEl, updateType) {
     let idsAfter = Array.from(toEl.children).map(child => child.id)
     let idsBefore = []
+class DOMPostMorphRestorer {
 
     let modifiedIds = []
 
@@ -1462,7 +1462,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
