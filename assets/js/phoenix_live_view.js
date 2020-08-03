@@ -1280,11 +1280,12 @@ class DOMPostMorphRestorer {
 
     let elementsToModify = []
 
-    fromEl.childNodes.forEach(child => {
+    Array.from(currentChildren).forEach(child => {
       if (child.id) { // all of our children should be elements with ids
-        idsBefore.push(child.id)
-        if (idsAfter.indexOf(child.id) >= 0) {
-          modifiedIds.push([child.id, child.previousElementSibling && child.previousElementSibling.id])
+        idsBefore.add(child.id)
+        if (idsAfter.has(child.id)) {
+          let previousElementId = child.previousElementSibling && child.previousElementSibling.id
+          elementsToModify.push({elementId: child.id, previousElementId: previousElementId})
         }
       }
     })
