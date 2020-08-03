@@ -1278,7 +1278,7 @@ class DOMPostMorphRestorer {
     let idsAfter = new Set([...container.children].map(child => child.id))
     let idsBefore = new Set()
 
-    let modifiedIds = []
+    let elementsToModify = []
 
     fromEl.childNodes.forEach(child => {
       if (child.id) { // all of our children should be elements with ids
@@ -1289,10 +1289,10 @@ class DOMPostMorphRestorer {
       }
     })
 
-    this.containerID = toEl.id
+    this.containerId = container.id
     this.updateType = updateType
-    this.modifiedIds = modifiedIds
-    this.newIds = idsAfter.filter(id => idsBefore.indexOf(id) < 0)
+    this.elementsToModify = elementsToModify
+    this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
   }
 
   // We do the following to optimize append/prepend operations:
@@ -1302,31 +1302,31 @@ class DOMPostMorphRestorer {
   //   3) New elements are going to be put in the right place by morphdom during append.
   //      For prepend, we move them to the first position in the container
   perform() {
-    let el = DOM.byId(this.containerID)
-    this.modifiedIds.forEach(([id, siblingId]) => {
-      if (siblingId) {
-        maybe(document.getElementById(siblingId), sibling => {
-          maybe(document.getElementById(id), child => {
-            let isInRightPlace = child.previousElementSibling && child.previousElementSibling.id == sibling.id
+    let container = DOM.byId(this.containerId)
+    this.elementsToModify.forEach(elementToModify => {
+      if (elementToModify.previousElementId) {
+        maybe(document.getElementById(elementToModify.previousElementId), previousElem => {
+          maybe(document.getElementById(elementToModify.elementId), elem => {
+            let isInRightPlace = elem.previousElementSibling && elem.previousElementSibling.id == previousElem.id
             if (!isInRightPlace) {
-              sibling.insertAdjacentElement("afterend", child)
+              previousElem.insertAdjacentElement("afterend", elem)
             }
           })
         })
       } else {
         // This is the first element in the container
-        maybe(document.getElementById(id), child => {
-          let isInRightPlace = child.previousElementSibling == null
+        maybe(document.getElementById(elementToModify.elementId), elem => {
+          let isInRightPlace = elem.previousElementSibling == null
           if (!isInRightPlace) {
-            el.insertAdjacentElement("afterbegin", child)
+            container.insertAdjacentElement("afterbegin", elem)
           }
         })
       }
     })
 
     if(this.updateType == "prepend"){
-      this.newIds.reverse().forEach(id => {
-        maybe(document.getElementById(id), child => el.insertAdjacentElement("afterbegin", child))
+      this.elementIdsToAdd.reverse().forEach(elemId => {
+        maybe(document.getElementById(elemId), elem => container.insertAdjacentElement("afterbegin", elem))
       })
     }
   }
