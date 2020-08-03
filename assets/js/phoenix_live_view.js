@@ -1273,10 +1273,10 @@ export let DOM = {
   }
 }
 
-    let idsAfter = Array.from(toEl.children).map(child => child.id)
-    let idsBefore = []
 class DOMPostMorphRestorer {
   constructor(container, currentChildren, updateType) {
+    let idsAfter = new Set([...container.children].map(child => child.id))
+    let idsBefore = new Set()
 
     let modifiedIds = []
 
