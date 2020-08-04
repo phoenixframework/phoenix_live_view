@@ -82,7 +82,7 @@ reuse any of the connection assigns from the HTTP request:
 
 ## Events considerations
 
-It is also important to keep in mind that LiveView are stateful. Therefore,
+It is also important to keep in mind that LiveViews are stateful. Therefore,
 if you load any data on `c:mount/3` and the data itself changes, the data
 won't be automatically propagated to the LiveView, unless you broadcast
 those events with `Phoenix.PubSub`.
