@@ -570,14 +570,14 @@ defmodule Phoenix.LiveView do
   @doc """
   Adds key value pairs to socket assigns.
 
-  A single key value pair may be passed, or a keyword list
-  of assigns may be provided to be merged into existing
-  socket assigns.
+  A single key value pair may be passed, or a keyword list or a map
+  of assigns may be provided to be merged into existing socket assigns.
 
   ## Examples
 
       iex> assign(socket, :name, "Elixir")
       iex> assign(socket, name: "Elixir", logo: "💧")
+      iex> assign(socket, %{name: "Elixir"})
   """
   def assign(%Socket{} = socket, key, value) do
     validate_assign_key!(key)
