@@ -55,12 +55,14 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   # TODO reconcile (or replace) state.uploads with state stored in socket.assigns.uploads
-  def handle_info({:DOWN, _, :process, maybe_child_pid, _} = msg, %{socket: socket} = state) do
+  def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
+    upload_conf = Utils.get_upload_by_pid(socket, pid)
     cond do
-      entry = Enum.find(state.uploads, &match?({_, ^maybe_child_pid}, &1)) ->
-        {key, _} = entry
-        new_uploads = Map.delete(state.uploads, key)
-        {:noreply, %{state | uploads: new_uploads}}
+      upload_conf && reason != :normal ->
+        {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
+
+      upload_conf && reason == :normal ->
+        handle_changed(state, Utils.unregister_entry_upload(socket, upload_conf, pid), nil)
 
       true ->
         msg
@@ -889,7 +891,6 @@ defmodule Phoenix.LiveView.Channel do
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
       components: Diff.new_components(),
-      uploads: %{}
     }
   end
 

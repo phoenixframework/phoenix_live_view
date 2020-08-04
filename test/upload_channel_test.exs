@@ -8,6 +8,13 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   @endpoint Phoenix.LiveViewTest.Endpoint
 
+  def inspect_html_safe(term) do
+    term
+    |> inspect()
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
+  end
+
   def valid_token(lv_pid, ref) do
     LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
@@ -90,10 +97,43 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert_receive {:DOWN, _ref, :process, ^channel_pid, :killed}
     end
 
+    @tag allow: [accept: :any]
+    test "abnormal channel exit brings down LiveView", %{socket: socket, lv: lv} do
+      assert [{:ok, _, socket}] =
+               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+
+      channel_pid = socket.channel_pid
+      lv_pid = lv.pid
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(channel_pid)
+      Process.monitor(lv_pid)
+      Process.exit(channel_pid, :kill)
+      assert_receive {:DOWN, _ref, :process, ^lv_pid, {:shutdown, {:channel_upload_exit, :killed}}}
+    end
+
+    @tag allow: [accept: :any]
+    test "normal channel exit is cleaned up by LiveView", %{socket: socket, lv: lv} do
+      assert [{:ok, _, socket}] =
+               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+
+      channel_pid = socket.channel_pid
+      lv_pid = lv.pid
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(channel_pid)
+      Process.monitor(lv_pid)
+      assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
+      GenServer.stop(channel_pid, :normal)
+      refute_receive {:DOWN, _ref, :process, ^lv_pid, _}
+      assert render(lv) =~ "channel:nil"
+    end
+
+
     @tag allow: [max_entries: 3, accept: :any]
     test "multiple entries under max", %{socket: socket, lv: lv} do
-      assert [{:ok, _, _socket1}, {:ok, _, _socket2}] =
+      assert [{:ok, _, socket1}, {:ok, _, socket2}] =
                join_upload_channel(socket, lv, "input[name=avatar]", build_entries(2))
+      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
+      assert render(lv) =~ "channel:#{inspect_html_safe(socket2.channel_pid)}"
     end
 
     @tag allow: [max_entries: 1, accept: :any]
@@ -103,12 +143,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 3, accept: :any]
-    test "starting an already in progress entry", %{socket: socket, lv: lv} do
-      assert [{:ok, _, _socket1}] =
+    test "starting an already in progress entry is denied", %{socket: socket, lv: lv} do
+      assert [{:ok, _, socket1}] =
                join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
 
-      assert [{:error, %{reason: "invalid_token"}}] =
+      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
+      assert {:error, [_ref, :already_started]} =
                join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+
+      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
     end
   end
 end

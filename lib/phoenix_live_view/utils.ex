@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Utils do
   @mount_opts [:temporary_assigns, :layout]
 
   @max_flash_age :timer.seconds(60)
-  @refs_to_names :phoenix_refs_to_names
+  @refs_to_names :__phoenix_refs_to_names__
 
   @doc """
   Assigns a value if it changed change.
@@ -308,6 +308,16 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  TODO
+  """
+  def unregister_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid) when is_pid(pid) do
+    new_config = UploadConfig.unregister_entry_upload(conf, pid)
+    new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
   """
   def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref) when is_pid(pid) do
     case UploadConfig.register_entry_upload(conf, pid, entry_ref) do
@@ -338,6 +348,16 @@ defmodule Phoenix.LiveView.Utils do
     config = Map.fetch!(uploads, name)
 
     {uploads, name, config}
+  end
+
+  @doc """
+  TODO
+  """
+  def get_upload_by_pid(socket, pid) when is_pid(pid) do
+    Enum.find_value(socket.assigns[:uploads] || %{}, fn
+      {@refs_to_names, _} -> false
+      {_name, %UploadConfig{} = conf} -> UploadConfig.get_entry_by_pid(conf, pid) && conf
+    end)
   end
 
   @doc """

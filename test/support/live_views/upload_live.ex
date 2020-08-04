@@ -6,6 +6,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
         <%= entry.progress %>%
+        channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
       <% end %>
       <%= live_file_input @uploads.avatar %>
       <button type="submit">save</button>

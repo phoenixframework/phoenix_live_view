@@ -8,7 +8,6 @@ defmodule Phoenix.LiveView.UploadEntry do
   defstruct progress: 0,
             ref: nil,
             done?: false,
-            channel_pid: nil,
             client_name: nil,
             client_size: nil,
             client_type: nil,
@@ -34,6 +33,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @default_max_file_size 8_000_000
   @default_chunk_size 64_000
+  @unregistered :unregistered
 
   # TODO add option for :chunk_size
   defstruct name: nil,
@@ -42,6 +42,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             max_file_size: @default_max_file_size,
             chunk_size: @default_chunk_size,
             entries: [],
+            entry_refs_to_pids: %{},
             accept: %{},
             external: nil,
             allowed?: false,
@@ -54,6 +55,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
           entries: list(),
+          entry_refs_to_pids: %{String.t() => pid() | :unregistered},
           accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
           allowed?: boolean,
@@ -138,22 +140,44 @@ defmodule Phoenix.LiveView.UploadConfig do
       name: name,
       max_entries: opts[:max_entries] || 1,
       max_file_size: max_file_size,
+      entry_refs_to_pids: %{},
       accept: accept,
       external: external,
       allowed?: true
     }
   end
 
-  def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
-    conf.entries
-    |> get_and_update_in([Access.filter(fn %UploadEntry{ref: ref} -> ref == entry_ref end)], fn
-      %UploadEntry{channel_pid: nil} = entry -> {:ok, %UploadEntry{entry | channel_pid: channel_pid}}
-      %UploadEntry{channel_pid: _existing} = entry -> {{:error, :already_registered}, entry}
+  def entry_pid(%UploadConfig{} = conf, %UploadEntry{} = entry) do
+    Map.get(conf.entry_refs_to_pids, entry.ref)
+  end
+
+  def get_entry_by_pid(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
+    Enum.find_value(conf.entry_refs_to_pids, fn {ref, pid} ->
+      if channel_pid == pid do
+        get_entry_by_ref(conf, ref)
+      end
     end)
-    |> case do
-      {[:ok], new_entries} -> {:ok, %UploadConfig{conf | entries: new_entries}}
-      {[{:error, reason} | _], _} -> {:error, reason}
-      {[], _} -> {:error, :disallowed}
+  end
+
+  defp get_entry_by_ref(%UploadConfig{} = conf, ref) do
+    Enum.find(conf.entries, fn %UploadEntry{} = entry -> entry.ref === ref end)
+  end
+
+  def unregister_entry_upload(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
+    new_refs = for {ref, pid} <- conf.entry_refs_to_pids, channel_pid != pid, into: %{}, do: {ref, pid}
+    %UploadConfig{conf | entry_refs_to_pids: new_refs}
+  end
+
+  def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
+    case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
+      {:ok, @unregistered} ->
+        {:ok, %UploadConfig{conf | entry_refs_to_pids: Map.put(conf.entry_refs_to_pids, entry_ref, channel_pid)}}
+
+      {:ok, existing_pid} when is_pid(existing_pid) ->
+        {:error, :already_registered}
+
+      :error ->
+        {:error, :disallowed}
     end
   end
 
@@ -235,7 +259,9 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{conf | entries: new_entries}
   end
 
-  def put_entries(%UploadConfig{} = conf, entries) do
+  def put_entries(%UploadConfig{entries: [_|_]} = conf, _entries),
+    do: {:error, conf.ref, :already_started}
+  def put_entries(%UploadConfig{entries: []} = conf, entries) do
     entries
     |> Enum.reduce_while({:ok, conf}, fn client_entry, {:ok, acc} ->
       case cast_and_validate_entry(acc, client_entry) do
@@ -268,9 +294,14 @@ defmodule Phoenix.LiveView.UploadConfig do
     |> validate_max_file_size(conf)
     |> validate_accepted(conf)
     |> case do
-      {:ok, entry} -> {:ok, %UploadConfig{conf | entries: conf.entries ++ [entry]}}
+      {:ok, entry} -> {:ok, put_valid_entry(conf, entry)}
       {:error, reason} -> {:error, ref, reason}
     end
+  end
+
+  defp put_valid_entry(conf, entry) do
+    new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @unregistered)
+    %UploadConfig{conf | entries: conf.entries ++ [entry], entry_refs_to_pids: new_pids}
   end
 
   defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{max_file_size: max})
