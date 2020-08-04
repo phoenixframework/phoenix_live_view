@@ -8,8 +8,8 @@ and the stateful connection.
 
 ## Mounting considerations
 
-For example, if your HTTP request perform user authentication and confirmation
-on every request via Plugs, such as this:
+For example, if you perform user authentication and confirmation on every
+HTTP request via Plugs, such as this:
 
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
