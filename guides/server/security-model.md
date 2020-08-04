@@ -66,7 +66,7 @@ Where `MyAppWeb.LiveHelpers` can be something like:
     end
 
 One possible concern in this approach is that in regular HTTP requests the
-current user will be fetched twice: one in the HTTP request and another on
+current user will be fetched twice: once in the HTTP request and again on
 `mount`. You can address this by using the `assign_new` function, that will
 reuse any of the connection assigns from the HTTP request:
 
