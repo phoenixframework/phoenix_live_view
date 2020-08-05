@@ -165,4 +165,12 @@ $ mix deps.get
 $ mix test
 ```
 
+Running the Javascript tests:
+```bash
+$ cd assets
+$ npm run test
+# to automatically run tests for files that have been changed
+$ npm run test.watch
+```
+
 JS contributions are very welcome, but please do not include an updated `priv/static/phoenix_live_view.js` in pull requests. The maintainers will update it as part of the release process.
