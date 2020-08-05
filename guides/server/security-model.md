@@ -66,7 +66,7 @@ Where `MyAppWeb.LiveHelpers` can be something like:
     end
 
 One possible concern in this approach is that in regular HTTP requests the
-current user will be fetched twice: one in the HTTP request and another on
+current user will be fetched twice: once in the HTTP request and again on
 `mount`. You can address this by using the `assign_new` function, that will
 reuse any of the connection assigns from the HTTP request:
 
@@ -82,7 +82,7 @@ reuse any of the connection assigns from the HTTP request:
 
 ## Events considerations
 
-It is also important to keep in mind that LiveView are stateful. Therefore,
+It is also important to keep in mind that LiveViews are stateful. Therefore,
 if you load any data on `c:mount/3` and the data itself changes, the data
 won't be automatically propagated to the LiveView, unless you broadcast
 those events with `Phoenix.PubSub`.

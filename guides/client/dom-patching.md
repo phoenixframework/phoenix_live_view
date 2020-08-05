@@ -65,7 +65,7 @@ only the new messages to `@messages`:
     socket = assign(socket, :messages, new_messages)
 
 In the template, we want to wrap all of the messages in a container
-and tag this content with phx-update. Remember, we must add an ID
+and tag this content with `phx-update`. Remember, we must add an ID
 to the container as well as to each child:
 
     <div id="chat-messages" phx-update="append">
