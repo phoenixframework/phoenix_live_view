@@ -158,7 +158,7 @@ We appreciate any contribution to LiveView.
 
 Please see the Phoenix [Code of Conduct](https://github.com/phoenixframework/phoenix/blob/master/CODE_OF_CONDUCT.md) and [Contributing](https://github.com/phoenixframework/phoenix/blob/master/CONTRIBUTING.md) guides.
 
-Running the tests:
+Running the Elixir tests:
 
 ```bash
 $ mix deps.get
