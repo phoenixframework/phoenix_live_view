@@ -1163,10 +1163,13 @@ export let DOM = {
 
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
-    let input = field && container.querySelector(`#${field}`)
-    if(!input){ return }
+    let inputs = field && container.querySelectorAll(`[name='${field}']`)
+    if(!inputs){ return }
 
-    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
+    let has_focused = [...inputs].some((input) => this.private(input, PHX_HAS_FOCUSED))
+    let has_submitted = this.private(inputs[0].form, PHX_HAS_SUBMITTED)
+
+    if(!(has_focused || has_submitted)){
       el.classList.add(PHX_NO_FEEDBACK_CLASS)
     }
   },
