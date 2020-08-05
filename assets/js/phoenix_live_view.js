@@ -1274,13 +1274,13 @@ export let DOM = {
 }
 
 class DOMPostMorphRestorer {
-  constructor(container, currentChildren, updateType) {
-    let idsAfter = new Set([...container.children].map(child => child.id))
+  constructor(containerBefore, containerAfter, updateType) {
     let idsBefore = new Set()
+    let idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
     let elementsToModify = []
 
-    Array.from(currentChildren).forEach(child => {
+    Array.from(containerBefore.children).forEach(child => {
       if (child.id) { // all of our children should be elements with ids
         idsBefore.add(child.id)
         if (idsAfter.has(child.id)) {
@@ -1290,7 +1290,7 @@ class DOMPostMorphRestorer {
       }
     })
 
-    this.containerId = container.id
+    this.containerId = containerAfter.id
     this.updateType = updateType
     this.elementsToModify = elementsToModify
     this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
@@ -1463,7 +1463,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              appendPrependUpdates.push(new DOMPostMorphRestorer(toEl, fromEl.children, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
