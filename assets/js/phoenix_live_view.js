@@ -1277,26 +1277,27 @@ export let DOM = {
   }
 }
 
-class DOMAppendPrependUpdate {
-  constructor(fromEl, toEl, updateType) {
-    let idsAfter = Array.from(toEl.children).map(child => child.id)
-    let idsBefore = []
+class DOMPostMorphRestorer {
+  constructor(containerBefore, containerAfter, updateType) {
+    let idsBefore = new Set()
+    let idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
-    let modifiedIds = []
+    let elementsToModify = []
 
-    fromEl.childNodes.forEach(child => {
+    Array.from(containerBefore.children).forEach(child => {
       if (child.id) { // all of our children should be elements with ids
-        idsBefore.push(child.id)
-        if (idsAfter.indexOf(child.id) >= 0) {
-          modifiedIds.push([child.id, child.previousElementSibling && child.previousElementSibling.id])
+        idsBefore.add(child.id)
+        if (idsAfter.has(child.id)) {
+          let previousElementId = child.previousElementSibling && child.previousElementSibling.id
+          elementsToModify.push({elementId: child.id, previousElementId: previousElementId})
         }
       }
     })
 
-    this.containerID = toEl.id
+    this.containerId = containerAfter.id
     this.updateType = updateType
-    this.modifiedIds = modifiedIds
-    this.newIds = idsAfter.filter(id => idsBefore.indexOf(id) < 0)
+    this.elementsToModify = elementsToModify
+    this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
   }
 
   // We do the following to optimize append/prepend operations:
@@ -1306,31 +1307,31 @@ class DOMAppendPrependUpdate {
   //   3) New elements are going to be put in the right place by morphdom during append.
   //      For prepend, we move them to the first position in the container
   perform() {
-    let el = DOM.byId(this.containerID)
-    this.modifiedIds.forEach(([id, siblingId]) => {
-      if (siblingId) {
-        maybe(document.getElementById(siblingId), sibling => {
-          maybe(document.getElementById(id), child => {
-            let isInRightPlace = child.previousElementSibling && child.previousElementSibling.id == sibling.id
+    let container = DOM.byId(this.containerId)
+    this.elementsToModify.forEach(elementToModify => {
+      if (elementToModify.previousElementId) {
+        maybe(document.getElementById(elementToModify.previousElementId), previousElem => {
+          maybe(document.getElementById(elementToModify.elementId), elem => {
+            let isInRightPlace = elem.previousElementSibling && elem.previousElementSibling.id == previousElem.id
             if (!isInRightPlace) {
-              sibling.insertAdjacentElement("afterend", child)
+              previousElem.insertAdjacentElement("afterend", elem)
             }
           })
         })
       } else {
         // This is the first element in the container
-        maybe(document.getElementById(id), child => {
-          let isInRightPlace = child.previousElementSibling == null
+        maybe(document.getElementById(elementToModify.elementId), elem => {
+          let isInRightPlace = elem.previousElementSibling == null
           if (!isInRightPlace) {
-            el.insertAdjacentElement("afterbegin", child)
+            container.insertAdjacentElement("afterbegin", elem)
           }
         })
       }
     })
 
     if(this.updateType == "prepend"){
-      this.newIds.reverse().forEach(id => {
-        maybe(document.getElementById(id), child => el.insertAdjacentElement("afterbegin", child))
+      this.elementIdsToAdd.reverse().forEach(elemId => {
+        maybe(document.getElementById(elemId), elem => container.insertAdjacentElement("afterbegin", elem))
       })
     }
   }
@@ -1470,7 +1471,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              appendPrependUpdates.push(new DOMAppendPrependUpdate(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
