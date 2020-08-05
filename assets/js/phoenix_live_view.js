@@ -1161,12 +1161,21 @@ export let DOM = {
     return currentCycle
   },
 
+  hasFocused(el) {
+    if(el.tagName === "FIELDSET"){
+      let children = [...el.getElementsByTagName("input")]
+      return children.some((el) => this.private(el, PHX_HAS_FOCUSED))
+    } else {
+      return this.private(el, PHX_HAS_FOCUSED)
+    }
+  },
+
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
     let input = field && container.querySelector(`#${field}`)
     if(!input){ return }
 
-    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
+    if(!(this.hasFocused(input) || this.private(input.form, PHX_HAS_SUBMITTED))){
       el.classList.add(PHX_NO_FEEDBACK_CLASS)
     }
   },
