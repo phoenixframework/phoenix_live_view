@@ -1164,7 +1164,7 @@ export let DOM = {
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
     let inputs = field && container.querySelectorAll(`[name='${field}']`)
-    if(inputs.length == 0){ return }
+    if(!inputs || inputs.length == 0){ return }
 
     let has_focused = [...inputs].some((input) => this.private(input, PHX_HAS_FOCUSED))
     let has_submitted = this.private(inputs[0].form, PHX_HAS_SUBMITTED)
