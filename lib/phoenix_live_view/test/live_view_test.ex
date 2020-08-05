@@ -476,7 +476,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert view
              |> element("form")
-             |> render_submit(%{deg: 123}) =~ "123 exceeds limits"
+             |> render_submit(%{deg: 123, avatar: upload}) =~ "123 exceeds limits"
 
   To submit a form along with some with hidden input values:
 
@@ -488,6 +488,10 @@ defmodule Phoenix.LiveViewTest do
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
   def render_submit(view, event), do: render_submit(view, event, %{})
+
+  # function that returns %Upload{}
+  # def render_upload(%Upload{})
+  # returns rendered content and metadata
 
   @doc """
   Sends a form submit event to the view and returns the rendered result.
@@ -925,6 +929,35 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  TODO
+  """
+  def file_input(%View{proxy: proxy}, selector, [_ | _] = entries) do
+    meta =
+      Enum.reduce(entries, %{entries: []}, fn entry, acc ->
+        %{acc | entries: acc.entries ++ [populate_entry(entry)]}
+      end)
+
+    %Element{proxy: proxy, selector: selector, meta: meta}
+  end
+
+  defp populate_entry(%{} = entry) do
+    name =
+      Map.get(entry, :name) ||
+        raise ArgumentError, "a :name of the entry filename is required."
+
+    content =
+      Map.get(entry, :content) ||
+        raise ArgumentError, "the :content of the binary entry file data is required."
+
+    %{}
+    |> Map.put(:name, name)
+    |> Map.put(:content, content)
+    |> Map.put(:ref, System.unique_integer([:positive]))
+    |> Map.put_new_lazy(:size, fn -> byte_size(content) end)
+    |> Map.put_new_lazy(:type, fn -> MIME.from_path(name) end)
+  end
+
+  @doc """
   Returns the most recent title that was updated via a `page_title` assign.
 
   ## Examples
@@ -1134,7 +1167,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  def render_upload(%Element{} = element, entries) do
-    call(element, {:render_event, element, :allow_upload, entries})
+  def render_upload(%Element{} = element) do
+    call(element, {:render_event, element, :allow_upload, element.meta})
   end
 end

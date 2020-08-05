@@ -134,10 +134,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       config = socket.assigns.uploads.avatar
 
       assert {:ok, config} = UploadConfig.put_entries(config, [build_client_entry(:avatar)])
-      assert {:ok, config} = UploadConfig.put_entries(config, [build_client_entry(:avatar)])
-
-      %{"ref" => ref} = entry = build_client_entry(:avatar)
-      assert UploadConfig.put_entries(config, [entry]) == {:error, ref, :too_many_files}
+      assert {:error, _, :already_started} = UploadConfig.put_entries(config, [build_client_entry(:avatar)])
     end
 
     test "returns error when entry with greater than max_file_size provided" do
@@ -165,10 +162,9 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
     test "validates entries accepted by extension" do
       socket =
-        LiveView.allow_upload(build_socket(), :avatar,
-          accept: ~w(.jpg .jpeg),
-          max_entries: 5
-        )
+        build_socket()
+        |> LiveView.allow_upload(:avatar, accept: ~w(.jpg .jpeg), max_entries: 5)
+        |> LiveView.allow_upload(:hero, accept: ~w(.jpg .jpeg), max_entries: 5)
 
       assert {:ok, config} =
                UploadConfig.put_entries(socket.assigns.uploads.avatar, [
@@ -185,22 +181,22 @@ defmodule Phoenix.LiveView.UploadConfigTest do
                %UploadEntry{client_name: "photo.JPEG"}
              ] = config.entries
 
+      hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "file.gif"})
-      assert UploadConfig.put_entries(config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
 
       entry = build_client_entry(:avatar, %{"name" => "file.gif", "type" => "image/png"})
-      assert UploadConfig.put_entries(config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
 
       entry = build_client_entry(:avatar, %{"name" => "file", "type" => "image/png"})
-      assert UploadConfig.put_entries(config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
     end
 
     test "validates entries accepted by type" do
       socket =
-        LiveView.allow_upload(build_socket(), :avatar,
-          accept: ~w(image/png image/jpeg),
-          max_entries: 4
-        )
+        build_socket()
+        |> LiveView.allow_upload(:avatar, accept: ~w(image/png image/jpeg), max_entries: 4)
+        |> LiveView.allow_upload(:hero, accept: ~w(image/png image/jpeg), max_entries: 4)
 
       assert {:ok, config} =
                UploadConfig.put_entries(socket.assigns.uploads.avatar, [
@@ -213,11 +209,12 @@ defmodule Phoenix.LiveView.UploadConfigTest do
                %UploadEntry{client_name: "photo", client_type: "image/jpeg"}
              ] = config.entries
 
+      hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "photo", "type" => "image/gif"})
-      assert UploadConfig.put_entries(config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
 
       entry = build_client_entry(:avatar, %{"name" => "photo.jpg", "type" => "application/x-httpd-php"})
-      assert UploadConfig.put_entries(config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
     end
 
     test "puts list of entries accepted by extension OR type" do

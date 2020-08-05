@@ -27,7 +27,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def join_upload_channel(socket, lv, selector, entries) do
-    case render_upload(element(lv, selector), entries) do
+    lv
+    |> file_input(selector, entries)
+    |> render_upload()
+    |> case do
       %{error: reason} ->
         {:error, reason}
 
@@ -40,11 +43,11 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   defp build_entries(count) do
     for i <- 1..count do
       %{
-        "last_modified" => 1_594_171_879_000,
-        "name" => "myfile#{i}",
-        "size" => 1_396_009,
-        "type" => "image/jpeg",
-        "ref" => i
+        last_modified: 1_594_171_879_000,
+        name: "myfile#{i}.jpeg",
+        content: <<000>>,
+        size: 1_396_009,
+        type: "image/jpeg",
       }
     end
   end

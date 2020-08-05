@@ -41,5 +41,6 @@ defmodule Phoenix.LiveViewTest.Element do
             selector: nil,
             text_filter: nil,
             event: nil,
-            form_data: nil
+            form_data: nil,
+            meta: %{}
 end

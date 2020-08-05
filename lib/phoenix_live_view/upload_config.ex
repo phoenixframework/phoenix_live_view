@@ -287,7 +287,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_name: Map.fetch!(client_entry, "name"),
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),
-      client_last_modified: Map.fetch!(client_entry, "last_modified")
+      client_last_modified: Map.get(client_entry, "last_modified")
     }
 
     {:ok, entry}

@@ -360,9 +360,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
+  def handle_call({:render_allow_upload, topic, ref, %{entries: entries}}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    state = push_with_callback(state, view, "allow_upload", %{"ref" => ref, "entries" => entries}, fn reply, state ->
+    client_entries = Enum.map(entries, fn entry ->
+      %{"ref" => entry.ref, "name" => entry.name, "size" => entry.size, "type" => entry.type}
+    end)
+    state = push_with_callback(state, view, "allow_upload", %{"ref" => ref, "entries" => client_entries}, fn reply, state ->
       %{payload: payload, topic: _topic} = reply
       GenServer.reply(from, {:ok, payload})
       {:noreply, state}
@@ -719,7 +722,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_event(:allow_upload, node, %Element{event: event} = element) do
+  defp maybe_event(:allow_upload, node, %Element{meta: %{entries: _}} = element) do
     upload_ref = "data-phx-upload-ref"
     if ref = DOM.attribute(node, upload_ref) do
       {:allow_upload, proxy_topic(element), ref}
@@ -727,6 +730,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:error, :invalid,
        "element selected by #{inspect(element.selector)} does not have a #{upload_ref} attribute"}
     end
+  end
+  defp maybe_event(:allow_upload, _node, %Element{} = element) do
+    {:error, :invalid,
+      "file input selected by #{inspect(element.selector)} was not built with `file_input/3` with associated file entries"}
   end
   defp maybe_event(:hook, node, %Element{event: event} = element) do
     true = is_binary(event)
