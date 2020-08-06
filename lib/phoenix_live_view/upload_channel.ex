@@ -24,7 +24,6 @@ defmodule Phoenix.LiveView.UploadChannel do
         uploaded_size: 0
       })
 
-      # TODO remove chunk size and handle on client allow_upload
       {:ok, socket}
     else
       {:error, :limit_exceeded} -> {:error, %{reason: :limit_exceeded}}

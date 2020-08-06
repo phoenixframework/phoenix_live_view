@@ -131,6 +131,7 @@ defmodule Phoenix.LiveViewTest do
   """
 
   @flash_cookie "__phoenix_flash__"
+
   require Phoenix.ConnTest
 
   alias Phoenix.LiveView.{Diff, Socket}
@@ -488,10 +489,6 @@ defmodule Phoenix.LiveViewTest do
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
   def render_submit(view, event), do: render_submit(view, event, %{})
-
-  # function that returns %Upload{}
-  # def render_upload(%Upload{})
-  # returns rendered content and metadata
 
   @doc """
   Sends a form submit event to the view and returns the rendered result.
@@ -931,9 +928,9 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  def file_input(%View{proxy: proxy}, selector, [_ | _] = entries) do
+  def file_input(%View{proxy: proxy} = view, selector, [_ | _] = entries) do
     meta =
-      Enum.reduce(entries, %{entries: []}, fn entry, acc ->
+      Enum.reduce(entries, %{entries: [], view: view}, fn entry, acc ->
         %{acc | entries: acc.entries ++ [populate_entry(entry)]}
       end)
 
@@ -1096,6 +1093,23 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  TODO
+  """
+  defmacro upload_progress(element, timeout \\ 100) do
+    quote do
+      %Element{} = element = unquote(element)
+      %{proxy: {ref, _topic, _}} = element.meta.view
+      upload_ref =
+        element
+        |> render()
+        |> DOM.upload_ref()
+
+      assert_receive {^ref, {:upload_progress, {^upload_ref, progress}}}, unquote(timeout)
+      progress
+    end
+  end
+
+  @doc """
   Follows the redirect from a `render_*` action.
 
   Imagine you have a LiveView that redirects on a `render_click`
@@ -1168,6 +1182,13 @@ defmodule Phoenix.LiveViewTest do
   TODO
   """
   def render_upload(%Element{} = element) do
-    call(element, {:render_event, element, :allow_upload, element.meta})
+    case call(element, {:render_event, element, :allow_upload, element.meta}) do
+      %{error: reason} ->
+        {:error, reason}
+
+      %{config: config, entries: entries} ->
+        :ok = call(element, {:chunk_uploads, element, config, entries})
+        render(element.meta.view)
+    end
   end
 end

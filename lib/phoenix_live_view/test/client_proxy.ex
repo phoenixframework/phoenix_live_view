@@ -2,6 +2,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
+  @endpoint Phoenix.LiveViewTest.Endpoint
+  @data_phx_upload_ref "data-phx-upload-ref"
+  require Phoenix.ChannelTest
+
   defstruct session_token: nil,
             static_token: nil,
             module: nil,
@@ -86,7 +90,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       test_supervisor: test_supervisor,
       url: url,
-      page_title: nil,
+      page_title: nil
     }
 
     try do
@@ -244,6 +248,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:allow_upload, topic, ref} ->
         handle_call({:render_allow_upload, topic, ref, value}, from, state)
 
+      {:upload_progress, topic, upload_ref} ->
+        payload = Map.put(value, "ref", upload_ref)
+        view = fetch_view_by_topic!(state, topic)
+        send_caller(state, {:upload_progress, {upload_ref, Map.fetch!(payload, "progress")}})
+
+        {:noreply, push_with_reply(state, from, view, "progress", payload)}
+
       {:patch, topic, path} ->
         handle_call({:render_patch, topic, path}, from, state)
 
@@ -326,6 +337,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
+  def handle_info({:upload_progress, from, %Element{} = element, entry_ref, progress}, state) do
+    payload = %{"entry_ref" => entry_ref, "progress" => progress}
+    topic = proxy_topic(element)
+    %{pid: pid} = fetch_view_by_topic!(state, topic)
+    :ok = Phoenix.LiveView.Channel.ping(pid)
+    send(self(), {:sync_render_event, element, :upload_progress, payload, from})
+    {:noreply, state}
+  end
+
   def handle_call(:page_title, _from, state) do
     {:reply, {:ok, state.page_title}, state}
   end
@@ -362,15 +382,93 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_allow_upload, topic, ref, %{entries: entries}}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    client_entries = Enum.map(entries, fn entry ->
-      %{"ref" => entry.ref, "name" => entry.name, "size" => entry.size, "type" => entry.type}
-    end)
-    state = push_with_callback(state, view, "allow_upload", %{"ref" => ref, "entries" => client_entries}, fn reply, state ->
-      %{payload: payload, topic: _topic} = reply
-      GenServer.reply(from, {:ok, payload})
-      {:noreply, state}
-    end)
+
+    client_entries =
+      Enum.map(entries, fn entry ->
+        %{"ref" => entry.ref, "name" => entry.name, "size" => entry.size, "type" => entry.type}
+      end)
+
+    state =
+      push_with_callback(
+        state,
+        view,
+        "allow_upload",
+        %{"ref" => ref, "entries" => client_entries},
+        fn reply, state ->
+          %{payload: payload, topic: _topic} = reply
+          GenServer.reply(from, {:ok, payload})
+          {:noreply, state}
+        end
+      )
+
     {:noreply, state}
+  end
+
+  def handle_call({:chunk_uploads, element, config, entries}, from, state) do
+   %{chunk_size: chunk_size} = config
+   parent = self()
+
+   for entry <- entries,
+       entry_meta <- element.meta.entries,
+       {entry_ref, token} = entry do
+
+      start_task(state, fn ->
+        {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{})
+        {:ok, _resp, socket} =
+          Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => token})
+
+        # TODO struct
+        chunk_upload(0, from, %{
+          parent: parent,
+          element: element,
+          entry_ref: entry_ref,
+          socket: socket,
+          content: entry_meta.content,
+          content_size: byte_size(entry_meta.content),
+          chunk_size: chunk_size
+        })
+        Process.sleep(:infinity)
+      end)
+    end
+
+    {:reply, :ok, state}
+  end
+
+  defp start_task(state, func) do
+    {:ok, child} = Supervisor.start_child(state.test_supervisor, %{
+      id: make_ref(),
+      start: {Task, :start_link, [func]},
+      restart: :temporary
+    })
+
+    {:ok, child}
+  end
+
+  defp chunk_upload(start, from, %{} = upload_state) when is_integer(start) do
+    # TODO report progress
+    if start >= upload_state.content_size do
+      :upload_complete
+    else
+      chunk =
+        if start + upload_state.chunk_size > upload_state.content_size do
+          :binary.part(upload_state.content, start, upload_state.content_size - start)
+        else
+          :binary.part(upload_state.content, start, upload_state.chunk_size)
+        end
+
+      ref = Phoenix.ChannelTest.push(upload_state.socket, "event", {:frame, chunk})
+      receive do
+        %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
+          new_start = start + upload_state.chunk_size
+          progress = trunc((new_start / upload_state.content_size) * 100)
+          progress = if progress > 100, do: 100, else: progress
+          send(upload_state.parent, {:upload_progress, from, upload_state.element, upload_state.entry_ref, progress})
+
+          chunk_upload(new_start, from, upload_state)
+      after
+        1000 -> exit(:timeout)
+      end
+    end
   end
 
   defp drop_view_by_id(state, id, reason) do
@@ -506,7 +604,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
         state
 
-      %{} -> state
+      %{} ->
+        state
     end
 
     case diff do
@@ -722,19 +821,30 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_event(:upload_progress, node, %Element{} = element) do
+    if ref = DOM.attribute(node, @data_phx_upload_ref) do
+      {:upload_progress, proxy_topic(element), ref}
+    else
+      {:error, :invalid,
+       "element selected by #{inspect(element.selector)} does not have a #{@data_phx_upload_ref} attribute"}
+    end
+  end
+
+
   defp maybe_event(:allow_upload, node, %Element{meta: %{entries: _}} = element) do
-    upload_ref = "data-phx-upload-ref"
-    if ref = DOM.attribute(node, upload_ref) do
+    if ref = DOM.attribute(node, @data_phx_upload_ref) do
       {:allow_upload, proxy_topic(element), ref}
     else
       {:error, :invalid,
-       "element selected by #{inspect(element.selector)} does not have a #{upload_ref} attribute"}
+       "element selected by #{inspect(element.selector)} does not have a #{@data_phx_upload_ref} attribute"}
     end
   end
+
   defp maybe_event(:allow_upload, _node, %Element{} = element) do
     {:error, :invalid,
-      "file input selected by #{inspect(element.selector)} was not built with `file_input/3` with associated file entries"}
+     "file input selected by #{inspect(element.selector)} was not built with `file_input/3` with associated file entries"}
   end
+
   defp maybe_event(:hook, node, %Element{event: event} = element) do
     true = is_binary(event)
 
@@ -847,7 +957,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp form_defaults({"select", _, _} = node, name, acc) do
-    options = DOM.filter(node, &DOM.tag(&1) == "option")
+    options = DOM.filter(node, &(DOM.tag(&1) == "option"))
 
     all_selected =
       if DOM.attribute(node, "multiple") do
@@ -986,7 +1096,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp collect_values([{"select", _, _} = node | nodes], types, values) do
     options =
       node
-      |> DOM.filter(&DOM.tag(&1) == "option")
+      |> DOM.filter(&(DOM.tag(&1) == "option"))
       |> Enum.map(&(DOM.attribute(&1, "value") || ""))
 
     if DOM.attribute(node, "multiple") do

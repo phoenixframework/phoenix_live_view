@@ -139,7 +139,7 @@ defmodule Phoenix.LiveView.Channel do
                 {entry_ref, token}
               end
 
-            new_state = %{state | socket: new_socket}
+            {:noreply, new_state} = handle_changed(state, new_socket, nil)
             reply(new_state, msg.ref, :ok, %{config: config, entries: reply_entries})
             {:noreply, new_state}
 

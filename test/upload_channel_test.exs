@@ -1,8 +1,9 @@
 defmodule Phoenix.LiveView.UploadChannelTest do
   use ExUnit.Case, async: true
 
+  require Phoenix.ChannelTest
+
   import Phoenix.LiveViewTest
-  import Phoenix.ChannelTest
 
   alias Phoenix.LiveView
 
@@ -26,18 +27,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {:ok, lv}
   end
 
-  def join_upload_channel(socket, lv, selector, entries) do
+  def join_upload_channel(lv, selector, entries) do
     lv
     |> file_input(selector, entries)
     |> render_upload()
-    |> case do
-      %{error: reason} ->
-        {:error, reason}
-
-      %{entries: entries} ->
-        for {_ref, token} <- entries,
-            do: subscribe_and_join(socket, "lvu:123", %{"token" => token})
-    end
   end
 
   defp build_entries(count) do
@@ -45,9 +38,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       %{
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
-        content: <<000>>,
+        content: "1234567890END",
         size: 1_396_009,
-        type: "image/jpeg",
+        type: "image/jpeg"
       }
     end
   end
@@ -65,32 +58,29 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     :ok
   end
 
-  setup do
-    {:ok, socket} = connect(LiveView.Socket, %{}, %{})
-    {:ok, socket: socket}
-  end
+  test "rejects invalid token" do
+    {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{})
 
-  test "rejects invalid token", %{socket: socket} do
     assert {:error, %{reason: "invalid_token"}} =
-             subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
+             Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
   end
 
   describe "with valid token" do
     setup %{allow: opts} do
+      opts = Keyword.put(opts, :chunk_size, 3)
       {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
       {:ok, lv: lv}
     end
 
     @tag allow: [accept: :any]
-    test "returns client configuration", %{socket: socket, lv: lv} do
+    test "returns client configuration", %{lv: lv} do
       assert [{:ok, %{}, socket}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+               join_upload_channel(lv, "input[name=avatar]", build_entries(1))
     end
 
     @tag allow: [accept: :any]
-    test "upload channel exits when LiveView channel exits", %{socket: socket, lv: lv} do
-      assert [{:ok, _, socket}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+    test "upload channel exits when LiveView channel exits", %{lv: lv} do
+      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
 
       channel_pid = socket.channel_pid
       Process.unlink(proxy_pid(lv))
@@ -101,9 +91,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [accept: :any]
-    test "abnormal channel exit brings down LiveView", %{socket: socket, lv: lv} do
-      assert [{:ok, _, socket}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+    test "abnormal channel exit brings down LiveView", %{lv: lv} do
+      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
 
       channel_pid = socket.channel_pid
       lv_pid = lv.pid
@@ -111,13 +100,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       Process.unlink(channel_pid)
       Process.monitor(lv_pid)
       Process.exit(channel_pid, :kill)
-      assert_receive {:DOWN, _ref, :process, ^lv_pid, {:shutdown, {:channel_upload_exit, :killed}}}
+
+      assert_receive {:DOWN, _ref, :process, ^lv_pid,
+                      {:shutdown, {:channel_upload_exit, :killed}}}
     end
 
     @tag allow: [accept: :any]
-    test "normal channel exit is cleaned up by LiveView", %{socket: socket, lv: lv} do
-      assert [{:ok, _, socket}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+    test "normal channel exit is cleaned up by LiveView", %{lv: lv} do
+      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
 
       channel_pid = socket.channel_pid
       lv_pid = lv.pid
@@ -130,31 +120,49 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render(lv) =~ "channel:nil"
     end
 
-
     @tag allow: [max_entries: 3, accept: :any]
-    test "multiple entries under max", %{socket: socket, lv: lv} do
+    test "multiple entries under max", %{lv: lv} do
       assert [{:ok, _, socket1}, {:ok, _, socket2}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(2))
+               join_upload_channel(lv, "input[name=avatar]", build_entries(2))
+
       assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
       assert render(lv) =~ "channel:#{inspect_html_safe(socket2.channel_pid)}"
     end
 
     @tag allow: [max_entries: 1, accept: :any]
-    test "too many entries over max", %{socket: socket, lv: lv} do
+    test "too many entries over max", %{lv: lv} do
       assert {:error, [_ref, :too_many_files]} =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(2))
+               join_upload_channel(lv, "input[name=avatar]", build_entries(2))
     end
 
     @tag allow: [max_entries: 3, accept: :any]
-    test "starting an already in progress entry is denied", %{socket: socket, lv: lv} do
-      assert [{:ok, _, socket1}] =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+    test "starting an already in progress entry is denied", %{lv: lv} do
+      assert [{:ok, _, socket1}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
 
       assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
+
       assert {:error, [_ref, :already_started]} =
-               join_upload_channel(socket, lv, "input[name=avatar]", build_entries(1))
+               join_upload_channel(lv, "input[name=avatar]", build_entries(1))
 
       assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
+    end
+
+    @tag allow: [max_entries: 3, accept: :any]
+    test "chunks file to channel and reports progress", %{lv: lv} do
+      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      assert render_upload(avatar) =~ "0%"
+
+      assert initial_progress = upload_progress(avatar)
+      assert initial_progress > 0
+
+      more_progress = upload_progress(avatar)
+      assert more_progress > initial_progress
+
+      assert Enum.find(1..100, fn _ ->
+        upload_progress(avatar) == 100
+      end)
+
+      assert render(lv) =~ "100%"
     end
   end
 end

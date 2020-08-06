@@ -87,6 +87,11 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def component_id(html_tree), do: Floki.attribute(html_tree, @phx_component) |> List.first()
 
+  def upload_ref(html) do
+    [input] = parse(html)
+    attribute(input, "data-phx-upload-ref")
+  end
+
   def find_static_views(html) do
     html
     |> all("[data-phx-static]")

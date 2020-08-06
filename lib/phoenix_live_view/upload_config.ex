@@ -135,6 +135,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           @default_max_file_size
       end
 
+    chunk_size =
+      case Keyword.fetch(opts, :chunk_size) do
+        {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
+          pos_integer
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :chunk_size value provided to allow_upload.
+
+          Only a positive integer is supported (Defaults to #{@default_chunk_size} bytes). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_chunk_size
+      end
+
     %UploadConfig{
       ref: random_ref,
       name: name,
@@ -143,6 +161,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       entry_refs_to_pids: %{},
       accept: accept,
       external: external,
+      chunk_size: chunk_size,
       allowed?: true
     }
   end
