@@ -19,6 +19,14 @@ defmodule Phoenix.LiveView.Channel do
     send(self(), {@prefix, :send_update, {module, id, assigns}})
   end
 
+  def send_update_after(module, id, time_in_milliseconds, assigns) do
+    Process.send_after(
+      self(),
+      {@prefix, :send_update, {module, id, assigns}},
+      time_in_milliseconds
+    )
+  end
+
   def ping(pid) do
     GenServer.call(pid, {@prefix, :ping}, :infinity)
   end
