@@ -19,7 +19,8 @@ defmodule Phoenix.LiveView.Channel do
     send(self(), {@prefix, :send_update, {module, id, assigns}})
   end
 
-  def send_update_after(module, id, time_in_milliseconds, assigns) do
+  def send_update_after(module, id, assigns, time_in_milliseconds)
+      when is_integer(time_in_milliseconds) do
     Process.send_after(
       self(),
       {@prefix, :send_update, {module, id, assigns}},

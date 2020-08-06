@@ -1004,22 +1004,25 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Similar to `send_update/2` but the update will be delayed according to given `time_in_milliseconds`.
+  Similar to `send_update/2` but the update will be delayed according to the given `time_in_milliseconds`.
 
   ## Examples
 
       def handle_event("cancel-order", _, socket) do
         ...
-        send_update_after(Cart, 3000, id: "cart", status: "cancelled")
+        send_update_after(Cart, [id: "cart", status: "cancelled"], 3000)
         {:noreply, socket}
       end
   """
-  def send_update_after(module, time_in_milliseconds, assigns) do
+  def send_update_after(module, assigns, time_in_milliseconds)
+      when is_integer(time_in_milliseconds) do
+    assigns = Enum.into(assigns, %{})
+
     id =
       assigns[:id] ||
         raise ArgumentError, "missing required :id in send_update_after. Got: #{inspect(assigns)}"
 
-    Phoenix.LiveView.Channel.send_update_after(module, id, time_in_milliseconds, assigns)
+    Phoenix.LiveView.Channel.send_update_after(module, id, assigns, time_in_milliseconds)
   end
 
   @doc """
