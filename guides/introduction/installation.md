@@ -312,3 +312,7 @@ import NProgress from "nprogress"
 window.addEventListener("phx:page-loading-start", info => NProgress.start())
 window.addEventListener("phx:page-loading-stop", info => NProgress.done())
 ```
+
+## Location for LiveView modules
+
+By convention your LiveView modules and `leex` templates should be placed in `lib/my_web_app/live/` directory.
