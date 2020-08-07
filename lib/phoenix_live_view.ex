@@ -993,7 +993,7 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
   """
-  def send_update(module, assigns) do
+  def send_update(module, assigns) when is_atom(module) do
     assigns = Enum.into(assigns, %{})
 
     id =
@@ -1015,7 +1015,7 @@ defmodule Phoenix.LiveView do
       end
   """
   def send_update_after(module, assigns, time_in_milliseconds)
-      when is_integer(time_in_milliseconds) do
+      when is_atom(module) and is_integer(time_in_milliseconds) do
     assigns = Enum.into(assigns, %{})
 
     id =
