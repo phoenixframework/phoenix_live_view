@@ -353,6 +353,14 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
+  def fetch_upload_entry_pid(socket, config_ref, entry_ref) do
+    {_uploads, _name, conf} = get_upload_by_ref!(socket, config_ref)
+    UploadConfig.fetch_entry_upload_pid(conf, entry_ref)
+  end
+
+  @doc """
+  TODO
+  """
   def get_upload_by_pid(socket, pid) when is_pid(pid) do
     Enum.find_value(socket.assigns[:uploads] || %{}, fn
       {@refs_to_names, _} -> false

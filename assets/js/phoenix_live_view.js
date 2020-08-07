@@ -2411,8 +2411,8 @@ export class View {
 
   pushFileProgress(fileEl, entryRef, progress){
     this.pushWithReply(() => this.putRef([fileEl, fileEl.form], "file-progress"), "progress", {
-      ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),
+      ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       entry_ref: entryRef,
       progress: progress
     })
@@ -2427,8 +2427,6 @@ export class View {
       value: formData,
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }
-
-    if(fileData && fileData !== null) { event.file_data = fileData }
     this.pushWithReply(refGenerator, "event", event, callback)
   }
 

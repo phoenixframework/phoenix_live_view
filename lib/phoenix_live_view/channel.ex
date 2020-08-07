@@ -158,43 +158,43 @@ defmodule Phoenix.LiveView.Channel do
   #
   #  mv_upload(socket, :avatar, fn %Plug.Upload{} = upload -> ... end)
   #
-  def handle_info(
-        %Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg,
-        %{topic: topic} = state
-      ) do
-    %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} =
-      msg.payload
+  # def handle_info(
+  #       %Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg,
+  #       %{topic: topic} = state
+  #     ) do
+  #   %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} =
+  #     msg.payload
 
-    val = decode_event_type(type, raw_val)
+  #   val = decode_event_type(type, raw_val)
 
-    {val, upload_channels} =
-      Enum.reduce(file_data, {val, []}, fn fd, {val_acc, upload_chans} ->
-        {path, _meta} = Map.pop(fd, "path")
-        meta = Map.take(fd, ["name", "size", "type"])
+  #   {val, upload_channels} =
+  #     Enum.reduce(file_data, {val, []}, fn fd, {val_acc, upload_chans} ->
+  #       {path, _meta} = Map.pop(fd, "path")
+  #       meta = Map.take(fd, ["name", "size", "type"])
 
-        case Map.get(state.uploads, fd["topic"]) do
-          pid when is_pid(pid) ->
-            {:ok, file_path} = GenServer.call(pid, {:get_file, fd["file_ref"]})
-            meta = Map.put(meta, "path", file_path)
-            {Plug.Conn.Query.decode_pair({path, meta}, val_acc), [pid | upload_chans]}
+  #       case Utils.fetch_upload_entry_pid(state.socket, upload_ref, entry_ref) do
+  #         {:ok, pid} ->
+  #           {:ok, file_path} = GenServer.call(pid, {:get_file, fd["file_ref"]})
+  #           meta = Map.put(meta, "path", file_path)
+  #           {Plug.Conn.Query.decode_pair({path, meta}, val_acc), [pid | upload_chans]}
 
-          _ ->
-            {Plug.Conn.Query.decode_pair({path, meta}, val_acc), upload_chans}
-        end
-      end)
+  #         {:error, _} ->
+  #           {Plug.Conn.Query.decode_pair({path, meta}, val_acc), upload_chans}
+  #       end
+  #     end)
 
-    try do
-      if cid = msg.payload["cid"] do
-        component_handle_event(state, cid, event, val, msg.ref)
-      else
-        state.socket
-        |> view_handle_event(event, val)
-        |> handle_result({:handle_event, 3, msg.ref}, state)
-      end
-    after
-      Enum.map(upload_channels, &GenServer.cast(&1, :stop))
-    end
-  end
+  #   try do
+  #     if cid = msg.payload["cid"] do
+  #       component_handle_event(state, cid, event, val, msg.ref)
+  #     else
+  #       state.socket
+  #       |> view_handle_event(event, val)
+  #       |> handle_result({:handle_event, 3, msg.ref}, state)
+  #     end
+  #   after
+  #     Enum.map(upload_channels, &GenServer.cast(&1, :stop))
+  #   end
+  # end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload

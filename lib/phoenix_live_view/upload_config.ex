@@ -187,6 +187,14 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{conf | entry_refs_to_pids: new_refs}
   end
 
+  def fetch_entry_upload_pid(%UploadConfig{} = conf, entry_ref) do
+    case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
+      {:ok, pid} when is_pid(pid) -> {:ok, pid}
+      {:ok, @unregistered} -> {:error, @unregistered}
+      :error -> {:error, :disallowed}
+    end
+  end
+
   def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
       {:ok, @unregistered} ->

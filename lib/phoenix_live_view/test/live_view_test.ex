@@ -1181,6 +1181,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
+  # TODO use %FileINput{} and conver to %Element{}
   def render_upload(%Element{} = element) do
     case call(element, {:render_event, element, :allow_upload, element.meta}) do
       %{error: reason} ->

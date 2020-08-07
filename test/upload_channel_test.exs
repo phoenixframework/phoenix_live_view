@@ -33,15 +33,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     |> render_upload()
   end
 
-  defp build_entries(count) do
+  defp build_entries(count, opts \\ []) do
     for i <- 1..count do
-      %{
+      Enum.into(opts, %{
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
-        content: "1234567890END",
+        content: String.duplicate("0", 100),
         size: 1_396_009,
         type: "image/jpeg"
-      }
+      })
     end
   end
 
@@ -67,7 +67,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   describe "with valid token" do
     setup %{allow: opts} do
-      opts = Keyword.put(opts, :chunk_size, 3)
       {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
       {:ok, lv: lv}
     end
@@ -147,21 +146,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
     end
 
-    @tag allow: [max_entries: 3, accept: :any]
+    @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "chunks file to channel and reports progress", %{lv: lv} do
-      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
-      assert render_upload(avatar) =~ "0%"
+      # TODO invesitage how multiple=true is encoded over general HTTP submit
+      avatar = file_input(lv, "input[name=avatar]", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      assert render_upload(avatar) =~ "0%" # always uploads everything
 
-      assert initial_progress = upload_progress(avatar)
-      assert initial_progress > 0
+      # upload = start_upload(avatar)
+      # assert render_upload_chunk(pid, 50) =~ "50%"
 
-      more_progress = upload_progress(avatar)
-      assert more_progress > initial_progress
-
-      assert Enum.find(1..100, fn _ ->
-        upload_progress(avatar) == 100
-      end)
-
+      assert upload_progress(avatar) == 20
+      assert upload_progress(avatar) == 40
+      assert upload_progress(avatar) == 60
+      assert upload_progress(avatar) == 80
+      assert upload_progress(avatar) == 100
       assert render(lv) =~ "100%"
     end
   end
