@@ -993,7 +993,7 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
   """
-  def send_update(module, assigns) do
+  def send_update(module, assigns) when is_atom(module) do
     assigns = Enum.into(assigns, %{})
 
     id =
@@ -1001,6 +1001,28 @@ defmodule Phoenix.LiveView do
         raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
 
     Phoenix.LiveView.Channel.send_update(module, id, assigns)
+  end
+
+  @doc """
+  Similar to `send_update/2` but the update will be delayed according to the given `time_in_milliseconds`.
+
+  ## Examples
+
+      def handle_event("cancel-order", _, socket) do
+        ...
+        send_update_after(Cart, [id: "cart", status: "cancelled"], 3000)
+        {:noreply, socket}
+      end
+  """
+  def send_update_after(module, assigns, time_in_milliseconds)
+      when is_atom(module) and is_integer(time_in_milliseconds) do
+    assigns = Enum.into(assigns, %{})
+
+    id =
+      assigns[:id] ||
+        raise ArgumentError, "missing required :id in send_update_after. Got: #{inspect(assigns)}"
+
+    Phoenix.LiveView.Channel.send_update_after(module, id, assigns, time_in_milliseconds)
   end
 
   @doc """
