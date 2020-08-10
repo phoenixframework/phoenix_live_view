@@ -2419,17 +2419,13 @@ export class View {
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let {fileData, formData} = serializeForm(inputEl.form, {_target: eventTarget.name})
-    let event = {
+    let {formData} = serializeForm(inputEl.form, {_target: eventTarget.name})
+    this.pushWithReply(() => this.putRef([inputEl, inputEl.form], "change"), "event", {
       type: "form",
       event: phxEvent,
       value: formData,
       cid: this.targetComponentID(inputEl.form, targetCtx)
-    }
-
-    if(fileData && fileData !== null) { event.file_data = fileData }
-    this.pushWithReply(refGenerator, "event", event, callback)
+    }, callback)
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
