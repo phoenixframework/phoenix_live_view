@@ -133,9 +133,10 @@ defmodule Phoenix.LiveViewTest do
   @flash_cookie "__phoenix_flash__"
 
   require Phoenix.ConnTest
+  require Phoenix.ChannelTest
 
   alias Phoenix.LiveView.{Diff, Socket}
-  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload, UploadClient}
 
   @doc """
   Puts connect params to be used on LiveView connections.
@@ -928,30 +929,18 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  def file_input(%View{proxy: proxy} = view, selector, [_ | _] = entries) do
-    meta =
-      Enum.reduce(entries, %{entries: [], view: view}, fn entry, acc ->
-        %{acc | entries: acc.entries ++ [populate_entry(entry)]}
-      end)
-
-    %Element{proxy: proxy, selector: selector, meta: meta}
+  defmacro file_input(view, selector, entries) do
+    quote bind_quoted: [view: view, selector: selector, entries: entries] do
+      require Phoenix.ChannelTest
+      socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, selector, entries)
+    end
   end
 
-  defp populate_entry(%{} = entry) do
-    name =
-      Map.get(entry, :name) ||
-        raise ArgumentError, "a :name of the entry filename is required."
 
-    content =
-      Map.get(entry, :content) ||
-        raise ArgumentError, "the :content of the binary entry file data is required."
-
-    %{}
-    |> Map.put(:name, name)
-    |> Map.put(:content, content)
-    |> Map.put(:ref, System.unique_integer([:positive]))
-    |> Map.put_new_lazy(:size, fn -> byte_size(content) end)
-    |> Map.put_new_lazy(:type, fn -> MIME.from_path(name) end)
+  def __start_upload_client__(socket_builder, view, selector, entries) do
+    {:ok, pid} = UploadClient.start_link(socket_builder: socket_builder, test_supervisor: fetch_test_supervisor!())
+    Upload.new(pid, view, selector, entries)
   end
 
   @doc """
@@ -1093,23 +1082,6 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
-  """
-  defmacro upload_progress(element, timeout \\ 100) do
-    quote do
-      %Element{} = element = unquote(element)
-      %{proxy: {ref, _topic, _}} = element.meta.view
-      upload_ref =
-        element
-        |> render()
-        |> DOM.upload_ref()
-
-      assert_receive {^ref, {:upload_progress, {^upload_ref, progress}}}, unquote(timeout)
-      progress
-    end
-  end
-
-  @doc """
   Follows the redirect from a `render_*` action.
 
   Imagine you have a LiveView that redirects on a `render_click`
@@ -1182,14 +1154,34 @@ defmodule Phoenix.LiveViewTest do
   TODO
   """
   # TODO use %FileINput{} and conver to %Element{}
-  def render_upload(%Element{} = element) do
-    case call(element, {:render_event, element, :allow_upload, element.meta}) do
-      %{error: reason} ->
-        {:error, reason}
+  def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
+    if UploadClient.allow_acknowledged?(upload) do
+      render_chunk(upload, entry_name, percent)
+    else
+      case preflight_upload(upload) do
+        {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
+          case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
+            :ok -> render_chunk(upload, entry_name, percent)
+            {:error, reason} -> {:error, reason}
+          end
 
-      %{config: config, entries: entries} ->
-        :ok = call(element, {:chunk_uploads, element, config, entries})
-        render(element.meta.view)
+        {:error, reason} -> {:error, reason}
+      end
     end
+  end
+
+  @doc """
+  """
+  def preflight_upload(%Upload{} = upload) do
+    # LiveView channel returns error conditions as error key in payload, ie `%{error: reason}`
+    case call(upload.element, {:render_event, upload.element, :allow_upload, upload.entries}) do
+      %{error: reason} -> {:error, reason}
+      %{ref: _ref} = resp -> {:ok, resp}
+    end
+  end
+
+  defp render_chunk(upload, entry_name, percent) do
+    :ok = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
+    render(upload.view)
   end
 end

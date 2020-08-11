@@ -2,7 +2,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
   @data_phx_upload_ref "data-phx-upload-ref"
   require Phoenix.ChannelTest
 
@@ -27,6 +26,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   Encoding used by the Channel serializer.
   """
   def encode!(msg), do: msg
+
+  @doc """
+  TODO
+  """
+  def report_upload_progress(proxy_pid, from, element, entry_ref, percent) do
+    GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent})
+  end
 
   @doc """
   Starts a client proxy.
@@ -251,8 +257,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:upload_progress, topic, upload_ref} ->
         payload = Map.put(value, "ref", upload_ref)
         view = fetch_view_by_topic!(state, topic)
-        send_caller(state, {:upload_progress, {upload_ref, Map.fetch!(payload, "progress")}})
-
         {:noreply, push_with_reply(state, from, view, "progress", payload)}
 
       {:patch, topic, path} ->
@@ -337,13 +341,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
-  def handle_info({:upload_progress, from, %Element{} = element, entry_ref, progress}, state) do
+  def handle_call({:upload_progress, from, %Element{} = element, entry_ref, progress}, _from, state) do
     payload = %{"entry_ref" => entry_ref, "progress" => progress}
     topic = proxy_topic(element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
     send(self(), {:sync_render_event, element, :upload_progress, payload, from})
-    {:noreply, state}
+    {:reply, :ok, state}
   end
 
   def handle_call(:page_title, _from, state) do
@@ -380,7 +384,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_allow_upload, topic, ref, %{entries: entries}}, from, state) do
+  def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
     view = fetch_view_by_topic!(state, topic)
 
     client_entries =
@@ -404,72 +408,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:chunk_uploads, element, config, entries}, from, state) do
-   %{chunk_size: chunk_size} = config
-   parent = self()
-
-   for entry <- entries,
-       entry_meta <- element.meta.entries,
-       {entry_ref, token} = entry do
-
-      start_task(state, fn ->
-        {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{})
-        {:ok, _resp, socket} =
-          Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => token})
-
-        # TODO struct
-        chunk_upload(0, from, %{
-          parent: parent,
-          element: element,
-          entry_ref: entry_ref,
-          socket: socket,
-          content: entry_meta.content,
-          content_size: byte_size(entry_meta.content),
-          chunk_size: chunk_size
-        })
-        Process.sleep(:infinity)
-      end)
-    end
-
-    {:reply, :ok, state}
-  end
-
-  defp start_task(state, func) do
-    {:ok, child} = Supervisor.start_child(state.test_supervisor, %{
-      id: make_ref(),
-      start: {Task, :start_link, [func]},
-      restart: :temporary
-    })
-
-    {:ok, child}
-  end
-
-  defp chunk_upload(start, from, %{} = upload_state) when is_integer(start) do
-    # TODO report progress
-    if start >= upload_state.content_size do
-      :upload_complete
-    else
-      chunk =
-        if start + upload_state.chunk_size > upload_state.content_size do
-          :binary.part(upload_state.content, start, upload_state.content_size - start)
-        else
-          :binary.part(upload_state.content, start, upload_state.chunk_size)
-        end
-
-      ref = Phoenix.ChannelTest.push(upload_state.socket, "event", {:frame, chunk})
-      receive do
-        %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
-          new_start = start + upload_state.chunk_size
-          progress = trunc((new_start / upload_state.content_size) * 100)
-          progress = if progress > 100, do: 100, else: progress
-          send(upload_state.parent, {:upload_progress, from, upload_state.element, upload_state.entry_ref, progress})
-
-          chunk_upload(new_start, from, upload_state)
-      after
-        1000 -> exit(:timeout)
-      end
-    end
-  end
 
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
@@ -831,18 +769,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
 
-  defp maybe_event(:allow_upload, node, %Element{meta: %{entries: _}} = element) do
+  defp maybe_event(:allow_upload, node, %Element{} = element) do
     if ref = DOM.attribute(node, @data_phx_upload_ref) do
       {:allow_upload, proxy_topic(element), ref}
     else
       {:error, :invalid,
        "element selected by #{inspect(element.selector)} does not have a #{@data_phx_upload_ref} attribute"}
     end
-  end
-
-  defp maybe_event(:allow_upload, _node, %Element{} = element) do
-    {:error, :invalid,
-     "file input selected by #{inspect(element.selector)} was not built with `file_input/3` with associated file entries"}
   end
 
   defp maybe_event(:hook, node, %Element{event: event} = element) do

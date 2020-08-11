@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Channel do
               end
 
             {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, %{config: config, entries: reply_entries})
+            reply(new_state, msg.ref, :ok, %{ref: ref, config: config, entries: reply_entries})
             {:noreply, new_state}
 
           {:error, ref, reason} ->

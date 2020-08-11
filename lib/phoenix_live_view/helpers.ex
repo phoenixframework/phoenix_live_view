@@ -333,8 +333,23 @@ defmodule Phoenix.LiveView.Helpers do
   TODO
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
+
     assigns = %{conf: conf}
-    ~L|<input type="file" name="<%= @conf.name %>" data-phx-upload-ref="<%= conf.ref %>"/>|
+    if conf.max_entries > 1 do
+      ~L"""
+      <input type="file"
+            name="<%= @conf.name %>[]"
+            data-phx-upload-ref="<%= conf.ref %>"
+            multiple="true" />
+      """
+    else
+      ~L"""
+      <input type="file"
+            name="<%= @conf.name %>"
+            data-phx-upload-ref="<%= conf.ref %>"
+            multiple="false" />
+      """
+    end
   end
 
   @doc """

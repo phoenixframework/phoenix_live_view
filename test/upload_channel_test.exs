@@ -1,13 +1,14 @@
 defmodule Phoenix.LiveView.UploadChannelTest do
   use ExUnit.Case, async: true
 
-  require Phoenix.ChannelTest
 
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
+  alias Phoenix.LiveViewTest.UploadClient
 
   @endpoint Phoenix.LiveViewTest.Endpoint
+  require Phoenix.ChannelTest
 
   def inspect_html_safe(term) do
     term
@@ -25,12 +26,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {:ok, lv, _} = live_isolated(conn, Phoenix.LiveViewTest.UploadLive, session: %{})
     :ok = GenServer.call(lv.pid, {:run, setup})
     {:ok, lv}
-  end
-
-  def join_upload_channel(lv, selector, entries) do
-    lv
-    |> file_input(selector, entries)
-    |> render_upload()
   end
 
   defp build_entries(count, opts \\ []) do
@@ -72,17 +67,13 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [accept: :any]
-    test "returns client configuration", %{lv: lv} do
-      assert [{:ok, %{}, socket}] =
-               join_upload_channel(lv, "input[name=avatar]", build_entries(1))
-    end
-
-    @tag allow: [accept: :any]
     test "upload channel exits when LiveView channel exits", %{lv: lv} do
-      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      channel_pid = socket.channel_pid
       Process.unlink(proxy_pid(lv))
+      Process.unlink(avatar.pid)
       Process.unlink(channel_pid)
       Process.monitor(channel_pid)
       Process.exit(lv.pid, :kill)
@@ -91,11 +82,13 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "abnormal channel exit brings down LiveView", %{lv: lv} do
-      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      channel_pid = socket.channel_pid
       lv_pid = lv.pid
       Process.unlink(proxy_pid(lv))
+      Process.unlink(avatar.pid)
       Process.unlink(channel_pid)
       Process.monitor(lv_pid)
       Process.exit(channel_pid, :kill)
@@ -106,9 +99,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "normal channel exit is cleaned up by LiveView", %{lv: lv} do
-      assert [{:ok, _, socket}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      channel_pid = socket.channel_pid
       lv_pid = lv.pid
       Process.unlink(proxy_pid(lv))
       Process.unlink(channel_pid)
@@ -121,46 +115,63 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [max_entries: 3, accept: :any]
     test "multiple entries under max", %{lv: lv} do
-      assert [{:ok, _, socket1}, {:ok, _, socket2}] =
-               join_upload_channel(lv, "input[name=avatar]", build_entries(2))
+      avatar = file_input(lv, "input[name='avatar[]']", build_entries(2))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
+      assert render_upload(avatar, "myfile2.jpeg", 2) =~ "myfile2.jpeg:2%"
+      assert %{"myfile1.jpeg" => chan1_pid, "myfile2.jpeg" => chan2_pid} = UploadClient.channel_pids(avatar)
 
-      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
-      assert render(lv) =~ "channel:#{inspect_html_safe(socket2.channel_pid)}"
+      assert render(lv) =~ "channel:#{inspect_html_safe(chan1_pid)}"
+      assert render(lv) =~ "channel:#{inspect_html_safe(chan2_pid)}"
     end
 
     @tag allow: [max_entries: 1, accept: :any]
     test "too many entries over max", %{lv: lv} do
+      avatar = file_input(lv, "input[name=avatar]", build_entries(2))
       assert {:error, [_ref, :too_many_files]} =
-               join_upload_channel(lv, "input[name=avatar]", build_entries(2))
+             render_upload(avatar, "myfile1.jpeg", 1)
+    end
+
+    @tag allow: [max_entries: 3, accept: :any]
+    test "preflight_upload", %{lv: lv} do
+      avatar = file_input(lv, "input[name='avatar[]']", build_entries(1))
+      assert {:ok, %{ref: _ref, config: %{chunk_size: _}}} = preflight_upload(avatar)
     end
 
     @tag allow: [max_entries: 3, accept: :any]
     test "starting an already in progress entry is denied", %{lv: lv} do
-      assert [{:ok, _, socket1}] = join_upload_channel(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "input[name='avatar[]']", build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
-
-      assert {:error, [_ref, :already_started]} =
-               join_upload_channel(lv, "input[name=avatar]", build_entries(1))
-
-      assert render(lv) =~ "channel:#{inspect_html_safe(socket1.channel_pid)}"
+      assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
+      assert {:error, [_ref, :already_started]} = preflight_upload(avatar)
+      assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
-    test "chunks file to channel and reports progress", %{lv: lv} do
-      # TODO invesitage how multiple=true is encoded over general HTTP submit
-      avatar = file_input(lv, "input[name=avatar]", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
-      assert render_upload(avatar) =~ "0%" # always uploads everything
+    test "render_upload uploads entire file by default", %{lv: lv} do
+      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+    end
 
-      # upload = start_upload(avatar)
-      # assert render_upload_chunk(pid, 50) =~ "50%"
+    @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
+    test "render_upload uploads specified chunk percentage", %{lv: lv} do
+      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      assert render_upload(avatar, "foo.jpeg", 20) =~ "foo.jpeg:20%"
+      assert render_upload(avatar, "foo.jpeg", 25) =~ "foo.jpeg:45%"
+    end
 
-      assert upload_progress(avatar) == 20
-      assert upload_progress(avatar) == 40
-      assert upload_progress(avatar) == 60
-      assert upload_progress(avatar) == 80
-      assert upload_progress(avatar) == 100
-      assert render(lv) =~ "100%"
+    @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
+    test "render_upload with unknown entry", %{lv: lv} do
+      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(avatar.pid)
+      try do
+        render_upload(avatar, "unknown.jpeg")
+      catch
+        :exit, {{%RuntimeError{message: msg}, _}, _} ->
+          assert msg =~ "no file input with name \"unknown.jpeg\""
+      end
     end
   end
 end
