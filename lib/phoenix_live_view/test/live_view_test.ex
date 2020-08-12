@@ -799,7 +799,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
-      assert clock_view = find_live_child(view, "#clock")
+      assert clock_view = find_live_child(view, "clock")
       assert render_click(clock_view, :snooze) =~ "snoozing"
   """
   def find_live_child(%View{} = parent, child_id) do
