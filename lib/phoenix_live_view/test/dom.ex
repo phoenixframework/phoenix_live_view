@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveViewTest.DOM do
   @moduledoc false
 
+  @phx_static "data-phx-static"
   @phx_component "data-phx-component"
   @static :s
   @components :c
@@ -89,9 +90,9 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def find_static_views(html) do
     html
-    |> all("[data-phx-static]")
+    |> all("[#{@phx_static}]")
     |> Enum.into(%{}, fn node ->
-      {attribute(node, "id"), attribute(node, "data-phx-static")}
+      {attribute(node, "id"), attribute(node, @phx_static)}
     end)
   end
 
@@ -205,7 +206,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   # Patching
 
   def patch_id(id, html, inner_html) do
-    cids_before = inner_component_ids(id, html)
+    cids_before = component_ids(id, html)
 
     phx_update_tree =
       walk(inner_html, fn node ->
@@ -221,16 +222,35 @@ defmodule Phoenix.LiveViewTest.DOM do
         end
       end)
 
-    cids_after = inner_component_ids(id, new_html)
+    cids_after = component_ids(id, new_html)
     deleted_cids = for cid <- cids_before -- cids_after, do: String.to_integer(cid)
     {new_html, deleted_cids}
   end
 
-  defp inner_component_ids(id, html) do
-    html
-    |> by_id!(id)
-    |> filter(&attribute(&1, @phx_component))
-    |> all_attributes(@phx_component)
+  defp component_ids(id, html) do
+    by_id!(html, id)
+    |> Floki.children()
+    |> Enum.reduce([], &traverse_component_ids/2)
+  end
+
+  defp traverse_component_ids(current, acc) do
+    acc =
+      if id = attribute(current, @phx_component) do
+        [id | acc]
+      else
+        acc
+      end
+
+    cond do
+      attribute(current, @phx_static) ->
+        acc
+
+      children = Floki.children(current) ->
+        Enum.reduce(children, [], &traverse_component_ids/2)
+
+      true ->
+        acc
+    end
   end
 
   defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
@@ -257,7 +277,9 @@ defmodule Phoenix.LiveViewTest.DOM do
               attribute(node, "id") == dup_id ->
                 new_node = by_id!(appended, dup_id)
                 {tag, attrs(new_node), child_nodes(new_node)}
-              true -> node
+
+              true ->
+                node
             end
           end)
 

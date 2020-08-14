@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   import Phoenix.LiveView.TelemetryTestHelpers
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, NestedLive}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LiveInComponent}
 
   @endpoint Endpoint
   @moduletag :capture_log
@@ -674,7 +674,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "live view nested inside a live component" do
-      assert {:ok, _view, _html} = live_isolated(build_conn(), NestedLive)
+      assert {:ok, _view, _html} = live_isolated(build_conn(), LiveInComponent.Root)
     end
 
     @tag session: %{nest: []}

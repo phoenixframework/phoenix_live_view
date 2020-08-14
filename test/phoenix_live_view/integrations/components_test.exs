@@ -90,6 +90,13 @@ defmodule Phoenix.LiveView.ComponentTest do
     assert render(view) =~ "Disabled\n"
   end
 
+  test "tracks removals from a nested LiveView", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/component_in_live")
+    assert render(view) =~ "Hello World"
+    view |> find_live_child("nested_live") |> render_click("disable", %{})
+    refute render(view) =~ "Hello World"
+  end
+
   test "preloads", %{conn: conn} do
     conn =
       conn

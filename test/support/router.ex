@@ -82,6 +82,9 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration events
     live "/events", EventsLive
+
+    # integration components
+    live "/component_in_live", ComponentInLive.Root
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
