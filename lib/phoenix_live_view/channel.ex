@@ -252,13 +252,14 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :register_entry_upload, %{channel_pid: pid, ref: ref, entry_ref: entry_ref}}, _from, state) do
-    {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
+    {_, _, conf} = Utils.get_upload_by_ref!(state.socket, ref)
 
-    case Utils.register_entry_upload(state.socket, upload_conf, pid, entry_ref) do
+    case Utils.register_entry_upload(state.socket, conf, pid, entry_ref) do
       {:ok, new_socket} ->
         Process.monitor(pid)
         {:noreply, new_state} = handle_changed(state, new_socket, nil)
-        {:reply, {:ok, %{max_file_size: upload_conf.max_file_size}}, new_state}
+        reply = %{max_file_size: conf.max_file_size, chunk_timeout: conf.chunk_timeout}
+        {:reply, {:ok, reply}, new_state}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}

@@ -118,13 +118,34 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
       assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
       assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+      Process.flag(:trap_exit, true)
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(lv.pid)
+      Process.unlink(channel_pid)
       Process.monitor(channel_pid)
 
       assert UploadClient.simulate_attacker_chunk(avatar, "foo.jpeg", String.duplicate("0", 1000)) ==
         {:error, %{limit: 100, reason: "file_size_limit_exceeded"}}
 
-      assert_receive {:DOWN, _ref, :process, ^channel_pid, _}
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
     end
+
+    @tag allow: [accept: :any, max_file_size: 100, chunk_timeout: 500]
+    test "upload channel exits when client does not send chunk after timeout", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
+      assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+      Process.flag(:trap_exit, true)
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(lv.pid)
+      Process.unlink(channel_pid)
+      Process.monitor(channel_pid)
+
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
+    end
+
 
     @tag allow: [max_entries: 3, accept: :any]
     test "multiple entries under max", %{lv: lv} do

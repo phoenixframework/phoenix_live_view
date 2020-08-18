@@ -66,6 +66,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
+    Process.flag(:trap_exit, true)
     entry = get_entry!(state, entry_name)
     ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
     receive do
