@@ -125,28 +125,20 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
 
       entry = build_client_entry(:avatar)
-      assert UploadConfig.put_entries(socket.assigns.uploads.avatar, [
-               build_client_entry(:avatar),
-               entry
-             ]) == {:error, entry["ref"], :too_many_files}
-
-      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 2)
-      config = socket.assigns.uploads.avatar
-
-      assert {:ok, config} = UploadConfig.put_entries(config, [build_client_entry(:avatar)])
-      assert {:error, _, :already_started} = UploadConfig.put_entries(config, [build_client_entry(:avatar)])
+      assert {:error, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [build_client_entry(:avatar), entry])
+      assert avatar.errors == [{avatar.ref, :too_many_files}]
     end
 
     test "returns error when entry with greater than max_file_size provided" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
       entry = build_client_entry(:avatar, %{"size" => 8_000_001})
-      assert UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry]) ==
-               {:error, entry["ref"], :too_large}
+      assert {:error, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
+      assert avatar.errors == [{entry["ref"], :too_large}]
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: 1024)
       entry = build_client_entry(:avatar, %{"size" => 2048})
-      assert UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry]) ==
-               {:error, entry["ref"], :too_large}
+      assert {:error, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
+      assert avatar.errors == [{entry["ref"], :too_large}]
     end
 
     test "validates client size less than :max_file_size" do
@@ -183,13 +175,16 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "file.gif"})
-      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert {:error, %UploadConfig{} = hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert hero_config.errors == [{entry["ref"], :not_accepted}]
 
       entry = build_client_entry(:avatar, %{"name" => "file.gif", "type" => "image/png"})
-      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert {:error, %UploadConfig{} = hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert hero_config.errors == [{entry["ref"], :not_accepted}]
 
       entry = build_client_entry(:avatar, %{"name" => "file", "type" => "image/png"})
-      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert {:error, %UploadConfig{} = hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert hero_config.errors == [{entry["ref"], :not_accepted}]
     end
 
     test "validates entries accepted by type" do
@@ -211,10 +206,12 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "photo", "type" => "image/gif"})
-      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert {:error, hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert hero_config.errors ==  [{entry["ref"], :not_accepted}]
 
       entry = build_client_entry(:avatar, %{"name" => "photo.jpg", "type" => "application/x-httpd-php"})
-      assert UploadConfig.put_entries(hero_config, [entry]) == {:error, entry["ref"], :not_accepted}
+      assert {:error, hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert hero_config.errors == [{entry["ref"], :not_accepted}]
     end
 
     test "puts list of entries accepted by extension OR type" do

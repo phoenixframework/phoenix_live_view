@@ -72,8 +72,9 @@ defmodule Phoenix.LiveViewTest.Upload do
             entries: []
 
   @doc false
-  def new(pid, %Phoenix.LiveViewTest.View{} = view, selector, entries) do
+  def new(pid, %Phoenix.LiveViewTest.View{} = view, form_selector, name, entries) do
     populated_entries = Enum.map(entries, fn entry -> populate_entry(entry) end)
+    selector = "#{form_selector} input[type=\"file\"][name=\"#{name}\"]"
 
     %Upload{
       pid: pid,
@@ -93,10 +94,10 @@ defmodule Phoenix.LiveViewTest.Upload do
         raise ArgumentError, "the :content of the binary entry file data is required."
 
     %{}
-    |> Map.put(:name, name)
-    |> Map.put(:content, content)
-    |> Map.put(:ref, System.unique_integer([:positive]))
-    |> Map.put_new_lazy(:size, fn -> byte_size(content) end)
-    |> Map.put_new_lazy(:type, fn -> MIME.from_path(name) end)
+    |> Map.put("name", name)
+    |> Map.put("content", content)
+    |> Map.put("ref", System.unique_integer([:positive]))
+    |> Map.put_new_lazy("size", fn -> byte_size(content) end)
+    |> Map.put_new_lazy("type", fn -> MIME.from_path(name) end)
   end
 end

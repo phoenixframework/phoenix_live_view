@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "upload channel exits when LiveView channel exits", %{lv: lv} do
-      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
@@ -82,7 +82,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "abnormal channel exit brings down LiveView", %{lv: lv} do
-      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
@@ -99,7 +99,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "normal channel exit is cleaned up by LiveView", %{lv: lv} do
-      avatar = file_input(lv, "input[name=avatar]", build_entries(1))
+      avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
@@ -115,7 +115,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [max_entries: 3, accept: :any]
     test "multiple entries under max", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", build_entries(2))
+      avatar = file_input(lv, "form", :avatar, build_entries(2))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert render_upload(avatar, "myfile2.jpeg", 2) =~ "myfile2.jpeg:2%"
       assert %{"myfile1.jpeg" => chan1_pid, "myfile2.jpeg" => chan2_pid} = UploadClient.channel_pids(avatar)
@@ -126,44 +126,49 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [max_entries: 1, accept: :any]
     test "too many entries over max", %{lv: lv} do
-      avatar = file_input(lv, "input[name=avatar]", build_entries(2))
-      assert {:error, [_ref, :too_many_files]} =
+      avatar = file_input(lv, "form", :avatar, build_entries(2))
+      assert {:error, [%{"reason" => "too_many_files", "ref" => _}]} =
              render_upload(avatar, "myfile1.jpeg", 1)
     end
 
     @tag allow: [max_entries: 3, accept: :any]
     test "preflight_upload", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", build_entries(1))
+      avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert {:ok, %{ref: _ref, config: %{chunk_size: _}}} = preflight_upload(avatar)
     end
 
     @tag allow: [max_entries: 3, accept: :any]
     test "starting an already in progress entry is denied", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", build_entries(1))
+      avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
-
       assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
-      assert {:error, [_ref, :already_started]} = preflight_upload(avatar)
-      assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
+      Process.unlink(proxy_pid(lv))
+      Process.unlink(avatar.pid)
+      try do
+        preflight_upload(avatar)
+      catch
+        :exit, {{%ArgumentError{message: msg}, _}, _} ->
+          assert msg =~ "cannot overwrite entries for an active upload"
+      end
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload uploads entire file by default", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
       assert render_upload(avatar, "foo.jpeg") =~ "100%"
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload uploads specified chunk percentage", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
       assert render_upload(avatar, "foo.jpeg", 20) =~ "foo.jpeg:20%"
       assert render_upload(avatar, "foo.jpeg", 25) =~ "foo.jpeg:45%"
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload with unknown entry", %{lv: lv} do
-      avatar = file_input(lv, "input[name='avatar[]']", [%{name: "foo.jpeg", content: String.duplicate("0", 100)}]) # %Upload{}
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
       Process.unlink(proxy_pid(lv))
       Process.unlink(avatar.pid)
       try do
@@ -172,6 +177,28 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         :exit, {{%RuntimeError{message: msg}, _}, _} ->
           assert msg =~ "no file input with name \"unknown.jpeg\""
       end
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, max_file_size: 1]
+    test "render_change error with upload", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
+
+      assert lv
+             |> form("form", user: %{})
+             |> render_change(avatar) =~ "error:too_large"
+
+      assert {:error, [%{"reason" => "too_large"}]} = render_upload(avatar, "foo.jpeg")
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "render_change success with upload", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "ok"}])
+
+      refute lv
+             |> form("form", user: %{})
+             |> render_change(avatar) =~ "error"
+
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
     end
   end
 end

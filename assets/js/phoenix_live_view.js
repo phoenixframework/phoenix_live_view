@@ -258,7 +258,7 @@ let channelUploader = function(entries, resp, onError, liveSocket){
 }
 
 let serializeForm = (form, meta = {}) => {
-  let fileData = []
+  let fileData = {}
   let formData = new FormData(form)
   // TODO: The intended purpose of this var remains unknown
   let readerCount = 0
@@ -267,34 +267,28 @@ let serializeForm = (form, meta = {}) => {
   formData.forEach((val, key, index) => {
     if(val instanceof File) {
       toRemove.push(key)
-      let fileWithMeta = {path: key}
+      let entry = {path: key}
       if(val.size > 0) {
-        fileWithMeta.name = val.name
-        fileWithMeta.type = val.type
-        fileWithMeta.size = val.size
-
-        if(meta.__live_uploads) {
-          fileWithMeta.file_ref = meta.__live_uploads[key]["file_ref"]
-          fileWithMeta.topic = meta.__live_uploads[key]["topic"]
-
-        }
-        fileData.push(fileWithMeta)
+        let uploadRef = form.querySelector(`[name="${key}"]`).getAttribute(PHX_UPLOAD_REF)
+        fileData[uploadRef] = fileData[uploadRef] || []
+        entry.ref = LiveUploader.genFileRef()
+        entry.name = val.name
+        entry.type = val.type
+        entry.size = val.size
+        fileData[uploadRef].push(entry)
       }
     }
   })
 
   // Cleanup after building fileData
-  delete meta["__live_uploads"]
-  toRemove.forEach((key) => { formData.delete(key) })
+  toRemove.forEach(key => formData.delete(key))
 
   let params = new URLSearchParams()
   for(let [key, val] of formData.entries()){ params.append(key, val) }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
-  return {
-    formData: params.toString(),
-    fileData: fileData.length > 0 ? fileData : null
-  }
+  console.log(fileData)
+  return [params.toString(), isEmpty(fileData) ? undefined : fileData]
 }
 
 export class Rendered {
@@ -1251,7 +1245,7 @@ export let DOM = {
   },
 
   isIgnored(el, phxUpdate){
-    return el.getAttribute(phxUpdate) === "ignore" || el.files instanceof FileList
+    return el.getAttribute(phxUpdate) === "ignore" || (el.files instanceof FileList)
   },
 
   isPhxUpdate(el, phxUpdate, updateTypes){
@@ -2420,11 +2414,12 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let {fileData, formData} = serializeForm(inputEl.form, {_target: eventTarget.name})
+    let [formData, uploads] = serializeForm(inputEl.form, {_target: eventTarget.name})
     let event = {
       type: "form",
       event: phxEvent,
       value: formData,
+      uploads: uploads,
       cid: this.targetComponentID(inputEl.form, targetCtx)
     }
     this.pushWithReply(refGenerator, "event", event, callback)
@@ -2449,25 +2444,22 @@ export class View {
       return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
     }
 
-    this.uploadCount = 0
     let cid = this.targetComponentID(formEl, targetCtx)
     let numFiles = countAllFiles(formEl)
 
+    console.log(numFiles)
     if(numFiles > 0) {
       this.uploadFiles(formEl, targetCtx, refGenerator, cid, (uploads) => {
-        // debugger
-        let {fileData, formData} = serializeForm(formEl, {__live_uploads: uploads})
+        let [formData, ] = serializeForm(formEl, {})
         this.pushWithReply(refGenerator, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
-          cid: cid,
-          file_count: numFiles,
-          file_data: fileData
+          cid: cid
         }, onReply)
       })
     } else {
-      let {formData} = serializeForm(formEl)
+      let [formData, ] = serializeForm(formEl)
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,

@@ -302,8 +302,9 @@ defmodule Phoenix.LiveView.Utils do
         new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
         {:ok, assign(socket, :uploads, new_uploads)}
 
-      {:error, ref, reason} ->
-        {:error, ref, reason}
+      {:error, new_config} ->
+        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
+        {:error, assign(socket, :uploads, new_uploads), new_config.errors}
     end
   end
 

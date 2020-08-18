@@ -7,6 +7,9 @@ defmodule Phoenix.LiveViewTest.UploadLive do
       <%= for entry <- @uploads.avatar.entries do %>
         <%= entry.client_name %>:<%= entry.progress %>%
         channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
+        <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
+          error:<%= msg %>
+        <% end %>
       <% end %>
       <%= live_file_input @uploads.avatar %>
       <button type="submit">save</button>
@@ -26,5 +29,9 @@ defmodule Phoenix.LiveViewTest.UploadLive do
 
   def handle_call({:run, setup_func}, _from, socket) do
     {:reply, :ok, setup_func.(socket)}
+  end
+
+  def handle_event("validate", _params, socket) do
+    {:noreply, socket}
   end
 end

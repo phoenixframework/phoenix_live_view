@@ -929,18 +929,18 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  defmacro file_input(view, selector, entries) do
-    quote bind_quoted: [view: view, selector: selector, entries: entries] do
+  defmacro file_input(view, form_selector, name, entries) do
+    quote bind_quoted: [view: view, form_selector: form_selector, name: name, entries: entries] do
       require Phoenix.ChannelTest
       socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-      Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, selector, entries)
+      Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, form_selector, name, entries)
     end
   end
 
 
-  def __start_upload_client__(socket_builder, view, selector, entries) do
+  def __start_upload_client__(socket_builder, view, form_selector, name, entries) do
     {:ok, pid} = UploadClient.start_link(socket_builder: socket_builder, test_supervisor: fetch_test_supervisor!())
-    Upload.new(pid, view, selector, entries)
+    Upload.new(pid, view, form_selector, name, entries)
   end
 
   @doc """

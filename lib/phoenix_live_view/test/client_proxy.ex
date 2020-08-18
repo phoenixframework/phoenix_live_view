@@ -20,7 +20,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             connect_params: %{},
             connect_info: %{}
 
-  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload}
 
   @doc """
   Encoding used by the Channel serializer.
@@ -225,7 +225,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       case topic_or_element do
         {topic, event} ->
           view = fetch_view_by_topic!(state, topic)
-          {view, nil, event, stringify(value, & &1)}
+          case value do
+            %Upload{} = upload ->
+              {view, nil, event, %{}, upload}
+            other ->
+               {view, nil, event, stringify(other, & &1), nil}
+            end
 
         %Element{} = element ->
           view = fetch_view_by_topic!(state, proxy_topic(element))
@@ -236,18 +241,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-            {view, cid, event, DOM.deep_merge(extra, stringify_type(type, value))}
+
+            {values, uploads} =
+              case value do
+                %Upload{} = upload -> {extra, upload}
+                other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
+              end
+
+            {view, cid, event, values, uploads}
           end
       end
 
     case result do
-      {view, cid, event, values} ->
-        payload = %{
+      {view, cid, event, values, upload} ->
+        payload = maybe_put_uploads(state, view, %{
           "cid" => cid,
           "type" => Atom.to_string(type),
           "event" => event,
           "value" => encode(type, values)
-        }
+        }, upload)
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
@@ -387,17 +399,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
     view = fetch_view_by_topic!(state, topic)
 
-    client_entries =
-      Enum.map(entries, fn entry ->
-        %{"ref" => entry.ref, "name" => entry.name, "size" => entry.size, "type" => entry.type}
-      end)
-
     state =
       push_with_callback(
         state,
         view,
         "allow_upload",
-        %{"ref" => ref, "entries" => client_entries},
+        %{"ref" => ref, "entries" => entries},
         fn reply, state ->
           %{payload: payload, topic: _topic} = reply
           GenServer.reply(from, {:ok, payload})
@@ -1056,6 +1063,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp stringify_type(:hook, value), do: stringify(value, & &1)
   defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
+  defp stringify(%Upload{}, _fun), do: %{}
   defp stringify(%{__struct__: _} = struct, fun),
     do: stringify_value(struct, fun)
 
@@ -1073,4 +1081,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp stringify_value(other, fun), do: fun.(other)
   defp stringify_kv({k, v}, fun), do: {to_string(k), stringify(v, fun)}
+
+  def maybe_put_uploads(state, view, payload, %Upload{} = upload) do
+    {:ok, node} = state |> root(view) |> select_node(upload.element)
+    ref = DOM.attribute(node, "data-phx-upload-ref")
+    Map.put(payload, "uploads", %{ref => upload.entries})
+  end
+  def maybe_put_uploads(_state, _view, payload, nil), do: payload
 end

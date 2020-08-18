@@ -38,8 +38,9 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   def handle_call({:allowed_ack, ref, config, entries, entries_resp}, _from, state) do
     entries =
       for client_entry <- entries, into: %{} do
-        token = Map.fetch!(entries_resp, client_entry.ref)
-        {client_entry.name, build_and_join_entry(state, client_entry, token)}
+        %{"ref" => ref, "name" => name} = client_entry
+        token = Map.fetch!(entries_resp, ref)
+        {name, build_and_join_entry(state, client_entry, token)}
       end
 
     # failed_entries =
@@ -62,10 +63,11 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   defp build_and_join_entry(state, client_entry, token) do
     %{
-      name: name,
-      content: content,
-      size: _,
-      type: type
+      "name" => name,
+      "content" => content,
+      "size" => _,
+      "type" => type,
+      "ref" => ref
     } = client_entry
 
     {:ok, _resp, entry_socket} =
@@ -77,7 +79,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       size: byte_size(content),
       type: type,
       socket: entry_socket,
-      ref: client_entry.ref,
+      ref: ref,
       token: token,
       chunk_start: 0,
     }

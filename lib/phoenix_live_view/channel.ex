@@ -143,10 +143,10 @@ defmodule Phoenix.LiveView.Channel do
             reply(new_state, msg.ref, :ok, %{ref: ref, config: config, entries: reply_entries})
             {:noreply, new_state}
 
-          {:error, ref, reason} ->
-            new_socket = Utils.put_upload_error(state.socket, upload_conf, ref, reason)
-            new_state = %{state | socket: new_socket}
-            reply(new_state, msg.ref, :ok, %{error: [ref, reason]})
+          {:error, new_socket, errors} ->
+            errors_reply = Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
+            {:noreply, new_state} = handle_changed(state, new_socket, nil)
+            reply(new_state, msg.ref, :ok, %{error: errors_reply})
             {:noreply, state}
         end
     end
@@ -199,13 +199,14 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode_event_type(type, raw_val)
+    new_state = maybe_update_uploads(state, msg.payload)
 
     if cid = msg.payload["cid"] do
-      component_handle_event(state, cid, event, val, msg.ref)
+      component_handle_event(new_state, cid, event, val, msg.ref)
     else
-      state.socket
+      new_state.socket
       |> view_handle_event(event, val)
-      |> handle_result({:handle_event, 3, msg.ref}, state)
+      |> handle_result({:handle_event, 3, msg.ref}, new_state)
     end
   end
 
@@ -905,4 +906,16 @@ defmodule Phoenix.LiveView.Channel do
   defp assign_action(socket, action) do
     Phoenix.LiveView.assign(socket, :live_action, action)
   end
+
+  defp maybe_update_uploads(state, %{"uploads" => uploads}) do
+    Enum.reduce(uploads, state, fn {ref, entries}, acc ->
+      {_, _, upload_conf} = Utils.get_upload_by_ref!(acc.socket, ref)
+      case Utils.put_entries(acc.socket, upload_conf, entries) do
+        {:ok, new_socket} -> %{acc | socket: new_socket}
+        {:error, new_socket, _errors} -> %{acc | socket: new_socket}
+      end
+    end)
+  end
+
+  defp maybe_update_uploads(state, %{} = _payload), do: state
 end
