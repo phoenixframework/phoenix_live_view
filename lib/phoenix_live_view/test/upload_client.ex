@@ -17,6 +17,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     GenServer.call(pid, {:chunk, name, percent, proxy_pid, element})
   end
 
+  def simulate_attacker_chunk(%Upload{pid: pid}, name, chunk) do
+    GenServer.call(pid, {:simulate_attacker_chunk, name, chunk})
+  end
+
   def allowed_ack(%Upload{pid: pid, entries: entries}, ref, config, entries_resp) do
     GenServer.call(pid, {:allowed_ack, ref, config, entries, entries_resp})
   end
@@ -59,6 +63,17 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   def handle_call({:chunk, entry_name, percent, proxy_pid, element}, from, state) do
     {:reply, :ok, chunk_upload(state, from, entry_name, percent, proxy_pid, element)}
+  end
+
+  def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
+    entry = get_entry!(state, entry_name)
+    ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
+    receive do
+      %Phoenix.Socket.Reply{ref: ^ref, status: status, payload: payload} ->
+        {:stop, :normal, {status, payload}, state}
+    after
+      1000 -> exit(:timeout)
+    end
   end
 
   defp build_and_join_entry(state, client_entry, token) do

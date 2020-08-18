@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.UploadChannel do
     if byte_size(payload) + uploaded_size <= max_file_size do
       IO.binwrite(socket.assigns.handle, payload)
       socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
-      {:reply, {:ok, %{file_ref: socket.join_ref}}, socket}
+      {:reply, :ok, socket}
     else
       reply = %{reason: "file_size_limit_exceeded", limit: max_file_size}
       {:stop, :normal, {:error, reply}, socket}
