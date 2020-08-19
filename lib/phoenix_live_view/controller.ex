@@ -47,7 +47,6 @@ defmodule Phoenix.LiveView.Controller do
         |> put_flash(LiveView.Utils.get_flash(socket))
         |> Phoenix.Controller.redirect(Map.to_list(opts))
 
-
       {:stop, %Socket{redirected: {:live, _, %{to: to}}} = socket} ->
         conn
         |> put_flash(LiveView.Utils.get_flash(socket))

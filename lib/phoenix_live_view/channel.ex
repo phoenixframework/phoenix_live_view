@@ -278,7 +278,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp handle_result({:reply, %{} = reply, %Socket{} = new_socket}, {:handle_event, 3, ref}, state) do
+  defp handle_result(
+         {:reply, %{} = reply, %Socket{} = new_socket},
+         {:handle_event, 3, ref},
+         state
+       ) do
     handle_changed(state, Utils.put_reply(new_socket, reply), ref)
   end
 

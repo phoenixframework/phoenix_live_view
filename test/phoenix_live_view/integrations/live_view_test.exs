@@ -264,15 +264,25 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "child external redirect when disconnected", %{conn: conn} do
       conn =
-        get(conn, "/redir?during=disconnected&kind=external&child_to=https://phoenixframework.org?from_child=true")
+        get(
+          conn,
+          "/redir?during=disconnected&kind=external&child_to=https://phoenixframework.org?from_child=true"
+        )
 
       assert redirected_to(conn) == "https://phoenixframework.org?from_child=true"
     end
 
     test "child external redirect when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=external&child_to=https://phoenixframework.org?from_child=true")
+      conn =
+        get(
+          conn,
+          "/redir?during=connected&kind=external&child_to=https://phoenixframework.org?from_child=true"
+        )
+
       assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, {:redirect, %{to: "https://phoenixframework.org?from_child=true"}}} = live(conn)
+
+      assert {:error, {:redirect, %{to: "https://phoenixframework.org?from_child=true"}}} =
+               live(conn)
     end
   end
 
