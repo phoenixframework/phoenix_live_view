@@ -203,6 +203,20 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert {:error, {:redirect, %{to: "/thermo"}}} = live(conn)
     end
 
+    test "external redirect when disconnected", %{conn: conn} do
+      conn = get(conn, "/redir?during=disconnected&kind=external&to=https://phoenixframework.org")
+      assert redirected_to(conn) == "https://phoenixframework.org"
+
+      {:error, {:redirect, %{to: "https://phoenixframework.org"}}} =
+        live(conn, "/redir?during=disconnected&kind=external&to=https://phoenixframework.org")
+    end
+
+    test "external redirect when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=external&to=https://phoenixframework.org")
+      assert html_response(conn, 200) =~ "parent_content"
+      assert {:error, {:redirect, %{to: "https://phoenixframework.org"}}} = live(conn)
+    end
+
     test "child push_redirect when disconnected", %{conn: conn} do
       conn = get(conn, "/redir?during=disconnected&kind=push_redirect&child_to=/thermo")
       assert redirected_to(conn) == "/thermo"
@@ -246,6 +260,19 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = get(conn, "/redir?during=connected&kind=redirect&child_to=/thermo?from_child=true")
       assert html_response(conn, 200) =~ "parent_content"
       assert {:error, {:redirect, %{to: "/thermo?from_child=true"}}} = live(conn)
+    end
+
+    test "child external redirect when disconnected", %{conn: conn} do
+      conn =
+        get(conn, "/redir?during=disconnected&kind=external&child_to=https://phoenixframework.org?from_child=true")
+
+      assert redirected_to(conn) == "https://phoenixframework.org?from_child=true"
+    end
+
+    test "child external redirect when connected", %{conn: conn} do
+      conn = get(conn, "/redir?during=connected&kind=external&child_to=https://phoenixframework.org?from_child=true")
+      assert html_response(conn, 200) =~ "parent_content"
+      assert {:error, {:redirect, %{to: "https://phoenixframework.org?from_child=true"}}} = live(conn)
     end
   end
 

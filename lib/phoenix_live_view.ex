@@ -690,15 +690,17 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to. It must always be a local path
     * `:external` - an external path to redirect to
   """
-  def redirect(%Socket{} = socket, opts) do
-    url =
-      cond do
-        to = opts[:to] -> validate_local_url!(to, "redirect/2")
-        external = opts[:external] -> external
-        true -> raise ArgumentError, "expected :to or :external option in redirect/2"
-      end
-
+  def redirect(%Socket{} = socket, to: url) do
+    validate_local_url!(url, "redirect/2")
     put_redirect(socket, {:redirect, %{to: url}})
+  end
+
+  def redirect(%Socket{} = socket, external: url) do
+    put_redirect(socket, {:redirect, %{external: url}})
+  end
+
+  def redirect(%Socket{} = socket, _) do
+    raise ArgumentError, "expected :to or :external option in redirect/2"
   end
 
   @doc """

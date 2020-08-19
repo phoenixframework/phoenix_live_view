@@ -251,7 +251,7 @@ defmodule Phoenix.LiveViewUnitTest do
 
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
-               {:redirect, %{to: "http://foo.com/bar"}}
+               {:redirect, %{external: "http://foo.com/bar"}}
     end
   end
 

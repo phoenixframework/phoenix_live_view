@@ -258,8 +258,11 @@ defmodule Phoenix.LiveView.Channel do
         {diff, new_state} = render_diff(new_state, new_socket)
         {:ok, diff, redir, new_state}
 
-      {:redirect, %{to: _to} = opts} ->
+      {:redirect, %{to: url} = opts} ->
         {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
+
+      {:redirect, %{external: url}} ->
+        {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), %{to: url}), new_state}
 
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
