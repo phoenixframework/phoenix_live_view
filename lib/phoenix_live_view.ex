@@ -699,7 +699,7 @@ defmodule Phoenix.LiveView do
     put_redirect(socket, {:redirect, %{external: url}})
   end
 
-  def redirect(%Socket{} = socket, _) do
+  def redirect(%Socket{}, _) do
     raise ArgumentError, "expected :to or :external option in redirect/2"
   end
 
