@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.UploadChannelTest do
   use ExUnit.Case, async: true
-
+  require Phoenix.ChannelTest
 
   import Phoenix.LiveViewTest
 
@@ -8,7 +8,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   alias Phoenix.LiveViewTest.UploadClient
 
   @endpoint Phoenix.LiveViewTest.Endpoint
-  require Phoenix.ChannelTest
 
   def inspect_html_safe(term) do
     term
@@ -38,6 +37,18 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         type: "image/jpeg"
       })
     end
+  end
+
+  def unlink(channel_pid, %Phoenix.LiveViewTest.View{} = lv, %Phoenix.LiveViewTest.Upload{} = upload) do
+    Process.unlink(upload.pid)
+    unlink(channel_pid, lv)
+  end
+
+  def unlink(channel_pid, %Phoenix.LiveViewTest.View{} = lv) do
+    Process.flag(:trap_exit, true)
+    Process.unlink(proxy_pid(lv))
+    Process.unlink(lv.pid)
+    Process.unlink(channel_pid)
   end
 
   setup_all do
@@ -72,9 +83,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      Process.unlink(proxy_pid(lv))
-      Process.unlink(avatar.pid)
-      Process.unlink(channel_pid)
+      unlink(channel_pid, lv, avatar)
       Process.monitor(channel_pid)
       Process.exit(lv.pid, :kill)
       assert_receive {:DOWN, _ref, :process, ^channel_pid, :killed}
@@ -87,9 +96,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
       lv_pid = lv.pid
-      Process.unlink(proxy_pid(lv))
-      Process.unlink(avatar.pid)
-      Process.unlink(channel_pid)
+      unlink(channel_pid, lv, avatar)
       Process.monitor(lv_pid)
       Process.exit(channel_pid, :kill)
 
@@ -104,9 +111,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
       lv_pid = lv.pid
-      Process.unlink(proxy_pid(lv))
-      Process.unlink(channel_pid)
+      unlink(channel_pid, lv)
       Process.monitor(lv_pid)
+
       assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
       GenServer.stop(channel_pid, :normal)
       refute_receive {:DOWN, _ref, :process, ^lv_pid, _}
@@ -119,10 +126,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
       assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      Process.flag(:trap_exit, true)
-      Process.unlink(proxy_pid(lv))
-      Process.unlink(lv.pid)
-      Process.unlink(channel_pid)
+      unlink(channel_pid, lv)
       Process.monitor(channel_pid)
 
       assert UploadClient.simulate_attacker_chunk(avatar, "foo.jpeg", String.duplicate("0", 1000)) ==
@@ -137,10 +141,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
       assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-      Process.flag(:trap_exit, true)
-      Process.unlink(proxy_pid(lv))
-      Process.unlink(lv.pid)
-      Process.unlink(channel_pid)
+      unlink(channel_pid, lv)
       Process.monitor(channel_pid)
 
       assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
