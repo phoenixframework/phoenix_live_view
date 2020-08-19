@@ -261,6 +261,9 @@ defmodule Phoenix.LiveView.Channel do
       {:redirect, %{to: _to} = opts} ->
         {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
+      {:redirect, %{external: url}} ->
+        {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), %{to: url}), new_state}
+
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
@@ -275,7 +278,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp handle_result({:reply, %{} = reply, %Socket{} = new_socket}, {:handle_event, 3, ref}, state) do
+  defp handle_result(
+         {:reply, %{} = reply, %Socket{} = new_socket},
+         {:handle_event, 3, ref},
+         state
+       ) do
     handle_changed(state, Utils.put_reply(new_socket, reply), ref)
   end
 
