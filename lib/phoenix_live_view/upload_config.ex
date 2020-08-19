@@ -37,10 +37,12 @@ defmodule Phoenix.LiveView.UploadConfig do
   @default_chunk_timeout 10_000
 
   @unregistered :unregistered
+  @done :done
   @invalid :invalid
 
   # TODO add option for :chunk_size
   defstruct name: nil,
+            epoch: 0,
             client_key: nil,
             max_entries: 1,
             max_file_size: @default_max_file_size,
@@ -60,7 +62,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
           entries: list(),
-          entry_refs_to_pids: %{String.t() => pid() | :unregistered},
+          entry_refs_to_pids: %{String.t() => pid() | :unregistered | :done},
           accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | nil,
           allowed?: boolean,
@@ -192,7 +194,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   def entry_pid(%UploadConfig{} = conf, %UploadEntry{} = entry) do
-    Map.get(conf.entry_refs_to_pids, entry.ref)
+    case Map.fetch(conf.entry_refs_to_pids, entry.ref) do
+      {:ok, pid} when is_pid(pid) -> pid
+      {:ok, status} when status in [@unregistered, @done, @invalid] -> nil
+    end
   end
 
   def get_entry_by_pid(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
@@ -203,19 +208,28 @@ defmodule Phoenix.LiveView.UploadConfig do
     end)
   end
 
-  defp get_entry_by_ref(%UploadConfig{} = conf, ref) do
+  def get_entry_by_ref(%UploadConfig{} = conf, ref) do
     Enum.find(conf.entries, fn %UploadEntry{} = entry -> entry.ref === ref end)
   end
 
   def unregister_entry_upload(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
-    new_refs = for {ref, pid} <- conf.entry_refs_to_pids, channel_pid != pid, into: %{}, do: {ref, pid}
-    %UploadConfig{conf | entry_refs_to_pids: new_refs}
+    new_refs =
+      Enum.reduce(conf.entry_refs_to_pids, %{}, fn {ref, pid}, acc ->
+        if channel_pid == pid do
+          Map.put(acc, ref, @done)
+        else
+          Map.put(acc, ref, pid)
+        end
+      end)
+
+    inc_epoch(%UploadConfig{conf | entry_refs_to_pids: new_refs})
   end
 
   def fetch_entry_upload_pid(%UploadConfig{} = conf, entry_ref) do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
       {:ok, pid} when is_pid(pid) -> {:ok, pid}
       {:ok, @unregistered} -> {:error, @unregistered}
+      {:ok, @done} -> {:error, @done}
       :error -> {:error, :disallowed}
     end
   end
@@ -224,10 +238,15 @@ defmodule Phoenix.LiveView.UploadConfig do
     Enum.find(conf.entry_refs_to_pids, fn {_ref, maybe_pid} -> is_pid(maybe_pid) end)
   end
 
+  defp inc_epoch(%UploadConfig{} = conf), do: %UploadConfig{conf | epoch: conf.epoch + 1}
+
   def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
       {:ok, @unregistered} ->
         {:ok, %UploadConfig{conf | entry_refs_to_pids: Map.put(conf.entry_refs_to_pids, entry_ref, channel_pid)}}
+
+      {:ok, @done} ->
+        {:error, :done}
 
       {:ok, existing_pid} when is_pid(existing_pid) ->
         {:error, :already_registered}
@@ -385,10 +404,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{max_file_size: max})
-       when size > max,
+       when size > max or not is_integer(size),
        do: {:error, :too_large}
 
-  defp validate_max_file_size(entry, _conf), do: entry
+  defp validate_max_file_size({:ok, entry}, _conf), do: {:ok, entry}
 
   defp validate_accepted({:ok, %UploadEntry{} = entry}, conf) do
     if accepted?(conf, entry) do

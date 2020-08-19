@@ -54,14 +54,14 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :parent_exited}, state}
   end
 
-  # TODO reconcile (or replace) state.uploads with state stored in socket.assigns.uploads
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
     upload_conf = Utils.get_upload_by_pid(socket, pid)
+    graceful_upload_exit? = reason in [:normal, {:shutdown, :closed}]
     cond do
-      upload_conf && reason != :normal ->
+      upload_conf && not graceful_upload_exit? ->
         {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
-      upload_conf && reason == :normal ->
+      upload_conf && graceful_upload_exit? ->
         handle_changed(state, Utils.unregister_entry_upload(socket, upload_conf, pid), nil)
 
       true ->
@@ -255,10 +255,10 @@ defmodule Phoenix.LiveView.Channel do
     {_, _, conf} = Utils.get_upload_by_ref!(state.socket, ref)
 
     case Utils.register_entry_upload(state.socket, conf, pid, entry_ref) do
-      {:ok, new_socket} ->
+      {:ok, new_socket, entry} ->
         Process.monitor(pid)
         {:noreply, new_state} = handle_changed(state, new_socket, nil)
-        reply = %{max_file_size: conf.max_file_size, chunk_timeout: conf.chunk_timeout}
+        reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}
         {:reply, {:ok, reply}, new_state}
 
       {:error, reason} ->

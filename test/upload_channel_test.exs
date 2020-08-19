@@ -20,11 +20,19 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
 
+  def run(lv, func) do
+    GenServer.call(lv.pid, {:run, func})
+  end
+
   def mount_lv(setup) when is_function(setup, 1) do
     conn = Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})
     {:ok, lv, _} = live_isolated(conn, Phoenix.LiveViewTest.UploadLive, session: %{})
-    :ok = GenServer.call(lv.pid, {:run, setup})
+    :ok = GenServer.call(lv.pid, {:setup, setup})
     {:ok, lv}
+  end
+
+  def get_uploaded_entries(lv, name) do
+    run(lv, fn socket -> {:reply, Phoenix.LiveView.uploaded_entries(socket, name), socket} end)
   end
 
   def build_entries(count, opts \\ []) do
@@ -39,7 +47,11 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
   end
 
-  def unlink(channel_pid, %Phoenix.LiveViewTest.View{} = lv, %Phoenix.LiveViewTest.Upload{} = upload) do
+  def unlink(
+        channel_pid,
+        %Phoenix.LiveViewTest.View{} = lv,
+        %Phoenix.LiveViewTest.Upload{} = upload
+      ) do
     Process.unlink(upload.pid)
     unlink(channel_pid, lv)
   end
@@ -122,7 +134,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any, max_file_size: 100]
     test "upload channel exits when client sends more bytes than allowed", %{lv: lv} do
-      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
       assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
       assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
@@ -130,14 +144,16 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       Process.monitor(channel_pid)
 
       assert UploadClient.simulate_attacker_chunk(avatar, "foo.jpeg", String.duplicate("0", 1000)) ==
-        {:error, %{limit: 100, reason: "file_size_limit_exceeded"}}
+               {:error, %{limit: 100, reason: "file_size_limit_exceeded"}}
 
       assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
     end
 
     @tag allow: [accept: :any, max_file_size: 100, chunk_timeout: 500]
     test "upload channel exits when client does not send chunk after timeout", %{lv: lv} do
-      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
       assert render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
       assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
@@ -147,13 +163,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
     end
 
-
     @tag allow: [max_entries: 3, accept: :any]
     test "multiple entries under max", %{lv: lv} do
       avatar = file_input(lv, "form", :avatar, build_entries(2))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "myfile1.jpeg:1%"
       assert render_upload(avatar, "myfile2.jpeg", 2) =~ "myfile2.jpeg:2%"
-      assert %{"myfile1.jpeg" => chan1_pid, "myfile2.jpeg" => chan2_pid} = UploadClient.channel_pids(avatar)
+
+      assert %{"myfile1.jpeg" => chan1_pid, "myfile2.jpeg" => chan2_pid} =
+               UploadClient.channel_pids(avatar)
 
       assert render(lv) =~ "channel:#{inspect_html_safe(chan1_pid)}"
       assert render(lv) =~ "channel:#{inspect_html_safe(chan2_pid)}"
@@ -162,8 +179,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     @tag allow: [max_entries: 1, accept: :any]
     test "too many entries over max", %{lv: lv} do
       avatar = file_input(lv, "form", :avatar, build_entries(2))
+
       assert {:error, [%{"reason" => "too_many_files", "ref" => _}]} =
-             render_upload(avatar, "myfile1.jpeg", 1)
+               render_upload(avatar, "myfile1.jpeg", 1)
     end
 
     @tag allow: [max_entries: 3, accept: :any]
@@ -180,6 +198,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
       Process.unlink(proxy_pid(lv))
       Process.unlink(avatar.pid)
+
       try do
         preflight_upload(avatar)
       catch
@@ -190,22 +209,29 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload uploads entire file by default", %{lv: lv} do
-      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
       assert render_upload(avatar, "foo.jpeg") =~ "100%"
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload uploads specified chunk percentage", %{lv: lv} do
-      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
       assert render_upload(avatar, "foo.jpeg", 20) =~ "foo.jpeg:20%"
       assert render_upload(avatar, "foo.jpeg", 25) =~ "foo.jpeg:45%"
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
     test "render_upload with unknown entry", %{lv: lv} do
-      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
       Process.unlink(proxy_pid(lv))
       Process.unlink(avatar.pid)
+
       try do
         render_upload(avatar, "unknown.jpeg")
       catch
@@ -234,6 +260,76 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              |> render_change(avatar) =~ "error"
 
       assert render_upload(avatar, "foo.jpeg") =~ "100%"
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "get_uploaded_entries", %{lv: lv} do
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
+      assert get_uploaded_entries(lv, :avatar) == {[], []}
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "1%"
+
+      assert {[], [%Phoenix.LiveView.UploadEntry{progress: 1}]} =
+               get_uploaded_entries(lv, :avatar)
+
+      assert render_upload(avatar, "foo.jpeg", 99) =~ "100%"
+
+      assert {[%Phoenix.LiveView.UploadEntry{progress: 100}], []} =
+               get_uploaded_entries(lv, :avatar)
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "consume_uploaded_entries executes function, cleans up tmp file, and shuts down", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      parent = self()
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
+      avatar_pid = avatar.pid
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      Process.monitor(avatar_pid)
+
+      run(lv, fn socket ->
+        Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn path, entry ->
+          send(parent, {:file, path, entry.client_name, File.read!(path)})
+        end)
+        {:reply, :ok, socket}
+      end)
+
+      assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+      assert_receive {:file, tmp_path, "foo.jpeg", "123"}
+      assert render(lv) # synchronize with LV to ensure it has processed DOWN
+      refute File.exists?(tmp_path)
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "consume_uploaded_entries raises when upload does exist", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      try do
+        run(lv, fn socket ->
+          Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _file, _entry -> :boom end)
+        end)
+      catch
+        :exit, {{%ArgumentError{message: msg}, _}, _} ->
+          assert msg =~ "cannot move uploaded files without active entries"
+      end
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "consume_uploaded_entries raises when upload is still in progress", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "1%"
+
+      try do
+        run(lv, fn socket ->
+          Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _file, _entry -> :boom end)
+        end)
+      catch
+        :exit, {{%ArgumentError{message: msg}, _}, _} ->
+          assert msg =~ "cannot move uploaded files when entries are still in progress"
+      end
     end
   end
 end

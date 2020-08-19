@@ -324,7 +324,8 @@ defmodule Phoenix.LiveView.Utils do
     case UploadConfig.register_entry_upload(conf, pid, entry_ref) do
       {:ok, new_config} ->
         new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-        {:ok, assign(socket, :uploads, new_uploads)}
+        entry = UploadConfig.get_entry_by_ref(new_config, entry_ref)
+        {:ok, assign(socket, :uploads, new_uploads), entry}
 
       {:error, reason} ->
         {:error, reason}
@@ -368,6 +369,44 @@ defmodule Phoenix.LiveView.Utils do
       {_name, %UploadConfig{} = conf} -> UploadConfig.get_entry_by_pid(conf, pid) && conf
     end)
   end
+
+  @doc """
+  TODO
+  """
+  def uploaded_entries(%Socket{} = socket, name) do
+    entries =
+      case Map.fetch(socket.assigns[:uploads] || %{}, name) do
+        {:ok, conf} -> conf.entries
+        :error -> []
+      end
+
+    Enum.reduce(entries, {[], []}, fn entry, {done, in_progress} ->
+      if entry.done? do
+        {[entry | done], in_progress}
+      else
+        {done, [entry | in_progress]}
+      end
+    end)
+  end
+
+  @doc """
+  TODO
+  """
+  def consume_uploaded_entries(%Socket{} = socket, name, func) when is_function(func, 2) do
+    conf = socket.assigns[:uploads][name] || raise ArgumentError, "no upload allowed for #{inspect(name)}"
+    entries =
+      case uploaded_entries(socket, name) do
+        {[_|_] = done_entries, []} -> done_entries
+        {_, [_|_]} -> raise ArgumentError, "cannot move uploaded files when entries are still in progress"
+        {[], []} -> raise ArgumentError, "cannot move uploaded files without active entries"
+      end
+
+    entries
+    |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
+    |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
+    |> Enum.map(fn {entry, pid} -> GenServer.call(pid, {:mv, entry, func}) end)
+  end
+
 
   @doc """
   Returns the configured signing salt for the endpoint.

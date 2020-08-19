@@ -230,7 +230,13 @@ let channelUploader = function(entries, resp, onError, liveSocket){
           }
 
           uploadChannel.push("file", {file: chunk})
-            .receive("ok", () => { if(finished){ entry.done() } })
+            .receive("ok", () => {
+              if(finished){
+                entry.done()
+              } else {
+                chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
+              }
+            })
         }
 
         const readEventHandler = function(e){
@@ -238,9 +244,6 @@ let channelUploader = function(entries, resp, onError, liveSocket){
             const done = offset >= entry.file.size
             offset += e.target.result.byteLength
             uploadChunk(e.target.result, done, offset)
-            if(!done){
-              setTimeout(() => chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler), 100)
-            }
           } else {
             logError("Read error: " + e.target.error)
             return

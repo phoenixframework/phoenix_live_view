@@ -27,9 +27,11 @@ defmodule Phoenix.LiveViewTest.UploadLive do
     {:ok, socket}
   end
 
-  def handle_call({:run, setup_func}, _from, socket) do
+  def handle_call({:setup, setup_func}, _from, socket) do
     {:reply, :ok, setup_func.(socket)}
   end
+
+  def handle_call({:run, func}, _from, socket), do: func.(socket)
 
   def handle_event("validate", _params, socket) do
     {:noreply, socket}

@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.UploadChannel do
   @moduledoc false
-  use Phoenix.Channel, log: false
+  use Phoenix.Channel, log_handle_in: false
 
   require Logger
 
@@ -24,6 +24,7 @@ defmodule Phoenix.LiveView.UploadChannel do
         max_file_size: max_file_size,
         chunk_timeout: chunk_timeout,
         chunk_timer: nil,
+        done?: false,
         uploaded_size: 0
       })
 
@@ -40,24 +41,11 @@ defmodule Phoenix.LiveView.UploadChannel do
     socket = reschedule_chunk_timer(socket)
 
     if byte_size(payload) + uploaded_size <= max_file_size do
-      IO.binwrite(socket.assigns.handle, payload)
-      socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
-      {:reply, :ok, socket}
+      {:reply, :ok, write_bytes(socket, payload)}
     else
       reply = %{reason: "file_size_limit_exceeded", limit: max_file_size}
       {:stop, {:shutdown, :closed}, {:error, reply}, socket}
     end
-  end
-
-  @impl true
-  def handle_call({:get_file, _ref}, _reply, socket) do
-    File.close(socket.assigns.handle)
-    {:reply, {:ok, socket.assigns.path}, socket}
-  end
-
-  @impl true
-  def handle_cast(:stop, socket) do
-    {:stop, :normal, socket}
   end
 
   @impl true
@@ -73,10 +61,30 @@ defmodule Phoenix.LiveView.UploadChannel do
     {:stop, {:shutdown, :closed}, socket}
   end
 
+  @impl true
+  def handle_call({:mv, entry, func}, from, socket) do
+    unless socket.assigns.done?, do: raise RuntimeError, "cannot move uploaded file that is still in progress"
+
+    GenServer.reply(from, func.(socket.assigns.path, entry))
+    {:stop, {:shutdown, :closed}, socket}
+  end
+
   defp reschedule_chunk_timer(socket) do
     timer = socket.assigns.chunk_timer
     if timer, do: Process.cancel_timer(timer)
     new_timer = Process.send_after(self(), :chunk_timeout, socket.assigns.chunk_timeout)
     assign(socket, :chunk_timer, new_timer)
+  end
+
+  def write_bytes(socket, payload) do
+    IO.binwrite(socket.assigns.handle, payload)
+    socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
+
+    if socket.assigns.uploaded_size == socket.assigns.max_file_size do
+      File.close(socket.assigns.handle)
+      assign(socket, :done?, true)
+    else
+      socket
+    end
   end
 end

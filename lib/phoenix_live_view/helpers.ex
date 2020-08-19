@@ -344,7 +344,7 @@ defmodule Phoenix.LiveView.Helpers do
 
     ~L"""
     <input type="file"
-          id="upload-<%= @conf.ref %>"
+          id="upload-<%= @conf.ref %>-<%= @conf.epoch %>"
           name="<%= @conf.name %>"
           data-phx-upload-ref="<%= conf.ref %>"
           multiple="<%= @conf.max_entries > 1 %>" />
