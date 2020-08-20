@@ -796,7 +796,7 @@ export class LiveSocket {
     if(!Browser.canPushState()){ return }
     window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
-      let {type, id, root} = event.state || {}
+      let {type, id, root, scroll} = event.state || {}
       let href = window.location.href
 
       if(this.main.isConnected() && (type === "patch" && id  === this.main.id)){
@@ -804,6 +804,11 @@ export class LiveSocket {
       } else {
         this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
+          if(scroll){ 
+            setTimeout(() => {
+              window.scrollTo(0, scroll) 
+            }, 1) // the body needs to render before we scroll. 
+          }
         })
       }
     }, false)
@@ -848,9 +853,10 @@ export class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
+    let scroll = window.scrollY
     this.withPageLoading({to: href, kind: "redirect"}, done => {
       this.replaceMain(href, flash, () => {
-        Browser.pushState(linkState, {type: "redirect", id: this.main.id}, href)
+        Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
         this.registerNewLocation(window.location)
         done()
       })
@@ -979,6 +985,14 @@ export let Browser = {
   pushState(kind, meta, to){
     if(this.canPushState()){
       if(to !== window.location.href){
+        if(meta.type == "redirect" && meta.scroll) {
+          // If we're redirecting store the current scrollY for the current history state.
+          let currentState = history.state || {}
+          currentState.scroll = meta.scroll
+          history.replaceState(currentState, "", window.location.href); 
+        }
+
+        delete meta.scroll // Only store the scroll in the redirect case.
         history[kind + "State"](meta, "", to || null) // IE will coerce undefined to string
         let hashEl = this.getHashTargetEl(window.location.hash)
 
