@@ -24,6 +24,7 @@ const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_UPLOAD_REF = "data-phx-upload-ref"
+const PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs"
 const PHX_SKIP = "data-phx-skip"
 const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
@@ -131,15 +132,24 @@ let maybe = (el, callback) => el && callback(el)
 let countFiles = (inputEl) => gatherFiles(inputEl).length
 let countAllFiles = (formEl) => gatherFileInputs(formEl).reduce((total, inputEl) => total + countFiles(inputEl), 0)
 let gatherFileInputs = (formEl) => Array.from(formEl).filter((el) => el.files instanceof FileList && el.files.length > 0)
-let gatherFiles = (inputEl) => Array.from(inputEl.files || []).filter((f) => f instanceof File && f.size > 0)
+let gatherFiles = (input) => {
+  return Array.from(input.files || []).filter(f => f instanceof File && UploadEntry.isActive(input, f))
+}
 
 class UploadEntry {
-  constructor(fileEl, file, ref, view){
+  static isActive(fileEl, file){
+    let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
+    return file.size > 0 && activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+  }
+
+  constructor(fileEl, file, view){
+    this.ref = LiveUploader.genFileRef(file)
     this.fileEl = fileEl
     this.file = file
     this.view = view
-    this.ref = ref
     this.meta = null
+    this._isCancelled = false
+    this._isDone = false
     this._onDone = function(){}
   }
 
@@ -147,10 +157,19 @@ class UploadEntry {
 
   progress(progress){ this.view.pushFileProgress(this.fileEl, this.ref, progress) }
 
+  cancel(){
+    this._isCancelled = true
+    this._isDone = true
+    this._onDone()
+  }
+
   done(){
+    this._isDone = true
     this.view.pushFileProgress(this.fileEl, this.ref, 100)
     this._onDone()
   }
+
+  isDone(){ return this._isDone }
 
   // error(){ this.view.pushFileProgress(...) } // TODO
 
@@ -177,7 +196,15 @@ class UploadEntry {
 
 let liveUploaderFileRef = 0
 class LiveUploader {
-  static genFileRef(){ return liveUploaderFileRef++ }
+  static genFileRef(file){
+    let ref = file._phxRef
+    if(ref !== undefined){
+      return ref
+    } else {
+      file._phxRef = (liveUploaderFileRef++).toString()
+      return file._phxRef
+    }
+  }
 
   constructor(inputEl, view, onComplete, uploaderCallback){
     this.view = view
@@ -185,8 +212,8 @@ class LiveUploader {
     this.uploaderCallback = uploaderCallback
     this._entries =
       Array.from(inputEl.files || [])
-        .filter(f => f instanceof File && f.size > 0)
-        .map(file => new UploadEntry(inputEl, file, LiveUploader.genFileRef(), view))
+        .filter(f => f instanceof File && UploadEntry.isActive(inputEl, f))
+        .map(file => new UploadEntry(inputEl, file, view))
 
     this.numEntriesInProgress = this._entries.length
   }
@@ -219,13 +246,20 @@ let channelUploader = function(entries, resp, onError, liveSocket){
     }
 
     onError(() => uploadChannel.leave())
+    uploadChannel.onError(() => uploadChannel.leave())
+    uploadChannel.onClose(() => {
+      if(!entry.isDone()){
+        entry.cancel()
+      }
+    })
 
     uploadChannel.join()
       .receive("error", reason => uploadChannel.leave()) // TODO
       .receive("ok", data => {
         let offset = 0
         const uploadChunk = (chunk, finished, loaded) => {
-          if (!finished) {
+          if(!uploadChannel.isJoined()){ return }
+          if(!finished) {
             entry.progress(Math.round((loaded / entry.file.size) * 100))
           }
 
@@ -274,7 +308,7 @@ let serializeForm = (form, meta = {}) => {
       if(val.size > 0) {
         let uploadRef = form.querySelector(`[name="${key}"]`).getAttribute(PHX_UPLOAD_REF)
         fileData[uploadRef] = fileData[uploadRef] || []
-        entry.ref = LiveUploader.genFileRef()
+        entry.ref = LiveUploader.genFileRef(val)
         entry.name = val.name
         entry.type = val.type
         entry.size = val.size
@@ -290,7 +324,6 @@ let serializeForm = (form, meta = {}) => {
   for(let [key, val] of formData.entries()){ params.append(key, val) }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
-  console.log(fileData)
   return [params.toString(), isEmpty(fileData) ? undefined : fileData]
 }
 
@@ -2450,9 +2483,9 @@ export class View {
     let cid = this.targetComponentID(formEl, targetCtx)
     let numFiles = countAllFiles(formEl)
 
-    console.log(numFiles)
     if(numFiles > 0) {
       this.uploadFiles(formEl, targetCtx, refGenerator, cid, (uploads) => {
+        DOM.all(formEl, "input[type=file]", input => input.value = null)
         let [formData, ] = serializeForm(formEl, {})
         this.pushWithReply(refGenerator, "event", {
           type: "form",
@@ -2480,11 +2513,12 @@ export class View {
     inputEls.forEach(inputEl => {
       let uploader = new LiveUploader(inputEl, this, onComplete, channelUploader) // TODO external uploaders
       this.uploaders[inputEl] = uploader
+      let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
       let payload = {
         external: false, // TODO external uploaders
         ref: inputEl.getAttribute(PHX_UPLOAD_REF),
-        entries: uploader.entries().map(entry => entry.toPreflightPayload()),
+        entries: entries,
         cid: this.targetComponentID(inputEl.form, targetCtx)
       }
 

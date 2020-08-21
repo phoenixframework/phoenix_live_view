@@ -691,6 +691,11 @@ defmodule Phoenix.LiveView do
   @doc """
   TODO
   """
+  defdelegate cancel_upload(socket, name, entry_ref), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO
+  """
   defdelegate uploaded_entries(socket, name), to: Phoenix.LiveView.Utils
 
   @doc """

@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.UploadEntry do
             ref: nil,
             valid?: false,
             done?: false,
+            cancelled?: false,
             client_name: nil,
             client_size: nil,
             client_type: nil,
@@ -37,7 +38,6 @@ defmodule Phoenix.LiveView.UploadConfig do
   @default_chunk_timeout 10_000
 
   @unregistered :unregistered
-  @done :done
   @invalid :invalid
 
   # TODO add option for :chunk_size
@@ -196,7 +196,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   def entry_pid(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     case Map.fetch(conf.entry_refs_to_pids, entry.ref) do
       {:ok, pid} when is_pid(pid) -> pid
-      {:ok, status} when status in [@unregistered, @done, @invalid] -> nil
+      {:ok, status} when status in [@unregistered, @invalid] -> nil
     end
   end
 
@@ -212,26 +212,12 @@ defmodule Phoenix.LiveView.UploadConfig do
     Enum.find(conf.entries, fn %UploadEntry{} = entry -> entry.ref === ref end)
   end
 
-  def unregister_entry_upload(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
-    new_refs =
-      Enum.reduce(conf.entry_refs_to_pids, %{}, fn {ref, pid}, acc ->
-        if channel_pid == pid do
-          Map.put(acc, ref, @done)
-        else
-          Map.put(acc, ref, pid)
-        end
-      end)
+  def unregister_completed_entry(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
+    %UploadEntry{} = entry = get_entry_by_pid(conf, channel_pid)
 
-    inc_epoch(%UploadConfig{conf | entry_refs_to_pids: new_refs})
-  end
-
-  def fetch_entry_upload_pid(%UploadConfig{} = conf, entry_ref) do
-    case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
-      {:ok, pid} when is_pid(pid) -> {:ok, pid}
-      {:ok, @unregistered} -> {:error, @unregistered}
-      {:ok, @done} -> {:error, @done}
-      :error -> {:error, :disallowed}
-    end
+    conf
+    |> drop_entry(entry)
+    |> inc_epoch()
   end
 
   def registered?(%UploadConfig{} = conf) do
@@ -244,9 +230,6 @@ defmodule Phoenix.LiveView.UploadConfig do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
       {:ok, @unregistered} ->
         {:ok, %UploadConfig{conf | entry_refs_to_pids: Map.put(conf.entry_refs_to_pids, entry_ref, channel_pid)}}
-
-      {:ok, @done} ->
-        {:error, :done}
 
       {:ok, existing_pid} when is_pid(existing_pid) ->
         {:error, :already_registered}
@@ -323,15 +306,21 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
-  def update_progress(%UploadConfig{} = conf, entry_ref, progress)
-      when is_integer(progress) and progress >= 0 and progress <= 100 do
+  def update_entry(%UploadConfig{} = conf, entry_ref, func) do
     new_entries =
       Enum.map(conf.entries, fn
-        %UploadEntry{ref: ^entry_ref} = entry -> UploadEntry.put_progress(entry, progress)
+        %UploadEntry{ref: ^entry_ref} = entry -> func.(entry)
         %UploadEntry{ref: _ef} = entry -> entry
       end)
 
     %UploadConfig{conf | entries: new_entries}
+  end
+
+  @doc false
+  def update_progress(%UploadConfig{} = conf, entry_ref, progress)
+      when is_integer(progress) and progress >= 0 and progress <= 100 do
+
+    update_entry(conf, entry_ref, fn entry -> UploadEntry.put_progress(entry, progress) end)
   end
 
   def put_entries(%UploadConfig{} = conf, entries) do
@@ -441,5 +430,30 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   def put_error(%UploadConfig{} = conf, entry_ref, reason) do
     %UploadConfig{conf | errors: conf.errors ++ [{entry_ref, reason}]}
+  end
+
+  @doc """
+  TODO
+  """
+  def cancel_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
+    case entry_pid(conf, entry) do
+      channel_pid when is_pid(channel_pid) ->
+        Phoenix.LiveView.UploadChannel.cancel(channel_pid)
+
+        conf
+        |> update_entry(entry.ref, fn entry -> %UploadEntry{entry | cancelled?: true} end)
+        |> inc_epoch()
+
+      _ ->
+        conf
+        |> drop_entry(entry)
+        |> inc_epoch()
+    end
+  end
+
+  defp drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
+    new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
+    new_refs = Map.delete(conf.entry_refs_to_pids, ref)
+    %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs}
   end
 end

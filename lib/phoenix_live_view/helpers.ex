@@ -344,9 +344,10 @@ defmodule Phoenix.LiveView.Helpers do
 
     ~L"""
     <input type="file"
-          id="upload-<%= @conf.ref %>-<%= @conf.epoch %>"
+          id="upload-<%= @conf.ref %>"
           name="<%= @conf.name %>"
           data-phx-upload-ref="<%= conf.ref %>"
+          data-phx-active-refs="<%= Enum.join(for(entry <- conf.entries, do: entry.ref), ",") %>"
           multiple="<%= @conf.max_entries > 1 %>" />
     """
   end

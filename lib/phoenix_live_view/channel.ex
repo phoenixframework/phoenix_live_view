@@ -24,7 +24,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def register_upload(pid, {upload_config_ref, entry_ref} = _ref) do
-    GenServer.call(pid, {:phoenix, :register_entry_upload, %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}})
+    GenServer.call(pid, {@prefix, :register_entry_upload, %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}})
   end
 
   @impl true
@@ -57,12 +57,13 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
     upload_conf = Utils.get_upload_by_pid(socket, pid)
     graceful_upload_exit? = reason in [:normal, {:shutdown, :closed}]
+
     cond do
       upload_conf && not graceful_upload_exit? ->
         {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
       upload_conf && graceful_upload_exit? ->
-        handle_changed(state, Utils.unregister_entry_upload(socket, upload_conf, pid), nil)
+        handle_changed(state, Utils.unregister_completed_entry_upload(socket, upload_conf, pid), nil)
 
       true ->
         msg
@@ -152,50 +153,6 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  # TODO replace the ahead of time :get_file call by allowing the user to
-  # perform the looked via `uploaded_entries`, which can accept a function
-  # which performs the file move withint the upload channel process, ie:
-  #
-  #  mv_upload(socket, :avatar, fn %Plug.Upload{} = upload -> ... end)
-  #
-  # def handle_info(
-  #       %Message{topic: topic, event: "event", payload: %{"file_data" => _}} = msg,
-  #       %{topic: topic} = state
-  #     ) do
-  #   %{"file_data" => file_data, "value" => raw_val, "event" => event, "type" => type} =
-  #     msg.payload
-
-  #   val = decode_event_type(type, raw_val)
-
-  #   {val, upload_channels} =
-  #     Enum.reduce(file_data, {val, []}, fn fd, {val_acc, upload_chans} ->
-  #       {path, _meta} = Map.pop(fd, "path")
-  #       meta = Map.take(fd, ["name", "size", "type"])
-
-  #       case Utils.fetch_upload_entry_pid(state.socket, upload_ref, entry_ref) do
-  #         {:ok, pid} ->
-  #           {:ok, file_path} = GenServer.call(pid, {:get_file, fd["file_ref"]})
-  #           meta = Map.put(meta, "path", file_path)
-  #           {Plug.Conn.Query.decode_pair({path, meta}, val_acc), [pid | upload_chans]}
-
-  #         {:error, _} ->
-  #           {Plug.Conn.Query.decode_pair({path, meta}, val_acc), upload_chans}
-  #       end
-  #     end)
-
-  #   try do
-  #     if cid = msg.payload["cid"] do
-  #       component_handle_event(state, cid, event, val, msg.ref)
-  #     else
-  #       state.socket
-  #       |> view_handle_event(event, val)
-  #       |> handle_result({:handle_event, 3, msg.ref}, state)
-  #     end
-  #   after
-  #     Enum.map(upload_channels, &GenServer.cast(&1, :stop))
-  #   end
-  # end
-
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode_event_type(type, raw_val)
@@ -251,7 +208,8 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, assigns, state}
   end
 
-  def handle_call({@prefix, :register_entry_upload, %{channel_pid: pid, ref: ref, entry_ref: entry_ref}}, _from, state) do
+  def handle_call({@prefix, :register_entry_upload, info}, _from, state) do
+    %{channel_pid: pid, ref: ref, entry_ref: entry_ref} = info
     {_, _, conf} = Utils.get_upload_by_ref!(state.socket, ref)
 
     case Utils.register_entry_upload(state.socket, conf, pid, entry_ref) do

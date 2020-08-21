@@ -129,7 +129,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render(lv) =~ "channel:#{inspect_html_safe(channel_pid)}"
       GenServer.stop(channel_pid, :normal)
       refute_receive {:DOWN, _ref, :process, ^lv_pid, _}
-      assert render(lv) =~ "channel:nil"
+      refute render(lv) =~ "channel:"
     end
 
     @tag allow: [accept: :any, max_file_size: 100]

@@ -6,6 +6,14 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   alias Phoenix.LiveView.{Static, Channel}
 
+  def cancel(pid) do
+    GenServer.call(pid, :cancel)
+  end
+
+  def consume(pid, entry, func) do
+    GenServer.call(pid, {:consume, entry, func})
+  end
+
   @impl true
   def join(_topic, auth_payload, socket) do
     %{"token" => token} = auth_payload
@@ -62,11 +70,16 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   @impl true
-  def handle_call({:mv, entry, func}, from, socket) do
-    unless socket.assigns.done?, do: raise RuntimeError, "cannot move uploaded file that is still in progress"
-
+  def handle_call({:consume, entry, func}, from, socket) do
+    unless socket.assigns.done?, do: raise RuntimeError, "cannot consume uploaded file that is still in progress"
     GenServer.reply(from, func.(socket.assigns.path, entry))
     {:stop, {:shutdown, :closed}, socket}
+  end
+
+  def handle_call(:cancel, from, socket) do
+    new_socket = close_file(socket)
+    GenServer.reply(from, :ok)
+    {:stop, {:shutdown, :closed}, new_socket}
   end
 
   defp reschedule_chunk_timer(socket) do
@@ -81,10 +94,17 @@ defmodule Phoenix.LiveView.UploadChannel do
     socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
 
     if socket.assigns.uploaded_size == socket.assigns.max_file_size do
-      File.close(socket.assigns.handle)
-      assign(socket, :done?, true)
+      socket
+      |> close_file()
+      |> assign(:done?, true)
     else
       socket
     end
+  end
+
+  defp close_file(socket) do
+    File.close(socket.assigns.handle)
+    Process.cancel_timer(socket.assigns.chunk_timer)
+    assign(socket, :chunk_timer, nil)
   end
 end

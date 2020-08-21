@@ -277,6 +277,17 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
+  def cancel_upload(socket, name, entry_ref) do
+    upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
+    %Phoenix.LiveView.UploadEntry{} = entry = UploadConfig.get_entry_by_ref(upload_config, entry_ref)
+    new_config = UploadConfig.cancel_entry(upload_config, entry)
+    new_uploads = Map.update!(socket.assigns.uploads, name, fn _ -> new_config end)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
+  """
   def get_uploaded_entries(%Socket{} = socket, name) when is_atom(name) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
     UploadConfig.uploaded_entries(upload_config)
@@ -311,8 +322,8 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def unregister_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid) when is_pid(pid) do
-    new_config = UploadConfig.unregister_entry_upload(conf, pid)
+  def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid) when is_pid(pid) do
+    new_config = UploadConfig.unregister_completed_entry(conf, pid)
     new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
     assign(socket, :uploads, new_uploads)
   end
@@ -350,14 +361,6 @@ defmodule Phoenix.LiveView.Utils do
     config = Map.fetch!(uploads, name)
 
     {uploads, name, config}
-  end
-
-  @doc """
-  TODO
-  """
-  def fetch_upload_entry_pid(socket, config_ref, entry_ref) do
-    {_uploads, _name, conf} = get_upload_by_ref!(socket, config_ref)
-    UploadConfig.fetch_entry_upload_pid(conf, entry_ref)
   end
 
   @doc """
@@ -404,9 +407,8 @@ defmodule Phoenix.LiveView.Utils do
     entries
     |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
     |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
-    |> Enum.map(fn {entry, pid} -> GenServer.call(pid, {:mv, entry, func}) end)
+    |> Enum.map(fn {entry, pid} -> Phoenix.LiveView.UploadChannel.consume(pid, entry, func) end)
   end
-
 
   @doc """
   Returns the configured signing salt for the endpoint.
