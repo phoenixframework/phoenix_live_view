@@ -146,7 +146,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           }
 
   * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent`
-    immediately before [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`) is invoked.
+    immediately before [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) is invoked.
 
     * Measurement:
 
@@ -163,7 +163,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
 
 
   * `[:phoenix, :live_component, :handle_event, :stop]` - Dispatched by a `Phoenix.LiveComponent`
-    when the [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`) callback completes successfully.
+    when the [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) callback completes successfully.
 
     * Measurement:
 
@@ -179,7 +179,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           }
 
   * `[:phoenix, :live_component, :handle_event, :exception]` - Dispatched by a `Phoenix.LiveComponent`
-    when an exception is raised in the [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`) callback.
+    when an exception is raised in the [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) callback.
 
     * Measurement:
 
