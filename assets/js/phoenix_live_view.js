@@ -1306,7 +1306,7 @@ export let DOM = {
 }
 
 class DOMPostMorphRestorer {
-  constructor(containerBefore, containerAfter, updateType) {
+  constructor(containerBefore, containerAfter, updateType, phxRemoveAttributeName) {
     let idsBefore = new Set()
     let idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
@@ -1326,6 +1326,9 @@ class DOMPostMorphRestorer {
     this.updateType = updateType
     this.elementsToModify = elementsToModify
     this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
+    this.elementIdsToRemove = [...containerAfter.children]
+      .filter(child => child.getAttribute && child.getAttribute(phxRemoveAttributeName) !== null)
+      .map(child => child.id)
   }
 
   // We do the following to optimize append/prepend operations:
@@ -1362,6 +1365,12 @@ class DOMPostMorphRestorer {
         maybe(document.getElementById(elemId), elem => container.insertAdjacentElement("afterbegin", elem))
       })
     }
+
+    this.elementIdsToRemove.forEach(element_id => {
+      maybe(document.getElementById(element_id), element => {
+        element.remove()
+      })
+    })
   }
 }
 
@@ -1505,7 +1514,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate), this.binding(PHX_REMOVE)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
