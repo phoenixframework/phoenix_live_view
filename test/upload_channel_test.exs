@@ -331,5 +331,51 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           assert msg =~ "cannot move uploaded files when entries are still in progress"
       end
     end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "cancel_upload in progress", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "1%"
+      assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+      unlink(channel_pid, lv, avatar)
+      Process.monitor(channel_pid)
+
+      run(lv, fn socket ->
+        {[], [%{ref: ref}]} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+        {:reply, :ok, Phoenix.LiveView.cancel_upload(socket, :avatar, ref)}
+      end)
+
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+
+      assert run(lv, fn socket ->
+        {:reply, Phoenix.LiveView.uploaded_entries(socket, :avatar), socket}
+      end) == {[], []}
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "cancel_upload not yet in progress", %{lv: lv} do
+      file_name = "foo.jpeg"
+      avatar = file_input(lv, "form", :avatar, [%{name: file_name, content: "ok"}])
+      assert lv
+             |> form("form", user: %{})
+             |> render_change(avatar) =~ file_name
+
+
+      assert UploadClient.channel_pids(avatar) == %{}
+
+      assert {[], [%{ref: ref}]} = run(lv, fn socket ->
+        {:reply, Phoenix.LiveView.uploaded_entries(socket, :avatar), socket}
+      end)
+
+      run(lv, fn socket ->
+        {:reply, :ok, Phoenix.LiveView.cancel_upload(socket, :avatar, ref)}
+      end)
+
+      refute render(lv) =~ file_name
+    end
   end
 end
