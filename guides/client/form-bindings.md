@@ -20,8 +20,8 @@ saving, your template would use both `phx_change` and `phx_submit` bindings:
       <%= submit "Save" %>
     </form>
 
-*Reminder*: `form_for/3` is a `Phoenix.HTML` helper. Don't forget to include
-`use Phoenix.HTML` at the top of your LiveView, if using `Phoenix.HTML` helpers.
+*Reminder*: [`form_for/3`](`Phoenix.HTML.Form.form_for/3`) is a `Phoenix.HTML` helper.
+Don't forget to include `use Phoenix.HTML` at the top of your LiveView, if using `Phoenix.HTML` helpers.
 Also, if using `error_tag/2`, don't forget to `import MyAppWeb.ErrorHelpers`.
 
 Next, your LiveView picks up the events in `handle_event` callbacks:
@@ -56,8 +56,8 @@ Next, your LiveView picks up the events in `handle_event` callbacks:
 
 The validate callback simply updates the changeset based on all form input
 values, then assigns the new changeset to the socket. If the changeset
-changes, such as generating new errors, `c:render/1` is invoked and
-the form is re-rendered.
+changes, such as generating new errors, [`render/1`](`c:Phoenix.LiveView.render/1`)
+is invoked and the form is re-rendered.
 
 Likewise for `phx-submit` bindings, the same callback is invoked and
 persistence is attempted. On success, a `:noreply` tuple is returned and the
