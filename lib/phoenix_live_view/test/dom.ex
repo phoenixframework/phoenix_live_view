@@ -12,7 +12,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       Phoenix LiveView requires Floki as a test dependency.
       Please add to your mix.exs:
 
-      {:floki, ">= 0.0.0", only: :test}
+      {:floki, ">= 0.27.0", only: :test}
       """
     end
   end
