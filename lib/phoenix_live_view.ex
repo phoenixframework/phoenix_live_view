@@ -704,6 +704,11 @@ defmodule Phoenix.LiveView do
   defdelegate consume_uploaded_entries(socket, name, func), to: Phoenix.LiveView.Utils
 
   @doc """
+  TODO
+  """
+  defdelegate consume_uploaded_entry(socket, entry, func), to: Phoenix.LiveView.Utils
+
+  @doc """
   Annotates the socket for redirect to a destination path.
 
   *Note*: LiveView redirects rely on instructing client

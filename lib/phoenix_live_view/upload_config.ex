@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   alias Phoenix.LiveView.UploadEntry
 
   defstruct progress: 0,
+            upload_config: nil,
             ref: nil,
             valid?: false,
             done?: false,
@@ -361,6 +362,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
       ref: ref,
+      upload_config: conf.name,
       client_name: Map.fetch!(client_entry, "name"),
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),

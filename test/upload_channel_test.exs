@@ -280,7 +280,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
-    test "consume_uploaded_entries executes function, cleans up tmp file, and shuts down", %{lv: lv} do
+    test "consume_uploaded_entries executes function against all entries, cleans up tmp file, and shuts down", %{lv: lv} do
       Process.flag(:trap_exit, true)
       parent = self()
       avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
@@ -302,6 +302,29 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "consume_uploaded_entry executes function, cleans up tmp file, and shuts down", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      parent = self()
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
+      avatar_pid = avatar.pid
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      Process.monitor(avatar_pid)
+
+      run(lv, fn socket ->
+        {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+        Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn path ->
+          send(parent, {:file, path, entry.client_name, File.read!(path)})
+        end)
+        {:reply, :ok, socket}
+      end)
+
+      assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+      assert_receive {:file, tmp_path, "foo.jpeg", "123"}
+      assert render(lv) # synchronize with LV to ensure it has processed DOWN
+      refute File.exists?(tmp_path)
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
     test "consume_uploaded_entries raises when upload does exist", %{lv: lv} do
       Process.flag(:trap_exit, true)
       try do
@@ -310,7 +333,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         end)
       catch
         :exit, {{%ArgumentError{message: msg}, _}, _} ->
-          assert msg =~ "cannot move uploaded files without active entries"
+          assert msg =~ "cannot consume uploaded files without active entries"
       end
     end
 
@@ -328,7 +351,26 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         end)
       catch
         :exit, {{%ArgumentError{message: msg}, _}, _} ->
-          assert msg =~ "cannot move uploaded files when entries are still in progress"
+          assert msg =~ "cannot consume uploaded files when entries are still in progress"
+      end
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "consume_uploaded_entry raises when upload is still in progress", %{lv: lv} do
+      Process.flag(:trap_exit, true)
+      avatar =
+        file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "1%"
+
+      try do
+        run(lv, fn socket ->
+          {[], [in_progress_entry]} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+          Phoenix.LiveView.consume_uploaded_entry(socket, in_progress_entry, fn _file -> :boom end)
+        end)
+      catch
+        :exit, {{%ArgumentError{message: msg}, _}, _} ->
+          assert msg =~ "cannot consume uploaded files when entries are still in progress"
       end
     end
 

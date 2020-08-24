@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket, UploadConfig}
+  alias Phoenix.LiveView.{Rendered, Socket, UploadConfig, UploadEntry}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -279,7 +279,7 @@ defmodule Phoenix.LiveView.Utils do
   """
   def cancel_upload(socket, name, entry_ref) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
-    %Phoenix.LiveView.UploadEntry{} = entry = UploadConfig.get_entry_by_ref(upload_config, entry_ref)
+    %UploadEntry{} = entry = UploadConfig.get_entry_by_ref(upload_config, entry_ref)
     new_config = UploadConfig.cancel_entry(upload_config, entry)
     new_uploads = Map.update!(socket.assigns.uploads, name, fn _ -> new_config end)
     assign(socket, :uploads, new_uploads)
@@ -400,10 +400,25 @@ defmodule Phoenix.LiveView.Utils do
     entries =
       case uploaded_entries(socket, name) do
         {[_|_] = done_entries, []} -> done_entries
-        {_, [_|_]} -> raise ArgumentError, "cannot move uploaded files when entries are still in progress"
-        {[], []} -> raise ArgumentError, "cannot move uploaded files without active entries"
+        {_, [_|_]} -> raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
+        {[], []} -> raise ArgumentError, "cannot consume uploaded files without active entries"
       end
 
+    consume_entries(conf, entries, func)
+  end
+
+  @doc """
+  TODO
+  """
+  def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func) when is_function(func, 1) do
+    unless entry.done?, do: raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
+    conf = Map.fetch!(socket.assigns[:uploads], entry.upload_config)
+    [result] = consume_entries(conf, [entry], func)
+
+    result
+  end
+
+  defp consume_entries(%UploadConfig{} = conf, entries, func) when is_list(entries) and is_function(func) do
     entries
     |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
     |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
