@@ -46,6 +46,12 @@ defmodule Phoenix.LiveView.Diff do
     one_to_iodata(static, parts, 0, [], components, mapper)
   end
 
+  defp to_iodata(%{@dynamics => dynamics}, components, mapper) do
+    Enum.map_reduce(dynamics, components, fn dynamic, components ->
+      many_to_iodata([], dynamic, [], components, mapper)
+    end)
+  end
+
   defp to_iodata(cid, components, mapper) when is_integer(cid) do
     # Resolve component pointers and update the component entries
     components =
@@ -83,6 +89,15 @@ defmodule Phoenix.LiveView.Diff do
 
   defp many_to_iodata([shead], [], acc, components, _mapper) do
     {Enum.reverse([shead | acc]), components}
+  end
+
+  defp many_to_iodata([], [dhead], acc, components, mapper) do
+    {iodata, components} = to_iodata(dhead, components, mapper)
+    {Enum.reverse([iodata | acc]), components}
+  end
+
+  defp many_to_iodata([], [], acc, components, _mapper) do
+    {acc, components}
   end
 
   defp find_component(%{@static => cid}, components) when is_integer(cid),
