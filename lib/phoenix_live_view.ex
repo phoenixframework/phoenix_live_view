@@ -681,32 +681,32 @@ defmodule Phoenix.LiveView do
   @doc """
   TODO
   """
-  defdelegate allow_upload(socket, name, options), to: Phoenix.LiveView.Utils
+  defdelegate allow_upload(socket, name, options), to: Phoenix.LiveView.Upload
 
   @doc """
   TODO
   """
-  defdelegate disallow_upload(socket, name), to: Phoenix.LiveView.Utils
+  defdelegate disallow_upload(socket, name), to: Phoenix.LiveView.Upload
 
   @doc """
   TODO
   """
-  defdelegate cancel_upload(socket, name, entry_ref), to: Phoenix.LiveView.Utils
+  defdelegate cancel_upload(socket, name, entry_ref), to: Phoenix.LiveView.Upload
 
   @doc """
   TODO
   """
-  defdelegate uploaded_entries(socket, name), to: Phoenix.LiveView.Utils
+  defdelegate uploaded_entries(socket, name), to: Phoenix.LiveView.Upload
 
   @doc """
   TODO
   """
-  defdelegate consume_uploaded_entries(socket, name, func), to: Phoenix.LiveView.Utils
+  defdelegate consume_uploaded_entries(socket, name, func), to: Phoenix.LiveView.Upload
 
   @doc """
   TODO
   """
-  defdelegate consume_uploaded_entry(socket, entry, func), to: Phoenix.LiveView.Utils
+  defdelegate consume_uploaded_entry(socket, entry, func), to: Phoenix.LiveView.Upload
 
   @doc """
   Annotates the socket for redirect to a destination path.

@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Static, UploadConfig}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Static, Upload, UploadConfig}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
@@ -64,7 +64,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
-    upload_conf = Utils.get_upload_by_pid(socket, pid)
+    upload_conf = Upload.get_upload_by_pid(socket, pid)
     graceful_upload_exit? = reason in [:normal, {:shutdown, :closed}]
 
     cond do
@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView.Channel do
         {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
       upload_conf && graceful_upload_exit? ->
-        new_socket = Utils.unregister_completed_entry_upload(socket, upload_conf, pid)
+        new_socket = Upload.unregister_completed_entry_upload(socket, upload_conf, pid)
         handle_changed(state, new_socket, nil)
 
       true ->
@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
-    new_socket = Utils.update_progress(socket, ref, entry_ref, progress)
+    new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
 
     handle_changed(state, new_socket, msg.ref)
   end
@@ -129,11 +129,11 @@ defmodule Phoenix.LiveView.Channel do
   # `entries` of the upload_config. The list of entries is the previously allowed/in progress uploads
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
     %{"ref" => ref} = msg.payload
-    {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
+    upload_conf = Upload.get_upload_by_ref!(state.socket, ref)
 
-    case Utils.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
+    case Upload.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
       {:ok, new_socket} ->
-        case Utils.generate_preflight_response(new_socket, upload_conf.name) do
+        case Upload.generate_preflight_response(new_socket, upload_conf.name) do
           {:ok, uploader_reply, new_socket} ->
             {:noreply, new_state} = handle_changed(state, new_socket, nil)
             reply(new_state, msg.ref, :ok, uploader_reply)
@@ -170,7 +170,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :drop_upload_entries, upload_config}, state) do
-    new_socket = Utils.drop_upload_entries(state.socket, upload_config)
+    new_socket = Upload.drop_upload_entries(state.socket, upload_config)
     handle_changed(state, new_socket, nil)
   end
 
@@ -226,9 +226,9 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_call({@prefix, :register_entry_upload, info}, _from, state) do
     %{channel_pid: pid, ref: ref, entry_ref: entry_ref} = info
-    {_, _, conf} = Utils.get_upload_by_ref!(state.socket, ref)
+    conf = Upload.get_upload_by_ref!(state.socket, ref)
 
-    case Utils.register_entry_upload(state.socket, conf, pid, entry_ref) do
+    case Upload.register_entry_upload(state.socket, conf, pid, entry_ref) do
       {:ok, new_socket, entry} ->
         Process.monitor(pid)
         {:noreply, new_state} = handle_changed(state, new_socket, nil)
@@ -884,9 +884,9 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_update_uploads(state, %{"uploads" => uploads}) do
     Enum.reduce(uploads, state, fn {ref, entries}, acc ->
-      {_, _, upload_conf} = Utils.get_upload_by_ref!(acc.socket, ref)
+      upload_conf = Upload.get_upload_by_ref!(acc.socket, ref)
 
-      case Utils.put_entries(acc.socket, upload_conf, entries) do
+      case Upload.put_entries(acc.socket, upload_conf, entries) do
         {:ok, new_socket} -> %{acc | socket: new_socket}
         {:error, new_socket, _errors} -> %{acc | socket: new_socket}
       end
