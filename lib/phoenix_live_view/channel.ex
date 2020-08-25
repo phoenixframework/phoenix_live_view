@@ -24,7 +24,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def register_upload(pid, {upload_config_ref, entry_ref} = _ref) do
-    GenServer.call(pid, {@prefix, :register_entry_upload, %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}})
+    info = %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}
+    GenServer.call(pid, {@prefix, :register_entry_upload, info})
+  end
+
+  def fetch_upload_config(pid, name) do
+    GenServer.call(pid, {@prefix, :fetch_upload_config, name})
   end
 
   def drop_upload_entries(%UploadConfig{} = conf) do
@@ -67,7 +72,8 @@ defmodule Phoenix.LiveView.Channel do
         {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
       upload_conf && graceful_upload_exit? ->
-        handle_changed(state, Utils.unregister_completed_entry_upload(socket, upload_conf, pid), nil)
+        new_socket = Utils.unregister_completed_entry_upload(socket, upload_conf, pid)
+        handle_changed(state, new_socket, nil)
 
       true ->
         msg
@@ -133,14 +139,16 @@ defmodule Phoenix.LiveView.Channel do
             reply(new_state, msg.ref, :ok, uploader_reply)
             {:noreply, new_state}
 
-          {:error, error_meta, new_socket} ->
+          {:error, error_resp, new_socket} ->
             {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, %{error: error_meta})
+            reply(new_state, msg.ref, :ok, error_resp)
             {:noreply, new_state}
         end
 
       {:error, new_socket, errors} ->
-        errors_reply = Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
+        errors_reply =
+          Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
+
         {:noreply, new_state} = handle_changed(state, new_socket, nil)
         reply(new_state, msg.ref, :ok, %{error: errors_reply})
         {:noreply, state}
@@ -200,6 +208,15 @@ defmodule Phoenix.LiveView.Channel do
   @impl true
   def handle_call({@prefix, :ping}, _from, state) do
     {:reply, :ok, state}
+  end
+
+  def handle_call({@prefix, :fetch_upload_config, name}, _from, state) do
+    result =
+      with {:ok, uploads} <- Map.fetch(state.socket.assigns, :uploads),
+           {:ok, conf} <- Map.fetch(uploads, name),
+           do: {:ok, conf}
+
+    {:reply, result, state}
   end
 
   def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
@@ -849,7 +866,7 @@ defmodule Phoenix.LiveView.Channel do
       socket: lv_socket,
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
-      components: Diff.new_components(),
+      components: Diff.new_components()
     }
   end
 
@@ -868,6 +885,7 @@ defmodule Phoenix.LiveView.Channel do
   defp maybe_update_uploads(state, %{"uploads" => uploads}) do
     Enum.reduce(uploads, state, fn {ref, entries}, acc ->
       {_, _, upload_conf} = Utils.get_upload_by_ref!(acc.socket, ref)
+
       case Utils.put_entries(acc.socket, upload_conf, entries) do
         {:ok, new_socket} -> %{acc | socket: new_socket}
         {:error, new_socket, _errors} -> %{acc | socket: new_socket}

@@ -931,15 +931,28 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, form_selector: form_selector, name: name, entries: entries] do
-      require Phoenix.ChannelTest
-      socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-      Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, form_selector, name, entries)
+      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name) do
+        {:ok, %{external: false}} ->
+          require Phoenix.ChannelTest
+          socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+          Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, form_selector, name, entries)
+
+        {:ok, %{external: func}} when is_function(func) ->
+          Phoenix.LiveViewTest.__start_external_upload_client__(view, form_selector, name, entries)
+
+        :error -> raise "no uploads allowed for #{name}"
+      end
     end
   end
 
 
   def __start_upload_client__(socket_builder, view, form_selector, name, entries) do
     {:ok, pid} = UploadClient.start_link(socket_builder: socket_builder, test_supervisor: fetch_test_supervisor!())
+    Upload.new(pid, view, form_selector, name, entries)
+  end
+
+  def __start_external_upload_client__(view, form_selector, name, entries) do
+    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!())
     Upload.new(pid, view, form_selector, name, entries)
   end
 

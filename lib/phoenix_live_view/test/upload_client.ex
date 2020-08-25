@@ -31,7 +31,16 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   def init(opts) do
     test_sup = Keyword.fetch!(opts, :test_supervisor)
-    {:ok, socket} = Keyword.fetch!(opts, :socket_builder).()
+    socket =
+      case Keyword.fetch(opts, :socket_builder) do
+        {:ok, func} ->
+          {:ok, socket} = func.()
+          socket
+
+        :error ->
+          nil
+      end
+
     {:ok, %{socket: socket, test_supervisor: test_sup, upload_ref: nil, config: %{}, entries: %{}}}
   end
 
@@ -47,12 +56,6 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         {name, build_and_join_entry(state, client_entry, token)}
       end
 
-    # failed_entries =
-    #   entries
-    #   |> Enum.filter(, fn {_name, result} -> match?(result, {:error, _}))
-    #   |> Enum.into(fn {:error, reason} -> reason)
-
-    # if Enum.empty?(failed_entries) do
     {:reply, :ok, %{state | upload_ref: ref, config: config, entries: entries}}
   end
 
@@ -75,6 +78,26 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     after
       1000 -> exit(:timeout)
     end
+  end
+
+  defp build_and_join_entry(%{socket: nil} = _state, client_entry, token) do
+    %{
+      "name" => name,
+      "content" => content,
+      "size" => _,
+      "type" => type,
+      "ref" => ref
+    } = client_entry
+
+    %{
+      name: name,
+      content: content,
+      size: byte_size(content),
+      type: type,
+      ref: ref,
+      token: token,
+      chunk_start: 0,
+    }
   end
 
   defp build_and_join_entry(state, client_entry, token) do
@@ -101,34 +124,50 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     }
   end
 
-  defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
-    entry = get_entry!(state, entry_name)
+  defp progress_stats(entry, percent) do
     chunk_size = trunc(entry.size * (percent / 100))
     start = entry.chunk_start
     new_start = start + chunk_size
     new_percent = trunc((new_start / entry.size) * 100)
 
-    if start >= entry.size do
-      # TODO upload_complete – leave?
+    %{chunk_size: chunk_size, start: start, new_start: new_start, new_percent: new_percent}
+  end
+
+  defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
+    entry = get_entry!(state, entry_name)
+
+    if entry.chunk_start >= entry.size do
       state
     else
-      chunk =
-        if start + chunk_size > entry.size do
-          :binary.part(entry.content, start, entry.size - start)
-        else
-          :binary.part(entry.content, start, chunk_size)
-        end
-
-      ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
-      receive do
-        %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
-          :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, new_percent)
-          update_entry_start(state, entry, new_start)
-      after
-        1000 -> exit(:timeout)
-      end
+      do_chunk(state, from, entry, proxy_pid, element, percent)
     end
   end
+
+  defp do_chunk(%{socket: nil} = state, from, entry, proxy_pid, element, percent) do
+    stats = progress_stats(entry, percent)
+    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent)
+    update_entry_start(state, entry, stats.new_start)
+  end
+
+  defp do_chunk(state, from, entry, proxy_pid, element, percent) do
+    stats = progress_stats(entry, percent)
+    chunk =
+      if stats.start + stats.chunk_size > entry.size do
+        :binary.part(entry.content, stats.start, entry.size - stats.start)
+      else
+        :binary.part(entry.content, stats.start, stats.chunk_size)
+      end
+
+    ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
+    receive do
+      %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
+        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent)
+        update_entry_start(state, entry, stats.new_start)
+    after
+      1000 -> exit(:timeout)
+    end
+  end
+
 
   defp update_entry_start(state, entry, new_start) do
     new_entries = Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)

@@ -354,7 +354,9 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def put_upload_error(%Socket{} = socket, %UploadConfig{} = conf, entry_ref, reason) do
+  def put_upload_error(%Socket{} = socket, conf_name, entry_ref, reason) do
+    conf = Map.fetch!(socket.assigns.uploads, conf_name)
+
     conf
     |> UploadConfig.put_error(entry_ref, reason)
     |> update_uploads(socket)
@@ -447,8 +449,13 @@ defmodule Phoenix.LiveView.Utils do
     if conf.external do
       results =
         entries
-        |> Enum.map(fn entry -> Map.fetch!(conf.entry_refs_to_metas, entry.ref) end)
-        |> Enum.map(fn meta -> func.(meta) end)
+        |> Enum.map(fn entry -> {entry, Map.fetch!(conf.entry_refs_to_metas, entry.ref)} end)
+        |> Enum.map(fn {entry, meta} ->
+          cond do
+            is_function(func, 1) -> func.(meta)
+            is_function(func, 2) -> func.(meta, entry)
+          end
+        end)
 
       Phoenix.LiveView.Channel.drop_upload_entries(conf)
 
@@ -496,7 +503,7 @@ defmodule Phoenix.LiveView.Utils do
             {:cont, {:ok, Map.put(metas, entry.ref, meta), new_socket}}
 
           {:error, %{} = meta, new_socket} ->
-            {:halt, {:error, meta, new_socket}}
+            {:halt, {:error, {entry.ref, meta}, new_socket}}
         end
       end)
 
@@ -504,8 +511,9 @@ defmodule Phoenix.LiveView.Utils do
       {:ok, entry_metas, new_socket} ->
         {:ok, %{ref: conf.ref, config: client_config_meta, entries: entry_metas}, new_socket}
 
-      {:error, meta_reason, new_socket} ->
-        {:error, %{ref: conf.ref, error: meta_reason}, new_socket}
+      {:error, {ref, meta_reason}, new_socket} ->
+        new_socket = put_upload_error(new_socket, conf.name, ref, meta_reason)
+        {:error, %{ref: conf.ref, error: [ref, :preflight_failed]}, new_socket}
     end
   end
 

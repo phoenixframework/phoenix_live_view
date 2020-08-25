@@ -3,12 +3,15 @@ defmodule Phoenix.LiveViewTest.UploadLive do
 
   def render(%{uploads: _} = assigns) do
     ~L"""
+    <%= for preflight <- @preflights do %>
+      preflight:<%= inspect(preflight) %>
+    <% end %>
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
         <%= entry.client_name %>:<%= entry.progress %>%
         channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
         <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
-          error:<%= msg %>
+          error:<%= inspect(msg) %>
         <% end %>
       <% end %>
       <%= live_file_input @uploads.avatar %>
@@ -24,7 +27,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok, assign(socket, :preflights, [])}
   end
 
   def handle_call({:setup, setup_func}, _from, socket) do
@@ -35,5 +38,29 @@ defmodule Phoenix.LiveViewTest.UploadLive do
 
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
+  end
+
+  ## test helpers
+
+  def inspect_html_safe(term) do
+    term
+    |> inspect()
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
+  end
+
+  def exits_with(lv, upload, kind, func) do
+    Process.unlink(Phoenix.LiveViewTest.proxy_pid(lv))
+    Process.unlink(upload.pid)
+    try do
+      func.()
+      raise "expected to exit with #{inspect(kind)}"
+    catch
+      :exit, {{%mod{message: msg}, _}, _} when mod == kind -> msg
+    end
+  end
+
+  def run(lv, func) do
+    GenServer.call(lv.pid, {:run, func})
   end
 end
