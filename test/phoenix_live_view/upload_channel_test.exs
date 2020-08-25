@@ -397,5 +397,17 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       refute render(lv) =~ file_name
     end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "allow_upload with active entries", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("0", 100)}])
+      assert render_upload(avatar, "foo.jpeg", 1) =~ "1%"
+
+      assert UploadLive.exits_with(lv, avatar, ArgumentError, fn ->
+        UploadLive.run(lv, fn socket ->
+          {:reply, :ok, Phoenix.LiveView.allow_upload(socket, :avatar, accept: :any)}
+        end)
+      end) =~ "cannot allow_upload on an existing upload with active entries"
+    end
   end
 end

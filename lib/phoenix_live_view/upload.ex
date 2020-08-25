@@ -1,4 +1,5 @@
 defmodule Phoenix.LiveView.Upload do
+  # Operations integrating Phoenix.LiveView.Socket with UploadConfig.
   @moduledoc false
 
   alias Phoenix.LiveView.{Socket, Utils, UploadConfig, UploadEntry}
@@ -9,7 +10,18 @@ defmodule Phoenix.LiveView.Upload do
   TODO
   """
   def allow_upload(%Socket{} = socket, name, opts) when is_atom(name) and is_list(opts) do
-    # TODO raise on non-canceled active upload for existing name?
+    case uploaded_entries(socket, name) do
+      {[], []} ->
+        :ok
+
+      {_, _} ->
+        raise ArgumentError, """
+        cannot allow_upload on an existing upload with active entries.
+
+        Use cancel_upload and/or consume_upload to handle the active entries before allowing a new upload.
+        """
+    end
+
     ref = Utils.random_id()
     uploads = socket.assigns[:uploads] || %{}
     upload_config = UploadConfig.build(name, ref, opts)
@@ -83,7 +95,6 @@ defmodule Phoenix.LiveView.Upload do
   """
   def update_progress(%Socket{} = socket, config_ref, entry_ref, progress)
       when is_integer(progress) and progress >= 0 and progress <= 100 do
-
     socket
     |> get_upload_by_ref!(config_ref)
     |> UploadConfig.update_progress(entry_ref, progress)
