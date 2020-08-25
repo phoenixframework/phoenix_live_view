@@ -386,25 +386,23 @@ defmodule Phoenix.LiveView.DiffTest do
     end
 
     def render_itself(assigns) do
-      case assigns.sch do
-        :c ->
+      case assigns.key do
+        :a ->
           ~L"""
-          <%= %>
+          <%= for key <- [:nothing] do %>
+            <%= key %><%= key %>
+          <% end %>
           """
 
         :b ->
           ~L"""
-          <%= for _ <- [:nothing] do %>
-          <% end %>
+          <%= %>
           """
 
-        %{"z" => _} ->
+        :c ->
           ~L"""
-          <%= live_component @socket, __MODULE__, id: :erlang.unique_integer(), sch: :b  %>
+          <%= live_component @socket, __MODULE__, id: make_ref(), key: :a %>
           """
-
-        _ ->
-          ~L""
       end
     end
   end
@@ -1094,11 +1092,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       %{fingerprint: _fingerprint} =
         rendered = ~L"""
-        <%= for key <-  ["c", "z", "b"] do %>
-          <%= live_component(@socket, NestedDynamicComponent,
-            id: key,
-            sch: Map.get(%{"b" => :b, "c" => :c, "z" => %{"z" => [:b]}}, key)
-          ) %>
+        <%= for key <- [:b, :c, :a] do %>
+          <%= live_component(@socket, NestedDynamicComponent, id: key, key: key) %>
         <% end %>
         """
 
@@ -1109,13 +1104,19 @@ defmodule Phoenix.LiveView.DiffTest do
                :c => %{
                  1 => %{0 => %{0 => "", :s => ["", "\n"]}, :s => ["", "\n"]},
                  2 => %{0 => %{0 => 4, :s => ["", "\n"]}, :s => 1},
-                 3 => %{0 => %{0 => %{d: [[]], s: ["\n"]}, :s => ["", "\n"]}, :s => 1},
-                 4 => %{0 => %{0 => %{d: [[]]}}, :s => 3}
+                 3 => %{
+                   0 => %{
+                     0 => %{d: [["nothing", "nothing"]], s: ["\n  ", "", "\n"]},
+                     :s => ["", "\n"]
+                   },
+                   :s => 1
+                 },
+                 4 => %{0 => %{0 => %{d: [["nothing", "nothing"]]}}, :s => 3}
                },
                :s => ["", "\n"]
              }
 
-      assert rendered_to_binary(full_render)
+      assert rendered_to_binary(full_render) =~ "nothingnothing"
     end
 
     test "block tracking" do
