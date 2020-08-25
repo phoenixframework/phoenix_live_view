@@ -242,6 +242,7 @@ defmodule Phoenix.LiveView.Utils do
     ref = random_id()
     uploads = socket.assigns[:uploads] || %{}
     upload_config = UploadConfig.build(name, ref, opts)
+
     new_uploads =
       uploads
       |> Map.put(name, upload_config)
@@ -256,6 +257,7 @@ defmodule Phoenix.LiveView.Utils do
   def disallow_upload(%Socket{} = socket, name) when is_atom(name) do
     # TODO raise or cancel active upload for existing name?
     uploads = socket.assigns[:uploads] || %{}
+
     upload_config =
       uploads
       |> Map.fetch!(name)
@@ -271,6 +273,7 @@ defmodule Phoenix.LiveView.Utils do
       uploads
       |> Map.put(name, upload_config)
       |> Map.update!(@refs_to_names, fn _ -> new_refs end)
+
     assign(socket, :uploads, new_uploads)
   end
 
@@ -307,12 +310,20 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress) do
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress)
+      when is_integer(progress) and progress >= 0 and progress <= 100 do
     {_uploads, _name, upload_config} = get_upload_by_ref!(socket, config_ref)
 
     upload_config
     |> UploadConfig.update_progress(entry_ref, progress)
     |> update_uploads(socket)
+  end
+
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, %{"error" => reason})
+      when is_binary(reason) do
+    {_uploads, _name, conf} = get_upload_by_ref!(socket, config_ref)
+
+    put_upload_error(socket, conf.name, entry_ref, :external_client_failure)
   end
 
   @doc """
@@ -331,7 +342,8 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid) when is_pid(pid) do
+  def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid)
+      when is_pid(pid) do
     conf
     |> UploadConfig.unregister_completed_entry(pid)
     |> update_uploads(socket)
@@ -340,7 +352,8 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref) when is_pid(pid) do
+  def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref)
+      when is_pid(pid) do
     case UploadConfig.register_entry_upload(conf, pid, entry_ref) do
       {:ok, new_config} ->
         entry = UploadConfig.get_entry_by_ref(new_config, entry_ref)
@@ -406,12 +419,20 @@ defmodule Phoenix.LiveView.Utils do
   TODO
   """
   def consume_uploaded_entries(%Socket{} = socket, name, func) when is_function(func, 2) do
-    conf = socket.assigns[:uploads][name] || raise ArgumentError, "no upload allowed for #{inspect(name)}"
+    conf =
+      socket.assigns[:uploads][name] ||
+        raise ArgumentError, "no upload allowed for #{inspect(name)}"
+
     entries =
       case uploaded_entries(socket, name) do
-        {[_|_] = done_entries, []} -> done_entries
-        {_, [_|_]} -> raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
-        {[], []} -> raise ArgumentError, "cannot consume uploaded files without active entries"
+        {[_ | _] = done_entries, []} ->
+          done_entries
+
+        {_, [_ | _]} ->
+          raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
+
+        {[], []} ->
+          raise ArgumentError, "cannot consume uploaded files without active entries"
       end
 
     consume_entries(conf, entries, func)
@@ -420,8 +441,11 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func) when is_function(func, 1) do
-    unless entry.done?, do: raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
+  def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func)
+      when is_function(func, 1) do
+    unless entry.done?,
+      do: raise(ArgumentError, "cannot consume uploaded files when entries are still in progress")
+
     conf = Map.fetch!(socket.assigns[:uploads], entry.upload_config)
     [result] = consume_entries(conf, [entry], func)
 
@@ -445,7 +469,8 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def consume_entries(%UploadConfig{} = conf, entries, func) when is_list(entries) and is_function(func) do
+  def consume_entries(%UploadConfig{} = conf, entries, func)
+      when is_list(entries) and is_function(func) do
     if conf.external do
       results =
         entries
@@ -473,21 +498,31 @@ defmodule Phoenix.LiveView.Utils do
   """
   def generate_preflight_response(%Socket{} = socket, name) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
+
     client_meta = %{
       max_file_size: conf.max_file_size,
       max_entries: conf.max_entries,
-      chunk_size: conf.chunk_size,
+      chunk_size: conf.chunk_size
     }
+
     case conf do
-      %UploadConfig{external: false} = conf -> channel_preflight(socket, conf, client_meta)
-      %UploadConfig{external: func} when is_function(func) -> external_preflight(socket, conf, client_meta)
+      %UploadConfig{external: false} = conf ->
+        channel_preflight(socket, conf, client_meta)
+
+      %UploadConfig{external: func} when is_function(func) ->
+        external_preflight(socket, conf, client_meta)
     end
   end
 
   defp channel_preflight(%Socket{} = socket, %UploadConfig{} = conf, %{} = client_config_meta) do
     reply_entries =
       for entry <- conf.entries, into: %{} do
-        token = Phoenix.LiveView.Static.sign_token(socket.endpoint, %{pid: self(), ref: {conf.ref, entry.ref}})
+        token =
+          Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
+            pid: self(),
+            ref: {conf.ref, entry.ref}
+          })
+
         {entry.ref, token}
       end
 
@@ -516,7 +551,6 @@ defmodule Phoenix.LiveView.Utils do
         {:error, %{ref: conf.ref, error: [ref, :preflight_failed]}, new_socket}
     end
   end
-
 
   @doc """
   Returns the configured signing salt for the endpoint.

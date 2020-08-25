@@ -171,7 +171,9 @@ class UploadEntry {
 
   isDone(){ return this._isDone }
 
-  error(reason){} // TODO
+  error(reason){
+    this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
+  }
 
   //private
 
