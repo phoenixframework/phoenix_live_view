@@ -41,7 +41,6 @@ defmodule Phoenix.LiveView.UploadConfig do
   @unregistered :unregistered
   @invalid :invalid
 
-  # TODO add option for :chunk_size
   defstruct name: nil,
             epoch: 0,
             client_key: nil,
@@ -51,8 +50,9 @@ defmodule Phoenix.LiveView.UploadConfig do
             chunk_timeout: @default_chunk_timeout,
             entries: [],
             entry_refs_to_pids: %{},
+            entry_refs_to_metas: %{},
             accept: %{},
-            external: nil,
+            external: false,
             allowed?: false,
             ref: nil,
             errors: []
@@ -64,8 +64,9 @@ defmodule Phoenix.LiveView.UploadConfig do
           max_file_size: pos_integer(),
           entries: list(),
           entry_refs_to_pids: %{String.t() => pid() | :unregistered | :done},
+          entry_refs_to_metas: %{String.t() => map()},
           accept: map() | :any,
-          external: (Socket.t() -> Socket.t()) | nil,
+          external: (Socket.t() -> Socket.t()) | false,
           allowed?: boolean,
           errors: list()
         }
@@ -109,7 +110,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     external =
       case Keyword.fetch(opts, :external) do
-        {:ok, func} when is_function(func, 1) ->
+        {:ok, func} when is_function(func, 2) ->
           func
 
         {:ok, other} ->
@@ -122,7 +123,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           """
 
         :error ->
-          nil
+          false
       end
 
     max_file_size =
@@ -170,7 +171,9 @@ defmodule Phoenix.LiveView.UploadConfig do
           raise ArgumentError, """
           invalid :chunk_timeout value provided to allow_upload.
 
-          Only a positive integer in milliseconds is supported (Defaults to #{@default_chunk_timeout} ms). Got:
+          Only a positive integer in milliseconds is supported (Defaults to #{
+            @default_chunk_timeout
+          } ms). Got:
 
           #{inspect(other)}
           """
@@ -179,13 +182,13 @@ defmodule Phoenix.LiveView.UploadConfig do
           @default_chunk_timeout
       end
 
-
     %UploadConfig{
       ref: random_ref,
       name: name,
       max_entries: opts[:max_entries] || 1,
       max_file_size: max_file_size,
       entry_refs_to_pids: %{},
+      entry_refs_to_metas: %{},
       accept: accept,
       external: external,
       chunk_size: chunk_size,
@@ -213,6 +216,14 @@ defmodule Phoenix.LiveView.UploadConfig do
     Enum.find(conf.entries, fn %UploadEntry{} = entry -> entry.ref === ref end)
   end
 
+  def unregister_completed_external_entry(%UploadConfig{} = conf, entry_ref) do
+    %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
+
+    conf
+    |> drop_entry(entry)
+    |> inc_epoch()
+  end
+
   def unregister_completed_entry(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
     %UploadEntry{} = entry = get_entry_by_pid(conf, channel_pid)
 
@@ -227,10 +238,15 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   defp inc_epoch(%UploadConfig{} = conf), do: %UploadConfig{conf | epoch: conf.epoch + 1}
 
-  def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref) when is_pid(channel_pid) do
+  def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref)
+      when is_pid(channel_pid) do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
       {:ok, @unregistered} ->
-        {:ok, %UploadConfig{conf | entry_refs_to_pids: Map.put(conf.entry_refs_to_pids, entry_ref, channel_pid)}}
+        {:ok,
+         %UploadConfig{
+           conf
+           | entry_refs_to_pids: Map.put(conf.entry_refs_to_pids, entry_ref, channel_pid)
+         }}
 
       {:ok, existing_pid} when is_pid(existing_pid) ->
         {:error, :already_registered}
@@ -320,10 +336,20 @@ defmodule Phoenix.LiveView.UploadConfig do
   @doc false
   def update_progress(%UploadConfig{} = conf, entry_ref, progress)
       when is_integer(progress) and progress >= 0 and progress <= 100 do
-
     update_entry(conf, entry_ref, fn entry -> UploadEntry.put_progress(entry, progress) end)
   end
 
+  @doc false
+  def update_entry_meta(%UploadConfig{} = conf, entry_ref, %{} = meta) do
+    case Map.fetch(meta, :uploader) do
+      {:ok, _} -> :noop
+      :error -> raise ArgumentError, "external uploader metadata requires an :uploader key. Got: #{inspect(meta)}"
+    end
+    new_metas = Map.put(conf.entry_refs_to_metas, entry_ref, meta)
+    %UploadConfig{conf | entry_refs_to_metas: new_metas}
+  end
+
+  @doc false
   def put_entries(%UploadConfig{} = conf, entries) do
     if registered?(conf) do
       raise ArgumentError, "cannot overwrite entries for an active upload"
@@ -331,6 +357,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       do_put_entries(conf, entries)
     end
   end
+
   defp do_put_entries(%UploadConfig{} = conf, entries) do
     cleared_conf = clear_entries(conf)
 
@@ -344,17 +371,21 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     case new_conf do
       %UploadConfig{errors: []} = new_conf -> {:ok, new_conf}
-      %UploadConfig{errors: [_|_]} = new_conf -> {:error, new_conf}
+      %UploadConfig{errors: [_ | _]} = new_conf -> {:error, new_conf}
     end
   end
 
   defp clear_entries(%UploadConfig{} = conf) do
-    if registered?(conf), do: raise ArgumentError, "an upload with active entries cannot be cleared"
+    if registered?(conf),
+      do: raise(ArgumentError, "an upload with active entries cannot be cleared")
+
     %UploadConfig{conf | entries: [], errors: []}
   end
 
   # TODO validate against config constraints
-  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max} = conf, %{"ref" => _ref})
+  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max} = conf, %{
+         "ref" => _ref
+       })
        when length(entries) >= max do
     {:error, put_error(conf, conf.ref, :too_many_files)}
   end
@@ -384,17 +415,34 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp put_valid_entry(conf, entry) do
     entry = %UploadEntry{entry | valid?: true}
     new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @unregistered)
-    %UploadConfig{conf | entries: conf.entries ++ [entry], entry_refs_to_pids: new_pids}
+    new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
+
+    %UploadConfig{
+      conf
+      | entries: conf.entries ++ [entry],
+        entry_refs_to_pids: new_pids,
+        entry_refs_to_metas: new_metas
+    }
   end
 
   defp put_invalid_entry(conf, entry, reason) do
     entry = %UploadEntry{entry | valid?: false}
     new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @invalid)
-    new_conf = %UploadConfig{conf | entries: conf.entries ++ [entry], entry_refs_to_pids: new_pids}
+    new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
+
+    new_conf = %UploadConfig{
+      conf
+      | entries: conf.entries ++ [entry],
+        entry_refs_to_pids: new_pids,
+        entry_refs_to_metas: new_metas
+    }
+
     put_error(new_conf, entry.ref, reason)
   end
 
-  defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{max_file_size: max})
+  defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{
+         max_file_size: max
+       })
        when size > max or not is_integer(size),
        do: {:error, :too_large}
 
@@ -411,9 +459,21 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp validate_accepted({:error, _} = error, _conf), do: error
 
   defp accepted?(%UploadConfig{accept: :any}, _entry), do: true
-  defp accepted?(%UploadConfig{accept: %{"image/*" => _}}, %UploadEntry{client_type: <<"image/" <> _>>}), do: true
-  defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{client_type: <<"audio/" <> _>>}), do: true
-  defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{client_type: <<"video/" <> _>>}), do: true
+
+  defp accepted?(%UploadConfig{accept: %{"image/*" => _}}, %UploadEntry{
+         client_type: <<"image/" <> _>>
+       }),
+       do: true
+
+  defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{
+         client_type: <<"audio/" <> _>>
+       }),
+       do: true
+
+  defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{
+         client_type: <<"video/" <> _>>
+       }),
+       do: true
 
   defp accepted?(%UploadConfig{accept: accept}, %UploadEntry{} = entry) do
     cond do
@@ -453,9 +513,13 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
-  defp drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
+  @doc """
+  TODO
+  """
+  def drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
     new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
     new_refs = Map.delete(conf.entry_refs_to_pids, ref)
-    %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs}
+    new_metas = Map.delete(conf.entry_refs_to_metas, ref)
+    %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs, entry_refs_to_metas: new_metas}
   end
 end

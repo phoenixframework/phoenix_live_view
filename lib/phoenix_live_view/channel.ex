@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Static}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Static, UploadConfig}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
@@ -25,6 +25,10 @@ defmodule Phoenix.LiveView.Channel do
 
   def register_upload(pid, {upload_config_ref, entry_ref} = _ref) do
     GenServer.call(pid, {@prefix, :register_entry_upload, %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}})
+  end
+
+  def drop_upload_entries(%UploadConfig{} = conf) do
+    send(self(), {@prefix, :drop_upload_entries, conf})
   end
 
   @impl true
@@ -118,38 +122,28 @@ defmodule Phoenix.LiveView.Channel do
   # will enforce the max_files count for a given upload. We can do this by inspecting the
   # `entries` of the upload_config. The list of entries is the previously allowed/in progress uploads
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    case msg.payload do
-      %{"external" => true, "ref" => _ref} ->
-        # TODO after validation, call into user defined event for prefligt/init upload
-        raise "TODO"
+    %{"ref" => ref} = msg.payload
+    {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
 
-      %{"ref" => ref} ->
-        # TODO validate
-        {_, _, upload_conf} = Utils.get_upload_by_ref!(state.socket, ref)
-        config = %{
-          max_file_size: upload_conf.max_file_size,
-          max_entries: upload_conf.max_entries,
-          chunk_size: upload_conf.chunk_size,
-        }
-
-        case Utils.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
-          {:ok, new_socket} ->
-            reply_entries =
-              for entry <- msg.payload["entries"], entry_ref = entry["ref"], into: %{} do
-                token = Static.sign_token(state.socket.endpoint, %{pid: self(), ref: {upload_conf.ref, entry_ref}})
-                {entry_ref, token}
-              end
-
+    case Utils.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
+      {:ok, new_socket} ->
+        case Utils.generate_preflight_response(new_socket, upload_conf.name) do
+          {:ok, uploader_reply, new_socket} ->
             {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, %{ref: ref, config: config, entries: reply_entries})
+            reply(new_state, msg.ref, :ok, uploader_reply)
             {:noreply, new_state}
 
-          {:error, new_socket, errors} ->
-            errors_reply = Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
+          {:error, error_meta, new_socket} ->
             {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, %{error: errors_reply})
-            {:noreply, state}
+            reply(new_state, msg.ref, :ok, %{error: error_meta})
+            {:noreply, new_state}
         end
+
+      {:error, new_socket, errors} ->
+        errors_reply = Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
+        {:noreply, new_state} = handle_changed(state, new_socket, nil)
+        reply(new_state, msg.ref, :ok, %{error: errors_reply})
+        {:noreply, state}
     end
   end
 
@@ -165,6 +159,11 @@ defmodule Phoenix.LiveView.Channel do
       |> view_handle_event(event, val)
       |> handle_result({:handle_event, 3, msg.ref}, new_state)
     end
+  end
+
+  def handle_info({@prefix, :drop_upload_entries, upload_config}, state) do
+    new_socket = Utils.drop_upload_entries(state.socket, upload_config)
+    handle_changed(state, new_socket, nil)
   end
 
   def handle_info({@prefix, :send_update, update}, state) do

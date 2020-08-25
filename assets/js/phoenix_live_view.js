@@ -171,7 +171,7 @@ class UploadEntry {
 
   isDone(){ return this._isDone }
 
-  // error(){ this.view.pushFileProgress(...) } // TODO
+  error(reason){} // TODO
 
   //private
 
@@ -184,6 +184,15 @@ class UploadEntry {
       size: this.file.size,
       type: this.file.type,
       ref: this.ref
+    }
+  }
+
+  uploader(uploaders){
+    if(this.meta.uploader){
+      let callback = uploaders[this.meta.uploader] || logError(`no uploader configured for ${this.meta.uploader}`)
+      return {name: this.meta.uploader, callback: callback}
+    } else {
+      return {name: "channel", callback: channelUploader}
     }
   }
 
@@ -206,10 +215,9 @@ class LiveUploader {
     }
   }
 
-  constructor(inputEl, view, onComplete, uploaderCallback){
+  constructor(inputEl, view, onComplete){
     this.view = view
     this.onComplete = onComplete
-    this.uploaderCallback = uploaderCallback
     this._entries =
       Array.from(inputEl.files || [])
         .filter(f => f instanceof File && UploadEntry.isActive(inputEl, f))
@@ -231,11 +239,21 @@ class LiveUploader {
         return entry
       })
 
-    this.uploaderCallback(this._entries, resp, onError, liveSocket)
+    let groupedEntries = this._entries.reduce((acc, entry) => {
+      let {name, callback} = entry.uploader(liveSocket.uploaders)
+      acc[name] = acc[name] || {callback: callback, entries: []}
+      acc[name].entries.push(entry)
+      return acc
+    }, {})
+
+    for(let name in groupedEntries){
+      let {callback, entries} = groupedEntries[name]
+      callback(entries, onError, resp, liveSocket)
+    }
   }
 }
 
-let channelUploader = function(entries, resp, onError, liveSocket){
+let channelUploader = function(entries, onError, resp, liveSocket){
   let chunkSize = resp.config.chunk_size
   function uploadToChannel(entry, uploadChannel) {
     const chunkReaderBlock = function(_offset, length, _file, handler) {
@@ -644,6 +662,7 @@ export class LiveSocket {
     this.pendingLink = null
     this.currentLocation = clone(window.location)
     this.hooks = opts.hooks || {}
+    this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
     this.domCallbacks = opts.dom || {onBeforeElUpdated: closure()}
@@ -2511,12 +2530,11 @@ export class View {
 
     // get each file input
     inputEls.forEach(inputEl => {
-      let uploader = new LiveUploader(inputEl, this, onComplete, channelUploader) // TODO external uploaders
+      let uploader = new LiveUploader(inputEl, this, onComplete)
       this.uploaders[inputEl] = uploader
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
       let payload = {
-        external: false, // TODO external uploaders
         ref: inputEl.getAttribute(PHX_UPLOAD_REF),
         entries: entries,
         cid: this.targetComponentID(inputEl.form, targetCtx)

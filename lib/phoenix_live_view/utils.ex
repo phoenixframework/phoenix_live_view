@@ -280,9 +280,10 @@ defmodule Phoenix.LiveView.Utils do
   def cancel_upload(socket, name, entry_ref) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
     %UploadEntry{} = entry = UploadConfig.get_entry_by_ref(upload_config, entry_ref)
-    new_config = UploadConfig.cancel_entry(upload_config, entry)
-    new_uploads = Map.update!(socket.assigns.uploads, name, fn _ -> new_config end)
-    assign(socket, :uploads, new_uploads)
+
+    upload_config
+    |> UploadConfig.cancel_entry(entry)
+    |> update_uploads(socket)
   end
 
   @doc """
@@ -296,12 +297,22 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   TODO
   """
-  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress) do
-    {uploads, name, upload_config} = get_upload_by_ref!(socket, config_ref)
-    new_config = UploadConfig.update_progress(upload_config, entry_ref, progress)
-    new_uploads = Map.update!(uploads, name, fn _ -> new_config end)
+  def update_upload_entry_meta(%Socket{} = socket, upload_conf_name, %UploadEntry{} = entry, meta) do
+    socket.assigns.uploads
+    |> Map.fetch!(upload_conf_name)
+    |> UploadConfig.update_entry_meta(entry.ref, meta)
+    |> update_uploads(socket)
+  end
 
-    assign(socket, :uploads, new_uploads)
+  @doc """
+  TODO
+  """
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress) do
+    {_uploads, _name, upload_config} = get_upload_by_ref!(socket, config_ref)
+
+    upload_config
+    |> UploadConfig.update_progress(entry_ref, progress)
+    |> update_uploads(socket)
   end
 
   @doc """
@@ -310,12 +321,10 @@ defmodule Phoenix.LiveView.Utils do
   def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries) do
     case UploadConfig.put_entries(conf, entries) do
       {:ok, new_config} ->
-        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-        {:ok, assign(socket, :uploads, new_uploads)}
+        {:ok, update_uploads(new_config, socket)}
 
       {:error, new_config} ->
-        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-        {:error, assign(socket, :uploads, new_uploads), new_config.errors}
+        {:error, update_uploads(new_config, socket), new_config.errors}
     end
   end
 
@@ -323,9 +332,9 @@ defmodule Phoenix.LiveView.Utils do
   TODO
   """
   def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid) when is_pid(pid) do
-    new_config = UploadConfig.unregister_completed_entry(conf, pid)
-    new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-    assign(socket, :uploads, new_uploads)
+    conf
+    |> UploadConfig.unregister_completed_entry(pid)
+    |> update_uploads(socket)
   end
 
   @doc """
@@ -334,9 +343,8 @@ defmodule Phoenix.LiveView.Utils do
   def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref) when is_pid(pid) do
     case UploadConfig.register_entry_upload(conf, pid, entry_ref) do
       {:ok, new_config} ->
-        new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
         entry = UploadConfig.get_entry_by_ref(new_config, entry_ref)
-        {:ok, assign(socket, :uploads, new_uploads), entry}
+        {:ok, update_uploads(new_config, socket), entry}
 
       {:error, reason} ->
         {:error, reason}
@@ -347,9 +355,9 @@ defmodule Phoenix.LiveView.Utils do
   TODO
   """
   def put_upload_error(%Socket{} = socket, %UploadConfig{} = conf, entry_ref, reason) do
-    new_config = UploadConfig.put_error(conf, entry_ref, reason)
-    new_uploads = Map.update!(socket.assigns.uploads, conf.name, fn _ -> new_config end)
-    assign(socket, :uploads, new_uploads)
+    conf
+    |> UploadConfig.put_error(entry_ref, reason)
+    |> update_uploads(socket)
   end
 
   @doc """
@@ -418,12 +426,89 @@ defmodule Phoenix.LiveView.Utils do
     result
   end
 
-  defp consume_entries(%UploadConfig{} = conf, entries, func) when is_list(entries) and is_function(func) do
-    entries
-    |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
-    |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
-    |> Enum.map(fn {entry, pid} -> Phoenix.LiveView.UploadChannel.consume(pid, entry, func) end)
+  @doc """
+  TODO
+  """
+  def drop_upload_entries(%Socket{} = socket, %UploadConfig{} = conf) do
+    conf.entries
+    |> Enum.reduce(conf, fn entry, acc -> UploadConfig.drop_entry(acc, entry) end)
+    |> update_uploads(socket)
   end
+
+  defp update_uploads(%UploadConfig{} = new_conf, %Socket{} = socket) do
+    new_uploads = Map.update!(socket.assigns.uploads, new_conf.name, fn _ -> new_conf end)
+    assign(socket, :uploads, new_uploads)
+  end
+
+  @doc """
+  TODO
+  """
+  def consume_entries(%UploadConfig{} = conf, entries, func) when is_list(entries) and is_function(func) do
+    if conf.external do
+      results =
+        entries
+        |> Enum.map(fn entry -> Map.fetch!(conf.entry_refs_to_metas, entry.ref) end)
+        |> Enum.map(fn meta -> func.(meta) end)
+
+      Phoenix.LiveView.Channel.drop_upload_entries(conf)
+
+      results
+    else
+      entries
+      |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
+      |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
+      |> Enum.map(fn {entry, pid} -> Phoenix.LiveView.UploadChannel.consume(pid, entry, func) end)
+    end
+  end
+
+  @doc """
+  TODO
+  """
+  def generate_preflight_response(%Socket{} = socket, name) do
+    %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
+    client_meta = %{
+      max_file_size: conf.max_file_size,
+      max_entries: conf.max_entries,
+      chunk_size: conf.chunk_size,
+    }
+    case conf do
+      %UploadConfig{external: false} = conf -> channel_preflight(socket, conf, client_meta)
+      %UploadConfig{external: func} when is_function(func) -> external_preflight(socket, conf, client_meta)
+    end
+  end
+
+  defp channel_preflight(%Socket{} = socket, %UploadConfig{} = conf, %{} = client_config_meta) do
+    reply_entries =
+      for entry <- conf.entries, into: %{} do
+        token = Phoenix.LiveView.Static.sign_token(socket.endpoint, %{pid: self(), ref: {conf.ref, entry.ref}})
+        {entry.ref, token}
+      end
+
+    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, socket}
+  end
+
+  def external_preflight(%Socket{} = socket, %UploadConfig{} = conf, client_config_meta) do
+    reply_entries =
+      Enum.reduce_while(conf.entries, {:ok, %{}, socket}, fn entry, {:ok, metas, acc} ->
+        case conf.external.(entry, acc) do
+          {:ok, %{} = meta, new_socket} ->
+            new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
+            {:cont, {:ok, Map.put(metas, entry.ref, meta), new_socket}}
+
+          {:error, %{} = meta, new_socket} ->
+            {:halt, {:error, meta, new_socket}}
+        end
+      end)
+
+    case reply_entries do
+      {:ok, entry_metas, new_socket} ->
+        {:ok, %{ref: conf.ref, config: client_config_meta, entries: entry_metas}, new_socket}
+
+      {:error, meta_reason, new_socket} ->
+        {:error, %{ref: conf.ref, error: meta_reason}, new_socket}
+    end
+  end
+
 
   @doc """
   Returns the configured signing salt for the endpoint.
