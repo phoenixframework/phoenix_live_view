@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       Process.monitor(avatar_pid)
 
       UploadLive.run(lv, fn socket ->
-        Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn path, entry ->
+        Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
           send(parent, {:file, path, entry.client_name, File.read!(path)})
         end)
         {:reply, :ok, socket}
@@ -290,7 +290,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       UploadLive.run(lv, fn socket ->
         {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
-        Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn path ->
+        Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn %{path: path} ->
           send(parent, {:file, path, entry.client_name, File.read!(path)})
         end)
         {:reply, :ok, socket}

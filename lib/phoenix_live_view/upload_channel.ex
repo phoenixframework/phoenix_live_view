@@ -74,8 +74,8 @@ defmodule Phoenix.LiveView.UploadChannel do
     unless socket.assigns.done?, do: raise RuntimeError, "cannot consume uploaded file that is still in progress"
     result =
       cond do
-        is_function(func, 1) -> func.(socket.assigns.path)
-        is_function(func, 2) -> func.(socket.assigns.path, entry)
+        is_function(func, 1) -> func.(file_meta(socket))
+        is_function(func, 2) -> func.(file_meta(socket), entry)
       end
 
     GenServer.reply(from, result)
@@ -113,4 +113,6 @@ defmodule Phoenix.LiveView.UploadChannel do
     Process.cancel_timer(socket.assigns.chunk_timer)
     assign(socket, :chunk_timer, nil)
   end
+
+  defp file_meta(socket), do: %{path: socket.assigns.path}
 end
