@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.Upload do
   @refs_to_names :__phoenix_refs_to_names__
 
   @doc """
-  TODO
+  Allows an upload.
   """
   def allow_upload(%Socket{} = socket, name, opts) when is_atom(name) and is_list(opts) do
     case uploaded_entries(socket, name) do
@@ -35,7 +35,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Disallows a previously allowed upload.
   """
   def disallow_upload(%Socket{} = socket, name) when is_atom(name) do
     # TODO raise or cancel active upload for existing name?
@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Cancels an upload entry.
   """
   def cancel_upload(socket, name, entry_ref) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
@@ -73,7 +73,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Returns the uploaded entries as a 2-tuple of completed and in progress.
   """
   def get_uploaded_entries(%Socket{} = socket, name) when is_atom(name) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
@@ -81,7 +81,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Updates the entry metadata.
   """
   def update_upload_entry_meta(%Socket{} = socket, upload_conf_name, %UploadEntry{} = entry, meta) do
     socket.assigns.uploads
@@ -91,7 +91,11 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Updates the entry progress.
+
+  Progress is either an integer percently between 0 and 100, or a map
+  with an `"error"` key containing the information for a failed upload
+  while in progress on the client.
   """
   def update_progress(%Socket{} = socket, config_ref, entry_ref, progress)
       when is_integer(progress) and progress >= 0 and progress <= 100 do
@@ -109,7 +113,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Puts the entries into the `%UploadConfig{}`.
   """
   def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries) do
     case UploadConfig.put_entries(conf, entries) do
@@ -122,7 +126,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Unregisters a completed entry from an `Phoenix.LiveView.UploadChannel` process.
   """
   def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid)
       when is_pid(pid) do
@@ -132,7 +136,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Registers a new entry upload for an `Phoenix.LiveView.UploadChannel` process.
   """
   def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref)
       when is_pid(pid) do
@@ -147,7 +151,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Populates the errors for a given entry.
   """
   def put_upload_error(%Socket{} = socket, conf_name, entry_ref, reason) do
     conf = Map.fetch!(socket.assigns.uploads, conf_name)
@@ -158,7 +162,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Retrieves thes `%UploadConfig{}` from the socket for the provided ref or raises.
   """
   def get_upload_by_ref!(%Socket{} = socket, config_ref) do
     uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
@@ -169,7 +173,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Returns the `%UploadConfig{}` from the socket for the `Phoenix.LiveView.UploadChannel` pid.
   """
   def get_upload_by_pid(socket, pid) when is_pid(pid) do
     Enum.find_value(socket.assigns[:uploads] || %{}, fn
@@ -179,7 +183,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Returns the completed and in progress entries for the upload.
   """
   def uploaded_entries(%Socket{} = socket, name) do
     entries =
@@ -198,7 +202,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Consumes the uploaded entries or raises if entries are stil in progress.
   """
   def consume_uploaded_entries(%Socket{} = socket, name, func) when is_function(func, 2) do
     conf =
@@ -221,7 +225,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Consumes an individual entry or raises if it is still in progress.
   """
   def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func)
       when is_function(func, 1) do
@@ -235,7 +239,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Drops all entries from the upload.
   """
   def drop_upload_entries(%Socket{} = socket, %UploadConfig{} = conf) do
     conf.entries
@@ -248,10 +252,7 @@ defmodule Phoenix.LiveView.Upload do
     Utils.assign(socket, :uploads, new_uploads)
   end
 
-  @doc """
-  TODO
-  """
-  def consume_entries(%UploadConfig{} = conf, entries, func)
+  defp consume_entries(%UploadConfig{} = conf, entries, func)
       when is_list(entries) and is_function(func) do
     if conf.external do
       results =
@@ -276,7 +277,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  TODO
+  Generates a preflight resposne by calling the `:external` function.
   """
   def generate_preflight_response(%Socket{} = socket, name) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
@@ -311,7 +312,7 @@ defmodule Phoenix.LiveView.Upload do
     {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, socket}
   end
 
-  def external_preflight(%Socket{} = socket, %UploadConfig{} = conf, client_config_meta) do
+  defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, client_config_meta) do
     reply_entries =
       Enum.reduce_while(conf.entries, {:ok, %{}, socket}, fn entry, {:ok, metas, acc} ->
         case conf.external.(entry, acc) do
