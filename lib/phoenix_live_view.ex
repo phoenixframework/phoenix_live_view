@@ -333,6 +333,114 @@ defmodule Phoenix.LiveView do
     * `live_component` - compartmentalizes state, markup, and events
     * `live_render` - compartmentalizes state, markup, events, and error isolation
 
+  ## Uploads
+
+  LiveView supports interactive file uploads with progress for both direct
+  to server uploads as well as external direct-to-cloud uploads on the client.
+
+  Uploads are enabled by using `allow_upload/3` and specifying the constraints,
+  such as accepted file types, max file size, number of maximum selected entries,
+  etc. When the client selects file(s), the file metadata is automatically validated
+  against the `allow_upload` specification. Uploads are populated in an `@uplaods`
+  assign in the socket, granting reactive based templates that automatically update
+  with progress, error information, etc.
+
+  The complete upload flow is as follows:
+
+      - An upload is enabled via `allow_upload/3`, typically on mount
+      - The `Phoenix.LiveView.Helpers.live_file_input/2` file input generate is used
+        to render a file input for the upload. This will automatically set `multile=true`
+        if `:max_entries` is greater than 1
+      - The template renders each upload entry, including progress, name, etc information.
+        For example:
+
+            <%= for entry <- @uploads.avatar.entries do %>
+                <%= entry.client_name%>: <%= entry.progress %>%
+            <% end %>
+
+            <%= live_file_input @uploads.avatar %>
+
+      - The client file selection automatically drives template updates
+      - The JavaScript client uploads the files on form submit, before invoking
+        the `phx-submit` event.
+      - The `phx-submit` event calls `consume_uploaded_entries/3` to process
+        the completed uploads, persisting relevant upload data alongside the form data.
+
+  *Note*: While client metadata cannot be trusted,
+  max file size validations are enforced as each chunk is received when performing
+  direct to server uploads.
+
+
+  ### External Uploads
+
+  Uploads to external cloud providers, such as Amazon S3, Google Cloud, etc, can
+  be acheived by using the `:external` option in `allow_upload/3`. A 2-arity function
+  is provided to allow the server to generate metadata for each entry, which is
+  passed to a user-specified JavaScript function on the client. For example,
+  presigned URLs can be generated for the client to perform a direct-to-cloud
+  upload. An S3 example would like something like this:
+
+      def mount(_params, _session, socket) do
+        {:ok,
+         socket
+         |> assign(:uploaded_files, [])
+         |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_url/2)}
+      end
+
+      defp presign_url(entry, socket) do
+        config = %{
+          scheme: "https://",
+          host: "s3.amazonaws.com",
+          region: "us-east-1",
+          access_key_id: System.fetch_env!("AWS_ACCESS_KEY_ID"),
+          secret_access_key: System.fetch_env!("AWS_SECRET_ACCESS_KEY")
+        }
+        {:ok, presigned_url} =
+          ExAws.S3.presigned_url(config, :put, "my-bucket", Path.join("public", entry.client_name))
+
+        {:ok, %{uploader: "S3", presigned_url: presigned_url}, socket}
+      end
+
+  Here, we implemented a `presign_url/2` function, which we passed as a captured anonymous
+  function to `:external`. Next, we used `ExAws` to generate a presigned URL for the
+  upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
+  along with our unchanged socket. The metadata *must* contain the `:uploader` key,
+  specifying name of the JavaScript the client-side uploader, in this case "S3".
+
+  To complete the flow, we can implement our `S3` client uploader and tell the
+  `LiveSocket` where to find it:
+
+       let Uploaders = {}
+      Uploaders.S3 = function(entries, onViewError){
+        entries.forEach(entry => {
+          let xhr = new XMLHttpRequest()
+          onViewError(() => xhr.abort())
+          xhr.onload = () => if(xhr.status === 200){ entry.done() }
+          xhr.onerror = () => {}
+          xhr.upload.addEventListener("progress", (event) => {
+            if(event.lengthComputable){
+              let percent = Math.round((event.loaded / event.total) * 100)
+              entry.progress(percent)
+            }
+          })
+          xhr.open("PUT", entry.meta.presigned_url, true)
+          xhr.setRequestHeader("content-type", entry.file.type)
+          xhr.send(entry.file)
+        })
+      }
+
+      let liveSocket = new LiveSocket("/live", Socket, {
+        uploaders: Uploaders,
+        params: {_csrf_token: csrfToken}
+      })
+
+  We define an `Uplaoders.S3` function, which receives our entries. It then
+  performs an AJAX request for each entry, using the `entry.progress()`,
+  `entry.error()`, and `entry.done()` functions to report upload events
+  back to the LiveView. Lastly, we pass the `uploaders` namespace to the
+  `LiveSocket` constructor to tell phoenix where to find the uploaders
+  return within the external metadata.
+
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under
