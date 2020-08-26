@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.UploadEntry do
   @moduledoc """
-  TODO
+  The struct representing an upload entry.
   """
 
   alias Phoenix.LiveView.UploadEntry
@@ -16,6 +16,19 @@ defmodule Phoenix.LiveView.UploadEntry do
             client_type: nil,
             client_last_modified: nil
 
+  @type t :: %__MODULE__{
+    progress: integer(),
+    upload_config: String.t() | :atom,
+    ref: String.t() | nil,
+    valid?: boolean(),
+    done?: boolean(),
+    cancelled?: boolean(),
+    client_name: String.t() | nil,
+    client_size: integer() | nil,
+    client_type: String.t() | nil,
+    client_last_modified: integer() | nil
+  }
+
   @doc false
   def put_progress(%UploadEntry{} = entry, 100) do
     %UploadEntry{entry | progress: 100, done?: true}
@@ -28,7 +41,7 @@ end
 
 defmodule Phoenix.LiveView.UploadConfig do
   @moduledoc """
-  TODO
+  The struct representing an upload.
   """
 
   alias Phoenix.LiveView.UploadConfig
@@ -197,6 +210,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     }
   end
 
+  @doc false
   def entry_pid(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     case Map.fetch(conf.entry_refs_to_pids, entry.ref) do
       {:ok, pid} when is_pid(pid) -> pid
@@ -204,6 +218,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
+  @doc false
   def get_entry_by_pid(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
     Enum.find_value(conf.entry_refs_to_pids, fn {ref, pid} ->
       if channel_pid == pid do
@@ -212,10 +227,12 @@ defmodule Phoenix.LiveView.UploadConfig do
     end)
   end
 
+  @doc false
   def get_entry_by_ref(%UploadConfig{} = conf, ref) do
     Enum.find(conf.entries, fn %UploadEntry{} = entry -> entry.ref === ref end)
   end
 
+  @doc false
   def unregister_completed_external_entry(%UploadConfig{} = conf, entry_ref) do
     %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
 
@@ -224,6 +241,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     |> inc_epoch()
   end
 
+  @doc false
   def unregister_completed_entry(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
     %UploadEntry{} = entry = get_entry_by_pid(conf, channel_pid)
 
@@ -232,12 +250,14 @@ defmodule Phoenix.LiveView.UploadConfig do
     |> inc_epoch()
   end
 
+  @doc false
   def registered?(%UploadConfig{} = conf) do
     Enum.find(conf.entry_refs_to_pids, fn {_ref, maybe_pid} -> is_pid(maybe_pid) end)
   end
 
   defp inc_epoch(%UploadConfig{} = conf), do: %UploadConfig{conf | epoch: conf.epoch + 1}
 
+  @doc false
   def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref)
       when is_pid(channel_pid) do
     case Map.fetch(conf.entry_refs_to_pids, entry_ref) do
@@ -483,9 +503,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
-  @doc """
-  TODO
-  """
+  @doc false
   def put_error(%UploadConfig{} = conf, _entry_ref, :too_many_files = reason) do
     %UploadConfig{conf | errors: conf.errors ++ [{conf.ref, reason}]}
   end
@@ -494,9 +512,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{conf | errors: conf.errors ++ [{entry_ref, reason}]}
   end
 
-  @doc """
-  TODO
-  """
+  @doc false
   def cancel_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     case entry_pid(conf, entry) do
       channel_pid when is_pid(channel_pid) ->
@@ -513,9 +529,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
-  @doc """
-  TODO
-  """
+  @doc false
   def drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
     new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
     new_refs = Map.delete(conf.entry_refs_to_pids, ref)
