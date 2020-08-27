@@ -336,19 +336,27 @@ defmodule Phoenix.LiveView.Helpers do
     for {ref, error} <- conf.errors, ref == entry.ref, do: error
   end
 
+  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref}, opts \\ []) do
+    assigns = %{ref: ref}
+    ~L"""
+    <%= Phoenix.HTML.Tag.content_tag :img, "", Keyword.merge(opts, [{"data-phx-entry-ref", @ref}, {"style", "display: none;"}]) %>
+    """
+  end
+
   @doc """
   TODO
   """
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
-    assigns = %{conf: conf}
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
+    assigns = %{conf: conf, drop_id: opts[:drop_target_id]}
 
     ~L"""
     <input type="file"
-          id="upload-<%= @conf.ref %>"
+          id="<%= @conf.id %>"
           name="<%= @conf.name %>"
           data-phx-upload-ref="<%= conf.ref %>"
           data-phx-active-refs="<%= Enum.join(for(entry <- conf.entries, do: entry.ref), ",") %>"
-          multiple="<%= @conf.max_entries > 1 %>" />
+          data-phx-drop-target-id="<%= @drop_id %>"
+          <%= if @conf.max_entries > 1 do %>multiple<% end %>/>
     """
   end
 

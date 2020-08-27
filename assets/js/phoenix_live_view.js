@@ -24,6 +24,7 @@ const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_UPLOAD_REF = "data-phx-upload-ref"
+const PHX_DROP_TARGET = "drop-target"
 const PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs"
 const PHX_SKIP = "data-phx-skip"
 const PHX_REMOVE = "data-phx-remove"
@@ -130,8 +131,10 @@ let maybe = (el, callback) => el && callback(el)
 
 class UploadEntry {
   static isActive(fileEl, file){
+    let isNew = file._phxRef === undefined
     let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
-    return file.size > 0 && activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+    let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+    return file.size > 0 && (isNew || isActive)
   }
 
   constructor(fileEl, file, view){
@@ -197,6 +200,26 @@ class UploadEntry {
   }
 }
 
+let Hooks = {}
+Hooks.FileDrop = {
+  mounted() {
+    console.log("mounted", this.el)
+    this.target = document.getElementById(this.el.getAttribute("data-phx-drop-target-id"))
+    this.target.addEventListener("dragover", e => { e.preventDefault() })
+    this.target.addEventListener("drop", e => {
+      console.log("drop", e)
+      let files = Array.from(e.dataTransfer.files || [])
+      if(files.length === 0){ return }
+
+      e.preventDefault()
+      console.log("drop!")
+      this.el.value = null
+      LiveUploader.trackFiles(this.el, files)
+      this.el.dispatchEvent(new Event("input", {bubbles: true}))
+    })
+  }
+}
+
 let liveUploaderFileRef = 0
 class LiveUploader {
   static genFileRef(file){
@@ -209,27 +232,53 @@ class LiveUploader {
     }
   }
 
-  static trackedFiles(inputEl){ return DOM.private(inputEl, "files") }
-  static trackFiles(inputEl, files){ DOM.putPrivate(inputEl, "files", files) }
+  static serializeUploads(inputEl){
+    let files = this.activeFiles(inputEl, "serialize")
+    let fileData = {}
+    files.forEach(file => {
+      let entry = {path: inputEl.name}
+      let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF)
+      fileData[uploadRef] = fileData[uploadRef] || []
+      entry.ref = this.genFileRef(file)
+      entry.name = file.name
+      entry.type = file.type
+      entry.size = file.size
+      fileData[uploadRef].push(entry)
+    })
+    return fileData
+  }
+
+  static clearFiles(inputEl){
+    inputEl.value = null
+    DOM.putPrivate(inputEl, "files", [])
+  }
+  static trackFiles(inputEl, files){
+    if(inputEl.getAttribute("multiple") !== null){
+      let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
+      DOM.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles))
+      inputEl.value = null
+    } else {
+      DOM.putPrivate(inputEl, "files", files)
+    }
+  }
 
   static countAllFiles(formEl){
     return this.activeFileInputs(formEl).reduce((total, inputEl) => total + this.activeFiles(inputEl).length, 0)
   }
 
   static activeFileInputs(formEl){
-    return Array.from(formEl).filter((el) => this.activeFiles(el).length > 0)
+    return Array.from(formEl).filter((el) => el.files && this.activeFiles(el).length > 0)
   }
 
   static activeFiles(input){
-    return Array.from(this.trackedFiles(input) || []).filter(f => UploadEntry.isActive(input, f))
+    return (DOM.private(input, "files") || []).filter(f => UploadEntry.isActive(input, f))
   }
 
   constructor(inputEl, view, onComplete){
     this.view = view
     this.onComplete = onComplete
     this._entries =
-      Array.from(inputEl.files || [])
-        .filter(f => f instanceof File && UploadEntry.isActive(inputEl, f))
+      Array.from(LiveUploader.activeFiles(inputEl) || [])
         .map(file => new UploadEntry(inputEl, file, view))
 
     this.numEntriesInProgress = this._entries.length
@@ -322,8 +371,6 @@ let channelUploader = function(entries, onError, resp, liveSocket){
 }
 
 let serializeForm = (form, meta = {}) => {
-  let fileData = {}
-  let files = []
   let formData = new FormData(form)
   // TODO: The intended purpose of this var remains unknown
   let readerCount = 0
@@ -332,17 +379,6 @@ let serializeForm = (form, meta = {}) => {
   formData.forEach((val, key, index) => {
     if(val instanceof File) {
       toRemove.push(key)
-      let entry = {path: key}
-      if(val.size > 0) {
-        files.push(val)
-        let uploadRef = form.querySelector(`[name="${key}"]`).getAttribute(PHX_UPLOAD_REF)
-        fileData[uploadRef] = fileData[uploadRef] || []
-        entry.ref = LiveUploader.genFileRef(val)
-        entry.name = val.name
-        entry.type = val.type
-        entry.size = val.size
-        fileData[uploadRef].push(entry)
-      }
     }
   })
 
@@ -353,7 +389,7 @@ let serializeForm = (form, meta = {}) => {
   for(let [key, val] of formData.entries()){ params.append(key, val) }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
-  return [params.toString(), isEmpty(fileData) ? undefined : fileData, files]
+  return [params.toString()]
 }
 
 export class Rendered {
@@ -811,7 +847,9 @@ export class LiveSocket {
     }, afterMs)
   }
 
-  getHookCallbacks(hookName){ return this.hooks[hookName] }
+  getHookCallbacks(name){
+    return name && name.startsWith("Phoenix.") ? Hooks[name.split(".")[1]] : this.hooks[name]
+  }
 
   isUnloaded(){ return this.unloaded }
 
@@ -979,6 +1017,28 @@ export class LiveSocket {
       if(phxTarget && !phxTarget !== "window"){
         view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
       }
+    })
+    // window.addEventListener("dragstart", e => {
+    //   e.dataTransfer.setData("application/json+whatevs", JSON.stringify({
+    //     id: e.target.id,
+    //     dropTarget: e.target.getAttribute("phx-drop-target")
+    //   }))
+    //   e.target.style.backgroundColor = 'yellow';
+    //   console.log("drag start!", e)
+    // })
+    window.addEventListener("dragover", e => e.preventDefault())
+    window.addEventListener("drop", e => {
+      e.preventDefault()
+      let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), trueTarget => {
+        return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET))
+      })
+      let dropTarget = dropTargetId && document.getElementById(dropTargetId)
+      let files = Array.from(e.dataTransfer.files || [])
+
+      if(!dropTarget || files.length === 0 || !(dropTarget.files instanceof FileList)){ return }
+
+      LiveUploader.trackFiles(dropTarget, files)
+      dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
     })
   }
 
@@ -2479,9 +2539,11 @@ export class View {
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
+    let uploads
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let [formData, uploads, files] = serializeForm(inputEl.form, {_target: eventTarget.name})
-    if(inputEl.files instanceof FileList){ LiveUploader.trackFiles(inputEl, files) }
+    let [formData, ] = serializeForm(inputEl.form, {_target: eventTarget.name})
+    if(inputEl.files && inputEl.files.length > 0){ LiveUploader.trackFiles(inputEl, Array.from(inputEl.files)) }
+    uploads = LiveUploader.serializeUploads(inputEl)
     let event = {
       type: "form",
       event: phxEvent,
@@ -2516,7 +2578,8 @@ export class View {
 
     if(numFiles > 0) {
       this.uploadFiles(formEl, targetCtx, refGenerator, cid, (uploads) => {
-        DOM.all(formEl, "input[type=file]", input => input.value = null)
+        DOM.all(formEl, "input[type=file]", input => LiveUploader.clearFiles(input))
+
         let [formData, ] = serializeForm(formEl, {})
         this.pushWithReply(refGenerator, "event", {
           type: "form",

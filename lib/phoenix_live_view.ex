@@ -377,28 +377,37 @@ defmodule Phoenix.LiveView do
   be acheived by using the `:external` option in `allow_upload/3`. A 2-arity function
   is provided to allow the server to generate metadata for each entry, which is
   passed to a user-specified JavaScript function on the client. For example,
-  presigned URLs can be generated for the client to perform a direct-to-cloud
+  presigned uploads can be generated for the client to perform a direct-to-cloud
   upload. An S3 example would like something like this:
 
       def mount(_params, _session, socket) do
         {:ok,
          socket
          |> assign(:uploaded_files, [])
-         |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_url/2)}
+         |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_upload/2)}
       end
 
-      defp presign_url(entry, socket) do
+      defp presign_upload(entry, socket) do
+        uploads = socket.assigns.uploads
+        bucket = "phx-upload-example"
+        key = "public/#{entry.client_name}"
+
         config = %{
-          scheme: "https://",
-          host: "s3.amazonaws.com",
           region: "us-east-1",
           access_key_id: System.fetch_env!("AWS_ACCESS_KEY_ID"),
           secret_access_key: System.fetch_env!("AWS_SECRET_ACCESS_KEY")
         }
-        {:ok, presigned_url} =
-          ExAws.S3.presigned_url(config, :put, "my-bucket", Path.join("public", entry.client_name))
 
-        {:ok, %{uploader: "S3", presigned_url: presigned_url}, socket}
+        {:ok, fields} =
+          S3.sign_form_upload(config, bucket,
+            key: key,
+            content_type: entry.client_type,
+            max_file_size: uploads.avatar.max_file_size,
+            expires_in: :timer.hours(1)
+          )
+
+        meta = %{uploader: "S3", key: key, url: "http://#{bucket}.s3.amazonaws.com", fields: fields}
+        {:ok, meta, socket}
       end
 
   Here, we implemented a `presign_url/2` function, which we passed as a captured anonymous
@@ -410,22 +419,25 @@ defmodule Phoenix.LiveView do
   To complete the flow, we can implement our `S3` client uploader and tell the
   `LiveSocket` where to find it:
 
-       let Uploaders = {}
+      let Uploaders = {}
       Uploaders.S3 = function(entries, onViewError){
         entries.forEach(entry => {
+          let formData = new FormData()
+          let {url, fields} = entry.meta
+          Object.entries(fields).forEach(([key, val]) => formData.append(key, val))
+          formData.append("file", entry.file)
           let xhr = new XMLHttpRequest()
           onViewError(() => xhr.abort())
-          xhr.onload = () => if(xhr.status === 200){ entry.done() }
-          xhr.onerror = () => {}
+          xhr.onload = () => xhr.status === 204 ? entry.done() : entry.error()
+          xhr.onerror = () => entry.error()
           xhr.upload.addEventListener("progress", (event) => {
             if(event.lengthComputable){
               let percent = Math.round((event.loaded / event.total) * 100)
               entry.progress(percent)
             }
           })
-          xhr.open("PUT", entry.meta.presigned_url, true)
-          xhr.setRequestHeader("content-type", entry.file.type)
-          xhr.send(entry.file)
+          xhr.open("POST", url, true)
+          xhr.send(formData)
         })
       }
 

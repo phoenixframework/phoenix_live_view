@@ -54,6 +54,8 @@ defmodule Phoenix.LiveView.UploadConfig do
   @unregistered :unregistered
   @invalid :invalid
 
+  @too_many_files :too_many_files
+
   defstruct name: nil,
             epoch: 0,
             client_key: nil,
@@ -68,6 +70,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             external: false,
             allowed?: false,
             ref: nil,
+            id: nil,
             errors: []
 
   @type t :: %__MODULE__{
@@ -81,7 +84,9 @@ defmodule Phoenix.LiveView.UploadConfig do
           accept: map() | :any,
           external: (Socket.t() -> Socket.t()) | false,
           allowed?: boolean,
-          errors: list()
+          errors: list(),
+          ref: String.t(),
+          id: String.t()
         }
 
   @doc false
@@ -197,6 +202,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     %UploadConfig{
       ref: random_ref,
+      id: "phx-upload-#{random_ref}",
       name: name,
       max_entries: opts[:max_entries] || 1,
       max_file_size: max_file_size,
@@ -389,26 +395,37 @@ defmodule Phoenix.LiveView.UploadConfig do
         end
       end)
 
-    case new_conf do
-      %UploadConfig{errors: []} = new_conf -> {:ok, new_conf}
-      %UploadConfig{errors: [_ | _]} = new_conf -> {:error, new_conf}
+    if too_many_files?(new_conf) do
+      {:error, put_error(new_conf, new_conf.ref, @too_many_files)}
+    else
+      case new_conf do
+        %UploadConfig{errors: []} = new_conf ->
+          {:ok, new_conf}
+
+        %UploadConfig{errors: [_ | _]} = new_conf ->
+          {:error, new_conf}
+      end
     end
+  end
+
+  defp too_many_files?(%UploadConfig{entries: entries, max_entries: max}) do
+    length(entries) > max
   end
 
   defp clear_entries(%UploadConfig{} = conf) do
     if registered?(conf),
       do: raise(ArgumentError, "an upload with active entries cannot be cleared")
 
-    %UploadConfig{conf | entries: [], errors: []}
+    recalculate_errors(%UploadConfig{conf | entries: [], errors: []})
   end
 
   # TODO validate against config constraints
-  defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max} = conf, %{
-         "ref" => _ref
-       })
-       when length(entries) >= max do
-    {:error, put_error(conf, conf.ref, :too_many_files)}
-  end
+  # defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max} = conf, %{
+  #        "ref" => _ref
+  #      })
+  #      when length(entries) >= max do
+  #   {:error, put_error(conf, conf.ref, @too_many_files)}
+  # end
 
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
@@ -503,9 +520,22 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
+  defp recalculate_errors(%UploadConfig{ref: ref} = conf) do
+    if too_many_files?(conf) do
+      conf
+    else
+      new_errors =
+        Enum.filter(conf.errors, fn
+          {^ref, @too_many_files} -> false
+          _ -> true
+        end)
+      %UploadConfig{conf | errors: new_errors}
+    end
+  end
+
   @doc false
-  def put_error(%UploadConfig{} = conf, _entry_ref, :too_many_files = reason) do
-    %UploadConfig{conf | errors: conf.errors ++ [{conf.ref, reason}]}
+  def put_error(%UploadConfig{} = conf, _entry_ref, @too_many_files = reason) do
+    %UploadConfig{conf | errors: Enum.uniq(conf.errors ++ [{conf.ref, reason}])}
   end
 
   def put_error(%UploadConfig{} = conf, entry_ref, reason) do
@@ -534,6 +564,8 @@ defmodule Phoenix.LiveView.UploadConfig do
     new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
     new_refs = Map.delete(conf.entry_refs_to_pids, ref)
     new_metas = Map.delete(conf.entry_refs_to_metas, ref)
-    %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs, entry_refs_to_metas: new_metas}
+    new_conf = %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs, entry_refs_to_metas: new_metas}
+
+    recalculate_errors(new_conf)
   end
 end
