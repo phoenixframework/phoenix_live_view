@@ -997,7 +997,6 @@ export class LiveSocket {
     })
     this.bindClicks()
     this.bindNav()
-    // this.bindFileEvents()
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, phxTarget) => {
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
@@ -1017,14 +1016,6 @@ export class LiveSocket {
         view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
       }
     })
-    // window.addEventListener("dragstart", e => {
-    //   e.dataTransfer.setData("application/json+whatevs", JSON.stringify({
-    //     id: e.target.id,
-    //     dropTarget: e.target.getAttribute("phx-drop-target")
-    //   }))
-    //   e.target.style.backgroundColor = 'yellow';
-    //   console.log("drag start!", e)
-    // })
     window.addEventListener("dragover", e => e.preventDefault())
     window.addEventListener("drop", e => {
       e.preventDefault()
@@ -1033,7 +1024,6 @@ export class LiveSocket {
       })
       let dropTarget = dropTargetId && document.getElementById(dropTargetId)
       let files = Array.from(e.dataTransfer.files || [])
-
       if(!dropTarget || files.length === 0 || !(dropTarget.files instanceof FileList)){ return }
 
       LiveUploader.trackFiles(dropTarget, files)
