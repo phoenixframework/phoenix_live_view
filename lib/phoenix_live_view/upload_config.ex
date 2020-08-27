@@ -7,6 +7,7 @@ defmodule Phoenix.LiveView.UploadEntry do
 
   defstruct progress: 0,
             upload_config: nil,
+            upload_id: nil,
             ref: nil,
             valid?: false,
             done?: false,
@@ -19,6 +20,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   @type t :: %__MODULE__{
     progress: integer(),
     upload_config: String.t() | :atom,
+    upload_id: String.t(),
     ref: String.t() | nil,
     valid?: boolean(),
     done?: boolean(),
@@ -430,6 +432,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
       ref: ref,
+      upload_id: conf.id,
       upload_config: conf.name,
       client_name: Map.fetch!(client_entry, "name"),
       client_size: Map.fetch!(client_entry, "size"),

@@ -336,10 +336,16 @@ defmodule Phoenix.LiveView.Helpers do
     for {ref, error} <- conf.errors, ref == entry.ref, do: error
   end
 
-  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref}, opts \\ []) do
-    assigns = %{ref: ref}
+  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
+    opts = Keyword.merge(opts,
+      id: "phx-preview-#{ref}",
+      phx_hook: "Phoenix.LiveImgPreview",
+      data_phx_upload_id: entry.upload_id,
+      data_phx_entry_ref: ref
+    )
+    assigns = %{opts: opts}
     ~L"""
-    <%= Phoenix.HTML.Tag.content_tag :img, "", Keyword.merge(opts, [{"data-phx-entry-ref", @ref}, {"style", "display: none;"}]) %>
+    <%= Phoenix.HTML.Tag.content_tag(:img, "", @opts) %>
     """
   end
 

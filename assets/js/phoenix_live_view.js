@@ -201,23 +201,16 @@ class UploadEntry {
 }
 
 let Hooks = {}
-Hooks.FileDrop = {
+Hooks.LiveImgPreview = {
   mounted() {
-    console.log("mounted", this.el)
-    this.target = document.getElementById(this.el.getAttribute("data-phx-drop-target-id"))
-    this.target.addEventListener("dragover", e => { e.preventDefault() })
-    this.target.addEventListener("drop", e => {
-      console.log("drop", e)
-      let files = Array.from(e.dataTransfer.files || [])
-      if(files.length === 0){ return }
-
-      e.preventDefault()
-      console.log("drop!")
-      this.el.value = null
-      LiveUploader.trackFiles(this.el, files)
-      this.el.dispatchEvent(new Event("input", {bubbles: true}))
+    this.ref = this.el.getAttribute("data-phx-entry-ref")
+    this.inputEl = document.getElementById(this.el.getAttribute("data-phx-upload-id"))
+    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
+      this.dataURL = url
+      this.el.src = this.dataURL
     })
-  }
+  },
+  updated(){ this.el.src = this.dataURL }
 }
 
 let liveUploaderFileRef = 0
@@ -230,6 +223,12 @@ class LiveUploader {
       file._phxRef = (liveUploaderFileRef++).toString()
       return file._phxRef
     }
+  }
+  static getEntryDataURL(inputEl, ref, callback){
+    let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
+    let reader = new FileReader()
+    reader.onload = (e) => callback(e.target.result)
+    reader.readAsDataURL(file)
   }
 
   static serializeUploads(inputEl){
