@@ -709,7 +709,7 @@ export class LiveSocket {
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
-    this.domCallbacks = opts.dom || {onBeforeElUpdated: closure()}
+    this.domCallbacks = opts.dom || {onNodeAdded: closure(), onBeforeElUpdated: closure()}
     window.addEventListener("unload", e => {
       this.unloaded = true
     })
@@ -2106,6 +2106,8 @@ export class View {
     let updatedHookIds = new Set()
 
     patch.after("added", el => {
+      this.liveSocket.triggerDOM("onNodeAdded", [el])
+
       let newHook = this.addHook(el)
       if(newHook){ newHook.__trigger__("mounted") }
     })
