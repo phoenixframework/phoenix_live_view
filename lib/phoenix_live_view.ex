@@ -457,6 +457,8 @@ defmodule Phoenix.LiveView do
   `LiveSocket` constructor to tell phoenix where to find the uploaders
   return within the external metadata.
 
+  For another example of external uploads, see the [Chunked HTTP Uploads](chunked-http-uploads.md) guide.
+
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under

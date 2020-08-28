@@ -73,7 +73,8 @@ defmodule Phoenix.LiveView.MixProject do
       "guides/server/live-navigation.md",
       "guides/server/security-model.md",
       "guides/server/telemetry.md",
-      "guides/server/using-gettext.md"
+      "guides/server/using-gettext.md",
+      "guides/uploads/chunked-http-uploads.md"
     ]
   end
 
@@ -81,7 +82,8 @@ defmodule Phoenix.LiveView.MixProject do
     [
       Introduction: ~r/guides\/introduction\/.?/,
       "Server-side features": ~r/guides\/server\/.?/,
-      "Client-side integration": ~r/guides\/client\/.?/
+      "Client-side integration": ~r/guides\/client\/.?/,
+      "File uploads": ~r/guides\/uploads\/.?/
     ]
   end
 
