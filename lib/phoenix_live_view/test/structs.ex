@@ -47,7 +47,7 @@ end
 
 defmodule Phoenix.LiveViewTest.Upload do
   @moduledoc """
-  The struct returned by `Phoenix.LiveViewTest.file_input/3`.
+  The struct returned by `Phoenix.LiveViewTest.file_input/4`.
 
   The following public fields represent the element:
 

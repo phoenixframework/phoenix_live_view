@@ -341,30 +341,34 @@ defmodule Phoenix.LiveView do
   Uploads are enabled by using `allow_upload/3` and specifying the constraints,
   such as accepted file types, max file size, number of maximum selected entries,
   etc. When the client selects file(s), the file metadata is automatically validated
-  against the `allow_upload` specification. Uploads are populated in an `@uplaods`
+  against the `allow_upload` specification. Uploads are populated in an `@uploads`
   assign in the socket, granting reactive based templates that automatically update
   with progress, error information, etc.
 
   The complete upload flow is as follows:
 
-      - An upload is enabled via `allow_upload/3`, typically on mount
-      - The `Phoenix.LiveView.Helpers.live_file_input/2` file input generate is used
-        to render a file input for the upload. This will automatically set `multile=true`
-        if `:max_entries` is greater than 1
-      - The template renders each upload entry, including progress, name, etc information.
-        For example:
+    - An upload is enabled via `allow_upload/3`, typically on mount
 
-            <%= for entry <- @uploads.avatar.entries do %>
-                <%= entry.client_name%>: <%= entry.progress %>%
-            <% end %>
+    - The `Phoenix.LiveView.Helpers.live_file_input/2` file input generator is used
+      to render a file input for the upload. This will automatically set `multiple=true`
+      if `:max_entries` is greater than 1
 
-            <%= live_file_input @uploads.avatar %>
+    - The template renders each upload entry, including progress, name, etc information.
+      For example:
 
-      - The client file selection automatically drives template updates
-      - The JavaScript client uploads the files on form submit, before invoking
-        the `phx-submit` event.
-      - The `phx-submit` event calls `consume_uploaded_entries/3` to process
-        the completed uploads, persisting relevant upload data alongside the form data.
+          <%= for entry <- @uploads.avatar.entries do %>
+            <%= entry.client_name %> - <%= entry.progress %>%
+          <% end %>
+
+          <%= live_file_input @uploads.avatar %>
+
+    - The client file selection automatically drives template updates
+
+    - The JavaScript client uploads the files on form submit, before invoking
+      the `phx-submit` event.
+
+    - The `phx-submit` event calls `consume_uploaded_entries/3` to process
+      the completed uploads, persisting relevant upload data alongside the form data.
 
   *Note*: While client metadata cannot be trusted,
   max file size validations are enforced as each chunk is received when performing
@@ -374,11 +378,11 @@ defmodule Phoenix.LiveView do
   ### External Uploads
 
   Uploads to external cloud providers, such as Amazon S3, Google Cloud, etc, can
-  be acheived by using the `:external` option in `allow_upload/3`. A 2-arity function
+  be achieved by using the `:external` option in `allow_upload/3`. A 2-arity function
   is provided to allow the server to generate metadata for each entry, which is
   passed to a user-specified JavaScript function on the client. For example,
   presigned uploads can be generated for the client to perform a direct-to-cloud
-  upload. An S3 example would like something like this:
+  upload. An S3 example would look something like this:
 
       def mount(_params, _session, socket) do
         {:ok,
@@ -446,7 +450,7 @@ defmodule Phoenix.LiveView do
         params: {_csrf_token: csrfToken}
       })
 
-  We define an `Uplaoders.S3` function, which receives our entries. It then
+  We define an `Uploaders.S3` function, which receives our entries. It then
   performs an AJAX request for each entry, using the `entry.progress()`,
   `entry.error()`, and `entry.done()` functions to report upload events
   back to the LiveView. Lastly, we pass the `uploaders` namespace to the
@@ -831,7 +835,7 @@ defmodule Phoenix.LiveView do
   defdelegate allow_upload(socket, name, options), to: Phoenix.LiveView.Upload
 
   @doc """
-  Revokes a previously allowed upload from `allow_allow/3`.
+  Revokes a previously allowed upload from `allow_upload/3`.
 
   ## Examples
 
