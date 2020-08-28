@@ -343,7 +343,9 @@ let channelUploader = function(entries, onError, resp, liveSocket){
               if(finished){
                 entry.done()
               } else {
-                chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
+                setTimeout(() => {
+                  chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
+                }, liveSocket.getLatencySim() || 0)
               }
             })
         }
@@ -371,14 +373,10 @@ let channelUploader = function(entries, onError, resp, liveSocket){
 
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
-  // TODO: The intended purpose of this var remains unknown
-  let readerCount = 0
   let toRemove = []
 
   formData.forEach((val, key, index) => {
-    if(val instanceof File) {
-      toRemove.push(key)
-    }
+    if(val instanceof File){ toRemove.push(key) }
   })
 
   // Cleanup after building fileData
@@ -388,7 +386,7 @@ let serializeForm = (form, meta = {}) => {
   for(let [key, val] of formData.entries()){ params.append(key, val) }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
-  return [params.toString()]
+  return params.toString()
 }
 
 export class Rendered {
@@ -1360,7 +1358,7 @@ export let DOM = {
   },
 
   isIgnored(el, phxUpdate){
-    return el.getAttribute(phxUpdate) === "ignore" || (el.files instanceof FileList)
+    return el.getAttribute(phxUpdate) === "ignore"
   },
 
   isPhxUpdate(el, phxUpdate, updateTypes){
@@ -2519,7 +2517,7 @@ export class View {
   }
 
   pushFileProgress(fileEl, entryRef, progress){
-    this.pushWithReply(() => this.putRef([fileEl, fileEl.form], "file-progress"), "progress", {
+    this.pushWithReply(null, "progress", {
       event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),
       ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       entry_ref: entryRef,
@@ -2530,7 +2528,7 @@ export class View {
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     let uploads
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let [formData, ] = serializeForm(inputEl.form, {_target: eventTarget.name})
+    let formData = serializeForm(inputEl.form, {_target: eventTarget.name})
     if(inputEl.files && inputEl.files.length > 0){ LiveUploader.trackFiles(inputEl, Array.from(inputEl.files)) }
     uploads = LiveUploader.serializeUploads(inputEl)
     let event = {
@@ -2557,20 +2555,22 @@ export class View {
       inputs.forEach(input => {
         input.setAttribute(PHX_READONLY, input.readOnly)
         input.readOnly = true
+        if(input.files){
+          input.setAttribute(PHX_DISABLED, input.disabled)
+          input.disabled = true
+        }
       })
       formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
       return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
     }
 
     let cid = this.targetComponentID(formEl, targetCtx)
-    let numFiles = LiveUploader.countAllFiles(formEl)
-
-    if(numFiles > 0) {
-      this.uploadFiles(formEl, targetCtx, refGenerator, cid, (uploads) => {
-        DOM.all(formEl, "input[type=file]", input => LiveUploader.clearFiles(input))
-
-        let [formData, ] = serializeForm(formEl, {})
-        this.pushWithReply(refGenerator, "event", {
+    if(LiveUploader.countAllFiles(formEl) > 0) {
+      let [ref, els] = refGenerator()
+      let proxyRefGen = () => [ref, els]
+      this.uploadFiles(formEl, targetCtx, ref, cid, (uploads) => {
+        let formData = serializeForm(formEl, {})
+        this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
@@ -2578,7 +2578,7 @@ export class View {
         }, onReply)
       })
     } else {
-      let [formData, ] = serializeForm(formEl)
+      let formData = serializeForm(formEl)
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
@@ -2588,7 +2588,7 @@ export class View {
     }
   }
 
-  uploadFiles(formEl, targetCtx, refGenerator, cid, onComplete){
+  uploadFiles(formEl, targetCtx, ref, cid, onComplete){
     let joinCountAtUpload = this.joinCount
     let inputEls = LiveUploader.activeFileInputs(formEl)
 
@@ -2606,9 +2606,10 @@ export class View {
 
       this.log("upload", () => [`sending preflight request`, payload])
 
-      this.pushWithReply(refGenerator, "allow_upload", payload, resp => {
+      this.pushWithReply(null, "allow_upload", payload, resp => {
         this.log("upload", () => [`got preflight response`, resp])
         if(resp.error){
+          this.undoRefs(ref)
           let [entry_ref, reason] = resp.error
           this.log("upload", () => [`error for entry ${entry_ref}`, reason])
         } else {

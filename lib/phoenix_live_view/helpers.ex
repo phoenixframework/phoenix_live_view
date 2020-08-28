@@ -332,18 +332,25 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   TODO
   """
-  def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf, %Phoenix.LiveView.UploadEntry{} = entry) do
+  def upload_errors(
+        %Phoenix.LiveView.UploadConfig{} = conf,
+        %Phoenix.LiveView.UploadEntry{} = entry
+      ) do
     for {ref, error} <- conf.errors, ref == entry.ref, do: error
   end
 
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
-    opts = Keyword.merge(opts,
-      id: "phx-preview-#{ref}",
-      phx_hook: "Phoenix.LiveImgPreview",
-      data_phx_upload_id: entry.upload_id,
-      data_phx_entry_ref: ref
-    )
+    binding_prefix = opts[:binding_prefix] || "phx-"
+
+    opts =
+      Keyword.merge(opts,
+        id: "phx-preview-#{ref}",
+        data_phx_upload_id: entry.upload_id,
+        data_phx_entry_ref: ref
+      ) ++ [{"#{binding_prefix}hook", "Phoenix.LiveImgPreview"}]
+
     assigns = %{opts: opts}
+
     ~L"""
     <%= Phoenix.HTML.Tag.content_tag(:img, "", @opts) %>
     """
@@ -353,16 +360,22 @@ defmodule Phoenix.LiveView.Helpers do
   TODO
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
-    assigns = %{conf: conf, drop_id: opts[:drop_target_id]}
+    opts =
+      if conf.max_entries > 1 do
+        Keyword.put(opts, :multiple, true)
+      else
+        opts
+      end
 
+    assigns = %{conf: conf, drop_id: opts[:drop_target_id]}
     ~L"""
-    <input type="file"
-          id="<%= @conf.id %>"
-          name="<%= @conf.name %>"
-          data-phx-upload-ref="<%= conf.ref %>"
-          data-phx-active-refs="<%= Enum.join(for(entry <- conf.entries, do: entry.ref), ",") %>"
-          data-phx-drop-target-id="<%= @drop_id %>"
-          <%= if @conf.max_entries > 1 do %>multiple<% end %>/>
+    <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
+      type: "file",
+      id: @conf.id,
+      name: @conf.name,
+      data_phx_upload_ref: conf.ref,
+      data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ","),
+      data_phx_drop_target_id: @drop_id) %>
     """
   end
 

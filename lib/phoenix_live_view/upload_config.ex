@@ -18,18 +18,18 @@ defmodule Phoenix.LiveView.UploadEntry do
             client_last_modified: nil
 
   @type t :: %__MODULE__{
-    progress: integer(),
-    upload_config: String.t() | :atom,
-    upload_id: String.t(),
-    ref: String.t() | nil,
-    valid?: boolean(),
-    done?: boolean(),
-    cancelled?: boolean(),
-    client_name: String.t() | nil,
-    client_size: integer() | nil,
-    client_type: String.t() | nil,
-    client_last_modified: integer() | nil
-  }
+          progress: integer(),
+          upload_config: String.t() | :atom,
+          upload_id: String.t(),
+          ref: String.t() | nil,
+          valid?: boolean(),
+          done?: boolean(),
+          cancelled?: boolean(),
+          client_name: String.t() | nil,
+          client_size: integer() | nil,
+          client_type: String.t() | nil,
+          client_last_modified: integer() | nil
+        }
 
   @doc false
   def put_progress(%UploadEntry{} = entry, 100) do
@@ -59,7 +59,6 @@ defmodule Phoenix.LiveView.UploadConfig do
   @too_many_files :too_many_files
 
   defstruct name: nil,
-            epoch: 0,
             client_key: nil,
             max_entries: 1,
             max_file_size: @default_max_file_size,
@@ -244,26 +243,20 @@ defmodule Phoenix.LiveView.UploadConfig do
   def unregister_completed_external_entry(%UploadConfig{} = conf, entry_ref) do
     %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
 
-    conf
-    |> drop_entry(entry)
-    |> inc_epoch()
+    drop_entry(conf, entry)
   end
 
   @doc false
   def unregister_completed_entry(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
     %UploadEntry{} = entry = get_entry_by_pid(conf, channel_pid)
 
-    conf
-    |> drop_entry(entry)
-    |> inc_epoch()
+    drop_entry(conf, entry)
   end
 
   @doc false
   def registered?(%UploadConfig{} = conf) do
     Enum.find(conf.entry_refs_to_pids, fn {_ref, maybe_pid} -> is_pid(maybe_pid) end)
   end
-
-  defp inc_epoch(%UploadConfig{} = conf), do: %UploadConfig{conf | epoch: conf.epoch + 1}
 
   @doc false
   def register_entry_upload(%UploadConfig{} = conf, channel_pid, entry_ref)
@@ -358,7 +351,7 @@ defmodule Phoenix.LiveView.UploadConfig do
         %UploadEntry{ref: _ef} = entry -> entry
       end)
 
-    %UploadConfig{conf | entries: new_entries}
+    recalculate_computed_fields(%UploadConfig{conf | entries: new_entries})
   end
 
   @doc false
@@ -370,9 +363,14 @@ defmodule Phoenix.LiveView.UploadConfig do
   @doc false
   def update_entry_meta(%UploadConfig{} = conf, entry_ref, %{} = meta) do
     case Map.fetch(meta, :uploader) do
-      {:ok, _} -> :noop
-      :error -> raise ArgumentError, "external uploader metadata requires an :uploader key. Got: #{inspect(meta)}"
+      {:ok, _} ->
+        :noop
+
+      :error ->
+        raise ArgumentError,
+              "external uploader metadata requires an :uploader key. Got: #{inspect(meta)}"
     end
+
     new_metas = Map.put(conf.entry_refs_to_metas, entry_ref, meta)
     %UploadConfig{conf | entry_refs_to_metas: new_metas}
   end
@@ -418,7 +416,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     if registered?(conf),
       do: raise(ArgumentError, "an upload with active entries cannot be cleared")
 
-    recalculate_errors(%UploadConfig{conf | entries: [], errors: []})
+    recalculate_computed_fields(%UploadConfig{conf | entries: [], errors: []})
   end
 
   # TODO validate against config constraints
@@ -523,6 +521,10 @@ defmodule Phoenix.LiveView.UploadConfig do
     end
   end
 
+  defp recalculate_computed_fields(%UploadConfig{} = conf) do
+    recalculate_errors(conf)
+  end
+
   defp recalculate_errors(%UploadConfig{ref: ref} = conf) do
     if too_many_files?(conf) do
       conf
@@ -532,6 +534,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           {^ref, @too_many_files} -> false
           _ -> true
         end)
+
       %UploadConfig{conf | errors: new_errors}
     end
   end
@@ -551,24 +554,28 @@ defmodule Phoenix.LiveView.UploadConfig do
       channel_pid when is_pid(channel_pid) ->
         Phoenix.LiveView.UploadChannel.cancel(channel_pid)
 
-        conf
-        |> update_entry(entry.ref, fn entry -> %UploadEntry{entry | cancelled?: true} end)
-        |> inc_epoch()
+        update_entry(conf, entry.ref, fn entry -> %UploadEntry{entry | cancelled?: true} end)
 
       _ ->
-        conf
-        |> drop_entry(entry)
-        |> inc_epoch()
+        drop_entry(conf, entry)
     end
   end
 
   @doc false
   def drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
     new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
+    new_errors = Enum.filter(conf.errors, fn {error_ref, _} -> error_ref != ref end)
     new_refs = Map.delete(conf.entry_refs_to_pids, ref)
     new_metas = Map.delete(conf.entry_refs_to_metas, ref)
-    new_conf = %UploadConfig{conf | entries: new_entries, entry_refs_to_pids: new_refs, entry_refs_to_metas: new_metas}
 
-    recalculate_errors(new_conf)
+    new_conf = %UploadConfig{
+      conf
+      | entries: new_entries,
+        errors: new_errors,
+        entry_refs_to_pids: new_refs,
+        entry_refs_to_metas: new_metas
+    }
+
+    recalculate_computed_fields(new_conf)
   end
 end
