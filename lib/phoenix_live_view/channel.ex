@@ -783,7 +783,6 @@ defmodule Phoenix.LiveView.Channel do
   defp check_version_match(params, phx_endpoint) do
     client_version = Map.get(params, "lv_version", :not_found)
     should_display_warning = Application.fetch_env!(:phoenix_live_view, :warn_version_mismatch)
-    Application.get_all_env(:phoenix_live_view) |> IO.inspect(label: "get_all_env")
 
     if should_display_warning && @version != client_version do
       Logger.warn("""
