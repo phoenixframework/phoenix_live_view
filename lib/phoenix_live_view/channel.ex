@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.Channel do
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
+  @version Mix.Project.config()[:version]
 
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
@@ -724,7 +725,7 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
-    check_version_match(params)
+    check_version_match(phx_socket, phx_socket.endpoint)
 
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
@@ -779,15 +780,16 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp check_version_match(params) do
-    server_version = Application.spec(:phoenix_live_view, :vsn) |> List.to_string()
+  defp check_version_match(params, phx_endpoint) do
     client_version = Map.get(params, "lv_version", :not_found)
-    should_display_warning = Application.get_env(:phoenix_live_view, :warn_version_mismatch, true)
+    should_display_warning = Application.fetch_env!(:phoenix_live_view, :warn_version_mismatch)
+    Application.get_all_env(:phoenix_live_view) |> IO.inspect(label: "get_all_env")
 
-    if should_display_warning && server_version != client_version do
+    if should_display_warning && @version != client_version do
       Logger.warn("""
-      There is a mismatch between the LiveView version on the server (#{server_version}) and the client (#{client_version}).
+      There is a mismatch between the LiveView version on the server (#{@version}) and the client (#{client_version}).
       The client side can be synced to match by running `npm install --prefix assets`.
+      The LiveView triggering this warning is part of the following endpoint: #{phx_endpoint}
       """)
     end
   end
