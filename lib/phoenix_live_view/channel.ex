@@ -725,7 +725,7 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
-    check_version_match(phx_socket, phx_socket.endpoint)
+    check_version_match(params, phx_socket.endpoint)
 
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
