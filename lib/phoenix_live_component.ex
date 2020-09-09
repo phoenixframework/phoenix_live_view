@@ -361,7 +361,7 @@ defmodule Phoenix.LiveComponent do
 
       <%= live_component @socket, MyComponent, user: @user, org: @org %>
 
-  Luckily, because LiveViews and LiveCmponents are in the same process,
+  Luckily, because LiveViews and LiveComponents are in the same process,
   they share the same data structures. For example, in the code above,
   the view and the component will share the same copies of the `@user`
   and `@org` assigns.
