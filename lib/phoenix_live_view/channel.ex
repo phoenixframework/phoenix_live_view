@@ -725,7 +725,9 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
-    check_version_match(params, phx_socket.endpoint)
+    unless Map.has_key?(phx_socket, :parent_pid) do
+      check_version_match(params, phx_socket.endpoint)
+    end
 
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
@@ -781,7 +783,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp check_version_match(params, phx_endpoint) do
-    client_version = Map.get(params, "lv_version", :not_found)
+    client_version = Map.get(params, "vsn", :not_found)
     should_display_warning = Application.fetch_env!(:phoenix_live_view, :warn_version_mismatch)
 
     if should_display_warning && @version != client_version do

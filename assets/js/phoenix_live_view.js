@@ -1968,7 +1968,7 @@ export class View {
         session: this.getSession(),
         static: this.getStatic(),
         flash: this.flash,
-        lv_version: __PACKAGE_VERSION__
+        vsn: this.parent ? undefined : PACKAGE_VSN
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
