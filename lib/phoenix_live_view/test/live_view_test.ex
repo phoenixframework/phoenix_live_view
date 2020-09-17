@@ -482,7 +482,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert view
             |> form("#term", user: %{name: "hello"})
-            |> render_submit(%{"hidden_value" => "example"}) =~ "Name updated"
+            |> render_submit(%{user: %{"hidden_field" => "example"}}) =~ "Name updated"
 
   """
   def render_submit(element, value \\ %{})
@@ -539,7 +539,7 @@ defmodule Phoenix.LiveViewTest do
 
       refute view
             |> form("#term", user: %{name: "hello"})
-            |> render_change(%{"hidden_value" => "example"}) =~ "can't be blank"
+            |> render_change(%{user: %{"hidden_field" => "example"}}) =~ "can't be blank"
 
   """
   def render_change(element, value \\ %{})
