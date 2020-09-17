@@ -30,7 +30,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
       test "redirected mount", %{conn: conn} do
-        assert {:error, %{redirect: %{to: "/somewhere"}}} = live(conn, "my-path")
+        assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "my-path")
       end
 
   Here, we start by using the familiar `Phoenix.ConnTest` function, `get/2` to
@@ -1052,7 +1052,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      assert_reply view, "charge", %{amount: 100}, %{result: "ok", transaction_id: _}
+      assert_reply view, %{result: "ok", transaction_id: _}
   """
   defmacro assert_reply(view, payload, timeout \\ 100) do
     quote do
