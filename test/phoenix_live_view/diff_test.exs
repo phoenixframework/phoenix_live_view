@@ -376,6 +376,37 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule NestedDynamicComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      <%= render_itself(assigns) %>
+      """
+    end
+
+    def render_itself(assigns) do
+      case assigns.key do
+        :a ->
+          ~L"""
+          <%= for key <- [:nothing] do %>
+            <%= key %><%= key %>
+          <% end %>
+          """
+
+        :b ->
+          ~L"""
+          <%= %>
+          """
+
+        :c ->
+          ~L"""
+          <%= live_component @socket, __MODULE__, id: make_ref(), key: :a %>
+          """
+      end
+    end
+  end
+
   def component_template(assigns) do
     ~L"""
     <div>
@@ -1054,6 +1085,38 @@ defmodule Phoenix.LiveView.DiffTest do
       assert_received {:update, %{from: :index_2}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
       refute_received {:update, %{from: :index_1}, %Socket{assigns: %{hello: "world"}}}
+    end
+
+    test "inside comprehension inside live_component without static" do
+      assigns = %{socket: %Socket{}}
+
+      %{fingerprint: _fingerprint} =
+        rendered = ~L"""
+        <%= for key <- [:b, :c, :a] do %>
+          <%= live_component(@socket, NestedDynamicComponent, id: key, key: key) %>
+        <% end %>
+        """
+
+      {_socket, full_render, _components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{d: [[1], [2], [3]], s: ["\n  ", "\n"]},
+               :c => %{
+                 1 => %{0 => %{0 => "", :s => ["", "\n"]}, :s => ["", "\n"]},
+                 2 => %{0 => %{0 => 4, :s => ["", "\n"]}, :s => 1},
+                 3 => %{
+                   0 => %{
+                     0 => %{d: [["nothing", "nothing"]], s: ["\n  ", "", "\n"]},
+                     :s => ["", "\n"]
+                   },
+                   :s => 1
+                 },
+                 4 => %{0 => %{0 => %{d: [["nothing", "nothing"]]}}, :s => 3}
+               },
+               :s => ["", "\n"]
+             }
+
+      assert rendered_to_binary(full_render) =~ "nothingnothing"
     end
 
     test "block tracking" do

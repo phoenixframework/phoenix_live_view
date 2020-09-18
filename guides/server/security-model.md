@@ -14,8 +14,8 @@ HTTP request via Plugs, such as this:
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
 
-Then the `c:mount/3` callback of your LiveView should execute those same
-verifications:
+Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView
+should execute those same verifications:
 
     def mount(params, %{"user_id" => user_id} = _session, socket) do
       socket = assign(socket, current_user: Accounts.get_user!(user_id))
@@ -30,9 +30,9 @@ verifications:
       {:ok, socket}
     end
 
-Given almost all `c:mount/3` actions in your application will have to
-perform these exact steps, we recommend creating a function called
-`assign_defaults/2` or similar, putting it in a new module like
+Given almost all [`mount/3`](`c:Phoenix.LiveView.mount/3`) actions in your
+application will have to perform these exact steps, we recommend creating a
+function called `assign_defaults/2` or similar, putting it in a new module like
 `MyAppWeb.LiveHelpers`, and modifying `lib/my_app_web.ex` so all
 LiveViews automatically import it:
 
@@ -43,7 +43,7 @@ LiveViews automatically import it:
       end
     end
 
-Then make sure to call it in every LiveView's `c:mount/3`:
+Then make sure to call it in every LiveView's [`mount/3`](`c:Phoenix.LiveView.mount/3`):
 
     def mount(params, session, socket) do
       {:ok, assign_defaults(session, socket)}
@@ -67,7 +67,8 @@ Where `MyAppWeb.LiveHelpers` can be something like:
 
 One possible concern in this approach is that in regular HTTP requests the
 current user will be fetched twice: once in the HTTP request and again on
-`mount`. You can address this by using the `assign_new` function, that will
+[`mount/3`](`c:Phoenix.LiveView.mount/3`). You can address this by using the
+[`assign_new/3`](`Phoenix.LiveView.assign_new/3`) function, that will
 reuse any of the connection assigns from the HTTP request:
 
     def assign_defaults(%{"user_id" => user_id}, socket) do
@@ -83,9 +84,9 @@ reuse any of the connection assigns from the HTTP request:
 ## Events considerations
 
 It is also important to keep in mind that LiveViews are stateful. Therefore,
-if you load any data on `c:mount/3` and the data itself changes, the data
-won't be automatically propagated to the LiveView, unless you broadcast
-those events with `Phoenix.PubSub`.
+if you load any data on [`mount/3`](`c:Phoenix.LiveView.mount/3`) and the data
+itself changes, the data won't be automatically propagated to the LiveView,
+unless you broadcast those events with `Phoenix.PubSub`.
 
 Generally speaking, the simplest and safest approach is to perform authorization
 whenever there is an action. For example, imagine that you have a LiveView
@@ -113,7 +114,7 @@ Another security consideration is how to disconnect all instances of a given
 live user. For example, imagine the user logs outs, its account is terminated,
 or any other reason.
 
-Luckily, it is possible to identify all LiveView sockets by setting a "live_socket_id"
+Luckily, it is possible to identify all LiveView sockets by setting a `live_socket_id`
 in the session. For example, when signing in a user, you could do:
 
     conn
@@ -127,10 +128,10 @@ ID by broadcasting on the topic:
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
 Once a LiveView is disconnected, the client will attempt to reestablish
-the connection, re-executing the `c:mount/3` callback. In this case,
-if the user is no longer logged in or it no longer has access to its
-current resource, `c:mount/3` will fail and the user will be redirected
-to the proper page.
+the connection, re-executing the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback.
+In this case, if the user is no longer logged in or it no longer has access to its
+current resource, [`mount/3`](`c:Phoenix.LiveView.mount/3`) will fail and the user
+will be redirected to the proper page.
 
 This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same

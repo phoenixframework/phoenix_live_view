@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.Renderer do
         quote do
           @file unquote(template)
           @external_resource unquote(template)
-          def render(var!(assigns)) do
+          def render(var!(assigns)) when is_map(var!(assigns)) do
             unquote(ast)
           end
         end

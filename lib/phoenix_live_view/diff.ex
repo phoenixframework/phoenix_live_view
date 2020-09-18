@@ -48,17 +48,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp to_iodata(cid, components, mapper) when is_integer(cid) do
     # Resolve component pointers and update the component entries
-    components =
-      update_in(components[cid], fn
-        %{@static => static} = diff when is_integer(static) ->
-          diff
-          |> find_component(components)
-          |> deep_merge(Map.delete(diff, @static))
-
-        %{} = diff ->
-          diff
-      end)
-
+    components = resolve_components_xrefs(cid, components)
     {iodata, components} = to_iodata(Map.fetch!(components, cid), components, mapper)
     {mapper.(cid, iodata), components}
   end
@@ -85,11 +75,17 @@ defmodule Phoenix.LiveView.Diff do
     {Enum.reverse([shead | acc]), components}
   end
 
-  defp find_component(%{@static => cid}, components) when is_integer(cid),
-    do: find_component(components[abs(cid)], components)
+  defp resolve_components_xrefs(cid, components) do
+    case components[cid] do
+      %{@static => static} = diff when is_integer(static) ->
+        static = abs(static)
+        components = resolve_components_xrefs(static, components)
+        Map.put(components, cid, deep_merge(components[static], Map.delete(diff, @static)))
 
-  defp find_component(%{@static => _} = component, _components),
-    do: component
+      %{} ->
+        components
+    end
+  end
 
   defp deep_merge(original, extra) do
     Map.merge(original, extra, fn

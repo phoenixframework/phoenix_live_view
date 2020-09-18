@@ -343,6 +343,71 @@ defmodule Phoenix.LiveComponent do
   `live_redirect` calls. The `live_patch` is always handled by the parent
   `LiveView`, as components do not provide `handle_params`.
 
+  ## Cost of stateful components
+
+  The internal infrastructure LiveView uses to keep track of stateful
+  components is very lightweight. However, be aware that in order to
+  provide change tracking and to send diffs over the wire, all of the
+  components assigns are kept in memory - exactly as it is done in
+  LiveViews themselves.
+
+  Therefore it is your responsibility to keep only the assigns necessary
+  in each component. For example, avoid passing all of LiveView components
+  when rendering a component:
+
+      <%= live_component @socket, MyComponent, assigns %>
+
+  Instead pass only the keys that you need:
+
+      <%= live_component @socket, MyComponent, user: @user, org: @org %>
+
+  Luckily, because LiveViews and LiveComponents are in the same process,
+  they share the same data structures. For example, in the code above,
+  the view and the component will share the same copies of the `@user`
+  and `@org` assigns.
+
+  You should also avoid using components to provide abstract DOM
+  components. As a guideline, a good LiveComponent encapsulates
+  application concerns and not DOM functionality. For example, if you
+  have a page that shows products for sale, you can encapsulate the
+  rendering of each of those products in a component. This component
+  may have many buttons and events within it. On the opposite side,
+  do not write a component that is simply encapsulating generic DOM
+  components. For instance, do not do this:
+
+      defmodule MyButton
+        use Phoenix.LiveComponent
+
+        def render(assigns) do
+          ~L\"""
+          <button class="css-framework-class" phx-click="click">
+            <%= @text %>
+          </button>
+          \"""
+        end
+
+        def handle_event("click", _, socket) do
+          _ = socket.assigns.on_click.()
+          {:noreply, socket}
+        end
+      end
+
+  Instead, it is much simpler to create a function:
+
+      def my_button(text, click) do
+        assigns = %{text: text, click: click}
+
+        ~L\"""
+        <button class="css-framework-class" phx-click="<%= @click %>">
+            <%= @text %>
+        </button>
+        \"""
+      end
+
+  If you keep components mostly as an application concern with
+  only the necessary assigns, it is unlikely you will run into
+  issues related to stateful components.
+
   ## Limitations
 
   ### Components require at least one HTML tag
