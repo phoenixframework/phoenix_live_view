@@ -1441,7 +1441,10 @@ class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
-          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){ el.submit() }
+          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
+            liveSocket.disconnect()
+            el.submit()
+          }
           // nested view handling
           if(DOM.isPhxChild(el) && view.ownsElement(el)){
             this.trackAfter("phxChildAdded", el)
@@ -1461,7 +1464,10 @@ class DOMPatch {
           return true
         },
         onElUpdated: (el) => {
-          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){ el.submit() }
+          if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
+            liveSocket.disconnect()
+            el.submit()
+          }
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
