@@ -800,7 +800,7 @@ export class LiveSocket {
     window.addEventListener("scroll", e => {
       clearTimeout(scrollTimer)
       scrollTimer = setTimeout(() => {
-        Browser.upateCurrentState(state => Object.assign(state, {scroll: window.scrollY}))
+        Browser.updateCurrentState(state => Object.assign(state, {scroll: window.scrollY}))
       }, 100)
     })
     window.addEventListener("popstate", event => {
@@ -991,7 +991,7 @@ export let Browser = {
     req.send()
   },
 
-  upateCurrentState(callback){ if(!this.canPushState()){ return }
+  updateCurrentState(callback){ if(!this.canPushState()){ return }
     history.replaceState(callback(history.state || {}), "", window.location.href)
   },
 
