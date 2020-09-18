@@ -902,7 +902,7 @@ defmodule Phoenix.LiveView do
 
   And then in your views:
 
-      <%= if @static_change do %>
+      <%= if @static_changed? do %>
         <div id="reload-static">
           The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
         </div>
