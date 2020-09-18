@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.UploadEntry do
 
   defstruct progress: 0,
             upload_config: nil,
-            upload_id: nil,
+            upload_ref: nil,
             ref: nil,
             valid?: false,
             done?: false,
@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   @type t :: %__MODULE__{
           progress: integer(),
           upload_config: String.t() | :atom,
-          upload_id: String.t(),
+          upload_ref: String.t(),
           ref: String.t() | nil,
           valid?: boolean(),
           done?: boolean(),
@@ -71,7 +71,6 @@ defmodule Phoenix.LiveView.UploadConfig do
             external: false,
             allowed?: false,
             ref: nil,
-            id: nil,
             errors: []
 
   @type t :: %__MODULE__{
@@ -87,7 +86,6 @@ defmodule Phoenix.LiveView.UploadConfig do
           allowed?: boolean,
           errors: list(),
           ref: String.t(),
-          id: String.t()
         }
 
   @doc false
@@ -203,7 +201,6 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     %UploadConfig{
       ref: random_ref,
-      id: "phx-upload-#{random_ref}",
       name: name,
       max_entries: opts[:max_entries] || 1,
       max_file_size: max_file_size,
@@ -430,7 +427,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
       ref: ref,
-      upload_id: conf.id,
+      upload_ref: conf.ref,
       upload_config: conf.name,
       client_name: Map.fetch!(client_entry, "name"),
       client_size: Map.fetch!(client_entry, "size"),

@@ -345,7 +345,7 @@ defmodule Phoenix.LiveView.Helpers do
     opts =
       Keyword.merge(opts,
         id: "phx-preview-#{ref}",
-        data_phx_upload_id: entry.upload_id,
+        data_phx_upload_ref: entry.upload_ref,
         data_phx_entry_ref: ref
       ) ++ [{"#{binding_prefix}hook", "Phoenix.LiveImgPreview"}]
 
@@ -371,7 +371,7 @@ defmodule Phoenix.LiveView.Helpers do
     ~L"""
     <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
       type: "file",
-      id: @conf.id,
+      id: @conf.ref,
       name: @conf.name,
       data_phx_upload_ref: conf.ref,
       data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ","),
