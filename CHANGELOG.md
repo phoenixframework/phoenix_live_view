@@ -2,8 +2,16 @@
 
 ## 0.14.5
 
+### Enhancements
+
+  - Optimize DOM prepend and append operations
+  - Add `Phoenix.LiveView.send_update_after/3`
+
 ### Bug fixes
   - Fix scroll position when using back/forward with `live_redirect`'s
+  - Handle recursive components when generating diffs
+  - Support hard redirects on mount
+  - Properly track nested components on deletion on `Phoenix.LiveViewTest`
 
 ## 0.14.4 (2020-07-30)
 
