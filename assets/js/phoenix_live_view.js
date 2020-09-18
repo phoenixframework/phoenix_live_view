@@ -686,6 +686,7 @@ export class LiveSocket {
 
   bindTopLevelEvents(){
     if(this.boundTopLevelEvents){ return }
+
     this.boundTopLevelEvents = true
     window.addEventListener("pageshow", e => {
       if(e.persisted){ // reload page if being restored from back/forward cache
@@ -794,6 +795,14 @@ export class LiveSocket {
 
   bindNav(){
     if(!Browser.canPushState()){ return }
+    if(history.scrollRestoration){ history.scrollRestoration = "manual" }
+    let scrollTimer = null
+    window.addEventListener("scroll", e => {
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
+        Browser.upateCurrentState(state => Object.assign(state, {scroll: window.scrollY}))
+      }, 100)
+    })
     window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
       let {type, id, root, scroll} = event.state || {}
@@ -804,10 +813,10 @@ export class LiveSocket {
       } else {
         this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
-          if(scroll){ 
+          if(typeof(scroll) === "number"){
             setTimeout(() => {
-              window.scrollTo(0, scroll) 
-            }, 1) // the body needs to render before we scroll. 
+              window.scrollTo(0, scroll)
+            }, 0) // the body needs to render before we scroll.
           }
         })
       }
@@ -982,6 +991,10 @@ export let Browser = {
     req.send()
   },
 
+  upateCurrentState(callback){ if(!this.canPushState()){ return }
+    history.replaceState(callback(history.state || {}), "", window.location.href)
+  },
+
   pushState(kind, meta, to){
     if(this.canPushState()){
       if(to !== window.location.href){
@@ -989,7 +1002,7 @@ export let Browser = {
           // If we're redirecting store the current scrollY for the current history state.
           let currentState = history.state || {}
           currentState.scroll = meta.scroll
-          history.replaceState(currentState, "", window.location.href); 
+          history.replaceState(currentState, "", window.location.href)
         }
 
         delete meta.scroll // Only store the scroll in the redirect case.
