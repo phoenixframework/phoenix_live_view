@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.5
+
+### Bug fixes
+  - Fix scroll position when using back/forward with `live_redirect`'s
+
 ## 0.14.4 (2020-07-30)
 
 ### Bug fixes
