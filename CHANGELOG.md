@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.14.5
+## 0.14.5 (2020-09-20)
 
 ### Enhancements
 
