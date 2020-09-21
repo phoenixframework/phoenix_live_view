@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.6 (2020-09-21)
+
+### Bug fixes
+  - Fix race condition on `phx-trigger-action` causing reconnects before server form submit
+
 ## 0.14.5 (2020-09-20)
 
 ### Enhancements
