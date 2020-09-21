@@ -152,23 +152,7 @@ fields on next render:
         end
     end
 
-### Forms triggering file downloads
-
-In scenarios where the LiveView is left open in the browser after form
-submission (ex: a form submitting to a controller to trigger a file download),
-it's important that `phx-trigger-action` is only set for the current DOM patch.
-If `phx-trigger-action` is left on the form after the initial form submission,
-any subsequent DOM patches will re-trigger the form submission.
-
-To prevent this, we need to set `trigger_submit: false` in temporary assigns in
-`c:mount/3`.
-
-    def mount(_params, _session, socket) do
-      {:ok, socket, [temporary_assigns: [trigger_submit: false]]}
-    end
-
-Now when `:trigger_submit` is set in `handle_event/3`, it will only be set for
-the next DOM patch and removed in subsequent patches.
+Once `phx-trigger-action` is true, LiveView disconnects and then submits the form.
 
 ## Recovery following crashes or disconnects
 

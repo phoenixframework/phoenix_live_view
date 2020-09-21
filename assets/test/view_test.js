@@ -281,6 +281,7 @@ describe("View + DOM", function() {
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
       view.update({s: [updatedHtml]}, [])
 
+      expect(liveSocket.socket.closeWasClean).toBe(true)
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
 
@@ -298,6 +299,7 @@ describe("View + DOM", function() {
       let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
       view.update({s: [updatedHtml]}, [])
 
+      expect(liveSocket.socket.closeWasClean).toBe(true)
       expect(view.el.innerHTML).toBe("<form id=\"form\" phx-submit=\"submit\" phx-trigger-action=\"\"><input type=\"text\"></form>")
     })
   })
