@@ -518,6 +518,11 @@ defmodule Phoenix.LiveView.Channel do
     push(state, "redirect", opts)
   end
 
+  defp push_redirect(state, %{external: to} = opts, ref) do
+    opts = Map.delete(opts, :external) |> Map.put(:to, to)
+    reply(state, ref, :ok, %{redirect: opts})
+  end
+
   defp push_redirect(state, opts, ref) do
     reply(state, ref, :ok, %{redirect: opts})
   end
