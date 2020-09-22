@@ -980,7 +980,7 @@ export let Browser = {
     if(this.canPushState()){
       if(to !== window.location.href){
         history[kind + "State"](meta, "", to || null) // IE will coerce undefined to string
-        let hashEl = this.getHashTargetEl()
+        let hashEl = this.getHashTargetEl(window.location.hash)
 
         if(hashEl) {
           hashEl.scrollIntoView()
@@ -1008,8 +1008,8 @@ export let Browser = {
 
   localKey(namespace, subkey){ return `${namespace}-${subkey}` },
 
-  getHashTargetEl() {
-    let hash = window.location.hash.toString().substring(1)
+  getHashTargetEl(maybeHash) {
+    let hash = maybeHash.toString().substring(1)
     if(hash === ""){ return }
     return document.getElementById(hash) || document.querySelector(`a[name="${hash}"]`)
   }
