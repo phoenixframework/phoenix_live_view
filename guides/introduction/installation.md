@@ -164,7 +164,7 @@ Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your 
 
 ```html
 <%= csrf_meta_tag() %>
-<script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+<script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 ```
 
 and enable connecting to a LiveView socket in your `app.js` file.
