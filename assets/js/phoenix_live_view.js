@@ -1035,9 +1035,10 @@ export let Browser = {
 
   localKey(namespace, subkey){ return `${namespace}-${subkey}` },
 
-  getHashTargetEl(hash){
-    if(hash.toString() === ""){ return }
-    return document.getElementById(hash) || document.querySelector(`a[name="${hash.substring(1)}"]`)
+  getHashTargetEl(maybeHash) {
+    let hash = maybeHash.toString().substring(1)
+    if(hash === ""){ return }
+    return document.getElementById(hash) || document.querySelector(`a[name="${hash}"]`)
   }
 }
 
