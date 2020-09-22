@@ -22,14 +22,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
-    {:ok,
-     assign(socket,
-       val: val,
-       nest: nest,
-       redir: session["redir"],
-       users: users,
-       greeting: nil
-     )}
+    {:ok, assign(socket, val: val, nest: nest, users: users, greeting: nil)}
   end
 
   def handle_params(params, _url, socket) do
@@ -52,10 +45,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     {:noreply, assign(socket, :val, new_temp)}
   end
 
-  def handle_event("redir", to, socket) do
-    {:noreply, redirect(socket, to: to)}
-  end
-
   def handle_event("inactive", %{"value" => msg}, socket) do
     {:noreply, assign(socket, :greeting, "Tap to wake – #{msg}")}
   end
@@ -69,12 +58,6 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   def handle_event("inc", _, socket), do: {:noreply, update(socket, :val, &(&1 + 1))}
 
   def handle_event("dec", _, socket), do: {:noreply, update(socket, :val, &(&1 - 1))}
-
-  def handle_info(:noop, socket), do: {:noreply, socket}
-
-  def handle_info({:redir, to}, socket) do
-    {:noreply, redirect(socket, to: to)}
-  end
 
   def handle_call({:set, var, val}, _, socket) do
     {:reply, :ok, assign(socket, var, val)}

@@ -751,7 +751,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag session: %{nest: []}
-    test "redirect", %{conn: conn} do
+    test "redirect from child", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
 
@@ -766,6 +766,24 @@ defmodule Phoenix.LiveView.LiveViewTest do
       )
 
       assert_redirect(thermo_view, "/thermo?redirect=redirect")
+    end
+
+    @tag session: %{nest: []}
+    test "external redirect from child", %{conn: conn} do
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
+
+      assert clock_view = find_live_child(thermo_view, "clock")
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.redirect(socket, external: "https://phoenixframework.org")}
+         end}
+      )
+
+      assert_redirect(thermo_view, "https://phoenixframework.org")
     end
   end
 
