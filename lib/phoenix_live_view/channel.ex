@@ -458,6 +458,16 @@ defmodule Phoenix.LiveView.Channel do
     root_pid = new_socket.root_pid
 
     case result do
+      {:redirect, %{external: to} = opts} ->
+        opts =
+          copy_flash(new_state, flash, opts)
+          |> Map.delete(:external)
+          |> Map.put(:to, to)
+
+        new_state
+        |> push_redirect(opts, ref)
+        |> stop_shutdown_redirect(:redirect, opts)
+
       {:redirect, %{to: _to} = opts} ->
         opts = copy_flash(new_state, flash, opts)
 
@@ -516,11 +526,6 @@ defmodule Phoenix.LiveView.Channel do
 
   defp push_redirect(state, opts, nil = _ref) do
     push(state, "redirect", opts)
-  end
-
-  defp push_redirect(state, %{external: to} = opts, ref) do
-    opts = Map.delete(opts, :external) |> Map.put(:to, to)
-    reply(state, ref, :ok, %{redirect: opts})
   end
 
   defp push_redirect(state, opts, ref) do
