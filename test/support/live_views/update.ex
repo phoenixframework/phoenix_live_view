@@ -5,6 +5,7 @@ defmodule Phoenix.LiveViewTest.TZLive do
     ~L"""
     time: <%= @time %> <%= @name %>
     <div id="append-<%= @name %>" phx-update="append"><%= for item <- @items do %>
+      <!-- example -->
       <div id="item-<%= item %>"><%= item %></div>
     <% end %></div>
     """

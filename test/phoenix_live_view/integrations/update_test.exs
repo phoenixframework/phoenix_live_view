@@ -86,7 +86,9 @@ defmodule Phoenix.LiveView.UpdateTest do
                   "time: 12:00 NestedAppend\n",
                   {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}],
                    [
+                     {:comment, " example "},
                      {"div", [{"id", "item-item1"}], ["item1"]},
+                     {:comment, " example "},
                      {"div", [{"id", "item-item2"}], ["item2"]}
                    ]}
                 ]}

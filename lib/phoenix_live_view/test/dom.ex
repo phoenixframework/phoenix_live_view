@@ -331,7 +331,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp apply_phx_update_children_id(type, children) do
-    for child <- children do
+    for {tag, _, _} = child when is_binary(tag) <- children do
       attribute(child, "id") ||
         raise ArgumentError,
               "setting phx-update to #{inspect(type)} requires setting an ID on each child. " <>
