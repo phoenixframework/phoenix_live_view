@@ -710,7 +710,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
   describe "integration" do
     defmodule View do
-      use Phoenix.View, root: "test/fixtures/templates", path: ""
+      use Phoenix.View, root: "test/support/templates", path: ""
     end
 
     defmodule SampleComponent do
