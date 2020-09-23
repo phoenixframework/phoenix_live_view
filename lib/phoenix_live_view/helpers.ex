@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Helpers do
   Generates a link that will patch the current LiveView.
 
   When navigating to the current LiveView,
-  [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) is
+  `c:Phoenix.LiveView.handle_params/3` is
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
