@@ -251,21 +251,19 @@ defmodule Phoenix.LiveView.Helpers do
       quote do
         fn extra_assigns ->
           var!(assigns) =
-            case Enum.to_list(extra_assigns) do
-              [] ->
-                var!(assigns)
+            if extra_assigns == [] or extra_assigns == %{} do
+              var!(assigns)
+            else
+              assigns = Enum.into(extra_assigns, var!(assigns))
 
-              _ ->
-                assigns = Enum.into(extra_assigns, var!(assigns))
+              if changed = Map.get(var!(assigns), :__changed__) do
+                changed =
+                  for {key, _} <- extra_assigns, key != :socket, into: changed, do: {key, true}
 
-                if var = var!(changed, Phoenix.LiveView.Engine) do
-                  changed =
-                    for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
-
-                  put_in(assigns.__changed__, changed)
-                else
-                  assigns
-                end
+                put_in(assigns.__changed__, changed)
+              else
+                assigns
+              end
             end
 
           unquote(do_block)
