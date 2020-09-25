@@ -6,6 +6,7 @@
   - Fix `redirect(socket, external: ...)` when returned from an event
   - Properly follow location hashes on live patch/redirect
   - Fix failure in `Phoenix.LiveViewTest` when phx-update has non-HTML nodes as children
+  - Fix `phx_trigger_action` submitting the form before the DOM updates are complete
 
 ## 0.14.6 (2020-09-21)
 
