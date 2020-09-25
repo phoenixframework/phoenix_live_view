@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.14.7
+## 0.15.0
+
+### Backwards incompatible changes
+  - Introduce `render_inner` for rendering component `@inner_content`
+
+## 0.14.7 (2020-09-25)
 
 ### Bug fixes
   - Fix `redirect(socket, external: ...)` when returned from an event
