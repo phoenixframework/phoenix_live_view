@@ -14,8 +14,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
   @moduletag :capture_log
 
   setup config do
-    {:ok,
-     conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
+    {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
 
   defp simulate_bad_token_on_page(conn) do

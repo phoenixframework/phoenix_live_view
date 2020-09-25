@@ -297,10 +297,10 @@ defmodule Phoenix.LiveComponent do
         New entry: <%= @entry %>
       <% end %>
 
-  The `do/end` will be available as an anonymous function in an assign named
-  `@inner_content`. The anonymous function must be invoked passing a new set
-  of assigns that will be merged into the user assigns. For example, the grid
-  component above could be implemented as:
+  The `do/end` will be available in an assign named `@inner_content`.
+  You can render its contents by calling `render_inner` with the
+  assign itself and a keyword list of assigns to inject into the rendered
+  content. For example, the grid component above could be implemented as:
 
       defmodule GridComponent do
         use Phoenix.LiveComponent
@@ -310,7 +310,7 @@ defmodule Phoenix.LiveComponent do
           <div class="grid">
             <%= for entry <- @entries do %>
               <div class="column">
-                <%= @inner_content.(entry: entry) %>
+                <%= render_inner(@inner_content, entry: entry) %>
               </div>
             <% end %>
           </div>

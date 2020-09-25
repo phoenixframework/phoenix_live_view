@@ -230,7 +230,17 @@ defmodule Phoenix.LiveView.Helpers do
   defp rewrite_do(nil, opts, _caller), do: {opts, nil}
 
   defp rewrite_do([{:->, meta, _} | _] = do_block, opts, _caller) do
-    {opts, {:fn, meta, do_block}}
+    inner_fun = {:fn, meta, do_block}
+
+    quoted =
+      quote do
+        fn parent_changed, arg ->
+          var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
+          unquote(inner_fun).(arg)
+        end
+      end
+
+    {opts, quoted}
   end
 
   defp rewrite_do(do_block, opts, caller) do
@@ -249,22 +259,9 @@ defmodule Phoenix.LiveView.Helpers do
 
     quoted =
       quote do
-        fn extra_assigns ->
+        fn changed, extra_assigns ->
           var!(assigns) =
-            if extra_assigns == [] or extra_assigns == %{} do
-              var!(assigns)
-            else
-              assigns = Enum.into(extra_assigns, var!(assigns))
-
-              if changed = Map.get(var!(assigns), :__changed__) do
-                changed =
-                  for {key, _} <- extra_assigns, key != :socket, into: changed, do: {key, true}
-
-                put_in(assigns.__changed__, changed)
-              else
-                assigns
-              end
-            end
+            unquote(__MODULE__).__render_inner_do__(var!(assigns), changed, extra_assigns)
 
           unquote(do_block)
         end
@@ -273,6 +270,39 @@ defmodule Phoenix.LiveView.Helpers do
     {opts, quoted}
   end
 
+  @doc false
+  def __render_inner_fun__(assigns, parent_changed) do
+    if is_nil(parent_changed) or parent_changed[:inner_content] == true do
+      assigns
+    else
+      Map.put(assigns, :__changed__, %{})
+    end
+  end
+
+  @doc false
+  def __render_inner_do__(assigns, parent_changed, extra_assigns) do
+    # If the parent is tracking changes or the inner content changed,
+    # we will keep the current __changed__ values
+    changed =
+      if is_nil(parent_changed) or parent_changed[:inner_content] == true do
+        Map.get(assigns, :__changed__)
+      else
+        %{}
+      end
+
+    assigns = Enum.into(extra_assigns, assigns)
+
+    changed =
+      changed &&
+        for {key, _} <- extra_assigns,
+            key != :socket,
+            into: changed,
+            do: {key, true}
+
+    Map.put(assigns, :__changed__, changed)
+  end
+
+  @doc false
   def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
@@ -292,6 +322,18 @@ defmodule Phoenix.LiveView.Helpers do
   def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
+  end
+
+  @doc """
+  Renders the `@inner_content` assign of a component with the given `argument`.
+
+      <%= render_inner(@inner_content, value: @value)
+
+  """
+  defmacro render_inner(inner_content, argument \\ []) do
+    quote do
+      unquote(inner_content).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
+    end
   end
 
   @doc """
