@@ -84,7 +84,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert flash == %{"info" => "ok!"}
 
       assert conn.resp_body =~ "root[ok!]:info"
-   end
+    end
 
     test "push_redirect with flash on mount", %{conn: conn} do
       {:ok, _, html} =

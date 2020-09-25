@@ -49,21 +49,21 @@ defmodule Phoenix.LiveView.Socket do
   @type fingerprints :: {nil, map} | {binary, map}
 
   @type t :: %__MODULE__{
-    id: binary(),
-    endpoint: module(),
-    view: module(),
-    root_view: module(),
-    parent_pid: nil | pid(),
-    root_pid: pid(),
-    router: module(),
-    assigns: assigns,
-    changed: map(),
-    private: map(),
-    fingerprints: fingerprints,
-    redirected: nil | tuple(),
-    host_uri: URI.t(),
-    connected?: boolean()
-  }
+          id: binary(),
+          endpoint: module(),
+          view: module(),
+          root_view: module(),
+          parent_pid: nil | pid(),
+          root_pid: pid(),
+          router: module(),
+          assigns: assigns,
+          changed: map(),
+          private: map(),
+          fingerprints: fingerprints,
+          redirected: nil | tuple(),
+          host_uri: URI.t(),
+          connected?: boolean()
+        }
 
   channel "lv:*", Phoenix.LiveView.Channel
 

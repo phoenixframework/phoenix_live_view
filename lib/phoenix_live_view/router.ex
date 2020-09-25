@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp inferred_as(_live_view, as, action), do: {as, action}
-  
+
   defp cookie_flash(%Plug.Conn{cookies: %{@cookie_key => token}} = conn) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
 

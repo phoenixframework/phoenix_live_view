@@ -14,6 +14,7 @@ defmodule Phoenix.LiveViewTest.EventsLive do
   def handle_event("reply", %{"count" => new_count, "reply" => reply}, socket) do
     {:reply, reply, assign(socket, :count, new_count)}
   end
+
   def handle_event("reply", %{"reply" => reply}, socket) do
     {:reply, reply, socket}
   end
