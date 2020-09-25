@@ -234,6 +234,35 @@ defmodule Phoenix.LiveViewUnitTest do
                flash: %{}
              }
     end
+
+    test "can accept a list of keys; if any do not exist, then the function is called (it should return a map or keyword list which can be merged into existing assigns)" do
+      socket =
+        @socket
+        |> assign(existing: "existing", existing2: "existing2", existing3: "existing3")
+        # no-op
+        |> assign_new([:existing], fn -> [existing: "updated-existing"] end)
+        # changes :existing2, adds notexisting
+        |> assign_new([:existing2, :notexisting], fn ->
+          %{existing2: "changed-existing2", notexisting: "new-notexisting"}
+        end)
+        # adds :notexisting
+        |> assign_new([:notexisting2], fn -> %{notexisting2: "new-notexisting2"} end)
+        # no-op
+        |> assign_new([:existing, :existing2, :existing3, :notexisting], fn ->
+          [existing: nil]
+        end)
+
+      assert socket.assigns == %{
+               existing: "existing",
+               existing2: "changed-existing2",
+               existing3: "existing3",
+               notexisting: "new-notexisting",
+               notexisting2: "new-notexisting2",
+               live_module: Phoenix.LiveViewTest.ParamCounterLive,
+               live_action: nil,
+               flash: %{}
+             }
+    end
   end
 
   describe "redirect/2" do

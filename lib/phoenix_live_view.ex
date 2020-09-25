@@ -549,6 +549,38 @@ defmodule Phoenix.LiveView do
       end
 
   """
+  def assign_new(%Socket{} = socket, keys, func) when is_list(keys) and is_function(func, 0) do
+    Enum.each(keys, &validate_assign_key!/1)
+
+    if Enum.all?(keys, &Map.has_key?(socket.assigns, &1)) do
+      socket
+    else
+      new_values = func.()
+
+      unless is_list(new_values) || is_map(new_values) do
+        raise ArgumentError,
+              "Function provided to assign_new must return a map or keyword list " <>
+                "if second argument is a list"
+      end
+
+      case socket do
+        %{private: %{assign_new: {assigns, existing_keys}}} = socket ->
+          # It is important to store the keys even if they are not in assigns
+          # because maybe the controller doesn't have it but the view does.
+          socket = put_in(socket.private.assign_new, {assigns, existing_keys ++ keys})
+
+          Enum.reduce(new_values, socket, fn {key, value}, socket ->
+            Phoenix.LiveView.Utils.force_assign(socket, key, value)
+          end)
+
+        %{} ->
+          Enum.reduce(new_values, socket, fn {key, value}, socket ->
+            Phoenix.LiveView.Utils.force_assign(socket, key, value)
+          end)
+      end
+    end
+  end
+
   def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
     validate_assign_key!(key)
 
