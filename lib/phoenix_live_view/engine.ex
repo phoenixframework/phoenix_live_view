@@ -432,6 +432,26 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(macro) do
     if classify_taint(macro, args) in [:live, :render] do
       {args, [opts]} = Enum.split(args, -1)
+
+      # The reason we can safely ignore assigns here is because
+      # each branch in the live/render constructs are their own
+      # rendered struct and, if the rendered has a new fingerpint,
+      # then change tracking is fully disabled.
+      #
+      # For example, take this code:
+      #
+      #   <%= if @foo do %>
+      #     <%= @bar %>
+      #   <% else %>
+      #     <%= @baz %>
+      #   <% end %>
+      #
+      # In theory, @bar and @baz should be recomputed whenever
+      # @foo changes, because changing @foo may require a value
+      # that was not available on the page to show. However,
+      # given the branches have different fingerprints, the
+      # diff mechanism takes care of forcing all assigns to
+      # be rendered without us needing to handle it here.
       {args, vars, _} = analyze_list(args, vars, assigns, [])
 
       opts =
@@ -450,16 +470,11 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
-    # First collect all vars across all assigns since cond/case may be linear
-    {blocks, {vars, assigns}} =
-      Enum.map_reduce(blocks, {vars, %{}}, fn
-        {:->, meta, [args, block]}, {vars, assigns} ->
-          {args, vars, assigns} = analyze_list(args, vars, assigns, [])
-          {{:->, meta, [args, block]}, {vars, assigns}}
-      end)
-
-    # Now convert blocks
     for {:->, meta, [args, block]} <- blocks do
+      # Variables defined in the head should not taint the whole body,
+      # only their usage within the body.
+      {args, vars, assigns} = analyze_with_restricted_vars(args, vars, %{})
+
       case to_rendered_struct(block, vars, assigns) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}

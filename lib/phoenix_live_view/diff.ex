@@ -463,9 +463,10 @@ defmodule Phoenix.LiveView.Diff do
                 {configure_socket_for_component(socket, assigns, private, prints), components}
 
               %{} ->
-                {mount_component(socket, component, %{
-                   myself: %Phoenix.LiveComponent.CID{cid: cid}
-                 }), put_cid(components, component, id, cid)}
+                myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
+
+                {mount_component(socket, component, myself_assigns),
+                 put_cid(components, component, id, cid)}
             end
 
           triplet =

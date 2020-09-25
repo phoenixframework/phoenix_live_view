@@ -517,6 +517,57 @@ defmodule Phoenix.LiveView.EngineTest do
                changed(template, %{foo: 123}, %{foo: true})
     end
 
+    test "converts case into rendered with vars in head" do
+      template = "<%= case true do %><% x when x == true -> %>one<%= @foo %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+
+      template = "<%= case @foo do %><% x -> %>one<%= x %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "converts case into rendered with vars in head and body" do
+      template = "<%= case 456 do %><% x -> %>one<%= @foo %>two<%= x %>three<% end %>"
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+
+      template = "<%= case @bar do %><% x -> %>one<%= @foo %>two<%= x %>three<% end %>"
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, nil)
+
+      assert changed(template, %{foo: 123, bar: 456}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: [nil, "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, %{bar: true})
+    end
+
     test "converts multiple case into rendered with dynamic condition" do
       template =
         "<%= case @bar do %><% true -> %>one<%= @foo %>two<% false -> %>uno<%= @baz %>dos<% end %>"
@@ -641,13 +692,13 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [nil] = changed(template, %{foo: 123, bar: false, baz: 456}, %{})
 
-      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true, bar: true})
 
       assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true})
 
-      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true})
 
       assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
