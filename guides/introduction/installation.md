@@ -13,7 +13,7 @@ If installing from Hex, use the latest version from there:
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.14.6"},
+    {:phoenix_live_view, "~> 0.14.7"},
     {:floki, ">= 0.27.0", only: :test}
   ]
 end
