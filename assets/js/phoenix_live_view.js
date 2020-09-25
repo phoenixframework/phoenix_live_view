@@ -1424,6 +1424,7 @@ class DOMPatch {
     let added = []
     let updates = []
     let appendPrependUpdates = []
+    let externalFormTriggered = null
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
@@ -1443,8 +1444,7 @@ class DOMPatch {
         },
         onNodeAdded: (el) => {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
-            liveSocket.disconnect()
-            el.submit()
+            externalFormTriggered = el
           }
           // nested view handling
           if(DOM.isPhxChild(el) && view.ownsElement(el)){
@@ -1466,8 +1466,7 @@ class DOMPatch {
         },
         onElUpdated: (el) => {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
-            liveSocket.disconnect()
-            el.submit()
+            externalFormTriggered = el
           }
           updates.push(el)
         },
@@ -1528,6 +1527,10 @@ class DOMPatch {
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
 
+    if(externalFormTriggered){
+      liveSocket.disconnect()
+      externalFormTriggered.submit()
+    }
     return true
   }
 
