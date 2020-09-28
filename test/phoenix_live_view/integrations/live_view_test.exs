@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _} =
         live_isolated(conn, Phoenix.LiveViewTest.DashboardLive,
           session: %{"hello" => "world"},
-          router: MyApp.Router
+          router: Phoenix.LiveViewTest.Router
         )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
