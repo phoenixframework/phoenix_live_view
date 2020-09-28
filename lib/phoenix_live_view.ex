@@ -424,12 +424,16 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
+  @callback handle_cast(msg :: term, socket :: Socket.t()) ::
+              {:noreply, Socket.t()}
+
   @optional_callbacks mount: 3,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
-                      handle_info: 2
+                      handle_info: 2,
+                      handle_cast: 2
 
   @doc """
   Uses LiveView in the current module to mark it a LiveView.
