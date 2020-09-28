@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
   setup do
     conn =
-      Phoenix.ConnTest.build_conn()
+      Phoenix.ConnTest.build_conn(:get, "http://www.example.com/", nil)
       |> Plug.Test.init_test_session(%{})
       |> put_session(:test_pid, self())
 
@@ -155,13 +155,13 @@ defmodule Phoenix.LiveView.ParamsTest do
                       %{socket: %{connected?: true}} = metadata}
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
-      assert metadata.uri == "http://localhost:4000/counter/123?foo=bar"
+      assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
                       %{socket: %{connected?: true}}}
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
-      assert metadata.uri == "http://localhost:4000/counter/123?foo=bar"
+      assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
     end
 
     test "telemetry events are emitted on exception", %{conn: conn} do
@@ -309,7 +309,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert html =~ escape(~s|%{"from" => "rehandled_params", "id" => "123"}|)
       assert html =~ "The value is: 1000"
 
-      assert_receive {:handle_params, "http://localhost:4000/counter/123?from=rehandled_params",
+      assert_receive {:handle_params, "http://www.example.com/counter/123?from=rehandled_params",
                       %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
     end
   end
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       :ok = GenServer.call(counter_live.pid, {:push_patch, next})
 
-      assert_receive {:handle_params, "http://localhost:4000/counter/123?from=handle_params",
+      assert_receive {:handle_params, "http://www.example.com/counter/123?from=handle_params",
                       %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
     end
 
