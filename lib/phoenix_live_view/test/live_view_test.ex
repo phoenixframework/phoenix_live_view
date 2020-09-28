@@ -282,7 +282,7 @@ defmodule Phoenix.LiveViewTest do
       live_module: live_module,
       endpoint: endpoint,
       session: maybe_get_session(conn),
-      url: mount_url(endpoint, path),
+      url: Plug.Conn.request_url(conn),
       test_supervisor: fetch_test_supervisor!()
     }
 
@@ -352,10 +352,6 @@ defmodule Phoenix.LiveViewTest do
       _ -> %{}
     end
   end
-
-  defp mount_url(_endpoint, nil), do: nil
-  defp mount_url(endpoint, "/"), do: endpoint.url()
-  defp mount_url(endpoint, path), do: Path.join(endpoint.url(), path)
 
   defp rebuild_path(%Plug.Conn{request_path: request_path, query_string: ""}),
     do: request_path

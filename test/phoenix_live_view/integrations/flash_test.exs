@@ -10,7 +10,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
 
   setup do
     conn =
-      Phoenix.ConnTest.build_conn()
+      Phoenix.ConnTest.build_conn(:get, "http://www.example.com/", nil)
       |> Phoenix.ConnTest.bypass_through(Router, [:browser])
       |> get("/")
 
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       result =
         render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
 
-      assert result =~ "uri[http://localhost:4000/flash-root?foo]"
+      assert result =~ "uri[http://www.example.com/flash-root?foo]"
       assert result =~ "root[ok!]:info"
 
       assert assert_patch(flash_live, "/flash-root?foo") == :ok
@@ -147,7 +147,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       result =
         render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
 
-      assert result =~ "uri[http://localhost:4000/flash-root?foo]"
+      assert result =~ "uri[http://www.example.com/flash-root?foo]"
       assert result =~ "root[ok!]:info"
       assert result =~ "root[]:error"
 
@@ -199,7 +199,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       render_click(flash_child, "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
 
       result = render(flash_live)
-      assert result =~ "uri[http://localhost:4000/flash-root?patch]"
+      assert result =~ "uri[http://www.example.com/flash-root?patch]"
       assert result =~ "root[ok!]"
     end
 
@@ -293,7 +293,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       })
 
       result = render(flash_live)
-      assert result =~ "uri[http://localhost:4000/flash-root?patch]"
+      assert result =~ "uri[http://www.example.com/flash-root?patch]"
       assert result =~ "root[ok!]"
     end
   end
@@ -329,7 +329,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     result =
       render_click(flash_live, "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
 
-    assert result =~ "uri[http://localhost:4000/flash-root?patch]"
+    assert result =~ "uri[http://www.example.com/flash-root?patch]"
     assert result =~ "root[ok!]:info"
 
     result = render_click(flash_live, "lv:clear-flash", %{key: "info"})
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     result =
       render_click(flash_live, "push_patch", %{"to" => "/flash-root?patch", "info" => "ok!"})
 
-    assert result =~ "uri[http://localhost:4000/flash-root?patch]"
+    assert result =~ "uri[http://www.example.com/flash-root?patch]"
     assert result =~ "root[ok!]:info"
 
     result = render_click(flash_live, "lv:clear-flash")
