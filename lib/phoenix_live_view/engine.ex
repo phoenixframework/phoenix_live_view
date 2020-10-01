@@ -35,15 +35,15 @@ defmodule Phoenix.LiveView.Component do
           </div>
 
       Components are also allowed inside Elixir's special forms, such as
-      `if`, `for`, `case`, and friends. So while this does not work:
+      `if`, `for`, `case`, and friends.
 
-          <%= Enum.map(items, fn item -> %>
+          <%= for item <- items do %>
             <%= live_component @socket, SomeComponent, id: item %>
           <% end %>
 
-      Since the component was given to `Enum.map/2`, this does:
+      However, using other module functions such as `Enum`, will not work:
 
-          <%= for item <- items do %>
+          <%= Enum.map(items, fn item -> %>
             <%= live_component @socket, SomeComponent, id: item %>
           <% end %>
       """
