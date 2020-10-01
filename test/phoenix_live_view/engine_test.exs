@@ -633,6 +633,37 @@ defmodule Phoenix.LiveView.EngineTest do
              ] = changed(template, %{foo: 123}, %{foo: true})
     end
 
+    test "converts case with for into rendered" do
+      template = "<%= case @foo do %><% val -> %><%= for i <- val do %><%= i %><% end %><% end %>"
+
+      assert [
+               %Phoenix.LiveView.Rendered{
+                 dynamic: [
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     dynamics: [["1"], ["2"], ["3"]]
+                   }
+                 ],
+                 static: ["", ""]
+               }
+             ] = changed(template, %{foo: 1..3}, nil)
+
+      assert changed(template, %{foo: 1..3}, %{}) ==
+               [nil]
+
+      assert [
+               %Phoenix.LiveView.Rendered{
+                 dynamic: [
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     dynamics: [["1"], ["2"], ["3"]]
+                   }
+                 ],
+                 static: ["", ""]
+               }
+             ] = changed(template, %{foo: 1..3}, %{foo: true})
+    end
+
     test "does not convert cases in the wrong format" do
       template = "<%= case @bar do true -> @foo; false -> @baz end %>"
 

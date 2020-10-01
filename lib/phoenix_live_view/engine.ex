@@ -473,7 +473,10 @@ defmodule Phoenix.LiveView.Engine do
     for {:->, meta, [args, block]} <- blocks do
       # Variables defined in the head should not taint the whole body,
       # only their usage within the body.
-      {args, vars, assigns} = analyze_with_restricted_vars(args, vars, %{})
+      {args, match_vars, assigns} = analyze_list(args, vars, %{}, [])
+
+      # So we collect them as usual but keep the original tainting.
+      vars = reset_vars(vars, match_vars)
 
       case to_rendered_struct(block, vars, assigns) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
