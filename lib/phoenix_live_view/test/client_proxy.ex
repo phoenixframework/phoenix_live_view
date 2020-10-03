@@ -810,10 +810,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     case rendered do
       %{e: events} ->
         for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
-        {:ok, state}
+        :ok
 
       %{} ->
-        {:ok, state}
+        :ok
     end
   end
 
