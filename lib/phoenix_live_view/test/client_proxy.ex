@@ -414,6 +414,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
+    maybe_push_events(state, rendered)
+
     patch_view(
       %{
         state
@@ -480,14 +482,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
-    case diff do
-      %{e: events} ->
-        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
-        state
-
-      %{} ->
-        state
-    end
+    maybe_push_events(state, diff)
 
     case diff do
       %{r: reply} -> send_caller(state, {:reply, reply})
@@ -809,6 +804,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_values(_type, node, _element) do
     {:ok, DOM.all_values(node)}
+  end
+
+  defp maybe_push_events(state, rendered) do
+    case rendered do
+      %{e: events} ->
+        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
+        {:ok, state}
+
+      %{} ->
+        {:ok, state}
+    end
   end
 
   defp form_defaults(node, acc) do

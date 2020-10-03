@@ -50,6 +50,13 @@ defmodule Phoenix.LiveView.EventTest do
       assert_push_event(view, "my-event", %{two: 2})
       assert render(view) =~ "count: 0"
     end
+
+    test "sends updates in root and child mounts", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-in-mount")
+
+      assert_push_event(view, "root-mount", %{root: "foo"})
+      assert_push_event(view, "child-mount", %{child: "bar"})
+    end
   end
 
   describe "replies" do
