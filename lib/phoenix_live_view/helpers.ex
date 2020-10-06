@@ -371,6 +371,56 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
+  TODO
+  """
+  def upload_errors(
+        %Phoenix.LiveView.UploadConfig{} = conf,
+        %Phoenix.LiveView.UploadEntry{} = entry
+      ) do
+    for {ref, error} <- conf.errors, ref == entry.ref, do: error
+  end
+
+  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
+    binding_prefix = opts[:binding_prefix] || "phx-"
+
+    opts =
+      Keyword.merge(opts,
+        id: "phx-preview-#{ref}",
+        data_phx_upload_ref: entry.upload_ref,
+        data_phx_entry_ref: ref
+      ) ++ [{"#{binding_prefix}hook", "Phoenix.LiveImgPreview"}]
+
+    assigns = %{opts: opts}
+
+    ~L"""
+    <%= Phoenix.HTML.Tag.content_tag(:img, "", @opts) %>
+    """
+  end
+
+  @doc """
+  TODO
+  """
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
+    opts =
+      if conf.max_entries > 1 do
+        Keyword.put(opts, :multiple, true)
+      else
+        opts
+      end
+
+    assigns = %{conf: conf, drop_id: opts[:drop_target_id]}
+    ~L"""
+    <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
+      type: "file",
+      id: @conf.ref,
+      name: @conf.name,
+      data_phx_upload_ref: conf.ref,
+      data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ","),
+      data_phx_drop_target_id: @drop_id) %>
+    """
+  end
+
+  @doc """
   Renders a title tag with automatic prefix/suffix on `@page_title` updates.
 
   ## Examples

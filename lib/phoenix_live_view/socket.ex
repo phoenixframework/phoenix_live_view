@@ -23,6 +23,7 @@ defmodule Phoenix.LiveView.Socket do
   The LiveView socket for Phoenix Endpoints.
   """
   use Phoenix.Socket
+
   require Logger
 
   if Version.match?(System.version(), ">= 1.8.0") do
@@ -65,6 +66,7 @@ defmodule Phoenix.LiveView.Socket do
           connected?: boolean()
         }
 
+  channel "lvu:*", Phoenix.LiveView.UploadChannel
   channel "lv:*", Phoenix.LiveView.Channel
 
   @doc """

@@ -131,10 +131,12 @@ defmodule Phoenix.LiveViewTest do
   """
 
   @flash_cookie "__phoenix_flash__"
+
   require Phoenix.ConnTest
+  require Phoenix.ChannelTest
 
   alias Phoenix.LiveView.{Diff, Socket}
-  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload, UploadClient}
 
   @doc """
   Puts connect params to be used on LiveView connections.
@@ -472,7 +474,7 @@ defmodule Phoenix.LiveViewTest do
 
       assert view
              |> element("form")
-             |> render_submit(%{deg: 123}) =~ "123 exceeds limits"
+             |> render_submit(%{deg: 123, avatar: upload}) =~ "123 exceeds limits"
 
   To submit a form along with some with hidden input values:
 
@@ -921,6 +923,36 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  TODO
+  """
+  defmacro file_input(view, form_selector, name, entries) do
+    quote bind_quoted: [view: view, form_selector: form_selector, name: name, entries: entries] do
+      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name) do
+        {:ok, %{external: false}} ->
+          require Phoenix.ChannelTest
+          socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+          Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, form_selector, name, entries)
+
+        {:ok, %{external: func}} when is_function(func) ->
+          Phoenix.LiveViewTest.__start_external_upload_client__(view, form_selector, name, entries)
+
+        :error -> raise "no uploads allowed for #{name}"
+      end
+    end
+  end
+
+
+  def __start_upload_client__(socket_builder, view, form_selector, name, entries) do
+    {:ok, pid} = UploadClient.start_link(socket_builder: socket_builder, test_supervisor: fetch_test_supervisor!())
+    Upload.new(pid, view, form_selector, name, entries)
+  end
+
+  def __start_external_upload_client__(view, form_selector, name, entries) do
+    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!())
+    Upload.new(pid, view, form_selector, name, entries)
+  end
+
+  @doc """
   Returns the most recent title that was updated via a `page_title` assign.
 
   ## Examples
@@ -1120,6 +1152,45 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
+  @doc """
+  Returns the Pid of the proxy between between the test and LiveView.
+  """
+  def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
+
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
+
+  @doc """
+  TODO
+  """
+  # TODO use %FileINput{} and conver to %Element{}
+  def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
+    if UploadClient.allow_acknowledged?(upload) do
+      render_chunk(upload, entry_name, percent)
+    else
+      case preflight_upload(upload) do
+        {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
+          case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
+            :ok -> render_chunk(upload, entry_name, percent)
+            {:error, reason} -> {:error, reason}
+          end
+
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  @doc """
+  """
+  def preflight_upload(%Upload{} = upload) do
+    # LiveView channel returns error conditions as error key in payload, ie `%{error: reason}`
+    case call(upload.element, {:render_event, upload.element, :allow_upload, upload.entries}) do
+      %{error: reason} -> {:error, reason}
+      %{ref: _ref} = resp -> {:ok, resp}
+    end
+  end
+
+  defp render_chunk(upload, entry_name, percent) do
+    :ok = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
+    render(upload.view)
+  end
 end

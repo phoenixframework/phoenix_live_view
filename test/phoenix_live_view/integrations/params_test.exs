@@ -11,6 +11,11 @@ defmodule Phoenix.LiveView.ParamsTest do
 
   @endpoint Endpoint
 
+  setup_all do
+    ExUnit.CaptureLog.capture_log(fn -> Endpoint.start_link() end)
+    :ok
+  end
+
   setup do
     conn =
       Phoenix.ConnTest.build_conn(:get, "http://www.example.com/", nil)
