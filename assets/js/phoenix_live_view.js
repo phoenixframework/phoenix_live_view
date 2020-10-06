@@ -338,7 +338,7 @@ let channelUploader = function(entries, onError, resp, liveSocket){
             entry.progress(Math.round((loaded / entry.file.size) * 100))
           }
 
-          uploadChannel.push("file", {file: chunk})
+          uploadChannel.push("chunk", chunk)
             .receive("ok", () => {
               if(finished){
                 entry.done()
@@ -590,39 +590,6 @@ export class Rendered {
   }
 }
 
-function writeBinaryString(view, string, offset) {
-  let i = 0;
-  for (i; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i))
-  }
-  return offset + i;
-}
-
-function binaryEncode(message , cb) {
-  const { join_ref, ref, topic, payload: { file } } = message
-  const headerLength = 2
-  const metaLength = 3 + join_ref.length + ref.length + topic.length
-  const fileLength = file.byteLength
-  const header = new ArrayBuffer(headerLength + metaLength)
-
-
-  const view = new DataView(header)
-  view.setUint8(0, 0)
-  view.setUint8(1, 1)
-  view.setUint8(2, join_ref.length)
-  view.setUint8(3, ref.length)
-  view.setUint8(4, topic.length)
-  let offset = writeBinaryString(view, join_ref, 5)
-  offset = writeBinaryString(view, ref, offset)
-  offset = writeBinaryString(view, topic, offset)
-
-  var combined = new Uint8Array(header.byteLength + fileLength)
-  combined.set(new Uint8Array(header), 0)
-  combined.set(new Uint8Array(file), header.byteLength)
-
-  cb(combined.buffer)
-}
-
 /** Initializes the LiveSocket
  *
  *
@@ -719,15 +686,6 @@ export class LiveSocket {
         window.location.reload()
       }
     })
-
-    const encode = this.socket.encode
-    this.socket.encode = function(message, cb) {
-      if (message.event === "file") {
-        binaryEncode(message, cb)
-      } else {
-        encode(message, cb)
-      }
-    }
   }
 
   // public

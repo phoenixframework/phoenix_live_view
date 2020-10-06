@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   @impl true
-  def handle_in("event", {:frame, payload}, socket) do
+  def handle_in("chunk", {:binary, payload}, socket) do
     %{uploaded_size: uploaded_size, max_file_size: max_file_size} = socket.assigns
     socket = reschedule_chunk_timer(socket)
 

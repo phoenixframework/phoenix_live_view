@@ -71,7 +71,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
     Process.flag(:trap_exit, true)
     entry = get_entry!(state, entry_name)
-    ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
+    ref = Phoenix.ChannelTest.push(entry.socket, "chunk", {:binary, chunk})
     receive do
       %Phoenix.Socket.Reply{ref: ^ref, status: status, payload: payload} ->
         {:stop, :normal, {status, payload}, state}
@@ -158,7 +158,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         :binary.part(entry.content, stats.start, stats.chunk_size)
       end
 
-    ref = Phoenix.ChannelTest.push(entry.socket, "event", {:frame, chunk})
+    ref = Phoenix.ChannelTest.push(entry.socket, "chunk", {:binary, chunk})
     receive do
       %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
         :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent)
