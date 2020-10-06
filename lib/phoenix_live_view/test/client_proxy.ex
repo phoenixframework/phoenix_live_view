@@ -258,7 +258,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           "cid" => cid,
           "type" => Atom.to_string(type),
           "event" => event,
-          "value" => encode(type, values)
+          "value" => encode_event_type(type, values)
         }, upload)
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
