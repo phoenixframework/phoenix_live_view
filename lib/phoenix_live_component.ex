@@ -297,8 +297,8 @@ defmodule Phoenix.LiveComponent do
         New entry: <%= @entry %>
       <% end %>
 
-  The `do/end` will be available in an assign named `@inner_content`.
-  You can render its contents by calling `render_inner` with the
+  The `do/end` will be available in an assign named `@inner_block`.
+  You can render its contents by calling `render_block` with the
   assign itself and a keyword list of assigns to inject into the rendered
   content. For example, the grid component above could be implemented as:
 
@@ -310,7 +310,7 @@ defmodule Phoenix.LiveComponent do
           <div class="grid">
             <%= for entry <- @entries do %>
               <div class="column">
-                <%= render_inner(@inner_content, entry: entry) %>
+                <%= render_block(@inner_block, entry: entry) %>
               </div>
             <% end %>
           </div>
@@ -320,12 +320,12 @@ defmodule Phoenix.LiveComponent do
 
   Where the `:entry` assign was injected into the `do/end` block.
 
-  Note the `@inner_content` assign is also passed to `c:update/2`
+  Note the `@inner_block` assign is also passed to `c:update/2`
   along all other assigns. So if you have a custom `update/2`
   implementation, make sure to assign it to the socket like so:
 
-      def update(%{inner_content: inner_content}, socket) do
-        {:ok, assign(socket, inner_content: inner_content)}
+      def update(%{inner_block: inner_block}, socket) do
+        {:ok, assign(socket, inner_block: inner_block)}
       end
 
   The above approach is the preferred one when passing blocks to `do/end`.

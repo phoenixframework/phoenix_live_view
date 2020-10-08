@@ -347,8 +347,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
     def render(assigns) do
       ~L"""
-      HELLO <%= @id %> <%= render_inner(@inner_content, value: 1) %>
-      HELLO <%= @id %> <%= render_inner(@inner_content, value: 2) %>
+      HELLO <%= @id %> <%= render_block(@inner_block, value: 1) %>
+      HELLO <%= @id %> <%= render_block(@inner_block, value: 2) %>
       """
     end
   end
