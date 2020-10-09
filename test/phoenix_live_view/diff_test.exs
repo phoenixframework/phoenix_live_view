@@ -91,6 +91,30 @@ defmodule Phoenix.LiveView.DiffTest do
              </div>
              """
     end
+
+    test "with subtrees where a comprehension is replaced by rendered" do
+      assert rendered_to_binary(%{
+               0 => 1,
+               1 => 2,
+               :c => %{
+                 1 => %{
+                   0 => %{
+                     0 => %{d: [[], [], []], s: ["ROW"]},
+                     :s => ["\n", "\n"]
+                   },
+                   :s => ["<div>", "</div>"]
+                 },
+                 2 => %{
+                   0 => %{
+                     0 => %{0 => "BAR", :s => ["FOO", "BAZ"]},
+                     :s => ["\n", "\n"]
+                   },
+                   :s => 1
+                 }
+               },
+               :s => ["", "", ""]
+             }) == "<div>\nROWROWROW\n</div><div>\nFOOBARBAZ\n</div>"
+    end
   end
 
   describe "full renders without fingerprints" do

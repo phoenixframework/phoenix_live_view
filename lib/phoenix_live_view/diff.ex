@@ -87,6 +87,8 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
+  defp deep_merge(_original, %{@static => _} = extra), do: extra
+
   defp deep_merge(original, extra) do
     Map.merge(original, extra, fn
       _, %{} = original, %{} = extra -> deep_merge(original, extra)
