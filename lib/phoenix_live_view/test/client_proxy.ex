@@ -2,6 +2,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
+  @events :e
+  @title :t
+  @reply :r
+
   defstruct session_token: nil,
             static_token: nil,
             module: nil,
@@ -414,7 +418,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
-    maybe_push_events(state, rendered)
+    rendered = maybe_push_events(rendered, state)
 
     patch_view(
       %{
@@ -482,18 +486,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
-    maybe_push_events(state, diff)
-
-    case diff do
-      %{r: reply} -> send_caller(state, {:reply, reply})
-      %{} -> state
-    end
-
-    state =
-      case diff do
-        %{t: new_title} -> %{state | page_title: new_title}
-        %{} -> state
-      end
+    {diff, state} =
+      diff
+      |> maybe_push_events(state)
+      |> maybe_push_reply(state)
+      |> maybe_push_title(state)
 
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
@@ -806,14 +803,32 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, DOM.all_values(node)}
   end
 
-  defp maybe_push_events(state, rendered) do
-    case rendered do
-      %{e: events} ->
+  defp maybe_push_events(diff, state) do
+    case diff do
+      %{@events => events} ->
         for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
-        :ok
+        Map.delete(diff, @events)
 
       %{} ->
-        :ok
+        diff
+    end
+  end
+
+  defp maybe_push_reply(diff, state) do
+    case diff do
+      %{@reply => reply} ->
+        send_caller(state, {:reply, reply})
+        Map.delete(diff, @reply)
+
+      %{} ->
+        diff
+    end
+  end
+
+  defp maybe_push_title(diff, state) do
+    case diff do
+      %{@title => title} -> {Map.delete(diff, @title), %{state | page_title: title}}
+      %{} -> {diff, state}
     end
   end
 

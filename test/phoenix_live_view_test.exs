@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewUnitTest do
               view: Phoenix.LiveViewTest.ParamCounterLive,
               root_view: Phoenix.LiveViewTest.ParamCounterLive
             },
-            %{connect_params: %{}, connect_info: %{}},
+            %{connect_params: %{}, connect_info: %{}, changed: %{}},
             nil,
             %{},
             URI.parse("https://www.example.com")

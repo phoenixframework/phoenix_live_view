@@ -97,6 +97,15 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
+  Render information stored in private changed.
+  """
+  def render_private(socket, diff) do
+    diff
+    |> maybe_put_events(socket)
+    |> maybe_put_reply(socket)
+  end
+
+  @doc """
   Renders a diff for the rendered struct in regards to the given socket.
   """
   def render(
@@ -115,12 +124,7 @@ defmodule Phoenix.LiveView.Diff do
     {component_diffs, components} = render_pending_components(socket, pending, %{}, components)
     socket = %{socket | fingerprints: prints}
 
-    diff =
-      diff
-      |> maybe_put_title(socket)
-      |> maybe_put_events(socket)
-      |> maybe_put_reply(socket)
-
+    diff = maybe_put_title(diff, socket)
     {diff, component_diffs} = extract_events({diff, component_diffs})
 
     if map_size(component_diffs) == 0 do
@@ -608,13 +612,13 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp mount_component(socket, component, assigns) do
+    private =
+      socket.private
+      |> Map.take([:conn_session])
+      |> Map.put(:changed, %{})
+
     socket =
-      configure_socket_for_component(
-        socket,
-        assigns,
-        Map.take(socket.private, [:conn_session]),
-        new_fingerprints()
-      )
+      configure_socket_for_component(socket, assigns, private, new_fingerprints())
       |> Utils.assign(:flash, %{})
 
     Utils.maybe_call_live_component_mount!(socket, component)

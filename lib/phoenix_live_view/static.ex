@@ -117,7 +117,8 @@ defmodule Phoenix.LiveView.Static do
           assign_new: {conn.assigns, []},
           connect_params: %{},
           connect_info: %{},
-          conn_session: conn_session
+          conn_session: conn_session,
+          changed: %{}
         },
         action,
         flash,
@@ -220,7 +221,7 @@ defmodule Phoenix.LiveView.Static do
           parent_pid: self(),
           router: parent.router
         },
-        %{assign_new: {parent.assigns.__assigns__, []}, phoenix_live_layout: false},
+        %{assign_new: {parent.assigns.__assigns__, []}, phoenix_live_layout: false, changed: %{}},
         nil,
         %{},
         parent.host_uri
