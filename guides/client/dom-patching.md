@@ -78,3 +78,41 @@ to the container as well as to each child:
 
 When the client receives new messages, it now knows to append to the
 old content rather than replace it.
+
+### Removing an element
+
+Elements can be removed from the container by setting the `phx-remove`
+attribute on the elements to be removed. This is only supported when
+the update type is `append` or `prepend`.
+
+Suppose that a user can delete a message.
+
+  def handle_event("delete_message", %{"message_id" => message_id}, socket) do
+    {:noreply, assign(socket, :deleted_message_id, message_id)}
+  end
+
+Our template now becomes:
+
+  <div id="chat-messages" phx-update="append">
+    <%= if @deleted_message_id do %>
+      <p id="<%= @deleted_message_id %>" phx-remove></div>
+    <% else %>
+      <%= for message <- @messages do %>
+        <p id="<%= message.id %>">
+          <span><%= message.username %>:</span> <%= message.text %>
+        </p>
+      <% end %>
+    <% end %>
+  </div>
+
+We also need to initialize the `deleted_message_id` as a temporary assign, so
+our mount function is now:
+
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(socket, :messages, load_last_20_messages())
+     |> assign(:deleted_message_id, nil),
+     temporary_assigns: [messages: [], deleted_message_id: nil]
+    }
+  end

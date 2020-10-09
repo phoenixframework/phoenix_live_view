@@ -24,7 +24,6 @@ const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_SKIP = "data-phx-skip"
-const PHX_REMOVE = "data-phx-remove"
 const PHX_PAGE_LOADING = "page-loading"
 const PHX_CONNECTED_CLASS = "phx-connected"
 const PHX_DISCONNECTED_CLASS = "phx-disconnected"
@@ -50,6 +49,7 @@ const PHX_HOOK = "hook"
 const PHX_DEBOUNCE = "debounce"
 const PHX_THROTTLE = "throttle"
 const PHX_UPDATE = "update"
+const PHX_REMOVE = "remove"
 const PHX_KEY = "key"
 const PHX_PRIVATE = "phxPrivate"
 const PHX_AUTO_RECOVER = "auto-recover"
@@ -1306,7 +1306,7 @@ export let DOM = {
 }
 
 class DOMPostMorphRestorer {
-  constructor(containerBefore, containerAfter, updateType) {
+  constructor(containerBefore, containerAfter, updateType, phxRemoveAttributeName) {
     let idsBefore = new Set()
     let idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
@@ -1326,6 +1326,9 @@ class DOMPostMorphRestorer {
     this.updateType = updateType
     this.elementsToModify = elementsToModify
     this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
+    this.elementIdsToRemove = [...containerAfter.children]
+      .filter(child => child.getAttribute && child.getAttribute(phxRemoveAttributeName) !== null)
+      .map(child => child.id)
   }
 
   // We do the following to optimize append/prepend operations:
@@ -1362,6 +1365,12 @@ class DOMPostMorphRestorer {
         maybe(document.getElementById(elemId), elem => container.insertAdjacentElement("afterbegin", elem))
       })
     }
+
+    this.elementIdsToRemove.forEach(element_id => {
+      maybe(document.getElementById(element_id), element => {
+        element.remove()
+      })
+    })
   }
 }
 
@@ -1405,8 +1414,8 @@ class DOMPatch {
   }
 
   markPrunableContentForRemoval(){
-    DOM.all(this.container, `[phx-update=append] > *, [phx-update=prepend] > *`, el => {
-      el.setAttribute(PHX_REMOVE, "")
+    DOM.all(this.container, `[${this.binding(PHX_UPDATE)}=append] > *, [${this.binding(PHX_UPDATE)}=prepend] > *`, el => {
+      el.setAttribute(this.binding(PHX_REMOVE), "")
     })
   }
 
@@ -1427,7 +1436,7 @@ class DOMPatch {
     let externalFormTriggered = null
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
-      return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
+      return this.buildDiffHTML(container, html, targetContainer)
     })
 
     this.trackBefore("added", container)
@@ -1458,8 +1467,8 @@ class DOMPatch {
           this.trackAfter("discarded", el)
         },
         onBeforeNodeDiscarded: (el) => {
-          if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
-          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.getAttribute && el.getAttribute(this.binding(PHX_REMOVE)) !== null){ return true }
+          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, this.binding(PHX_UPDATE), ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
           this.trackBefore("discarded", el)
           return true
@@ -1471,9 +1480,9 @@ class DOMPatch {
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
-          DOM.cleanChildNodes(toEl, phxUpdate)
+          DOM.cleanChildNodes(toEl, this.binding(PHX_UPDATE))
           if(this.skipCIDSibling(toEl)){ return false }
-          if(fromEl.getAttribute(phxUpdate) === "ignore"){
+          if(fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl)
             updates.push(fromEl)
@@ -1504,7 +1513,7 @@ class DOMPatch {
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
-              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
+              appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate), this.binding(PHX_REMOVE)))
             }
             DOM.syncAttrsToProps(toEl)
             this.trackBefore("updated", fromEl, toEl)
@@ -1559,7 +1568,7 @@ class DOMPatch {
   // - for patches of a component with multiple root nodes, the
   //   parent node becomes the target container and non-component
   //   siblings are marked as skip.
-  buildDiffHTML(container, html, phxUpdate, targetContainer){
+  buildDiffHTML(container, html, targetContainer){
     let isCIDPatch = this.isCIDPatch()
     let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()
     if(!isCIDPatch || isCIDWithSingleRoot){
@@ -1584,6 +1593,8 @@ class DOMPatch {
       return diffContainer.outerHTML
     }
   }
+
+  binding(kind){ return this.liveSocket.binding(kind)}
 }
 
 export class View {
