@@ -395,7 +395,9 @@ defmodule Phoenix.LiveView do
   `options` is one of:
 
     * `:temporary_assigns` - a keyword list of assigns that are temporary
-      and must be reset to their value after every render
+      and must be reset to their value after every render. Note that once
+      the value is reset, it won't be re-rendered again until it is explicitly
+      assigned
 
     * `:layout` - the optional layout to be used by the LiveView
 
