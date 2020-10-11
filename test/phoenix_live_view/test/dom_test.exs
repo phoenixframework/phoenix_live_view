@@ -184,4 +184,9 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       assert new_html =~ ~S(<div id="3">a</div>)
     end
   end
+
+  test "maybe wrap html with css stylesheet" do
+    assert DOM.maybe_wrap_html_element("<div>test</div>", "app.css") ==
+      "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"stylesheet\" href=\"app.css\" /></head><body><div>test</div></body></html>"
+  end
 end

@@ -356,6 +356,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
+  def handle_call({:open_browser, open_browser_fun, html}, from, state) do
+    filename = "#{state.root_view.topic}_#{Phoenix.LiveView.Utils.random_id()}"
+    html = DOM.maybe_wrap_html_element(html, state.root_view.endpoint.static_path("/priv/static/css/app.css"))
+
+    filename
+    |> Phoenix.LiveView.Utils.write_tmp_file!(".html", html)
+    |> open_browser_fun.()
+
+    GenServer.reply(from, {:ok, filename})
+    {:noreply, state}
+  end
+
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
     push(state, view, "phx_leave", %{})

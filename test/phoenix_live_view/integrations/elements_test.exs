@@ -661,4 +661,24 @@ defmodule Phoenix.LiveView.ElementsTest do
                ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "2020"}|
     end
   end
+
+  describe "open_browser" do
+    setup do
+      [fun: fn path -> path end]
+    end
+
+    test "render view", %{live: view, fun: fun} do
+      assert view |> test_open_browser(fun) == view
+    end
+
+    test "render element", %{live: view, fun: fun} do
+      element = element(view, "#scoped-render")
+      assert element |> test_open_browser(fun) == element
+    end
+
+    test "render html", %{live: view, fun: fun} do
+      html = render(view)
+      assert html |> test_open_browser(view, fun) == html
+    end
+  end
 end

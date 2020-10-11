@@ -1028,6 +1028,36 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  def open_browser(%View{} = view) do
+    do_open_browser(view, render(view))
+    view
+  end
+
+  def open_browser(%Element{} = element) do
+    do_open_browser(element, render(element))
+    element
+  end
+
+  def open_browser(html, %View{} = view) when is_binary(html) do
+    do_open_browser(view, html)
+    html
+  end
+
+  @doc false
+  def test_open_browser(view_or_element, fun) do
+    call(view_or_element, {:open_browser, fun, render(view_or_element)})
+    view_or_element
+  end
+
+  def test_open_browser(html, view, fun) do
+    call(view, {:open_browser, fun, html})
+    html
+  end
+
+  defp do_open_browser(view_or_element, html) do
+    call(view_or_element, {:open_browser, &Phoenix.LiveView.Utils.open_browser/1, html})
+  end
+
   @doc """
   Asserts an event will be pushed within `timeout`.
 

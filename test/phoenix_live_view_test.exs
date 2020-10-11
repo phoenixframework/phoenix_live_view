@@ -292,4 +292,12 @@ defmodule Phoenix.LiveViewUnitTest do
                {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
     end
   end
+
+  describe "open_browser utils" do
+    test "write temporary file" do
+      path = Utils.write_tmp_file!("filename", ".ext", "content")
+      assert File.exists?(path)
+      assert File.read!(path) == "content"
+    end
+  end
 end
