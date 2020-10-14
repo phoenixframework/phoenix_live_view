@@ -254,11 +254,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case result do
       {view, cid, event, values, upload} ->
+        {type, encoded_value} = encode_event_type(type, values)
         payload = maybe_put_uploads(state, view, %{
           "cid" => cid,
-          "type" => Atom.to_string(type),
+          "type" => type,
           "event" => event,
-          "value" => encode_event_type(type, values)
+          "value" => encoded_value
         }, upload)
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
