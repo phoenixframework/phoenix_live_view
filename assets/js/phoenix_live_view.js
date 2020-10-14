@@ -323,13 +323,14 @@ let channelUploader = function(entries, onError, resp, liveSocket){
     onError(() => uploadChannel.leave())
     uploadChannel.onError(() => uploadChannel.leave())
     uploadChannel.onClose(() => {
-      if(!entry.isDone()){
-        entry.cancel()
-      }
+      if(!entry.isDone()){ entry.cancel() }
     })
 
     uploadChannel.join()
-      .receive("error", reason => uploadChannel.leave()) // TODO
+      .receive("error", reason => {
+        uploadChannel.leave()
+        entry.error()
+      })
       .receive("ok", data => {
         let offset = 0
         const uploadChunk = (chunk, finished, loaded) => {
