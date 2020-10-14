@@ -111,6 +111,7 @@ defmodule Phoenix.LiveView.UploadChannel do
   defp close_file(socket) do
     File.close(socket.assigns.handle)
     if socket.assigns.chunk_timer, do: Process.cancel_timer(socket.assigns.chunk_timer)
+    send(socket.transport_pid, :garbage_collect)
     assign(socket, :chunk_timer, nil)
   end
 
