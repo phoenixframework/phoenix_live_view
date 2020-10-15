@@ -416,14 +416,6 @@ defmodule Phoenix.LiveView.UploadConfig do
     recalculate_computed_fields(%UploadConfig{conf | entries: [], errors: []})
   end
 
-  # TODO validate against config constraints
-  # defp cast_and_validate_entry(%UploadConfig{entries: entries, max_entries: max} = conf, %{
-  #        "ref" => _ref
-  #      })
-  #      when length(entries) >= max do
-  #   {:error, put_error(conf, conf.ref, @too_many_files)}
-  # end
-
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     entry = %UploadEntry{
       ref: ref,

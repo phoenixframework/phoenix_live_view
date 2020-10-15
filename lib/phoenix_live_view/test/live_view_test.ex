@@ -1236,6 +1236,14 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Performs a preflight upload request.
+
+  Useful for testing external uploaders to retrieve the `:external` entry metadata.
+
+  ## Examples
+
+      avatar = file_input(lv, "form", :avatar, %{name: ..., ...})
+      assert {:ok, %{ref: _ref, config: %{chunk_size: _}}} = preflight_upload(avatar)
   """
   def preflight_upload(%Upload{} = upload) do
     # LiveView channel returns error conditions as error key in payload, ie `%{error: reason}`

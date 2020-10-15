@@ -371,7 +371,24 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  TODO
+  Returns the entry errors for an upload.
+
+  The following errors may be returned:
+
+    * `:too_large` - The entry exceeded the `:max_file_size` constraint
+    * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+    * `:not_acceptable` - The entry does not match the `:accept` MIME types
+
+  ## Examples
+
+      def error_to_string(:too_large), do: "Too large"
+      def error_to_string(:too_many_files), do: "You have selected too many files"
+
+      <%= for {_ref, err} <- @uploads.avatar.errors do %>
+        <div class="alert alert-danger">
+          <%= error_to_string(err) %>
+        </div>
+      <% end %>
   """
   def upload_errors(
         %Phoenix.LiveView.UploadConfig{} = conf,
@@ -380,6 +397,15 @@ defmodule Phoenix.LiveView.Helpers do
     for {ref, error} <- conf.errors, ref == entry.ref, do: error
   end
 
+  @doc """
+  Generates an image preview on the client for a selected file.
+
+  ## Examples
+
+      <%= for entry <- @uploads.avatar.entries do %>
+        <%= live_img_preview entry, width: 75 %>
+      <% end %>
+  """
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
     binding_prefix = opts[:binding_prefix] || "phx-"
 
@@ -398,7 +424,13 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  TODO
+  Builds a file input tag for a LiveView upload.
+
+  Options may be passed through to the tag builder for custom attributes.
+
+  ## Examples
+
+      <%= live_file_input @uploads.avatar %>
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
     opts =
