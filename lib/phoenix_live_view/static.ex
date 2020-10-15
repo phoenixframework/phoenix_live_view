@@ -56,7 +56,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  TODO
+  Verifies a LiveView token.
   """
   def verify_token(endpoint, token) do
     case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
@@ -361,7 +361,7 @@ defmodule Phoenix.LiveView.Static do
     })
   end
 
-  # THe static token is computed only on disconnected render and it keeps
+  # The static token is computed only on disconnected render and it keeps
   # the information that is only available during disconnected renders,
   # such as assign_new.
   defp sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
@@ -374,7 +374,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  TODO
+  Signs a LiveView token.
   """
   def sign_token(endpoint, data) do
     Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
