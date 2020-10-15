@@ -384,10 +384,12 @@ defmodule Phoenix.LiveView.Helpers do
       def error_to_string(:too_large), do: "Too large"
       def error_to_string(:too_many_files), do: "You have selected too many files"
 
-      <%= for {_ref, err} <- @uploads.avatar.errors do %>
-        <div class="alert alert-danger">
-          <%= error_to_string(err) %>
-        </div>
+      <%= for entry <- @uploads.avatar.entries do %>
+        <%= for err <- upload_errors(@uploads.avatar, entry) %>
+          <div class="alert alert-danger">
+            <%= error_to_string(err) %>
+          </div>
+        <% end %>
       <% end %>
   """
   def upload_errors(
