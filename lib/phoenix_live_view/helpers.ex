@@ -430,6 +430,17 @@ defmodule Phoenix.LiveView.Helpers do
 
   Options may be passed through to the tag builder for custom attributes.
 
+  ## Drag and Drop
+
+  Drag and drop is supported by annoting the droppable container with a `phx-drop-target`
+  attribute pointing to the DOM ID of the file input. By default, the file input ID is the
+  upload `ref`, so the following markup is all this is required for drag and drop support:
+
+      <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+          ...
+          <%= live_file_input @uploads.avatar %>
+      </div>
+
   ## Examples
 
       <%= live_file_input @uploads.avatar %>
@@ -442,15 +453,15 @@ defmodule Phoenix.LiveView.Helpers do
         opts
       end
 
-    assigns = %{conf: conf, drop_id: opts[:drop_target_id]}
+    assigns = %{conf: conf, opts: opts}
+
     ~L"""
-    <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
+    <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(@opts,
       type: "file",
-      id: @conf.ref,
+      id: @opts[:id] || @conf.ref,
       name: @conf.name,
       data_phx_upload_ref: conf.ref,
-      data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ","),
-      data_phx_drop_target_id: @drop_id) %>
+      data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ",")) %>
     """
   end
 
