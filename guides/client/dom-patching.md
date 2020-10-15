@@ -134,3 +134,7 @@ after the input has 3 or more characters.
 The mistake here is using `:temporary_assigns` to reset or control
 UI state, while `:temporary_assigns` should rather be used when we
 don't have (or don't want to keep) certain data around.
+
+This example can be made to work by using `:reset_assigns` instead
+of `:temporary_assigns`. This works like `:temporary_assigns` but
+the reset is rendered, so it can be used to control UI state.

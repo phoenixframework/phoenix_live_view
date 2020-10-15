@@ -54,25 +54,143 @@ defmodule Phoenix.LiveView.AssignsTest do
     test "can be configured with mount options", %{conn: conn} do
       {:ok, conf_live, html} =
         conn
-        |> put_session(:opts, temporary_assigns: [description: nil])
-        |> live("/opts")
+        |> put_session(:opts, temporary_assigns: [foo: nil])
+        |> live("/assigns")
 
-      assert html =~ "long description. canary"
-      assert render(conf_live) =~ "long description. canary"
-      socket = GenServer.call(conf_live.pid, {:exec, fn socket -> {:reply, socket, socket} end})
+      assert html =~ "foo: foo / bar: bar"
+      assert render(conf_live) =~ "foo: foo / bar: bar"
 
-      assert socket.assigns.description == nil
-      assert socket.assigns.canary == "canary"
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == nil
+      assert assigns.bar == "bar"
     end
 
-    test "raises with invalid options", %{conn: conn} do
+    test "temporary assigns are reset to default value, but this is not reflected in the render.",
+         %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, temporary_assigns: [foo: "default-value"])
+        |> live("/assigns")
+
+      assert html =~ "foo: foo / bar: bar"
+      assert render(conf_live) =~ "foo: foo / bar: bar"
+
+      assert render_submit(conf_live, :assign, %{foo: "temporary-assign-changed"}) =~
+               "foo: temporary-assign-changed / bar: bar"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+
+      assert render_submit(conf_live, :assign, %{bar: "bar-changed"}) =~
+               "foo: temporary-assign-changed / bar: bar-changed"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+    end
+
+    test "temporary assigns are reset to default value after mount and this is not reflected in the render.",
+         %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, temporary_assigns: [foo: "default-value"])
+        |> live("/assigns")
+
+      assert html =~ "foo: foo / bar: bar"
+      assert render(conf_live) =~ "foo: foo / bar: bar"
+
+      assert render_submit(conf_live, :assign, %{bar: "other"}) =~
+               "foo: foo / bar: other"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+    end
+
+    test "raises when conflicting with reset assigns", %{
+      conn: conn
+    } do
       assert_raise Plug.Conn.WrapperError,
-                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/3/,
+                   ~r/you have conflicting reset_assigns and temporary_assigns\. your conflicting assigns are \[:foo\]/,
                    fn ->
                      conn
-                     |> put_session(:opts, oops: [:description])
-                     |> live("/opts")
+                     |> put_session(:opts,
+                       temporary_assigns: [
+                         foo: "temporary-assigns-value",
+                         bar: "reset-assigns-value"
+                       ],
+                       reset_assigns: [foo: "reset-assigns-value", baz: "temporary-assigns-value"]
+                     )
+                     |> live("/assigns")
                    end
     end
+  end
+
+  describe "reset_assigns" do
+    test "reset assigns are reset to default value, and it is reflected in the render.", %{
+      conn: conn
+    } do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, reset_assigns: [foo: "default-value"])
+        |> live("/assigns")
+
+      assert html =~ "foo: foo / bar: bar"
+      assert render(conf_live) =~ "foo: foo / bar: bar"
+
+      assert render_submit(conf_live, :assign, %{foo: "temporary-assign-changed"}) =~
+               "foo: temporary-assign-changed / bar: bar"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+
+      assert render_submit(conf_live, :assign, %{bar: "bar-changed"}) =~
+               "foo: default-value / bar: bar-changed"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+    end
+
+    test "reset assigns are reset to default value after mount and is reflected in the render.",
+         %{conn: conn} do
+      {:ok, conf_live, html} =
+        conn
+        |> put_session(:opts, reset_assigns: [foo: "default-value"])
+        |> live("/assigns")
+
+      assert html =~ "foo: foo / bar: bar"
+      assert render(conf_live) =~ "foo: foo / bar: bar"
+
+      assert render_submit(conf_live, :assign, %{bar: "other"}) =~
+               "foo: default-value / bar: other"
+
+      assigns = GenServer.call(conf_live.pid, :get_assigns)
+      assert assigns.foo == "default-value"
+    end
+
+    test "raises when conflicting with temporary assigns",
+         %{conn: conn} do
+      assert_raise Plug.Conn.WrapperError,
+                   ~r/you have conflicting reset_assigns and temporary_assigns\. your conflicting assigns are \[:foo\]/,
+                   fn ->
+                     conn
+                     |> put_session(:opts,
+                       reset_assigns: [foo: "reset-assigns-value", bar: "reset-assigns-value"],
+                       temporary_assigns: [
+                         foo: "temporary-assigns-value",
+                         baz: "temporary-assigns-value"
+                       ]
+                     )
+                     |> live("/assigns")
+                   end
+    end
+  end
+
+  test "raises with invalid options", %{conn: conn} do
+    assert_raise Plug.Conn.WrapperError,
+                 ~r/invalid option returned/,
+                 fn ->
+                   conn
+                   |> put_session(:opts, oops: [:description])
+                   |> live("/assigns")
+                 end
   end
 end

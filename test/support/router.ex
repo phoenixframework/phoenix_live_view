@@ -36,7 +36,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     live "/same-child", SameChildLive
     live "/root", RootLive
-    live "/opts", OptsLive
+    live "/assigns", AssignsLive
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
