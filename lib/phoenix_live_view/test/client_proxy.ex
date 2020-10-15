@@ -28,7 +28,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def encode!(msg), do: msg
 
   @doc """
-  TODO
+  Reports upload progress to the proxy.
   """
   def report_upload_progress(proxy_pid, from, element, entry_ref, percent) do
     GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent})
