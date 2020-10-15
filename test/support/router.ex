@@ -88,6 +88,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration components
     live "/component_in_live", ComponentInLive.Root
+    live "/cids_destroyed", CidsDestroyedLive
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do

@@ -97,6 +97,25 @@ defmodule Phoenix.LiveView.ComponentTest do
     refute render(view) =~ "Hello World"
   end
 
+  test "tracks removals when there is a race between server and client", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/cids_destroyed")
+
+    # The button is on the page
+    assert render(view) =~ "Hello World</button>"
+
+    # Make sure we can bump the component
+    assert view |> element("#bumper") |> render_click() =~ "Bump: 1"
+
+    # Now click the form
+    assert view |> element("form") |> render_submit() =~ "loading..."
+
+    # Which will be reset almost immediately
+    assert render(view) =~ "Hello World</button>"
+
+    # But the client did not have time to remove it so the bumper still keps going
+    assert view |> element("#bumper") |> render_click() =~ "Bump: 2"
+  end
+
   test "preloads", %{conn: conn} do
     conn =
       conn

@@ -1599,6 +1599,7 @@ export class View {
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
+    this.pruningCIDs = []
     this.href = href
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
@@ -1967,7 +1968,9 @@ export class View {
   renderContainer(diff, kind){
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName
-      let cids = diff ? this.rendered.componentCIDs(diff) : null
+      // Don't skip any components in the diff nor any marked as pruned
+      // (as they may have been added back)
+      let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
       let html = this.rendered.toString(cids)
       return `<${tag}>${html}</${tag}>`
     })
@@ -2322,12 +2325,28 @@ export class View {
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){
-    let completelyDestroyedCIDs = destroyedCIDs.filter(cid => {
+    let willDestroyCIDs = destroyedCIDs.filter(cid => {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
-    if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
-        this.rendered.pruneCIDs(completelyDestroyedCIDs)
+    if(willDestroyCIDs.length > 0){
+      this.pruningCIDs.push(...willDestroyCIDs)
+
+      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
+        // The cids are either back on the page or they will be fully removed,
+        // so we can remove them from the pruningCIDs.
+        this.pruningCIDs = this.pruningCIDs.filter(cid => willDestroyCIDs.indexOf(cid) !== -1)
+
+        // See if any of the CIDs we wanted to destroy were added back,
+        // if they were added back, we don't actually destroy them.
+        let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
+          return DOM.findComponentNodeList(this.el, cid).length === 0
+        })
+
+        if(completelyDestroyCIDs.length > 0){
+          this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+            this.rendered.pruneCIDs(resp.cids)
+          })
+        }
       })
     }
   }
