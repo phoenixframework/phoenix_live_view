@@ -225,12 +225,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       case topic_or_element do
         {topic, event} ->
           view = fetch_view_by_topic!(state, topic)
+
           case value do
             %Upload{} = upload ->
               {view, nil, event, %{}, upload}
+
             other ->
-               {view, nil, event, stringify(other, & &1), nil}
-            end
+              {view, nil, event, stringify(other, & &1), nil}
+          end
 
         %Element{} = element ->
           view = fetch_view_by_topic!(state, proxy_topic(element))
@@ -241,7 +243,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
                {:ok, cid} <- maybe_cid(root, node) do
-
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
@@ -255,12 +256,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     case result do
       {view, cid, event, values, upload} ->
         {type, encoded_value} = encode_event_type(type, values)
-        payload = maybe_put_uploads(state, view, %{
-          "cid" => cid,
-          "type" => type,
-          "event" => event,
-          "value" => encoded_value
-        }, upload)
+
+        payload =
+          maybe_put_uploads(
+            state,
+            view,
+            %{
+              "cid" => cid,
+              "type" => type,
+              "event" => event,
+              "value" => encoded_value
+            },
+            upload
+          )
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
 
@@ -354,12 +362,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
-  def handle_call({:upload_progress, from, %Element{} = element, entry_ref, progress}, _from, state) do
+  def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress}, _, state) do
     payload = %{"entry_ref" => entry_ref, "progress" => progress}
-    topic = proxy_topic(element)
+    topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render_event, element, :upload_progress, payload, from})
+    send(self(), {:sync_render_event, el, :upload_progress, payload, from})
     {:reply, :ok, state}
   end
 
@@ -415,7 +423,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     {:noreply, state}
   end
-
 
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
@@ -777,7 +784,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-
   defp maybe_event(:allow_upload, node, %Element{} = element) do
     if ref = DOM.attribute(node, @data_phx_upload_ref) do
       {:allow_upload, proxy_topic(element), ref}
@@ -1074,6 +1080,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
   defp stringify(%Upload{}, _fun), do: %{}
+
   defp stringify(%{__struct__: _} = struct, fun),
     do: stringify_value(struct, fun)
 
@@ -1097,5 +1104,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     ref = DOM.attribute(node, "data-phx-upload-ref")
     Map.put(payload, "uploads", %{ref => upload.entries})
   end
+
   def maybe_put_uploads(_state, _view, payload, nil), do: payload
 end

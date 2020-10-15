@@ -123,7 +123,6 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
   end
 
-  # TODO call into optional user-defined progress callback
   def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
@@ -132,10 +131,6 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, msg.ref)
   end
 
-  # TODO validate payloads against socket uploads config and sign token if using channel uploader
-  # in addition to validating extensions, file size, and other metadata, here is where will
-  # will enforce the max_files count for a given upload. We can do this by inspecting the
-  # `entries` of the upload_config. The list of entries is the previously allowed/in progress uploads
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
     %{"ref" => ref} = msg.payload
     upload_conf = Upload.get_upload_by_ref!(state.socket, ref)

@@ -923,27 +923,55 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Builds a file input for testing uploads within a form.
+
+  Given the form DOM ID, the upload name, and a map of client metadata
+  for the upload, the returned file input can be passed to `render_upload/2`.
+
+  Client metadata takes the following form:
+
+    * `:last_modified` - the last modified timestamp
+    * `:name` - the name of the file
+    * `:content` - the binary content of the file
+    * `:size` - the byte size of the content
+    * `:type` - the MIME type of the file
+
+  ## Examples
+
+      avatar = file_input(lv, "my-form-id", :avatar, %{
+        last_modified: 1_594_171_879_000,
+        name: "myfile.jpeg",
+        content: File.read!("myfile.jpg"),
+        size: 1_396_009,
+        type: "image/jpeg"
+      })
+
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
   """
   defmacro file_input(view, form_selector, name, entries) do
-    quote bind_quoted: [view: view, form_selector: form_selector, name: name, entries: entries] do
+    quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
       case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name) do
         {:ok, %{external: false}} ->
           require Phoenix.ChannelTest
-          socket_builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-          Phoenix.LiveViewTest.__start_upload_client__(socket_builder, view, form_selector, name, entries)
+          builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+          Phoenix.LiveViewTest.__start_upload_client__(builder, view, selector, name, entries)
 
         {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(view, form_selector, name, entries)
+          Phoenix.LiveViewTest.__start_external_upload_client__(view, selector, name, entries)
 
-        :error -> raise "no uploads allowed for #{name}"
+        :error ->
+          raise "no uploads allowed for #{name}"
       end
     end
   end
 
-
   def __start_upload_client__(socket_builder, view, form_selector, name, entries) do
-    {:ok, pid} = UploadClient.start_link(socket_builder: socket_builder, test_supervisor: fetch_test_supervisor!())
+    {:ok, pid} =
+      UploadClient.start_link(
+        socket_builder: socket_builder,
+        test_supervisor: fetch_test_supervisor!()
+      )
+
     Upload.new(pid, view, form_selector, name, entries)
   end
 
@@ -1160,9 +1188,36 @@ defmodule Phoenix.LiveViewTest do
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   @doc """
-  TODO
+  Peforms an upload of a file input and renders the result.
+
+  See `file_input/4` for details on building a file input.
+
+  ## Examples
+
+  Given the following LiveView template:
+
+      <%= for entry <- @uploads.avatar.entries %>
+          <%=entry.name %>: <%= entry.progress %>%
+      <% end %>
+
+  Your test case can assert the uploaded content:
+
+      avatar = file_input(lv, "my-form-id", :avatar, %{
+        last_modified: 1_594_171_879_000,
+        name: "myfile.jpeg",
+        content: File.read!("myfile.jpg"),
+        size: 1_396_009,
+        type: "image/jpeg"
+      })
+
+      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+
+  By default, the entire file is chunked to the server, but an optional
+  percentage to chunk can be passed to test chunk-by-chunk uploads:
+
+      assert render_upload(avatar, "foo.jpeg", 49) =~ "49%"
+      assert render_upload(avatar, "foo.jpeg", 51) =~ "100%"
   """
-  # TODO use %FileINput{} and conver to %Element{}
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do
       render_chunk(upload, entry_name, percent)
@@ -1174,7 +1229,8 @@ defmodule Phoenix.LiveViewTest do
             {:error, reason} -> {:error, reason}
           end
 
-        {:error, reason} -> {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
       end
     end
   end
