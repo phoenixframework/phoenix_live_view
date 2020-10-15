@@ -25,16 +25,17 @@ defmodule Phoenix.LiveView.UploadChannel do
          {:ok, handle} <- File.open(path, [:binary, :write]) do
       Process.monitor(pid)
 
-      socket = assign(socket, %{
-        path: path,
-        handle: handle,
-        live_view_pid: pid,
-        max_file_size: max_file_size,
-        chunk_timeout: chunk_timeout,
-        chunk_timer: nil,
-        done?: false,
-        uploaded_size: 0
-      })
+      socket =
+        assign(socket, %{
+          path: path,
+          handle: handle,
+          live_view_pid: pid,
+          max_file_size: max_file_size,
+          chunk_timeout: chunk_timeout,
+          chunk_timer: nil,
+          done?: false,
+          uploaded_size: 0
+        })
 
       {:ok, socket}
     else
@@ -71,7 +72,9 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   @impl true
   def handle_call({:consume, entry, func}, from, socket) do
-    unless socket.assigns.done?, do: raise RuntimeError, "cannot consume uploaded file that is still in progress"
+    unless socket.assigns.done?,
+      do: raise(RuntimeError, "cannot consume uploaded file that is still in progress")
+
     result =
       cond do
         is_function(func, 1) -> func.(file_meta(socket))
@@ -111,8 +114,17 @@ defmodule Phoenix.LiveView.UploadChannel do
   defp close_file(socket) do
     File.close(socket.assigns.handle)
     if socket.assigns.chunk_timer, do: Process.cancel_timer(socket.assigns.chunk_timer)
+
+    socket
+    |> assign(:chunk_timer, nil)
+    |> garbage_collect()
+  end
+
+  defp garbage_collect(socket) do
     send(socket.transport_pid, :garbage_collect)
-    assign(socket, :chunk_timer, nil)
+    :erlang.garbage_collect(self())
+
+    socket
   end
 
   defp file_meta(socket), do: %{path: socket.assigns.path}
