@@ -251,8 +251,8 @@ defmodule Phoenix.LiveView.Upload do
     if conf.external do
       results =
         entries
-        |> Enum.map(fn entry -> {entry, Map.fetch!(conf.entry_refs_to_metas, entry.ref)} end)
-        |> Enum.map(fn {entry, meta} ->
+        |> Enum.map(fn entry ->
+          meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
           cond do
             is_function(func, 1) -> func.(meta)
             is_function(func, 2) -> func.(meta, entry)
