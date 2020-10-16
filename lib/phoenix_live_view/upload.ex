@@ -38,26 +38,30 @@ defmodule Phoenix.LiveView.Upload do
   Disallows a previously allowed upload.
   """
   def disallow_upload(%Socket{} = socket, name) when is_atom(name) do
-    # TODO raise or cancel active upload for existing name?
-    uploads = socket.assigns[:uploads] || %{}
+    case uploaded_entries(socket, name) do
+      {[], []} ->
+        uploads = socket.assigns[:uploads] || %{}
+        upload_config =
+          uploads
+          |> Map.fetch!(name)
+          |> UploadConfig.disallow()
 
-    upload_config =
-      uploads
-      |> Map.fetch!(name)
-      |> UploadConfig.disallow()
+        new_refs =
+          Enum.reduce(uploads[@refs_to_names], uploads[@refs_to_names], fn
+            {ref, ^name}, acc -> Map.delete(acc, ref)
+            {_ref, _name}, acc -> acc
+          end)
 
-    new_refs =
-      Enum.reduce(uploads[@refs_to_names], uploads[@refs_to_names], fn
-        {ref, ^name}, acc -> Map.drop(acc, ref)
-        {_ref, _name}, acc -> acc
-      end)
+        new_uploads =
+          uploads
+          |> Map.put(name, upload_config)
+          |> Map.update!(@refs_to_names, fn _ -> new_refs end)
 
-    new_uploads =
-      uploads
-      |> Map.put(name, upload_config)
-      |> Map.update!(@refs_to_names, fn _ -> new_refs end)
+        Utils.assign(socket, :uploads, new_uploads)
 
-    Utils.assign(socket, :uploads, new_uploads)
+      {_completed, _inprogress} ->
+        raise RuntimeError, "unable to disallow_upload for an upload with active entries"
+    end
   end
 
   @doc """
@@ -70,14 +74,6 @@ defmodule Phoenix.LiveView.Upload do
     upload_config
     |> UploadConfig.cancel_entry(entry)
     |> update_uploads(socket)
-  end
-
-  @doc """
-  Returns the uploaded entries as a 2-tuple of completed and in progress.
-  """
-  def get_uploaded_entries(%Socket{} = socket, name) when is_atom(name) do
-    upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
-    UploadConfig.uploaded_entries(upload_config)
   end
 
   @doc """
