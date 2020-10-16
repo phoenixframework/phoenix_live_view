@@ -167,9 +167,7 @@ defmodule Phoenix.LiveView.Upload do
   def get_upload_by_ref!(%Socket{} = socket, config_ref) do
     uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
     name = Map.fetch!(uploads[@refs_to_names], config_ref)
-    config = Map.fetch!(uploads, name)
-
-    config
+    Map.fetch!(uploads, name)
   end
 
   @doc """
@@ -253,7 +251,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   defp consume_entries(%UploadConfig{} = conf, entries, func)
-      when is_list(entries) and is_function(func) do
+       when is_list(entries) and is_function(func) do
     if conf.external do
       results =
         entries
