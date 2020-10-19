@@ -884,8 +884,9 @@ defmodule Phoenix.LiveView do
 
   Raises when there are still entries in progress.
   Typically called when submitting a form to handle the
-  uploaded entries alongside the form data. Once entries are consumed,
-  they are removed from the upload.
+  uploaded entries alongside the form data. For form submissions,
+  it is guaranteed that all entries have completed before the submit event
+  is invoked. Once entries are consumed, they are removed from the upload.
 
   ## Examples
 
