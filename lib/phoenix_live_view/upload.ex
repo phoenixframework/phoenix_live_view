@@ -158,7 +158,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Retrieves thes `%UploadConfig{}` from the socket for the provided ref or raises.
+  Retrieves the `%UploadConfig{}` from the socket for the provided ref or raises.
   """
   def get_upload_by_ref!(%Socket{} = socket, config_ref) do
     uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
@@ -196,7 +196,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Consumes the uploaded entries or raises if entries are stil in progress.
+  Consumes the uploaded entries or raises if entries are still in progress.
   """
   def consume_uploaded_entries(%Socket{} = socket, name, func) when is_function(func, 2) do
     conf =
@@ -271,7 +271,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Generates a preflight resposne by calling the `:external` function.
+  Generates a preflight response by calling the `:external` function.
   """
   def generate_preflight_response(%Socket{} = socket, name) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
