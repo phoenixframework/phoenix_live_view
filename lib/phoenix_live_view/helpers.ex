@@ -418,11 +418,7 @@ defmodule Phoenix.LiveView.Helpers do
         data_phx_entry_ref: ref
       ) ++ [{"#{binding_prefix}hook", "Phoenix.LiveImgPreview"}]
 
-    assigns = %{opts: opts}
-
-    ~L"""
-    <%= Phoenix.HTML.Tag.content_tag(:img, "", @opts) %>
-    """
+    Phoenix.HTML.Tag.content_tag(:img, "", opts)
   end
 
   @doc """
