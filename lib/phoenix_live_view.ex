@@ -414,7 +414,7 @@ defmodule Phoenix.LiveView do
         {:ok, meta, socket}
       end
 
-  Here, we implemented a `presign_url/2` function, which we passed as a captured anonymous
+  Here, we implemented a `presign_upload/2` function, which we passed as a captured anonymous
   function to `:external`. Next, we used `ExAws` to generate a presigned URL for the
   upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
   along with our unchanged socket. The metadata *must* contain the `:uploader` key,
