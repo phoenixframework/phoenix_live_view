@@ -47,7 +47,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   def unlink(channel_pid, %Phoenix.LiveViewTest.View{} = lv) do
     Process.flag(:trap_exit, true)
-    Process.unlink(proxy_pid(lv))
+    Process.unlink(UploadLive.proxy_pid(lv))
     Process.unlink(lv.pid)
     Process.unlink(channel_pid)
   end

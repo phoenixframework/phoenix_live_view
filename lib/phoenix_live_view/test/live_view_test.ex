@@ -1180,10 +1180,7 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  @doc """
-  Returns the Pid of the proxy between between the test and LiveView.
-  """
-  def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
+  defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 

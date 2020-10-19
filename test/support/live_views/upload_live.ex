@@ -50,7 +50,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   end
 
   def exits_with(lv, upload, kind, func) do
-    Process.unlink(Phoenix.LiveViewTest.proxy_pid(lv))
+    Process.unlink(proxy_pid(lv))
     Process.unlink(upload.pid)
     try do
       func.()
@@ -63,4 +63,6 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   def run(lv, func) do
     GenServer.call(lv.pid, {:run, func})
   end
+
+  def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 end
