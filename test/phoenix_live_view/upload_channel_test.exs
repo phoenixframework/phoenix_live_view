@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       Process.monitor(channel_pid)
 
       assert UploadClient.simulate_attacker_chunk(avatar, "foo.jpeg", String.duplicate("0", 1000)) ==
-               {:error, %{limit: 100, reason: "file_size_limit_exceeded"}}
+               {:error, %{limit: 100, reason: :file_size_limit_exceeded}}
 
       assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
     end
