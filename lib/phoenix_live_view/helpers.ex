@@ -449,16 +449,12 @@ defmodule Phoenix.LiveView.Helpers do
         opts
       end
 
-    assigns = %{conf: conf, opts: opts}
-
-    ~L"""
-    <%= Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(@opts,
+    Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
       type: "file",
-      id: @opts[:id] || @conf.ref,
-      name: @conf.name,
+      id: opts[:id] || conf.ref,
+      name: conf.name,
       data_phx_upload_ref: conf.ref,
-      data_phx_active_refs: Enum.join(for(entry <- conf.entries, do: entry.ref), ",")) %>
-    """
+      data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref))
   end
 
   @doc """
