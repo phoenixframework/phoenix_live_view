@@ -74,15 +74,13 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
     upload_conf = Upload.get_upload_by_pid(socket, pid)
-    graceful_upload_exit? = reason in [:normal, {:shutdown, :closed}]
-
     cond do
-      upload_conf && not graceful_upload_exit? ->
-        {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
-
-      upload_conf && graceful_upload_exit? ->
+      upload_conf && reason in [:normal, {:shutdown, :closed}] ->
         new_socket = Upload.unregister_completed_entry_upload(socket, upload_conf, pid)
         handle_changed(state, new_socket, nil)
+      
+      upload_conf ->
+        {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
       true ->
         msg
