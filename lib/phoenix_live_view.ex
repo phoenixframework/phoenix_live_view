@@ -910,6 +910,9 @@ defmodule Phoenix.LiveView do
   uploaded entries alongside the form data. Once entries are consumed,
   they are removed from the upload.
 
+  This is a lower-level feature than `consume_uploaded_entries/3` and useful
+  for secnerios where you want to consume entries as they are invididually completed.
+
   ## Examples
 
       def handle_event("save", _params, socket) do
