@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.UploadChannel do
       {:ok, socket}
     else
       {:error, :limit_exceeded} -> {:error, %{reason: :limit_exceeded}}
-      _ -> {:error, %{reason: "invalid_token"}}
+      _ -> {:error, %{reason: :invalid_token}}
     end
   end
 
