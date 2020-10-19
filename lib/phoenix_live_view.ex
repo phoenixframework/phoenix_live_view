@@ -418,7 +418,7 @@ defmodule Phoenix.LiveView do
   function to `:external`. Next, we used `ExAws` to generate a presigned URL for the
   upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
   along with our unchanged socket. The metadata *must* contain the `:uploader` key,
-  specifying name of the JavaScript the client-side uploader, in this case "S3".
+  specifying name of the JavaScript client-side uploader, in this case "S3".
 
   To complete the flow, we can implement our `S3` client uploader and tell the
   `LiveSocket` where to find it:
