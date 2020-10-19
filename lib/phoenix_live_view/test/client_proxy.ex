@@ -1099,11 +1099,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp stringify_value(other, fun), do: fun.(other)
   defp stringify_kv({k, v}, fun), do: {to_string(k), stringify(v, fun)}
 
-  def maybe_put_uploads(state, view, payload, %Upload{} = upload) do
+  defp maybe_put_uploads(state, view, payload, %Upload{} = upload) do
     {:ok, node} = state |> root(view) |> select_node(upload.element)
     ref = DOM.attribute(node, "data-phx-upload-ref")
     Map.put(payload, "uploads", %{ref => upload.entries})
   end
 
-  def maybe_put_uploads(_state, _view, payload, nil), do: payload
+  defp maybe_put_uploads(_state, _view, payload, nil), do: payload
 end
