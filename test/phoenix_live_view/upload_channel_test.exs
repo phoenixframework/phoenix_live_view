@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   test "rejects invalid token" do
     {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{})
 
-    assert {:error, %{reason: "invalid_token"}} =
+    assert {:error, %{reason: :invalid_token}} =
              Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
   end
 
