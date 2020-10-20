@@ -47,7 +47,7 @@ function, you might write something like this:
 
     defp presign_upload(entry, socket) do
       {:ok, %{"Location" => link}} =
-        SomeTube.start_upload(%{
+        SomeTube.start_session(%{
           "uploadType" => "resumable",
           "x-upload-content-length" => entry.client_size
         })

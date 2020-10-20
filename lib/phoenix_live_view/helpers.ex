@@ -428,7 +428,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Drag and Drop
 
-  Drag and drop is supported by annoting the droppable container with a `phx-drop-target`
+  Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
   attribute pointing to the DOM ID of the file input. By default, the file input ID is the
   upload `ref`, so the following markup is all this is required for drag and drop support:
 

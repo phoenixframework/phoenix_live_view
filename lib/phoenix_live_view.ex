@@ -786,7 +786,7 @@ defmodule Phoenix.LiveView do
   they are removed from the upload.
 
   This is a lower-level feature than `consume_uploaded_entries/3` and useful
-  for secnerios where you want to consume entries as they are invididually completed.
+  for scenarios where you want to consume entries as they are individually completed.
 
   ## Examples
 
