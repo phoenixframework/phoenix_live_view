@@ -11,7 +11,13 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   def consume(pid, entry, func) when is_function(func, 1) or is_function(func, 2) do
-    GenServer.call(pid, {:consume, entry, func})
+    case GenServer.call(pid, {:consume, entry, func}) do
+      {:ok, result} ->
+        result
+
+      {:error, :in_progress} ->
+        raise RuntimeError, "cannot consume uploaded file that is still in progress"
+    end
   end
 
   @impl true
@@ -72,16 +78,18 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   @impl true
   def handle_call({:consume, entry, func}, from, socket) do
-    unless socket.assigns.done?,
-      do: raise(RuntimeError, "cannot consume uploaded file that is still in progress")
+    if socket.assigns.done? do
+      result =
+        cond do
+          is_function(func, 1) -> func.(file_meta(socket))
+          is_function(func, 2) -> func.(file_meta(socket), entry)
+        end
 
-    result =
-      cond do
-        is_function(func, 1) -> func.(file_meta(socket))
-        is_function(func, 2) -> func.(file_meta(socket), entry)
-      end
+      GenServer.reply(from, {:ok, result})
+    else
+      GenServer.reply(from, {:error, :in_progress})
+    end
 
-    GenServer.reply(from, result)
     {:stop, {:shutdown, :closed}, socket}
   end
 
