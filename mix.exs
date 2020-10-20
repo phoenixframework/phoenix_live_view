@@ -67,6 +67,7 @@ defmodule Phoenix.LiveView.MixProject do
       "guides/client/form-bindings.md",
       "guides/client/dom-patching.md",
       "guides/client/js-interop.md",
+      "guides/client/uploads-external.md",
       "guides/server/assigns-eex.md",
       "guides/server/error-handling.md",
       "guides/server/live-layouts.md",
@@ -74,8 +75,7 @@ defmodule Phoenix.LiveView.MixProject do
       "guides/server/security-model.md",
       "guides/server/telemetry.md",
       "guides/server/uploads.md",
-      "guides/server/using-gettext.md",
-      "guides/uploads/chunked-http-uploads.md"
+      "guides/server/using-gettext.md"
     ]
   end
 
