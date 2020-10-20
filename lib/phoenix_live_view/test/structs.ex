@@ -93,11 +93,12 @@ defmodule Phoenix.LiveViewTest.Upload do
       Map.get(entry, :content) ||
         raise ArgumentError, "the :content of the binary entry file data is required."
 
-    %{}
-    |> Map.put("name", name)
-    |> Map.put("content", content)
-    |> Map.put("ref", System.unique_integer([:positive]))
-    |> Map.put_new_lazy("size", fn -> byte_size(content) end)
-    |> Map.put_new_lazy("type", fn -> MIME.from_path(name) end)
+    %{
+      "name" => name,
+      "content" => content,
+      "ref" => System.unique_integer([:positive]),
+      "size" => entry[:size] || byte_size(content),
+      "type" => entry[:type] || MIME.from_path(name)
+    }
   end
 end
