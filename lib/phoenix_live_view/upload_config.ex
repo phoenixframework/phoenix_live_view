@@ -72,7 +72,9 @@ defmodule Phoenix.LiveView.UploadConfig do
             entries: [],
             entry_refs_to_pids: %{},
             entry_refs_to_metas: %{},
-            accept: %{},
+            accept: [],
+            acceptable_types: MapSet.new(),
+            acceptable_exts: MapSet.new(),
             external: false,
             allowed?: false,
             ref: nil,
@@ -86,7 +88,9 @@ defmodule Phoenix.LiveView.UploadConfig do
           entries: list(),
           entry_refs_to_pids: %{String.t() => pid() | :unregistered | :done},
           entry_refs_to_metas: %{String.t() => map()},
-          accept: map() | :any,
+          accept: list() | :any,
+          acceptable_types: MapSet.t(),
+          acceptable_exts: MapSet.t(),
           external: (Socket.t() -> Socket.t()) | false,
           allowed?: boolean,
           errors: list(),
@@ -98,13 +102,14 @@ defmodule Phoenix.LiveView.UploadConfig do
   # invalidate old uploads on the client and expire old tokens for the same
   # upload name
   def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
-    accept =
+    {raw_accept, acceptable_types, acceptable_exts} =
       case Keyword.fetch(opts, :accept) do
         {:ok, [_ | _] = accept} ->
-          validate_accept_option(accept)
+          {types, exts} = validate_accept_option(accept)
+          {accept, types, exts}
 
         {:ok, :any} ->
-          :any
+          {:any, MapSet.new(), MapSet.new()}
 
         {:ok, other} ->
           raise ArgumentError, """
@@ -211,7 +216,9 @@ defmodule Phoenix.LiveView.UploadConfig do
       max_file_size: max_file_size,
       entry_refs_to_pids: %{},
       entry_refs_to_metas: %{},
-      accept: accept,
+      accept: raw_accept,
+      acceptable_types: acceptable_types,
+      acceptable_exts: acceptable_exts,
       external: external,
       chunk_size: chunk_size,
       chunk_timeout: chunk_timeout,
@@ -284,14 +291,17 @@ defmodule Phoenix.LiveView.UploadConfig do
   @accept_wildcards ~w(audio/* image/* video/*)
 
   defp validate_accept_option(accept) do
-    accept
-    |> Enum.map(&accept_option!/1)
-    |> Enum.group_by(fn {key, _} -> key end, fn {_, value} -> value end)
-    |> Enum.into(%{}, fn {key, value} -> {key, Enum.flat_map(value, & &1)} end)
+    {types, exts} =
+      Enum.reduce(accept, {[], []}, fn opt, {types_acc, exts_acc} ->
+        {type, exts} = accept_option!(opt)
+        {[type | types_acc], exts ++ exts_acc}
+      end)
+
+    {MapSet.new(types), MapSet.new(exts)}
   end
 
   # wildcards for media files
-  defp accept_option!(key) when key in @accept_wildcards, do: {key, [key]}
+  defp accept_option!(key) when key in @accept_wildcards, do: {key, []}
 
   defp accept_option!(<<"." <> extname::binary>> = ext) do
     if MIME.has_type?(extname) do
@@ -317,7 +327,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   defp accept_option!(filter) when is_binary(filter) do
     if MIME.valid?(filter) do
-      {filter, [filter]}
+      {filter, []}
     else
       raise ArgumentError, """
         invalid accept filter provided to allow_upload.
@@ -490,27 +500,20 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   defp validate_accepted({:error, _} = error, _conf), do: error
 
-  defp accepted?(%UploadConfig{accept: :any}, _entry), do: true
+  defp accepted?(%UploadConfig{accept: :any}, %UploadEntry{}), do: true
 
-  defp accepted?(%UploadConfig{accept: %{"image/*" => _}}, %UploadEntry{
-         client_type: <<"image/" <> _>>
-       }),
-       do: true
-
-  defp accepted?(%UploadConfig{accept: %{"audio/*" => _}}, %UploadEntry{
-         client_type: <<"audio/" <> _>>
-       }),
-       do: true
-
-  defp accepted?(%UploadConfig{accept: %{"video/*" => _}}, %UploadEntry{
-         client_type: <<"video/" <> _>>
-       }),
-       do: true
-
-  defp accepted?(%UploadConfig{accept: accept}, %UploadEntry{} = entry) do
+  defp accepted?(
+         %UploadConfig{acceptable_types: acceptable_types} = conf,
+         %UploadEntry{client_type: client_type} = entry
+       ) do
     cond do
-      Map.has_key?(accept, entry.client_type) -> true
-      Path.extname(entry.client_name) in (accept |> Map.values() |> Enum.concat()) -> true
+      # wildcard
+      String.starts_with?(client_type, "image/") and "image/*" in acceptable_types -> true
+      String.starts_with?(client_type, "audio/") and "audio/*" in acceptable_types -> true
+      String.starts_with?(client_type, "video/") and "video/*" in acceptable_types -> true
+      # strict
+      client_type in acceptable_types -> true
+      Path.extname(entry.client_name) in conf.acceptable_exts -> true
       true -> false
     end
   end
