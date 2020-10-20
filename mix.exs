@@ -73,6 +73,7 @@ defmodule Phoenix.LiveView.MixProject do
       "guides/server/live-navigation.md",
       "guides/server/security-model.md",
       "guides/server/telemetry.md",
+      "guides/server/uploads.md",
       "guides/server/using-gettext.md",
       "guides/uploads/chunked-http-uploads.md"
     ]
