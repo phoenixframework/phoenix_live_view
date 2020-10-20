@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.UploadChannel do
     assign(socket, :chunk_timer, new_timer)
   end
 
-  def write_bytes(socket, payload) do
+  defp write_bytes(socket, payload) do
     IO.binwrite(socket.assigns.handle, payload)
     socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
 
