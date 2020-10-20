@@ -58,6 +58,11 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @too_many_files :too_many_files
 
+  if Version.match?(System.version(), ">= 1.8.0") do
+    @derive {Inspect,
+             only: [:name, :ref, :entries, :max_entries, :max_file_size, :accept, :errors]}
+  end
+
   defstruct name: nil,
             client_key: nil,
             max_entries: 1,
@@ -85,7 +90,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           external: (Socket.t() -> Socket.t()) | false,
           allowed?: boolean,
           errors: list(),
-          ref: String.t(),
+          ref: String.t()
         }
 
   @doc false
