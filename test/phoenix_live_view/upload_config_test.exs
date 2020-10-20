@@ -46,23 +46,24 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     test ":accept supports list of extensions and mime types" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(.jpg .jpeg))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ~w(.jpg .jpeg)
+      assert conf.accept == ".jpg,.jpeg"
       assert conf.acceptable_types == MapSet.new(["image/jpeg"])
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(image/png .jpeg))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ~w(image/png .jpeg)
+      assert conf.accept == "image/png,.jpeg"
       assert conf.acceptable_types == MapSet.new(["image/jpeg", "image/png"])
       assert conf.acceptable_exts == MapSet.new([".jpeg"])
 
       doc =
         ~w(.doc .docx .xml application/msword application/vnd.openxmlformats-officedocument.wordprocessingml.document)
+      html_doc = Enum.join(doc, ",")
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: doc)
 
       assert %UploadConfig{
                name: :avatar,
-               accept: ^doc
+               accept: ^html_doc,
              } = conf = socket.assigns.uploads.avatar
 
       assert conf.acceptable_types ==
@@ -83,25 +84,25 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     test ":accept supports wildcard types" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(image/*))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ["image/*"]
+      assert conf.accept == "image/*"
       assert conf.acceptable_types == MapSet.new(["image/*"])
       assert conf.acceptable_exts == MapSet.new([])
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(audio/*))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ["audio/*"]
+      assert conf.accept == "audio/*"
       assert conf.acceptable_types == MapSet.new(["audio/*"])
       assert conf.acceptable_exts == MapSet.new([])
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(video/*))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ["video/*"]
+      assert conf.accept == "video/*"
       assert conf.acceptable_types == MapSet.new(["video/*"])
       assert conf.acceptable_exts == MapSet.new([])
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: ~w(video/* .gif))
       assert %UploadConfig{name: :avatar} = conf = socket.assigns.uploads.avatar
-      assert conf.accept == ~w(video/* .gif)
+      assert conf.accept == "video/*,.gif"
       assert conf.acceptable_types == MapSet.new(["image/gif", "video/*"])
       assert conf.acceptable_exts == MapSet.new([".gif"])
     end

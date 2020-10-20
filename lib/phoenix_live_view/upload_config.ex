@@ -102,11 +102,11 @@ defmodule Phoenix.LiveView.UploadConfig do
   # invalidate old uploads on the client and expire old tokens for the same
   # upload name
   def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
-    {raw_accept, acceptable_types, acceptable_exts} =
+    {html_accept, acceptable_types, acceptable_exts} =
       case Keyword.fetch(opts, :accept) do
         {:ok, [_ | _] = accept} ->
           {types, exts} = validate_accept_option(accept)
-          {accept, types, exts}
+          {Enum.join(accept, ","), types, exts}
 
         {:ok, :any} ->
           {:any, MapSet.new(), MapSet.new()}
@@ -216,7 +216,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       max_file_size: max_file_size,
       entry_refs_to_pids: %{},
       entry_refs_to_metas: %{},
-      accept: raw_accept,
+      accept: html_accept,
       acceptable_types: acceptable_types,
       acceptable_exts: acceptable_exts,
       external: external,

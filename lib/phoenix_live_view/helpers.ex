@@ -453,7 +453,7 @@ defmodule Phoenix.LiveView.Helpers do
       type: "file",
       id: opts[:id] || conf.ref,
       name: conf.name,
-      accept: if(conf.accept != :any, do: Enum.join(conf.accept, ",")),
+      accept: if(conf.accept != :any, do: conf.accept),
       data_phx_upload_ref: conf.ref,
       data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref))
   end
