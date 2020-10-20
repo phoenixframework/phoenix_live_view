@@ -240,7 +240,7 @@ defmodule Phoenix.LiveView.Utils do
   def salt!(endpoint) when is_atom(endpoint) do
     salt = endpoint.config(:live_view)[:signing_salt]
 
-    if is_binary(salt) and byte_size(salt) >= 16 do
+    if is_binary(salt) and byte_size(salt) >= 8 do
       salt
     else
       raise ArgumentError, """
