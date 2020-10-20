@@ -238,17 +238,23 @@ defmodule Phoenix.LiveView.Utils do
   Returns the configured signing salt for the endpoint.
   """
   def salt!(endpoint) when is_atom(endpoint) do
-    endpoint.config(:live_view)[:signing_salt] ||
-      raise ArgumentError, """
-      no signing salt found for #{inspect(endpoint)}.
+    salt = endpoint.config(:live_view)[:signing_salt]
 
-      Add the following LiveView configuration to your config/config.exs:
+    if is_binary(salt) and byte_size(salt) >= 16 do
+      salt
+    else
+      raise ArgumentError, """
+      the signing salt for #{inspect(endpoint)} is missing or too short.
+
+      Add the following LiveView configuration to your config/runtime.exs
+      or config/config.exs:
 
           config :my_app, MyAppWeb.Endpoint,
               ...,
               live_view: [signing_salt: "#{random_encoded_bytes()}"]
 
       """
+    end
   end
 
   @doc """
