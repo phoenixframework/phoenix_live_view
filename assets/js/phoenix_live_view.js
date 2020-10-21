@@ -1968,7 +1968,7 @@ export class View {
   renderContainer(diff, kind){
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName
-      // Don't skip any components in the diff nor any marked as pruned
+      // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
       let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
       let html = this.rendered.toString(cids)
@@ -2336,7 +2336,7 @@ export class View {
         // so we can remove them from the pruningCIDs.
         this.pruningCIDs = this.pruningCIDs.filter(cid => willDestroyCIDs.indexOf(cid) !== -1)
 
-        // See if any of the CIDs we wanted to destroy were added back,
+        // See if any of the cids we wanted to destroy were added back,
         // if they were added back, we don't actually destroy them.
         let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
           return DOM.findComponentNodeList(this.el, cid).length === 0
