@@ -249,7 +249,6 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-
   @doc """
   Marks a component for deletion.
 
@@ -261,6 +260,7 @@ defmodule Phoenix.LiveView.Diff do
         %{^cid => {component, id, assigns, private, prints}} ->
           private = Map.put(private, @marked_for_deletion, true)
           Map.put(cid_to_component, cid, {component, id, assigns, private, prints})
+
         %{} ->
           cid_to_component
       end
@@ -269,7 +269,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   @doc """
-  Deletes a component by `cid` if has not been used meanwhile.
+  Deletes a component by `cid` if it has not been used meanwhile.
   """
   def delete_component(cid, {cid_to_component, id_to_cid, uuids}) do
     case cid_to_component do

@@ -112,7 +112,7 @@ defmodule Phoenix.LiveView.ComponentTest do
     # Which will be reset almost immediately
     assert render(view) =~ "Hello World</button>"
 
-    # But the client did not have time to remove it so the bumper still keps going
+    # But the client did not have time to remove it so the bumper still keeps going
     assert view |> element("#bumper") |> render_click() =~ "Bump: 2"
   end
 
