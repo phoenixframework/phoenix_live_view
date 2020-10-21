@@ -73,7 +73,7 @@ upload data alongside the form data:
 ```elixir
 def handle_event("save", _params, socket) do
   uploaded_files =
-    consume_uploaded_entries(socket, :avatar, fn %{path: path} ->
+    consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
       dest = Path.join("priv/static/uploads", Path.basename(path))
       File.cp!(path, dest)
       Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")
