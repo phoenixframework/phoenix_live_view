@@ -3,7 +3,7 @@
 ## 0.15.0
 
 ### Backwards incompatible changes
-  - Remove `@inner_content` in components and introduce `render_inner` for rendering component `@inner_block`
+  - Remove `@inner_content` in components and introduce `render_block` for rendering component `@inner_block`
 
 ### Bug fixes
   - Fix race condition when components are removed and then immediately re-added before the client can notify their CIDs have been destroyed
