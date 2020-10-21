@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.Channel do
       upload_conf && reason in [:normal, {:shutdown, :closed}] ->
         new_socket = Upload.unregister_completed_entry_upload(socket, upload_conf, pid)
         handle_changed(state, new_socket, nil)
-      
+
       upload_conf ->
         {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
 
@@ -130,31 +130,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    %{"ref" => ref} = msg.payload
+    %{"ref" => ref, "entries" => entries} = msg.payload
     upload_conf = Upload.get_upload_by_ref!(state.socket, ref)
 
-    case Upload.put_entries(state.socket, upload_conf, msg.payload["entries"]) do
-      {:ok, new_socket} ->
-        case Upload.generate_preflight_response(new_socket, upload_conf.name) do
-          {:ok, uploader_reply, new_socket} ->
-            {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, uploader_reply)
-            {:noreply, new_state}
+    {_ok_or_error, reply, %Socket{} = new_socket} =
+      with {:ok, new_socket} <- Upload.put_entries(state.socket, upload_conf, entries) do
+        Upload.generate_preflight_response(new_socket, upload_conf.name)
+      end
 
-          {:error, error_resp, new_socket} ->
-            {:noreply, new_state} = handle_changed(state, new_socket, nil)
-            reply(new_state, msg.ref, :ok, error_resp)
-            {:noreply, new_state}
-        end
-
-      {:error, new_socket, errors} ->
-        errors_reply =
-          Enum.map(errors, fn {ref, msg} -> %{"ref" => ref, "reason" => to_string(msg)} end)
-
-        {:noreply, new_state} = handle_changed(state, new_socket, nil)
-        reply(new_state, msg.ref, :ok, %{error: errors_reply})
-        {:noreply, state}
-    end
+    {:noreply, new_state} = handle_changed(state, new_socket, nil)
+    reply(new_state, msg.ref, :ok, reply)
+    {:noreply, new_state}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
@@ -903,7 +889,7 @@ defmodule Phoenix.LiveView.Channel do
 
       case Upload.put_entries(acc.socket, upload_conf, entries) do
         {:ok, new_socket} -> %{acc | socket: new_socket}
-        {:error, new_socket, _errors} -> %{acc | socket: new_socket}
+        {:error, _error_resp, %Socket{} = new_socket} -> %{acc | socket: new_socket}
       end
     end)
   end

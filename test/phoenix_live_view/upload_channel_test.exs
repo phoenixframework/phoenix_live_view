@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     test "too many entries over max", %{lv: lv} do
       avatar = file_input(lv, "form", :avatar, build_entries(2))
 
-      assert {:error, [%{"reason" => "too_many_files", "ref" => _}]} =
+      assert {:error, [%{reason: :too_many_files, ref: _}]} =
                render_upload(avatar, "myfile1.jpeg", 1)
     end
 
@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              |> form("form", user: %{})
              |> render_change(avatar) =~ "error::too_large"
 
-      assert {:error, [%{"reason" => "too_large"}]} = render_upload(avatar, "foo.jpeg")
+      assert {:error, [%{reason: :too_large}]} = render_upload(avatar, "foo.jpeg")
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]

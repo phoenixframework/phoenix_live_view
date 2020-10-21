@@ -41,6 +41,7 @@ defmodule Phoenix.LiveView.Upload do
     case uploaded_entries(socket, name) do
       {[], []} ->
         uploads = socket.assigns[:uploads] || %{}
+
         upload_config =
           uploads
           |> Map.fetch!(name)
@@ -117,7 +118,10 @@ defmodule Phoenix.LiveView.Upload do
         {:ok, update_uploads(new_config, socket)}
 
       {:error, new_config} ->
-        {:error, update_uploads(new_config, socket), new_config.errors}
+        errors_resp =
+          Enum.map(new_config.errors, fn {ref, msg} -> %{ref: ref, reason: msg} end)
+
+        {:error, %{error: errors_resp}, update_uploads(new_config, socket)}
     end
   end
 
@@ -253,6 +257,7 @@ defmodule Phoenix.LiveView.Upload do
         entries
         |> Enum.map(fn entry ->
           meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
+
           cond do
             is_function(func, 1) -> func.(meta)
             is_function(func, 2) -> func.(meta, entry)
