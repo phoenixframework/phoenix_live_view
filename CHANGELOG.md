@@ -10,6 +10,7 @@
   - Do not render LiveView if only events/replies have been added to the socket
   - Properly merge different components when sharing component subtrees on initial render
   - Allow variables inside do-blocks to be tainted
+  - Fix `push_redirect` from mount hanging on the client and causing a fallback to full page reload when following a clicked `live_redirect` on the client
 
 ## 0.14.7 (2020-09-25)
 
