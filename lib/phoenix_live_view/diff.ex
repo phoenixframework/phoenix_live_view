@@ -273,7 +273,7 @@ defmodule Phoenix.LiveView.Diff do
   """
   def delete_component(cid, {cid_to_component, id_to_cid, uuids}) do
     case cid_to_component do
-      %{^cid => {component, id, _, %{marked_for_deletion: true}, _}} ->
+      %{^cid => {component, id, _, %{@marked_for_deletion => true}, _}} ->
         id_to_cid =
           case id_to_cid do
             %{^component => inner} ->
