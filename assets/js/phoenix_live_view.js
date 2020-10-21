@@ -204,7 +204,7 @@ let Hooks = {}
 Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
-    this.inputEl = document.getElementById(this.el.getAttribute("data-phx-upload-id"))
+    this.inputEl = document.getElementById(this.el.getAttribute("data-phx-upload-ref"))
     LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
       this.dataURL = url
       this.el.src = this.dataURL
