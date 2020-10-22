@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.InnerContentTest do
+defmodule Phoenix.LiveView.InnerBlockTest do
   use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.InnerContentTest do
   end
 
   test "inner content with do block", %{conn: conn} do
-    {:ok, view, html} = live(conn, "/inner_content_do")
+    {:ok, view, html} = live(conn, "/inner_block_do")
 
     assert html =~ "Inner: 0"
     assert html =~ "Outer: 0"
@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.InnerContentTest do
   end
 
   test "inner content with fun block", %{conn: conn} do
-    {:ok, view, html} = live(conn, "/inner_content_fun")
+    {:ok, view, html} = live(conn, "/inner_block_fun")
 
     assert html =~ "Inner: 0"
     assert html =~ "Outer: 0"

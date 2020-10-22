@@ -3,7 +3,14 @@
 ## 0.15.0
 
 ### Backwards incompatible changes
-  - Introduce `render_inner` for rendering component `@inner_content`
+  - Remove `@inner_content` in components and introduce `render_block` for rendering component `@inner_block`
+
+### Bug fixes
+  - Fix race condition when components are removed and then immediately re-added before the client can notify their CIDs have been destroyed
+  - Do not render LiveView if only events/replies have been added to the socket
+  - Properly merge different components when sharing component subtrees on initial render
+  - Allow variables inside do-blocks to be tainted
+  - Fix `push_redirect` from mount hanging on the client and causing a fallback to full page reload when following a clicked `live_redirect` on the client
 
 ## 0.14.7 (2020-09-25)
 

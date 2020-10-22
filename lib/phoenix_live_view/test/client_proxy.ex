@@ -3,7 +3,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   use GenServer
 
   @data_phx_upload_ref "data-phx-upload-ref"
-  require Phoenix.ChannelTest
+  @events :e
+  @title :t
+  @reply :r
 
   defstruct session_token: nil,
             static_token: nil,
@@ -486,7 +488,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
-    maybe_push_events(state, rendered)
+    rendered = maybe_push_events(rendered, state)
 
     patch_view(
       %{
@@ -502,12 +504,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
-      {new_html, [_ | _] = deleted_cids} ->
+      {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
+        state = %{state | html: new_html}
+        payload = %{"cids" => will_destroy_cids}
 
-        %{state | html: new_html}
-        |> push_with_callback(view, "cids_destroyed", %{"cids" => deleted_cids}, fn _, state ->
-          {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, deleted_cids))}
+        push_with_callback(state, view, "cids_will_destroy", payload, fn _, state ->
+          payload = %{"cids" => will_destroy_cids -- DOM.component_ids(view.id, state.html)}
+
+          state =
+            push_with_callback(state, view, "cids_destroyed", payload, fn reply, state ->
+              cids = reply.payload.cids
+              {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, cids))}
+            end)
+
+          {:noreply, state}
         end)
 
       {new_html, [] = _deleted_cids} ->
@@ -554,18 +565,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
-    maybe_push_events(state, diff)
-
-    case diff do
-      %{r: reply} -> send_caller(state, {:reply, reply})
-      %{} -> state
-    end
-
-    state =
-      case diff do
-        %{t: new_title} -> %{state | page_title: new_title}
-        %{} -> state
-      end
+    {diff, state} =
+      diff
+      |> maybe_push_events(state)
+      |> maybe_push_reply(state)
+      |> maybe_push_title(state)
 
     case fetch_view_by_topic(state, topic) do
       {:ok, view} ->
@@ -896,14 +900,32 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, DOM.all_values(node)}
   end
 
-  defp maybe_push_events(state, rendered) do
-    case rendered do
-      %{e: events} ->
+  defp maybe_push_events(diff, state) do
+    case diff do
+      %{@events => events} ->
         for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
-        :ok
+        Map.delete(diff, @events)
 
       %{} ->
-        :ok
+        diff
+    end
+  end
+
+  defp maybe_push_reply(diff, state) do
+    case diff do
+      %{@reply => reply} ->
+        send_caller(state, {:reply, reply})
+        Map.delete(diff, @reply)
+
+      %{} ->
+        diff
+    end
+  end
+
+  defp maybe_push_title(diff, state) do
+    case diff do
+      %{@title => title} -> {Map.delete(diff, @title), %{state | page_title: title}}
+      %{} -> {diff, state}
     end
   end
 

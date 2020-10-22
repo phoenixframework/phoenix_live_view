@@ -215,14 +215,14 @@ defmodule Phoenix.LiveView.Helpers do
         {_, _} -> {nil, assigns}
       end
 
-    {assigns, inner_content} = rewrite_do(do_block, assigns, __CALLER__)
+    {assigns, inner_block} = rewrite_do(do_block, assigns, __CALLER__)
 
     quote do
       Phoenix.LiveView.Helpers.__live_component__(
         unquote(socket),
         unquote(component).__live__(),
         unquote(assigns),
-        unquote(inner_content)
+        unquote(inner_block)
       )
     end
   end
@@ -272,7 +272,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc false
   def __render_inner_fun__(assigns, parent_changed) do
-    if is_nil(parent_changed) or parent_changed[:inner_content] == true do
+    if is_nil(parent_changed) or parent_changed[:inner_block] == true do
       assigns
     else
       Map.put(assigns, :__changed__, %{})
@@ -284,7 +284,7 @@ defmodule Phoenix.LiveView.Helpers do
     # If the parent is tracking changes or the inner content changed,
     # we will keep the current __changed__ values
     changed =
-      if is_nil(parent_changed) or parent_changed[:inner_content] == true do
+      if is_nil(parent_changed) or parent_changed[:inner_block] == true do
         Map.get(assigns, :__changed__)
       else
         %{}
@@ -306,7 +306,7 @@ defmodule Phoenix.LiveView.Helpers do
   def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
-    assigns = if inner, do: Map.put(assigns, :inner_content, inner), else: assigns
+    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
     id = assigns[:id]
 
     if is_nil(id) and
@@ -325,14 +325,14 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders the `@inner_content` assign of a component with the given `argument`.
+  Renders the `@inner_block` assign of a component with the given `argument`.
 
-      <%= render_inner(@inner_content, value: @value)
+      <%= render_block(@inner_block, value: @value)
 
   """
-  defmacro render_inner(inner_content, argument \\ []) do
+  defmacro render_block(inner_block, argument \\ []) do
     quote do
-      unquote(inner_content).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
+      unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
     end
   end
 

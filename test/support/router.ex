@@ -24,6 +24,25 @@ defmodule Phoenix.LiveViewTest.Router do
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
+    live "/thermo", ThermostatLive
+    live "/thermo/:id", ThermostatLive
+    live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
+    live "/", ThermostatLive, as: :live_root
+    live "/clock", ClockLive
+    live "/redir", RedirLive
+    live "/elements", ElementsLive
+    live "/inner_block_do", InnerDoLive
+    live "/inner_block_fun", InnerFunLive
+
+    live "/same-child", SameChildLive
+    live "/root", RootLive
+    live "/opts", OptsLive
+    live "/time-zones", AppendLive
+    live "/shuffle", ShuffleLive
+    live "/components", WithComponentLive
+    live "/assigns-not-in-socket", AssignsNotInSocketLive
+    live "/errors", ErrorsLive
+
     # controller test
     get "/controller/:type", Controller, :incoming
     get "/widget", Controller, :widget
@@ -42,25 +61,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
     live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Live.Nested.Module, :action
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
-
-    live "/thermo", ThermostatLive
-    live "/thermo/:id", ThermostatLive
-    live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
-    live "/", ThermostatLive, as: :live_root
-    live "/clock", ClockLive
-    live "/redir", RedirLive
-    live "/elements", ElementsLive
-    live "/inner_content_do", InnerDoLive
-    live "/inner_content_fun", InnerFunLive
-
-    live "/same-child", SameChildLive
-    live "/root", RootLive
-    live "/opts", OptsLive
-    live "/time-zones", AppendLive
-    live "/shuffle", ShuffleLive
-    live "/components", WithComponentLive
-    live "/assigns-not-in-socket", AssignsNotInSocketLive
-    live "/errors", ErrorsLive
 
     # integration layout
     scope "/" do
@@ -88,6 +88,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration components
     live "/component_in_live", ComponentInLive.Root
+    live "/cids_destroyed", CidsDestroyedLive
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do

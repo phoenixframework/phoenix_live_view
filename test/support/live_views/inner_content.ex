@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.InnerCounter do
     ~L"""
     <div>
       <button id="inner" phx-click="inc" phx-target="<%= @myself %>">+</button>
-      <p><%= render_inner(@inner_content, value: @value) %></p>
+      <p><%= render_block(@inner_block, value: @value) %></p>
     </div>
     """
   end
