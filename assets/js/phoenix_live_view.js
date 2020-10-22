@@ -266,7 +266,7 @@ class LiveUploader {
   }
 
   static activeFileInputs(formEl){
-    return Array.from(formEl).filter((el) => el.files && this.activeFiles(el).length > 0)
+    return Array.from(formEl.children).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
   static activeFiles(input){
@@ -677,7 +677,7 @@ export class LiveSocket {
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
-    this.domCallbacks = opts.dom || {onNodeAdded: closure(), onBeforeElUpdated: closure()}
+    this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
     window.addEventListener("unload", e => {
       this.unloaded = true
     })
