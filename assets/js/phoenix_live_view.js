@@ -266,7 +266,7 @@ class LiveUploader {
   }
 
   static activeFileInputs(formEl){
-    return Array.from(formEl.children).filter(el => el.files && this.activeFiles(el).length > 0)
+    return Array.from(formEl).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
   static activeFiles(input){
