@@ -3,13 +3,13 @@ import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
 
 import {tag, simulateJoinedView, stubChannel} from "./test_helpers"
 
-function liveViewDOM() {
+function liveViewDOM(content) {
   const div = document.createElement("div")
   div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
   div.setAttribute("id", "container")
   div.setAttribute("class", "user-implemented-class")
-  div.innerHTML = `
+  div.innerHTML = content || `
     <form>
       <label for="plus">Plus</label>
       <input id="plus" value="1" name="increment" />
@@ -18,14 +18,7 @@ function liveViewDOM() {
       <button phx-click="inc_temperature">Inc Temperature</button>
     </form>
   `
-  const button = div.querySelector("button")
-  const input = div.querySelector("input")
-  button.addEventListener("click", () => {
-    setTimeout(() => {
-      input.value += 1
-    }, 200)
-  })
-
+  document.body.innerHTML = ""
   document.body.appendChild(div)
   return div
 }
@@ -235,6 +228,29 @@ describe("View + DOM", function() {
     view.channel = channelStub
 
     view.pushInput(input, el, "validate", input)
+  })
+
+  test("formsForRecovery", function() {
+    let view, html, liveSocket = new LiveSocket("/live", Socket)
+
+    html = `<form phx-change="cg"><input name="foo"></form>`
+    view = new View(liveViewDOM(html), liveSocket)
+    expect(view.formsForRecovery(html).length).toBe(0)
+
+    view.joinCount = 1
+    expect(view.formsForRecovery(html).length).toBe(1)
+
+    html = `<form phx-change="cg" phx-auto-recover="ignore"><input name="foo"></form>`
+    view = new View(liveViewDOM(html), liveSocket)
+    expect(view.formsForRecovery().length).toBe(0)
+
+    html = `<form><input name="foo"></form>`
+    view = new View(liveViewDOM(html), liveSocket)
+    expect(view.formsForRecovery().length).toBe(0)
+
+    html = `<form phx-change="cg"></form>`
+    view = new View(liveViewDOM(html), liveSocket)
+    expect(view.formsForRecovery().length).toBe(0)
   })
 
   test("submitForm", function() {

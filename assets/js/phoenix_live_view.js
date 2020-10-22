@@ -1741,7 +1741,7 @@ export class View {
       this.dropPendingRefs()
       let forms = this.formsForRecovery(html)
 
-      if(this.joinCount > 1 && forms.length > 0){
+      if(forms.length > 0){
         forms.forEach((form, i) => {
           this.pushFormRecovery(form, resp => {
             if(i === forms.length - 1){
@@ -2314,6 +2314,8 @@ export class View {
   }
 
   formsForRecovery(html){
+    if(this.joinCount === 0){ return [] }
+
     let phxChange = this.binding("change")
     let template = document.createElement("template")
     template.innerHTML = html
@@ -2321,6 +2323,7 @@ export class View {
     return(
       DOM.all(this.el, `form[${phxChange}]`)
          .filter(form => this.ownsElement(form))
+         .filter(form => form.elements.length > 0)
          .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
          .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
     )
