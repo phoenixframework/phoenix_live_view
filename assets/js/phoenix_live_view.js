@@ -266,7 +266,8 @@ class LiveUploader {
   }
 
   static activeFileInputs(formEl){
-    return Array.from(formEl).filter(el => el.files && this.activeFiles(el).length > 0)
+    let fileInputs = formEl.querySelectorAll(`input[type="file"]`)
+    return Array.from(fileInputs).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
   static activeFiles(input){
