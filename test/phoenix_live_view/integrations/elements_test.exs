@@ -664,21 +664,43 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   describe "open_browser" do
     setup do
-      [fun: fn path -> path end]
+      open_fun = fn path ->
+        assert content = File.read!(path)
+        assert content =~ "<link rel=\"stylesheet\" href=\"/custom/app.css\"/>"
+        assert content =~ "body { background-color: #eee; }"
+        path
+      end
+
+      {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/styled-elements")
+      %{live: live, open_fun: open_fun}
     end
 
-    test "render view", %{live: view, fun: fun} do
-      assert view |> test_open_browser(fun) == view
+    test "render view", %{live: view, open_fun: open_fun} do
+      assert view |> open_browser(open_fun) == view
     end
 
-    test "render element", %{live: view, fun: fun} do
+    test "render element", %{live: view, open_fun: open_fun} do
       element = element(view, "#scoped-render")
-      assert element |> test_open_browser(fun) == element
+      assert element |> open_browser(open_fun) == element
     end
 
-    test "render html", %{live: view, fun: fun} do
+    test "render html", %{live: view, open_fun: open_fun} do
       html = render(view)
-      assert html |> test_open_browser(view, fun) == html
+      assert html |> open_browser(view, open_fun) == html
+
+      html = view |> element("#scoped-render") |> render()
+      assert html |> open_browser(view, open_fun) == html
+
+      inline_html = """
+      <html>
+        <head>
+          <link rel=\"stylesheet\" href=\"/custom/app.css\"/>
+          <style>body { background-color: #eee; }</style>
+        </head>
+        <body></body>
+      </html>
+      """
+      assert inline_html |> open_browser(view, open_fun) == inline_html
     end
   end
 end

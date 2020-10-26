@@ -854,7 +854,13 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render(view_or_element, topic_or_element) do
-    call(view_or_element, {:render_element, :find_element, topic_or_element}) |> DOM.to_html()
+    view_or_element
+    |> render_tree(topic_or_element)
+    |> DOM.to_html()
+  end
+
+  defp render_tree(view_or_element, topic_or_element) do
+    call(view_or_element, {:render_element, :find_element, topic_or_element})
   end
 
   defp call(view_or_element, tuple) do
@@ -1028,34 +1034,123 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  def open_browser(%View{} = view) do
-    do_open_browser(view, render(view))
+  @doc """
+  Open the default browser to display current HTML of `view_or_element`.
+
+  ## Examples
+
+      view
+      |> element("#term a:first-child()", "Increment")
+      |> open_browser()
+
+      assert view
+      |> form("#term", user: %{name: "hello"})
+      |> open_browser()
+      |> render_submit() =~ "Name updated"
+
+  """
+  def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
+
+  def open_browser(%View{} = view, open_fun) when is_function(open_fun, 1) do
+    view_html = render_tree(view, {proxy_topic(view), "render"})
+
+    view
+    |> maybe_wrap_html(view_html)
+    |> write_tmp_html_file()
+    |> open_fun.()
+
     view
   end
 
-  def open_browser(%Element{} = element) do
-    do_open_browser(element, render(element))
+  def open_browser(%Element{} = element, open_fun) when is_function(open_fun, 1) do
+    element_html = render_tree(element, element)
+
+    element
+    |> maybe_wrap_html(element_html)
+    |> write_tmp_html_file()
+    |> open_fun.()
+
     element
   end
 
-  def open_browser(html, %View{} = view) when is_binary(html) do
-    do_open_browser(view, html)
+  def open_browser(html, %View{} = view) do
+    open_browser(html, view, &open_with_system_cmd/1)
+  end
+
+  @doc """
+  Open the default browser to display current `html` binary.
+
+  ## Examples
+
+      view
+      |> element("buttons", "Increment")
+      |> render_click()
+      |> open_browser()
+
+      assert view
+      |> form("#term", user: %{name: "hello"})
+      |> render_submit()
+      |> open_browser(view) =~ "Name updated"
+
+  """
+  def open_browser(html, %View{} = view, open_fun)
+    when is_binary(html) and is_function(open_fun, 1) do
+    [parsed_html] = DOM.parse(html)
+
+    view
+    |> maybe_wrap_html(parsed_html)
+    |> write_tmp_html_file()
+    |> open_fun.()
+
     html
   end
 
-  @doc false
-  def test_open_browser(view_or_element, fun) do
-    call(view_or_element, {:open_browser, fun, render(view_or_element)})
-    view_or_element
+  defp maybe_wrap_html(view_or_element, content) do
+    case Floki.find(content, "html") do
+      [] ->
+        root_html = call(view_or_element, :html)
+
+        head =
+          case DOM.maybe_one(root_html, "head") do
+            {:ok, head} -> head
+            _ -> {"head", []}
+          end
+
+        [
+          {"html", [], [
+             head,
+             {"body", [], [
+               content
+             ]}
+          ]}
+        ]
+
+      _ ->
+        content
+    end
   end
 
-  def test_open_browser(html, view, fun) do
-    call(view, {:open_browser, fun, html})
-    html
+  defp write_tmp_html_file(html) do
+    html = Floki.raw_html(html)
+    path = Path.join([System.tmp_dir!(), "#{Phoenix.LiveView.Utils.random_id()}.html"])
+
+    path
+    |> File.open!([:write])
+    |> IO.binwrite(html)
+    |> File.close()
+
+    path
   end
 
-  defp do_open_browser(view_or_element, html) do
-    call(view_or_element, {:open_browser, &Phoenix.LiveView.Utils.open_browser/1, html})
+  defp open_with_system_cmd(path) do
+    cmd =
+      case :os.type() do
+        {:unix, :darwin} -> "open"
+        {:unix, _} -> "xdg-open"
+        {:win32, _} -> "start"
+      end
+
+    System.cmd(cmd, [path])
   end
 
   @doc """

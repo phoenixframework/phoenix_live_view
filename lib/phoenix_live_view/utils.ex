@@ -503,26 +503,4 @@ defmodule Phoenix.LiveView.Utils do
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do
     "flash:" <> salt!(endpoint_mod)
   end
-
-  def write_tmp_file!(filename, extension, content) do
-    path = Path.join([System.tmp_dir!(), "#{filename}#{extension}"])
-
-    path
-    |> File.open!([:write])
-    |> IO.binwrite(content)
-    |> File.close()
-
-    path
-  end
-
-  def open_browser(path) do
-    cmd =
-      case :os.type() do
-        {:unix, :darwin} -> "open"
-        {:unix, _} -> "xdg-open"
-        {:win32, _} -> "start"
-      end
-
-    System.cmd(cmd, [path])
-  end
 end

@@ -62,6 +62,8 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/assigns-not-in-socket", AssignsNotInSocketLive
     live "/errors", ErrorsLive
 
+    live "/styled-elements", ElementsLive, layout: {Phoenix.LiveViewTest.LayoutView, :styled}
+
     # integration layout
     scope "/" do
       pipe_through [:bad_layout]

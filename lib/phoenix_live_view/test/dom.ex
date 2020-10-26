@@ -339,28 +339,6 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  def maybe_wrap_html_element(html, css_path) do
-    case Floki.find(parse(html), "html") do
-      [] ->
-        [
-          "<!DOCTYPE html>",
-          "<html lang=\"en\">",
-          "<head>",
-          "<meta charset=\"utf-8\"/>",
-          "<link rel=\"stylesheet\" href=\"#{css_path}\" />",
-          "</head>",
-          "<body>",
-          html,
-          "</body>",
-          "</html>"
-        ]
-        |> IO.iodata_to_binary()
-
-      _ ->
-        html
-    end
-  end
-
   ## Helpers
 
   defp walk(html_tree, fun) when is_function(fun, 1) do

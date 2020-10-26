@@ -5,7 +5,6 @@ defmodule Phoenix.LiveViewTest.Endpoint do
   def config(:live_view), do: [signing_salt: "112345678212345678312345678412"]
   def config(:secret_key_base), do: String.duplicate("57689", 50)
   def config(:cache_static_manifest_latest), do: Process.get(:cache_static_manifest_latest)
-  def static_path(_), do: ""
 
   def init(opts), do: opts
 

@@ -326,6 +326,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:reply, {:ok, state.page_title}, state}
   end
 
+  def handle_call(:html, _from, state) do
+    {:reply, {:ok, state.html}, state}
+  end
+
   def handle_call({:live_children, topic}, from, state) do
     view = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(view.pid)
@@ -353,18 +357,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     view = fetch_view_by_topic!(state, topic)
     state = push_with_reply(state, from, view, "link", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
-    {:noreply, state}
-  end
-
-  def handle_call({:open_browser, open_browser_fun, html}, from, state) do
-    filename = "#{state.root_view.topic}_#{Phoenix.LiveView.Utils.random_id()}"
-    html = DOM.maybe_wrap_html_element(html, state.root_view.endpoint.static_path("/priv/static/css/app.css"))
-
-    filename
-    |> Phoenix.LiveView.Utils.write_tmp_file!(".html", html)
-    |> open_browser_fun.()
-
-    GenServer.reply(from, {:ok, filename})
     {:noreply, state}
   end
 
