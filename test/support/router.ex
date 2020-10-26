@@ -24,25 +24,6 @@ defmodule Phoenix.LiveViewTest.Router do
   scope "/", Phoenix.LiveViewTest do
     pipe_through [:browser]
 
-    # controller test
-    get "/controller/:type", Controller, :incoming
-    get "/widget", Controller, :widget
-    get "/not_found", Controller, :not_found
-
-    # router test
-    live "/router/thermo_defaults/:id", DashboardLive
-    live "/router/thermo_session/:id", DashboardLive
-    live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
-    live "/router/thermo_session/custom/:id", DashboardLive, as: :custom_live
-    live "/router/foobarbaz", FooBarLive, :index
-    live "/router/foobarbaz/index", FooBarLive.Index, :index
-    live "/router/foobarbaz/show", FooBarLive.Index, :show
-    live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
-    live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
-    live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
-    live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Live.Nested.Module, :action
-    live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
-
     live "/thermo", ThermostatLive
     live "/thermo/:id", ThermostatLive
     live "/thermo-container", ThermostatLive, container: {:span, style: "thermo-flex<script>"}
@@ -63,6 +44,25 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/errors", ErrorsLive
 
     live "/styled-elements", ElementsLive, layout: {Phoenix.LiveViewTest.LayoutView, :styled}
+
+    # controller test
+    get "/controller/:type", Controller, :incoming
+    get "/widget", Controller, :widget
+    get "/not_found", Controller, :not_found
+
+    # router test
+    live "/router/thermo_defaults/:id", DashboardLive
+    live "/router/thermo_session/:id", DashboardLive
+    live "/router/thermo_container/:id", DashboardLive, container: {:span, style: "flex-grow"}
+    live "/router/thermo_session/custom/:id", DashboardLive, as: :custom_live
+    live "/router/foobarbaz", FooBarLive, :index
+    live "/router/foobarbaz/index", FooBarLive.Index, :index
+    live "/router/foobarbaz/show", FooBarLive.Index, :show
+    live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
+    live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
+    live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
+    live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Live.Nested.Module, :action
+    live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
     scope "/" do
@@ -90,6 +90,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration components
     live "/component_in_live", ComponentInLive.Root
+    live "/cids_destroyed", CidsDestroyedLive
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do

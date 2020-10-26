@@ -82,13 +82,30 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info(%Message{topic: topic, event: "cids_destroyed"} = msg, %{topic: topic} = state) do
+  def handle_info(
+        %Message{topic: topic, event: "cids_will_destroy"} = msg,
+        %{topic: topic} = state
+      ) do
     %{"cids" => cids} = msg.payload
 
     new_components =
-      Enum.reduce(cids, state.components, fn cid, acc -> Diff.delete_component(cid, acc) end)
+      Enum.reduce(cids, state.components, fn cid, acc ->
+        Diff.mark_for_deletion_component(cid, acc)
+      end)
 
     {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
+  end
+
+  def handle_info(
+        %Message{topic: topic, event: "cids_destroyed"} = msg,
+        %{topic: topic} = state
+      ) do
+    %{"cids" => cids} = msg.payload
+
+    {cids, new_components} =
+      Enum.flat_map_reduce(cids, state.components, &Diff.delete_component/2)
+
+    {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{cids: cids})}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do

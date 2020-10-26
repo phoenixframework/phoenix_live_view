@@ -23,7 +23,7 @@ with another JS library. The "append" and "prepend" feature is often
 used with "Temporary assigns" to work with large amounts of data. Let's
 learn more.
 
-### Temporary assigns
+## Temporary assigns
 
 By default, all LiveView assigns are stateful, which enables change
 tracking and stateful interactions. In some cases, it's useful to mark
@@ -78,3 +78,59 @@ to the container as well as to each child:
 
 When the client receives new messages, it now knows to append to the
 old content rather than replace it.
+
+## Pitfall: temporary assigns to reset or control UI state
+
+Temporary assigns are useful when you want to render some data and
+then discard it so LiveView no longer needs to keep it in memory.
+
+For this reason, a temporary assign is not re-rendered until it is
+set again. This means that temporary assigns should not be used to
+reset or control UI state. Let's see an example.
+
+Imagine you want to show an error message when the input is less than
+3 chars. You can write this code:
+
+```elixir
+  def render(assigns) do
+    ~L"""
+    <%= if @too_short do %>
+      Input too short...
+    <% else %>
+      Searched for: <%= @search %>
+    % end %>
+
+    <form><input phx-change="search" name="term" /></form>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    {:ok,
+     assign(socket, too_short: false, search: ""),
+     temporary_assigns: [too_short: false]}
+  end
+
+  def handle_event("search", %{"term" => term}, socket) do
+    # do not search if user provides less then 3 chars
+    if String.length(term) >= 3 do
+      {:noreply, assign(socket, search: term)}
+    else
+      {:noreply, assign(socket, too_short: true, search: term)}
+    end
+  end
+```
+
+The idea here is that, while the term is less than 3 characters,
+we will set `@too_short` to true and show an error message in the
+UI accordingly. We also set `@too_short` as a temporary assign,
+so that it resets to `false` after every render.
+
+However, once a temporary assign resets to its original value,
+it won't be re-rendered, unless we explicitly assign it to something
+else. This means that the LiveView will never re-render the
+`if` block and we will continue to show "Input too short..." even
+after the input has 3 or more characters.
+
+The mistake here is using `:temporary_assigns` to reset or control
+UI state, while `:temporary_assigns` should rather be used when we
+don't have (or don't want to keep) certain data around.

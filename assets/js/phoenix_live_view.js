@@ -1599,6 +1599,7 @@ export class View {
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
+    this.pruningCIDs = []
     this.href = href
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
@@ -1740,7 +1741,7 @@ export class View {
       this.dropPendingRefs()
       let forms = this.formsForRecovery(html)
 
-      if(this.joinCount > 1 && forms.length > 0){
+      if(forms.length > 0){
         forms.forEach((form, i) => {
           this.pushFormRecovery(form, resp => {
             if(i === forms.length - 1){
@@ -1967,7 +1968,9 @@ export class View {
   renderContainer(diff, kind){
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName
-      let cids = diff ? this.rendered.componentCIDs(diff) : null
+      // Don't skip any component in the diff nor any marked as pruned
+      // (as they may have been added back)
+      let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
       let html = this.rendered.toString(cids)
       return `<${tag}>${html}</${tag}>`
     })
@@ -2029,7 +2032,7 @@ export class View {
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.channel.onError(reason => this.onError(reason))
-    this.channel.onClose(() => this.onClose())
+    this.channel.onClose(reason => this.onClose(reason))
   }
 
   destroyAllChildren(){
@@ -2082,9 +2085,11 @@ export class View {
     return this.liveSocket.reloadWithJitter(this)
   }
 
-  onClose(){
+  onClose(reason){
     if(this.isDestroyed()){ return }
-    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){ return this.liveSocket.reloadWithJitter(this) }
+    if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && reason !== "leave")){
+      return this.liveSocket.reloadWithJitter(this)
+    }
     this.destroyAllChildren()
     this.liveSocket.dropActiveElement(this)
     // document.activeElement can be null in Internet Explorer 11
@@ -2095,7 +2100,7 @@ export class View {
   }
 
   onError(reason){
-    this.onClose()
+    this.onClose(reason)
     this.log("error", () => ["view crashed", reason])
     if(!this.liveSocket.isUnloaded()){ this.displayError() }
   }
@@ -2309,6 +2314,8 @@ export class View {
   }
 
   formsForRecovery(html){
+    if(this.joinCount === 0){ return [] }
+
     let phxChange = this.binding("change")
     let template = document.createElement("template")
     template.innerHTML = html
@@ -2316,18 +2323,35 @@ export class View {
     return(
       DOM.all(this.el, `form[${phxChange}]`)
          .filter(form => this.ownsElement(form))
+         .filter(form => form.elements.length > 0)
          .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
          .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
     )
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){
-    let completelyDestroyedCIDs = destroyedCIDs.filter(cid => {
+    let willDestroyCIDs = destroyedCIDs.filter(cid => {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
-    if(completelyDestroyedCIDs.length > 0){
-      this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyedCIDs}, () => {
-        this.rendered.pruneCIDs(completelyDestroyedCIDs)
+    if(willDestroyCIDs.length > 0){
+      this.pruningCIDs.push(...willDestroyCIDs)
+
+      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
+        // The cids are either back on the page or they will be fully removed,
+        // so we can remove them from the pruningCIDs.
+        this.pruningCIDs = this.pruningCIDs.filter(cid => willDestroyCIDs.indexOf(cid) !== -1)
+
+        // See if any of the cids we wanted to destroy were added back,
+        // if they were added back, we don't actually destroy them.
+        let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
+          return DOM.findComponentNodeList(this.el, cid).length === 0
+        })
+
+        if(completelyDestroyCIDs.length > 0){
+          this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+            this.rendered.pruneCIDs(resp.cids)
+          })
+        }
       })
     }
   }

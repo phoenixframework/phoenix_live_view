@@ -438,12 +438,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp patch_view(state, view, child_html) do
     case DOM.patch_id(view.id, state.html, child_html) do
-      {new_html, [_ | _] = deleted_cids} ->
+      {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
+        state = %{state | html: new_html}
+        payload = %{"cids" => will_destroy_cids}
 
-        %{state | html: new_html}
-        |> push_with_callback(view, "cids_destroyed", %{"cids" => deleted_cids}, fn _, state ->
-          {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, deleted_cids))}
+        push_with_callback(state, view, "cids_will_destroy", payload, fn _, state ->
+          payload = %{"cids" => will_destroy_cids -- DOM.component_ids(view.id, state.html)}
+
+          state =
+            push_with_callback(state, view, "cids_destroyed", payload, fn reply, state ->
+              cids = reply.payload.cids
+              {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, cids))}
+            end)
+
+          {:noreply, state}
         end)
 
       {new_html, [] = _deleted_cids} ->
