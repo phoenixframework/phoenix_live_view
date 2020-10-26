@@ -684,25 +684,5 @@ defmodule Phoenix.LiveView.ElementsTest do
       element = element(view, "#scoped-render")
       assert element |> open_browser(open_fun) == element
     end
-
-    test "render html", %{live: view, open_fun: open_fun} do
-      html = render(view)
-      assert html |> open_browser(view, open_fun) == html
-
-      html = view |> element("#scoped-render") |> render()
-      assert html |> open_browser(view, open_fun) == html
-
-      inline = """
-      <html>
-        <head>
-          <link rel=\"stylesheet\" href=\"/custom/app.css\"/>
-          <style>body { background-color: #eee; }</style>
-          <script>console.log("script")</script>
-        </head>
-        <body></body>
-      </html>
-      """
-      assert inline |> open_browser(view, open_fun) == inline
-    end
   end
 end

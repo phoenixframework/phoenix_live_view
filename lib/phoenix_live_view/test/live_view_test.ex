@@ -845,16 +845,18 @@ defmodule Phoenix.LiveViewTest do
              |> element("#alarm")
              |> render() == "Snooze"
   """
-  def render(%View{} = view) do
-    render(view, {proxy_topic(view), "render"})
+  def render(view_or_element) do
+    view_or_element
+    |> render_tree()
+    |> DOM.to_html()
   end
 
-  def render(%Element{} = element) do
-    render(element, element)
+  defp render_tree(%View{} = view) do
+    render_tree(view, {proxy_topic(view), "render"})
   end
 
-  defp render(view_or_element, topic_or_element) do
-    call(view_or_element, {:render_element, :find_element, topic_or_element}) |> DOM.to_html()
+  defp render_tree(%Element{} = element) do
+    render_tree(element, element)
   end
 
   defp render_tree(view_or_element, topic_or_element) do
@@ -1050,7 +1052,7 @@ defmodule Phoenix.LiveViewTest do
   def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
 
   def open_browser(%View{} = view, open_fun) when is_function(open_fun, 1) do
-    view_html = render_tree(view, {proxy_topic(view), "render"})
+    view_html = render_tree(view)
 
     view
     |> maybe_wrap_html(view_html)
@@ -1061,7 +1063,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   def open_browser(%Element{} = element, open_fun) when is_function(open_fun, 1) do
-    element_html = render_tree(element, element)
+    element_html = render_tree(element)
 
     element
     |> maybe_wrap_html(element_html)
@@ -1069,38 +1071,6 @@ defmodule Phoenix.LiveViewTest do
     |> open_fun.()
 
     element
-  end
-
-  def open_browser(html, %View{} = view) do
-    open_browser(html, view, &open_with_system_cmd/1)
-  end
-
-  @doc """
-  Open the default browser to display current `html` binary.
-
-  ## Examples
-
-      view
-      |> element("buttons", "Increment")
-      |> render_click()
-      |> open_browser()
-
-      assert view
-             |> form("#term", user: %{name: "hello"})
-             |> render_submit()
-             |> open_browser(view) =~ "Name updated"
-
-  """
-  def open_browser(html, %View{} = view, open_fun)
-    when is_binary(html) and is_function(open_fun, 1) do
-    [parsed_html] = DOM.parse(html)
-
-    view
-    |> maybe_wrap_html(parsed_html)
-    |> write_tmp_html_file()
-    |> open_fun.()
-
-    html
   end
 
   defp maybe_wrap_html(view_or_element, content) do
