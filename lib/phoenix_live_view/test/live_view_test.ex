@@ -854,9 +854,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render(view_or_element, topic_or_element) do
-    view_or_element
-    |> render_tree(topic_or_element)
-    |> DOM.to_html()
+    call(view_or_element, {:render_element, :find_element, topic_or_element}) |> DOM.to_html()
   end
 
   defp render_tree(view_or_element, topic_or_element) do
@@ -1044,9 +1042,9 @@ defmodule Phoenix.LiveViewTest do
       |> open_browser()
 
       assert view
-      |> form("#term", user: %{name: "hello"})
-      |> open_browser()
-      |> render_submit() =~ "Name updated"
+             |> form("#term", user: %{name: "hello"})
+             |> open_browser()
+             |> render_submit() =~ "Name updated"
 
   """
   def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
@@ -1088,9 +1086,9 @@ defmodule Phoenix.LiveViewTest do
       |> open_browser()
 
       assert view
-      |> form("#term", user: %{name: "hello"})
-      |> render_submit()
-      |> open_browser(view) =~ "Name updated"
+             |> form("#term", user: %{name: "hello"})
+             |> render_submit()
+             |> open_browser(view) =~ "Name updated"
 
   """
   def open_browser(html, %View{} = view, open_fun)
@@ -1112,8 +1110,8 @@ defmodule Phoenix.LiveViewTest do
 
         head =
           case DOM.maybe_one(root_html, "head") do
-            {:ok, head} -> head
-            _ -> {"head", []}
+            {:ok, head} -> Floki.filter_out(head, "script")
+            _ -> {"head", [], []}
           end
 
         [
@@ -1126,19 +1124,14 @@ defmodule Phoenix.LiveViewTest do
         ]
 
       _ ->
-        content
+        Floki.filter_out(content, "script")
     end
   end
 
   defp write_tmp_html_file(html) do
     html = Floki.raw_html(html)
     path = Path.join([System.tmp_dir!(), "#{Phoenix.LiveView.Utils.random_id()}.html"])
-
-    path
-    |> File.open!([:write])
-    |> IO.binwrite(html)
-    |> File.close()
-
+    File.write!(path, html)
     path
   end
 

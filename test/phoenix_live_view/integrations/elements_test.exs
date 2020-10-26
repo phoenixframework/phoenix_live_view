@@ -668,6 +668,7 @@ defmodule Phoenix.LiveView.ElementsTest do
         assert content = File.read!(path)
         assert content =~ "<link rel=\"stylesheet\" href=\"/custom/app.css\"/>"
         assert content =~ "body { background-color: #eee; }"
+        refute content =~ "<script>"
         path
       end
 
@@ -691,16 +692,17 @@ defmodule Phoenix.LiveView.ElementsTest do
       html = view |> element("#scoped-render") |> render()
       assert html |> open_browser(view, open_fun) == html
 
-      inline_html = """
+      inline = """
       <html>
         <head>
           <link rel=\"stylesheet\" href=\"/custom/app.css\"/>
           <style>body { background-color: #eee; }</style>
+          <script>console.log("script")</script>
         </head>
         <body></body>
       </html>
       """
-      assert inline_html |> open_browser(view, open_fun) == inline_html
+      assert inline |> open_browser(view, open_fun) == inline
     end
   end
 end

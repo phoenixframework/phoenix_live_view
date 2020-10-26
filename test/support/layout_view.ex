@@ -34,6 +34,7 @@ defmodule Phoenix.LiveViewTest.LayoutView do
       <head>
         <link rel="stylesheet" href="/custom/app.css"/>
         <style>body { background-color: #eee; }</style>
+        <script>console.log("script")</script>
       </head>
       <body>
         <%= @inner_content %>
