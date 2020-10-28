@@ -218,7 +218,7 @@ And then in the client:
       updated(){ this.pending = this.page() }
     }
 
-However, the data attribute approach is not a good approach if you need frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
+However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
     <div id="chart" phx-hook="Chart">
     {:noreply, push_event(socket, "points", %{points: new_points})}
