@@ -208,6 +208,10 @@ defmodule Phoenix.LiveView.Utils do
 
   @doc """
   Annotates the changes with the event to be pushed.
+
+  Events are dispatched on the JavaScript side only after
+  the current patch is invoked. Therefore, if the LiveView
+  redirects, the events won't be invoked.
   """
   def push_event(%Socket{} = socket, event, %{} = payload) do
     update_in(socket.private.changed[:push_events], &[[event, payload] | &1 || []])

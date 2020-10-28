@@ -169,50 +169,6 @@ Then a hook callback object could be defined and passed to the socket:
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
     ...
 
-The hook can push events to the LiveView by using the `pushEvent` function and receive a
-reply from the server via a `{:reply, map, socket}` return value. The reply payload will be
-passed to the optional `pushEvent` response callback.
-
-Communication with the hook from the server can be done by reading data attributes on the
-hook element, or by using `push_event` on the server and `handleEvent` on the client.
-
-For example, to implement infinite scrolling, one might do:
-
-    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>">
-
-And then in the client:
-
-    Hooks.InfiniteScroll = {
-      page() { return this.el.dataset.page },
-      mounted(){
-        this.pending = this.page()
-        window.addEventListener("scroll", e => {
-          if(this.pending == this.page() && scrollAt() > 90){
-            this.pending = this.page() + 1
-            this.pushEvent("load-more", {})
-          }
-        })
-      },
-      updated(){ this.pending = this.page() }
-    }
-
-To push out-of-band events to the client, for example to render charting points, one could do:
-
-    <div id="chart" phx-hook="Chart">
-
-    {:noreply, push_event(socket, "points", %{points: new_points})}
-
-And then on the client:
-
-    Hooks.Chart = {
-      mounted(){
-        this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
-      }
-    }
-
-*Note*: events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event.
-
 *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
 For integration with client-side libraries which require a broader access to full
@@ -232,3 +188,50 @@ and the return value is ignored. For example, the following option could be used
         }
       },
     })
+
+### Client-server communication
+
+A hook can push events to the LiveView by using the `pushEvent` function and receive a
+reply from the server via a `{:reply, map, socket}` return value. The reply payload will be
+passed to the optional `pushEvent` response callback.
+
+Communication with the hook from the server can be done by reading data attributes on the
+hook element or by using `push_event` on the server and `handleEvent` on the client.
+
+For example, to implement infinite scrolling, one can pass the current page using data attributes:
+
+    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>">
+
+And then in the client:
+
+    Hooks.InfiniteScroll = {
+      page() { return this.el.dataset.page },
+      mounted(){
+        this.pending = this.page()
+        window.addEventListener("scroll", e => {
+          if(this.pending == this.page() && scrollAt() > 90){
+            this.pending = this.page() + 1
+            this.pushEvent("load-more", {})
+          }
+        })
+      },
+      updated(){ this.pending = this.page() }
+    }
+
+However, the data attribute approach is not a good approach if you need frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
+
+    <div id="chart" phx-hook="Chart">
+    {:noreply, push_event(socket, "points", %{points: new_points})}
+
+And then on the client:
+
+    Hooks.Chart = {
+      mounted(){
+        this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
+      }
+    }
+
+*Note*: events pushed from the server via `push_event` are global and will be dispatched
+to all active hooks on the client who are handling that event.
+
+*Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked.
