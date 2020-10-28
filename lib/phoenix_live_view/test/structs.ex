@@ -96,7 +96,7 @@ defmodule Phoenix.LiveViewTest.Upload do
     %{
       "name" => name,
       "content" => content,
-      "ref" => System.unique_integer([:positive]),
+      "ref" => to_string(System.unique_integer([:positive])),
       "size" => entry[:size] || byte_size(content),
       "type" => entry[:type] || MIME.from_path(name)
     }

@@ -118,10 +118,8 @@ defmodule Phoenix.LiveView.Upload do
         {:ok, update_uploads(new_config, socket)}
 
       {:error, new_config} ->
-        errors_resp =
-          Enum.map(new_config.errors, fn {ref, msg} -> %{ref: ref, reason: msg} end)
-
-        {:error, %{error: errors_resp}, update_uploads(new_config, socket)}
+        errors_resp = Enum.map(new_config.errors, fn {ref, msg} -> [ref, msg] end)
+        {:error, %{ref: conf.ref, error: errors_resp}, update_uploads(new_config, socket)}
     end
   end
 
@@ -207,19 +205,16 @@ defmodule Phoenix.LiveView.Upload do
       socket.assigns[:uploads][name] ||
         raise ArgumentError, "no upload allowed for #{inspect(name)}"
 
-    entries =
-      case uploaded_entries(socket, name) do
-        {[_ | _] = done_entries, []} ->
-          done_entries
+    case uploaded_entries(socket, name) do
+      {[_ | _] = done_entries, []} ->
+        consume_entries(conf, done_entries, func)
 
-        {_, [_ | _]} ->
-          raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
+      {_, [_ | _]} ->
+        raise ArgumentError, "cannot consume uploaded files when entries are still in progress"
 
-        {[], []} ->
-          raise ArgumentError, "cannot consume uploaded files without active entries"
-      end
-
-    consume_entries(conf, entries, func)
+      {[], []} ->
+        []
+    end
   end
 
   @doc """
@@ -287,18 +282,25 @@ defmodule Phoenix.LiveView.Upload do
       chunk_size: conf.chunk_size
     }
 
-    case conf do
-      %UploadConfig{external: false} = conf ->
-        channel_preflight(socket, conf, client_meta)
+    new_entries = UploadConfig.entries_awaiting_preflight(conf)
 
-      %UploadConfig{external: func} when is_function(func) ->
-        external_preflight(socket, conf, client_meta)
+    case UploadConfig.mark_preflighted(conf) do
+      %UploadConfig{external: false} = new_conf ->
+        channel_preflight(socket, new_conf, new_entries, client_meta)
+
+      %UploadConfig{external: func} = new_conf when is_function(func) ->
+        external_preflight(socket, new_conf, new_entries, client_meta)
     end
   end
 
-  defp channel_preflight(%Socket{} = socket, %UploadConfig{} = conf, %{} = client_config_meta) do
+  defp channel_preflight(
+         %Socket{} = socket,
+         %UploadConfig{} = conf,
+         entries,
+         %{} = client_config_meta
+       ) do
     reply_entries =
-      for entry <- conf.entries, into: %{} do
+      for entry <- entries, into: %{} do
         token =
           Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
             pid: self(),
@@ -308,12 +310,13 @@ defmodule Phoenix.LiveView.Upload do
         {entry.ref, token}
       end
 
-    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, socket}
+    new_socket = update_uploads(conf, socket)
+    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, new_socket}
   end
 
-  defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, client_config_meta) do
+  defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, entries, client_config_meta) do
     reply_entries =
-      Enum.reduce_while(conf.entries, {:ok, %{}, socket}, fn entry, {:ok, metas, acc} ->
+      Enum.reduce_while(entries, {:ok, %{}, socket}, fn entry, {:ok, metas, acc} ->
         case conf.external.(entry, acc) do
           {:ok, %{} = meta, new_socket} ->
             new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
@@ -328,9 +331,9 @@ defmodule Phoenix.LiveView.Upload do
       {:ok, entry_metas, new_socket} ->
         {:ok, %{ref: conf.ref, config: client_config_meta, entries: entry_metas}, new_socket}
 
-      {:error, {ref, meta_reason}, new_socket} ->
-        new_socket = put_upload_error(new_socket, conf.name, ref, meta_reason)
-        {:error, %{ref: conf.ref, error: [ref, :preflight_failed]}, new_socket}
+      {:error, {entry_ref, meta_reason}, new_socket} ->
+        new_socket = put_upload_error(new_socket, conf.name, entry_ref, meta_reason)
+        {:error, %{ref: conf.ref, error: [[entry_ref, meta_reason]]}, new_socket}
     end
   end
 end

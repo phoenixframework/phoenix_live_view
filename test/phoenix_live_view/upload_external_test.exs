@@ -93,8 +93,8 @@ defmodule Phoenix.LiveView.UploadExternalTest do
         %{name: "bad.jpeg", content: String.duplicate("ok", 100)}
       ])
 
-    assert {:error, [_ref, :preflight_failed]} = render_upload(avatar, "bad.jpeg", 1)
-    assert {:error, [_ref, :preflight_failed]} = render_upload(avatar, "foo.jpeg", 1)
+    assert {:error, [[ref, %{reason: "bad name"}]]} = render_upload(avatar, "bad.jpeg", 1)
+    assert {:error, [[^ref, %{reason: "bad name"}]]} = render_upload(avatar, "foo.jpeg", 1)
     assert render(lv) =~ "bad name"
   end
 

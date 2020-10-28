@@ -131,8 +131,15 @@ defmodule Phoenix.LiveView.Channel do
     %{socket: socket} = state
     %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
     new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
+    upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
+    entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
 
-    handle_changed(state, new_socket, msg.ref)
+    if event = entry && upload_conf.progress_event do
+      {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
+      handle_changed(state, new_socket, msg.ref)
+    else
+      handle_changed(state, new_socket, msg.ref)
+    end
   end
 
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do

@@ -684,7 +684,7 @@ defmodule Phoenix.LiveView do
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
-  @doc """
+  @doc ~S"""
   Allows an upload for the provided name.
 
   ## Options
@@ -707,12 +707,35 @@ defmodule Phoenix.LiveView do
     * `:external` - The 2-arity function for generating metadata for external
       client uploaders. See the Uploads section for example usage.
 
+    * `:progress` - The optional 3-arity function for receiving progress events
+
+    * `:auto_upload` - Instructs the client to uplaod the file automatically
+      on file selection instead of waiting for form submits. Default false.
+
   Raises when a previously allowed upload under the same name is still active.
 
   ## Examples
 
       allow_upload(socket, :avatar, accept: ~w(.jpg .jpeg), max_entries: 2)
       allow_upload(socket, :avatar, accept: :any)
+
+  For consuming files automatically as they are uploaded, you can pair `auto_upload: true` with
+  a custom progress function to consume the entries as they are completed. For example:
+
+      allow_upload(socket, :avatar, accept: :any, progress: &handle_progress/3, auto_upload: true)
+
+      defp handle_progress(:avatar, entry, socket) do
+        if entry.done? do
+          uploaded_file =
+            consume_uploaded_entry(socket, entry, fn %{} = meta ->
+              ...
+            end)
+
+          {:noreply, put_flash(socket, :info, "file #{uploaded_file.name} uploaded")
+        else
+          {:noreply, socket}
+        end
+      end
   """
   defdelegate allow_upload(socket, name, options), to: Phoenix.LiveView.Upload
 

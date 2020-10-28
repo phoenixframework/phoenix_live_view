@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   alias Phoenix.LiveView.UploadEntry
 
   defstruct progress: 0,
+            preflighted?: false,
             upload_config: nil,
             upload_ref: nil,
             ref: nil,
@@ -60,7 +61,17 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   if Version.match?(System.version(), ">= 1.8.0") do
     @derive {Inspect,
-             only: [:name, :ref, :entries, :max_entries, :max_file_size, :accept, :errors]}
+             only: [
+               :name,
+               :ref,
+               :entries,
+               :max_entries,
+               :max_file_size,
+               :accept,
+               :errors,
+               :auto_upload?,
+               :progress_event
+             ]}
   end
 
   defstruct name: nil,
@@ -78,10 +89,12 @@ defmodule Phoenix.LiveView.UploadConfig do
             external: false,
             allowed?: false,
             ref: nil,
-            errors: []
+            errors: [],
+            auto_upload?: false,
+            progress_event: nil
 
   @type t :: %__MODULE__{
-          name: atom(),
+          name: atom() | String.t(),
           client_key: String.t(),
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
@@ -94,7 +107,12 @@ defmodule Phoenix.LiveView.UploadConfig do
           external: (Socket.t() -> Socket.t()) | false,
           allowed?: boolean,
           errors: list(),
-          ref: String.t()
+          ref: String.t(),
+          auto_upload?: boolean(),
+          progress_event:
+            (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
+               {:noreply, Phoenix.LiveView.Socket.t()})
+            | nil
         }
 
   @doc false
@@ -209,6 +227,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           @default_chunk_timeout
       end
 
+    progress_event =
+      case Keyword.fetch(opts, :progress) do
+        {:ok, func} when is_function(func, 3) ->
+          func
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :progress value provided to allow_upload.
+
+          Only 3-arity anonymous function is supported. Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          nil
+      end
+
     %UploadConfig{
       ref: random_ref,
       name: name,
@@ -222,7 +258,9 @@ defmodule Phoenix.LiveView.UploadConfig do
       external: external,
       chunk_size: chunk_size,
       chunk_timeout: chunk_timeout,
-      allowed?: true
+      progress_event: progress_event,
+      auto_upload?: Keyword.get(opts, :auto_upload, false),
+      allowed?: true,
     }
   end
 
@@ -265,6 +303,19 @@ defmodule Phoenix.LiveView.UploadConfig do
   @doc false
   def registered?(%UploadConfig{} = conf) do
     Enum.find(conf.entry_refs_to_pids, fn {_ref, maybe_pid} -> is_pid(maybe_pid) end)
+  end
+
+  @doc false
+  def mark_preflighted(%UploadConfig{} = conf) do
+    %UploadConfig{
+      conf
+      | entries: for(entry <- conf.entries, do: %UploadEntry{entry | preflighted?: true})
+    }
+  end
+
+  @doc false
+  def entries_awaiting_preflight(%UploadConfig{} = conf) do
+    for entry <- conf.entries, not entry.preflighted?, do: entry
   end
 
   @doc false
@@ -389,18 +440,11 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def put_entries(%UploadConfig{} = conf, entries) do
-    if registered?(conf) do
-      raise ArgumentError, "cannot overwrite entries for an active upload"
-    else
-      do_put_entries(conf, entries)
-    end
-  end
-
-  defp do_put_entries(%UploadConfig{} = conf, entries) do
-    cleared_conf = clear_entries(conf)
+    new_entries =
+      for entry <- entries, !get_entry_by_ref(conf, Map.fetch!(entry, "ref")), do: entry
 
     new_conf =
-      Enum.reduce(entries, cleared_conf, fn client_entry, acc ->
+      Enum.reduce(new_entries, conf, fn client_entry, acc ->
         case cast_and_validate_entry(acc, client_entry) do
           {:ok, new_conf} -> new_conf
           {:error, new_conf} -> new_conf
@@ -424,14 +468,8 @@ defmodule Phoenix.LiveView.UploadConfig do
     length(entries) > max
   end
 
-  defp clear_entries(%UploadConfig{} = conf) do
-    if registered?(conf),
-      do: raise(ArgumentError, "an upload with active entries cannot be cleared")
-
-    recalculate_computed_fields(%UploadConfig{conf | entries: [], errors: []})
-  end
-
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
+    :error = Map.fetch(conf.entry_refs_to_pids, ref)
     entry = %UploadEntry{
       ref: ref,
       upload_ref: conf.ref,

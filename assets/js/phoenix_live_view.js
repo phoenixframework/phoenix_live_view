@@ -137,6 +137,12 @@ class UploadEntry {
     return file.size > 0 && (isNew || isActive)
   }
 
+  static isPreflighted(fileEl, file){
+    let preflightedRefs = fileEl.getAttribute("data-phx-preflighted-refs").split(",")
+    let isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+    return isPreflighted && this.isActive(fileEl, file)
+  }
+
   constructor(fileEl, file, view){
     this.ref = LiveUploader.genFileRef(file)
     this.fileEl = fileEl
@@ -150,7 +156,9 @@ class UploadEntry {
 
   metadata(){ return this.meta }
 
-  progress(progress){ this.view.pushFileProgress(this.fileEl, this.ref, progress) }
+  progress(progress){
+    this.view.pushFileProgress(this.fileEl, this.ref, Math.floor(progress))
+  }
 
   cancel(){
     this._isCancelled = true
@@ -161,6 +169,7 @@ class UploadEntry {
   done(){
     this._isDone = true
     this.view.pushFileProgress(this.fileEl, this.ref, 100)
+    LiveUploader.untrackFile(this.fileEl, this.file)
     this._onDone()
   }
 
@@ -196,11 +205,27 @@ class UploadEntry {
   zipPostFlight(resp){
     this.meta = resp.entries[this.ref]
     if(!this.meta){ logError(`no preflight upload response returned with ref ${this.ref}`, {input: this.fileEl, response: resp})}
-    return this
   }
 }
 
 let Hooks = {}
+Hooks.LiveFileUpload = {
+  preflightedRefs(){ return this.el.getAttribute("data-phx-preflighted-refs") },
+
+  mounted(){ this.preflightedWas = this.preflightedRefs() },
+
+  updated() {
+    let newPreflights = this.preflightedRefs()
+    if(this.preflightedWas !== newPreflights){
+      this.preflightedWas = newPreflights
+      if(newPreflights === ""){
+        this.__view.cancelSubmit(this.el.form)
+      }
+    }
+  }
+}
+
+
 Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
@@ -224,11 +249,22 @@ class LiveUploader {
       return file._phxRef
     }
   }
+
   static getEntryDataURL(inputEl, ref, callback){
     let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
     let reader = new FileReader()
     reader.onload = (e) => callback(e.target.result)
     reader.readAsDataURL(file)
+  }
+
+  static hasUploadsInProgress(formEl){
+    let active = 0
+    DOM.all(formEl, `input[type="file"]`, input => {
+      if(input.getAttribute("data-phx-preflighted-refs") !== input.getAttribute("data-phx-done-refs")){
+        active++
+      }
+    })
+    return active > 0
   }
 
   static serializeUploads(inputEl){
@@ -251,6 +287,11 @@ class LiveUploader {
     inputEl.value = null
     DOM.putPrivate(inputEl, "files", [])
   }
+
+  static untrackFile(inputEl, file){
+    DOM.putPrivate(inputEl, "files", DOM.private(inputEl, "files").filter(f => !Object.is(f, file)))
+  }
+
   static trackFiles(inputEl, files){
     if(inputEl.getAttribute("multiple") !== null){
       let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
@@ -259,10 +300,6 @@ class LiveUploader {
     } else {
       DOM.putPrivate(inputEl, "files", files)
     }
-  }
-
-  static countAllFiles(formEl){
-    return this.activeFileInputs(formEl).reduce((total, inputEl) => total + this.activeFiles(inputEl).length, 0)
   }
 
   static activeFileInputs(formEl){
@@ -274,11 +311,20 @@ class LiveUploader {
     return (DOM.private(input, "files") || []).filter(f => UploadEntry.isActive(input, f))
   }
 
+  static inputsAwaitingPreflight(formEl){
+    let fileInputs = formEl.querySelectorAll(`input[type="file"]`)
+    return Array.from(fileInputs).filter(input => this.filesAwaitingPreflight(input).length > 0)
+  }
+
+  static filesAwaitingPreflight(input){
+    return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f))
+  }
+
   constructor(inputEl, view, onComplete){
     this.view = view
     this.onComplete = onComplete
     this._entries =
-      Array.from(LiveUploader.activeFiles(inputEl) || [])
+      Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || [])
         .map(file => new UploadEntry(inputEl, file, view))
 
     this.numEntriesInProgress = this._entries.length
@@ -336,15 +382,12 @@ let channelUploader = function(entries, onError, resp, liveSocket){
         let offset = 0
         const uploadChunk = (chunk, finished, loaded) => {
           if(!uploadChannel.isJoined()){ return }
-          if(!finished) {
-            entry.progress(Math.round((loaded / entry.file.size) * 100))
-          }
-
           uploadChannel.push("chunk", chunk)
             .receive("ok", () => {
               if(finished){
                 entry.done()
               } else {
+                entry.progress((loaded / entry.file.size) * 100)
                 setTimeout(() => {
                   chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
                 }, liveSocket.getLatencySim() || 0)
@@ -983,7 +1026,7 @@ export class LiveSocket {
       })
       let dropTarget = dropTargetId && document.getElementById(dropTargetId)
       let files = Array.from(e.dataTransfer.files || [])
-      if(!dropTarget || files.length === 0 || !(dropTarget.files instanceof FileList)){ return }
+      if(!dropTarget || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)){ return }
 
       LiveUploader.trackFiles(dropTarget, files)
       dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
@@ -1495,23 +1538,27 @@ export let DOM = {
     }
   },
 
-  mergeAttrs(target, source, exclude = []){
+  mergeAttrs(target, source, opts = {}){
+    let exclude = opts.exclude || []
+    let remove = opts.remove === false ? false : true
     let sourceAttrs = source.attributes
     for (let i = sourceAttrs.length - 1; i >= 0; i--){
       let name = sourceAttrs[i].name
       if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
     }
 
-    let targetAttrs = target.attributes
-    for (let i = targetAttrs.length - 1; i >= 0; i--){
-      let name = targetAttrs[i].name
-      if(!source.hasAttribute(name)){ target.removeAttribute(name) }
+    if(remove){
+      let targetAttrs = target.attributes
+      for (let i = targetAttrs.length - 1; i >= 0; i--){
+        let name = targetAttrs[i].name
+        if(!source.hasAttribute(name)){ target.removeAttribute(name) }
+      }
     }
   },
 
   mergeFocusedInput(target, source){
     // skip selects because FF will reset highlighted index for any setAttribute
-    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, ["value"]) }
+    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, {except: ["value"]}) }
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {
@@ -1552,6 +1599,7 @@ export let DOM = {
     if(ref === null){ return true }
 
     if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
+      if(fromEl.type === "file"){ DOM.mergeAttrs(fromEl, toEl, {remove: false}) }
       DOM.putPrivate(fromEl, PHX_REF, toEl)
       return false
     } else {
@@ -1757,7 +1805,13 @@ class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){ return false }
+          if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){
+            if(fromEl.type === "file"){
+              this.trackBefore("updated", fromEl, toEl)
+              updates.push(fromEl)
+            }
+            return false
+          }
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
@@ -1886,6 +1940,7 @@ export class View {
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
     this.uploaders = {}
+    this.formSubmits = {}
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
@@ -2546,18 +2601,46 @@ export class View {
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
     let uploads
+    let cid = this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
     let formData = serializeForm(inputEl.form, {_target: eventTarget.name})
-    if(inputEl.files && inputEl.files.length > 0){ LiveUploader.trackFiles(inputEl, Array.from(inputEl.files)) }
+    if(inputEl.files && inputEl.files.length > 0){
+      LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
+    }
     uploads = LiveUploader.serializeUploads(inputEl)
     let event = {
       type: "form",
       event: phxEvent,
       value: formData,
       uploads: uploads,
-      cid: this.targetComponentID(inputEl.form, targetCtx)
+      cid: cid
     }
-    this.pushWithReply(refGenerator, "event", event, callback)
+    this.pushWithReply(refGenerator, "event", event, resp => {
+      if(inputEl.type === "file" && inputEl.getAttribute("data-phx-auto-upload") !== null){
+        if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
+          let [ref, els] = refGenerator()
+          this.uploadFiles(inputEl.form, targetCtx, ref, cid, (uploads) => {
+            callback && callback(resp)
+            let awaitingSubmit = this.formSubmits[inputEl.form.id]
+            if(awaitingSubmit){ awaitingSubmit() }
+          })
+        }
+      } else {
+        callback && callback(resp)
+      }
+    })
+  }
+
+  scheduleSubmit(formEl, callback){
+    if(this.formSubmits[formEl.id]){ return true }
+    this.formSubmits[formEl.id] = () => {
+      this.cancelSubmit(formEl)
+      callback()
+    }
+  }
+
+  cancelSubmit(formEl){
+    delete this.formSubmits[formEl.id]
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -2584,7 +2667,10 @@ export class View {
     }
 
     let cid = this.targetComponentID(formEl, targetCtx)
-    if(LiveUploader.countAllFiles(formEl) > 0) {
+    if(LiveUploader.hasUploadsInProgress(formEl)){
+      refGenerator()
+      return this.scheduleSubmit(formEl, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
+    } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els]
       this.uploadFiles(formEl, targetCtx, ref, cid, (uploads) => {

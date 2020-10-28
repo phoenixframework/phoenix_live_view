@@ -449,13 +449,21 @@ defmodule Phoenix.LiveView.Helpers do
         opts
       end
 
+    preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
+    done_entries = for entry <- conf.entries, entry.done?, do: entry
+    valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
+
     Phoenix.HTML.Tag.content_tag :input, "", Keyword.merge(opts,
       type: "file",
       id: opts[:id] || conf.ref,
       name: conf.name,
       accept: if(conf.accept != :any, do: conf.accept),
+      phx_hook: "Phoenix.LiveFileUpload",
       data_phx_upload_ref: conf.ref,
-      data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref))
+      data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
+      data_phx_done_refs: Enum.map_join(done_entries, ",", & &1.ref),
+      data_phx_preflighted_refs: Enum.map_join(preflighted_entries, ",", & &1.ref),
+      data_phx_auto_upload: valid? && conf.auto_upload?)
   end
 
   @doc """

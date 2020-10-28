@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     test "too many entries over max", %{lv: lv} do
       avatar = file_input(lv, "form", :avatar, build_entries(2))
 
-      assert {:error, [%{reason: :too_many_files, ref: _}]} =
+      assert {:error, [[_ref, :too_many_files]]} =
                render_upload(avatar, "myfile1.jpeg", 1)
     end
 
@@ -180,15 +180,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 3, accept: :any]
-    test "starting an already in progress entry is denied", %{lv: lv} do
+    test "preflighting an already in progress entry is ignored", %{lv: lv} do
       avatar = file_input(lv, "form", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "1%"
       assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
       assert render(lv) =~ "channel:#{UploadLive.inspect_html_safe(channel_pid)}"
 
-      assert UploadLive.exits_with(lv, avatar, ArgumentError, fn ->
-        preflight_upload(avatar)
-      end) =~ "cannot overwrite entries for an active upload"
+      assert {:ok, _} = preflight_upload(avatar)
+      assert %{"myfile1.jpeg" => ^channel_pid} = UploadClient.channel_pids(avatar)
     end
 
     @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
@@ -226,7 +225,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              |> form("form", user: %{})
              |> render_change(avatar) =~ "error::too_large"
 
-      assert {:error, [%{reason: :too_large}]} = render_upload(avatar, "foo.jpeg")
+      assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
@@ -304,16 +303,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
-    test "consume_uploaded_entries raises when upload does exist", %{lv: lv} do
-      Process.flag(:trap_exit, true)
-      try do
-        UploadLive.run(lv, fn socket ->
-          Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _file, _entry -> :boom end)
-        end)
-      catch
-        :exit, {{%ArgumentError{message: msg}, _}, _} ->
-          assert msg =~ "cannot consume uploaded files without active entries"
-      end
+    test "consume_uploaded_entries returns empty list when no uploads exist", %{lv: lv} do
+      parent = self()
+      UploadLive.run(lv, fn socket ->
+        result = Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _file, _entry -> :boom end)
+        send(parent, {:consumed, result})
+        {:reply, :ok, socket}
+      end)
+
+      assert_receive {:consumed, []}
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
