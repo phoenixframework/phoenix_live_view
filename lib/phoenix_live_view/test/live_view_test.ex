@@ -1051,26 +1051,15 @@ defmodule Phoenix.LiveViewTest do
   """
   def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
 
-  def open_browser(%View{} = view, open_fun) when is_function(open_fun, 1) do
-    view_html = render_tree(view)
+  def open_browser(view_or_element, open_fun) when is_function(open_fun, 1) do
+    html = render_tree(view_or_element)
 
-    view
-    |> maybe_wrap_html(view_html)
+    element
+    |> maybe_wrap_html(html)
     |> write_tmp_html_file()
     |> open_fun.()
 
-    view
-  end
-
-  def open_browser(%Element{} = element, open_fun) when is_function(open_fun, 1) do
-    element_html = render_tree(element)
-
-    element
-    |> maybe_wrap_html(element_html)
-    |> write_tmp_html_file()
-    |> open_fun.()
-
-    element
+    view_or_element
   end
 
   defp maybe_wrap_html(view_or_element, content) do
