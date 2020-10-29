@@ -274,8 +274,7 @@ defmodule Phoenix.LiveView.Utils do
     %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
     host = host || socket.host_uri.host
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
-    decoded_path = URI.decode(path || "")
-    split_path = for segment <- String.split(decoded_path, "/"), segment != "", do: segment
+    split_path = for segment <- String.split(path || "", "/"), segment != "", do: URI.decode(segment)
     route_path = strip_segments(endpoint.script_name(), split_path) || split_path
 
     case Phoenix.Router.route_info(router, "GET", route_path, host) do

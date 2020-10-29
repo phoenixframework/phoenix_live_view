@@ -120,10 +120,10 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "with encoded URL", %{conn: conn} do
-      assert get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D?foo=bar+15%26")
+      assert get(conn, "/counter/Wm9uZ%2FozNzYxOA%3D%3D?foo=bar+15%26")
 
       assert_receive {:handle_params, _uri, _assigns,
-                      %{"id" => "Wm9uZTozNzYxOA==", "foo" => "bar 15&"}}
+                      %{"id" => "Wm9uZ/ozNzYxOA==", "foo" => "bar 15&"}}
     end
   end
 
