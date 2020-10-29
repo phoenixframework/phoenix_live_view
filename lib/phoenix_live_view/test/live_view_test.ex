@@ -1054,7 +1054,7 @@ defmodule Phoenix.LiveViewTest do
   def open_browser(view_or_element, open_fun) when is_function(open_fun, 1) do
     html = render_tree(view_or_element)
 
-    element
+    view_or_element
     |> maybe_wrap_html(html)
     |> write_tmp_html_file()
     |> open_fun.()
