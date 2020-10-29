@@ -326,6 +326,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:reply, {:ok, state.page_title}, state}
   end
 
+  def handle_call(:html, _from, state) do
+    {:reply, {:ok, state.html}, state}
+  end
+
   def handle_call({:live_children, topic}, from, state) do
     view = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(view.pid)

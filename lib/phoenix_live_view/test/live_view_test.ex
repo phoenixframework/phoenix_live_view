@@ -845,16 +845,22 @@ defmodule Phoenix.LiveViewTest do
              |> element("#alarm")
              |> render() == "Snooze"
   """
-  def render(%View{} = view) do
-    render(view, {proxy_topic(view), "render"})
+  def render(view_or_element) do
+    view_or_element
+    |> render_tree()
+    |> DOM.to_html()
   end
 
-  def render(%Element{} = element) do
-    render(element, element)
+  defp render_tree(%View{} = view) do
+    render_tree(view, {proxy_topic(view), "render"})
   end
 
-  defp render(view_or_element, topic_or_element) do
-    call(view_or_element, {:render_element, :find_element, topic_or_element}) |> DOM.to_html()
+  defp render_tree(%Element{} = element) do
+    render_tree(element, element)
+  end
+
+  defp render_tree(view_or_element, topic_or_element) do
+    call(view_or_element, {:render_element, :find_element, topic_or_element})
   end
 
   defp call(view_or_element, tuple) do
@@ -1026,6 +1032,77 @@ defmodule Phoenix.LiveViewTest do
     after
       0 -> last
     end
+  end
+
+  @doc """
+  Open the default browser to display current HTML of `view_or_element`.
+
+  ## Examples
+
+      view
+      |> element("#term a:first-child()", "Increment")
+      |> open_browser()
+
+      assert view
+             |> form("#term", user: %{name: "hello"})
+             |> open_browser()
+             |> render_submit() =~ "Name updated"
+
+  """
+  def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
+
+  def open_browser(view_or_element, open_fun) when is_function(open_fun, 1) do
+    html = render_tree(view_or_element)
+
+    view_or_element
+    |> maybe_wrap_html(html)
+    |> write_tmp_html_file()
+    |> open_fun.()
+
+    view_or_element
+  end
+
+  defp maybe_wrap_html(view_or_element, content) do
+    case Floki.find(content, "html") do
+      [] ->
+        root_html = call(view_or_element, :html)
+
+        head =
+          case DOM.maybe_one(root_html, "head") do
+            {:ok, head} -> Floki.filter_out(head, "script")
+            _ -> {"head", [], []}
+          end
+
+        [
+          {"html", [], [
+             head,
+             {"body", [], [
+               content
+             ]}
+          ]}
+        ]
+
+      _ ->
+        Floki.filter_out(content, "script")
+    end
+  end
+
+  defp write_tmp_html_file(html) do
+    html = Floki.raw_html(html)
+    path = Path.join([System.tmp_dir!(), "#{Phoenix.LiveView.Utils.random_id()}.html"])
+    File.write!(path, html)
+    path
+  end
+
+  defp open_with_system_cmd(path) do
+    cmd =
+      case :os.type() do
+        {:unix, :darwin} -> "open"
+        {:unix, _} -> "xdg-open"
+        {:win32, _} -> "start"
+      end
+
+    System.cmd(cmd, [path])
   end
 
   @doc """

@@ -27,6 +27,21 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ClockLive) %>
     """
   end
+
+  def render("styled.html", assigns) do
+    ~L"""
+    <html>
+      <head>
+        <link rel="stylesheet" href="/custom/app.css"/>
+        <style>body { background-color: #eee; }</style>
+        <script>console.log("script")</script>
+      </head>
+      <body>
+        <%= @inner_content %>
+      </body>
+    </html>
+    """
+  end
 end
 
 defmodule Phoenix.LiveViewTest.AssignsLayoutView do
