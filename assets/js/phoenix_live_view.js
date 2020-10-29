@@ -151,25 +151,29 @@ class UploadEntry {
     this.meta = null
     this._isCancelled = false
     this._isDone = false
+    this._progress = 0
     this._onDone = function(){}
   }
 
   metadata(){ return this.meta }
 
   progress(progress){
-    this.view.pushFileProgress(this.fileEl, this.ref, Math.floor(progress))
+    this._progress = Math.floor(progress)
+    if(this._progress >= 100){
+      this._progress = 100
+      this._isDone = true
+      this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
+        LiveUploader.untrackFile(this.fileEl, this.file)
+        this._onDone()
+      })
+    } else {
+      this.view.pushFileProgress(this.fileEl, this.ref, this._progress)
+    }
   }
 
   cancel(){
     this._isCancelled = true
     this._isDone = true
-    this._onDone()
-  }
-
-  done(){
-    this._isDone = true
-    this.view.pushFileProgress(this.fileEl, this.ref, 100)
-    LiveUploader.untrackFile(this.fileEl, this.file)
     this._onDone()
   }
 
@@ -358,13 +362,14 @@ class LiveUploader {
 }
 
 let channelUploader = function(entries, onError, resp, liveSocket){
-  let chunkSize = resp.config.chunk_size
   function uploadToChannel(entry, uploadChannel) {
-    const chunkReaderBlock = function(_offset, length, _file, handler) {
-      var r = new window.FileReader()
+    let chunkSize = resp.config.chunk_size
+    let offset = 0
+    let chunkReaderBlock = function(_offset, length, _file, handler){
+      var reader = new window.FileReader()
       var blob = _file.slice(_offset, length + _offset)
-      r.onload = handler
-      r.readAsArrayBuffer(blob)
+      reader.onload = handler
+      reader.readAsArrayBuffer(blob)
     }
 
     onError(() => uploadChannel.leave())
@@ -373,40 +378,32 @@ let channelUploader = function(entries, onError, resp, liveSocket){
       if(!entry.isDone()){ entry.cancel() }
     })
 
+    let uploadChunk = (chunk, finished, loaded) => {
+      if(!uploadChannel.isJoined()){ return }
+      uploadChannel.push("chunk", chunk)
+        .receive("ok", () => {
+          entry.progress((loaded / entry.file.size) * 100)
+          setTimeout(() => {
+            chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
+          }, liveSocket.getLatencySim() || 0)
+        })
+    }
+    let readEventHandler = (e) => {
+      if(e.target.error === null){
+        const done = offset >= entry.file.size
+        offset += e.target.result.byteLength
+        uploadChunk(e.target.result, done, offset)
+      } else {
+        logError("Read error: " + e.target.error)
+        return
+      }
+    }
+
     uploadChannel.join()
+      .receive("ok", data => chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler))
       .receive("error", reason => {
         uploadChannel.leave()
         entry.error()
-      })
-      .receive("ok", data => {
-        let offset = 0
-        const uploadChunk = (chunk, finished, loaded) => {
-          if(!uploadChannel.isJoined()){ return }
-          uploadChannel.push("chunk", chunk)
-            .receive("ok", () => {
-              if(finished){
-                entry.done()
-              } else {
-                entry.progress((loaded / entry.file.size) * 100)
-                setTimeout(() => {
-                  chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
-                }, liveSocket.getLatencySim() || 0)
-              }
-            })
-        }
-
-        const readEventHandler = function(e){
-          if(e.target.error === null){
-            const done = offset >= entry.file.size
-            offset += e.target.result.byteLength
-            uploadChunk(e.target.result, done, offset)
-          } else {
-            logError("Read error: " + e.target.error)
-            return
-          }
-        }
-
-        chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
       })
   }
 
@@ -1940,7 +1937,7 @@ export class View {
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
     this.uploaders = {}
-    this.formSubmits = {}
+    this.formSubmits = []
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
@@ -2590,13 +2587,13 @@ export class View {
     })
   }
 
-  pushFileProgress(fileEl, entryRef, progress){
+  pushFileProgress(fileEl, entryRef, progress, onReply = function(){}){
     this.pushWithReply(null, "progress", {
       event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),
       ref: fileEl.getAttribute(PHX_UPLOAD_REF),
       entry_ref: entryRef,
       progress: progress
-    })
+    }, onReply)
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
@@ -2621,8 +2618,7 @@ export class View {
           let [ref, els] = refGenerator()
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (uploads) => {
             callback && callback(resp)
-            let awaitingSubmit = this.formSubmits[inputEl.form.id]
-            if(awaitingSubmit){ awaitingSubmit() }
+            this.triggerAwaitingSubmit(inputEl.form)
           })
         }
       } else {
@@ -2631,16 +2627,33 @@ export class View {
     })
   }
 
-  scheduleSubmit(formEl, callback){
-    if(this.formSubmits[formEl.id]){ return true }
-    this.formSubmits[formEl.id] = () => {
+  triggerAwaitingSubmit(formEl){
+    let awaitingSubmit = this.getScheduledSubmit(formEl)
+    if(awaitingSubmit){
+      let [el, ref, callback] = awaitingSubmit
       this.cancelSubmit(formEl)
       callback()
     }
   }
 
+  getScheduledSubmit(formEl){
+    return this.formSubmits.find(([el, callback]) => el.isSameNode(formEl))
+  }
+
+  scheduleSubmit(formEl, ref, callback){
+    if(this.getScheduledSubmit(formEl)){ return true }
+    this.formSubmits.push([formEl, ref, callback])
+  }
+
   cancelSubmit(formEl){
-    delete this.formSubmits[formEl.id]
+    this.formSubmits = this.formSubmits.filter(([el, ref, callback]) => {
+      if(el.isSameNode(formEl)){
+        this.undoRefs(ref)
+        return false
+      } else {
+        return true
+      }
+    })
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
@@ -2668,8 +2681,8 @@ export class View {
 
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
-      refGenerator()
-      return this.scheduleSubmit(formEl, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
+      let [ref, els] = refGenerator()
+      return this.scheduleSubmit(formEl, ref, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els]
