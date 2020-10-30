@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.8 (2020-10-30)
+
+### Bug fixes
+  - Fix compatiblity with latest Plug
+
 ## 0.14.7
 
 ### Bug fixes
