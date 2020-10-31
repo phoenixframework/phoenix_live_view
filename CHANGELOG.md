@@ -4,6 +4,7 @@
 
 ### Backwards incompatible changes
   - Remove `@inner_content` in components and introduce `render_block` for rendering component `@inner_block`
+  - Remove `@live_module` in socket templates in favor of `@socket.view`
 
 ### Bug fixes
   - Fix race condition when components are removed and then immediately re-added before the client can notify their CIDs have been destroyed
