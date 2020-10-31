@@ -12,6 +12,11 @@
   - Allow variables inside do-blocks to be tainted
   - Fix `push_redirect` from mount hanging on the client and causing a fallback to full page reload when following a clicked `live_redirect` on the client
 
+## 0.14.8 (2020-10-30)
+
+### Bug fixes
+  - Fix compatiblity with latest Plug
+
 ## 0.14.7 (2020-09-25)
 
 ### Bug fixes
