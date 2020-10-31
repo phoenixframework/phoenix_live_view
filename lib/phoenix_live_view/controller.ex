@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.Controller do
         |> LiveView.Plug.put_cache_headers()
         |> Phoenix.Controller.render(
           "template.html",
-          Map.put(socket_assigns, :content, content)
+          Map.merge(socket_assigns, %{content: content, live_module: view})
         )
 
       {:stop, %Socket{redirected: {:redirect, opts}} = socket} ->
