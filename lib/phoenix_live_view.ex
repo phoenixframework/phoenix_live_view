@@ -709,7 +709,7 @@ defmodule Phoenix.LiveView do
 
     * `:progress` - The optional 3-arity function for receiving progress events
 
-    * `:auto_upload` - Instructs the client to uplaod the file automatically
+    * `:auto_upload` - Instructs the client to upload the file automatically
       on file selection instead of waiting for form submits. Default false.
 
   Raises when a previously allowed upload under the same name is still active.
