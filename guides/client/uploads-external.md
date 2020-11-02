@@ -78,9 +78,6 @@ Uploaders.UpChunk = function(entries, onViewError){
 
     // notify progress events to LiveView
     upload.on("progress", (e) => entry.progress(e.detail))
-
-    // notify complete to LiveView
-    upload.on("success", () => entry.done())
   })
 }
 
@@ -149,7 +146,7 @@ Uploaders.S3 = function(entries, onViewError){
     formData.append("file", entry.file)
     let xhr = new XMLHttpRequest()
     onViewError(() => xhr.abort())
-    xhr.onload = () => xhr.status === 204 ? entry.done() : entry.error()
+    xhr.onload = () => xhr.status === 204 || entry.error()
     xhr.onerror = () => entry.error()
     xhr.upload.addEventListener("progress", (event) => {
       if(event.lengthComputable){
