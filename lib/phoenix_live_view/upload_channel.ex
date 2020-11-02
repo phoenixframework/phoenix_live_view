@@ -100,10 +100,23 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   defp reschedule_chunk_timer(socket) do
-    timer = socket.assigns.chunk_timer
-    if timer, do: Process.cancel_timer(timer)
+    cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
     new_timer = Process.send_after(self(), :chunk_timeout, socket.assigns.chunk_timeout)
     assign(socket, :chunk_timer, new_timer)
+  end
+
+  defp cancel_timer(nil = _timer, _msg), do: :ok
+
+  defp cancel_timer(timer, msg) do
+    if Process.cancel_timer(timer) do
+      :ok
+    else
+      receive do
+        ^msg -> :ok
+      after
+        0 -> :ok
+      end
+    end
   end
 
   defp write_bytes(socket, payload) do
@@ -121,7 +134,7 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   defp close_file(socket) do
     File.close(socket.assigns.handle)
-    if socket.assigns.chunk_timer, do: Process.cancel_timer(socket.assigns.chunk_timer)
+    cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
 
     socket
     |> assign(:chunk_timer, nil)
