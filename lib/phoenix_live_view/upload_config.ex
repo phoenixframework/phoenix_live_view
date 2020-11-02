@@ -104,7 +104,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           accept: list() | :any,
           acceptable_types: MapSet.t(),
           acceptable_exts: MapSet.t(),
-          external: (Socket.t() -> Socket.t()) | false,
+          external: (UploadEntry.t(), Phoenix.LiveView.Socket.t() -> {:ok | :error, meta :: %{uploader: String.t(), optional(atom()) => any()}, Phoenix.LiveView.Socket.t()}) | false,
           allowed?: boolean,
           errors: list(),
           ref: String.t(),
