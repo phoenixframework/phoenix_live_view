@@ -231,17 +231,12 @@ Hooks.LiveFileUpload = {
   }
 }
 
-
 Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
     this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF))
-    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
-      this.dataURL = url
-      this.el.src = this.dataURL
-    })
-  },
-  updated(){ this.el.src = this.dataURL }
+    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => this.el.src = url)
+  }
 }
 
 let liveUploaderFileRef = 0
@@ -364,55 +359,56 @@ class LiveUploader {
 }
 
 let channelUploader = function(entries, onError, resp, liveSocket){
-  function uploadToChannel(entry, uploadChannel) {
-    let chunkSize = resp.config.chunk_size
-    let offset = 0
-    let chunkReaderBlock = function(_offset, length, _file, handler){
-      var reader = new window.FileReader()
-      var blob = _file.slice(_offset, length + _offset)
-      reader.onload = handler
-      reader.readAsArrayBuffer(blob)
-    }
+  entries.forEach(entry => {
+    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+    entryUploader.upload()
+  })
+}
 
-    onError(() => uploadChannel.leave())
-    uploadChannel.onError(() => uploadChannel.leave())
-    uploadChannel.onClose(() => {
-      if(!entry.isDone()){ entry.cancel() }
-    })
+class EntryUploader {
+  constructor(entry, chunkSize, liveSocket){
+    this.liveSocket = liveSocket
+    this.entry = entry
+    this.offset = 0
+    this.chunkSize = chunkSize
+    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
+  }
 
-    let uploadChunk = (chunk, finished, loaded) => {
-      if(!uploadChannel.isJoined()){ return }
-      uploadChannel.push("chunk", chunk)
-        .receive("ok", () => {
-          entry.progress((loaded / entry.file.size) * 100)
-          setTimeout(() => {
-            chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler)
-          }, liveSocket.getLatencySim() || 0)
-        })
-    }
-    let readEventHandler = (e) => {
-      if(e.target.error === null){
-        const done = offset >= entry.file.size
-        offset += e.target.result.byteLength
-        uploadChunk(e.target.result, done, offset)
-      } else {
-        logError("Read error: " + e.target.error)
-        return
-      }
-    }
-
-    uploadChannel.join()
-      .receive("ok", data => chunkReaderBlock(offset, chunkSize, entry.file, readEventHandler))
+  upload(){
+    this.uploadChannel.join()
+      .receive("ok", data => this.readNextChunk())
       .receive("error", reason => {
-        uploadChannel.leave()
-        entry.error()
+        this.uploadChannel.leave()
+        this.entry.error()
       })
   }
 
-  entries.forEach(entry => {
-    let uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
-    uploadToChannel(entry, uploadChannel)
-  })
+  isDone(){ return this.offset >= this.entry.file.size }
+
+  readNextChunk(){
+    let reader = new window.FileReader()
+    let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
+    reader.onload = (e) => {
+      if(e.target.error === null){
+        this.offset += e.target.result.byteLength
+        this.pushChunk(e.target.result)
+      } else {
+        return logError("Read error: " + e.target.error)
+      }
+    }
+    reader.readAsArrayBuffer(blob)
+  }
+
+  pushChunk(chunk){
+    if(!this.uploadChannel.isJoined()){ return }
+    this.uploadChannel.push("chunk", chunk)
+      .receive("ok", () => {
+        this.entry.progress((this.offset / this.entry.file.size) * 100)
+        if(!this.isDone()){
+          setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
+        }
+      })
+  }
 }
 
 let serializeForm = (form, meta = {}) => {
@@ -1388,7 +1384,7 @@ export let DOM = {
   },
 
   isIgnored(el, phxUpdate){
-    return el.getAttribute(phxUpdate) === "ignore"
+    return (el.getAttribute(phxUpdate) || el.getAttribute("data-phx-update")) === "ignore"
   },
 
   isPhxUpdate(el, phxUpdate, updateTypes){
@@ -1539,17 +1535,19 @@ export let DOM = {
 
   mergeAttrs(target, source, opts = {}){
     let exclude = opts.exclude || []
-    let remove = opts.remove === false ? false : true
+    let isIgnored = opts.isIgnored
     let sourceAttrs = source.attributes
     for (let i = sourceAttrs.length - 1; i >= 0; i--){
       let name = sourceAttrs[i].name
       if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
     }
 
-    if(remove){
-      let targetAttrs = target.attributes
-      for (let i = targetAttrs.length - 1; i >= 0; i--){
-        let name = targetAttrs[i].name
+    let targetAttrs = target.attributes
+    for (let i = targetAttrs.length - 1; i >= 0; i--){
+      let name = targetAttrs[i].name
+      if(isIgnored){
+        if(name.startsWith("data-") && !source.hasAttribute(name)){ target.removeAttribute(name) }
+      } else {
         if(!source.hasAttribute(name)){ target.removeAttribute(name) }
       }
     }
@@ -1598,7 +1596,7 @@ export let DOM = {
     if(ref === null){ return true }
 
     if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(fromEl.type === "file"){ DOM.mergeAttrs(fromEl, toEl, {remove: false}) }
+      if(fromEl.type === "file"){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
       DOM.putPrivate(fromEl, PHX_REF, toEl)
       return false
     } else {
@@ -1799,7 +1797,7 @@ class DOMPatch {
           if(this.skipCIDSibling(toEl)){ return false }
           if(DOM.isIgnored(fromEl, phxUpdate)){
             this.trackBefore("updated", fromEl, toEl)
-            DOM.mergeAttrs(fromEl, toEl)
+            DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
             updates.push(fromEl)
             return false
           }
@@ -2158,7 +2156,7 @@ export class View {
   triggerBeforeUpdateHook(fromEl, toEl){
     this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl])
     let hook = this.getHook(fromEl)
-    let isIgnored = hook && fromEl.getAttribute(this.binding(PHX_UPDATE)) === "ignore"
+    let isIgnored = hook && DOM.isIgnored(fromEl, this.binding(PHX_UPDATE))
     if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
       hook.__trigger__("beforeUpdate")
       return hook
@@ -2659,7 +2657,10 @@ export class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
-    let filterIgnored = el => !closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form)
+    let filterIgnored = el => {
+      let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form)
+      return !(userIgnored || closestPhxBinding(el, `data-phx-update=ignore`, el.form))
+    }
     let refGenerator = () => {
       let disables = DOM.all(formEl, `[${this.binding(PHX_DISABLE_WITH)}]`)
       let buttons = DOM.all(formEl, "button").filter(filterIgnored)

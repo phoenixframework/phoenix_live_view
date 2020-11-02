@@ -414,7 +414,8 @@ defmodule Phoenix.LiveView.Helpers do
         id: "phx-preview-#{ref}",
         data_phx_upload_ref: entry.upload_ref,
         data_phx_entry_ref: ref,
-        data_phx_hook: "Phoenix.LiveImgPreview"
+        data_phx_hook: "Phoenix.LiveImgPreview",
+        data_phx_update: "ignore"
       )
 
     Phoenix.HTML.Tag.content_tag(:img, "", opts)
@@ -461,6 +462,7 @@ defmodule Phoenix.LiveView.Helpers do
         name: conf.name,
         accept: if(conf.accept != :any, do: conf.accept),
         phx_hook: "Phoenix.LiveFileUpload",
+        data_phx_update: "ignore",
         data_phx_upload_ref: conf.ref,
         data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
         data_phx_done_refs: Enum.map_join(done_entries, ",", & &1.ref),
