@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.EndpointOveridable do
+defmodule Phoenix.LiveViewTest.EndpointOverridable do
   defmacro __before_compile__(_env) do
     quote do
       @parsers Plug.Parsers.init(
