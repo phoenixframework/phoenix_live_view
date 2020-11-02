@@ -104,7 +104,10 @@ defmodule Phoenix.LiveView.UploadConfig do
           accept: list() | :any,
           acceptable_types: MapSet.t(),
           acceptable_exts: MapSet.t(),
-          external: (UploadEntry.t(), Phoenix.LiveView.Socket.t() -> {:ok | :error, meta :: %{uploader: String.t(), optional(atom()) => any()}, Phoenix.LiveView.Socket.t()}) | false,
+          external:
+            (UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
+               {:ok | :error, meta :: %{uploader: String.t()}, Phoenix.LiveView.Socket.t()})
+            | false,
           allowed?: boolean,
           errors: list(),
           ref: String.t(),
@@ -260,7 +263,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       chunk_timeout: chunk_timeout,
       progress_event: progress_event,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
-      allowed?: true,
+      allowed?: true
     }
   end
 
@@ -470,6 +473,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
     :error = Map.fetch(conf.entry_refs_to_pids, ref)
+
     entry = %UploadEntry{
       ref: ref,
       upload_ref: conf.ref,
