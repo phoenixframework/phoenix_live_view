@@ -21,7 +21,7 @@ end
 defmodule Phoenix.LiveViewTest.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_live_view
 
-  @before_compile Phoenix.LiveViewTest.EndpointOveridable
+  @before_compile Phoenix.LiveViewTest.EndpointOverridable
 
   socket "/live", Phoenix.LiveView.Socket
 
