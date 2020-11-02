@@ -24,6 +24,8 @@ const PHX_TRACK_STATIC = "track-static"
 const PHX_LINK_STATE = "data-phx-link-state"
 const PHX_REF = "data-phx-ref"
 const PHX_UPLOAD_REF = "data-phx-upload-ref"
+const PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs"
+const PHX_DONE_REFS = "data-phx-done-refs"
 const PHX_DROP_TARGET = "drop-target"
 const PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs"
 const PHX_SKIP = "data-phx-skip"
@@ -138,7 +140,7 @@ class UploadEntry {
   }
 
   static isPreflighted(fileEl, file){
-    let preflightedRefs = fileEl.getAttribute("data-phx-preflighted-refs").split(",")
+    let preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",")
     let isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
     return isPreflighted && this.isActive(fileEl, file)
   }
@@ -214,7 +216,7 @@ class UploadEntry {
 
 let Hooks = {}
 Hooks.LiveFileUpload = {
-  preflightedRefs(){ return this.el.getAttribute("data-phx-preflighted-refs") },
+  preflightedRefs(){ return this.el.getAttribute(PHX_PREFLIGHTED_REFS) },
 
   mounted(){ this.preflightedWas = this.preflightedRefs() },
 
@@ -233,7 +235,7 @@ Hooks.LiveFileUpload = {
 Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
-    this.inputEl = document.getElementById(this.el.getAttribute("data-phx-upload-ref"))
+    this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF))
     LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
       this.dataURL = url
       this.el.src = this.dataURL
@@ -264,7 +266,7 @@ class LiveUploader {
   static hasUploadsInProgress(formEl){
     let active = 0
     DOM.all(formEl, `input[type="file"]`, input => {
-      if(input.getAttribute("data-phx-preflighted-refs") !== input.getAttribute("data-phx-done-refs")){
+      if(input.getAttribute(PHX_PREFLIGHTED_REFS) !== input.getAttribute(PHX_DONE_REFS)){
         active++
       }
     })
