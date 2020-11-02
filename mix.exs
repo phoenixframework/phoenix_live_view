@@ -83,8 +83,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       Introduction: ~r/guides\/introduction\/.?/,
       "Server-side features": ~r/guides\/server\/.?/,
-      "Client-side integration": ~r/guides\/client\/.?/,
-      "File uploads": ~r/guides\/uploads\/.?/
+      "Client-side integration": ~r/guides\/client\/.?/
     ]
   end
 
