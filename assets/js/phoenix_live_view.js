@@ -2135,7 +2135,7 @@ export class View {
     patch.markPrunableContentForRemoval()
     this.performPatch(patch, false)
     this.joinNewChildren()
-    DOM.all(this.el, `[${this.binding(PHX_HOOK)}]`, hookEl => {
+    DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       let hook = this.addHook(hookEl)
       if(hook){ hook.__trigger__("mounted") }
     })
@@ -2319,7 +2319,7 @@ export class View {
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
   addHook(el){ if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let hookName = el.getAttribute(this.binding(PHX_HOOK))
+    let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
     if(hookName && !this.ownsElement(el)){ return }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
