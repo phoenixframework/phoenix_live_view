@@ -1056,14 +1056,7 @@ export let DOM = {
   },
 
   findComponentNodeList(node, cid){
-    let phxChildren = this.all(node, PHX_VIEW_SELECTOR)
-    let result = this.all(node, `[${PHX_COMPONENT}="${cid}"]`)
-
-    if(phxChildren.length === 0){
-      return result
-    } else {
-      return result.filter(element => !phxChildren.some(node => node.contains(element)))
-    }
+    return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
   },
 
   findPhxChildrenInFragment(html, parentId){
@@ -1084,12 +1077,28 @@ export let DOM = {
     let initial = new Set(cids)
     return cids.reduce((acc, cid) => {
       let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
-      this.all(node, selector)
+
+      this.filterWithinSameLiveView(this.all(node, selector), node)
         .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
         .forEach(childCID => acc.delete(childCID))
 
       return acc
     }, initial)
+  },
+
+  filterWithinSameLiveView(nodes, parent) {
+    if(parent.querySelector(PHX_VIEW_SELECTOR)) {
+      return nodes.filter(el => this.withinSameLiveView(el, parent))
+    } else {
+      return nodes
+    }
+  },
+
+  withinSameLiveView(node, parent){
+    while(node = node.parentNode){
+      if(node.isSameNode(parent)){ return true }
+      if(node.getAttribute(PHX_VIEW)){ return false }
+    }
   },
 
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
