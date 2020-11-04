@@ -1094,10 +1094,10 @@ export let DOM = {
     }
   },
 
-  withinSameLiveView(node, parent) {
-    while(node = node.parentNode) {
-      if(node.isSameNode(parent)) return true;
-      if(node.getAttribute(PHX_VIEW)) return false;
+  withinSameLiveView(node, parent){
+    while(node = node.parentNode){
+      if(node.isSameNode(parent)){ return true }
+      if(node.getAttribute(PHX_VIEW)){ return false }
     }
   },
 
