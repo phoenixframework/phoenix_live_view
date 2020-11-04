@@ -120,10 +120,10 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
 
     test "with encoded URL", %{conn: conn} do
-      assert get(conn, "/counter/Wm9uZTozNzYxOA%3D%3D?foo=bar+15%26")
+      assert get(conn, "/counter/Wm9uZ%2FozNzYxOA%3D%3D?foo=bar+15%26")
 
       assert_receive {:handle_params, _uri, _assigns,
-                      %{"id" => "Wm9uZTozNzYxOA==", "foo" => "bar 15&"}}
+                      %{"id" => "Wm9uZ/ozNzYxOA==", "foo" => "bar 15&"}}
     end
   end
 
@@ -377,40 +377,34 @@ defmodule Phoenix.LiveView.ParamsTest do
   describe "@live_action" do
     test "when initially set to nil", %{conn: conn} do
       {:ok, live, html} = live(conn, "/action")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: nil"
+      assert html =~ "Live action: nil"
       assert html =~ "Mount action: nil"
       assert html =~ "Params: %{}"
 
       html = render_patch(live, "/action/index")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: :index"
+      assert html =~ "Live action: :index"
       assert html =~ "Mount action: nil"
       assert html =~ "Params: %{}"
 
       html = render_patch(live, "/action/1/edit")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: :edit"
+      assert html =~ "Live action: :edit"
       assert html =~ "Mount action: nil"
       assert html =~ "Params: %{&quot;id&quot; =&gt; &quot;1&quot;}"
     end
 
     test "when initially set to action", %{conn: conn} do
       {:ok, live, html} = live(conn, "/action/index")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: :index"
+      assert html =~ "Live action: :index"
       assert html =~ "Mount action: :index"
       assert html =~ "Params: %{}"
 
       html = render_patch(live, "/action")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: nil"
+      assert html =~ "Live action: nil"
       assert html =~ "Mount action: :index"
       assert html =~ "Params: %{}"
 
       html = render_patch(live, "/action/1/edit")
-      assert html =~ "LiveView module: Phoenix.LiveViewTest.ActionLive"
-      assert html =~ "LiveView action: :edit"
+      assert html =~ "Live action: :edit"
       assert html =~ "Mount action: :index"
       assert html =~ "Params: %{&quot;id&quot; =&gt; &quot;1&quot;}"
     end

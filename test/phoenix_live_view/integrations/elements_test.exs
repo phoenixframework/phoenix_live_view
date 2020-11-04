@@ -661,4 +661,28 @@ defmodule Phoenix.LiveView.ElementsTest do
                ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "2020"}|
     end
   end
+
+  describe "open_browser" do
+    setup do
+      open_fun = fn path ->
+        assert content = File.read!(path)
+        assert content =~ "<link rel=\"stylesheet\" href=\"/custom/app.css\"/>"
+        assert content =~ "body { background-color: #eee; }"
+        refute content =~ "<script>"
+        path
+      end
+
+      {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/styled-elements")
+      %{live: live, open_fun: open_fun}
+    end
+
+    test "render view", %{live: view, open_fun: open_fun} do
+      assert view |> open_browser(open_fun) == view
+    end
+
+    test "render element", %{live: view, open_fun: open_fun} do
+      element = element(view, "#scoped-render")
+      assert element |> open_browser(open_fun) == element
+    end
+  end
 end
