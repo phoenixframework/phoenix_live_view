@@ -3,8 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.Rendered
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Rendered, Socket}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]

@@ -371,6 +371,108 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
+  Returns the entry errors for an upload.
+
+  The following errors may be returned:
+
+    * `:too_large` - The entry exceeded the `:max_file_size` constraint
+    * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+    * `:not_acceptable` - The entry does not match the `:accept` MIME types
+
+  ## Examples
+
+      def error_to_string(:too_large), do: "Too large"
+      def error_to_string(:too_many_files), do: "You have selected too many files"
+
+      <%= for entry <- @uploads.avatar.entries do %>
+        <%= for err <- upload_errors(@uploads.avatar, entry) do %>
+          <div class="alert alert-danger">
+            <%= error_to_string(err) %>
+          </div>
+        <% end %>
+      <% end %>
+  """
+  def upload_errors(
+        %Phoenix.LiveView.UploadConfig{} = conf,
+        %Phoenix.LiveView.UploadEntry{} = entry
+      ) do
+    for {ref, error} <- conf.errors, ref == entry.ref, do: error
+  end
+
+  @doc """
+  Generates an image preview on the client for a selected file.
+
+  ## Examples
+
+      <%= for entry <- @uploads.avatar.entries do %>
+        <%= live_img_preview entry, width: 75 %>
+      <% end %>
+  """
+  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
+    opts =
+      Keyword.merge(opts,
+        id: "phx-preview-#{ref}",
+        data_phx_upload_ref: entry.upload_ref,
+        data_phx_entry_ref: ref,
+        data_phx_hook: "Phoenix.LiveImgPreview",
+        data_phx_update: "ignore"
+      )
+
+    Phoenix.HTML.Tag.content_tag(:img, "", opts)
+  end
+
+  @doc """
+  Builds a file input tag for a LiveView upload.
+
+  Options may be passed through to the tag builder for custom attributes.
+
+  ## Drag and Drop
+
+  Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
+  attribute pointing to the DOM ID of the file input. By default, the file input ID is the
+  upload `ref`, so the following markup is all this is required for drag and drop support:
+
+      <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+          ...
+          <%= live_file_input @uploads.avatar %>
+      </div>
+
+  ## Examples
+
+      <%= live_file_input @uploads.avatar %>
+  """
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
+    opts =
+      if conf.max_entries > 1 do
+        Keyword.put(opts, :multiple, true)
+      else
+        opts
+      end
+
+    preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
+    done_entries = for entry <- conf.entries, entry.done?, do: entry
+    valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
+
+    Phoenix.HTML.Tag.content_tag(
+      :input,
+      "",
+      Keyword.merge(opts,
+        type: "file",
+        id: opts[:id] || conf.ref,
+        name: conf.name,
+        accept: if(conf.accept != :any, do: conf.accept),
+        phx_hook: "Phoenix.LiveFileUpload",
+        data_phx_update: "ignore",
+        data_phx_upload_ref: conf.ref,
+        data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
+        data_phx_done_refs: Enum.map_join(done_entries, ",", & &1.ref),
+        data_phx_preflighted_refs: Enum.map_join(preflighted_entries, ",", & &1.ref),
+        data_phx_auto_upload: valid? && conf.auto_upload?
+      )
+    )
+  end
+
+  @doc """
   Renders a title tag with automatic prefix/suffix on `@page_title` updates.
 
   ## Examples

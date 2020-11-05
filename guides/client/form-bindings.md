@@ -126,6 +126,19 @@ requires explicitly setting the `:value` in your markup, for example:
     <%= error_tag f, :password %>
     <%= error_tag f, :password_confirmation %>
 
+## File inputs
+
+LiveView forms support [reactive file inputs](uploads.md),
+including drag and drop support via the `phx-drop-target`
+attribute:
+
+    <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+        ...
+        <%= live_file_input @uploads.avatar %>
+    </div>
+
+See `Phoenix.LiveView.Helpers.live_file_input/2` for more.
+
 ## Submitting the form action over HTTP
 
 The `phx-trigger-action` attribute can be added to a form to trigger a standard
