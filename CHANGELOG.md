@@ -2,11 +2,16 @@
 
 ## 0.15.0
 
+### Enhancemnets
+  - Implement `Phoenix.LiveViewTest.open_browser/2` that opens up a browser with the LiveView page
+
 ### Backwards incompatible changes
   - Remove `@inner_content` in components and introduce `render_block` for rendering component `@inner_block`
   - Remove `@live_module` in socket templates in favor of `@socket.view`
 
 ### Bug fixes
+  - Make sure URLs are decoded after they are split
+  - Do not recover forms without inputs
   - Fix race condition when components are removed and then immediately re-added before the client can notify their CIDs have been destroyed
   - Do not render LiveView if only events/replies have been added to the socket
   - Properly merge different components when sharing component subtrees on initial render
