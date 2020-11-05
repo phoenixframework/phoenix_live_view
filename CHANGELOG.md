@@ -2,7 +2,7 @@
 
 ## 0.15.0
 
-### Enhancemnets
+### Enhancements
   - Implement `Phoenix.LiveViewTest.open_browser/2` that opens up a browser with the LiveView page
 
 ### Backwards incompatible changes
