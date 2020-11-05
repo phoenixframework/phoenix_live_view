@@ -38,7 +38,7 @@ Configure your uploader on `c:Phoenix.LiveView.mount/3`:
 
 Supply the `:external` option to
 `Phoenix.LiveView.allow_upload/3`. It requires a 2-arity
-Function that generates a signed URL where the client will
+function that generates a signed URL where the client will
 push the bytes for the upload entry.
 
 For example, if you were using a context that provided a
@@ -130,7 +130,7 @@ Here, we implemented a `presign_upload/2` function, which we passed as a capture
 function to `:external`. Next, we used `ExAws.S3` to generate a presigned URL for the
 upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
 along with our unchanged socket. The metadata *must* contain the `:uploader` key,
-specifying name of the JavaScript client-side uploader, in this case "S3".
+specifying the name of the JavaScript client-side uploader, in this case "S3".
 
 To complete the flow, we can implement our `S3` client uploader and tell the
 `LiveSocket` where to find it:
