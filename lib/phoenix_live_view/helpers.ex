@@ -375,7 +375,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   The following errors may be returned:
 
-    * `:too_large` - The entry exceeded the `:max_file_size` constraint
+    * `:too_large` - The entry exceeds the `:max_file_size` constraint
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
     * `:not_acceptable` - The entry does not match the `:accept` MIME types
 
@@ -430,7 +430,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
   attribute pointing to the DOM ID of the file input. By default, the file input ID is the
-  upload `ref`, so the following markup is all this is required for drag and drop support:
+  upload `ref`, so the following markup is all that is required for drag and drop support:
 
       <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
           ...
