@@ -2778,7 +2778,7 @@ export class View {
   }
 
   formsForRecovery(html){
-    if(this.joinCount === 0){ return [] }
+    if(this.joinCount <= 1){ return [] }
 
     let phxChange = this.binding("change")
     let template = document.createElement("template")
