@@ -237,19 +237,25 @@ describe("View + DOM", function() {
     view = new View(liveViewDOM(html), liveSocket)
     expect(view.formsForRecovery(html).length).toBe(0)
 
-    view.joinCount = 1
+    view.joinCount++
+    expect(view.formsForRecovery(html).length).toBe(0)
+
+    view.joinCount++
     expect(view.formsForRecovery(html).length).toBe(1)
 
     html = `<form phx-change="cg" phx-auto-recover="ignore"><input name="foo"></form>`
     view = new View(liveViewDOM(html), liveSocket)
+    view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
 
     html = `<form><input name="foo"></form>`
     view = new View(liveViewDOM(html), liveSocket)
+    view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
 
     html = `<form phx-change="cg"></form>`
     view = new View(liveViewDOM(html), liveSocket)
+    view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
   })
 
