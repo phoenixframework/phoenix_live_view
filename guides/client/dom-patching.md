@@ -133,4 +133,6 @@ after the input has 3 or more characters.
 
 The mistake here is using `:temporary_assigns` to reset or control
 UI state, while `:temporary_assigns` should rather be used when we
-don't have (or don't want to keep) certain data around.
+don't have (or don't want to keep) certain data around. The fix is
+to set `too_short: false` on the `if` branch, making sure it is
+reset whenever the search input changes.
