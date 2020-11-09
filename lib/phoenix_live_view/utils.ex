@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Utils do
   alias Phoenix.LiveView.{Rendered, Socket}
 
   # All available mount options
-  @mount_opts [:temporary_assigns, :layout]
+  @mount_opts [:temporary_assigns, :reset_assigns, :layout]
 
   @max_flash_age :timer.seconds(60)
 
@@ -34,18 +34,29 @@ defmodule Phoenix.LiveView.Utils do
     %{socket | assigns: new_assigns, changed: new_changed}
   end
 
-  @doc """
-  Clears the changes from the socket assigns.
-  """
-  def clear_changed(%Socket{private: private, assigns: assigns} = socket) do
-    temporary = Map.get(private, :temporary_assigns, %{})
-
+  def clear_changed(%Socket{private: private} = socket) do
     %Socket{
       socket
       | changed: %{},
-        assigns: Map.merge(assigns, temporary),
         private: Map.put(private, :changed, %{})
     }
+  end
+
+  def apply_temporary_assigns(%Socket{private: private, assigns: assigns} = socket) do
+    temporary_assigns = Map.get(private, :temporary_assigns, %{})
+
+    %Socket{
+      socket
+      | assigns: Map.merge(assigns, temporary_assigns)
+    }
+  end
+
+  def apply_reset_assigns(%Socket{private: private} = socket) do
+    reset_assigns = Map.get(private, :reset_assigns, %{})
+
+    Enum.reduce(reset_assigns, socket, fn {key, value}, acc ->
+      assign(acc, key, value)
+    end)
   end
 
   @doc """
@@ -107,7 +118,6 @@ defmodule Phoenix.LiveView.Utils do
   """
   def post_mount_prune(%Socket{} = socket) do
     socket
-    |> clear_changed()
     |> drop_private([:connect_info, :connect_params, :assign_new])
   end
 
@@ -345,7 +355,10 @@ defmodule Phoenix.LiveView.Utils do
        when is_list(opts) do
     validate_mount_redirect!(socket.redirected)
 
-    Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+    new_socket =
+      Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+
+    new_socket
   end
 
   defp handle_mount_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
@@ -480,13 +493,55 @@ defmodule Phoenix.LiveView.Utils do
       raise "the :temporary_assigns mount option must be keyword list"
     end
 
+    # TODO: Error if temporary and reset have the same keys
+
     temp_assigns = Map.new(temp_assigns)
+    conflicting_keys = conflicting_keys(Map.get(socket.private, :reset_assigns), temp_assigns)
+
+    unless Enum.empty?(conflicting_keys) do
+      raise "you have conflicting reset_assigns and temporary_assigns. your conflicting assigns are #{
+              inspect(conflicting_keys)
+            }"
+    end
 
     %Socket{
       socket
       | assigns: Map.merge(temp_assigns, socket.assigns),
         private: Map.put(socket.private, :temporary_assigns, temp_assigns)
     }
+  end
+
+  defp do_mount_opt(socket, :reset_assigns, reset_assigns) do
+    unless Keyword.keyword?(reset_assigns) do
+      raise "the :reset_assigns mount option must be keyword list"
+    end
+
+    reset_assigns = Map.new(reset_assigns)
+
+    conflicting_keys =
+      conflicting_keys(Map.get(socket.private, :temporary_assigns), reset_assigns)
+
+    unless Enum.empty?(conflicting_keys) do
+      raise "you have conflicting reset_assigns and temporary_assigns. your conflicting assigns are #{
+              inspect(conflicting_keys)
+            }"
+    end
+
+    %Socket{
+      socket
+      | assigns: Map.merge(reset_assigns, socket.assigns),
+        private: Map.put(socket.private, :reset_assigns, reset_assigns)
+    }
+  end
+
+  defp conflicting_keys(_map1, nil), do: []
+
+  defp conflicting_keys(nil, _map2), do: []
+
+  defp conflicting_keys(map1, map2) do
+    keys1 = map1 |> Map.keys() |> MapSet.new()
+    keys2 = map2 |> Map.keys() |> MapSet.new()
+    MapSet.intersection(keys1, keys2) |> Enum.to_list()
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do
