@@ -375,7 +375,7 @@ defmodule Phoenix.LiveComponent do
   do not write a component that is simply encapsulating generic DOM
   components. For instance, do not do this:
 
-      defmodule MyButton
+      defmodule MyButton do
         use Phoenix.LiveComponent
 
         def render(assigns) do
