@@ -366,7 +366,7 @@ defmodule Phoenix.LiveComponent do
   the view and the component will share the same copies of the `@user`
   and `@org` assigns.
 
-  You should also avoid using components to provide abstract DOM
+  You should also avoid using stateful components to provide abstract DOM
   components. As a guideline, a good LiveComponent encapsulates
   application concerns and not DOM functionality. For example, if you
   have a page that shows products for sale, you can encapsulate the
