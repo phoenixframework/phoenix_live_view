@@ -96,10 +96,9 @@ Imagine you want to show an error message when the input is less than
     ~L"""
     <%= if @too_short do %>
       Input too short...
-    <% else %>
-      Searched for: <%= @search %>
-    % end %>
+    <% end %>
 
+    Searched for: <%= @search %>
     <form><input phx-change="search" name="term" /></form>
     """
   end
