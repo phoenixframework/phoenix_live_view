@@ -49,14 +49,25 @@ For example:
 <%= entry.client_name %> - <%= entry.progress %>%
 <% end %>
 
-<form phx-submit="save">
+<form phx-submit="save" phx-change="validate">
   <%= live_file_input @uploads.avatar %>
   <button type="submit">Upload</button>
 </form>
 ```
 
+You must bind `phx-submit` and `phx-change` on the form.
+
 Reactive updates to the template will occur as the end-user
-interacts with the file input.
+interacts with the file input. Validation will occur based on
+any conditions you have specified in
+[`allow_upload/3`](`Phoenix.LiveView.allow_upload/3`) but you
+must implement at least a minimal callback:
+
+```elixir
+def handle_event("validate", _params, socket) do
+  {:noreply, socket}
+end
+```
 
 ## Consume uploaded entries
 
