@@ -155,7 +155,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       {:ok, socket} =
         LiveView.Upload.put_entries(socket, socket.assigns.uploads.avatar, [
           build_client_entry(:avatar, %{"size" => 1024})
-        ])
+        ], nil)
 
       assert_raise RuntimeError, ~r/unable to disallow_upload/, fn ->
         LiveView.disallow_upload(socket, :avatar)

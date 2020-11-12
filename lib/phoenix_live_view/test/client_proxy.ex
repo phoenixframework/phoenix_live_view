@@ -342,7 +342,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_info(%Phoenix.Socket.Reply{ref: ref} = reply, state) do
     case fetch_reply(state, ref) do
       {:ok, {_pid, callback}} ->
-        callback.(reply, drop_reply(state, ref))
+        case handle_reply(state, reply) do
+          {:ok, new_state} -> callback.(reply, drop_reply(new_state, ref))
+          other -> other
+        end
 
       :error ->
         {:noreply, state}
@@ -414,20 +417,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
     view = fetch_view_by_topic!(state, topic)
 
-    state =
+    new_state =
       push_with_callback(
         state,
         view,
         "allow_upload",
         %{"ref" => ref, "entries" => entries},
         fn reply, state ->
-          %{payload: payload, topic: _topic} = reply
-          GenServer.reply(from, {:ok, payload})
+          GenServer.reply(from, {:ok, reply.payload})
           {:noreply, state}
         end
       )
 
-    {:noreply, state}
+    {:noreply, new_state}
   end
 
   defp drop_view_by_id(state, id, reason) do
@@ -553,16 +555,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp render_reply(reply, from, state) do
-    %{payload: diff, topic: topic} = reply
-    new_state = merge_rendered(state, topic, diff)
-
-    case fetch_view_by_topic(new_state, topic) do
+    case fetch_view_by_topic(state, reply.topic) do
       {:ok, view} ->
-        GenServer.reply(from, {:ok, new_state.html |> DOM.inner_html!(view.id) |> DOM.to_html()})
-        new_state
+        GenServer.reply(from, {:ok, state.html |> DOM.inner_html!(view.id) |> DOM.to_html()})
+        state
 
       :error ->
-        new_state
+        state
     end
   end
 
@@ -655,23 +654,32 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp push_with_reply(state, from, view, event, payload) do
     push_with_callback(state, view, event, payload, fn reply, state ->
-      %{payload: payload, topic: topic} = reply
-
-      case payload do
-        %{live_redirect: %{to: _to} = opts} ->
-          stop_redirect(state, topic, {:live_redirect, opts})
-
-        %{live_patch: %{to: _to} = opts} ->
-          send_patch(state, topic, opts)
-          {:noreply, render_reply(reply, from, state)}
-
-        %{redirect: %{to: _to} = opts} ->
-          stop_redirect(state, topic, {:redirect, opts})
-
-        %{} ->
-          {:noreply, render_reply(reply, from, state)}
-      end
+      {:noreply, render_reply(reply, from, state)}
     end)
+  end
+
+  defp handle_reply(state, reply) do
+    %{payload: payload, topic: topic} = reply
+    new_state =
+      case payload do
+        %{diff: diff} -> merge_rendered(state, topic, diff)
+        %{} = diff -> merge_rendered(state, topic, diff)
+      end
+
+    case payload do
+      %{live_redirect: %{to: _to} = opts} ->
+        stop_redirect(new_state, topic, {:live_redirect, opts})
+
+      %{live_patch: %{to: _to} = opts} ->
+        send_patch(new_state, topic, opts)
+        {:ok, new_state}
+
+      %{redirect: %{to: _to} = opts} ->
+        stop_redirect(new_state, topic, {:redirect, opts})
+
+      %{} ->
+        {:ok, new_state}
+    end
   end
 
   defp push_with_callback(state, view, event, payload, callback) do

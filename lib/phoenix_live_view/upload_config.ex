@@ -75,6 +75,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   defstruct name: nil,
+            cid: :unregistered,
             client_key: nil,
             max_entries: 1,
             max_file_size: @default_max_file_size,
@@ -95,6 +96,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
+          cid: :unregistered | nil | integer(),
           client_key: String.t(),
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
@@ -297,8 +299,8 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
-  def unregister_completed_entry(%UploadConfig{} = conf, channel_pid) when is_pid(channel_pid) do
-    %UploadEntry{} = entry = get_entry_by_pid(conf, channel_pid)
+  def unregister_completed_entry(%UploadConfig{} = conf, entry_ref) do
+    %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
 
     drop_entry(conf, entry)
   end
@@ -616,5 +618,9 @@ defmodule Phoenix.LiveView.UploadConfig do
     }
 
     recalculate_computed_fields(new_conf)
+  end
+
+  def register_cid(%UploadConfig{} = conf, cid) do
+    %UploadConfig{conf | cid: cid}
   end
 end

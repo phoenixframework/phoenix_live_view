@@ -32,8 +32,8 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(pid, {@prefix, :ping}, :infinity)
   end
 
-  def register_upload(pid, {upload_config_ref, entry_ref} = _ref) do
-    info = %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref}
+  def register_upload(pid, {upload_config_ref, entry_ref} = _ref, cid) do
+    info = %{channel_pid: self(), ref: upload_config_ref, entry_ref: entry_ref, cid: cid}
     GenServer.call(pid, {@prefix, :register_entry_upload, info})
   end
 
@@ -73,17 +73,20 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
-    upload_conf = Upload.get_upload_by_pid(socket, pid)
+    case Map.fetch(state.upload_pids, pid) do
+      {:ok, {ref, entry_ref, cid}} ->
+        if reason in [:normal, {:shutdown, :closed}] do
+          {new_state, _} =
+            state
+            |> drop_upload_pid(pid)
+            |> unregister_upload(ref, entry_ref, cid)
 
-    cond do
-      upload_conf && reason in [:normal, {:shutdown, :closed}] ->
-        new_socket = Upload.unregister_completed_entry_upload(socket, upload_conf, pid)
-        handle_changed(state, new_socket, nil)
+          {:noreply, new_state}
+        else
+          {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
+        end
 
-      upload_conf ->
-        {:stop, {:shutdown, {:channel_upload_exit, reason}}, state}
-
-      true ->
+      :error ->
         msg
         |> socket.view.handle_info(socket)
         |> handle_result({:handle_info, 2, nil}, state)
@@ -128,31 +131,43 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
-    %{socket: socket} = state
-    %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
-    new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
-    upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
-    entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
+    cid = msg.payload["cid"]
 
-    if event = entry && upload_conf.progress_event do
-      {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
-      handle_changed(state, new_socket, msg.ref)
-    else
-      handle_changed(state, new_socket, msg.ref)
-    end
+    {new_state, _} =
+      with_socket(state, cid, msg.ref, fn socket, _ ->
+        %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
+        new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
+        upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
+        entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
+
+        if event = entry && upload_conf.progress_event do
+          {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
+          {new_socket, {:ok, nil}}
+        else
+          {new_socket, {:ok, nil}}
+        end
+      end)
+
+    {:noreply, new_state}
   end
 
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    %{"ref" => ref, "entries" => entries} = msg.payload
-    upload_conf = Upload.get_upload_by_ref!(state.socket, ref)
+    %{"ref" => upload_ref, "entries" => entries} = payload = msg.payload
+    cid = payload["cid"]
 
-    {_ok_or_error, reply, %Socket{} = new_socket} =
-      with {:ok, new_socket} <- Upload.put_entries(state.socket, upload_conf, entries) do
-        Upload.generate_preflight_response(new_socket, upload_conf.name)
-      end
+    {new_state, _} =
+      with_socket(state, cid, msg.ref, fn socket, _ ->
+        socket = Upload.register_cid(socket, upload_ref, cid)
+        conf = Upload.get_upload_by_ref!(socket, upload_ref)
 
-    {:noreply, new_state} = handle_changed(state, new_socket, nil)
-    reply(new_state, msg.ref, :ok, reply)
+        {_ok_or_error, reply, %Socket{} = new_socket} =
+          with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
+            Upload.generate_preflight_response(new_socket, conf.name, cid)
+          end
+
+        {new_socket, {:ok, {msg.ref, reply}}}
+      end)
+
     {:noreply, new_state}
   end
 
@@ -171,11 +186,12 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = msg.payload
     val = decode_event_type(type, raw_val)
-    new_state = maybe_update_uploads(state, msg.payload)
 
     if cid = msg.payload["cid"] do
-      component_handle_event(new_state, cid, event, val, msg.ref)
+      component_handle_event(state, cid, event, val, msg.ref, msg.payload)
     else
+      new_state = %{state | socket: maybe_update_uploads(state.socket, msg.payload)}
+
       new_state.socket
       |> view_handle_event(event, val)
       |> handle_result({:handle_event, 3, msg.ref}, new_state)
@@ -183,8 +199,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :drop_upload_entries, upload_config}, state) do
-    new_socket = Upload.drop_upload_entries(state.socket, upload_config)
-    handle_changed(state, new_socket, nil)
+    {new_state, _} =
+      with_socket(state, upload_config.cid, nil, fn socket, _ ->
+        {Upload.drop_upload_entries(socket, upload_config), {:ok, nil}}
+      end)
+
+    {:noreply, new_state}
   end
 
   def handle_info({@prefix, :send_update, update}, state) do
@@ -237,20 +257,8 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, assigns, state}
   end
 
-  def handle_call({@prefix, :register_entry_upload, info}, _from, state) do
-    %{channel_pid: pid, ref: ref, entry_ref: entry_ref} = info
-    conf = Upload.get_upload_by_ref!(state.socket, ref)
-
-    case Upload.register_entry_upload(state.socket, conf, pid, entry_ref) do
-      {:ok, new_socket, entry} ->
-        Process.monitor(pid)
-        {:noreply, new_state} = handle_changed(state, new_socket, nil)
-        reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}
-        {:reply, {:ok, reply}, new_state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+  def handle_call({@prefix, :register_entry_upload, info}, from, state) do
+    {:noreply, register_entry_upload(state, from, info)}
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
@@ -439,12 +447,14 @@ defmodule Phoenix.LiveView.Channel do
     """
   end
 
-  defp component_handle_event(state, cid, event, val, ref) do
+  defp component_handle_event(state, cid, event, val, ref, payload) do
     %{socket: socket, components: components} = state
 
     result =
       Diff.with_component(socket, cid, %{}, components, fn component_socket, component ->
-        inner_component_handle_event(component_socket, component, event, val)
+        component_socket
+        |> maybe_update_uploads(payload)
+        |> inner_component_handle_event(component, event, val)
       end)
 
     # Due to race conditions, the browser can send a request for a
@@ -463,6 +473,22 @@ defmodule Phoenix.LiveView.Channel do
       :error ->
         {:noreply, push_noop(state, ref)}
     end
+  end
+
+  defp unregister_upload(state, ref, entry_ref, cid) do
+    with_socket(state, cid, nil, fn socket, _ ->
+      conf = Upload.get_upload_by_ref!(socket, ref)
+      {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil}}
+    end)
+  end
+
+  defp put_upload_pid(state, pid, ref, entry_ref, cid) when is_pid(pid) do
+    Process.monitor(pid)
+    %{state | upload_pids: Map.put(state.upload_pids, pid, {ref, entry_ref, cid})}
+  end
+
+  defp drop_upload_pid(state, pid) when is_pid(pid) do
+    %{state | upload_pids: Map.delete(state.upload_pids, pid)}
   end
 
   defp inner_component_handle_event(component_socket, _component, "lv:clear-flash", val) do
@@ -669,7 +695,11 @@ defmodule Phoenix.LiveView.Channel do
     {:diff, diff, %{state | socket: Utils.clear_changed(socket), components: components}}
   end
 
-  defp reply(state, ref, status, payload) do
+  defp reply(state, {ref, extra}, status, payload) do
+    reply(state, ref, status, Map.merge(payload, extra))
+  end
+
+  defp reply(state, ref, status, payload) when is_binary(ref) do
     reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
     state
@@ -884,7 +914,8 @@ defmodule Phoenix.LiveView.Channel do
       socket: lv_socket,
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
-      components: Diff.new_components()
+      components: Diff.new_components(),
+      upload_pids: %{}
     }
   end
 
@@ -900,16 +931,78 @@ defmodule Phoenix.LiveView.Channel do
     Phoenix.LiveView.assign(socket, :live_action, action)
   end
 
-  defp maybe_update_uploads(state, %{"uploads" => uploads}) do
-    Enum.reduce(uploads, state, fn {ref, entries}, acc ->
-      upload_conf = Upload.get_upload_by_ref!(acc.socket, ref)
+  defp maybe_update_uploads(%Socket{} = socket, %{"uploads" => uploads} = payload) do
+    cid = payload["cid"]
+    Enum.reduce(uploads, socket, fn {ref, entries}, acc ->
+      upload_conf = Upload.get_upload_by_ref!(acc, ref)
 
-      case Upload.put_entries(acc.socket, upload_conf, entries) do
-        {:ok, new_socket} -> %{acc | socket: new_socket}
-        {:error, _error_resp, %Socket{} = new_socket} -> %{acc | socket: new_socket}
+      case Upload.put_entries(acc, upload_conf, entries, cid) do
+        {:ok, new_socket} -> new_socket
+        {:error, _error_resp, %Socket{} = new_socket} -> new_socket
       end
     end)
   end
 
-  defp maybe_update_uploads(state, %{} = _payload), do: state
+  defp maybe_update_uploads(%Socket{} = socket, %{} = _payload), do: socket
+
+  defp register_entry_upload(state, from, info) do
+    %{channel_pid: pid, ref: ref, entry_ref: entry_ref, cid: cid} = info
+
+    {new_state, return} =
+      with_socket(state, cid, nil, fn socket, _ ->
+        conf = Upload.get_upload_by_ref!(socket, ref)
+
+        case Upload.register_entry_upload(socket, conf, pid, entry_ref) do
+          {:ok, new_socket, entry} ->
+            reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}
+            GenServer.reply(from, {:ok, reply})
+            {new_socket, {:ok, nil}}
+
+          {:error, reason} ->
+            GenServer.reply(from, {:error, reason})
+            {socket, :error}
+        end
+      end)
+
+    case return do
+      {:ok, _} -> put_upload_pid(new_state, pid, ref, entry_ref, nil)
+      :error -> {:noreply, new_state}
+    end
+  end
+
+  # If :error is returned, the socket must not change,
+  # otherwise we need to call push_diff on all cases.
+  defp with_socket(state, nil, ref, fun) do
+    {new_socket, return} = fun.(state.socket, nil)
+
+    case return do
+      {:ok, ref_reply} ->
+        {:noreply, new_state} = handle_changed(state, new_socket, ref_reply)
+        {new_state, return}
+
+      :error ->
+        {push_noop(state, ref), return}
+    end
+  end
+
+  defp with_socket(state, cid, ref, fun) do
+    %{socket: socket, components: components} = state
+
+    {new_state, diff, return} =
+      case Diff.with_component(socket, cid, %{}, components, fun) do
+        {diff, new_components, return} ->
+          {%{state | components: new_components}, diff, return}
+
+        :error ->
+          {state, :error}
+      end
+
+    case return do
+      {:ok, ref_reply} ->
+        {push_diff(new_state, diff, ref_reply), return}
+
+      :error ->
+        {push_noop(new_state, ref), return}
+    end
+  end
 end

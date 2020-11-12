@@ -104,6 +104,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
 
   def handle_event("dup-and-disable", %{}, socket) do
     names = socket.assigns.names
-    {:noreply, assign(socket, disabled: names, names: names ++ Enum.map(names, &(&1 <> "-new")))}
+    new_socket = assign(socket, disabled: names, names: names ++ Enum.map(names, &(&1 <> "-new")))
+    {:noreply, new_socket}
   end
 end
