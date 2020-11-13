@@ -956,14 +956,15 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
-      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name) do
+      cid = Phoenix.LiveViewTest.__find_cid__!(view, selector)
+      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
         {:ok, %{external: false}} ->
           require Phoenix.ChannelTest
           builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-          Phoenix.LiveViewTest.__start_upload_client__(builder, view, selector, name, entries)
+          Phoenix.LiveViewTest.__start_upload_client__(builder, view, selector, name, entries, cid)
 
         {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(view, selector, name, entries)
+          Phoenix.LiveViewTest.__start_external_upload_client__(view, selector, name, entries, cid)
 
         :error ->
           raise "no uploads allowed for #{name}"
@@ -971,19 +972,28 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  def __start_upload_client__(socket_builder, view, form_selector, name, entries) do
+  def __find_cid__!(view, selector) do
+    html_tree = view |> render() |> DOM.parse()
+    case DOM.maybe_one(html_tree, selector) do
+      {:ok, form} -> if str = DOM.component_id(form), do: String.to_integer(str)
+      {:error, _reason, msg} -> raise ArgumentError, msg
+    end
+  end
+
+  def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
     {:ok, pid} =
       UploadClient.start_link(
         socket_builder: socket_builder,
-        test_supervisor: fetch_test_supervisor!()
+        test_supervisor: fetch_test_supervisor!(),
+        cid: cid
       )
 
-    Upload.new(pid, view, form_selector, name, entries)
+    Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
-  def __start_external_upload_client__(view, form_selector, name, entries) do
-    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!())
-    Upload.new(pid, view, form_selector, name, entries)
+  def __start_external_upload_client__(view, form_selector, name, entries, cid) do
+    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!(), cid: cid)
+    Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
   @doc """
@@ -1321,7 +1331,7 @@ defmodule Phoenix.LiveViewTest do
   """
   def preflight_upload(%Upload{} = upload) do
     # LiveView channel returns error conditions as error key in payload, ie `%{error: reason}`
-    case call(upload.element, {:render_event, upload.element, :allow_upload, upload.entries}) do
+    case call(upload.element, {:render_event, upload.element, :allow_upload, {upload.entries, upload.cid}}) do
       %{error: reason} -> {:error, reason}
       %{ref: _ref} = resp -> {:ok, resp}
     end

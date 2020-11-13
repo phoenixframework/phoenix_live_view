@@ -37,8 +37,8 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(pid, {@prefix, :register_entry_upload, info})
   end
 
-  def fetch_upload_config(pid, name) do
-    GenServer.call(pid, {@prefix, :fetch_upload_config, name})
+  def fetch_upload_config(pid, name, cid) do
+    GenServer.call(pid, {@prefix, :fetch_upload_config, name, cid})
   end
 
   def drop_upload_entries(%UploadConfig{} = conf) do
@@ -155,20 +155,27 @@ defmodule Phoenix.LiveView.Channel do
     %{"ref" => upload_ref, "entries" => entries} = payload = msg.payload
     cid = payload["cid"]
 
-    {new_state, _} =
+    {new_state, new_upload_names} =
       with_socket(state, cid, msg.ref, fn socket, _ ->
         socket = Upload.register_cid(socket, upload_ref, cid)
         conf = Upload.get_upload_by_ref!(socket, upload_ref)
+        ensure_unique_upload_name!(state, conf)
 
-        {_ok_or_error, reply, %Socket{} = new_socket} =
+        {ok_or_error, reply, %Socket{} = new_socket} =
           with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
             Upload.generate_preflight_response(new_socket, conf.name, cid)
           end
 
-        {new_socket, {:ok, {msg.ref, reply}}}
+        new_upload_names =
+          case ok_or_error do
+            :ok -> Map.put(state.upload_names, conf.name, {upload_ref, cid})
+            _ -> state.upload_names
+          end
+
+        {new_socket, {:ok, {msg.ref, reply}, new_upload_names}}
       end)
 
-    {:noreply, new_state}
+    {:noreply, %{new_state | upload_names: new_upload_names}}
   end
 
   def handle_info(
@@ -243,13 +250,17 @@ defmodule Phoenix.LiveView.Channel do
     {:reply, :ok, state}
   end
 
-  def handle_call({@prefix, :fetch_upload_config, name}, _from, state) do
-    result =
-      with {:ok, uploads} <- Map.fetch(state.socket.assigns, :uploads),
-           {:ok, conf} <- Map.fetch(uploads, name),
-           do: {:ok, conf}
+  def handle_call({@prefix, :fetch_upload_config, name, cid}, _from, state) do
+    {new_state, result} =
+      with_socket(state, cid, nil, fn socket, _ ->
+        result =
+          with {:ok, uploads} <- Map.fetch(socket.assigns, :uploads),
+              {:ok, conf} <- Map.fetch(uploads, name),
+              do: {:ok, conf}
+        {socket, {:ok, nil, result}}
+      end)
 
-    {:reply, result, state}
+    {:reply, result, new_state}
   end
 
   def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
@@ -476,10 +487,13 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp unregister_upload(state, ref, entry_ref, cid) do
-    with_socket(state, cid, nil, fn socket, _ ->
-      conf = Upload.get_upload_by_ref!(socket, ref)
-      {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil}}
-    end)
+    {new_state, %UploadConfig{} = conf} =
+      with_socket(state, cid, nil, fn socket, _ ->
+        conf = Upload.get_upload_by_ref!(socket, ref)
+        {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil, conf}}
+      end)
+
+    {%{new_state | upload_names: Map.delete(new_state.upload_names, conf.name)}, {:ok, nil}}
   end
 
   defp put_upload_pid(state, pid, ref, entry_ref, cid) when is_pid(pid) do
@@ -915,6 +929,7 @@ defmodule Phoenix.LiveView.Channel do
       topic: phx_socket.topic,
       transport_pid: phx_socket.transport_pid,
       components: Diff.new_components(),
+      upload_names: %{},
       upload_pids: %{}
     }
   end
@@ -933,6 +948,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_update_uploads(%Socket{} = socket, %{"uploads" => uploads} = payload) do
     cid = payload["cid"]
+
     Enum.reduce(uploads, socket, fn {ref, entries}, acc ->
       upload_conf = Upload.get_upload_by_ref!(acc, ref)
 
@@ -965,7 +981,7 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     case return do
-      {:ok, _} -> put_upload_pid(new_state, pid, ref, entry_ref, nil)
+      {:ok, _} -> put_upload_pid(new_state, pid, ref, entry_ref, cid)
       :error -> {:noreply, new_state}
     end
   end
@@ -979,6 +995,10 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, ref_reply} ->
         {:noreply, new_state} = handle_changed(state, new_socket, ref_reply)
         {new_state, return}
+
+      {:ok, ref_reply, extra} ->
+        {:noreply, new_state} = handle_changed(state, new_socket, ref_reply)
+        {new_state, extra}
 
       :error ->
         {push_noop(state, ref), return}
@@ -1001,8 +1021,27 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, ref_reply} ->
         {push_diff(new_state, diff, ref_reply), return}
 
+      {:ok, ref_reply, extra} ->
+        {push_diff(new_state, diff, ref_reply), extra}
+
       :error ->
         {push_noop(new_state, ref), return}
+    end
+  end
+
+  defp ensure_unique_upload_name!(state, conf) do
+    upload_ref = conf.ref
+    cid = conf.cid
+    case Map.fetch(state.upload_names, conf.name) do
+      {:ok, {^upload_ref, ^cid}} ->
+        :ok
+
+      :error ->
+        :ok
+
+      {:ok, {_existing_ref, existing_cid}} ->
+        raise RuntimeError,
+              "existing upload for #{conf.name} already allowed in another component #{existing_cid}"
     end
   end
 end

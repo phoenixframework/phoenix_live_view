@@ -218,10 +218,7 @@ let Hooks = {}
 Hooks.LiveFileUpload = {
   preflightedRefs(){ return this.el.getAttribute(PHX_PREFLIGHTED_REFS) },
 
-  mounted(){
-    console.log("MOUN")
-    this.preflightedWas = this.preflightedRefs()
-  },
+  mounted(){ this.preflightedWas = this.preflightedRefs() },
 
   updated() {
     let newPreflights = this.preflightedRefs()

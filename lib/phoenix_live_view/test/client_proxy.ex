@@ -32,8 +32,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @doc """
   Reports upload progress to the proxy.
   """
-  def report_upload_progress(proxy_pid, from, element, entry_ref, percent) do
-    GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent})
+  def report_upload_progress(proxy_pid, from, element, entry_ref, percent, cid) do
+    GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent, cid})
   end
 
   @doc """
@@ -367,8 +367,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, drop_view_by_id(state, view.id, reason)}
   end
 
-  def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress}, _, state) do
-    payload = %{"entry_ref" => entry_ref, "progress" => progress}
+  def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
+    payload = put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
     topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
@@ -414,15 +414,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:render_allow_upload, topic, ref, entries}, from, state) do
+  def handle_call({:render_allow_upload, topic, ref, {entries, cid}}, from, state) do
     view = fetch_view_by_topic!(state, topic)
+    payload = put_cid(%{"ref" => ref, "entries" => entries}, cid)
 
     new_state =
       push_with_callback(
         state,
         view,
         "allow_upload",
-        %{"ref" => ref, "entries" => entries},
+        payload,
         fn reply, state ->
           GenServer.reply(from, {:ok, reply.payload})
           {:noreply, state}
@@ -1140,4 +1141,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_put_uploads(_state, _view, payload, nil), do: payload
+
+  defp put_cid(payload, nil), do: payload
+  defp put_cid(payload, cid), do: Map.put(payload, "cid", cid)
 end

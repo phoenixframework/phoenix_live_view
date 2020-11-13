@@ -31,6 +31,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   def init(opts) do
     test_sup = Keyword.fetch!(opts, :test_supervisor)
+    cid = Keyword.fetch!(opts, :cid)
+
     socket =
       case Keyword.fetch(opts, :socket_builder) do
         {:ok, func} ->
@@ -41,7 +43,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
           nil
       end
 
-    {:ok, %{socket: socket, test_supervisor: test_sup, upload_ref: nil, config: %{}, entries: %{}}}
+    {:ok, %{socket: socket, cid: cid, test_supervisor: test_sup, upload_ref: nil, config: %{}, entries: %{}}}
   end
 
   def handle_call(:allow_acknowledged, _from, state) do
@@ -143,9 +145,9 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end
   end
 
-  defp do_chunk(%{socket: nil} = state, from, entry, proxy_pid, element, percent) do
+  defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
     stats = progress_stats(entry, percent)
-    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent)
+    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, cid)
     update_entry_start(state, entry, stats.new_start)
   end
 
@@ -161,7 +163,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     ref = Phoenix.ChannelTest.push(entry.socket, "chunk", {:binary, chunk})
     receive do
       %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
-        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent)
+        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, state.cid)
         update_entry_start(state, entry, stats.new_start)
     after
       1000 -> exit(:timeout)
