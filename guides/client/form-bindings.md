@@ -128,7 +128,7 @@ requires explicitly setting the `:value` in your markup, for example:
 
 ## File inputs
 
-LiveView forms support [reactive file inputs](uploads.md),
+LiveView forms support [reactive file inputs](../server/uploads.md),
 including drag and drop support via the `phx-drop-target`
 attribute:
 
