@@ -53,10 +53,13 @@ defmodule Phoenix.LiveView do
 
   There are also use cases which are a bad fit for LiveView:
 
-    * Animations - animations, menus, and general events
+    * Animations - animations, menus, and general UI events
       that do not need the server in the first place are a
-      bad fit for LiveView, as they can be achieved purely
-      with CSS and/or CSS transitions;
+      bad fit for LiveView. Those can be achieved without
+      LiveView in multiple ways, such as with CSS and CSS
+      transitions, using LiveView hooks, or even integrating
+      with UI toolkits designed for this purpose, such as
+      Bootstrap, Alpine.JS, and similar.
 
   ## Life-cycle
 
