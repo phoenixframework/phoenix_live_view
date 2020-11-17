@@ -74,7 +74,7 @@ Uploaders.UpChunk = function(entries, onViewError){
     onViewError(() => upload.pause())
 
     // upload error triggers LiveView error
-    upload.on("error", (e) => entry.error(e.detail))
+    upload.on("error", (e) => entry.error(e.detail.message))
 
     // notify progress events to LiveView
     upload.on("progress", (e) => entry.progress(e.detail))
