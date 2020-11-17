@@ -151,6 +151,9 @@ Then install the new NPM dependency:
 
 ```bash
 npm install --prefix assets
+
+# or for umbrella projects...
+npm install --prefix apps/my_app_web/assets
 ```
 
 If you had previously installed `phoenix_live_view` and want to get the
@@ -158,6 +161,9 @@ latest javascript, then force an install with:
 
 ```bash
 npm install --force phoenix_live_view --prefix assets
+
+# or for umbrella projects...
+npm install --prefix apps/my_app_web/assets
 ```
 
 Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/root.html.leex`), before `app.js` is included like so:
