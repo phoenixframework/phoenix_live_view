@@ -96,6 +96,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
+          # a nil cid represents a LiveView socket
           cid: :unregistered | nil | integer(),
           client_key: String.t(),
           max_entries: pos_integer(),
