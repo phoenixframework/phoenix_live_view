@@ -142,9 +142,9 @@ defmodule Phoenix.LiveView.Channel do
 
         if event = entry && upload_conf.progress_event do
           {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
-          {new_socket, {:ok, nil, state}}
+          {new_socket, {:ok, {msg.ref, %{}}, state}}
         else
-          {new_socket, {:ok, nil, state}}
+          {new_socket, {:ok, {msg.ref, %{}}, state}}
         end
       end)
 
