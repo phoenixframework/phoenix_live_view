@@ -44,7 +44,6 @@ defmodule Phoenix.LiveView.ComponentTest do
 
   test "tracks additions and updates", %{conn: conn} do
     {:ok, view, _} = live(conn, "/components")
-
     html = render_click(view, "dup-and-disable", %{})
 
     assert [

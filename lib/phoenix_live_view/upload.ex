@@ -112,8 +112,8 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Puts the entries into the `%UploadConfig{}`.
   """
-  def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries) do
-    case UploadConfig.put_entries(conf, entries) do
+  def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries, cid) do
+    case UploadConfig.put_entries(%UploadConfig{conf | cid: cid}, entries) do
       {:ok, new_config} ->
         {:ok, update_uploads(new_config, socket)}
 
@@ -126,10 +126,9 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Unregisters a completed entry from an `Phoenix.LiveView.UploadChannel` process.
   """
-  def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid)
-      when is_pid(pid) do
+  def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref) do
     conf
-    |> UploadConfig.unregister_completed_entry(pid)
+    |> UploadConfig.unregister_completed_entry(entry_ref)
     |> update_uploads(socket)
   end
 
@@ -273,7 +272,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Generates a preflight response by calling the `:external` function.
   """
-  def generate_preflight_response(%Socket{} = socket, name) do
+  def generate_preflight_response(%Socket{} = socket, name, cid) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
 
     client_meta = %{
@@ -286,7 +285,7 @@ defmodule Phoenix.LiveView.Upload do
 
     case UploadConfig.mark_preflighted(conf) do
       %UploadConfig{external: false} = new_conf ->
-        channel_preflight(socket, new_conf, new_entries, client_meta)
+        channel_preflight(socket, new_conf, new_entries, cid, client_meta)
 
       %UploadConfig{external: func} = new_conf when is_function(func) ->
         external_preflight(socket, new_conf, new_entries, client_meta)
@@ -297,6 +296,7 @@ defmodule Phoenix.LiveView.Upload do
          %Socket{} = socket,
          %UploadConfig{} = conf,
          entries,
+         cid,
          %{} = client_config_meta
        ) do
     reply_entries =
@@ -304,7 +304,8 @@ defmodule Phoenix.LiveView.Upload do
         token =
           Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
             pid: self(),
-            ref: {conf.ref, entry.ref}
+            ref: {conf.ref, entry.ref},
+            cid: cid
           })
 
         {entry.ref, token}
@@ -335,5 +336,12 @@ defmodule Phoenix.LiveView.Upload do
         new_socket = put_upload_error(new_socket, conf.name, entry_ref, meta_reason)
         {:error, %{ref: conf.ref, error: [[entry_ref, meta_reason]]}, new_socket}
     end
+  end
+
+  def register_cid(%Socket{} = socket, ref, cid) do
+    socket
+    |> get_upload_by_ref!(ref)
+    |> UploadConfig.register_cid(cid)
+    |> update_uploads(socket)
   end
 end

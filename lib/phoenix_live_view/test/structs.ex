@@ -69,10 +69,11 @@ defmodule Phoenix.LiveViewTest.Upload do
             ref: nil,
             selector: nil,
             config: %{},
-            entries: []
+            entries: [],
+            cid: nil
 
   @doc false
-  def new(pid, %Phoenix.LiveViewTest.View{} = view, form_selector, name, entries) do
+  def new(pid, %Phoenix.LiveViewTest.View{} = view, form_selector, name, entries, cid) do
     populated_entries = Enum.map(entries, fn entry -> populate_entry(entry) end)
     selector = "#{form_selector} input[type=\"file\"][name=\"#{name}\"]"
 
@@ -81,6 +82,7 @@ defmodule Phoenix.LiveViewTest.Upload do
       view: view,
       element: %Element{proxy: view.proxy, selector: selector},
       entries: populated_entries,
+      cid: cid
     }
   end
 

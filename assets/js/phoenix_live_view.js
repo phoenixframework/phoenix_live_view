@@ -2068,7 +2068,6 @@ export class View {
 
   onJoin(resp){
     let {rendered} = resp
-    this.joinCount++
     this.childJoins = 0
     this.joinPending = true
     this.flash = null
@@ -2079,6 +2078,7 @@ export class View {
       let html = this.renderContainer(null, "join")
       this.dropPendingRefs()
       let forms = this.formsForRecovery(html)
+      this.joinCount++
 
       if(forms.length > 0){
         forms.forEach((form, i) => {
@@ -2597,12 +2597,15 @@ export class View {
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function(){}){
-    this.pushWithReply(null, "progress", {
-      event: fileEl.getAttribute(this.binding(PHX_PROGRESS)),
-      ref: fileEl.getAttribute(PHX_UPLOAD_REF),
-      entry_ref: entryRef,
-      progress: progress
-    }, onReply)
+    this.liveSocket.withinOwners(fileEl.form, (view, targetCtx) => {
+      view.pushWithReply(null, "progress", {
+        event: fileEl.getAttribute(view.binding(PHX_PROGRESS)),
+        ref: fileEl.getAttribute(PHX_UPLOAD_REF),
+        entry_ref: entryRef,
+        progress: progress,
+        cid: view.targetComponentID(fileEl.form, targetCtx)
+      }, onReply)
+    })
   }
 
   pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
