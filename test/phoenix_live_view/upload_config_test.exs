@@ -217,7 +217,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert avatar.errors == [{entry["ref"], :too_large}]
     end
 
-    test "validates client size less than :max_file_size" do
+    test "validates client size less than :max_file_size and generates uuid when valid" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
 
       {:ok, config} =
@@ -225,7 +225,8 @@ defmodule Phoenix.LiveView.UploadConfigTest do
           build_client_entry(:avatar, %{"size" => 1024})
         ])
 
-      assert [%UploadEntry{client_size: 1024}] = config.entries
+      assert [%UploadEntry{client_size: 1024, uuid: uuid}] = config.entries
+      assert uuid
     end
 
     test "validates entries accepted by extension" do
