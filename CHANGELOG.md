@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.15.0
+## 0.15.0 (2020-11-20)
 
 ### Enhancements
+  - Add live uploads support for file progress, interactive file selection, and direct to cloud support
   - Implement `Phoenix.LiveViewTest.open_browser/2` that opens up a browser with the LiveView page
 
 ### Backwards incompatible changes
