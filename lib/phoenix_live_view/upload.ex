@@ -233,8 +233,9 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Drops all entries from the upload.
   """
-  def drop_upload_entries(%Socket{} = socket, %UploadConfig{} = conf) do
+  def drop_upload_entries(%Socket{} = socket, %UploadConfig{} = conf, entry_refs) do
     conf.entries
+    |> Enum.filter(fn entry -> entry.ref in entry_refs end)
     |> Enum.reduce(conf, fn entry, acc -> UploadConfig.drop_entry(acc, entry) end)
     |> update_uploads(socket)
   end
@@ -258,7 +259,8 @@ defmodule Phoenix.LiveView.Upload do
           end
         end)
 
-      Phoenix.LiveView.Channel.drop_upload_entries(conf)
+      entry_refs = for entry <- entries, do: entry.ref
+      Phoenix.LiveView.Channel.drop_upload_entries(conf, entry_refs)
 
       results
     else

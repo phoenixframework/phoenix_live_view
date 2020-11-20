@@ -41,8 +41,8 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(pid, {@prefix, :fetch_upload_config, name, cid})
   end
 
-  def drop_upload_entries(%UploadConfig{} = conf) do
-    send(self(), {@prefix, :drop_upload_entries, conf})
+  def drop_upload_entries(%UploadConfig{} = conf, entry_refs) do
+    send(self(), {@prefix, :drop_upload_entries, conf, entry_refs})
   end
 
   @impl true
@@ -205,10 +205,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :drop_upload_entries, upload_config}, state) do
+  def handle_info({@prefix, :drop_upload_entries, upload_config, entry_refs}, state) do
     new_state =
       write_socket(state, upload_config.cid, nil, fn socket, _ ->
-        {Upload.drop_upload_entries(socket, upload_config), {:ok, nil, state}}
+        {Upload.drop_upload_entries(socket, upload_config, entry_refs), {:ok, nil, state}}
       end)
 
     {:noreply, new_state}
