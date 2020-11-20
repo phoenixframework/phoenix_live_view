@@ -26,7 +26,10 @@ export let simulateJoinedView = (el, liveSocket) => {
 export let stubChannel = view => {
   let fakePush = {
     receives: [],
-    receive(kind, cb){ this.receives.push([kind, cb])}
+    receive(kind, cb){
+      this.receives.push([kind, cb])
+      return this
+    }
   }
   view.channel.push = () => fakePush
 }

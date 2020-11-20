@@ -26,6 +26,7 @@ let stubNextChannelReply = (view, replyPayload) => {
           cb({diff: {r: replyPayload}})
           view.channel.push = oldPush
         }
+        return this
       }
     }
   }

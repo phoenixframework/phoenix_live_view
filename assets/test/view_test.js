@@ -60,7 +60,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.value).toBe("increment=1")
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -75,6 +75,11 @@ describe("View + DOM", function() {
 
     let view = new View(el, liveSocket)
     let channelStub = {
+      leave(){
+        return {
+          receive(status, cb){ return this }
+        }
+      },
       push(evt, payload, timeout) {
         expect(payload.value).toBe("increment=1")
         return {
@@ -84,6 +89,7 @@ describe("View + DOM", function() {
               fingerprint: 123
             }
             cb(diff)
+            return this
           }
         }
       }
@@ -109,7 +115,7 @@ describe("View + DOM", function() {
         expect(payload.event).toBeDefined()
         expect(payload.value).toEqual({"value": "1"})
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -130,7 +136,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({})
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -152,7 +158,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({"value": "on"})
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -175,7 +181,7 @@ describe("View + DOM", function() {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({"value": "1"})
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -198,7 +204,7 @@ describe("View + DOM", function() {
         expect(payload.event).toBeDefined()
         expect(payload.value).toEqual({"key": "A", "value": "1"})
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -221,7 +227,7 @@ describe("View + DOM", function() {
         expect(payload.event).toBeDefined()
         expect(payload.value).toBe("increment=1&note=2&_target=increment")
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -273,7 +279,7 @@ describe("View + DOM", function() {
         expect(payload.event).toBeDefined()
         expect(payload.value).toBe("increment=1&note=2")
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }
@@ -779,7 +785,7 @@ describe("View + Component", function() {
         expect(payload.value).toEqual({"value": "1"})
         expect(payload.cid).toEqual(0)
         return {
-          receive() {}
+          receive(){ return this }
         }
       }
     }

@@ -807,9 +807,21 @@ export class LiveSocket {
     })
   }
 
-  wrapPush(push){
+  wrapPush(view, opts, push){
     let latency = this.getLatencySim()
-    if(!latency){ return push() }
+    if(!latency){
+      if(opts.timeout){
+        return push().receive("timeout", () => {
+          if(!view.isDestroyed()){
+            this.reloadWithJitter(view, () => {
+              this.log(view, "timeout", () => [`received timeout while communicating with server. Falling back to hard refresh for recovery`])
+            })
+          }
+        })
+      } else {
+        return push()
+      }
+    }
 
     console.log(`simulating ${latency}ms of latency from client to server`)
     let fakePush = {
@@ -822,13 +834,13 @@ export class LiveSocket {
     return fakePush
   }
 
-  reloadWithJitter(view){
+  reloadWithJitter(view, log){
     view.destroy()
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
-    this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
+    log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
       afterMs = FAILSAFE_JITTER
@@ -2407,7 +2419,7 @@ export class View {
       this.stopCallback = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
     this.joinCallback = () => callback && callback(this, this.joinCount)
-    this.liveSocket.wrapPush(() => {
+    this.liveSocket.wrapPush(this, {timeout: false}, () => {
       return this.channel.join()
         .receive("ok", data => this.onJoin(data))
         .receive("error", resp => this.onJoinError(resp))
@@ -2461,7 +2473,7 @@ export class View {
 
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
-      this.liveSocket.wrapPush(() => {
+      this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
           let hookReply = null
           if(ref !== null){ this.undoRefs(ref) }
