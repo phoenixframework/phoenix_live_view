@@ -1,12 +1,5 @@
 defmodule Phoenix.LiveView.Socket.AssignsNotInSocket do
-  @moduledoc """
-  Struct for socket.assigns while rendering.
-
-  The socket assigns are available directly inside the template
-  as LiveEEx `assigns`, such as `@foo` and `@bar`. Any assign access
-  should be done using the assigns in the template where proper change
-  tracking takes place.
-  """
+  @moduledoc false
 
   defimpl Inspect do
     def inspect(_, _) do
@@ -21,6 +14,11 @@ end
 defmodule Phoenix.LiveView.Socket do
   @moduledoc """
   The LiveView socket for Phoenix Endpoints.
+
+  This is typically mounted directly in your endpoint.
+
+      socket "/live", Phoenix.LiveView.Socket
+
   """
   use Phoenix.Socket
 
@@ -69,17 +67,11 @@ defmodule Phoenix.LiveView.Socket do
   channel "lvu:*", Phoenix.LiveView.UploadChannel
   channel "lv:*", Phoenix.LiveView.Channel
 
-  @doc """
-  Connects the Phoenix.Socket for a LiveView client.
-  """
   @impl Phoenix.Socket
   def connect(_params, %Phoenix.Socket{} = socket, connect_info) do
     {:ok, put_in(socket.private[:connect_info], connect_info)}
   end
 
-  @doc """
-  Identifies the Phoenix.Socket for a LiveView client.
-  """
   @impl Phoenix.Socket
   def id(socket), do: socket.private.connect_info[:session]["live_socket_id"]
 end

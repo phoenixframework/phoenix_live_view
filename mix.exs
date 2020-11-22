@@ -89,6 +89,15 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp groups_for_modules do
     [
+      "Upload structures": [
+        Phoenix.LiveView.UploadConfig,
+        Phoenix.LiveView.UploadEntry
+      ],
+      "Testing structures": [
+        Phoenix.LiveViewTest.Element,
+        Phoenix.LiveViewTest.Upload,
+        Phoenix.LiveViewTest.View
+      ]
       "Live EEx Engine": [
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.Component,

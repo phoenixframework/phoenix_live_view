@@ -623,6 +623,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     recalculate_computed_fields(new_conf)
   end
 
+  @doc false
   def register_cid(%UploadConfig{} = conf, cid) do
     %UploadConfig{conf | cid: cid}
   end
