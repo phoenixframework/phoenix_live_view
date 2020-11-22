@@ -114,7 +114,7 @@ defp presign_upload(entry, socket) do
   }
 
   {:ok, fields} =
-    S3.sign_form_upload(config, bucket,
+    SimpleS3Upload.sign_form_upload(config, bucket,
       key: key,
       content_type: entry.client_type,
       max_file_size: uploads.avatar.max_file_size,
@@ -127,9 +127,7 @@ end
 ```
 
 Here, we implemented a `presign_upload/2` function, which we passed as a captured anonymous
-function to `:external`. Next, we used `ExAws.S3` to generate a presigned URL for the
-upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
-along with our unchanged socket. The metadata *must* contain the `:uploader` key,
+function to `:external`. Next, we used the snippet from https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073  SimpleS3Upload.sign_form_upload/6 to generate a presigned URL for the upload. Lastly, we return our `:ok` result, with a payload of metadata for the client, along with our unchanged socket. The metadata *must* contain the `:uploader` key,
 specifying the name of the JavaScript client-side uploader, in this case "S3".
 
 To complete the flow, we can implement our `S3` client uploader and tell the
