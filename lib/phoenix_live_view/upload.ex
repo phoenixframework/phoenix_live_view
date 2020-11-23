@@ -162,9 +162,15 @@ defmodule Phoenix.LiveView.Upload do
   Retrieves the `%UploadConfig{}` from the socket for the provided ref or raises.
   """
   def get_upload_by_ref!(%Socket{} = socket, config_ref) do
-    uploads = socket.assigns[:uploads] || raise(ArgumentError, "no uploads have been allowed")
+    uploads = socket.assigns[:uploads] || raise(ArgumentError, no_upload_allowed_message(socket))
     name = Map.fetch!(uploads[@refs_to_names], config_ref)
     Map.fetch!(uploads, name)
+  end
+
+  defp no_upload_allowed_message(socket) do
+    "no uploads have been allowed on " <>
+      if(socket.assigns[:myself], do: "component running inside ", else: "") <>
+      "LiveView named #{inspect socket.view}"
   end
 
   @doc """
