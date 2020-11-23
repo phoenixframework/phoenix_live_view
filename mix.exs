@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveViewTest.Element,
         Phoenix.LiveViewTest.Upload,
         Phoenix.LiveViewTest.View
-      ]
+      ],
       "Live EEx Engine": [
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.Component,
