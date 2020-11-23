@@ -477,9 +477,9 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <%= live_title_tag @page_title, prefix: "MyApp – " %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
 
-      <%= live_title_tag @page_title, suffix: " – MyApp" %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
   """
   def live_title_tag(title, opts \\ []) do
     title_tag(title, opts[:prefix], opts[:suffix], opts)

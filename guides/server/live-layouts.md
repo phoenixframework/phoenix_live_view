@@ -103,7 +103,7 @@ You can also use `Phoenix.LiveView.Helpers.live_title_tag/2` to support
 adding automatic prefix and suffix to the page title when rendered and
 on subsequent updates:
 
-    <%= live_title_tag @page_title, prefix: "MyApp – " %>
+    <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
 
 Although the root layout is not updated by LiveView, by simply assigning
 to `page_title`, LiveView knows you want the title to be updated:

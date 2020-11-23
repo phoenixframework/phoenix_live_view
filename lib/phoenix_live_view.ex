@@ -1057,7 +1057,7 @@ defmodule Phoenix.LiveView do
   assign on mount:
 
       def mount(params, session, socket) do
-        {:ok, assign(socket, static_change: static_changed?(socket))}
+        {:ok, assign(socket, static_changed?: static_changed?(socket))}
       end
 
   And then in your views:
