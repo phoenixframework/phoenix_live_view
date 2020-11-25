@@ -15,14 +15,14 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, from, opts)
   end
 
-  def send_update(module, id, assigns) do
-    send(self(), {@prefix, :send_update, {module, id, assigns}})
+  def send_update(pid \\ self(), module, id, assigns) do
+    send(pid, {@prefix, :send_update, {module, id, assigns}})
   end
 
-  def send_update_after(module, id, assigns, time_in_milliseconds)
+  def send_update_after(pid \\ self(), module, id, assigns, time_in_milliseconds)
       when is_integer(time_in_milliseconds) do
     Process.send_after(
-      self(),
+      pid,
       {@prefix, :send_update, {module, id, assigns}},
       time_in_milliseconds
     )
