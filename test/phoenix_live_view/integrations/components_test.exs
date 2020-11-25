@@ -270,8 +270,6 @@ defmodule Phoenix.LiveView.ComponentTest do
 
       Phoenix.LiveView.send_update(view.pid, StatefulComponent, [id: "chris", name: "NEW-chris", from: self()])
       Phoenix.LiveView.send_update_after(view.pid, StatefulComponent, [id: "jose", name: "NEW-jose", from: self()], 10)
-
-
       assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
       assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       refute_receive {:updated, _}

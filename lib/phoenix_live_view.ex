@@ -1129,7 +1129,8 @@ defmodule Phoenix.LiveView do
   match the `:id` associated with the component) and the component must be
   mounted within the current LiveView.
 
-  If this call is executed asynchronously, the `pid` parameter has to be specified.
+  If this call is executed from a process which is not a LiveView
+  nor a LiveComponent, the `pid` parameter has to be specified.
 
   When the component receives the update, the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) callback is invoked, then
