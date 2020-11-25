@@ -1129,6 +1129,8 @@ defmodule Phoenix.LiveView do
   match the `:id` associated with the component) and the component must be
   mounted within the current LiveView.
 
+  If this call is executed asynchronously, the `pid` parameter has to be specified.
+
   When the component receives the update, the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) callback is invoked, then
   the updated values are merged with the component's assigns and
@@ -1137,12 +1139,12 @@ defmodule Phoenix.LiveView do
 
   While a component may always be updated from the parent by updating some
   parent assigns which will re-render the child, thus invoking
-  [`update/2`](`c:Phoenix.LiveComponent.update/2`) on the child component,
-  `send_update/2` is useful for updating a component that entirely manages its
+  [`update/3`](`c:Phoenix.LiveComponent.update/3`) on the child component,
+  `send_update/3` is useful for updating a component that entirely manages its
   own state, as well as messaging between components mounted in the same
   LiveView.
 
-  **Note:** `send_update/2` cannot update a LiveComponent that is mounted in a
+  **Note:** `send_update/3` cannot update a LiveComponent that is mounted in a
   different LiveView. To update a component in a different LiveView you must
   send a message to the LiveView process that the LiveComponent is mounted
   within (often via `Phoenix.PubSub`).
@@ -1154,19 +1156,31 @@ defmodule Phoenix.LiveView do
         send_update(Cart, id: "cart", status: "cancelled")
         {:noreply, socket}
       end
+
+      def handle_event("cancel-order-asynchronously", _, socket) do
+        ...
+        pid = self()
+
+        Task.async(fn ->
+          # Do domething asynchronously
+          send_update(pid, Cart, id: "cart", status: "cancelled")
+        end)
+
+        {:noreply, socket}
+      end
   """
-  def send_update(module, assigns) when is_atom(module) do
+  def send_update(pid \\ self(), module, assigns) when is_atom(module) and is_pid(pid) do
     assigns = Enum.into(assigns, %{})
 
     id =
       assigns[:id] ||
         raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
 
-    Phoenix.LiveView.Channel.send_update(module, id, assigns)
+    Phoenix.LiveView.Channel.send_update(pid, module, id, assigns)
   end
 
   @doc """
-  Similar to `send_update/2` but the update will be delayed according to the given `time_in_milliseconds`.
+  Similar to `send_update/3` but the update will be delayed according to the given `time_in_milliseconds`.
 
   ## Examples
 
@@ -1175,16 +1189,28 @@ defmodule Phoenix.LiveView do
         send_update_after(Cart, [id: "cart", status: "cancelled"], 3000)
         {:noreply, socket}
       end
+
+      def handle_event("cancel-order-asynchronously", _, socket) do
+        ...
+        pid = self()
+
+        Task.async(fn ->
+          # Do domething asynchronously
+          send_update_after(pid, Cart, [id: "cart", status: "cancelled"], 3000)
+        end)
+
+        {:noreply, socket}
+      end
   """
-  def send_update_after(module, assigns, time_in_milliseconds)
-      when is_atom(module) and is_integer(time_in_milliseconds) do
+  def send_update_after(pid \\ self(), module, assigns, time_in_milliseconds)
+      when is_atom(module) and is_integer(time_in_milliseconds) and is_pid(pid) do
     assigns = Enum.into(assigns, %{})
 
     id =
       assigns[:id] ||
         raise ArgumentError, "missing required :id in send_update_after. Got: #{inspect(assigns)}"
 
-    Phoenix.LiveView.Channel.send_update_after(module, id, assigns, time_in_milliseconds)
+    Phoenix.LiveView.Channel.send_update_after(pid, module, id, assigns, time_in_milliseconds)
   end
 
   @doc """
