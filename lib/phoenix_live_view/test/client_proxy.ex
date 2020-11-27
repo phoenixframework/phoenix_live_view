@@ -518,7 +518,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         push_with_callback(state, view, "cids_will_destroy", payload, fn _, state ->
           still_there_cids = DOM.component_ids(view.id, state.html)
-          payload = %{"cids" => Enum.reject(will_destroy_cids, &(Enum.member?(still_there_cids, &1)))}
+          payload = %{"cids" => Enum.reject(will_destroy_cids, &(&1 in still_there_cids, &1))}
 
           state =
             push_with_callback(state, view, "cids_destroyed", payload, fn reply, state ->
