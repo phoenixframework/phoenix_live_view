@@ -2,7 +2,6 @@ defmodule Phoenix.LiveView.EventTest do
   use ExUnit.Case
 
   import Phoenix.ConnTest
-
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
@@ -16,8 +15,7 @@ defmodule Phoenix.LiveView.EventTest do
   end
 
   setup config do
-    {:ok,
-     conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), config[:session] || %{})}
+    {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
 
   describe "push_event" do
@@ -61,6 +59,17 @@ defmodule Phoenix.LiveView.EventTest do
 
       assert_push_event(view, "root-mount", %{root: "foo"})
       assert_push_event(view, "child-mount", %{child: "bar"})
+    end
+
+    test "sends updates in components", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-in-component")
+      assert_received {:plug_conn, :sent}
+      assert_received {_, {200, _, _}}
+
+      assert_push_event(view, "component", %{count: 1})
+      render_click(view, "bump", %{})
+      assert_push_event(view, "component", %{count: 2})
+      refute_received _
     end
   end
 

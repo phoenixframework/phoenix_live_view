@@ -86,7 +86,8 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration events
     live "/events", EventsLive
-    live "/events-in-mount", EventsInMountLive.Root
+    live "/events-in-mount", EventsInMountLive
+    live "/events-in-component", EventsInComponentLive
 
     # integration components
     live "/component_in_live", ComponentInLive.Root

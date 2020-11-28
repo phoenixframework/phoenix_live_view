@@ -24,11 +24,28 @@ defmodule Phoenix.LiveViewTest.EventsLive do
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
-defmodule Phoenix.LiveViewTest.EventsInMountLive.Root do
+defmodule Phoenix.LiveViewTest.EventsInMountLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
+  defmodule Child do
+    use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+    def render(assigns) do
+      ~L"hello!"
+    end
+
+    def mount(_params, _session, socket) do
+      socket =
+        if connected?(socket),
+          do: push_event(socket, "child-mount", %{child: "bar"}),
+          else: socket
+
+      {:ok, socket}
+    end
+  end
+
   def render(assigns) do
-    ~L"<%= live_render @socket, Phoenix.LiveViewTest.EventsInMountLive.Child, id: :child_live %>"
+    ~L"<%= live_render @socket, Child, id: :child_live %>"
   end
 
   def mount(_params, _session, socket) do
@@ -41,19 +58,35 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive.Root do
   end
 end
 
-defmodule Phoenix.LiveViewTest.EventsInMountLive.Child do
+defmodule Phoenix.LiveViewTest.EventsInComponentLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
+  defmodule Child do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"hello!"
+    end
+
+    def update(assigns, socket) do
+      socket =
+        if connected?(socket),
+          do: push_event(socket, "component", %{count: assigns.count}),
+          else: socket
+
+      {:ok, socket}
+    end
+  end
+
   def render(assigns) do
-    ~L"hello!"
+    ~L"<%= live_component @socket, Child, id: :child_live, count: @count %>"
   end
 
   def mount(_params, _session, socket) do
-    socket =
-      if connected?(socket),
-        do: push_event(socket, "child-mount", %{child: "bar"}),
-        else: socket
+    {:ok, assign(socket, :count, 1)}
+  end
 
-    {:ok, socket}
+  def handle_event("bump", _, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
   end
 end
