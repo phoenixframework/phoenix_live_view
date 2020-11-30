@@ -734,7 +734,7 @@ defmodule Phoenix.LiveView do
               ...
             end)
 
-          {:noreply, put_flash(socket, :info, "file #{uploaded_file.name} uploaded")
+          {:noreply, put_flash(socket, :info, "file #{uploaded_file.name} uploaded")}
         else
           {:noreply, socket}
         end
