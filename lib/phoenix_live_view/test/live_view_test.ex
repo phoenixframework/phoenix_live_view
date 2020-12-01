@@ -931,7 +931,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Builds a file input for testing uploads within a form.
 
-  Given the form DOM ID, the upload name, and a map of client metadata
+  Given the form DOM ID, the upload name, and a list of maps of client metadata
   for the upload, the returned file input can be passed to `render_upload/2`.
 
   Client metadata takes the following form:
@@ -944,13 +944,13 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      avatar = file_input(lv, "my-form-id", :avatar, %{
+      avatar = file_input(lv, "#my-form-id", :avatar, [%{
         last_modified: 1_594_171_879_000,
         name: "myfile.jpeg",
         content: File.read!("myfile.jpg"),
         size: 1_396_009,
         type: "image/jpeg"
-      })
+      }])
 
       assert render_upload(avatar, "foo.jpeg") =~ "100%"
   """
