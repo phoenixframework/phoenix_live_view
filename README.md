@@ -1,6 +1,6 @@
 # Phoenix LiveView
 
-![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)
+[![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)](https://github.com/phoenixframework/phoenix_live_view/actions?query=workflow%3ACI)
 
 Phoenix LiveView enables rich, real-time user experiences
 with server-rendered HTML.
