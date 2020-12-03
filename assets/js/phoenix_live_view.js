@@ -998,6 +998,7 @@ export class LiveSocket {
     if(this.boundTopLevelEvents){ return }
 
     this.boundTopLevelEvents = true
+    document.body.addEventListener("click", function(){}) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
       if(e.persisted){ // reload page if being restored from back/forward cache
         this.withPageLoading({to: window.location.href, kind: "redirect"})
