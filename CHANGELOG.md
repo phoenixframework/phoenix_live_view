@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.1 (2020-12-04)
+
+### Enhancements
+  - Ensure all click events bubble for mobile Safari
+  - Run `consume_uploaded_entries` in LiveView caller process
+
+### Bug fixes
+  - Fix `phx-capture-click` triggering on mouseup during text selection
+  - Fix LiveView `push_event`'s not clearing up in components
+  - Fix textarea being patched by LV while focused
+
 ## 0.15.0 (2020-11-20)
 
 ### Enhancements

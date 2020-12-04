@@ -1095,26 +1095,29 @@ export class LiveSocket {
   }
 
   bindClicks(){
-    [true, false].forEach(capture => {
-      let click = capture ? this.binding("capture-click") : this.binding("click")
-      window.addEventListener("click", e => {
-        let target = null
-        if(capture){
-          target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
-        } else {
-          target = closestPhxBinding(e.target, click)
-        }
-        let phxEvent = target && target.getAttribute(click)
-        if(!phxEvent){ return }
-        if(target.getAttribute("href") === "#"){ e.preventDefault() }
+    this.bindClick("click", "click", false)
+    this.bindClick("mousedown", "capture-click", true)
+  }
 
-        this.debounce(target, e, () => {
-          this.withinOwners(target, (view, targetCtx) => {
-            view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target))
-          })
+  bindClick(eventName, bindingName, capture){
+    let click = this.binding(bindingName)
+    window.addEventListener(eventName, e => {
+      let target = null
+      if(capture){
+        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
+      } else {
+        target = closestPhxBinding(e.target, click)
+      }
+      let phxEvent = target && target.getAttribute(click)
+      if(!phxEvent){ return }
+      if(target.getAttribute("href") === "#"){ e.preventDefault() }
+
+      this.debounce(target, e, () => {
+        this.withinOwners(target, (view, targetCtx) => {
+          view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target))
         })
-      }, capture)
-    })
+      })
+    }, capture)
   }
 
   bindNav(){
