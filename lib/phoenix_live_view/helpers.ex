@@ -377,12 +377,13 @@ defmodule Phoenix.LiveView.Helpers do
 
     * `:too_large` - The entry exceeds the `:max_file_size` constraint
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
-    * `:not_acceptable` - The entry does not match the `:accept` MIME types
+    * `:not_accepted` - The entry does not match the `:accept` MIME types
 
   ## Examples
 
       def error_to_string(:too_large), do: "Too large"
       def error_to_string(:too_many_files), do: "You have selected too many files"
+      def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
 
       <%= for entry <- @uploads.avatar.entries do %>
         <%= for err <- upload_errors(@uploads.avatar, entry) do %>
