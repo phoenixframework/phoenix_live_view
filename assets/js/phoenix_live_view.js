@@ -1885,7 +1885,7 @@ class DOMPatch {
   }
 
   forceFocusedSelectUpdate(fromEl, toEl){
-    return fromEl.multiple === true || fromEl.innerHTML != toEl.innerHTML
+    return fromEl.multiple === true || (fromEl.type === "select" && fromEl.innerHTML != toEl.innerHTML)
   }
 
   isCIDPatch(){ return this.cidPatch }
