@@ -260,7 +260,7 @@ class LiveUploader {
 
   static hasUploadsInProgress(formEl){
     let active = 0
-    DOM.all(formEl, `input[type="file"]`, input => {
+    DOM.findUploadInputs(formEl).forEach(input => {
       if(input.getAttribute(PHX_PREFLIGHTED_REFS) !== input.getAttribute(PHX_DONE_REFS)){
         active++
       }
@@ -304,7 +304,7 @@ class LiveUploader {
   }
 
   static activeFileInputs(formEl){
-    let fileInputs = formEl.querySelectorAll(`input[type="file"]`)
+    let fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
@@ -313,7 +313,7 @@ class LiveUploader {
   }
 
   static inputsAwaitingPreflight(formEl){
-    let fileInputs = formEl.querySelectorAll(`input[type="file"]`)
+    let fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(input => this.filesAwaitingPreflight(input).length > 0)
   }
 
@@ -1382,6 +1382,10 @@ export let DOM = {
     return callback ? array.forEach(callback) : array
   },
 
+  isUploadInput(el){ return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null },
+
+  findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
+
   findComponentNodeList(node, cid){
     return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
   },
@@ -1621,7 +1625,7 @@ export let DOM = {
     if(ref === null){ return true }
 
     if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(fromEl.type === "file"){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
+      if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
       DOM.putPrivate(fromEl, PHX_REF, toEl)
       return false
     } else {
@@ -1828,7 +1832,7 @@ class DOMPatch {
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
           if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){
-            if(fromEl.type === "file"){
+            if(DOM.isUploadInput(fromEl)){
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
@@ -2641,7 +2645,7 @@ export class View {
       cid: cid
     }
     this.pushWithReply(refGenerator, "event", event, resp => {
-      if(inputEl.type === "file" && inputEl.getAttribute("data-phx-auto-upload") !== null){
+      if(DOM.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
           let [ref, els] = refGenerator()
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (uploads) => {
