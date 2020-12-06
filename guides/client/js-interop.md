@@ -99,9 +99,9 @@ event may dispatch page loading events by annotating the DOM element with
 `phx-page-loading`. This is useful for showing main page loading status, for example:
 
     // app.js
-    import NProgress from "nprogress"
-    window.addEventListener("phx:page-loading-start", info => NProgress.start())
-    window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+    import topbar from "topbar"
+    window.addEventListener("phx:page-loading-start", info => topbar.show())
+    window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 
 Within the callback, `info.detail` will be an object that contains a `kind`
 key, with a value that depends on the triggering event:
