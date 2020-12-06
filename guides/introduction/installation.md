@@ -289,28 +289,23 @@ use Phoenix.LiveView,
 
 ## Progress animation
 
-If you want to show a progress bar as users perform live actions, we recommend using [`nprogress`](https://github.com/rstacruz/nprogress).
+If you want to show a progress bar as users perform live actions, we recommend using [`topbar`](https://github.com/buunguyen/topbar).
 
-First add `nprogress` as a dependency in your `assets/package.json`:
+First add `topbar` as a dependency in your `assets/package.json`:
 
 ```json
-"nprogress": "^0.2.0"
+"topbar": "^0.1.4"
 ```
 
-Then in your `assets/css/app.css` file, import its style:
-
-```css
-@import "../node_modules/nprogress/nprogress.css";
-```
-
-Finally customize LiveView to use it in your `assets/js/app.js`, right before the `liveSocket.connect()` call:
+Then customize LiveView to use it in your `assets/js/app.js`, right before the `liveSocket.connect()` call:
 
 ```js
-import NProgress from "nprogress"
+import topbar from "topbar"
 
 // Show progress bar on live navigation and form submits
-window.addEventListener("phx:page-loading-start", info => NProgress.start())
-window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+window.addEventListener("phx:page-loading-start", info => topbar.show())
+window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 ```
 
 ## Location for LiveView modules
