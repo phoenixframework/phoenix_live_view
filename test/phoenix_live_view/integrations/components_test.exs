@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.ComponentTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.Helpers
   import Phoenix.LiveView.TelemetryTestHelpers
   alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
 
@@ -394,6 +395,26 @@ defmodule Phoenix.LiveView.ComponentTest do
     end
   end
 
+  defmodule RenderComponentWithInnerBlock do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      RENDER BLOCK <%= render_block(@inner_block) %>
+      """
+    end
+  end
+
+  defmodule RenderComponentWithInnerBlockAndArgs do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      RENDER BLOCK <%= render_block(@inner_block, f: @from) %>
+      """
+    end
+  end
+
   describe "render_component/2" do
     test "full life-cycle without id" do
       assert render_component(MyComponent, [from: "test"], router: SomeRouter) =~
@@ -423,6 +444,32 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "nested render only" do
       assert render_component(NestedRenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
+
+    test "render with inner block" do
+      assigns = %{}
+
+      html =
+        render_component(RenderComponentWithInnerBlock, %{}) do
+          ~L"""
+          INNER BLOCK <%= live_component @socket, RenderOnlyComponent, from: "test" %>
+          """
+        end
+
+      assert html =~ "RENDER BLOCK INNER BLOCK RENDER ONLY test"
+    end
+
+    test "render with inner block passing arguments" do
+      assigns = %{}
+
+      html =
+        render_component(RenderComponentWithInnerBlockAndArgs, %{from: "test"}) do
+          ~L"""
+          INNER BLOCK <%= live_component @socket, RenderOnlyComponent, from: @f %>
+          """
+        end
+
+      assert html =~ "RENDER BLOCK INNER BLOCK RENDER ONLY test"
     end
   end
 end

@@ -376,26 +376,47 @@ defmodule Phoenix.LiveViewTest do
                "some markup in component"
 
   """
-  defmacro render_component(component, assigns, opts \\ []) do
+  defmacro render_component(component, assigns, opts \\ [], do_block \\ []) do
+    {do_block, opts} =
+      case {do_block, opts} do
+        {[do: do_block], _} -> {do_block, opts}
+        {_, [do: do_block]} -> {do_block, []}
+        {_, _} -> {nil, opts}
+      end
+
     endpoint =
       Module.get_attribute(__CALLER__.module, :endpoint) ||
         raise ArgumentError,
               "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
 
-    quote do
-      Phoenix.LiveViewTest.__render_component__(
-        unquote(endpoint),
-        unquote(component),
-        unquote(assigns),
-        unquote(opts)
-      )
+    socket =
+      quote do
+        %Socket{endpoint: unquote(endpoint), router: unquote(opts)[:router]}
+      end
+
+    if do_block do
+      quote do
+        socket = unquote(socket)
+        var!(assigns) = Map.put(var!(assigns), :socket, socket)
+
+        inner_block = fn _, args ->
+          var!(assigns) = Map.merge(var!(assigns), Map.new(args))
+          unquote(do_block)
+        end
+
+        assigns = unquote(assigns) |> Map.new() |> Map.put(:inner_block, inner_block)
+        Phoenix.LiveViewTest.__render_component__(socket, unquote(component), assigns)
+      end
+    else
+      quote do
+        assigns = Map.new(unquote(assigns))
+        Phoenix.LiveViewTest.__render_component__(unquote(socket), unquote(component), assigns)
+      end
     end
   end
 
   @doc false
-  def __render_component__(endpoint, component, assigns, opts) do
-    socket = %Socket{endpoint: endpoint, router: opts[:router]}
-    assigns = Map.new(assigns)
+  def __render_component__(socket, component, assigns) do
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
     rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
