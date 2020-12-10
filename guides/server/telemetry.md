@@ -144,6 +144,141 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             event: String.t(),
             params: unsigned_params
           }
+  * `[:phoenix, :live_view, :handle_call, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before [`handle_call/3`](`c:Phoenix.LiveView.handle_call/3`) is invoked.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term,
+            from: GenServer.from
+          }
+
+
+  * `[:phoenix, :live_view, :handle_call, :stop]` - Dispatched by a `Phoenix.LiveView`
+    when the [`handle_call/3`](`c:Phoenix.LiveView.handle_call/3`) callback completes successfully.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+         %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term,
+            from: GenServer.from
+          }
+
+  * `[:phoenix, :live_view, :handle_call, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised in the [`handle_call/3`](`c:Phoenix.LiveView.handle_call/3`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            message: term,
+            from: GenServer.from
+          }
+
+  * `[:phoenix, :live_view, :handle_info, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before [`handle_info/2`](`c:Phoenix.LiveView.handle_info/2`) is invoked.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term
+          }
+  
+  * `[:phoenix, :live_view, :handle_info, :stop` - Dispatched by a `Phoenix.LiveView`
+    when the [`handle_info/2`](`c:Phoenix.LiveView.handle_info/2`) callback completes successfully..
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term
+          }
+
+  * `[:phoenix, :live_view, :handle_info, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised in the [`handle_info/2`](`c:Phoenix.LiveView.handle_info/2`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            message: term
+          }
+
+  * `[:phoenix, :live_view, :handle_cast, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before [`handle_cast/2`](`c:Phoenix.LiveView.handle_cast/2`) is invoked.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term
+          }
+  
+  * `[:phoenix, :live_view, :handle_cast, :stop` - Dispatched by a `Phoenix.LiveView`
+    when the [`handle_cast/2`](`c:Phoenix.LiveView.handle_cast/2`) callback completes successfully..
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            message: term
+          }
+
+  * `[:phoenix, :live_view, :handle_cast, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised in the [`handle_cast/2`](`c:Phoenix.LiveView.handle_cast/2`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            message: term
+          }
 
   * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent`
     immediately before [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) is invoked.
