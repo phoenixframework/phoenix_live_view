@@ -59,9 +59,11 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   def handle_event("dec", _, socket), do: {:noreply, update(socket, :val, &(&1 - 1))}
 
-  def handle_call({:set, var, val}, _, socket) do
-    {:reply, :ok, assign(socket, var, val)}
-  end
+  def handle_call({:set, var, val}, _, socket), do: {:reply, :ok, assign(socket, var, val)}
+
+  def handle_info({:set, var, val}, socket), do: {:noreply, assign(socket, var, val)}
+
+  def handle_cast({:set, var, val}, socket), do: {:noreply, assign(socket, var, val)}
 end
 
 defmodule Phoenix.LiveViewTest.ClockLive do
@@ -301,4 +303,7 @@ defmodule Phoenix.LiveViewTest.ErrorsLive do
   def handle_params(_params, _session, socket), do: {:noreply, socket}
 
   def handle_event("crash", _params, _socket), do: raise("boom handle_event")
+  def handle_call(:crash, _from, _socket), do: raise("boom handle_event")
+  def handle_info(:crash, _socket), do: raise("boom handle_info")
+  def handle_cast(:crash, _socket), do: raise("boom handle_cast")
 end

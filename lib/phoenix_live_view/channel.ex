@@ -87,8 +87,8 @@ defmodule Phoenix.LiveView.Channel do
         end
 
       :error ->
-        msg
-        |> socket.view.handle_info(socket)
+        socket
+        |> view_handle_info(msg)
         |> handle_result({:handle_info, 2, nil}, state)
     end
   end
@@ -240,8 +240,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(msg, %{socket: socket} = state) do
-    msg
-    |> socket.view.handle_info(socket)
+    socket
+    |> view_handle_info(msg)
     |> handle_result({:handle_info, 2, nil}, state)
   end
 
@@ -271,7 +271,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
-    case socket.view.handle_call(msg, from, socket) do
+    case view_handle_call(socket, msg, from) do
       {:reply, reply, %Socket{} = new_socket} ->
         case handle_changed(state, new_socket, nil) do
           {:noreply, new_state} -> {:reply, reply, new_state}
@@ -285,8 +285,8 @@ defmodule Phoenix.LiveView.Channel do
 
   @impl true
   def handle_cast(msg, %{socket: socket} = state) do
-    msg
-    |> socket.view.handle_cast(socket)
+    socket
+    |> view_handle_cast(msg)
     |> handle_result({:handle_cast, 2, nil}, state)
   end
 
@@ -344,6 +344,57 @@ defmodule Phoenix.LiveView.Channel do
 
           other ->
             raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+        end
+      end
+    )
+  end
+
+  defp view_handle_call(%Socket{} = socket, msg, from) do
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_call],
+      %{socket: socket, message: msg, from: from},
+      fn ->
+        case socket.view.handle_call(msg, from, socket) do
+          {:noreply, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, message: msg, from: from}}
+
+          {:reply, reply, %Socket{} = socket} ->
+            {{:reply, reply, socket}, %{socket: socket, message: msg, from: from}}
+
+          other ->
+            raise_bad_callback_response!(other, socket.view, :handle_call, 3)
+        end
+      end
+    )
+  end
+
+  defp view_handle_info(%Socket{} = socket, msg) do
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_info],
+      %{socket: socket, message: msg},
+      fn ->
+        case socket.view.handle_info(msg, socket) do
+          {:noreply, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, message: msg}}
+
+          other ->
+            raise_bad_callback_response!(other, socket.view, :handle_info, 2)
+        end
+      end
+    )
+  end
+
+  defp view_handle_cast(%Socket{} = socket, msg) do
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_cast],
+      %{socket: socket, message: msg},
+      fn ->
+        case socket.view.handle_cast(msg, socket) do
+          {:noreply, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, message: msg}}
+
+          other ->
+            raise_bad_callback_response!(other, socket.view, :handle_cast, 2)
         end
       end
     )

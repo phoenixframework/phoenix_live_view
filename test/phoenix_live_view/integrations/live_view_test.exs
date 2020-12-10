@@ -475,6 +475,138 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
+  describe "handle_call" do
+    test "a successful handle_call callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_call])
+
+      {:ok, view, _} = live(conn, "/thermo")
+      GenServer.call(view.pid, {:set, :val, 5})
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_call, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_call, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+    end
+
+    test "a crashing handle_call callback emits telemetry metrics", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      attach_telemetry([:phoenix, :live_view, :handle_call])
+
+      {:ok, view, _} = live(conn, "/errors")
+      catch_exit(GenServer.call(view.pid, :crash))
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_call, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == :crash
+      {pid, _} = metadata.from
+      assert pid == self()
+
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_call, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.message == :crash
+      {pid, _} = metadata.from
+      assert pid == self()
+    end
+  end
+
+  describe "handle_info" do
+    test "a successful handle_info callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_info])
+
+      {:ok, view, _} = live(conn, "/thermo")
+      send(view.pid, {:set, :val, 5})
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+    end
+
+    test "a crashing handle_info callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_info])
+
+      {:ok, view, _} = live(conn, "/errors")
+      send(view.pid, :crash)
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == :crash
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.message == :crash
+    end
+  end
+
+  describe "handle_cast" do
+    test "a successful handle_cast callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_cast])
+
+      {:ok, view, _} = live(conn, "/thermo")
+      GenServer.cast(view.pid, {:set, :val, 5})
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_cast, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_cast, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == {:set, :val, 5}
+    end
+
+    test "a crashing handle_cast callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_cast])
+
+      {:ok, view, _} = live(conn, "/errors")
+      GenServer.cast(view.pid, :crash)
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_cast, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.message == :crash
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_cast, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.connected?
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.message == :crash
+    end
+  end
+
   describe "container" do
     test "module DOM container", %{conn: conn} do
       conn =
@@ -544,7 +676,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render_click(view, :noop) =~ "The temp is: 1"
     end
 
-    test "handle_info with change", %{conn: conn} do
+    test "handle_call with change", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/thermo")
 
       assert render(view) =~ "The temp is: 1"
