@@ -305,7 +305,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "consume_uploaded_entries executes function against all entries, cleans up tmp file, and shuts down",
            %{lv: lv} do
-        Process.flag(:trap_exit, true)
         parent = self()
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
         avatar_pid = avatar.pid
@@ -331,7 +330,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       test "consume_uploaded_entry executes function, cleans up tmp file, and shuts down", %{
         lv: lv
       } do
-        Process.flag(:trap_exit, true)
         parent = self()
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
         avatar_pid = avatar.pid
@@ -376,8 +374,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "consume_uploaded_entries raises when upload is still in progress", %{lv: lv} do
-        Process.flag(:trap_exit, true)
-
         avatar =
           file_input(lv, "form", :avatar, [
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
@@ -399,8 +395,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "consume_uploaded_entry raises when upload is still in progress", %{lv: lv} do
-        Process.flag(:trap_exit, true)
-
         avatar =
           file_input(lv, "form", :avatar, [
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
@@ -424,8 +418,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "cancel_upload in progress", %{lv: lv} do
-        Process.flag(:trap_exit, true)
-
         avatar =
           file_input(lv, "form", :avatar, [
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
@@ -495,7 +487,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "liveview exits when duplicate name registered for another cid", %{lv: lv} do
-      Process.flag(:trap_exit, true)
       avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
 

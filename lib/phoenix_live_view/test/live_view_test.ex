@@ -981,18 +981,28 @@ defmodule Phoenix.LiveViewTest do
   end
 
   def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
-    {:ok, pid} =
-      UploadClient.start_link(
-        socket_builder: socket_builder,
-        test_supervisor: fetch_test_supervisor!(),
-        cid: cid
-      )
+    spec = %{
+      id: make_ref(),
+      start:
+        {UploadClient, :start_link,
+         [[socket_builder: socket_builder, cid: cid]]},
+      restart: :temporary
+    }
+
+    {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
 
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
   def __start_external_upload_client__(view, form_selector, name, entries, cid) do
-    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!(), cid: cid)
+    spec = %{
+      id: make_ref(),
+      start:
+        {UploadClient, :start_link,
+         [[cid: cid]]},
+      restart: :temporary
+    }
+    {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
