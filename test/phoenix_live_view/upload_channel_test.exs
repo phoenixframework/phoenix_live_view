@@ -309,7 +309,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
         avatar_pid = avatar.pid
         assert render_upload(avatar, "foo.jpeg") =~ "100%"
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
         Process.monitor(avatar_pid)
+        Process.monitor(channel_pid)
 
         UploadLive.run(lv, fn socket ->
           Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
@@ -319,7 +322,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, socket}
         end)
 
+        # Wait for the the UploadClient and UploadChannel to shutdown
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
