@@ -1382,6 +1382,12 @@ export let DOM = {
     return callback ? array.forEach(callback) : array
   },
 
+  childNodeLength(html){
+    let template = document.createElement("template")
+    template.innerHTML = html
+    return template.content.childElementCount
+  },
+
   isUploadInput(el){ return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null },
 
   findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
@@ -1763,7 +1769,7 @@ class DOMPatch {
 
   perform(){
     let {view, liveSocket, container, html} = this
-    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer() : container
+    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     if(this.isCIDPatch() && !targetContainer){ return }
 
     let focused = liveSocket.getActiveElement()
@@ -1901,9 +1907,9 @@ class DOMPatch {
     return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
   }
 
-  targetCIDContainer(){ if(!this.isCIDPatch()){ return }
+  targetCIDContainer(html){ if(!this.isCIDPatch()){ return }
     let [first, ...rest] = DOM.findComponentNodeList(this.container, this.targetCID)
-    if(rest.length === 0){
+    if(rest.length === 0 && DOM.childNodeLength(html) === 1){
       return first
     } else {
       return first && first.parentNode

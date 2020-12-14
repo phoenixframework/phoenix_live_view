@@ -1,5 +1,11 @@
 # Changelog
 
+
+## 0.15.2
+
+### Bug fixes
+  - Fix component child nodes being lost when component patch goes from single root node to multiple child siblings
+
 ## 0.15.1 (2020-12-04)
 
 ### Enhancements
