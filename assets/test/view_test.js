@@ -794,6 +794,71 @@ describe("View + Component", function() {
     view.pushEvent("keyup", input, targetCtx, "click", {})
   })
 
+  test("pushInput", function() {
+    expect.assertions(6)
+    let html =
+    `<form id="form" phx-change="validate">
+      <label for="first_name">First Name</label>
+      <input id="first_name" value="" name="first_name" />
+
+      <label for="last_name">Last Name</label>
+      <input id="last_name" value="" name="last_name" />
+    </form>`
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = new View(el, liveSocket)
+    view.onJoin({rendered: {s: [html], fingerprint: 123}})
+    let channelStub = {
+      validate: "",
+      nextValidate(payload) {
+        this.validate = payload
+      },
+      push(evt, payload, timeout) {
+        expect(payload.value).toBe(this.validate)
+        return {
+          receive(status, cb) {
+            if (status === "ok") {
+              let diff = {
+                s: [`
+                <form id="form" phx-change="validate">
+                  <label for="first_name">First Name</label>
+                  <input id="first_name" value="" name="first_name" />
+                  <span class="feedback" phx-feedback-for="first_name">can't be blank</span>
+
+                  <label for="last_name">Last Name</label>
+                  <input id="last_name" value="" name="last_name" />
+                  <span class="feedback" phx-feedback-for="last_name">can't be blank</span>
+                </form>
+                `],
+                fingerprint: 345
+              }
+              cb({diff: diff})
+              return this
+            } else {
+              return this
+            }
+          }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    let first_name = view.el.querySelector("#first_name")
+    let last_name = view.el.querySelector("#last_name")
+    view.channel.nextValidate("first_name=&last_name=&_target=first_name")
+    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
+    DOM.putPrivate(first_name, "phx-has-focused", true)
+    view.pushInput(first_name, el, "validate", first_name)
+    expect(el.querySelector(`[phx-feedback-for="${first_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.id}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+
+    view.channel.nextValidate("first_name=&last_name=&_target=last_name")
+    DOM.putPrivate(last_name, "phx-has-focused", true)
+    view.pushInput(last_name, el, "validate", last_name)
+    expect(el.querySelector(`[phx-feedback-for="${first_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+  })
+
   test("adds auto ID to prevent teardown/re-add", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
