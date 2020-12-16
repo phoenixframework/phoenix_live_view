@@ -1550,9 +1550,11 @@ export let DOM = {
   },
 
   showError(inputEl, phxFeedbackFor){
-    this.all(inputEl.form, `[${phxFeedbackFor}=${inputEl.id}]`, (el) => {
-      this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
-    })
+    if (inputEl.id) {
+      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"]`, (el) => {
+        this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
+      })
+    }
   },
 
   isPhxChild(node){
