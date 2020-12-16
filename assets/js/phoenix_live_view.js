@@ -1102,7 +1102,7 @@ export class LiveSocket {
   bindClick(eventName, bindingName, capture){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
-      if (!this.isConnected()) { return }
+      if(!this.isConnected()){ return }
       let target = null
       if(capture){
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
