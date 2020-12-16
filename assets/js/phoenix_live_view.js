@@ -1550,6 +1550,14 @@ export let DOM = {
     }
   },
 
+  showError(inputEl, phxFeedbackFor){
+    if(inputEl.id){
+      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"]`, (el) => {
+        this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
+      })
+    }
+  },
+
   isPhxChild(node){
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
@@ -2652,6 +2660,7 @@ export class View {
       cid: cid
     }
     this.pushWithReply(refGenerator, "event", event, resp => {
+      DOM.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR))
       if(DOM.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
           let [ref, els] = refGenerator()
