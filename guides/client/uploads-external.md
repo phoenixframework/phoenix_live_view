@@ -99,7 +99,7 @@ def mount(_params, _session, socket) do
   {:ok,
     socket
     |> assign(:uploaded_files, [])
-    |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_upload/2)}
+    |> allow_upload(:avatar, accept: :any, max_entries: 1, external: &presign_upload/2)}
 end
 
 defp presign_upload(entry, socket) do
