@@ -1550,7 +1550,7 @@ export let DOM = {
   },
 
   showError(inputEl, phxFeedbackFor){
-    if (inputEl.id) {
+    if(inputEl.id){
       this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"]`, (el) => {
         this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
       })
