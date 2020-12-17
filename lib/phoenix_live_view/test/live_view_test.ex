@@ -1117,6 +1117,10 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Open the default browser to display current HTML of `view_or_element`.
 
+  In order for CSS to render correctly, add this to your endpoint configuration in
+  config/test.exs: 
+      static_url: [path: "#{File.cwd!}/priv/static"]
+
   ## Examples
 
       view
