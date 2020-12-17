@@ -1542,7 +1542,7 @@ export let DOM = {
 
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
-    let input = field && container.querySelector(`#${field}`)
+    let input = field && container.querySelector(`#${field}, [name="${field}"]`)
     if(!input){ return }
 
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
@@ -1551,8 +1551,8 @@ export let DOM = {
   },
 
   showError(inputEl, phxFeedbackFor){
-    if(inputEl.id){
-      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"]`, (el) => {
+    if(inputEl.id || inputEl.name){
+      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
         this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
       })
     }
