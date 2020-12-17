@@ -1542,6 +1542,7 @@ export let DOM = {
 
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
+    // TODO: Remove id lookup after we update Phoenix to use input_name instead of input_id
     let input = field && container.querySelector(`#${field}, [name="${field}"]`)
     if(!input){ return }
 
