@@ -1143,16 +1143,31 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp maybe_wrap_html(view_or_element, content) do
-    case Floki.find(content, "html") do
-      [] ->
-        root_html = call(view_or_element, :html)
+    html = call(view_or_element, :html)
 
-        head =
-          case DOM.maybe_one(root_html, "head") do
-            {:ok, head} -> Floki.filter_out(head, "script")
-            _ -> {"head", [], []}
-          end
+    head =
+      case DOM.maybe_one(html, "head") do
+        {:ok, head} ->
+          static_path = static_path(view_or_element)
+          [head] = Floki.traverse_and_update(List.wrap(head), fn
+            {"script", _, _} -> nil
+            {"link", _, _} = link -> maybe_rewrite_stylesheet(link, static_path)
+            elem -> elem
+          end)
+          head
+        _ ->
+          {"head", [], []}
+      end
 
+    case Floki.attribute(content, "data-phx-main") do
+      ["true" | _] ->
+        # If we are rendering the main LiveView, return the
+        # full page with the rewritten stylesheets
+        Floki.traverse_and_update(html, fn
+          {"head", _, _} -> head
+          el -> el
+        end)
+      _ ->
         [
           {"html", [], [
              head,
@@ -1161,11 +1176,30 @@ defmodule Phoenix.LiveViewTest do
              ]}
           ]}
         ]
-
-      _ ->
-        Floki.filter_out(content, "script")
     end
   end
+
+  defp maybe_rewrite_stylesheet(link, ""), do: link
+
+  defp maybe_rewrite_stylesheet(link, prefix) do
+    [link] = Floki.attr([link], ~S<[rel="stylesheet"]>, "href", fn
+      <<"//" <> _::binary>> = url -> url
+      <<"/" <> _::binary>> = path -> prefix_existing(path, prefix)
+      url -> url
+    end)
+    link
+  end
+
+  defp prefix_existing(path, prefix) do
+    prefixed_path = Path.join([prefix, path])
+    if File.exists?(prefixed_path), do: prefixed_path, else: path
+  end
+
+  defp static_path(%{endpoint: endpoint}),
+    do: endpoint.config(:otp_app) |> Application.app_dir("priv/static")
+
+  # TODO: get path through Element
+  defp static_path(_), do: ""
 
   defp write_tmp_html_file(html) do
     html = Floki.raw_html(html)
