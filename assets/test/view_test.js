@@ -799,10 +799,10 @@ describe("View + Component", function() {
     let html =
     `<form id="form" phx-change="validate">
       <label for="first_name">First Name</label>
-      <input id="first_name" value="" name="first_name" />
+      <input id="first_name" value="" name="user[first_name]" />
 
       <label for="last_name">Last Name</label>
-      <input id="last_name" value="" name="last_name" />
+      <input id="last_name" value="" name="user[last_name]" />
     </form>`
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM(html)
@@ -811,7 +811,9 @@ describe("View + Component", function() {
     let channelStub = {
       validate: "",
       nextValidate(payload) {
-        this.validate = payload
+        this.validate = Object.entries(payload)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
+          .join("&")
       },
       push(evt, payload, timeout) {
         expect(payload.value).toBe(this.validate)
@@ -822,12 +824,12 @@ describe("View + Component", function() {
                 s: [`
                 <form id="form" phx-change="validate">
                   <label for="first_name">First Name</label>
-                  <input id="first_name" value="" name="first_name" />
-                  <span class="feedback" phx-feedback-for="first_name">can't be blank</span>
+                  <input id="first_name" value="" name="user[first_name]" />
+                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
 
                   <label for="last_name">Last Name</label>
-                  <input id="last_name" value="" name="last_name" />
-                  <span class="feedback" phx-feedback-for="last_name">can't be blank</span>
+                  <input id="last_name" value="" name="user[last_name]" />
+                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
                 </form>
                 `],
                 fingerprint: 345
@@ -845,18 +847,18 @@ describe("View + Component", function() {
 
     let first_name = view.el.querySelector("#first_name")
     let last_name = view.el.querySelector("#last_name")
-    view.channel.nextValidate("first_name=&last_name=&_target=first_name")
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
     view.pushInput(first_name, el, "validate", first_name)
-    expect(el.querySelector(`[phx-feedback-for="${first_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.id}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
 
-    view.channel.nextValidate("first_name=&last_name=&_target=last_name")
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
     DOM.putPrivate(last_name, "phx-has-focused", true)
     view.pushInput(last_name, el, "validate", last_name)
-    expect(el.querySelector(`[phx-feedback-for="${first_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.id}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })
 
   test("adds auto ID to prevent teardown/re-add", () => {

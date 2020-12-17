@@ -68,7 +68,8 @@ changeset to be re-rendered for the client.
 ## `phx-feedback-for`
 
 For proper form error tag updates, the error tag must specify which
-input it belongs to. This is accomplished with the `phx-feedback-for` attribute.
+input it belongs to. This is accomplished with the `phx-feedback-for` attribute,
+which specifies the name (or id, for backwards compatibility) of the input it belongs to.
 Failing to add the `phx-feedback-for` attribute will result in displaying error
 messages for form fields that the user has not changed yet (e.g. required
 fields further down on the page).
@@ -81,7 +82,7 @@ For example, your `MyAppWeb.ErrorHelpers` may use this function:
       |> Enum.map(fn error ->
         content_tag(:span, translate_error(error),
           class: "invalid-feedback",
-          phx_feedback_for: input_id(form, field)
+          phx_feedback_for: input_name(form, field)
         )
       end)
     end
