@@ -2193,7 +2193,11 @@ export class View {
       this.liveSocket.historyPatch(to, kind)
     }
     this.hideLoader()
-    if(this.joinCount > 1){ this.triggerReconnected() }
+    // Note: don't trigger `reconnected` for child hooks
+    // as they always get destroyed on disconnect.
+    if(this.joinCount > 1 && !this.parent){
+      this.triggerReconnected()
+    }
     this.stopCallback()
   }
 
@@ -2379,8 +2383,8 @@ export class View {
 
   destroyHook(hook){
     hook.__trigger__("destroyed")
-    hook.__cleanup__()
     delete this.viewHooks[ViewHook.elementID(hook.el)]
+    hook.__cleanup__()
   }
 
   applyPendingUpdates(){
@@ -2878,7 +2882,7 @@ export class View {
 let viewHookID = 1
 class ViewHook {
   static makeID(){ return viewHookID++ }
-  static elementID(el){ return el.phxHookId }
+  static elementID(el){ return DOM.private(el, 'phxHookId') }
 
   constructor(view, el, callbacks){
     this.__view = view
@@ -2887,7 +2891,7 @@ class ViewHook {
     this.__listeners = new Set()
     this.el = el
     this.viewName = view.name()
-    this.el.phxHookId = this.constructor.makeID()
+    DOM.putPrivate(el, 'phxHookId', this.constructor.makeID())
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }
 
@@ -2916,6 +2920,7 @@ class ViewHook {
 
   __cleanup__(){
     this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
+    DOM.deletePrivate(this.el, 'phxHookId')
   }
 
   __trigger__(kind){
