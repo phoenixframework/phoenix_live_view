@@ -1132,45 +1132,42 @@ defmodule Phoenix.LiveViewTest do
   def open_browser(view_or_element, open_fun \\ &open_with_system_cmd/1)
 
   def open_browser(view_or_element, open_fun) when is_function(open_fun, 1) do
-    html = render_tree(view_or_element)
+    render_tree(view_or_element)
+    {html, static_path} = call(view_or_element, :html)
 
-    view_or_element
-    |> maybe_wrap_html(html)
+    html
+    |> Floki.traverse_and_update(fn
+      {"script", _, _} ->
+        nil
+
+      {el, attrs, children} ->
+        {el, maybe_inject_prefix(attrs, static_path), children}
+
+      other ->
+        other
+    end)
     |> write_tmp_html_file()
     |> open_fun.()
 
     view_or_element
   end
 
-  defp maybe_wrap_html(view_or_element, content) do
-    case Floki.find(content, "html") do
-      [] ->
-        root_html = call(view_or_element, :html)
-
-        head =
-          case DOM.maybe_one(root_html, "head") do
-            {:ok, head} -> Floki.filter_out(head, "script")
-            _ -> {"head", [], []}
-          end
-
-        [
-          {"html", [], [
-             head,
-             {"body", [], [
-               content
-             ]}
-          ]}
-        ]
-
-      _ ->
-        Floki.filter_out(content, "script")
-    end
+  defp maybe_inject_prefix(attrs, static_path) do
+    Enum.map(attrs, fn
+      {"src", path} -> {"src", prefix(path, static_path)}
+      {"href", path} -> {"href", prefix(path, static_path)}
+      attr -> attr
+    end)
   end
 
+  defp prefix(<<"//" <> _::binary>> = url, _prefix), do: url
+  defp prefix(<<"/" <> _::binary>> = path, prefix), do: Path.join([prefix, path])
+  defp prefix(url, _prefix), do: url
+
   defp write_tmp_html_file(html) do
-    html = Floki.raw_html(html)
+    raw_html = Floki.raw_html(html)
     path = Path.join([System.tmp_dir!(), "#{Phoenix.LiveView.Utils.random_id()}.html"])
-    File.write!(path, html)
+    File.write!(path, raw_html)
     path
   end
 
