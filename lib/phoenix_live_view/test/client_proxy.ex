@@ -381,7 +381,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_call(:html, _from, state) do
-    {:reply, {:ok, state.html}, state}
+    %{root_view: %{endpoint: endpoint}} = state
+
+    static_path =
+      endpoint.config(:otp_app)
+      |> Application.app_dir("priv/static")
+
+    {:reply, {:ok, {state.html, static_path}}, state}
   end
 
   def handle_call({:live_children, topic}, from, state) do
