@@ -1178,7 +1178,7 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp maybe_rewrite_stylesheet(link, ""), do: link
+  defp maybe_rewrite_stylesheet(link, nil), do: link
 
   defp maybe_rewrite_stylesheet(link, prefix) do
     [link] = Floki.attr([link], ~S<[rel="stylesheet"]>, "href", fn

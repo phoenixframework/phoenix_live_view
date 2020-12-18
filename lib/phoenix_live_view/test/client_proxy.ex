@@ -85,6 +85,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       topic: Phoenix.LiveView.Utils.random_id()
     }
 
+    # We build an absolute path to any relative
+    # static assets through the root LiveView's endpoint.
+    static_path =
+      endpoint.config(:otp_app)
+      |> Application.app_dir("priv/static")
+
     state = %{
       join_ref: 0,
       ref: 0,
@@ -95,6 +101,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       replies: %{},
       root_view: nil,
       html: root_html,
+      static_path: static_path,
       session: session,
       test_supervisor: test_supervisor,
       url: url,
@@ -381,13 +388,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_call(:html, _from, state) do
-    %{root_view: %{endpoint: endpoint}} = state
-
-    static_path =
-      endpoint.config(:otp_app)
-      |> Application.app_dir("priv/static")
-
-    {:reply, {:ok, {state.html, static_path}}, state}
+    {:reply, {:ok, {state.html, state.static_path}}, state}
   end
 
   def handle_call({:live_children, topic}, from, state) do
