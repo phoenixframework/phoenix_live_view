@@ -1143,16 +1143,22 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp maybe_wrap_html(view_or_element, content) do
-    case Floki.find(content, "html") do
-      [] ->
-        root_html = call(view_or_element, :html)
+    {html, static_path} = call(view_or_element, :html)
 
-        head =
-          case DOM.maybe_one(root_html, "head") do
-            {:ok, head} -> Floki.filter_out(head, "script")
-            _ -> {"head", [], []}
-          end
+    head =
+      case DOM.maybe_one(html, "head") do
+        {:ok, head} -> head
+        _ -> {"head", [], []}
+      end
 
+    case Floki.attribute(content, "data-phx-main") do
+      ["true" | _] ->
+        # If we are rendering the main LiveView,
+        # we return the full page html.
+        html
+      _ ->
+        # Otherwise we build a basic html structure around the
+        # view_or_element content.
         [
           {"html", [], [
              head,
@@ -1161,11 +1167,28 @@ defmodule Phoenix.LiveViewTest do
              ]}
           ]}
         ]
-
-      _ ->
-        Floki.filter_out(content, "script")
     end
+    |> Floki.traverse_and_update(fn
+      {"script", _, _} -> nil
+      {"a", _, _} = link -> link
+      {el, attrs, children} -> {el, maybe_prefix_static_path(attrs, static_path), children}
+      el -> el
+    end)
   end
+
+  defp maybe_prefix_static_path(attrs, nil), do: attrs
+
+  defp maybe_prefix_static_path(attrs, static_path) do
+    Enum.map(attrs, fn
+      {"src", path} -> {"src", prefix_static_path(path, static_path)}
+      {"href", path} -> {"href", prefix_static_path(path, static_path)}
+      attr -> attr
+    end)
+  end
+
+  defp prefix_static_path(<<"//" <> _::binary>> = url, _prefix), do: url
+  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: "file://#{Path.join([prefix, path])}"
+  defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
     html = Floki.raw_html(html)

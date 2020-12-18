@@ -33,6 +33,8 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     <html>
       <head>
         <link rel="stylesheet" href="/custom/app.css"/>
+        <link rel="stylesheet" href="//example.com/a.css"/>
+        <link rel="stylesheet" href="https://example.com/b.css"/>
         <style>body { background-color: #eee; }</style>
         <script>console.log("script")</script>
       </head>

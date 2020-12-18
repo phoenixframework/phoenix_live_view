@@ -666,7 +666,9 @@ defmodule Phoenix.LiveView.ElementsTest do
     setup do
       open_fun = fn path ->
         assert content = File.read!(path)
-        assert content =~ "<link rel=\"stylesheet\" href=\"/custom/app.css\"/>"
+        assert content =~ ~r[<link rel="stylesheet" href=".*\/phoenix_live_view\/priv\/static\/custom\/app\.css"\/>]
+        assert content =~ "<link rel=\"stylesheet\" href=\"//example.com/a.css\"/>"
+        assert content =~ "<link rel=\"stylesheet\" href=\"https://example.com/b.css\"/>"
         assert content =~ "body { background-color: #eee; }"
         refute content =~ "<script>"
         path
