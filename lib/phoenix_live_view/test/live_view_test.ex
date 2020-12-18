@@ -1186,7 +1186,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp prefix_static_path(<<"//" <> _::binary>> = url, _prefix), do: url
-  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: Path.join([prefix, path])
+  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: "file://#{Path.join([prefix, path])}"
   defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
