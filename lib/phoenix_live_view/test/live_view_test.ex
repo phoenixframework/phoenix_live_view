@@ -1147,26 +1147,18 @@ defmodule Phoenix.LiveViewTest do
 
     head =
       case DOM.maybe_one(html, "head") do
-        {:ok, head} ->
-          [head] = Floki.traverse_and_update(List.wrap(head), fn
-            {"script", _, _} -> nil
-            {"link", _, _} = link -> maybe_rewrite_stylesheet(link, static_path)
-            elem -> elem
-          end)
-          head
-        _ ->
-          {"head", [], []}
+        {:ok, head} -> head
+        _ -> {"head", [], []}
       end
 
     case Floki.attribute(content, "data-phx-main") do
       ["true" | _] ->
-        # If we are rendering the main LiveView, return the
-        # full page with the rewritten stylesheets
-        Floki.traverse_and_update(html, fn
-          {"head", _, _} -> head
-          el -> el
-        end)
+        # If we are rendering the main LiveView,
+        # we return the full page html.
+        html
       _ ->
+        # Otherwise we build a basic html structure around the
+        # view_or_element content.
         [
           {"html", [], [
              head,
@@ -1176,18 +1168,26 @@ defmodule Phoenix.LiveViewTest do
           ]}
         ]
     end
-  end
-
-  defp maybe_rewrite_stylesheet(link, nil), do: link
-
-  defp maybe_rewrite_stylesheet(link, prefix) do
-    [link] = Floki.attr([link], ~S<[rel="stylesheet"]>, "href", fn
-      <<"//" <> _::binary>> = url -> url
-      <<"/" <> _::binary>> = path -> Path.join([prefix, path])
-      url -> url
+    |> Floki.traverse_and_update(fn
+      {"script", _, _} -> nil
+      {el, attrs, children} -> {el, maybe_prefix_static_path(attrs, static_path), children}
+      el -> el
     end)
-    link
   end
+
+  defp maybe_prefix_static_path(attrs, nil), do: attrs
+
+  defp maybe_prefix_static_path(attrs, static_path) do
+    Enum.map(attrs, fn
+      {"src", path} -> {"src", prefix_static_path(path, static_path)}
+      {"href", path} -> {"href", prefix_static_path(path, static_path)}
+      attr -> attr
+    end)
+  end
+
+  defp prefix_static_path(<<"//" <> _::binary>> = url, _prefix), do: url
+  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: Path.join([prefix, path])
+  defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
     html = Floki.raw_html(html)
