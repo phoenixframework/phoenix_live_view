@@ -1170,6 +1170,7 @@ defmodule Phoenix.LiveViewTest do
     end
     |> Floki.traverse_and_update(fn
       {"script", _, _} -> nil
+      {"a", _, _} = link -> link
       {el, attrs, children} -> {el, maybe_prefix_static_path(attrs, static_path), children}
       el -> el
     end)
