@@ -1804,6 +1804,9 @@ class DOMPatch {
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+        getNodeKey: (el) => {
+          return el.id && (el.id + (el.getAttribute(PHX_SESSION) || ""))
+        },
         onBeforeNodeAdded: (el) => {
           //input handling
           DOM.discardError(targetContainer, el, phxFeedbackFor)
