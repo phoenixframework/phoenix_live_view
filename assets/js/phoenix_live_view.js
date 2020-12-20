@@ -809,10 +809,11 @@ export class LiveSocket {
 
   wrapPush(view, opts, push){
     let latency = this.getLatencySim()
+    let oldJoinCount = view.joinCount
     if(!latency){
       if(opts.timeout){
         return push().receive("timeout", () => {
-          if(!view.isDestroyed()){
+          if(view.joinCount === oldJoinCount){
             this.reloadWithJitter(view, () => {
               this.log(view, "timeout", () => [`received timeout while communicating with server. Falling back to hard refresh for recovery`])
             })
