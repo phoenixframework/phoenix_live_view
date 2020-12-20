@@ -1,18 +1,15 @@
 # Changelog
 
-
-## 0.15.2
-
-### Bug fixes
-  - Fix component child nodes being lost when component patch goes from single root node to multiple child siblings
-
-## 0.15.1 (2020-12-04)
+## 0.15.1 (2020-12-20)
 
 ### Enhancements
   - Ensure all click events bubble for mobile Safari
   - Run `consume_uploaded_entries` in LiveView caller process
 
 ### Bug fixes
+  - Fix hooks not getting remounted after liveview recovery
+  - Fix bug causing reload with jitter on timeout from previously closed channel
+  - Fix component child nodes being lost when component patch goes from single root node to multiple child siblings
   - Fix `phx-capture-click` triggering on mouseup during text selection
   - Fix LiveView `push_event`'s not clearing up in components
   - Fix textarea being patched by LV while focused
