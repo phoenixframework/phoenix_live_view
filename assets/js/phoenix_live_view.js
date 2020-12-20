@@ -2890,6 +2890,7 @@ class ViewHook {
     this.__liveSocket = view.liveSocket
     this.__callbacks = callbacks
     this.__listeners = new Set()
+    this.__disconnected = false
     this.el = el
     this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
@@ -2924,6 +2925,15 @@ class ViewHook {
   }
 
   __trigger__(kind){
+    if(kind === 'disconnected') {
+      this.__disconnected = true
+    } else if(kind === 'reconnected') {
+      // Ignore the notification if the hook hasn't disconnected
+      if (!this.__disconnected) { return }
+      this.__disconnected = false
+    }
+
+    // Execute user-defined callback
     let callback = this.__callbacks[kind]
     callback && callback.call(this)
   }
