@@ -2036,7 +2036,7 @@ export class View {
     let onFinished = () => {
       callback()
       for(let id in this.viewHooks){
-        this.viewHooks[id].__trigger__("beforeDestroy")
+        this.viewHooks[id].__beforeDestroy()
         this.destroyHook(this.viewHooks[id])
       }
     }
@@ -2064,7 +2064,7 @@ export class View {
     if(timeout){
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
-      for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("disconnected") }
+      for(let id in this.viewHooks){ this.viewHooks[id].__disconnected() }
       this.setContainerClasses(PHX_DISCONNECTED_CLASS)
     }
   }
@@ -2075,7 +2075,7 @@ export class View {
   }
 
   triggerReconnected(){
-    for(let id in this.viewHooks){ this.viewHooks[id].__trigger__("reconnected") }
+    for(let id in this.viewHooks){ this.viewHooks[id].__reconnected() }
   }
 
   log(kind, msgCallback){
@@ -2186,7 +2186,7 @@ export class View {
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       let hook = this.addHook(hookEl)
-      if(hook){ hook.__trigger__("mounted") }
+      if(hook){ hook.__mounted() }
     })
 
     this.joinPending = false
@@ -2207,12 +2207,10 @@ export class View {
     let hook = this.getHook(fromEl)
     let isIgnored = hook && DOM.isIgnored(fromEl, this.binding(PHX_UPDATE))
     if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
-      hook.__trigger__("beforeUpdate")
+      hook.__beforeUpdate()
       return hook
     }
   }
-
-  triggerUpdatedHook(hook){ hook.__trigger__("updated") }
 
   performPatch(patch, pruneCids){
     let destroyedCIDs = []
@@ -2223,7 +2221,7 @@ export class View {
       this.liveSocket.triggerDOM("onNodeAdded", [el])
 
       let newHook = this.addHook(el)
-      if(newHook){ newHook.__trigger__("mounted") }
+      if(newHook){ newHook.__mounted() }
     })
 
     patch.after("phxChildAdded", el => phxChildrenAdded = true)
@@ -2234,12 +2232,12 @@ export class View {
     })
 
     patch.after("updated", el => {
-      if(updatedHookIds.has(el.id)){ this.triggerUpdatedHook(this.getHook(el)) }
+      if(updatedHookIds.has(el.id)){ this.getHook(el).__updated() }
     })
 
     patch.before("discarded", (el) => {
       let hook = this.getHook(el)
-      if(hook){ hook.__trigger__("beforeDestroy") }
+      if(hook){ hook.__beforeDestroy() }
     })
 
     patch.after("discarded", (el) => {
@@ -2383,7 +2381,7 @@ export class View {
   }
 
   destroyHook(hook){
-    hook.__trigger__("destroyed")
+    hook.destroyed()
     hook.__cleanup__()
     delete this.viewHooks[ViewHook.elementID(hook.el)]
   }
@@ -2545,7 +2543,7 @@ export class View {
       if(toEl){
         let hook = this.triggerBeforeUpdateHook(el, toEl)
         DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement())
-        if(hook){ this.triggerUpdatedHook(hook) }
+        if(hook){ hook.__updated() }
         DOM.deletePrivate(el, PHX_REF)
       }
     })
@@ -2890,11 +2888,27 @@ class ViewHook {
     this.__liveSocket = view.liveSocket
     this.__callbacks = callbacks
     this.__listeners = new Set()
-    this.__disconnected = false
+    this.__isDisconnected = false
     this.el = el
     this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
+  }
+
+  __mounted(){ this.mounted && this.mounted() }
+  __updated(){ this.updated && this.updated() }
+  __beforeUpdate(){ this.beforeUpdate && this.beforeUpdate() }
+  __beforeDestroy(){ this.beforeDestroy && this.beforeDestroy() }
+  __destroyed(){ this.destroyed && this.destroyed() }
+  __reconnected(){
+    if(this.__isDisconnected){
+      this.__isDisconnected = false
+      this.reconnected && this.reconnected()
+    }
+  }
+  __disconnected(){
+    this.__isDisconnected = true
+    this.disconnected && this.disconnected()
   }
 
   pushEvent(event, payload = {}, onReply = function(){}){
@@ -2922,20 +2936,6 @@ class ViewHook {
 
   __cleanup__(){
     this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
-  }
-
-  __trigger__(kind){
-    if(kind === 'disconnected') {
-      this.__disconnected = true
-    } else if(kind === 'reconnected') {
-      // Ignore the notification if the hook hasn't disconnected
-      if (!this.__disconnected) { return }
-      this.__disconnected = false
-    }
-
-    // Execute user-defined callback
-    let callback = this.__callbacks[kind]
-    callback && callback.call(this)
   }
 }
 
