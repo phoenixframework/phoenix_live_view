@@ -712,6 +712,37 @@ describe("View Hooks", function() {
     expect(values).toEqual(["beforeDestroy", "destroyed"])
   })
 
+  test("view reconnected", async () => {
+    let values = []
+    let Hooks = {
+      Check: {
+        mounted(){ values.push("mounted") },
+        disconnected(){ values.push("disconnected") },
+        reconnected(){ values.push("reconnected") },
+      }
+    }
+    let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+    let el = liveViewDOM()
+
+    let view = new View(el, liveSocket)
+
+    view.onJoin({rendered: {
+      s: [`<h2 id="check" phx-hook="Check"></h2>`],
+      fingerprint: 123
+    }})
+    expect(values).toEqual(["mounted"])
+
+    view.triggerReconnected()
+    // The hook hasn't disconnected, so it shouldn't receive "reconnected" message
+    expect(values).toEqual(["mounted"])
+
+    view.showLoader()
+    expect(values).toEqual(["mounted", "disconnected"])
+
+    view.triggerReconnected()
+    expect(values).toEqual(["mounted", "disconnected", "reconnected"])
+  })
+
   test("dom hooks", async () => {
     let fromHTML, toHTML = null
     let liveSocket = new LiveSocket("/live", Socket, {dom: {
