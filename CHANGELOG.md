@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.2
+
+### Bug fixes
+  - Fix hooks not getting remounted after liveview reconnect
+  - Fix hooks `reconnected` callback being fired with no prior disconnect
+
 ## 0.15.1 (2020-12-20)
 
 ### Enhancements
