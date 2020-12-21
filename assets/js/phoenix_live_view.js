@@ -2381,7 +2381,7 @@ export class View {
   }
 
   destroyHook(hook){
-    hook.destroyed()
+    hook.__destroyed()
     hook.__cleanup__()
     delete this.viewHooks[ViewHook.elementID(hook.el)]
   }
