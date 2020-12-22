@@ -98,4 +98,4 @@ end
 > when performing direct to server uploads.
 
 For more information on implementing client-side,
-direct-to-cloud uploads, see the [External Uploads guide](uploads-external.md).
+direct-to-cloud uploads, see the [External Uploads guide](../client/uploads-external.md).
