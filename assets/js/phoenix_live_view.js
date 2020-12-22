@@ -2720,8 +2720,6 @@ export class View {
     let filterInput = el => ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)
 
     let refGenerator = () => {
-      console.log(formEl)
-
       let formElements = Array.from(formEl.elements)
       let disables = formElements.filter(filterDisables)
       let buttons = formElements.filter(filterButton).filter(filterIgnored)
