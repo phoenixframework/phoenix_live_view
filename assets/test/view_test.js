@@ -265,32 +265,68 @@ describe("View + DOM", function() {
     expect(view.formsForRecovery().length).toBe(0)
   })
 
-  test("submitForm", function() {
-    expect.assertions(8)
+  describe("submitForm", function() {
+    test("submits payload", function() {
+      expect.assertions(3)
 
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let form = el.querySelector("form")
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let form = el.querySelector("form")
 
-    let view = new View(el, liveSocket)
-    let channelStub = {
-      push(evt, payload, timeout) {
-        expect(payload.type).toBe("form")
-        expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1&note=2")
-        return {
-          receive(){ return this }
+      let view = new View(el, liveSocket)
+      let channelStub = {
+        push(evt, payload, timeout) {
+          expect(payload.type).toBe("form")
+          expect(payload.event).toBeDefined()
+          expect(payload.value).toBe("increment=1&note=2")
+          return {
+            receive(){ return this }
+          }
         }
       }
-    }
-    view.channel = channelStub
+      view.channel = channelStub
+      view.submitForm(form, form, { target: form })
+    })
 
-    view.submitForm(form, form, { target: form })
-    expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
-    expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
-    expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
-    expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()
-    expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
+    test("disables elements after submission", function() {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let form = el.querySelector("form")
+
+      let view = new View(el, liveSocket)
+      stubChannel(view)
+
+      view.submitForm(form, form, { target: form })
+      expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
+      expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
+      expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
+      expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()
+      expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
+    })
+
+    test("disables elements outside form", function() {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM(`
+      <form id="my-form">
+      </form>
+      <label for="plus">Plus</label>
+      <input id="plus" value="1" name="increment" form="my-form"/>
+      <textarea id="note" name="note" form="my-form">2</textarea>
+      <input type="checkbox" phx-click="toggle_me" form="my-form"/>
+      <button phx-click="inc_temperature" form="my-form">Inc Temperature</button>
+      `)
+      let form = el.querySelector("form")
+
+      let view = new View(el, liveSocket)
+      stubChannel(view)
+
+      view.submitForm(form, form, { target: form })
+      expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
+      expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
+      expect(el.querySelector("button").dataset.phxDisabled).toBeTruthy()
+      expect(el.querySelector("input").dataset.phxReadonly).toBeTruthy()
+      expect(el.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
+    })
   })
 
   describe("phx-trigger-action", () => {

@@ -2705,10 +2705,18 @@ export class View {
       let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form)
       return !(userIgnored || closestPhxBinding(el, `data-phx-update=ignore`, el.form))
     }
+    let filterDisables = el => {
+      return el.hasAttribute(this.binding(PHX_DISABLE_WITH))
+    }
+    let filterButton = el => el.tagName == "BUTTON"
+
+    let filterInput = el => ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)
+
     let refGenerator = () => {
-      let disables = DOM.all(formEl, `[${this.binding(PHX_DISABLE_WITH)}]`)
-      let buttons = DOM.all(formEl, "button").filter(filterIgnored)
-      let inputs = DOM.all(formEl, "input,textarea,select").filter(filterIgnored)
+      let formElements = Array.from(formEl.elements)
+      let disables = formElements.filter(filterDisables)
+      let buttons = formElements.filter(filterButton).filter(filterIgnored)
+      let inputs = formElements.filter(filterInput).filter(filterIgnored)
 
       buttons.forEach(button => {
         button.setAttribute(PHX_DISABLED, button.disabled)
