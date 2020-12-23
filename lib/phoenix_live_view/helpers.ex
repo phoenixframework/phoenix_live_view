@@ -443,6 +443,8 @@ defmodule Phoenix.LiveView.Helpers do
       <%= live_file_input @uploads.avatar %>
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
+    if opts[:id], do: raise(ArgumentError, "the :id cannot be overridden on a live_file_input")
+
     opts =
       if conf.max_entries > 1 do
         Keyword.put(opts, :multiple, true)
@@ -459,7 +461,7 @@ defmodule Phoenix.LiveView.Helpers do
       "",
       Keyword.merge(opts,
         type: "file",
-        id: opts[:id] || conf.ref,
+        id: conf.ref,
         name: conf.name,
         accept: if(conf.accept != :any, do: conf.accept),
         phx_hook: "Phoenix.LiveFileUpload",
