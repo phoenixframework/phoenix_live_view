@@ -12,6 +12,35 @@ steps:
     $ mix archive.install hex phx_new
     $ mix phx.new demo --live
 
+## Features
+
+  * Manage state and render HTML on the server over WebSockets
+    with optional LongPolling fallback
+
+  * Smart templating and change tracking - after connected,
+    LiveView sends only what changed to the client, skipping
+    the template markup and reducing the payload
+
+  * Live form validation with file upload support
+
+  * A rich integration API with the client with `phx-click`,
+    `phx-focus`, `phx-blur`, `phx-submit`, etc. `phx-hook` is
+    included for the cases where you have to write JavaScript
+
+  * Code reuse via components, which break templates, state, and
+    event handling into reusable bits, which is essential in large
+    applications
+
+  * Live navigation to enrich links and redirects to only load the
+    minimum amount of content as users navigate between pages
+
+  * A latency simulator so you can emulate how slow clients will
+    interact with your application
+
+  * Testing tools that allow you to write a confident test suite
+    without the complexity of running a whole browser alongside
+    your tests
+
 ## Official announcements
 
 News from the Phoenix team on LiveView:
@@ -22,11 +51,7 @@ News from the Phoenix team on LiveView:
 
 ## Learning
 
-See our existing comprehensive docs and examples to get up to speed:
-
-  * [Phoenix.LiveView docs for Elixir and JavaScript usage](https://hexdocs.pm/phoenix_live_view)
-  * [Phoenix.LiveViewTest for testing docs](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html)
-  * [LiveView example repo](https://github.com/chrismccord/phoenix_live_view_example) with a handful of examples from Weather widgets, autocomplete search, and games like Snake or Pacman
+See our existing comprehensive [docs](https://hexdocs.pm/phoenix_live_view) and [guides](https://hexdocs.pm/phoenix_live_view/api-reference.html) for more information.
 
 ## Installation
 
@@ -35,10 +60,6 @@ require more stability, it is recommended that you install using the
 [installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
 If you want to use the latest features, you should follow the instructions
 given in the markdown file [here](guides/introduction/installation.md).
-
-### Requirements
-
-Although LiveView supports Elixir 1.7, which is [compatible](https://hexdocs.pm/elixir/compatibility-and-deprecations.html#compatibility-between-elixir-and-erlang-otp) with Erlang/OTP 19–22, [LiveView requires Erlang/OTP 21+](https://github.com/phoenixframework/phoenix_live_view/blob/7fbdcef6e46135fa111ea3fda29d5e91f9aa7b0e/lib/phoenix_live_view/application.ex#L11).
 
 ## What makes LiveView unique?
 
@@ -76,9 +97,10 @@ anywhere else:
     app can push events to users as those events happen anywhere in
     the system. Do you want to notify a user that their best friend
     just connected? This is easily done without a single-line of
-    custom JavaScript and with no extra external dependencies.
+    custom JavaScript and with no extra external dependencies
+    (no extra databases, no extra message queues, etc).
 
-  * LiveView performs diff tracking: whenever you change a value on
+  * LiveView performs change tracking: whenever you change a value on
     the server, LiveView will send to the client only the values that
     changed, drastically reducing the latency and the amount of data
     sent over the wire. This is achievable thanks to Elixir's
@@ -91,30 +113,6 @@ anywhere else:
     makes it so LiveView only sends a few bytes on every update, instead
     of sending kilobytes on every other user interaction - which would
     be detrimental to the user experience.
-
-Finally, LiveView has been used by many developers and companies around
-the world, which helped us close the gaps in our feature set and make
-sure LiveView is ready for prime time. For example, you will find:
-
-  * a latency simulator allows developers to simulate how their
-    application behave under slow connections
-
-  * `LiveComponent`s help developers compartmentalize their templates,
-    state, and event handling into reusable bits, which is essential
-    in large applications
-
-  * Live navigation enriches links and redirects to only load the
-    minimum amount of content as users navigate between pages
-
-  * Fine-grained control for handling client events, DOM patching,
-    rate limiting, and more
-
-  * Testing tools that allow you to write a confident test suite
-    without the complexity of running a whole browser alongside
-    your tests
-
-In other words, LiveView provides a rich feature set for great
-developer and user experiences.
 
 ## Browser Support
 
