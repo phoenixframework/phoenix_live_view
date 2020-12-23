@@ -14,8 +14,8 @@ steps:
 
 ## Features
 
-  * Manage state and render HTML on the server over WebSockets
-    with optional LongPolling fallback
+  * Use a declarative model to render HTML on the server
+    over WebSockets with optional LongPolling fallback
 
   * Smart templating and change tracking - after connected,
     LiveView sends only what changed to the client, skipping
