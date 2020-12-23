@@ -1756,7 +1756,7 @@ class DOMPatch {
     this.targetCID = targetCID
     this.cidPatch = typeof(this.targetCID) === "number"
     this.callbacks = {
-      beforeadded: [], beforeupdated: [], beforediscarded: [], beforephxChildAdded: [],
+      beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
     }
   }
@@ -1832,7 +1832,6 @@ class DOMPatch {
           if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(this.skipCIDSibling(el)){ return false }
-          this.trackBefore("discarded", el)
           return true
         },
         onElUpdated: (el) => {
@@ -2036,7 +2035,6 @@ export class View {
     let onFinished = () => {
       callback()
       for(let id in this.viewHooks){
-        this.viewHooks[id].__beforeDestroy()
         this.destroyHook(this.viewHooks[id])
       }
     }
@@ -2233,11 +2231,6 @@ export class View {
 
     patch.after("updated", el => {
       if(updatedHookIds.has(el.id)){ this.getHook(el).__updated() }
-    })
-
-    patch.before("discarded", (el) => {
-      let hook = this.getHook(el)
-      if(hook){ hook.__beforeDestroy() }
     })
 
     patch.after("discarded", (el) => {
@@ -2898,7 +2891,6 @@ class ViewHook {
   __mounted(){ this.mounted && this.mounted() }
   __updated(){ this.updated && this.updated() }
   __beforeUpdate(){ this.beforeUpdate && this.beforeUpdate() }
-  __beforeDestroy(){ this.beforeDestroy && this.beforeDestroy() }
   __destroyed(){ this.destroyed && this.destroyed() }
   __reconnected(){
     if(this.__isDisconnected){

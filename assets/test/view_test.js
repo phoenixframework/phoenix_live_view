@@ -647,7 +647,6 @@ describe("View Hooks", function() {
   test("hooks", async () => {
     let upcaseWasDestroyed = false
     let upcaseBeforeUpdate = false
-    let upcaseBeforeDestroy = false
     let Hooks = {
       Upcase: {
         mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
@@ -655,7 +654,6 @@ describe("View Hooks", function() {
         updated(){ this.el.innerHTML = this.el.innerHTML + " updated" },
         disconnected(){ this.el.innerHTML = "disconnected" },
         reconnected(){ this.el.innerHTML = "connected" },
-        beforeDestroy(){ upcaseBeforeDestroy = true },
         destroyed(){ upcaseWasDestroyed = true },
       }
     }
@@ -684,7 +682,6 @@ describe("View Hooks", function() {
     expect(view.el.firstChild.innerHTML).toBe("connected")
 
     view.update({s: ["<div></div>"], fingerprint: 123}, [])
-    expect(upcaseBeforeDestroy).toBe(true)
     expect(upcaseWasDestroyed).toBe(true)
   })
 
@@ -692,7 +689,6 @@ describe("View Hooks", function() {
     let values = []
     let Hooks = {
       Check: {
-        beforeDestroy(){ values.push("beforeDestroy") },
         destroyed(){ values.push("destroyed") },
       }
     }
@@ -709,7 +705,7 @@ describe("View Hooks", function() {
 
     view.destroy()
 
-    expect(values).toEqual(["beforeDestroy", "destroyed"])
+    expect(values).toEqual(["destroyed"])
   })
 
   test("view reconnected", async () => {

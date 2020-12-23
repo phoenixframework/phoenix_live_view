@@ -130,9 +130,6 @@ life-cycle callbacks:
     *Note*: any call here must be synchronous as the operation cannot
     be deferred or cancelled.
   * `updated` - the element has been updated in the DOM by the server
-  * `beforeDestroy` - the element is about to be removed from the DOM.
-    *Note*: any call here must be synchronous as the operation cannot
-    be deferred or cancelled.
   * `destroyed` - the element has been removed from the page, either
     by a parent update, or by the parent being removed entirely
   * `disconnected` - the element's parent LiveView has disconnected from the server

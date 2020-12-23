@@ -2,6 +2,9 @@
 
 ## 0.15.2
 
+### Backwards incompatible changes
+  - Remove `beforeDestroy` from phx-hook callbacks
+
 ### Bug fixes
   - Fix hooks not getting remounted after liveview reconnect
   - Fix hooks `reconnected` callback being fired with no prior disconnect
