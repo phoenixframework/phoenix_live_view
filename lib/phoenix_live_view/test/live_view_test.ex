@@ -931,7 +931,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Builds a file input for testing uploads within a form.
 
-  Given the form DOM ID, the upload name, and a list of maps of client metadata
+  Given the form DOM selector, the upload name, and a list of maps of client metadata
   for the upload, the returned file input can be passed to `render_upload/2`.
 
   Client metadata takes the following form:
@@ -981,18 +981,28 @@ defmodule Phoenix.LiveViewTest do
   end
 
   def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
-    {:ok, pid} =
-      UploadClient.start_link(
-        socket_builder: socket_builder,
-        test_supervisor: fetch_test_supervisor!(),
-        cid: cid
-      )
+    spec = %{
+      id: make_ref(),
+      start:
+        {UploadClient, :start_link,
+         [[socket_builder: socket_builder, cid: cid]]},
+      restart: :temporary
+    }
+
+    {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
 
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
   def __start_external_upload_client__(view, form_selector, name, entries, cid) do
-    {:ok, pid} = UploadClient.start_link(test_supervisor: fetch_test_supervisor!(), cid: cid)
+    spec = %{
+      id: make_ref(),
+      start:
+        {UploadClient, :start_link,
+         [[cid: cid]]},
+      restart: :temporary
+    }
+    {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
@@ -1133,16 +1143,22 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp maybe_wrap_html(view_or_element, content) do
-    case Floki.find(content, "html") do
-      [] ->
-        root_html = call(view_or_element, :html)
+    {html, static_path} = call(view_or_element, :html)
 
-        head =
-          case DOM.maybe_one(root_html, "head") do
-            {:ok, head} -> Floki.filter_out(head, "script")
-            _ -> {"head", [], []}
-          end
+    head =
+      case DOM.maybe_one(html, "head") do
+        {:ok, head} -> head
+        _ -> {"head", [], []}
+      end
 
+    case Floki.attribute(content, "data-phx-main") do
+      ["true" | _] ->
+        # If we are rendering the main LiveView,
+        # we return the full page html.
+        html
+      _ ->
+        # Otherwise we build a basic html structure around the
+        # view_or_element content.
         [
           {"html", [], [
              head,
@@ -1151,11 +1167,28 @@ defmodule Phoenix.LiveViewTest do
              ]}
           ]}
         ]
-
-      _ ->
-        Floki.filter_out(content, "script")
     end
+    |> Floki.traverse_and_update(fn
+      {"script", _, _} -> nil
+      {"a", _, _} = link -> link
+      {el, attrs, children} -> {el, maybe_prefix_static_path(attrs, static_path), children}
+      el -> el
+    end)
   end
+
+  defp maybe_prefix_static_path(attrs, nil), do: attrs
+
+  defp maybe_prefix_static_path(attrs, static_path) do
+    Enum.map(attrs, fn
+      {"src", path} -> {"src", prefix_static_path(path, static_path)}
+      {"href", path} -> {"href", prefix_static_path(path, static_path)}
+      attr -> attr
+    end)
+  end
+
+  defp prefix_static_path(<<"//" <> _::binary>> = url, _prefix), do: url
+  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: "file://#{Path.join([prefix, path])}"
+  defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
     html = Floki.raw_html(html)

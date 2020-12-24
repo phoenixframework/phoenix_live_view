@@ -30,7 +30,6 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def init(opts) do
-    test_sup = Keyword.fetch!(opts, :test_supervisor)
     cid = Keyword.fetch!(opts, :cid)
 
     socket =
@@ -43,7 +42,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
           nil
       end
 
-    {:ok, %{socket: socket, cid: cid, test_supervisor: test_sup, upload_ref: nil, config: %{}, entries: %{}}}
+    {:ok, %{socket: socket, cid: cid, upload_ref: nil, config: %{}, entries: %{}}}
   end
 
   def handle_call(:allow_acknowledged, _from, state) do

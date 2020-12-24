@@ -377,12 +377,13 @@ defmodule Phoenix.LiveView.Helpers do
 
     * `:too_large` - The entry exceeds the `:max_file_size` constraint
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
-    * `:not_acceptable` - The entry does not match the `:accept` MIME types
+    * `:not_accepted` - The entry does not match the `:accept` MIME types
 
   ## Examples
 
       def error_to_string(:too_large), do: "Too large"
       def error_to_string(:too_many_files), do: "You have selected too many files"
+      def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
 
       <%= for entry <- @uploads.avatar.entries do %>
         <%= for err <- upload_errors(@uploads.avatar, entry) do %>
@@ -442,6 +443,8 @@ defmodule Phoenix.LiveView.Helpers do
       <%= live_file_input @uploads.avatar %>
   """
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
+    if opts[:id], do: raise(ArgumentError, "the :id cannot be overridden on a live_file_input")
+
     opts =
       if conf.max_entries > 1 do
         Keyword.put(opts, :multiple, true)
@@ -458,7 +461,7 @@ defmodule Phoenix.LiveView.Helpers do
       "",
       Keyword.merge(opts,
         type: "file",
-        id: opts[:id] || conf.ref,
+        id: conf.ref,
         name: conf.name,
         accept: if(conf.accept != :any, do: conf.accept),
         phx_hook: "Phoenix.LiveFileUpload",

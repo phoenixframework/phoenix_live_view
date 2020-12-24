@@ -51,6 +51,7 @@ describe("metadata", () => {
       }
     })
     liveSocket.connect()
+    liveSocket.isConnected = () => true
     let view = liveSocket.getViewByEl(document.getElementById("root"))
     let btn = view.el.querySelector('button')
     let meta = {}

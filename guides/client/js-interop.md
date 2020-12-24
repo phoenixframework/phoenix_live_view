@@ -99,9 +99,9 @@ event may dispatch page loading events by annotating the DOM element with
 `phx-page-loading`. This is useful for showing main page loading status, for example:
 
     // app.js
-    import NProgress from "nprogress"
-    window.addEventListener("phx:page-loading-start", info => NProgress.start())
-    window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+    import topbar from "topbar"
+    window.addEventListener("phx:page-loading-start", info => topbar.show())
+    window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 
 Within the callback, `info.detail` will be an object that contains a `kind`
 key, with a value that depends on the triggering event:
@@ -130,9 +130,6 @@ life-cycle callbacks:
     *Note*: any call here must be synchronous as the operation cannot
     be deferred or cancelled.
   * `updated` - the element has been updated in the DOM by the server
-  * `beforeDestroy` - the element is about to be removed from the DOM.
-    *Note*: any call here must be synchronous as the operation cannot
-    be deferred or cancelled.
   * `destroyed` - the element has been removed from the page, either
     by a parent update, or by the parent being removed entirely
   * `disconnected` - the element's parent LiveView has disconnected from the server

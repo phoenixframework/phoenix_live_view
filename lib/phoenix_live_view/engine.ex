@@ -281,7 +281,9 @@ defmodule Phoenix.LiveView.Engine do
 
   @behaviour Phoenix.Template.Engine
 
-  @impl true
+  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
+
+  @doc false
   def compile(path, _name) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
     EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim)
@@ -290,7 +292,7 @@ defmodule Phoenix.LiveView.Engine do
   @behaviour EEx.Engine
   @assigns_var Macro.var(:assigns, nil)
 
-  @impl true
+  @doc false
   def init(_opts) do
     %{
       static: [],
@@ -299,19 +301,19 @@ defmodule Phoenix.LiveView.Engine do
     }
   end
 
-  @impl true
+  @doc false
   def handle_begin(state) do
     %{state | static: [], dynamic: []}
   end
 
-  @impl true
+  @doc false
   def handle_end(state) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
     {:__block__, [live_rendered: true], Enum.reverse([safe | dynamic])}
   end
 
-  @impl true
+  @doc false
   def handle_body(state) do
     {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{})
 
@@ -321,13 +323,18 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  @impl true
+  @doc false
   def handle_text(state, text) do
+    handle_text(state, [], text)
+  end
+
+  @doc false
+  def handle_text(state, _meta, text) do
     %{static: static} = state
     %{state | static: [text | static]}
   end
 
-  @impl true
+  @doc false
   def handle_expr(state, "=", ast) do
     %{static: static, dynamic: dynamic, vars_count: vars_count} = state
     var = Macro.var(:"arg#{vars_count}", __MODULE__)
