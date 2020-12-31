@@ -291,10 +291,10 @@ use Phoenix.LiveView,
 
 If you want to show a progress bar as users perform live actions, we recommend using [`topbar`](https://github.com/buunguyen/topbar).
 
-First add `topbar` as a dependency in your `assets/package.json`:
+First add `topbar` as a dependency:
 
-```json
-"topbar": "^0.1.4"
+```console
+$ npm install --prefix assets --save topbar
 ```
 
 Then customize LiveView to use it in your `assets/js/app.js`, right before the `liveSocket.connect()` call:
