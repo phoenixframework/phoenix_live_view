@@ -6,6 +6,7 @@
   - Remove `beforeDestroy` from phx-hook callbacks
 
 ### Bug fixes
+  - Fix form recovery failing to send input on first connection failure
   - Fix hooks not getting remounted after liveview reconnect
   - Fix hooks `reconnected` callback being fired with no prior disconnect
 

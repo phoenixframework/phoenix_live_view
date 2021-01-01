@@ -241,10 +241,11 @@ describe("View + DOM", function() {
 
     html = `<form phx-change="cg"><input name="foo"></form>`
     view = new View(liveViewDOM(html), liveSocket)
+    expect(view.joinCount).toBe(0)
     expect(view.formsForRecovery(html).length).toBe(0)
 
     view.joinCount++
-    expect(view.formsForRecovery(html).length).toBe(0)
+    expect(view.formsForRecovery(html).length).toBe(1)
 
     view.joinCount++
     expect(view.formsForRecovery(html).length).toBe(1)
