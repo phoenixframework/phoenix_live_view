@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.15.2
+## 0.15.2 (2021-01-01)
 
 ### Backwards incompatible changes
   - Remove `beforeDestroy` from phx-hook callbacks
