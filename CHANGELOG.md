@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.3 (2021-01-02)
+
+### Bug fixes
+  - Fix `push_redirect` back causing timeout on the client
+
 ## 0.15.2 (2021-01-01)
 
 ### Backwards incompatible changes
