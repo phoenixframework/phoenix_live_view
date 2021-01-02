@@ -614,7 +614,7 @@ defmodule Phoenix.LiveView.Channel do
         opts = copy_flash(new_state, flash, opts)
 
         new_state
-        |> push_live_redirect(opts, ref)
+        |> push_live_redirect(opts, ref, pending_diff_ack)
         |> stop_shutdown_redirect(:live_redirect, opts)
 
       {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
@@ -667,11 +667,14 @@ defmodule Phoenix.LiveView.Channel do
     reply(state, ref, :ok, %{redirect: opts})
   end
 
-  defp push_live_redirect(state, opts, nil = _ref) do
+  defp push_live_redirect(state, opts, nil = _ref, {_diff, ack_ref}) do
+    reply(state, ack_ref, :ok, %{live_redirect: opts})
+  end
+  defp push_live_redirect(state, opts, nil = _ref, _pending_diff_ack) do
     push(state, "live_redirect", opts)
   end
 
-  defp push_live_redirect(state, opts, ref) do
+  defp push_live_redirect(state, opts, ref, _pending_diff_ack) do
     reply(state, ref, :ok, %{live_redirect: opts})
   end
 
