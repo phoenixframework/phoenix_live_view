@@ -134,9 +134,14 @@ let maybe = (el, callback) => el && callback(el)
 class UploadEntry {
   static isActive(fileEl, file){
     let isNew = file._phxRef === undefined
-    let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
-    let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
-    return file.size > 0 && (isNew || isActive)
+    let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS)
+    if(activeRefs !== null) {
+      activeRefs = activeRefs.split(",")
+      let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+      return file.size > 0 && (isNew || isActive);
+    } else {
+      return false;
+    }
   }
 
   static isPreflighted(fileEl, file){
@@ -1553,7 +1558,7 @@ export let DOM = {
   },
 
   showError(inputEl, phxFeedbackFor){
-    if(inputEl.id || inputEl.name){
+    if((inputEl.id || inputEl.name) && inputEl.form) {
       this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
         this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
       })
