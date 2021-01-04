@@ -1911,7 +1911,8 @@ class DOMPatch {
   }
 
   forceFocusedSelectUpdate(fromEl, toEl){
-    return fromEl.multiple === true || (fromEl.type === "select" && fromEl.innerHTML != toEl.innerHTML)
+    let isSelect = ["select", "select-one", "select-multiple"].find((t) => t === fromEl.type)
+    return fromEl.multiple === true || (isSelect && fromEl.innerHTML != toEl.innerHTML)
   }
 
   isCIDPatch(){ return this.cidPatch }
