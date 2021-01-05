@@ -172,7 +172,7 @@ and enable connecting to a LiveView socket in your `app.js` file.
 ```javascript
 // assets/js/app.js
 import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view"
+import {LiveSocket} from "phoenix_live_view"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -187,6 +187,24 @@ liveSocket.connect()
 // Call disableLatencySim() to disable:
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
+```
+
+If you're using TypeScript with strict mode also do the following:
+
+1. Install the unofficial NPM typings package to dev dependencies with:
+
+```bash
+npm install -D @types/phoenix_live_view
+```
+
+2. Above `window.liveSocket = liveSocket` declare its type:
+
+```typescript
+declare global {
+  interface Window {
+    liveSocket: LiveSocket;
+  }
+}
 ```
 
 ## Layouts
