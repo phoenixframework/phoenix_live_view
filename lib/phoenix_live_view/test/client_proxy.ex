@@ -95,7 +95,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         nil ->
           Path.join(priv_dir, "static")
 
-        path ->
+        _path ->
           priv_dir
       end
 
