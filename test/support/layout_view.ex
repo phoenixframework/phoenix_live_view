@@ -1,5 +1,6 @@
 defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
+  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
   import Phoenix.LiveView.Helpers
 
   def render("app.html", assigns) do
@@ -32,7 +33,8 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     ~L"""
     <html>
       <head>
-        <link rel="stylesheet" href="/custom/app.css"/>
+        <link rel="stylesheet" href="/css/custom.css"/>
+        <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
         <link rel="stylesheet" href="//example.com/a.css"/>
         <link rel="stylesheet" href="https://example.com/b.css"/>
         <style>body { background-color: #eee; }</style>
