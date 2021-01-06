@@ -87,9 +87,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     # We build an absolute path to any relative
     # static assets through the root LiveView's endpoint.
+    priv_dir = :otp_app |> endpoint.config() |> Application.app_dir("priv")
+    static_url = endpoint.config(:static_url) || []
+
     static_path =
-      endpoint.config(:otp_app)
-      |> Application.app_dir("priv/static")
+      case Keyword.get(static_url, :path) do
+        nil ->
+          Path.join(priv_dir, "static")
+
+        _path ->
+          priv_dir
+      end
 
     state = %{
       join_ref: 0,
