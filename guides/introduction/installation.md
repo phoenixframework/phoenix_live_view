@@ -267,6 +267,7 @@ The change is to define the `live_view` and `live_component` functions in your `
 
       # Import LiveView helpers (live_render, live_component, live_patch, etc)
       import Phoenix.LiveView.Helpers
+      import <%= web_namespace %>.LiveHelpers
 
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
