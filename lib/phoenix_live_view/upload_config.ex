@@ -451,8 +451,10 @@ defmodule Phoenix.LiveView.UploadConfig do
     new_entries =
       for entry <- entries, !get_entry_by_ref(conf, Map.fetch!(entry, "ref")), do: entry
 
+    pruned_conf = maybe_replace_sole_entry(conf, new_entries)
+
     new_conf =
-      Enum.reduce(new_entries, conf, fn client_entry, acc ->
+      Enum.reduce(new_entries, pruned_conf, fn client_entry, acc ->
         case cast_and_validate_entry(acc, client_entry) do
           {:ok, new_conf} -> new_conf
           {:error, new_conf} -> new_conf
@@ -470,6 +472,20 @@ defmodule Phoenix.LiveView.UploadConfig do
           {:error, new_conf}
       end
     end
+  end
+
+  defp maybe_replace_sole_entry(%UploadConfig{max_entries: 1} = conf, new_entries) do
+    with [entry] <- conf.entries,
+         0 = entry.progress,
+         [_new_entry] <- new_entries do
+      cancel_entry(conf, entry)
+    else
+      _ -> conf
+    end
+  end
+
+  defp maybe_replace_sole_entry(%UploadConfig{} = conf, _new_entries) do
+    conf
   end
 
   defp too_many_files?(%UploadConfig{entries: entries, max_entries: max}) do

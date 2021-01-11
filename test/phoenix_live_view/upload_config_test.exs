@@ -165,7 +165,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
   describe "put_entries/2" do
     test "does not overwrite existing refs" do
-      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 1)
 
       %{
         "name" => name,
@@ -189,6 +189,34 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       modified_entry = Map.update!(entry, "size", fn _ -> 5009 end)
       assert {:ok, avatar} = UploadConfig.put_entries(avatar, [modified_entry])
       assert entries_before == avatar.entries
+    end
+
+    test "replaces sole entry for max_entries of 1" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 1)
+
+      %{
+        "name" => name,
+        "size" => size,
+        "ref" => ref,
+        "type" => type
+      } = entry = build_client_entry(:avatar)
+
+      assert {:ok, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
+      entries_before = avatar.entries
+
+      assert [
+               %Phoenix.LiveView.UploadEntry{
+                 client_name: ^name,
+                 client_size: ^size,
+                 client_type: ^type,
+                 ref: ^ref
+               }
+             ] = entries_before
+
+      modified_entry = Map.update!(entry, "ref", fn _ -> "1234" end)
+      assert {:ok, avatar} = UploadConfig.put_entries(avatar, [modified_entry])
+      assert entries_before != avatar.entries
+      assert length(avatar.entries) == 1
     end
 
     test "returns error when greater than max_entries are provided" do
