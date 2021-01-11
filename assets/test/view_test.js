@@ -1045,7 +1045,7 @@ describe("View + Component", function() {
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="<p>GO TO HEXDOCS</p>">Searching...</button>
         </form>
       `.trim()
       let liveSocket = new LiveSocket("/live", Socket)
@@ -1059,7 +1059,7 @@ describe("View + Component", function() {
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="<p>GO TO HEXDOCS</p>">Searching...</button>
         </form>
       `.trim())
 
@@ -1070,7 +1070,7 @@ describe("View + Component", function() {
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching...">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..."><p>GO TO HEXDOCS</p></button>
         </form>
       `.trim())
     })

@@ -2530,7 +2530,7 @@ export class View {
       // restore disables
       let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
       if(disableRestore !== null){
-        el.innerText = disableRestore
+        el.innerHTML = disableRestore
         el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
       }
       let toEl = DOM.private(el, PHX_REF)
@@ -2553,7 +2553,7 @@ export class View {
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
         if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText)
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerHTML)
         }
         el.innerText = disableText
       }
