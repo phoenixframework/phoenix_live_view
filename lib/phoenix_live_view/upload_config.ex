@@ -315,15 +315,18 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def mark_preflighted(%UploadConfig{} = conf) do
-    %UploadConfig{
+    refs_awaiting = refs_awaiting_preflight(conf)
+
+    new_conf = %UploadConfig{
       conf
       | entries: for(entry <- conf.entries, do: %UploadEntry{entry | preflighted?: true})
     }
+
+    {new_conf, for(ref <- refs_awaiting, do: get_entry_by_ref(new_conf, ref))}
   end
 
-  @doc false
-  def entries_awaiting_preflight(%UploadConfig{} = conf) do
-    for entry <- conf.entries, not entry.preflighted?, do: entry
+  defp refs_awaiting_preflight(%UploadConfig{} = conf) do
+    for entry <- conf.entries, not entry.preflighted?, do: entry.ref
   end
 
   @doc false
@@ -476,7 +479,6 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   defp maybe_replace_sole_entry(%UploadConfig{max_entries: 1} = conf, new_entries) do
     with [entry] <- conf.entries,
-         0 = entry.progress,
          [_new_entry] <- new_entries do
       cancel_entry(conf, entry)
     else

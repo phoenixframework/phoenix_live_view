@@ -289,15 +289,21 @@ defmodule Phoenix.LiveView.Upload do
       chunk_size: conf.chunk_size
     }
 
-    new_entries = UploadConfig.entries_awaiting_preflight(conf)
+    {new_socket, new_conf, new_entries} = mark_preflighted(socket, conf)
 
-    case UploadConfig.mark_preflighted(conf) do
-      %UploadConfig{external: false} = new_conf ->
-        channel_preflight(socket, new_conf, new_entries, cid, client_meta)
+    case new_conf.external do
+      false ->
+        channel_preflight(new_socket, new_conf, new_entries, cid, client_meta)
 
-      %UploadConfig{external: func} = new_conf when is_function(func) ->
-        external_preflight(socket, new_conf, new_entries, client_meta)
+      func when is_function(func) ->
+        external_preflight(new_socket, new_conf, new_entries, client_meta)
     end
+  end
+
+  defp mark_preflighted(socket, conf) do
+    {new_conf, new_entries} =  UploadConfig.mark_preflighted(conf)
+    new_socket = update_uploads(new_conf, socket)
+    {new_socket, new_conf, new_entries}
   end
 
   defp channel_preflight(
@@ -319,8 +325,7 @@ defmodule Phoenix.LiveView.Upload do
         {entry.ref, token}
       end
 
-    new_socket = update_uploads(conf, socket)
-    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, new_socket}
+    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, socket}
   end
 
   defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, entries, client_config_meta) do
