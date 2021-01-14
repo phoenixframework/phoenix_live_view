@@ -83,17 +83,22 @@ defmodule Phoenix.LiveViewTest do
 
       {:ok, view, _html} = live(conn, "/thermo")
 
-      assert render_click(view, :inc) =~ "The temperature is: 31℉"
+      assert view
+             |> element("button#inc")
+             |> render_click() =~ "The temperature is: 31℉"
 
-      assert render_click(view, :set_temp, 35) =~ "The temperature is: 35℉"
+  In the example above, we are looking for a particular element on the page
+  and triggering its phx-click event. LiveView takes care of making sure the
+  element has a phx-click and automatically sends its values to the server.
 
-      assert render_submit(view, :save, %{deg: 30}) =~ "The temperature is: 30℉"
+  You can also bypass the element lookup and directly trigger the LiveView
+  event in most functions:
 
-      assert render_change(view, :validate, %{deg: -30}) =~ "invalid temperature"
+      assert render_click(view, :inc, %{}) =~ "The temperature is: 31℉"
 
-      assert render_keydown(view, :key, :ArrowUp) =~ "The temperature is: 31℉"
-
-      assert render_keydown(view, :key, :ArrowDown) =~ "The temperature is: 30℉"
+  The `element` style is preferred as much as possible, as it helps LiveView
+  perform validations and ensure the events in the HTML actually matches the
+  event names on the server.
 
   ## Testing regular messages
 
