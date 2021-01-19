@@ -2583,6 +2583,10 @@ export class View {
   }
 
   pushHookEvent(targetCtx, event, payload, onReply){
+    if(!this.isConnected()){
+      this.log("hook", () => [`unable to push hook event. LiveView not connected`, event, payload])
+      return false
+    }
     let [ref, els] = this.putRef([], "hook")
     this.pushWithReply(() => [ref, els], "event", {
       type: "hook",

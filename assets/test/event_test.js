@@ -13,6 +13,7 @@ let simulateView = (liveSocket, events, innerHTML) => {
 
   let view = new View(el, liveSocket)
   view.onJoin({rendered: {e: events, s: [innerHTML]}})
+  view.isConnected = () => true
   return view
 }
 
@@ -162,5 +163,26 @@ describe("pushEvent replies", () => {
 
     expect(pushedRef).toEqual(0)
     expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
+  })
+
+  test("pushEvent without connection noops", () => {
+    let view
+    let pushedRef = "before"
+    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
+      Gateway: {
+        mounted(){
+          stubNextChannelReply(view, {transactionID: "1001"})
+          pushedRef = this.pushEvent("charge", {amount: 123})
+        }
+      }
+    }})
+    view = simulateView(liveSocket, [], ``)
+    view.isConnected = () => false
+    view.update({s: [`
+      <div id="gateway" phx-hook="Gateway">
+      </div>
+    `]}, [])
+
+    expect(pushedRef).toEqual(false)
   })
 })
