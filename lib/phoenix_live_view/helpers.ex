@@ -257,6 +257,7 @@ defmodule Phoenix.LiveView.Helpers do
       """
     end
 
+    # TODO: deprecate implicit assigns (i.e. extra_assigns here must be nil, otherwise we warn).
     quoted =
       quote do
         fn changed, extra_assigns ->
