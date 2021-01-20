@@ -12,9 +12,9 @@ considered:
     in the root layout will remain the same, even as you live navigate
     across LiveViews. All LiveViews defined at the router must have
     a root layout. The root layout is typically declared on the
-    router with `put_root_layout` and defined as "root.html.leex"
+    router with `put_root_layout` and defined as "root.html.eex"
     in your `MyAppWeb.LayoutView`. It may also be given via the
-    the `:layout` option to the router's `live` macro.
+    `:layout` option to the router's `live` macro.
 
   * the app layout - this is the default application layout which
     is not included or used by LiveViews. It defaults to "app.html.eex"
@@ -28,7 +28,7 @@ considered:
 Overall, those layouts are found in `templates/layout` with the
 following names:
 
-    * root.html.leex
+    * root.html.eex
     * app.html.eex
     * live.html.leex
 
