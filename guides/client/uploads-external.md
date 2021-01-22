@@ -167,8 +167,8 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 We define an `Uploaders.S3` function, which receives our entries. It then
-performs an AJAX request for each entry, using the `entry.progress()`,
-`entry.error()`, and `entry.done()` functions to report upload events
-back to the LiveView. Lastly, we pass the `uploaders` namespace to the
-`LiveSocket` constructor to tell phoenix where to find the uploaders
-return within the external metadata.
+performs an AJAX request for each entry, using the `entry.progress()` and
+`entry.error()`. functions to report upload events back to the LiveView.
+Lastly, we pass the `uploaders` namespace to the `LiveSocket` constructor
+to tell phoenix where to find the uploaders return within the external
+metadata.
