@@ -207,7 +207,8 @@ defmodule Phoenix.LiveView.Helpers do
   a special meaning: whenever an `:id` is given, the component
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
-  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
+  # TODO: Deprecate the socket as argument
+  defmacro live_component(_socket, component, assigns \\ [], do_block \\ []) do
     {do_block, assigns} =
       case {do_block, assigns} do
         {[do: do_block], _} -> {do_block, assigns}
@@ -219,7 +220,6 @@ defmodule Phoenix.LiveView.Helpers do
 
     quote do
       Phoenix.LiveView.Helpers.__live_component__(
-        unquote(socket),
         unquote(component).__live__(),
         unquote(assigns),
         unquote(inner_block)
@@ -304,7 +304,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
-  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns, inner)
+  def __live_component__(%{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveView.Helpers do
     %Component{id: id, assigns: assigns, component: component}
   end
 
-  def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
+  def __live_component__(%{kind: kind, module: module}, assigns)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
