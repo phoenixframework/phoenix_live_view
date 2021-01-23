@@ -154,11 +154,11 @@ Uploaders.S3 = function(entries, onViewError){
         if(percent < 100){ entry.progress(percent) }
       }
     })
+
     xhr.open("POST", url, true)
     xhr.send(formData)
   })
 }
-
 
 let liveSocket = new LiveSocket("/live", Socket, {
   uploaders: Uploaders,
