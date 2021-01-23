@@ -1504,10 +1504,12 @@ export let DOM = {
           setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout)
         }
 
-        if(el.form && this.once(el.form, "bind-debounce")){
-          el.form.addEventListener("submit", (e) => {
-            Array.from((new FormData(el.form)).entries(), ([name, val]) => {
-              let input = el.form.querySelector(`[name="${name}"]`)
+
+        let form = el.form
+        if(form && this.once(form, "bind-debounce")){
+          form.addEventListener("submit", (e) => {
+            Array.from((new FormData(form)).entries(), ([name, val]) => {
+              let input = form.querySelector(`[name="${name}"]`)
               this.incCycle(input, DEBOUNCE_TRIGGER)
               this.deletePrivate(input, THROTTLED)
             })
