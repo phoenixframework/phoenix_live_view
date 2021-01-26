@@ -18,5 +18,5 @@ Then in your LiveView `mount/3`, you can restore the locale:
 
     def mount(_params, %{"locale" => locale}, socket) do
       Gettext.put_locale(MyApp.Gettext, locale)
-      {:ok socket}
+      {:ok, socket}
     end
