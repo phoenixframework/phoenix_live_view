@@ -1398,6 +1398,11 @@ export let DOM = {
     return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
   },
 
+  markPhxChildDestroyed(el){
+    el.setAttribute(PHX_SESSION, "")
+    el.removeAttribute("id")
+  },
+
   findPhxChildrenInFragment(html, parentId){
     let template = document.createElement("template")
     template.innerHTML = html
@@ -1804,9 +1809,6 @@ class DOMPatch {
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
-        getNodeKey: (el) => {
-          return el.id && (el.id + (el.getAttribute(PHX_SESSION) || ""))
-        },
         onBeforeNodeAdded: (el) => {
           //input handling
           DOM.discardError(targetContainer, el, phxFeedbackFor)
@@ -1860,9 +1862,9 @@ class DOMPatch {
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
-            let prevStatic = fromEl.getAttribute(PHX_STATIC)
-            DOM.mergeAttrs(fromEl, toEl)
-            fromEl.setAttribute(PHX_STATIC, prevStatic)
+            let prevSession = fromEl.getAttribute(PHX_SESSION)
+            DOM.mergeAttrs(fromEl, toEl, {exclude: [PHX_STATIC]})
+            if(prevSession !== ""){ fromEl.setAttribute(PHX_SESSION, prevSession) }
             fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
             return false
           }
@@ -2039,6 +2041,8 @@ export class View {
         this.destroyHook(this.viewHooks[id])
       }
     }
+
+    DOM.markPhxChildDestroyed(this.el)
 
     this.log("destroyed", () => ["the child has been removed from the parent"])
     this.channel.leave()
