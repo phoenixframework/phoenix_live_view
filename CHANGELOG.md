@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.4 (2021-01-26)
+
+### Bug fixes
+  - Fix nested `live_render`'s causing remound of child LiveView even when ID does not change
+  - Do not attempt push hook events unless connected
+  - Fix preflighted refs causing `auto_upload: true` to fail to submit form
+  - Replace single upload entry when max_entires is 1 instead of accumulating multiple file selections
+  - Fix static_path in open_browser failing to load stylesheets
+
 ## 0.15.3 (2021-01-02)
 
 ### Bug fixes
