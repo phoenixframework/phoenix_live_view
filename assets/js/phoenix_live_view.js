@@ -1398,9 +1398,13 @@ export let DOM = {
     return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
   },
 
+  isPhxDestroyed(node){
+    return node.id && DOM.private(node, "destroyed") ? true : false
+  },
+
   markPhxChildDestroyed(el){
     el.setAttribute(PHX_SESSION, "")
-    el.removeAttribute("id")
+    this.putPrivate(el, "destroyed", true)
   },
 
   findPhxChildrenInFragment(html, parentId){
@@ -1809,6 +1813,9 @@ class DOMPatch {
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+        getNodeKey: (node) => {
+          return DOM.isPhxDestroyed(node) ? null : node.id
+        },
         onBeforeNodeAdded: (el) => {
           //input handling
           DOM.discardError(targetContainer, el, phxFeedbackFor)
