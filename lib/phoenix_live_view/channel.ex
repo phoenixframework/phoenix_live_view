@@ -750,12 +750,16 @@ defmodule Phoenix.LiveView.Channel do
 
                 socket "/live", Phoenix.LiveView.Socket,
                   websocket: [connect_info: [session: @session_options]]
+                  
+            4) Ensure the `protect_from_forgery` plug is in your router pipeline:
+            
+                plug :protect_from_forgery
 
-            4) Define the CSRF meta tag inside the `<head>` tag in your layout:
+            5) Define the CSRF meta tag inside the `<head>` tag in your layout:
 
                 <%= csrf_meta_tag() %>
 
-            5) Pass it forward in your app.js:
+            6) Pass it forward in your app.js:
 
                 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
                 let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
