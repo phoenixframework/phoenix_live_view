@@ -164,7 +164,7 @@ Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your 
 
 ```html
 <%= csrf_meta_tag() %>
-<script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+<script defer type="text/javascript" src='<%= Routes.static_path(@conn, "/js/app.js") %>'></script>
 ```
 
 and enable connecting to a LiveView socket in your `app.js` file.
@@ -210,8 +210,8 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
   <head>
     <%= csrf_meta_tag() %>
     <%= live_title_tag assigns[:page_title] || "MyApp" %>
-    <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
-    <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+    <link rel="stylesheet" href='<%= Routes.static_path(@conn, "/css/app.css") %>'/>
+    <script defer type="text/javascript" src='<%= Routes.static_path(@conn, "/js/app.js") %>'></script>
   </head>
   <body>
     <%= @inner_content %>
