@@ -146,12 +146,12 @@ Uploaders.S3 = function(entries, onViewError){
     formData.append("file", entry.file)
     let xhr = new XMLHttpRequest()
     onViewError(() => xhr.abort())
-    xhr.onload = () => xhr.status === 204 || entry.error()
+    xhr.onload = () => xhr.status === 204 ? entry.progress(100) : entry.error()
     xhr.onerror = () => entry.error()
     xhr.upload.addEventListener("progress", (event) => {
       if(event.lengthComputable){
         let percent = Math.round((event.loaded / event.total) * 100)
-        entry.progress(percent)
+        if(percent < 100){ entry.progress(percent) }
       }
     })
 
