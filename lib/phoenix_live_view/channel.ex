@@ -823,9 +823,12 @@ defmodule Phoenix.LiveView.Channel do
     connect_params = params["params"]
 
     # Optional verified parts
-    router = verified[:router]
     flash = verify_flash(endpoint, verified, params["flash"], connect_params)
+    remote_ip = get_in(connect_info, [:peer_data, :address])
+    router = verified[:router]
     socket_session = connect_info[:session] || %{}
+    user_agent = connect_info[:user_agent]
+    x_headers = connect_info[:x_headers] || []
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -836,14 +839,17 @@ defmodule Phoenix.LiveView.Channel do
     end
 
     socket = %Socket{
-      endpoint: endpoint,
-      view: view,
-      root_view: root_view,
       connected?: true,
-      parent_pid: parent,
-      root_pid: root || self(),
+      endpoint: endpoint,
       id: id,
-      router: router
+      parent_pid: parent,
+      remote_ip: remote_ip,
+      root_pid: root || self(),
+      root_view: root_view,
+      router: router,
+      user_agent: user_agent,
+      view: view,
+      x_headers: x_headers
     }
 
     {params, host_uri, action} =

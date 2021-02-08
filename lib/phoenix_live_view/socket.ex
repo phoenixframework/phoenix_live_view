@@ -26,7 +26,19 @@ defmodule Phoenix.LiveView.Socket do
 
   if Version.match?(System.version(), ">= 1.8.0") do
     @derive {Inspect,
-             only: [:id, :endpoint, :router, :view, :parent_pid, :root_pid, :assigns, :changed]}
+             only: [
+               :assigns,
+               :changed,
+               :endpoint,
+               :id,
+               :parent_pid,
+               :remote_ip,
+               :root_pid,
+               :router,
+               :user_agent,
+               :view,
+               :x_headers
+             ]}
   end
 
   defstruct id: nil,
@@ -42,6 +54,9 @@ defmodule Phoenix.LiveView.Socket do
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,
+            remote_ip: nil,
+            user_agent: nil,
+            x_headers: [],
             connected?: false
 
   @type assigns :: map | Phoenix.LiveView.Socket.AssignsNotInSocket.t()
@@ -61,6 +76,9 @@ defmodule Phoenix.LiveView.Socket do
           fingerprints: fingerprints,
           redirected: nil | tuple(),
           host_uri: URI.t(),
+          remote_ip: tuple(),
+          user_agent: String.t(),
+          x_headers: keyword(),
           connected?: boolean()
         }
 
