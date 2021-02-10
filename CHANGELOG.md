@@ -9,6 +9,13 @@
   - Replace single upload entry when max_entires is 1 instead of accumulating multiple file selections
   - Fix static_path in open_browser failing to load stylesheets
 
+### Deprecations
+  - `Phoenix.LiveView.Helpers.live_component/4` will be deprecated in a future release, removing the socket parameter. In 0.15.4, you may receive warnings of this change when compiling:
+     ```
+      warning: variable "socket" is unused (if the variable is not meant to be used, prefix it with an underscore)
+        lib/web/live/live_helpers.ex:18: Project.Web.LiveHelpers.live_modal/3
+     ```
+
 ## 0.15.3 (2021-01-02)
 
 ### Bug fixes
