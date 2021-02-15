@@ -206,7 +206,7 @@ defmodule Phoenix.LiveView.Diff do
             components
           )
 
-        diff = maybe_put_reply(%{}, socket)
+        diff = maybe_put_reply(%{}, component_socket)
 
         {component_diffs, components} =
           render_pending_components(socket, pending, component_diffs, components)

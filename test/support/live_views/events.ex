@@ -65,7 +65,13 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
     use Phoenix.LiveComponent
 
     def render(assigns) do
-      ~L"hello!"
+      ~L"""
+      <button id="comp-reply"
+              phx-click="reply"
+              phx-target=<%= @myself %>>
+        bump reply!
+      </button>
+      """
     end
 
     def update(assigns, socket) do
@@ -75,6 +81,10 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
           else: socket
 
       {:ok, socket}
+    end
+
+    def handle_event("reply", reply, socket) do
+      {:reply, %{"comp-reply" => reply}, socket}
     end
   end
 

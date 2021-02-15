@@ -425,7 +425,7 @@ defmodule Phoenix.LiveView.Channel do
     Expected one of:
 
         {:noreply, %Socket{}}
-        {:reply, reply, %Socket}
+        {:reply, map, %Socket}
 
     Got: #{inspect(result)}
     """
@@ -523,21 +523,32 @@ defmodule Phoenix.LiveView.Channel do
       [:phoenix, :live_component, :handle_event],
       %{socket: component_socket, component: component, event: event, params: val},
       fn ->
-        case component.handle_event(event, val, component_socket) do
-          {:noreply, %Socket{redirected: redirected, assigns: assigns} = component_socket} ->
-            {
-              {component_socket, {redirected, assigns.flash}},
-              %{socket: component_socket, component: component, event: event, params: val}
-            }
+        component_socket =
+          %Socket{redirected: redirected, assigns: assigns} =
+          case component.handle_event(event, val, component_socket) do
+            {:noreply, component_socket} ->
+              component_socket
 
-          other ->
-            raise ArgumentError, """
-            invalid return from #{inspect(component)}.handle_event/3 callback.
+            {:reply, %{} = reply, component_socket} ->
+              Utils.put_reply(component_socket, reply)
 
-            Expected: {:noreply, %Socket{}}
-            Got: #{inspect(other)}
-            """
-        end
+            other ->
+              raise ArgumentError, """
+              invalid return from #{inspect(component)}.handle_event/3 callback.
+
+              Expected one of:
+
+                  {:noreply, %Socket{}}
+                  {:reply, map, %Socket}
+
+              Got: #{inspect(other)}
+              """
+          end
+
+        {
+          {component_socket, {redirected, assigns.flash}},
+          %{socket: component_socket, component: component, event: event, params: val}
+        }
       end
     )
   end
@@ -670,6 +681,7 @@ defmodule Phoenix.LiveView.Channel do
   defp push_live_redirect(state, opts, nil = _ref, {_diff, ack_ref}) do
     reply(state, ack_ref, :ok, %{live_redirect: opts})
   end
+
   defp push_live_redirect(state, opts, nil = _ref, _pending_diff_ack) do
     push(state, "live_redirect", opts)
   end
@@ -752,7 +764,7 @@ defmodule Phoenix.LiveView.Channel do
                   websocket: [connect_info: [session: @session_options]]
                   
             4) Ensure the `protect_from_forgery` plug is in your router pipeline:
-            
+
                 plug :protect_from_forgery
 
             5) Define the CSRF meta tag inside the `<head>` tag in your layout:

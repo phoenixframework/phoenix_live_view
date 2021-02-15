@@ -107,5 +107,19 @@ defmodule Phoenix.LiveView.EventTest do
                assert_receive {:DOWN, _ref, :process, ^pid, _reason}
              end) =~ "Got: {:reply, :boom"
     end
+
+    test "sends replies in components", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-in-component")
+      assert_received {:plug_conn, :sent}
+      assert_received {_, {200, _, _}}
+
+      assert_push_event(view, "component", %{count: 1})
+
+      view
+      |> element("#comp-reply")
+      |> render_click(%{reply: "123"})
+
+      assert_reply(view, %{"comp-reply" => %{"reply" => "123"}})
+    end
   end
 end
