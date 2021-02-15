@@ -259,18 +259,41 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cid} <- maybe_cid(root, node) do
+               {:ok, cids} <- maybe_cids(root, node) do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
                 other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
               end
 
-            {view, cid, event, values, uploads}
+            {view, cids, event, values, uploads}
           end
       end
 
     case result do
+      {view, cids, event, values, upload} when is_list(cids) ->
+        diffs =
+          Enum.reduce(cids, state, fn cid, acc ->
+            {type, encoded_value} = encode_event_type(type, values)
+
+            payload =
+              maybe_put_uploads(
+                state,
+                view,
+                %{
+                  "cid" => cid,
+                  "type" => type,
+                  "event" => event,
+                  "value" => encoded_value
+                },
+                upload
+              )
+
+            push_with_reply(acc, from, view, "event", payload)
+          end)
+
+        {:noreply, diffs}
+
       {view, cid, event, values, upload} ->
         {type, encoded_value} = encode_event_type(type, values)
 
@@ -288,6 +311,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           )
 
         {:noreply, push_with_reply(state, from, view, "event", payload)}
+
 
       {:allow_upload, topic, ref} ->
         handle_call({:render_allow_upload, topic, ref, value}, from, state)
@@ -778,32 +802,45 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, root}
   end
 
-  defp maybe_cid(_tree, nil) do
+  defp maybe_cids(_tree, nil) do
     {:ok, nil}
   end
 
-  defp maybe_cid(tree, node) do
+  defp maybe_cids(tree, node) do
     case DOM.all_attributes(node, "phx-target") do
       [] ->
         {:ok, nil}
 
-      ["#" <> _ = target] ->
-        with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
-          if cid = DOM.component_id(target) do
-            {:ok, String.to_integer(cid)}
-          else
-            {:ok, nil}
-          end
-        end
-
-      [maybe_integer] ->
-        case Integer.parse(maybe_integer) do
+      [selector] ->
+        case Integer.parse(selector) do
           {cid, ""} ->
             {:ok, cid}
 
           _ ->
-            {:error, :invalid,
-             "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
+            case DOM.maybe_one(tree, selector, "phx-target") do
+              {:ok, el} ->
+                if cid = DOM.component_id(el) do
+                  {:ok, String.to_integer(cid)}
+                else
+                  {:ok, nil}
+                end
+              _ ->
+                case DOM.all(tree, selector) do
+                  [] ->
+                    {:ok, nil}
+                  elements ->
+                    cids =
+                      Enum.reduce(elements, [], fn element, acc ->
+                        if cid = DOM.component_id(element) do
+                          [String.to_integer(cid) | acc]
+                        else
+                          [nil | acc]
+                        end
+                      end)
+
+                    {:ok, cids}
+                end
+            end
         end
     end
   end

@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
   def mount(socket) do
-    {:ok, assign(socket, name: "unknown", dup_name: nil)}
+    {:ok, assign(socket, name: "unknown", dup_name: nil, parent_id: nil)}
   end
 
   def update(assigns, socket) do
@@ -29,12 +29,15 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def render(%{socket: _} = assigns) do
     ~L"""
-    <div id="<%= @id %>" phx-target="#<%= @id %>" phx-click="transform">
+    <div id="<%= @id %>" phx-target="#<%= @id %><%= include_parent_id(@parent_id) %>" phx-click="transform">
       <%= @name %> says hi
       <%= if @dup_name, do: live_component @socket, __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
     """
   end
+
+  defp include_parent_id(nil), do: ""
+  defp include_parent_id(parent_id), do: ",#{parent_id}"
 
   def handle_event("transform", %{"op" => op}, socket) do
     case op do
@@ -76,7 +79,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
       <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent,
-            id: name, name: name, from: @from, disabled: name in @disabled  %>
+            id: name, name: name, from: @from, disabled: name in @disabled, parent_id: nil %>
     <% end %>
     """
   end
@@ -106,5 +109,38 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     names = socket.assigns.names
     new_socket = assign(socket, disabled: names, names: names ++ Enum.map(names, &(&1 <> "-new")))
     {:noreply, new_socket}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.WithMultipleTargets do
+  use Phoenix.LiveView
+
+  def mount(_params, %{"names" => names, "from" => from} = session, socket) do
+    {
+      :ok,
+      assign(socket, [
+        names: names,
+        from: from,
+        disabled: [],
+        message: nil,
+        parent_selector: Map.get(session, "parent_selector", "#parent_id")
+      ])
+    }
+  end
+
+  def render(assigns) do
+    ~L"""
+    <div id="parent_id" class="parent">
+      <%= @message %>
+      <%= for name <- @names do %>
+        <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent,
+              id: name, name: name, from: @from, disabled: name in @disabled, parent_id: @parent_selector %>
+      <% end %>
+    </div>
+    """
+  end
+
+  def handle_event("transform", %{"op" => _op}, socket) do
+    {:noreply, assign(socket, :message, "Parent was updated")}
   end
 end
