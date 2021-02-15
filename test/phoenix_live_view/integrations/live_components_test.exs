@@ -185,6 +185,55 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
                "<div data-phx-component=\"3\" phx-click=\"transform\" id=\"Jose-dup\" phx-target=\"#Jose-dup\">\n  JOSE-DUP says hi\n  \n</div>"
     end
 
+    test "works with multiple phx-targets", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/multi-targets")
+
+      view |> element("#chris") |> render_click(%{"op" => "upcase"})
+
+      html = render(view)
+
+      assert [
+               {"div", _,
+                 [
+                   {"div", [{"id", "parent_id"} | _],
+                    ["\n  Parent was updated\n" <> _,
+                   {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                    ["\n  CHRIS says hi\n" <> _]},
+                   {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                     ["\n  jose says hi\n" <> _]}
+                    ]
+                   }
+                 ]
+               }
+             ] = DOM.parse(html)
+    end
+
+    test "phx-target works with non id selector", %{conn: conn} do
+      {:ok, view, _html} =
+        conn
+        |> Plug.Conn.put_session(:parent_selector, ".parent")
+        |> live("/multi-targets")
+
+      view |> element("#chris") |> render_click(%{"op" => "upcase"})
+
+      html = render(view)
+
+      assert [
+               {"div", _,
+                 [
+                   {"div", [{"id", "parent_id"} | _],
+                    ["\n  Parent was updated\n" <> _,
+                   {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                    ["\n  CHRIS says hi\n" <> _]},
+                   {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                     ["\n  jose says hi\n" <> _]}
+                    ]
+                   }
+                 ]
+               }
+             ] = DOM.parse(html)
+    end
+
     test "emits telemetry events when callback is successful", %{conn: conn} do
       attach_telemetry([:phoenix, :live_component, :handle_event])
       {:ok, view, _html} = live(conn, "/components")

@@ -1031,7 +1031,7 @@ defmodule Phoenix.LiveViewTest do
     html_tree = view |> render() |> DOM.parse()
 
     with {:ok, form} <- DOM.maybe_one(html_tree, selector),
-         {:ok, cid} <- ClientProxy.__maybe_cid__(html_tree, form) do
+         {:ok, [cid | _]} <- ClientProxy.__maybe_cids__(html_tree, form) do
       cid
     else
       {:error, _reason, msg} -> raise ArgumentError, msg
