@@ -1,5 +1,8 @@
 # External Uploads
 
+> This guide continues from the configuration started in the
+> server [Uploads guide](uploads.html).
+
 Uploads to external cloud providers, such as Amazon S3,
 Google Cloud, etc., can be achieved by using the
 `:external` option in [`allow_upload/3`](`Phoenix.LiveView.allow_upload/3`).
@@ -9,7 +12,7 @@ generate metadata for each upload entry, which is passed to
 a user-specified JavaScript function on the client.
 
 Typically when your function is invoked, you will generate a
-presigned URL, specific to your cloud storage provider, that
+pre-signed URL, specific to your cloud storage provider, that
 will provide temporary access for the end-user to upload data
 directly to your cloud storage.
 
@@ -77,7 +80,12 @@ Uploaders.UpChunk = function(entries, onViewError){
     upload.on("error", (e) => entry.error(e.detail.message))
 
     // notify progress events to LiveView
-    upload.on("progress", (e) => entry.progress(e.detail))
+    upload.on("progress", (e) => {
+      if(e.detail < 100){ entry.progress(e.detail) }
+    })
+
+    // success completes the UploadEntry
+    upload.on("success", () => entry.progress(100))
   })
 }
 
@@ -93,6 +101,10 @@ let liveSocket = new LiveSocket("/live", Socket, {
 In order to enforce all of your file constraints when
 uploading to S3, it is necessary to perform a multipart form
 POST with your file data.
+
+> The following example uses a zero-dependency module
+> called [`SimpleS3Upload`](https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073)
+> written by Chris McCord to generate pre-signed URLs for S3.
 
 ```elixir
 def mount(_params, _session, socket) do
@@ -114,7 +126,7 @@ defp presign_upload(entry, socket) do
   }
 
   {:ok, fields} =
-    S3.sign_form_upload(config, bucket,
+    SimpleS3Upload.sign_form_upload(config, bucket,
       key: key,
       content_type: entry.client_type,
       max_file_size: uploads.avatar.max_file_size,
@@ -126,14 +138,16 @@ defp presign_upload(entry, socket) do
 end
 ```
 
-Here, we implemented a `presign_upload/2` function, which we passed as a captured anonymous
-function to `:external`. Next, we used `ExAws.S3` to generate a presigned URL for the
-upload. Lastly, we return our `:ok` result, with a payload of metadata for the client,
-along with our unchanged socket. The metadata *must* contain the `:uploader` key,
-specifying the name of the JavaScript client-side uploader, in this case "S3".
+Here, we implemented a `presign_upload/2` function, which we
+passed as a captured anonymous function to `:external`. Next,
+we generate a pre-signed URL for the upload. Lastly, we return
+our `:ok` result, with a payload of metadata for the client,
+along with our unchanged socket. The metadata *must* contain
+the `:uploader` key, specifying the name of the JavaScript
+client-side uploader, in this case `"S3"`.
 
-To complete the flow, we can implement our `S3` client uploader and tell the
-`LiveSocket` where to find it:
+To complete the flow, we can implement our `S3` client
+uploader and tell the `LiveSocket` where to find it:
 
 ```js
 let Uploaders = {}
@@ -170,5 +184,5 @@ We define an `Uploaders.S3` function, which receives our entries. It then
 performs an AJAX request for each entry, using the `entry.progress()` and
 `entry.error()`. functions to report upload events back to the LiveView.
 Lastly, we pass the `uploaders` namespace to the `LiveSocket` constructor
-to tell phoenix where to find the uploaders return within the external
+to tell phoenix where to find the uploaders returned within the external
 metadata.

@@ -2,7 +2,7 @@
 
 LiveView supports interactive file uploads with progress for
 both direct to server uploads as well as external
-direct-to-cloud uploads on the client.
+direct-to-cloud [external uploads](uploads-external.html) on the client.
 
 Uploads are enabled by using `Phoenix.LiveView.allow_upload/3`
 and specifying the constraints, such as accepted file types,
