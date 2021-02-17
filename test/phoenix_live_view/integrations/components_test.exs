@@ -186,21 +186,16 @@ defmodule Phoenix.LiveView.ComponentTest do
     test "works with multiple phx-targets", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/multi-targets")
 
-      view |> element("#chris") |> render_click(%{"op" => "upcase"})
-
-      html = render(view)
+      html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
       assert [
                {"div", _,
                  [
-                   {"div", [{"id", "parent_id"} | _],
-                    ["\n  Parent was updated\n" <> _,
+                   "\n  Parent was updated\n" <> _,
                    {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-                    ["\n  CHRIS says hi\n" <> _]},
+                     ["\n  CHRIS says hi\n" <> _]},
                    {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
                      ["\n  jose says hi\n" <> _]}
-                    ]
-                   }
                  ]
                }
              ] = DOM.parse(html)
@@ -212,21 +207,16 @@ defmodule Phoenix.LiveView.ComponentTest do
         |> Plug.Conn.put_session(:parent_selector, ".parent")
         |> live("/multi-targets")
 
-      view |> element("#chris") |> render_click(%{"op" => "upcase"})
-
-      html = render(view)
+      html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
       assert [
                {"div", _,
                  [
-                   {"div", [{"id", "parent_id"} | _],
-                    ["\n  Parent was updated\n" <> _,
+                   "\n  Parent was updated\n" <> _,
                    {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
-                    ["\n  CHRIS says hi\n" <> _]},
+                     ["\n  CHRIS says hi\n" <> _]},
                    {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
                      ["\n  jose says hi\n" <> _]}
-                    ]
-                   }
                  ]
                }
              ] = DOM.parse(html)
