@@ -152,7 +152,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_put_events(diff, socket) do
     case Utils.get_push_events(socket) do
-      [_ | _] = events -> {true, Map.put(diff, @events, events)}
+      [_ | _] = events -> {true, Map.update(diff, @events, events, &(&1 ++ events))}
       [] -> {false, diff}
     end
   end
