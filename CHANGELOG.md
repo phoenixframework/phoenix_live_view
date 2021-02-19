@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.5
+
+### Bug fixes
+  - Fix `push_event` losing events when a single diff produces multiple events from different components
+
 ## 0.15.4 (2021-01-26)
 
 ### Bug fixes
