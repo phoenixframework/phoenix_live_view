@@ -8,7 +8,7 @@ defmodule Phoenix.LiveComponent do
   Components run inside the LiveView process, but may have their own
   state and event handling.
 
-  The simplest component only needs to define a `render` function:
+  The simplest component only needs to define a `c:render/1` function:
 
       defmodule HeroComponent do
         # If you generated an app with mix phx.new --live,
@@ -34,14 +34,14 @@ defmodule Phoenix.LiveComponent do
 
   ## Stateless components life-cycle
 
-  When `live_component` is called, the following callbacks will be invoked
+  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called, the following callbacks will be invoked
   in the component:
 
       mount(socket) -> update(assigns, socket) -> render(assigns)
 
-  First `c:mount/1` is called only with the socket. `mount/1` can be used
+  First `c:mount/1` is called only with the socket. `c:mount/1` can be used
   to set any initial state. Then `c:update/2` is invoked with all of the
-  assigns given to `live_component/3`. The default implementation of
+  assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`). The default implementation of
   `c:update/2` simply merges all assigns into the socket. Then, after the
   component is updated, `c:render/1` is called with all assigns.
 
@@ -53,7 +53,7 @@ defmodule Phoenix.LiveComponent do
 
   ## Stateful components life-cycle
 
-  A stateful component is a component that receives an `:id` on `live_component/3`:
+  A stateful component is a component that receives an `:id` on [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`):
 
       <%= live_component @socket, HeroComponent, id: :hero, content: @content %>
 
@@ -107,7 +107,7 @@ defmodule Phoenix.LiveComponent do
 
   If you want to target another component, you can also pass an ID
   or a class selector to any element inside the targeted component.
-  For example, if there is a `UserComponent` with the DOM ID of `user-13`,
+  For example, if there is a `UserComponent` with the DOM ID of `"user-13"`,
   using a query selector, we can send an event to it with:
 
       <a href="#" phx-click="say_hello" phx-target="#user-13">
@@ -190,14 +190,14 @@ defmodule Phoenix.LiveComponent do
   ### LiveView as the source of truth
 
   If the LiveView is the source of truth, it will be responsible
-  for fetching all of the cards in a board. Then it will call `live_component/3`
-  for each card, passing the card struct as argument to CardComponent:
+  for fetching all of the cards in a board. Then it will call [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
+  for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
         <%= live_component @socket, CardComponent, card: card, id: card.id, board_id: @id %>
       <% end %>
 
-  Now, when the user submits a form inside the CardComponent to update the
+  Now, when the user submits a form inside the `CardComponent` to update the
   card, `CardComponent.handle_event/3` will be triggered. However, if the
   update succeeds, you must not change the card struct inside the component.
   If you do so, the card struct in the component will get out of sync with
@@ -216,7 +216,7 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  The LiveView then receives this event using `handle_info`:
+  The LiveView then receives this event using `c:Phoenix.LiveView.handle_info/2`:
 
       defmodule BoardView do
         ...
@@ -272,7 +272,7 @@ defmodule Phoenix.LiveComponent do
   Once all card components are started, they can fully manage each
   card as a whole, without concerning themselves with the parent LiveView.
 
-  However, note that components do not have a `handle_info/2` callback.
+  However, note that components do not have a `c:Phoenix.LiveView.handle_info/2` callback.
   Therefore, if you want to track distributed changes on a card, you
   must have the parent LiveView receive those events and redirect them
   to the appropriate card. For example, assuming card updates are sent
@@ -284,13 +284,13 @@ defmodule Phoenix.LiveComponent do
         {:noreply, socket}
       end
 
-  With `send_update`, the CardComponent given by `id` will be invoked,
+  With `Phoenix.Liveview.send_update/3`, the `CardComponent` given by `id` will be invoked,
   triggering both preload and update callbacks, which will load the
   most up to date data from the database.
 
   ## Live component blocks
 
-  When `live_component` is invoked, it is also possible to pass a `do/end`
+  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked, it is also possible to pass a `do/end`
   block:
 
       <%= live_component @socket, GridComponent, entries: @entries do %>
@@ -339,9 +339,9 @@ defmodule Phoenix.LiveComponent do
 
   ## Live patches and live redirects
 
-  A template rendered inside a component can use `live_patch` and
-  `live_redirect` calls. The `live_patch` is always handled by the parent
-  `LiveView`, as components do not provide `handle_params`.
+  A template rendered inside a component can use `Phoenix.LiveView.Helpers.live_patch/2` and
+  `Phoenix.LiveView.Helpers.live_redirect/2` calls. The [`live_patch/2`](`Phoenix.LiveView.Helpers.live_patch/2`)
+  is always handled by the parent`LiveView`, as components do not provide `handle_params`.
 
   ## Cost of stateful components
 

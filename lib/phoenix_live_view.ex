@@ -142,14 +142,14 @@ defmodule Phoenix.LiveView do
   automatically included by `mix phx.new --live` and described in
   the installation guide. If you don't want to configure a root layout,
   you must pass `layout: {MyAppWeb.LayoutView, "app.html"}` as an
-  option to the `live` macro above.
+  option to the `Phoenix.LiveView.Router.live/3` macro above.
 
-  Alternatively, you can `live_render` from any template:
+  Alternatively, you can render your view from any template with `Phoenix.LiveView.Helpers.live_render/3`:
 
       <h1>Temperature Control</h1>
       <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
 
-  Or you can `live_render` your view from any controller:
+  Or you can render your view from any controller with `Phoenix.LiveView.Controller.live_render/3`:
 
       defmodule MyAppWeb.ThermostatController do
         ...
@@ -165,7 +165,7 @@ defmodule Phoenix.LiveView do
   the LiveView.
 
   It is also possible to pass additional session information to the LiveView
-  through a session parameter:
+  through a `:session` option:
 
       # In the router
       live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
@@ -219,7 +219,7 @@ defmodule Phoenix.LiveView do
 
   We used `connected?(socket)` on mount to send our view a message every 30s if
   the socket is in a connected state. We receive the `:update` message in the
-  `handle_info/2` callback, just like in an Elixir `GenServer`, and update our
+  `c:handle_info/2` callback, just like in an Elixir `GenServer`, and update our
   socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
   invoked, and the updates are sent to the client.
 
@@ -264,7 +264,7 @@ defmodule Phoenix.LiveView do
 
       <button phx-click="inc_temperature">+</button>
 
-  Then on the server, all LiveView bindings are handled with the `handle_event`
+  Then on the server, all LiveView bindings are handled with the `c:handle_event/3`
   callback, for example:
 
       def handle_event("inc_temperature", _value, socket) do
@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView do
   ## Compartmentalizing markup and events with `render`, `live_render`, and `live_component`
 
   We can render another template directly from a LiveView template by simply
-  calling `render`:
+  calling `Phoenix.View.render/3`:
 
       render SomeView, "child_template.html", assigns
 
@@ -302,8 +302,9 @@ defmodule Phoenix.LiveView do
   This means `render` is useful for sharing markup between views.
 
   If you want to start a separate LiveView from within a LiveView, then you
-  can call `live_render/3` instead of `render/3`. This child LiveView runs
-  in a separate process than the parent, with its own `mount` and `handle_event`
+  can call [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`) instead of
+  [`render/3`](`Phoenix.View.render/3`). This child LiveView runs
+  in a separate process than the parent, with its own `c:mount/3` and `c:handle_event/3`
   callbacks. If a child LiveView crashes, it won't affect the parent. If the
   parent crashes, all children are terminated.
 
@@ -320,11 +321,11 @@ defmodule Phoenix.LiveView do
   showing a table with all users in the system, and you want to compartmentalize
   this logic, rendering a separate `LiveView` for each user, then using a process
   per user would likely be too expensive. For these cases, LiveView provides
-  `Phoenix.LiveComponent`, which are rendered using `live_component/3`:
+  `Phoenix.LiveComponent`, which are rendered using [`live_component/3`](`Phoenix.LiveView.Helpers.live_render/3`):
 
       <%= live_component(@socket, UserComponent, id: user.id, user: user) %>
 
-  Components have their own `mount` and `handle_event` callbacks, as well as their
+  Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as well as their
   own state with change tracking support. Components are also lightweight as they
   "run" in the same process as the parent `LiveView`. However, this means an error
   in a component would cause the whole view to fail to render. See `Phoenix.LiveComponent`
@@ -332,9 +333,9 @@ defmodule Phoenix.LiveView do
 
   To sum it up:
 
-    * `render` - compartmentalizes markup
-    * `live_component` - compartmentalizes state, markup, and events
-    * `live_render` - compartmentalizes state, markup, events, and error isolation
+    * [`render/3`](`Phoenix.View.render/3`) - compartmentalizes markup
+    * [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) - compartmentalizes state, markup, and events
+    * [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`) - compartmentalizes state, markup, events, and error isolation
 
   ## Endpoint configuration
 
@@ -386,7 +387,7 @@ defmodule Phoenix.LiveView do
   For each LiveView in the root of a template, `c:mount/3` is invoked twice:
   once to do the initial page load and again to establish the live socket.
 
-  It expects three parameters:
+  It expects three arguments:
 
     * `params` - a map of string keys which contain public information that
       can be set by the user. The map contains the query params as well as any
@@ -543,7 +544,7 @@ defmodule Phoenix.LiveView do
   will be available for reference via `assign_new/3`, allowing assigns to
   be shared for the initial HTTP request. The `Plug.Conn` assigns will not be
   available during the connected mount. Likewise, nested LiveView children have
-  access to their parent's assigns on mount using `assign_new`, which allows
+  access to their parent's assigns on mount using `assign_new/3`, which allows
   assigns to be shared down the nested LiveView tree.
 
   ## Examples
@@ -972,13 +973,13 @@ defmodule Phoenix.LiveView do
 
   The following params have special meaning in LiveView:
 
-    * "_csrf_token" - the CSRF Token which must be explicitly set by the user
+    * `"_csrf_token"` - the CSRF Token which must be explicitly set by the user
       when connecting
-    * "_mounts" - the number of times the current LiveView is mounted.
+    * `"_mounts"` - the number of times the current LiveView is mounted.
       It is 0 on first mount, then increases on each reconnect. It resets
       when navigating away from the current LiveView or on errors
-    * "_track_static" - set automatically with a list of all href/src from
-      tags with the "phx-track-static" annotation in them. If there are no
+    * `"_track_static"` - set automatically with a list of all href/src from
+      tags with the `phx-track-static` annotation in them. If there are no
       such tags, nothing is sent
 
   ## Examples
@@ -1130,7 +1131,7 @@ defmodule Phoenix.LiveView do
   mounted within the current LiveView.
 
   If this call is executed from a process which is not a LiveView
-  nor a LiveComponent, the `pid` parameter has to be specified.
+  nor a LiveComponent, the `pid` argument has to be specified.
 
   When the component receives the update, the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) callback is invoked, then
@@ -1140,7 +1141,7 @@ defmodule Phoenix.LiveView do
 
   While a component may always be updated from the parent by updating some
   parent assigns which will re-render the child, thus invoking
-  [`update/3`](`c:Phoenix.LiveComponent.update/3`) on the child component,
+  [`update/2`](`c:Phoenix.LiveComponent.update/2`) on the child component,
   `send_update/3` is useful for updating a component that entirely manages its
   own state, as well as messaging between components mounted in the same
   LiveView.
