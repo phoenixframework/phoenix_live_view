@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
+  alias Phoenix.HTML
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LiveInComponent}
@@ -375,6 +376,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
                    fn ->
                      live(conn, "/assigns-not-in-socket")
                    end
+    end
+
+    @tag session: %{nest: [], users: [%{name: "Annette O'Connor", email: "anne@email.com"}]}
+    test "live render with correct escaping", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/thermo")
+      assert html =~ "The temp is: 1"
+      assert html =~ "O'Connor" |> HTML.html_escape() |> HTML.safe_to_string()
     end
   end
 

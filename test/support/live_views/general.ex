@@ -8,7 +8,8 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     Redirect: <%= @redirect %>
     The temp is: <%= @val %><%= @greeting %>
     <button phx-click="dec">-</button>
-    <button phx-click="inc">+</button><%= if @nest do %>
+    <button phx-click="inc">+</button>
+    <%= if @nest do %>
       <%= live_render(@socket, ClockLive, [id: :clock] ++ @nest) %>
       <%= for user <- @users do %>
         <i><%= user.name %> <%= user.email %></i>
