@@ -2535,7 +2535,7 @@ export class View {
         el.removeAttribute(PHX_READONLY)
       }
       if(el.getAttribute(PHX_DISABLED) !== null){
-        el.disabled = false
+        el.disabled = el.getAttribute(PHX_DISABLED)
         el.removeAttribute(PHX_DISABLED)
       }
       // remove classes

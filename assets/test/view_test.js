@@ -1070,7 +1070,7 @@ describe("View + Component", function() {
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching...">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." disabled="">Searching...</button>
         </form>
       `.trim())
     })
