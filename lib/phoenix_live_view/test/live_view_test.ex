@@ -1324,13 +1324,15 @@ defmodule Phoenix.LiveViewTest do
 
   Your test case can assert the uploaded content:
 
-      avatar = file_input(lv, "my-form-id", :avatar, %{
-        last_modified: 1_594_171_879_000,
-        name: "myfile.jpeg",
-        content: File.read!("myfile.jpg"),
-        size: 1_396_009,
-        type: "image/jpeg"
-      })
+      avatar = file_input(lv, "#my-form-id", :avatar, [
+        %{
+          last_modified: 1_594_171_879_000,
+          name: "myfile.jpeg",
+          content: File.read!("myfile.jpg"),
+          size: 1_396_009,
+          type: "image/jpeg"
+        }
+      ])
 
       assert render_upload(avatar, "foo.jpeg") =~ "100%"
 
