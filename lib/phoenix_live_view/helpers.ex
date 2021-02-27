@@ -208,7 +208,7 @@ defmodule Phoenix.LiveView.Helpers do
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
   # TODO: Deprecate the socket as argument
-  defmacro live_component(_socket, component, assigns \\ [], do_block \\ []) do
+  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
     {do_block, assigns} =
       case {do_block, assigns} do
         {[do: do_block], _} -> {do_block, assigns}
@@ -219,6 +219,9 @@ defmodule Phoenix.LiveView.Helpers do
     {assigns, inner_block} = rewrite_do(do_block, assigns, __CALLER__)
 
     quote do
+      # Fixes unused variable compilation warning
+      _ = unquote(socket)
+
       Phoenix.LiveView.Helpers.__live_component__(
         unquote(component).__live__(),
         unquote(assigns),
