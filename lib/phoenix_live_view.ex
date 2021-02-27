@@ -144,21 +144,14 @@ defmodule Phoenix.LiveView do
   you must pass `layout: {MyAppWeb.LayoutView, "app.html"}` as an
   option to the `Phoenix.LiveView.Router.live/3` macro above.
 
-  Alternatively, you can render your view from any template with `Phoenix.LiveView.Helpers.live_render/3`:
+  Alternatively, you can `live_render` from any template. In your view:
+
+      import Phoenix.LiveView.Helpers
+
+  Then in your template:
 
       <h1>Temperature Control</h1>
       <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
-
-  Or you can render your view from any controller with `Phoenix.LiveView.Controller.live_render/3`:
-
-      defmodule MyAppWeb.ThermostatController do
-        ...
-        import Phoenix.LiveView.Controller
-
-        def show(conn, %{"id" => id}) do
-          live_render(conn, MyAppWeb.ThermostatLive)
-        end
-      end
 
   When a LiveView is rendered, all of the data currently stored in the
   connection session (see `Plug.Conn.get_session/1`) will be given to

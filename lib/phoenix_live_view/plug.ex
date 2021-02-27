@@ -1,8 +1,6 @@
 defmodule Phoenix.LiveView.Plug do
   @moduledoc false
 
-  alias Phoenix.LiveView.Controller
-
   @behaviour Plug
 
   @link_header "x-requested-with"
@@ -29,7 +27,7 @@ defmodule Phoenix.LiveView.Plug do
       conn
       |> Phoenix.Controller.put_layout(false)
       |> put_root_layout_from_router(opts)
-      |> Controller.live_render(view, opts)
+      |> Phoenix.LiveView.Controller.live_render(view, opts)
     end
   end
 

@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Controller do
   @moduledoc """
-  The Controller for LiveView rendering.
+  Helpers for rendering LiveViews from a controller.
   """
 
   alias Phoenix.LiveView
