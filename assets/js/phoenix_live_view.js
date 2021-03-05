@@ -2758,16 +2758,8 @@ export class View {
       return this.scheduleSubmit(formEl, ref, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator()
-      let proxyRefGen = () => [ref, els]
-      this.uploadFiles(formEl, targetCtx, ref, cid, (uploads) => {
-        let formData = serializeForm(formEl, {})
-        this.pushWithReply(proxyRefGen, "event", {
-          type: "form",
-          event: phxEvent,
-          value: formData,
-          cid: cid
-        }, onReply)
-      })
+      this.scheduleSubmit(formEl, ref, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
+      this.uploadFiles(formEl, targetCtx, ref, cid, () => this.triggerAwaitingSubmit(formEl))
     } else {
       let formData = serializeForm(formEl)
       this.pushWithReply(refGenerator, "event", {
