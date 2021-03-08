@@ -150,14 +150,14 @@ However, if you're adding `phoenix_live_view` to an umbrella project, the depend
 Then install the new NPM dependency:
 
 ```bash
-npm install --prefix assets
+cd assets && npm install
 ```
 
 If you had previously installed `phoenix_live_view` and want to get the
 latest javascript, then force an install with:
 
 ```bash
-npm install --force phoenix_live_view --prefix assets
+cd assets && npm install --force phoenix_live_view
 ```
 
 Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/root.html.leex`), before `app.js` is included like so:
@@ -294,7 +294,7 @@ If you want to show a progress bar as users perform live actions, we recommend u
 First add `topbar` as a dependency:
 
 ```console
-$ npm install --prefix assets --save topbar
+$ cd assets && npm install --save topbar
 ```
 
 Then customize LiveView to use it in your `assets/js/app.js`, right before the `liveSocket.connect()` call:
