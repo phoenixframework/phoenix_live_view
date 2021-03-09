@@ -1133,11 +1133,11 @@ defmodule Phoenix.LiveView do
   If this call is executed from a process which is not a LiveView
   nor a LiveComponent, the `pid` argument has to be specified.
 
-  When the component receives the update, the optional
-  [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) callback is invoked, then
-  the updated values are merged with the component's assigns and
-  [`update/2`](`c:Phoenix.LiveComponent.update/2`) is called for the updated
-  component(s).
+  When the component receives the update, first the optional
+  [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) then
+  [`update/2`](`c:Phoenix.LiveComponent.update/2`) is invoked with the new assigns.
+  If [`update/2`](`c:Phoenix.LiveComponent.update/2`) is not defined
+  all assigns are simply merged into the socket.
 
   While a component may always be updated from the parent by updating some
   parent assigns which will re-render the child, thus invoking
