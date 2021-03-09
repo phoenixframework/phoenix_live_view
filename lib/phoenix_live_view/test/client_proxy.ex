@@ -259,7 +259,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cid} <- maybe_cid(root, node) do
+               {:ok, cid} <- __maybe_cid__(root, node) do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
@@ -778,11 +778,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, root}
   end
 
-  defp maybe_cid(_tree, nil) do
+  def __maybe_cid__(_tree, nil) do
     {:ok, nil}
   end
 
-  defp maybe_cid(tree, node) do
+  def __maybe_cid__(tree, node) do
     case DOM.all_attributes(node, "phx-target") do
       [] ->
         {:ok, nil}
