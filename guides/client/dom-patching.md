@@ -23,6 +23,10 @@ with another JS library. The "append" and "prepend" feature is often
 used with "Temporary assigns" to work with large amounts of data. Let's
 learn more.
 
+*Note*: "ignore" behaviour ignores changes to content of the element.
+If your JS library changes attributes of the element (e.g. adds classes)
+, you should add another element inside "ignore"d element and use that one.
+
 ## Temporary assigns
 
 By default, all LiveView assigns are stateful, which enables change
