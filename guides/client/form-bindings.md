@@ -210,6 +210,18 @@ above, which would wire up to the following server callbacks in your LiveView:
 
 To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
+### Recovery within components
+
+Form recovery within components is only supported when the component is statically added
+(i.e. it is present after mounting is completed).  Recovery is not supported within dynamically
+added components.  For example, components that may be shown conditionally using an
+`<%= if ... do>` statement.
+
+For dyanmically added components, there are two options for auto-recovery:
+
+- Convert the component to be statically added and have the component handle a hidden state
+- Backup your form values to the database and restore on mount
+
 ## JavaScript client specifics
 
 The JavaScript client is always the source of truth for current input values.
