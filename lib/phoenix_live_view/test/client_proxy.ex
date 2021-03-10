@@ -259,54 +259,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cid} <- maybe_cid(root, node) do
+               {:ok, cids} <- maybe_cids(root, node) do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
                 other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
               end
 
-            {view, cid, event, values, uploads}
+            {view, cids, event, values, uploads}
           end
       end
 
-    case result do
-      {view, cid, event, values, upload} ->
-        {type, encoded_value} = encode_event_type(type, values)
-
-        payload =
-          maybe_put_uploads(
-            state,
-            view,
-            %{
-              "cid" => cid,
-              "type" => type,
-              "event" => event,
-              "value" => encoded_value
-            },
-            upload
-          )
-
-        {:noreply, push_with_reply(state, from, view, "event", payload)}
-
-      {:allow_upload, topic, ref} ->
-        handle_call({:render_allow_upload, topic, ref, value}, from, state)
-
-      {:upload_progress, topic, upload_ref} ->
-        payload = Map.put(value, "ref", upload_ref)
-        view = fetch_view_by_topic!(state, topic)
-        {:noreply, push_with_reply(state, from, view, "progress", payload)}
-
-      {:patch, topic, path} ->
-        handle_call({:render_patch, topic, path}, from, state)
-
-      {:stop, topic, reason} ->
-        stop_redirect(state, topic, reason)
-
-      {:error, _, message} ->
-        GenServer.reply(from, {:raise, ArgumentError.exception(message)})
-        {:noreply, state}
-    end
+    reply_to_render_event(result, state, type, value, from)
   end
 
   def handle_info(
@@ -448,6 +412,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, new_state}
   end
 
+  defp build_upload_params(cid, type, event, encoded_value) do
+    %{
+      "cid" => cid,
+      "type" => type,
+      "event" => event,
+      "value" => encoded_value
+    }
+  end
+
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
     push(state, view, "phx_leave", %{})
@@ -582,6 +555,62 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp reply_to_render_event({view, cids, event, values, upload}, state, type, value, from)
+       when is_list(cids) do
+    [replier | cids] = cids
+    {encoded_type, encoded_value} = encode_event_type(type, values)
+
+    updated_state =
+      Enum.reduce(cids, state, fn cid, acc ->
+        upload_params = build_upload_params(cid, encoded_type, event, encoded_value)
+        payload = maybe_put_uploads(acc, view, upload_params, upload)
+
+        push_with_callback(acc, view, "event", payload, fn _reply, state ->
+          {:noreply, state}
+        end)
+      end)
+
+    reply_to_render_event(
+      {view, replier, event, values, upload},
+      updated_state,
+      type,
+      value,
+      from
+    )
+  end
+
+  defp reply_to_render_event({view, cid, event, values, upload}, state, type, _, from) do
+    {type, encoded_value} = encode_event_type(type, values)
+
+    upload_params = build_upload_params(cid, type, event, encoded_value)
+    payload = maybe_put_uploads(state, view, upload_params, upload)
+
+    {:noreply, push_with_reply(state, from, view, "event", payload)}
+  end
+
+  defp reply_to_render_event({:allow_upload, topic, ref}, state, _, value, from) do
+    handle_call({:render_allow_upload, topic, ref, value}, from, state)
+  end
+
+  defp reply_to_render_event({:upload_progress, topic, upload_ref}, state, _, value, from) do
+    payload = Map.put(value, "ref", upload_ref)
+    view = fetch_view_by_topic!(state, topic)
+    {:noreply, push_with_reply(state, from, view, "progress", payload)}
+  end
+
+  defp reply_to_render_event({:patch, topic, path}, state, _, _, from) do
+    handle_call({:render_patch, topic, path}, from, state)
+  end
+
+  defp reply_to_render_event({:stop, topic, reason}, state, _, _, _) do
+    stop_redirect(state, topic, reason)
+  end
+
+  defp reply_to_render_event({:error, _, message}, state, _, _, from) do
+    GenServer.reply(from, {:raise, ArgumentError.exception(message)})
+    {:noreply, state}
+  end
+
   defp merge_rendered(state, topic, %{diff: diff}), do: merge_rendered(state, topic, diff)
 
   defp merge_rendered(%{html: html_before} = state, topic, %{} = diff) do
@@ -677,6 +706,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp handle_reply(state, reply) do
     %{payload: payload, topic: topic} = reply
+
     new_state =
       case payload do
         %{diff: diff} -> merge_rendered(state, topic, diff)
@@ -778,32 +808,39 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, root}
   end
 
-  defp maybe_cid(_tree, nil) do
+  defp maybe_cid(element) do
+    if cid = DOM.component_id(element) do
+      String.to_integer(cid)
+    else
+      nil
+    end
+  end
+
+  defp maybe_cids(_tree, nil) do
     {:ok, nil}
   end
 
-  defp maybe_cid(tree, node) do
+  defp maybe_cids(tree, node) do
     case DOM.all_attributes(node, "phx-target") do
       [] ->
         {:ok, nil}
 
-      ["#" <> _ = target] ->
-        with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
-          if cid = DOM.component_id(target) do
-            {:ok, String.to_integer(cid)}
-          else
-            {:ok, nil}
-          end
-        end
-
-      [maybe_integer] ->
-        case Integer.parse(maybe_integer) do
+      [selector] ->
+        case Integer.parse(selector) do
           {cid, ""} ->
             {:ok, cid}
 
           _ ->
-            {:error, :invalid,
-             "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
+            case DOM.all(tree, selector) do
+              [] ->
+                {:ok, nil}
+
+              [el] ->
+                {:ok, maybe_cid(el)}
+
+              elements ->
+                {:ok, Enum.reduce(elements, [], fn el, acc -> [maybe_cid(el) | acc] end)}
+            end
         end
     end
   end

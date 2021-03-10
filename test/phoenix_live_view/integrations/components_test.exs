@@ -183,6 +183,45 @@ defmodule Phoenix.LiveView.ComponentTest do
                "<div data-phx-component=\"3\" id=\"Jose-dup\" phx-target=\"#Jose-dup\" phx-click=\"transform\">\n  JOSE-DUP says hi\n  \n</div>"
     end
 
+    test "works with multiple phx-targets", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/multi-targets")
+
+      html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
+
+      assert [
+               {"div", _,
+                 [
+                   "\n  Parent was updated\n" <> _,
+                   {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                     ["\n  CHRIS says hi\n" <> _]},
+                   {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                     ["\n  jose says hi\n" <> _]}
+                 ]
+               }
+             ] = DOM.parse(html)
+    end
+
+    test "phx-target works with non id selector", %{conn: conn} do
+      {:ok, view, _html} =
+        conn
+        |> Plug.Conn.put_session(:parent_selector, ".parent")
+        |> live("/multi-targets")
+
+      html = view |> element("#chris") |> render_click(%{"op" => "upcase"})
+
+      assert [
+               {"div", _,
+                 [
+                   "\n  Parent was updated\n" <> _,
+                   {"div", [{"data-phx-component", "1"}, {"id", "chris"} | _],
+                     ["\n  CHRIS says hi\n" <> _]},
+                   {"div", [{"data-phx-component", "2"}, {"id", "jose"} | _],
+                     ["\n  jose says hi\n" <> _]}
+                 ]
+               }
+             ] = DOM.parse(html)
+    end
+
     test "emits telemetry events when callback is successful", %{conn: conn} do
       attach_telemetry([:phoenix, :live_component, :handle_event])
       {:ok, view, _html} = live(conn, "/components")
