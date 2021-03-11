@@ -512,5 +512,28 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end) =~ "existing upload for avatar already allowed in another component"
       refute Process.alive?(lv.pid)
     end
+
+    @tag allow: [accept: :any]
+    test "get allowed uploads from the form's target cid", %{lv: lv} do
+      GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})
+      GenServer.call(lv.pid, {:setup, fn socket ->
+        run = fn component_socket ->
+          new_socket =
+            component_socket
+            |> Phoenix.LiveView.allow_upload(:avatar, accept: :any)
+            |> Phoenix.LiveView.allow_upload(:background, accept: :any)
+
+          {:reply, :ok, new_socket}
+        end
+        LiveView.send_update(Phoenix.LiveViewTest.UploadComponent, id: "upload1", run: {run, nil})
+        socket
+      end})
+
+      assert %Phoenix.LiveViewTest.Upload{} = file_input(lv, "#upload1", :background, build_entries(1))
+
+      assert_raise RuntimeError, "no uploads allowed for background", fn ->
+        file_input(lv, "#upload0", :background, build_entries(1))
+      end
+    end
   end
 end

@@ -979,8 +979,10 @@ defmodule Phoenix.LiveViewTest do
 
   def __find_cid__!(view, selector) do
     html_tree = view |> render() |> DOM.parse()
-    case DOM.maybe_one(html_tree, selector) do
-      {:ok, form} -> if str = DOM.component_id(form), do: String.to_integer(str)
+    with {:ok, form} <- DOM.maybe_one(html_tree, selector),
+         {:ok, cid} <- ClientProxy.__maybe_cid__(html_tree, form) do
+      cid
+    else
       {:error, _reason, msg} -> raise ArgumentError, msg
     end
   end
