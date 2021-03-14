@@ -1312,7 +1312,7 @@ defmodule Phoenix.LiveViewTest do
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   @doc """
-  Peforms an upload of a file input and renders the result.
+  Performs an upload of a file input and renders the result.
 
   See `file_input/4` for details on building a file input.
 
