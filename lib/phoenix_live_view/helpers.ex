@@ -379,8 +379,18 @@ defmodule Phoenix.LiveView.Helpers do
 
   The following errors may be returned:
 
-    * `:too_large` - The entry exceeds the `:max_file_size` constraint
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+  """
+  def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
+    for {ref, error} <- conf.errors, ref == conf.ref, do: error
+  end
+
+  @doc """
+  Returns the entry errors for an upload.
+
+  The following errors may be returned:
+
+    * `:too_large` - The entry exceeds the `:max_file_size` constraint
     * `:not_accepted` - The entry does not match the `:accept` MIME types
 
   ## Examples
