@@ -310,4 +310,4 @@ window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 
 ## Location for LiveView modules
 
-By convention your LiveView modules and `leex` templates should be placed in `lib/my_web_app/live/` directory.
+By convention your LiveView modules and `leex` templates should be placed in `lib/my_app_web/live/` directory.
