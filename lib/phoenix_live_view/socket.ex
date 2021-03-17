@@ -44,7 +44,12 @@ defmodule Phoenix.LiveView.Socket do
             host_uri: nil,
             connected?: false
 
-  @type assigns :: map | Phoenix.LiveView.Socket.AssignsNotInSocket.t()
+  @typedoc "Struct returned when `assigns` is not in the socket."
+  @opaque assigns_not_in_socket :: Phoenix.LiveView.Socket.AssignsNotInSocket.t()
+
+  @typedoc "The data in a LiveView as stored in the socket."
+  @type assigns :: map | assigns_not_in_socket()
+
   @type fingerprints :: {nil, map} | {binary, map}
 
   @type t :: %__MODULE__{
