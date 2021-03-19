@@ -17,6 +17,11 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
+  @spec parse(binary) :: [
+          {:comment, binary}
+          | {:pi | binary, binary | list, list}
+          | {:doctype, binary, binary, binary}
+        ]
   def parse(html) do
     {:ok, parsed} = Floki.parse_document(html)
     parsed
@@ -84,20 +89,20 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def attrs({_, attrs, _}), do: attrs
 
-  def inner_html!(html, id), do: html |> by_id!(id) |> child_nodes()
+  def inner_html!(html_tree, id), do: html_tree |> by_id!(id) |> child_nodes()
 
   def component_id(html_tree), do: Floki.attribute(html_tree, @phx_component) |> List.first()
 
-  def find_static_views(html) do
-    html
+  def find_static_views(html_tree) do
+    html_tree
     |> all("[#{@phx_static}]")
     |> Enum.into(%{}, fn node ->
       {attribute(node, "id"), attribute(node, @phx_static)}
     end)
   end
 
-  def find_live_views(html) do
-    html
+  def find_live_views(html_tree) do
+    html_tree
     |> all("[data-phx-session]")
     |> Enum.reduce([], fn node, acc ->
       id = attribute(node, "id")
@@ -205,16 +210,16 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   # Patching
 
-  def patch_id(id, html, inner_html) do
-    cids_before = component_ids(id, html)
+  def patch_id(id, html_tree, inner_html) do
+    cids_before = component_ids(id, html_tree)
 
     phx_update_tree =
       walk(inner_html, fn node ->
-        apply_phx_update(attribute(node, "phx-update"), html, node)
+        apply_phx_update(attribute(node, "phx-update"), html_tree, node)
       end)
 
     new_html =
-      walk(html, fn {tag, attrs, children} = node ->
+      walk(html_tree, fn {tag, attrs, children} = node ->
         if attribute(node, "id") == id do
           {tag, attrs, phx_update_tree}
         else
@@ -226,8 +231,8 @@ defmodule Phoenix.LiveViewTest.DOM do
     {new_html, cids_before -- cids_after}
   end
 
-  def component_ids(id, html) do
-    by_id!(html, id)
+  def component_ids(id, html_tree) do
+    by_id!(html_tree, id)
     |> Floki.children()
     |> Enum.reduce([], &traverse_component_ids/2)
   end
@@ -252,11 +257,11 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  defp apply_phx_update(type, html, {tag, attrs, appended_children} = node)
+  defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node)
        when type in ["append", "prepend"] do
     id = attribute(node, "id")
     verify_phx_update_id!(type, id, node)
-    children_before = apply_phx_update_children(html, id)
+    children_before = apply_phx_update_children(html_tree, id)
     existing_ids = apply_phx_update_children_id(type, children_before)
     new_ids = apply_phx_update_children_id(type, appended_children)
     content_changed? = new_ids != existing_ids
@@ -322,8 +327,8 @@ defmodule Phoenix.LiveViewTest.DOM do
     :ok
   end
 
-  defp apply_phx_update_children(html, id) do
-    case by_id(html, id) do
+  defp apply_phx_update_children(html_tree, id) do
+    case by_id(html_tree, id) do
       {_, _, children_before} -> children_before
       nil -> []
     end
