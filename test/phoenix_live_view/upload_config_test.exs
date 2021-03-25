@@ -113,6 +113,20 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert conf.acceptable_exts == MapSet.new([".gif"])
     end
 
+    test "raises when invalid :max_entries provided" do
+      assert_raise ArgumentError, ~r/invalid :max_entries value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: -1)
+      end
+
+      assert_raise ArgumentError, ~r/invalid :max_entries value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 0)
+      end
+
+      assert_raise ArgumentError, ~r/invalid :max_entries value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: "bad")
+      end
+    end
+
     test "raises when invalid :max_file_size provided" do
       assert_raise ArgumentError, ~r/invalid :max_file_size value provided/, fn ->
         LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: -1)
