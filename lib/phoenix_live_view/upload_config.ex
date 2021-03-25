@@ -52,6 +52,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   alias Phoenix.LiveView.UploadConfig
   alias Phoenix.LiveView.UploadEntry
 
+  @default_max_entries 1
   @default_max_file_size 8_000_000
   @default_chunk_size 64_000
   @default_chunk_timeout 10_000
@@ -79,7 +80,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   defstruct name: nil,
             cid: :unregistered,
             client_key: nil,
-            max_entries: 1,
+            max_entries: @default_max_entries,
             max_file_size: @default_max_file_size,
             chunk_size: @default_chunk_size,
             chunk_timeout: @default_chunk_timeout,
@@ -179,6 +180,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           false
       end
 
+    max_entries =
+      case Keyword.fetch(opts, :max_entries) do
+        {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
+          pos_integer
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :max_entries value provided to allow_upload.
+
+          Only a positive integer is supported (Defaults to #{@default_max_entries}). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_max_entries
+      end
+
     max_file_size =
       case Keyword.fetch(opts, :max_file_size) do
         {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
@@ -256,7 +275,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     %UploadConfig{
       ref: random_ref,
       name: name,
-      max_entries: opts[:max_entries] || 1,
+      max_entries: max_entries,
       max_file_size: max_file_size,
       entry_refs_to_pids: %{},
       entry_refs_to_metas: %{},
