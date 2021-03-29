@@ -372,7 +372,7 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.Socket
 
-  @type unsigned_params :: map
+  @type unsigned_params :: map | binary
 
   @doc """
   The LiveView entry-point.
