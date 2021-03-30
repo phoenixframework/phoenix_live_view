@@ -179,8 +179,7 @@ defmodule Phoenix.LiveViewTest.DOM do
               {deep_merge(res, Map.delete(cdiff, @static)), cache}
 
             %{@static => cid} when is_integer(cid) and cid < 0 ->
-              {res, cache} = find_component(cid, old[-cid], old, new, cache)
-              {deep_merge(res, Map.delete(cdiff, @static)), cache}
+              {deep_merge(old[-cid], Map.delete(cdiff, @static)), cache}
 
             %{} ->
               {deep_merge(Map.get(old, cid, %{}), cdiff), cache}

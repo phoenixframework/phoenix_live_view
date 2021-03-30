@@ -468,6 +468,7 @@ export class Rendered {
 
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
+    let cache = {}
     delete diff[COMPONENTS]
     this.rendered = this.recursiveMerge(this.rendered, diff)
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
@@ -476,35 +477,38 @@ export class Rendered {
       let oldc = this.rendered[COMPONENTS]
 
       for(let cid in newc){
-        let cdiff = newc[cid]
-        let component = cdiff
-        let stat = component[STATIC]
-        if(typeof(stat) === "number"){
-          while(typeof(stat) === "number"){
-            component = stat > 0 ? newc[stat] : oldc[-stat]
-            stat = component[STATIC]
-          }
-          // We need to clone because multiple components may point
-          // to the same shared component, and since recursive merge
-          // is destructive, we need to keep the original intact.
-          //
-          // Then we do a direct recursive merge because we always
-          // want to merge the first level, even if cdiff[STATIC]
-          // is not undefined. We put the proper static in place after
-          // merge.
-          //
-          // The test suite covers those corner cases.
-          component = clone(component)
-          this.doRecursiveMerge(component, cdiff)
-          component[STATIC] = stat
-        } else {
-          component = oldc[cid] || {}
-          component = this.recursiveMerge(component, cdiff)
-        }
-        newc[cid] = component
+        newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache)
       }
+
       for (var key in newc) { oldc[key] = newc[key] }
       diff[COMPONENTS] = newc
+    }
+  }
+
+  cachedFindComponent(cid, cdiff, oldc, newc, cache) {
+    // TODO: We are deep cloning but there is no need to
+    // clone only objects and do so recursively
+    if(cache[cid]) {
+      return cache[cid]
+    } else {
+      let ndiff, stat, scid = cdiff[STATIC]
+
+      if(typeof(scid) === "number") {
+        if(scid > 0) {
+          ndiff = clone(this.cachedFindComponent(scid, newc[scid], oldc, newc, cache))
+        } else {
+          ndiff = clone(oldc[-scid])
+        }
+
+        stat = ndiff[STATIC]
+        this.doRecursiveMerge(ndiff, cdiff)
+        ndiff[STATIC] = stat
+      } else {
+        ndiff = this.recursiveMerge(clone(oldc[cid] || {}), cdiff)
+      }
+
+      cache[cid] = ndiff
+      return ndiff
     }
   }
 
