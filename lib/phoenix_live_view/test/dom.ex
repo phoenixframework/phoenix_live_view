@@ -154,18 +154,10 @@ defmodule Phoenix.LiveViewTest.DOM do
     if new do
       old = Map.get(rendered, @components, %{})
 
-      acc =
-        Enum.reduce(new, old, fn {cid, cdiff}, acc ->
-          value =
-            case cdiff do
-              %{@static => pointer} when is_integer(pointer) ->
-                deep_merge(find_component(cdiff, old, new), Map.delete(cdiff, @static))
-
-              %{} ->
-                deep_merge(Map.get(old, cid, %{}), cdiff)
-            end
-
-          Map.put(acc, cid, value)
+      {acc, _} =
+        Enum.reduce(new, {old, %{}}, fn {cid, cdiff}, {acc, cache} ->
+          {value, cache} = find_component(cid, cdiff, old, new, cache)
+          {Map.put(acc, cid, value), cache}
         end)
 
       Map.put(rendered, @components, acc)
@@ -174,14 +166,29 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  defp find_component(%{@static => cid}, old, new) when is_integer(cid) and cid > 0,
-    do: find_component(new[cid], old, new)
+  defp find_component(cid, cdiff, old, new, cache) do
+    case cache do
+      %{^cid => cached} ->
+        {cached, cache}
 
-  defp find_component(%{@static => cid}, old, new) when is_integer(cid) and cid < 0,
-    do: find_component(old[-cid], old, new)
+      %{} ->
+        {res, cache} =
+          case cdiff do
+            %{@static => cid} when is_integer(cid) and cid > 0 ->
+              {res, cache} = find_component(cid, new[cid], old, new, cache)
+              {deep_merge(res, Map.delete(cdiff, @static)), cache}
 
-  defp find_component(%{} = component, _old, _new),
-    do: component
+            %{@static => cid} when is_integer(cid) and cid < 0 ->
+              {res, cache} = find_component(cid, old[-cid], old, new, cache)
+              {deep_merge(res, Map.delete(cdiff, @static)), cache}
+
+            %{} ->
+              {deep_merge(Map.get(old, cid, %{}), cdiff), cache}
+          end
+
+        {res, Map.put(cache, cid, res)}
+    end
+  end
 
   def drop_cids(rendered, cids) do
     update_in(rendered[@components], &Map.drop(&1, cids))
