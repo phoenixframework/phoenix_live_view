@@ -470,7 +470,7 @@ export class Rendered {
     let newc = diff[COMPONENTS]
     let cache = {}
     delete diff[COMPONENTS]
-    this.rendered = this.recursiveMerge(this.rendered, diff)
+    this.rendered = this.mutableMerge(this.rendered, diff)
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
 
     if(newc){
@@ -486,25 +486,25 @@ export class Rendered {
   }
 
   cachedFindComponent(cid, cdiff, oldc, newc, cache) {
-    // TODO: We are deep cloning but there is no need to
-    // clone only objects and do so recursively
     if(cache[cid]) {
       return cache[cid]
     } else {
       let ndiff, stat, scid = cdiff[STATIC]
 
       if(typeof(scid) === "number") {
+        let tdiff
+
         if(scid > 0) {
-          ndiff = clone(this.cachedFindComponent(scid, newc[scid], oldc, newc, cache))
+          tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache)
         } else {
-          ndiff = clone(oldc[-scid])
+          tdiff = oldc[-scid]
         }
 
-        stat = ndiff[STATIC]
-        this.doRecursiveMerge(ndiff, cdiff)
+        stat = tdiff[STATIC]
+        ndiff = this.cloneMerge(tdiff, cdiff)
         ndiff[STATIC] = stat
       } else {
-        ndiff = this.recursiveMerge(clone(oldc[cid] || {}), cdiff)
+        ndiff = cdiff[STATIC] !== undefined ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff)
       }
 
       cache[cid] = ndiff
@@ -512,25 +512,37 @@ export class Rendered {
     }
   }
 
-  recursiveMerge(target, source){
+  mutableMerge(target, source){
     if(source[STATIC] !== undefined){
       return source
     } else {
-      this.doRecursiveMerge(target, source)
+      this.doMutableMerge(target, source)
       return target
     }
   }
 
-  doRecursiveMerge(target, source){
+  doMutableMerge(target, source){
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
-        this.doRecursiveMerge(targetVal, val)
+        this.doMutableMerge(targetVal, val)
       } else {
         target[key] = val
       }
     }
+  }
+
+  cloneMerge(target, source){
+    let merged = {...target, ...source}
+    for(let key in merged){
+      let val = source[key]
+      let targetVal = target[key]
+      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+        merged[key] = this.cloneMerge(targetVal, val)
+      }
+    }
+    return merged
   }
 
   componentToString(cid){ return this.recursiveCIDToString(this.rendered[COMPONENTS], cid) }
