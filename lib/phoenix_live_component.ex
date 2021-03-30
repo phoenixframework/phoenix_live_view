@@ -348,7 +348,7 @@ defmodule Phoenix.LiveComponent do
   The internal infrastructure LiveView uses to keep track of stateful
   components is very lightweight. However, be aware that in order to
   provide change tracking and to send diffs over the wire, all of the
-  components assigns are kept in memory - exactly as it is done in
+  components' assigns are kept in memory - exactly as it is done in
   LiveViews themselves.
 
   Therefore it is your responsibility to keep only the assigns necessary
