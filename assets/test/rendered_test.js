@@ -65,14 +65,34 @@ describe("Rendered", () => {
         }
       }
 
-      let rendered = new Rendered("123", diff1)
-      rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({ [COMPONENTS]: {
+      let rendered1 = new Rendered("123", diff1)
+      rendered1.mergeDiff(diff2)
+      expect(rendered1.get()).toEqual({ [COMPONENTS]: {
         1: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["new"] },
         2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["old"] },
         3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["new"] },
         4: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] },
         5: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["new"] },
+      } })
+
+      const diff3 = {
+        [COMPONENTS]: {
+          1: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
+          2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: -1 },
+          3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: 1 },
+          4: { [STATIC]: -1 },
+          5: { [STATIC]: 1 }
+        }
+      }
+
+      let rendered2 = new Rendered("123", diff1)
+      rendered2.mergeDiff(diff3)
+      expect(rendered2.get()).toEqual({ [COMPONENTS]: {
+        1: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
+        2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["old"] },
+        3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["new"] },
+        4: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] },
+        5: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
       } })
     })
 
