@@ -798,7 +798,9 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_safe(literal, _line, _extra_clauses?)
        when is_binary(literal) or is_atom(literal) or is_number(literal) do
-    Phoenix.HTML.Safe.to_iodata(literal)
+    literal
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
   end
 
   defp to_safe(literal, line, _extra_clauses?) when is_list(literal) do
