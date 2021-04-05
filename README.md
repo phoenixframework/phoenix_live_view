@@ -144,6 +144,7 @@ import "classlist-polyfill"
 import "@webcomponents/template"
 import "shim-keyboard-event-key"
 import "core-js/features/set"
+import "core-js/features/url"
 
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
