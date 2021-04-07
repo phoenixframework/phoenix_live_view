@@ -2095,6 +2095,10 @@ export class View {
   }
 
   withinTargets(phxTarget, callback){
+    if(phxTarget.nodeType) {
+      return this.liveSocket.owner(phxTarget, view => callback(view, target))
+    } 
+
     if(/^(0|[1-9]\d*)$/.test(phxTarget)){
       let targets = DOM.findComponentNodeList(this.el, phxTarget)
       if(targets.length === 0){
