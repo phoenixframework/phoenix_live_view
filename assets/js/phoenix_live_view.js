@@ -657,6 +657,7 @@ export class Rendered {
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
  * @param {Object} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+ * @param {Object} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
  * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
  * loading states.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:

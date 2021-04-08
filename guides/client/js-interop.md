@@ -19,6 +19,9 @@ except for the following LiveView specific options:
     the function receives the view's phx-view name.
   * `hooks` – a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the interop section below for details.
+  * `uploaders` – a reference to a user-defined uploaders namespace, containing client
+    callbacks for client-side direct-to-cloud uploads. See the
+    [External Uploads guide](uploads-external.md) for details.
 
 ## Debugging Client Events
 
