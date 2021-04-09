@@ -77,6 +77,10 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
+  It is recommended to have only a single root element in the HTML template
+  for stateful components. LiveView will emit warnings in future versions if
+  this is not the case.
+
   In stateful components, `c:mount/1` is called only once, when the
   component is first rendered. For each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
