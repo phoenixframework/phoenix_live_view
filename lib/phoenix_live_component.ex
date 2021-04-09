@@ -21,8 +21,6 @@ defmodule Phoenix.LiveComponent do
           \"""
         end
       end
-      
-  Currently, it is [recommended](https://github.com/phoenixframework/phoenix_live_view/issues/1398#issuecomment-816204233) to have only a single root element in the HTML template.
 
   When `use Phoenix.LiveComponent` is used, all functions in
   `Phoenix.LiveView` are imported. A component can be invoked as:
@@ -78,6 +76,10 @@ defmodule Phoenix.LiveComponent do
           \"""
         end
       end
+
+  It is recommended to have only a single root element in the HTML template
+  for stateful components. LiveView will emit warnings in future versions if
+  this is not the case.
 
   In stateful components, `c:mount/1` is called only once, when the
   component is first rendered. For each rendering, the optional
