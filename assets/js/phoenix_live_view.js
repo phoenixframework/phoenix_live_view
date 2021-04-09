@@ -2096,7 +2096,7 @@ export class View {
 
   withinTargets(phxTarget, callback){
     if(phxTarget.nodeType) {
-      return this.liveSocket.owner(phxTarget, view => callback(view, target))
+      return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
     } 
 
     if(/^(0|[1-9]\d*)$/.test(phxTarget)){
