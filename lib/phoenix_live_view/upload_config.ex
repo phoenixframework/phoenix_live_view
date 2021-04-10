@@ -407,7 +407,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   defp accept_option!(filter) when is_binary(filter) do
-    if MIME.valid?(filter) do
+    if MIME.extensions(filter) != [] do
       {filter, []}
     else
       raise ArgumentError, """
