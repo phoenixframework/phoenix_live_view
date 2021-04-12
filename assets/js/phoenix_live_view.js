@@ -2095,7 +2095,7 @@ export class View {
   }
 
   withinTargets(phxTarget, callback){
-    if(phxTarget.nodeType) {
+    if(phxTarget instanceof HTMLElement) {
       return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
     } 
 
