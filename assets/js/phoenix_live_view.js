@@ -468,65 +468,81 @@ export class Rendered {
 
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
+    let cache = {}
     delete diff[COMPONENTS]
-    this.rendered = this.recursiveMerge(this.rendered, diff)
+    this.rendered = this.mutableMerge(this.rendered, diff)
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
 
     if(newc){
       let oldc = this.rendered[COMPONENTS]
 
       for(let cid in newc){
-        let cdiff = newc[cid]
-        let component = cdiff
-        let stat = component[STATIC]
-        if(typeof(stat) === "number"){
-          while(typeof(stat) === "number"){
-            component = stat > 0 ? newc[stat] : oldc[-stat]
-            stat = component[STATIC]
-          }
-          // We need to clone because multiple components may point
-          // to the same shared component, and since recursive merge
-          // is destructive, we need to keep the original intact.
-          //
-          // Then we do a direct recursive merge because we always
-          // want to merge the first level, even if cdiff[STATIC]
-          // is not undefined. We put the proper static in place after
-          // merge.
-          //
-          // The test suite covers those corner cases.
-          component = clone(component)
-          this.doRecursiveMerge(component, cdiff)
-          component[STATIC] = stat
-        } else {
-          component = oldc[cid] || {}
-          component = this.recursiveMerge(component, cdiff)
-        }
-        newc[cid] = component
+        newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache)
       }
+
       for (var key in newc) { oldc[key] = newc[key] }
       diff[COMPONENTS] = newc
     }
   }
 
-  recursiveMerge(target, source){
+  cachedFindComponent(cid, cdiff, oldc, newc, cache) {
+    if(cache[cid]) {
+      return cache[cid]
+    } else {
+      let ndiff, stat, scid = cdiff[STATIC]
+
+      if(typeof(scid) === "number") {
+        let tdiff
+
+        if(scid > 0) {
+          tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache)
+        } else {
+          tdiff = oldc[-scid]
+        }
+
+        stat = tdiff[STATIC]
+        ndiff = this.cloneMerge(tdiff, cdiff)
+        ndiff[STATIC] = stat
+      } else {
+        ndiff = cdiff[STATIC] !== undefined ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff)
+      }
+
+      cache[cid] = ndiff
+      return ndiff
+    }
+  }
+
+  mutableMerge(target, source){
     if(source[STATIC] !== undefined){
       return source
     } else {
-      this.doRecursiveMerge(target, source)
+      this.doMutableMerge(target, source)
       return target
     }
   }
 
-  doRecursiveMerge(target, source){
+  doMutableMerge(target, source){
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
-        this.doRecursiveMerge(targetVal, val)
+        this.doMutableMerge(targetVal, val)
       } else {
         target[key] = val
       }
     }
+  }
+
+  cloneMerge(target, source){
+    let merged = {...target, ...source}
+    for(let key in merged){
+      let val = source[key]
+      let targetVal = target[key]
+      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+        merged[key] = this.cloneMerge(targetVal, val)
+      }
+    }
+    return merged
   }
 
   componentToString(cid){ return this.recursiveCIDToString(this.rendered[COMPONENTS], cid) }
