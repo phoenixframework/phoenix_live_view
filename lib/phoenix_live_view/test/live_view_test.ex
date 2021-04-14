@@ -1368,7 +1368,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      avatar = file_input(lv, "form", :avatar, %{name: ..., ...})
+      avatar = file_input(lv, "#my-form-id", :avatar, [%{name: ..., ...}, ...])
       assert {:ok, %{ref: _ref, config: %{chunk_size: _}}} = preflight_upload(avatar)
   """
   def preflight_upload(%Upload{} = upload) do
