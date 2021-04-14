@@ -181,4 +181,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       :error ->  raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
     end
   end
+
+  def handle_info(:garbage_collect, state) do
+    {:noreply, state}
+  end
 end
