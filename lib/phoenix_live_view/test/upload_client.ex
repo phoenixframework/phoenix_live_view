@@ -65,8 +65,19 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     {:reply, pids, state}
   end
 
-  def handle_call({:chunk, entry_name, percent, proxy_pid, element}, from, state) do
-    {:reply, :ok, chunk_upload(state, from, entry_name, percent, proxy_pid, element)}
+  def handle_call({:chunk, entry_name, percent, proxy_pid, element}, _from, state) do
+    ref = make_ref()
+    new_state = chunk_upload(state, {self(), ref}, entry_name, percent, proxy_pid, element)
+
+    # We need to wait for ClientProxy to sync the
+    # :upload_progress before replying to the caller,
+    # otherwise the proxy's reply will race our own.
+    receive do
+      {^ref, {:ok, _}} ->
+        {:reply, :ok, new_state}
+    after
+      1000 -> exit(:timeout)
+    end
   end
 
   def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
