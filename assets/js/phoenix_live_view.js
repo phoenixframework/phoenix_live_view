@@ -360,54 +360,84 @@ class LiveUploader {
 
 let channelUploader = function(entries, onError, resp, liveSocket){
   entries.forEach(entry => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, resp.config.chunk_count, liveSocket)
     entryUploader.upload()
   })
 }
 
 class EntryUploader {
-  constructor(entry, chunkSize, liveSocket){
+  constructor(entry, chunkSize, chunkCount, liveSocket){
     this.liveSocket = liveSocket
     this.entry = entry
+    this.readOffset = 0
     this.offset = 0
     this.chunkSize = chunkSize
+    this.chunkCount = chunkCount
+    this.chunks = []
+    this.pendingUploads = 0
+    this.abort = false;
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
   }
 
   upload(){
     this.uploadChannel.join()
-      .receive("ok", data => this.readNextChunk())
+      .receive("ok", data => this.startUpload())
       .receive("error", reason => {
         this.uploadChannel.leave()
         this.entry.error()
       })
   }
 
+  isReadDone(){ return this.readOffset >= this.entry.file.size }
   isDone(){ return this.offset >= this.entry.file.size }
 
-  readNextChunk(){
+  startUpload(){
+    this.readChunks()
+    this.pushChunks()
+  }
+
+  readChunks(){
+    if (this.isReadDone() || this.abort) return
+    if (this.chunks.length >= this.chunkCount) {
+      setTimeout(() => this.readChunks(), 10)
+      return
+    }
+
     let reader = new window.FileReader()
-    let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
+    let endOffset = Math.min(this.chunkSize + this.readOffset, this.entry.file.size)
+    let blob = this.entry.file.slice(this.readOffset, endOffset)
+    this.readOffset = endOffset
     reader.onload = (e) => {
       if(e.target.error === null){
-        this.offset += e.target.result.byteLength
-        this.pushChunk(e.target.result)
+        this.chunks.push({data: e.target.result, endOffset: endOffset})
+        this.readChunks()
       } else {
+        this.abort = true
         return logError("Read error: " + e.target.error)
       }
     }
     reader.readAsArrayBuffer(blob)
   }
 
-  pushChunk(chunk){
-    if(!this.uploadChannel.isJoined()){ return }
-    this.uploadChannel.push("chunk", chunk)
+  pushChunks(){
+    if (this.isDone() || this.abort) return
+    if (!this.uploadChannel.isJoined()) {
+      this.abort = true;
+      return
+    }
+    if (this.chunks.length == 0 || this.pendingUploads >= this.chunkCount) { 
+      setTimeout(() => this.pushChunks(), 10)
+      return true 
+    }
+
+    let chunk = this.chunks.shift()
+    this.pendingUploads++
+    this.uploadChannel.push("chunk", chunk.data)
       .receive("ok", () => {
-        this.entry.progress((this.offset / this.entry.file.size) * 100)
-        if(!this.isDone()){
-          setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
-        }
+        this.entry.progress((chunk.endOffset / this.entry.file.size) * 100)
+        this.pendingUploads--
       })
+    this.pushChunks()
   }
 }
 

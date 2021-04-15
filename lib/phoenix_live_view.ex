@@ -695,6 +695,9 @@ defmodule Phoenix.LiveView do
     * `:max_file_size` - The maximum file size in bytes to allow to be uploaded.
       Defaults 8MB. For example, `12_000_000`.
 
+    * `:chunk_count` - The number of chunks to send in parallel when uploading.
+      Defaults `2`.
+
     * `:chunk_size` - The chunk size in bytes to send when uploading.
       Defaults `64_000`.
 
