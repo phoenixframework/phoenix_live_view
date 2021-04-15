@@ -79,21 +79,21 @@ to the container as well as to each child:
 When the client receives new messages, it now knows to append to the
 old content rather than replace it.
 
-You can also update your messages. Suppose there is an edit to a message
+You can also update the direction of messages. Suppose there is an edit to a message
 that is being sent to your LiveView like this:
 
-    def handle_info({:update, updated_message}, socket) do
-        {:noreply, update(socket, :messages, fn messages -> [updated_message | messages] end)}
+    def handle_info({:update_message, message}, socket) do
+      {:noreply, update(socket, :messages, fn messages -> [message | messages] end)}
     end
     
-You just add it to the list like you do with new messages. LiveView is smart enough
-to know that this message was rendered before, even though the message itself is discarded
-after it is rendered.
+You can add it to the list like you do with new messages. LiveView is aware that this
+message was rendered on the client, even though the message itself is discarded on the 
+server after it is rendered.
 
-LiveView uses DOM ids to check if a message is rendered before or not (`id="<%= message.id %>"`).
-If an id is rendered before, DOM is just updated rather than appending or prepending. Also,
-the order of element is not changed. You can use it to show edited messages, show likes or
-anything that would require an updated to a rendered message.
+LiveView uses DOM ids to check if a message is rendered before or not. If an id is 
+rendered before, the DOM element is updated rather than appending or prepending a new node. 
+Also, the order of elements is not changed. You can use it to show edited messages, show likes, or
+anything that would require an update to a rendered message.
 
 ## Pitfall: temporary assigns to reset or control UI state
 
