@@ -182,6 +182,21 @@ liveSocket.connect()
 window.liveSocket = liveSocket
 ```
 
+If you want a topbar progress bar on the live navigation and form submits,
+you can install the `topbar` npm package in the `assets/package.json`. 
+Then add the following to `app.js` file:
+
+```javascript
+import topbar from "topbar"
+
+// ...
+
+// Show progress bar on live navigation and form submits
+topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+window.addEventListener("phx:page-loading-start", info => topbar.show())
+window.addEventListener("phx:page-loading-stop", info => topbar.hide())
+```
+
 ## Layouts
 
 LiveView does not use the default app layout. Instead, you typically call `put_root_layout` in your router to specify a layout that is used by both "regular" views and live views. In your router, do:
