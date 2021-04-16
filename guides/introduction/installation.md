@@ -214,7 +214,7 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
 
 Once you have specified a root layout, "app.html.eex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.leex" layout to be used across all LiveViews, as we will describe in the next section.
 
-Optionally, if you are Phoenix v1.5.2 or later, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements that uses `src` and `href`. So that it gets automatically reloaded when the target assets changes. 
+Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements that uses `src` and `href`. This way you can detect when new assets have been deployed by calling `static_changed?`.
 
 ```elixir
 <link phx-track-static rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
