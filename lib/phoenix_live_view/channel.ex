@@ -42,7 +42,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def drop_upload_entries(%UploadConfig{} = conf, entry_refs) do
-    send(self(), {@prefix, :drop_upload_entries, conf, entry_refs})
+    info = %{ref: conf.ref, entry_refs: entry_refs, cid: conf.cid}
+    send(self(), {@prefix, :drop_upload_entries, info})
   end
 
   @impl true
@@ -205,9 +206,12 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :drop_upload_entries, upload_config, entry_refs}, state) do
+  def handle_info({@prefix, :drop_upload_entries, info}, state) do
+    %{ref: ref, cid: cid, entry_refs: entry_refs} = info
+
     new_state =
-      write_socket(state, upload_config.cid, nil, fn socket, _ ->
+      write_socket(state, cid, nil, fn socket, _ ->
+        upload_config = Upload.get_upload_by_ref!(socket, ref)
         {Upload.drop_upload_entries(socket, upload_config, entry_refs), {:ok, nil, state}}
       end)
 
@@ -762,7 +766,7 @@ defmodule Phoenix.LiveView.Channel do
 
                 socket "/live", Phoenix.LiveView.Socket,
                   websocket: [connect_info: [session: @session_options]]
-                  
+
             4) Ensure the `protect_from_forgery` plug is in your router pipeline:
 
                 plug :protect_from_forgery

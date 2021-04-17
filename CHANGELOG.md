@@ -3,6 +3,7 @@
 ## 0.15.5
 
 ### Bug fixes
+  - Fix `consume_uploaded_entry/3` with external uploads causing inconsistent entries state
   - Fix `push_event` losing events when a single diff produces multiple events from different components
 
 ## 0.15.4 (2021-01-26)
