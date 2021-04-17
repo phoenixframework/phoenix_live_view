@@ -380,6 +380,16 @@ defmodule Phoenix.LiveView.Helpers do
   The following errors may be returned:
 
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+
+  ## Examples
+
+      def error_to_string(:too_many_files), do: "You have selected too many files"
+
+      <%= for err <- upload_errors(@uploads.avatar) do %>
+        <div class="alert alert-danger">
+          <%= error_to_string(err) %>
+        </div>
+      <% end %>
   """
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
     for {ref, error} <- conf.errors, ref == conf.ref, do: error
