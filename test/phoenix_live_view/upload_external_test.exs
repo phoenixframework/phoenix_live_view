@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
         Task.async(fn -> render_upload(input, file.name, 1) end)
       end
 
-    [_ | _] = Task.await_many(tasks)
+    [_ | _] = Task.yield_many(tasks, 5000)
 
     run(lv, fn socket ->
       entries = Phoenix.LiveView.uploaded_entries(socket, :avatar)
