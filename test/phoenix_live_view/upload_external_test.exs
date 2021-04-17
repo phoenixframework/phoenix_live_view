@@ -34,6 +34,17 @@ defmodule Phoenix.LiveView.UploadExternalTest do
         apply(__MODULE__, external, [entry, socket])
       end)
 
+    opts =
+      case Keyword.fetch(opts, :progress) do
+        {:ok, progress} ->
+          Keyword.put(opts, :progress, fn _, entry, socket ->
+            apply(__MODULE__, progress, [entry, socket])
+          end)
+
+        :error ->
+          opts
+      end
+
     {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
 
     {:ok, lv: lv}
@@ -46,6 +57,14 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       end)
 
     {:ok, %{uploader: "S3"}, new_socket}
+  end
+
+  def consume(%LiveView.UploadEntry{} = entry, socket) do
+    if entry.done? do
+      Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> :ok end)
+    end
+
+    {:noreply, socket}
   end
 
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
@@ -137,5 +156,37 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     assert_receive {:individual_consume, %{uploader: "S3"}, "foo.jpeg"}
     refute render(lv) =~ upload_complete
+  end
+
+  @tag allow: [max_entries: 5, chunk_size: 20, accept: :any, external: :preflight, progress: :consume]
+  test "consume_uploaded_entry/3 maintains entries state after drop", %{lv: lv} do
+    parent = self()
+
+    # Note we are building a unique `%Upload{}` for each file.
+    # This is to avoid the upload progress calls serializing in a
+    # single UploadClient.
+    files_inputs =
+      for i <- 1..5,
+          file = %{name: "#{i}.png", content: String.duplicate("ok", 100)},
+          input = file_input(lv, "form", :avatar, [file]) do
+        render_upload(input, file.name, 99)
+        {file, input}
+      end
+
+    tasks =
+      for {file, input} <- files_inputs do
+        Task.async(fn -> render_upload(input, file.name, 1) end)
+      end
+
+    [_ | _] = Task.await_many(tasks)
+
+    run(lv, fn socket ->
+      entries = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+      send(parent, {:consistent_consume, :avatar, entries})
+      {:reply, :ok, socket}
+    end)
+
+    assert_receive {:consistent_consume, :avatar, entries}
+    assert entries == {[], []}
   end
 end
