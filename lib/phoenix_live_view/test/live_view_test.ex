@@ -204,8 +204,6 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
-    * `:connect_params` - the map of params available in connected mount.
-      See `Phoenix.LiveView.get_connect_params/1` for more information.
     * `:session` - the session to be given to the LiveView
 
   All other options are forwarded to the LiveView for rendering. Refer to
@@ -216,6 +214,16 @@ defmodule Phoenix.LiveViewTest do
 
       {:ok, view, html} =
         live_isolated(conn, AppWeb.ClockLive, session: %{"tz" => "EST"})
+
+  Use `put_connect_params/2` to put connect params for a call to
+  `Phoenix.LiveView.get_connect_params/1` in `c:Phoenix.LiveView.mount/3`:
+
+      {:ok, view, html} =
+        conn
+        |> put_connect_params(%{"param" => "value"})
+        |> live_isolated(AppWeb.ClockLive, session: %{"tz" => "EST"})
+
+
   """
   defmacro live_isolated(conn, live_view, opts \\ []) do
     quote bind_quoted: binding(), unquote: true do
