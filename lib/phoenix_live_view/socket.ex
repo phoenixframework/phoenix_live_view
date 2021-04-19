@@ -65,7 +65,7 @@ defmodule Phoenix.LiveView.Socket do
           private: map(),
           fingerprints: fingerprints,
           redirected: nil | tuple(),
-          host_uri: URI.t(),
+          host_uri: URI.t() | :not_mounted_at_router,
           connected?: boolean()
         }
 
