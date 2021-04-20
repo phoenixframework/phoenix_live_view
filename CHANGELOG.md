@@ -1,10 +1,14 @@
 # Changelog
 
-## 0.15.5
+## 0.15.5 (2021-04-20)
+
+### Enhancements
+  - Add `upload_errors/1` for returning top-level upload errors
 
 ### Bug fixes
   - Fix `consume_uploaded_entry/3` with external uploads causing inconsistent entries state
   - Fix `push_event` losing events when a single diff produces multiple events from different components
+  - Fix deep merging of component tree sharing
 
 ## 0.15.4 (2021-01-26)
 
