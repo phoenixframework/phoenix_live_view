@@ -241,7 +241,9 @@ Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
     this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF))
-    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => this.el.src = url)
+    this.img = document.createElement("img")
+    this.el.appendChild(this.img)
+    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => this.img.src = url)
   }
 }
 

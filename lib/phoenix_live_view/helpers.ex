@@ -647,7 +647,7 @@ defmodule Phoenix.LiveView.Helpers do
         data_phx_update: "ignore"
       )
 
-    Phoenix.HTML.Tag.content_tag(:img, "", opts)
+    Phoenix.HTML.Tag.content_tag(:figure, "", opts)
   end
 
   @doc """
