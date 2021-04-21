@@ -848,6 +848,7 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
+  @doc false
   def nested_changed_assign?(assigns, changed, [head | _] = all) do
     changed_assign?(changed, head) and recur_changed_assign?(assigns, changed, all)
   end
