@@ -902,6 +902,8 @@ defmodule Phoenix.LiveView.Engine do
 
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :render
+  defp classify_taint(:component, [_, [do: _]]), do: :render
+  defp classify_taint(:component, [_, _, [do: _]]), do: :render
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always

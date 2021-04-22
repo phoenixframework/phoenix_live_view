@@ -29,6 +29,25 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     """
   end
 
+  def render("with-function-component.html", assigns) do
+    ~L"""
+    RENDER:<%= component(&Phoenix.LiveViewTest.FunctionComponent.render/1, value: "from component") %>
+    """
+  end
+
+  def render("layout-with-function-component.html", assigns) do
+    ~L"""
+    LAYOUT:<%= component(&Phoenix.LiveViewTest.FunctionComponent.render/1, value: "from layout") %>
+    <%= @inner_content %>
+    """
+  end
+
+  def render("hello.html", assigns) do
+    ~L"""
+    Hello
+    """
+  end
+
   def render("styled.html", assigns) do
     ~L"""
     <html>

@@ -230,6 +230,45 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc """
+  Renders a stateless component defined by a function.
+
+  Takes two optional arguments, assigns and a do block that will be used as
+  the @inner_block.
+
+  All of the `assigns` given are forwarded directly to the function as
+  the first only argument.
+
+  ## Examples
+
+  The function can either local:
+
+      <%= component(&weather_component/1, city: "Kraków") %>
+
+  Or remote:
+
+      <%= component(&MyApp.Weather.component/1, city: "Kraków") %>
+
+  """
+  defmacro component(func, assigns \\ [], do_block \\ []) do
+    {do_block, assigns} =
+      case {do_block, assigns} do
+        {[do: do_block], _} -> {do_block, assigns}
+        {_, [do: do_block]} -> {do_block, []}
+        {_, _} -> {nil, assigns}
+      end
+
+    {assigns, inner_block} = rewrite_do(do_block, assigns, __CALLER__)
+
+    quote do
+      Phoenix.LiveView.Helpers.__component__(
+        unquote(func),
+        unquote(assigns),
+        unquote(inner_block)
+      )
+    end
+  end
+
   defp rewrite_do(nil, opts, _caller), do: {opts, nil}
 
   defp rewrite_do([{:->, meta, _} | _] = do_block, opts, _caller) do
@@ -313,6 +352,7 @@ defmodule Phoenix.LiveView.Helpers do
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
     id = assigns[:id]
 
+    # TODO: Deprecate stateless live component
     if is_nil(id) and
          (function_exported?(component, :handle_event, 3) or
             function_exported?(component, :preload, 1)) do
@@ -326,6 +366,20 @@ defmodule Phoenix.LiveView.Helpers do
   def __live_component__(%{kind: kind, module: module}, assigns)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
+  end
+
+  @doc false
+  def __component__(func, assigns, inner)
+      when is_function(func) and is_list(assigns) or is_map(assigns) do
+    assigns = Map.new(assigns)
+    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
+
+    func.(assigns)
+  end
+
+  def __component__(func, assigns)
+      when is_list(assigns) or is_map(assigns) do
+    raise "expected a function, got #{func}"
   end
 
   @doc """

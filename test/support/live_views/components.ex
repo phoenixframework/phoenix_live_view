@@ -1,3 +1,13 @@
+defmodule Phoenix.LiveViewTest.FunctionComponent do
+  import Phoenix.LiveView.Helpers
+
+  def render(assigns) do
+    ~L"""
+    COMPONENT:<%= @value %>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
