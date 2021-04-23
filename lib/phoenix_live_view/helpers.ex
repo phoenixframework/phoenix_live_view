@@ -377,8 +377,7 @@ defmodule Phoenix.LiveView.Helpers do
     func.(assigns)
   end
 
-  def __component__(func, assigns, _)
-      when is_function(func) and is_list(assigns) or is_map(assigns) do
+  def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
     raise ArgumentError, """
     component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
 
@@ -392,11 +391,6 @@ defmodule Phoenix.LiveView.Helpers do
           \"""
         end
     """
-  end
-
-  def __component__(func, assigns, _)
-      when is_list(assigns) or is_map(assigns) do
-    raise ArgumentError, "component/3 expected an anonymous function, got: #{inspect(func)}"
   end
 
   @doc """
