@@ -24,7 +24,7 @@ defmodule Phoenix.LiveViewTest.CidsDestroyedLive do
     ~L"""
     <%= if @form do %>
       <form phx-submit="event_1">
-        <%= live_component(@socket, Button, id: "button", text: "Hello World") %>
+        <%= live_component(Button, id: "button", text: "Hello World") %>
       </form>
     <% else %>
       <div class="loader">loading...</div>

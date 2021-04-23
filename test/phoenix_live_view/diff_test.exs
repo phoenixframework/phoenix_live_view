@@ -1314,7 +1314,7 @@ defmodule Phoenix.LiveView.DiffTest do
       %{fingerprint: _fingerprint} =
         rendered = ~L"""
         <%= for key <- [:b, :c, :a] do %>
-          <%= live_component(@socket, NestedDynamicComponent, id: key, key: key) %>
+          <%= live_component(NestedDynamicComponent, id: key, key: key) %>
         <% end %>
         """
 

@@ -316,7 +316,7 @@ defmodule Phoenix.LiveView do
   per user would likely be too expensive. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using [`live_component/3`](`Phoenix.LiveView.Helpers.live_render/3`):
 
-      <%= live_component(@socket, UserComponent, id: user.id, user: user) %>
+      <%= live_component(UserComponent, id: user.id, user: user) %>
 
   Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as well as their
   own state with change tracking support. Components are also lightweight as they

@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.Helpers do
   All of the `assigns` given are forwarded directly to the
   `live_component`:
 
-      <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+      <%= live_component(MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
 
   Note the `:id` won't necessarily be used as the DOM ID.
   That's up to the component. However, note that the `:id` has
@@ -208,16 +208,12 @@ defmodule Phoenix.LiveView.Helpers do
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
   defmacro live_component(component, assigns \\ [], do_block \\ []) do
-    case component do
-      {:@, _, [{:socket, _, _}]} ->
-        IO.warn(
-          "passing the @socket to live_component is no longer necessary, " <>
-            "please remove the socket argument",
-          Macro.Env.stacktrace(__CALLER__)
-        )
-
-      _ ->
-        :ok
+    if match?({:@, _, [{:socket, _, _}]}, component) or match?({:socket, _, _}, component) do
+      IO.warn(
+        "passing the @socket to live_component is no longer necessary, " <>
+          "please remove the socket argument",
+        Macro.Env.stacktrace(__CALLER__)
+      )
     end
 
     {inner_block, do_block, assigns} =
