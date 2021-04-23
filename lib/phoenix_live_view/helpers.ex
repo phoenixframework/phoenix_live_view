@@ -380,17 +380,17 @@ defmodule Phoenix.LiveView.Helpers do
   def __component__(func, assigns, _)
       when is_function(func) and is_list(assigns) or is_map(assigns) do
     raise ArgumentError, """
-      component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
+    component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
 
-      Please call component with a 1-arity function, for example:
+    Please call component with a 1-arity function, for example:
 
-          <%= component &func/1 %>
+        <%= component &func/1 %>
 
-          def func(assigns) do
-            ~L\"""
-            Hello
-            \"""
-          end
+        def func(assigns) do
+          ~L\"""
+          Hello
+          \"""
+        end
     """
   end
 
