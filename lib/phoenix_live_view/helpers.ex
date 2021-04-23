@@ -379,7 +379,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   def __component__(func, assigns)
       when is_list(assigns) or is_map(assigns) do
-    raise "expected a function, got #{func}"
+    raise ArgumentError, "component/3 expected an anonymous function, got: #{inspect(func)}"
   end
 
   @doc """
