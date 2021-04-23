@@ -231,13 +231,14 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a stateless component defined by a function.
+  Renders a component defined by the given function.
 
-  Takes two optional arguments, assigns and a do block that will be used as
-  the @inner_block.
+  It takes two optional arguments, the assigns to pass to the given function
+  and a do-block - which will be converted into a `@inner_block`  assign (see
+  `render_block/3` for more information).
 
-  All of the `assigns` given are forwarded directly to the function as
-  the first only argument.
+  The given function must expect one argument, which are the `assigns` as a
+  map.
 
   ## Examples
 
