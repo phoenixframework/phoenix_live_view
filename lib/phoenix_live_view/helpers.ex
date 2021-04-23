@@ -250,7 +250,9 @@ defmodule Phoenix.LiveView.Helpers do
       <%= component(&MyApp.Weather.component/1, city: "Kraków") %>
 
   """
-  defmacro component(func, assigns \\ [], do_block \\ []) do
+  defmacro component(func, assigns \\ [], do_block \\ [])
+
+  defmacro component({:&, _, [{:/, _, [{_, _, _}, 1]}]} = func, assigns, do_block) do
     {do_block, assigns} =
       case {do_block, assigns} do
         {[do: do_block], _} -> {do_block, assigns}
@@ -267,6 +269,22 @@ defmodule Phoenix.LiveView.Helpers do
         unquote(inner_block)
       )
     end
+  end
+
+  defmacro component(_func, _assigns, _do_block) do
+    raise ArgumentError, """
+      component/3 expected an anonymous function with 1-arity
+
+      Please call component with a 1-arity function, for example:
+
+          <%= component &func/1 %>
+
+          def func(assigns) do
+            ~L\"""
+            Hello
+            \"""
+          end
+    """
   end
 
   defp rewrite_do(nil, opts, _caller), do: {opts, nil}
