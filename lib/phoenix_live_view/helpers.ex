@@ -207,16 +207,68 @@ defmodule Phoenix.LiveView.Helpers do
   a special meaning: whenever an `:id` is given, the component
   becomes stateful. Otherwise, `:id` is always set to `nil`.
   """
-  # TODO: Deprecate the socket as argument
-  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
-    {do_block, assigns} =
+  defmacro live_component(component, assigns \\ [], do_block \\ []) do
+    case component do
+      {:@, _, [{:socket, _, _}]} ->
+        IO.warn(
+          "passing the @socket to live_component is no longer necessary, " <>
+            "please remove the socket argument",
+          Macro.Env.stacktrace(__CALLER__)
+        )
+
+      _ ->
+        :ok
+    end
+
+    {inner_block, do_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {do_block, assigns}
-        {_, [do: do_block]} -> {do_block, []}
-        {_, _} -> {nil, assigns}
+        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), [], assigns}
+        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), [], []}
+        {_, _} -> {nil, do_block, assigns}
       end
 
-    {assigns, inner_block} = rewrite_do(do_block, assigns, __CALLER__)
+    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or is_map(assigns) do
+      quote do
+        Phoenix.LiveView.Helpers.__live_component__(
+          unquote(component).__live__(),
+          unquote(assigns),
+          unquote(inner_block)
+        )
+      end
+    else
+      quote do
+        case unquote(component) do
+          %Phoenix.LiveView.Socket{} ->
+            Phoenix.LiveView.Helpers.__live_component__(
+              unquote(assigns).__live__(),
+              unquote(do_block),
+              unquote(inner_block)
+            )
+
+          component ->
+            Phoenix.LiveView.Helpers.__live_component__(
+              component.__live__(),
+              unquote(assigns),
+              unquote(inner_block)
+            )
+        end
+      end
+    end
+  end
+
+  defmacro live_component(socket, component, assigns, do_block) do
+    IO.warn(
+      "passing the @socket to live_component is no longer necessary, " <>
+        "please remove the socket argument",
+      Macro.Env.stacktrace(__CALLER__)
+    )
+
+    {inner_block, assigns} =
+      case {do_block, assigns} do
+        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), assigns}
+        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), []}
+        {_, _} -> {nil, assigns}
+      end
 
     quote do
       # Fixes unused variable compilation warning
@@ -251,14 +303,12 @@ defmodule Phoenix.LiveView.Helpers do
 
   """
   defmacro component(func, assigns \\ [], do_block \\ []) do
-    {do_block, assigns} =
+    {inner_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {do_block, assigns}
-        {_, [do: do_block]} -> {do_block, []}
+        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), assigns}
+        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), []}
         {_, _} -> {nil, assigns}
       end
-
-    {assigns, inner_block} = rewrite_do(do_block, assigns, __CALLER__)
 
     quote do
       Phoenix.LiveView.Helpers.__component__(
@@ -269,23 +319,18 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  defp rewrite_do(nil, opts, _caller), do: {opts, nil}
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, opts, _caller) do
+  defp rewrite_do([{:->, meta, _} | _] = do_block, _caller) do
     inner_fun = {:fn, meta, do_block}
 
-    quoted =
-      quote do
-        fn parent_changed, arg ->
-          var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
-          unquote(inner_fun).(arg)
-        end
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
+        unquote(inner_fun).(arg)
       end
-
-    {opts, quoted}
+    end
   end
 
-  defp rewrite_do(do_block, opts, caller) do
+  defp rewrite_do(do_block, caller) do
     unless Macro.Env.has_var?(caller, {:assigns, nil}) and
              Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
       raise ArgumentError, """
@@ -293,24 +338,21 @@ defmodule Phoenix.LiveView.Helpers do
 
       Please pass a `->` clause to do/end instead, for example:
 
-          live_component @socket, GridComponent, entries: @entries do
+          live_component GridComponent, entries: @entries do
             new_assigns -> "New entry: " <> new_assigns[:entry]
           end
       """
     end
 
     # TODO: deprecate implicit assigns (i.e. do/end without -> should not get any assign)
-    quoted =
-      quote do
-        fn changed, extra_assigns ->
-          var!(assigns) =
-            unquote(__MODULE__).__render_inner_do__(var!(assigns), changed, extra_assigns)
+    quote do
+      fn changed, extra_assigns ->
+        var!(assigns) =
+          unquote(__MODULE__).__render_inner_do__(var!(assigns), changed, extra_assigns)
 
-          unquote(do_block)
-        end
+        unquote(do_block)
       end
-
-    {opts, quoted}
+    end
   end
 
   @doc false

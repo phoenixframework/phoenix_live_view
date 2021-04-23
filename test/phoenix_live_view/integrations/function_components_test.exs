@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView.FunctionComponentsTest do
     def render_with_live_component(assigns) do
       ~L"""
       COMPONENT
-      <%= live_component :fake_socket, RenderWithBlockPassingArgs %>
+      <%= live_component RenderWithBlockPassingArgs %>
       """
     end
   end

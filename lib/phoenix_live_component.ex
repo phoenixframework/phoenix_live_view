@@ -25,7 +25,7 @@ defmodule Phoenix.LiveComponent do
   When `use Phoenix.LiveComponent` is used, all functions in
   `Phoenix.LiveView` are imported. A component can be invoked as:
 
-      <%= live_component @socket, HeroComponent, content: @content %>
+      <%= live_component HeroComponent, content: @content %>
 
   Components come in two shapes, stateless or stateful. The component
   above is a stateless component. Of course, the component above is not
@@ -55,14 +55,14 @@ defmodule Phoenix.LiveComponent do
 
   A stateful component is a component that receives an `:id` on [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`):
 
-      <%= live_component @socket, HeroComponent, id: :hero, content: @content %>
+      <%= live_component HeroComponent, id: :hero, content: @content %>
 
   Stateful components are identified by the component module and their ID.
   Therefore, two different component modules with the same ID are different
   components. This means we can often tie the component ID to some application
   based ID:
 
-      <%= live_component @socket, UserComponent, id: @user.id, user: @user %>
+      <%= live_component UserComponent, id: @user.id, user: @user %>
 
   Also note the given `:id` is not necessarily used as the DOM ID. If you
   want to set a DOM ID, it is your responsibility to set it when rendering:
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveComponent do
   imagine that you implement a component and the component needs to load
   some state from the database. For example:
 
-      <%= live_component @socket, UserComponent, id: user_id %>
+      <%= live_component UserComponent, id: user_id %>
 
   A possible implementation would be to load the user on the `c:update/2`
   callback:
@@ -198,7 +198,7 @@ defmodule Phoenix.LiveComponent do
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
-        <%= live_component @socket, CardComponent, card: card, id: card.id, board_id: @id %>
+        <%= live_component CardComponent, card: card, id: card.id, board_id: @id %>
       <% end %>
 
   Now, when the user submits a form inside the `CardComponent` to update the
@@ -265,7 +265,7 @@ defmodule Phoenix.LiveComponent do
   only by passing the IDs:
 
       <%= for card_id <- @card_ids do %>
-        <%= live_component @socket, CardComponent, id: card_id, board_id: @id %>
+        <%= live_component CardComponent, id: card_id, board_id: @id %>
       <% end %>
 
   Now, each CardComponent loads their own card. Of course, doing so per
@@ -297,7 +297,7 @@ defmodule Phoenix.LiveComponent do
   When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked, it is also possible to pass a `do/end`
   block:
 
-      <%= live_component @socket, GridComponent, entries: @entries do %>
+      <%= live_component GridComponent, entries: @entries do %>
         New entry: <%= @entry %>
       <% end %>
 
@@ -337,7 +337,7 @@ defmodule Phoenix.LiveComponent do
   component passing a `do/end` block, you will have to explicitly handle the
   assigns by giving it a `->` clause:
 
-      live_component @socket, GridComponent, entries: @entries do
+      live_component GridComponent, entries: @entries do
         new_assigns -> "New entry: " <> new_assigns[:entry]
       end
 
@@ -359,11 +359,11 @@ defmodule Phoenix.LiveComponent do
   in each component. For example, avoid passing all of LiveView's assigns
   when rendering a component:
 
-      <%= live_component @socket, MyComponent, assigns %>
+      <%= live_component MyComponent, assigns %>
 
   Instead pass only the keys that you need:
 
-      <%= live_component @socket, MyComponent, user: @user, org: @org %>
+      <%= live_component MyComponent, user: @user, org: @org %>
 
   Luckily, because LiveViews and LiveComponents are in the same process,
   they share the same data structures. For example, in the code above,
@@ -427,7 +427,7 @@ defmodule Phoenix.LiveComponent do
   this:
 
       <%= form_for @changeset, "#", fn f -> %>
-        <%= live_component @socket, SomeComponent, f: f %>
+        <%= live_component SomeComponent, f: f %>
       <% end %>
 
   The component ends up enclosed by the form markup, where LiveView
@@ -440,13 +440,13 @@ defmodule Phoenix.LiveComponent do
   variant without anonymous functions:
 
       <%= f = form_for @changeset, "#" %>
-        <%= live_component @socket, SomeComponent, f: f %>
+        <%= live_component SomeComponent, f: f %>
       </form>
 
   This issue can also happen with other helpers, such as `content_tag`:
 
       <%= content_tag :div do %>
-        <%= live_component @socket, SomeComponent, f: f %>
+        <%= live_component SomeComponent, f: f %>
       <% end %>
 
   In this case, the solution is to not use `content_tag` and rely on LiveEEx

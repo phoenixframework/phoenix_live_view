@@ -6,7 +6,7 @@ defmodule Phoenix.LiveViewTest.LiveInComponent.Root do
   end
 
   def render(assigns) do
-    ~L"<%= live_component @socket, Phoenix.LiveViewTest.LiveInComponent.Component, id: :nested_component %>"
+    ~L"<%= live_component Phoenix.LiveViewTest.LiveInComponent.Component, id: :nested_component %>"
   end
 end
 

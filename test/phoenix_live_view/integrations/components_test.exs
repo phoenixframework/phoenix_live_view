@@ -389,7 +389,7 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     def render(assigns) do
       ~L"""
-      <%= live_component @socket, RenderOnlyComponent, from: @from %>
+      <%= live_component RenderOnlyComponent, from: @from %>
       """
     end
   end

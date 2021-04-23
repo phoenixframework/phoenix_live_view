@@ -25,26 +25,26 @@ defmodule Phoenix.LiveView.Component do
       For example, this is not allowed:
 
           <%= content_tag :div do %>
-            <%= live_component @socket, SomeComponent %>
+            <%= live_component SomeComponent %>
           <% end %>
 
       That's because the component is inside `content_tag`. However, this works:
 
           <div>
-            <%= live_component @socket, SomeComponent %>
+            <%= live_component SomeComponent %>
           </div>
 
       Components are also allowed inside Elixir's special forms, such as
       `if`, `for`, `case`, and friends.
 
           <%= for item <- items do %>
-            <%= live_component @socket, SomeComponent, id: item %>
+            <%= live_component SomeComponent, id: item %>
           <% end %>
 
       However, using other module functions such as `Enum`, will not work:
 
           <%= Enum.map(items, fn item -> %>
-            <%= live_component @socket, SomeComponent, id: item %>
+            <%= live_component SomeComponent, id: item %>
           <% end %>
       """
     end
@@ -900,7 +900,9 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:receive, [_]), do: :live
   defp classify_taint(:with, _), do: :live
 
+  defp classify_taint(:live_component, [_, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
+  # TODO: Remove me when live_component/4 is removed
   defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :render
   defp classify_taint(:component, [_, [do: _]]), do: :render
   defp classify_taint(:component, [_, _, [do: _]]), do: :render

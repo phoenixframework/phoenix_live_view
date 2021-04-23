@@ -129,7 +129,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
     ~L"""
     <div>
       <%= for i <- 0..@uploads_count do %>
-        <%= live_component @socket, Phoenix.LiveViewTest.UploadComponent, id: "upload#{i}" %>
+        <%= live_component Phoenix.LiveViewTest.UploadComponent, id: "upload#{i}" %>
       <% end %>
     </div>
     """

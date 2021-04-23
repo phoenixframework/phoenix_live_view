@@ -89,7 +89,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
   end
 
   def render(assigns) do
-    ~L"<%= live_component @socket, Child, id: :child_live, count: @count %>"
+    ~L"<%= live_component Child, id: :child_live, count: @count %>"
   end
 
   def mount(_params, _session, socket) do

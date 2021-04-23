@@ -418,7 +418,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~L"""
       COMPONENT
-      <%= live_component :fake_socket, BlockComponent, id: "WORLD" do %>
+      <%= live_component BlockComponent, id: "WORLD" do %>
         WITH VALUE <%= @value %>
       <% end %>
       """
@@ -473,7 +473,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
         :c ->
           ~L"""
-          <%= live_component @socket, __MODULE__, id: make_ref(), key: :a %>
+          <%= live_component __MODULE__, id: make_ref(), key: :a %>
           """
       end
     end
@@ -568,7 +568,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~L"""
-      <%= live_component @socket, BlockNoArgsComponent do %>
+      <%= live_component BlockNoArgsComponent do %>
         INSIDE BLOCK
       <% end %>
       """
@@ -807,8 +807,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~L"""
-      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
-      <%= live_component @socket, RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
       """
 
       assert_raise RuntimeError,
@@ -1344,7 +1344,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~L"""
-      <%= live_component @socket, BlockComponent, id: "WORLD" do %>
+      <%= live_component BlockComponent, id: "WORLD" do %>
         WITH VALUE <%= @value %>
       <% end %>
       """
@@ -1371,7 +1371,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~L"""
-      <%= live_component @socket, BlockComponent, %{id: "TRACKING"} do %>
+      <%= live_component BlockComponent, %{id: "TRACKING"} do %>
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= @value %>
       <% end %>

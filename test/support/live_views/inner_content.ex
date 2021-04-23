@@ -30,7 +30,7 @@ defmodule Phoenix.LiveViewTest.InnerDoLive do
     ~L"""
     <button id="outer" phx-click="inc">+</button>
 
-    <%= live_component @socket, Phoenix.LiveViewTest.InnerCounter, id: "counter" do %>
+    <%= live_component Phoenix.LiveViewTest.InnerCounter, id: "counter" do %>
       Outer: <%= send(@test_process, @outer) %>
       Inner: <%= @value %>
     <% end %>
@@ -53,7 +53,7 @@ defmodule Phoenix.LiveViewTest.InnerFunLive do
     ~L"""
     <button id="outer" phx-click="inc">+</button>
 
-    <%= live_component @socket, Phoenix.LiveViewTest.InnerCounter, id: "counter" do %>
+    <%= live_component Phoenix.LiveViewTest.InnerCounter, id: "counter" do %>
       <% [value: value] -> %>
         Outer: <%= send(@test_process, @outer) %>
         Inner: <%= value %>
