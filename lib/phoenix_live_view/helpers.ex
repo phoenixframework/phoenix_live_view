@@ -279,17 +279,18 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a stateless component defined by a function.
+  Renders a component defined by the given function.
 
-  Takes two optional arguments, assigns and a do block that will be used as
-  the @inner_block.
+  It takes two optional arguments, the assigns to pass to the given function
+  and a do-block - which will be converted into a `@inner_block`  assign (see
+  `render_block/3` for more information).
 
-  All of the `assigns` given are forwarded directly to the function as
-  the first only argument.
+  The given function must expect one argument, which are the `assigns` as a
+  map.
 
   ## Examples
 
-  The function can either local:
+  The function can be either local:
 
       <%= component(&weather_component/1, city: "Kraków") %>
 
@@ -408,16 +409,27 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc false
   def __component__(func, assigns, inner)
-      when is_function(func) and is_list(assigns) or is_map(assigns) do
+      when is_function(func, 1) and is_list(assigns) or is_map(assigns) do
     assigns = Map.new(assigns)
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
 
     func.(assigns)
   end
 
-  def __component__(func, assigns)
-      when is_list(assigns) or is_map(assigns) do
-    raise ArgumentError, "component/3 expected an anonymous function, got: #{inspect(func)}"
+  def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
+    raise ArgumentError, """
+    component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
+
+    Please call component with a 1-arity function, for example:
+
+        <%= component &func/1 %>
+
+        def func(assigns) do
+          ~L\"""
+          Hello
+          \"""
+        end
+    """
   end
 
   @doc """
