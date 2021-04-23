@@ -241,7 +241,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-  The function can either local:
+  The function can be either local:
 
       <%= component(&weather_component/1, city: "Kraków") %>
 
