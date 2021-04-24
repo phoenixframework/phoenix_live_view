@@ -669,7 +669,7 @@ defmodule Phoenix.LiveView.Diff do
   defp mount_component(socket, component, assigns) do
     private =
       socket.private
-      |> Map.take([:conn_session])
+      |> Map.take([:conn_session, :root_view])
       |> Map.put(:changed, %{})
 
     socket =

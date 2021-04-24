@@ -881,14 +881,14 @@ defmodule Phoenix.LiveView do
   def push_patch(%Socket{} = socket, opts) do
     %{to: to} = opts = push_opts!(opts, "push_patch/2")
 
-    case Phoenix.LiveView.Utils.live_link_info!(socket, socket.root_view, to) do
+    case Phoenix.LiveView.Utils.live_link_info!(socket, socket.private.root_view, to) do
       {:internal, params, action, _parsed_uri} ->
         put_redirect(socket, {:live, {params, action}, opts})
 
       {:external, _uri} ->
         raise ArgumentError,
               "cannot push_patch/2 to #{inspect(to)} because the given path " <>
-                "does not point to the current root view #{inspect(socket.root_view)}"
+                "does not point to the current root view #{inspect(socket.private.root_view)}"
     end
   end
 

@@ -10,10 +10,14 @@ defmodule Phoenix.LiveViewUnitTest do
             %Socket{
               endpoint: Endpoint,
               router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive,
+              view: Phoenix.LiveViewTest.ParamCounterLive
+            },
+            %{
+              connect_params: %{},
+              connect_info: %{},
+              changed: %{},
               root_view: Phoenix.LiveViewTest.ParamCounterLive
             },
-            %{connect_params: %{}, connect_info: %{}, changed: %{}},
             nil,
             %{},
             URI.parse("https://www.example.com")
@@ -281,7 +285,7 @@ defmodule Phoenix.LiveViewUnitTest do
       assert_raise ArgumentError,
                    ~r"cannot push_patch/2 to \"/counter/123\" because the given path does not point to the current root view",
                    fn ->
-                     push_patch(%{@socket | root_view: __MODULE__}, to: "/counter/123")
+                     push_patch(put_in(@socket.private.root_view, __MODULE__), to: "/counter/123")
                    end
 
       socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}

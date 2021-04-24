@@ -115,12 +115,13 @@ defmodule Phoenix.LiveView.Static do
 
     socket =
       Utils.configure_socket(
-        %Socket{endpoint: endpoint, view: view, root_view: view, router: router},
+        %Socket{endpoint: endpoint, view: view, router: router},
         %{
           assign_new: {conn.assigns, []},
           connect_params: %{},
           connect_info: %{},
           conn_session: conn_session,
+          root_view: view,
           changed: %{}
         },
         action,
@@ -175,8 +176,13 @@ defmodule Phoenix.LiveView.Static do
 
     socket =
       Utils.configure_socket(
-        %Socket{endpoint: endpoint, view: view, root_view: view},
-        %{assign_new: {conn.assigns, []}, connect_params: %{}, connect_info: %{}},
+        %Socket{endpoint: endpoint, view: view},
+        %{
+          assign_new: {conn.assigns, []},
+          connect_params: %{},
+          connect_info: %{},
+          root_view: view
+        },
         action,
         flash,
         host_uri
@@ -217,14 +223,18 @@ defmodule Phoenix.LiveView.Static do
       Utils.configure_socket(
         %Socket{
           id: to_string(child_id),
-          root_view: parent.root_view,
           view: view,
           endpoint: endpoint,
           root_pid: parent.root_pid,
           parent_pid: self(),
           router: parent.router
         },
-        %{assign_new: {parent.assigns.__assigns__, []}, phoenix_live_layout: false, changed: %{}},
+        %{
+          assign_new: {parent.assigns.__assigns__, []},
+          phoenix_live_layout: false,
+          changed: %{},
+          root_view: parent.private.root_view
+        },
         nil,
         %{},
         parent.host_uri
@@ -354,7 +364,7 @@ defmodule Phoenix.LiveView.Static do
     sign_token(parent.endpoint, %{
       id: child.id,
       view: view,
-      root_view: parent.root_view,
+      root_view: parent.private.root_view,
       router: parent.router,
       parent_pid: self(),
       root_pid: parent.root_pid,
