@@ -64,12 +64,15 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :closed}, ref}
   end
 
-  def handle_info({:DOWN, _, _, transport_pid, _reason}, %{transport_pid: transport_pid} = state) do
+  def handle_info(
+        {:DOWN, _, _, transport_pid, _reason},
+        %{socket: %{transport_pid: transport_pid}} = state
+      ) do
     {:stop, {:shutdown, :closed}, state}
   end
 
   def handle_info({:DOWN, _, _, parent, reason}, %{socket: %{parent_pid: parent}} = state) do
-    send(state.transport_pid, {:socket_close, self(), reason})
+    send(state.socket.transport_pid, {:socket_close, self(), reason})
     {:stop, {:shutdown, :parent_exited}, state}
   end
 
@@ -652,7 +655,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp stop_shutdown_redirect(state, kind, opts) do
-    send(state.transport_pid, {:socket_close, self(), {kind, opts}})
+    send(state.socket.transport_pid, {:socket_close, self(), {kind, opts}})
     {:stop, {:shutdown, {kind, opts}}, state}
   end
 
@@ -729,14 +732,14 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp reply(state, ref, status, payload) when is_binary(ref) do
-    reply_ref = {state.transport_pid, state.serializer, state.topic, ref, state.join_ref}
+    reply_ref = {state.socket.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
     state
   end
 
   defp push(state, event, payload) do
     message = %Message{topic: state.topic, event: event, payload: payload}
-    send(state.transport_pid, state.serializer.encode!(message))
+    send(state.socket.transport_pid, state.serializer.encode!(message))
     state
   end
 
@@ -854,7 +857,7 @@ defmodule Phoenix.LiveView.Channel do
     socket = %Socket{
       endpoint: endpoint,
       view: view,
-      connected?: true,
+      transport_pid: transport_pid,
       parent_pid: parent,
       root_pid: root || self(),
       id: id,
@@ -947,7 +950,6 @@ defmodule Phoenix.LiveView.Channel do
       serializer: phx_socket.serializer,
       socket: lv_socket,
       topic: phx_socket.topic,
-      transport_pid: phx_socket.transport_pid,
       components: Diff.new_components(),
       upload_names: %{},
       upload_pids: %{}

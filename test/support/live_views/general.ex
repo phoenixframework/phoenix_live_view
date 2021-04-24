@@ -285,19 +285,20 @@ defmodule Phoenix.LiveViewTest.ErrorsLive do
 
   def render(assigns), do: ~L|<div>I crash in mount</div>|
 
-  def mount(%{"crash_on" => "disconnected_mount"}, _, %Socket{connected?: false}),
+  def mount(%{"crash_on" => "disconnected_mount"}, _, %Socket{transport_pid: nil}),
     do: raise("boom disconnected mount")
 
-  def mount(%{"crash_on" => "connected_mount"}, _, %Socket{connected?: true}),
+  def mount(%{"crash_on" => "connected_mount"}, _, %Socket{transport_pid: pid}) when is_pid(pid),
     do: raise("boom connected mount")
 
   def mount(_params, _session, socket), do: {:ok, socket}
 
-  def handle_params(%{"crash_on" => "disconnected_handle_params"}, _, %Socket{connected?: false}),
+  def handle_params(%{"crash_on" => "disconnected_handle_params"}, _, %Socket{transport_pid: nil}),
     do: raise("boom disconnected handle_params")
 
-  def handle_params(%{"crash_on" => "connected_handle_params"}, _, %Socket{connected?: true}),
-    do: raise("boom connected handle_params")
+  def handle_params(%{"crash_on" => "connected_handle_params"}, _, %Socket{transport_pid: pid})
+      when is_pid(pid),
+      do: raise("boom connected handle_params")
 
   def handle_params(_params, _session, socket), do: {:noreply, socket}
 

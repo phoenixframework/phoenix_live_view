@@ -209,7 +209,7 @@ defmodule Phoenix.LiveView.Static do
 
   Accepts the same options as `render/3`.
   """
-  def nested_render(%Socket{endpoint: endpoint, connected?: connected?} = parent, view, opts) do
+  def nested_render(%Socket{endpoint: endpoint, transport_pid: transport_pid} = parent, view, opts) do
     config = load_live!(view, :view)
     container = container(config, opts)
 
@@ -240,7 +240,7 @@ defmodule Phoenix.LiveView.Static do
         parent.host_uri
       )
 
-    if connected? do
+    if transport_pid do
       connected_nested_render(parent, config, socket, view, container, opts)
     else
       disconnected_nested_render(parent, config, socket, view, container, opts)

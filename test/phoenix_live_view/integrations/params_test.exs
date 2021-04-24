@@ -50,14 +50,14 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
                       metadata}
 
-      refute metadata.socket.connected?
+      refute metadata.socket.transport_pid
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
       assert metadata.uri == "http://www.example.com/counter/123?query1=query1&query2=query2"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
                       metadata}
 
-      refute metadata.socket.connected?
+      refute metadata.socket.transport_pid
       assert metadata.params == %{"query1" => "query1", "query2" => "query2", "id" => "123"}
       assert metadata.uri == "http://www.example.com/counter/123?query1=query1&query2=query2"
     end
@@ -72,14 +72,14 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
                       metadata}
 
-      refute metadata.socket.connected?
+      refute metadata.socket.transport_pid
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}
       assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_handle_params"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _},
                       metadata}
 
-      refute metadata.socket.connected?
+      refute metadata.socket.transport_pid
       assert metadata.params == %{"crash_on" => "disconnected_handle_params"}
       assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_handle_params"
     end
@@ -157,13 +157,13 @@ defmodule Phoenix.LiveView.ParamsTest do
       live(conn, "/counter/123?foo=bar")
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
-                      %{socket: %{connected?: true}} = metadata}
+                      %{socket: %{transport_pid: pid}} = metadata} when is_pid(pid)
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
       assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
-                      %{socket: %{connected?: true}}}
+                      %{socket: %{transport_pid: pid}} = metadata} when is_pid(pid)
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
       assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
@@ -175,10 +175,10 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert catch_exit(live(conn, "/errors?crash_on=connected_handle_params"))
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
-                      %{socket: %Phoenix.LiveView.Socket{connected?: true}}}
+                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}} when is_pid(pid)
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _},
-                      %{socket: %Phoenix.LiveView.Socket{connected?: true}}}
+                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}} when is_pid(pid)
     end
 
     test "hard redirects", %{conn: conn} do

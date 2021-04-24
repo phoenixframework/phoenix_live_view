@@ -524,7 +524,7 @@ defmodule Phoenix.LiveView do
         end
       end
   """
-  def connected?(%Socket{connected?: connected?}), do: connected?
+  def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
   @doc """
   Assigns a value into the socket only if it does not exist.

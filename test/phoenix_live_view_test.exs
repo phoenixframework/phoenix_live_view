@@ -40,7 +40,7 @@ defmodule Phoenix.LiveViewUnitTest do
 
   describe "get_connect_params" do
     test "raises when not in mounting state and connected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: true})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: self()})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
         get_connect_params(socket)
@@ -48,7 +48,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "raises when not in mounting state and disconnected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: false})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: nil})
 
       assert_raise RuntimeError, ~r/attempted to read connect_params/, fn ->
         get_connect_params(socket)
@@ -56,19 +56,19 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "returns nil when disconnected" do
-      socket = %{@socket | connected?: false}
+      socket = %{@socket | transport_pid: nil}
       assert get_connect_params(socket) == nil
     end
 
     test "returns params connected and mounting" do
-      socket = %{@socket | connected?: true}
+      socket = %{@socket | transport_pid: self()}
       assert get_connect_params(socket) == %{}
     end
   end
 
   describe "get_connect_info" do
     test "raises when not in mounting state and connected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: true})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: self()})
 
       assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
         get_connect_info(socket)
@@ -76,7 +76,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "raises when not in mounting state and disconnected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: false})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: nil})
 
       assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
         get_connect_info(socket)
@@ -84,19 +84,19 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "returns nil when disconnected" do
-      socket = %{@socket | connected?: false}
+      socket = %{@socket | transport_pid: nil}
       assert get_connect_info(socket) == nil
     end
 
     test "returns params connected and mounting" do
-      socket = %{@socket | connected?: true}
+      socket = %{@socket | transport_pid: self()}
       assert get_connect_info(socket) == %{}
     end
   end
 
   describe "static_changed?" do
     test "raises when not in mounting state and connected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: true})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: self()})
 
       assert_raise RuntimeError, ~r/attempted to read static_changed?/, fn ->
         static_changed?(socket)
@@ -104,7 +104,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "raises when not in mounting state and disconnected" do
-      socket = Utils.post_mount_prune(%{@socket | connected?: false})
+      socket = Utils.post_mount_prune(%{@socket | transport_pid: nil})
 
       assert_raise RuntimeError, ~r/attempted to read static_changed?/, fn ->
         static_changed?(socket)
@@ -112,7 +112,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "returns false when disconnected" do
-      socket = %{@socket | connected?: false}
+      socket = %{@socket | transport_pid: nil}
       assert static_changed?(socket) == false
     end
 
@@ -170,7 +170,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     defp static_changed?(client, latest) do
-      socket = %{@socket | connected?: true}
+      socket = %{@socket | transport_pid: self()}
       Process.put(:cache_static_manifest_latest, latest)
       socket = put_in(socket.private.connect_params["_track_static"], client)
       static_changed?(socket)

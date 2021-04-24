@@ -192,7 +192,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
                       %{system_time: _}, metadata}
 
-      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.socket.transport_pid
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "upcase"}
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
                       metadata}
 
-      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.socket.transport_pid
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "upcase"}
@@ -217,7 +217,7 @@ defmodule Phoenix.LiveView.ComponentTest do
       assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
                       %{system_time: _}, metadata}
 
-      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.socket.transport_pid
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
@@ -227,7 +227,7 @@ defmodule Phoenix.LiveView.ComponentTest do
 
       assert metadata.kind == :error
       assert metadata.reason == {:case_clause, "boom"}
-      assert %Phoenix.LiveView.Socket{connected?: true} = metadata.socket
+      assert metadata.socket.transport_pid
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "boom"}

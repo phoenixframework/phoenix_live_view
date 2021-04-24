@@ -61,13 +61,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
       |> html_response(200)
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: false}} = metadata}
+                      %{socket: %Socket{transport_pid: nil}} = metadata}
 
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{connected?: false}} = metadata}
+                      %{socket: %Socket{transport_pid: nil}} = metadata}
 
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
@@ -82,13 +82,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
       end
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: false}} = metadata}
+                      %{socket: %Socket{transport_pid: nil}} = metadata}
 
       assert metadata.params == %{"crash_on" => "disconnected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{socket: %Socket{connected?: false}} = metadata}
+                      %{socket: %Socket{transport_pid: nil}} = metadata}
 
       assert metadata.kind == :error
       assert %RuntimeError{} = metadata.reason
@@ -128,14 +128,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, _view, _html} = live(conn, "/thermo?foo=bar")
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: true}} = metadata}
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
+      assert metadata.socket.transport_pid
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{connected?: true}} = metadata}
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
+      assert metadata.socket.transport_pid
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
     end
@@ -147,14 +151,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert catch_exit(live(conn, "/errors?crash_on=connected_mount"))
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{connected?: true}} = metadata}
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
+      assert metadata.socket.transport_pid
       assert metadata.params == %{"crash_on" => "connected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{socket: %Socket{connected?: true}} = metadata}
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
+      assert metadata.socket.transport_pid
       assert metadata.kind == :error
       assert %RuntimeError{} = metadata.reason
       assert metadata.params == %{"crash_on" => "connected_mount"}
@@ -446,14 +454,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _},
                       metadata}
 
-      assert metadata.socket.connected?
+      assert metadata.socket.transport_pid
       assert metadata.event == "save"
       assert metadata.params == %{"temp" => "20"}
 
       assert_receive {:event, [:phoenix, :live_view, :handle_event, :stop], %{duration: _},
                       metadata}
 
-      assert metadata.socket.connected?
+      assert metadata.socket.transport_pid
       assert metadata.event == "save"
       assert metadata.params == %{"temp" => "20"}
     end
@@ -468,14 +476,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _},
                       metadata}
 
-      assert metadata.socket.connected?
+      assert metadata.socket.transport_pid
       assert metadata.event == "crash"
       assert metadata.params == %{"foo" => "bar"}
 
       assert_receive {:event, [:phoenix, :live_view, :handle_event, :exception], %{duration: _},
                       metadata}
 
-      assert metadata.socket.connected?
+      assert metadata.socket.transport_pid
       assert metadata.kind == :error
       assert %RuntimeError{} = metadata.reason
       assert metadata.event == "crash"
