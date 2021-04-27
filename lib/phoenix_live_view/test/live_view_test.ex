@@ -1254,7 +1254,8 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Follows the redirect from a `render_*` action.
+  Follows the redirect from a `render_*` action or an `{:error, redirect}`
+  tuple.
 
   Imagine you have a LiveView that redirects on a `render_click`
   event. You can make it sure it immediately redirects after the
@@ -1263,6 +1264,11 @@ defmodule Phoenix.LiveViewTest do
       live_view
       |> render_click("redirect")
       |> follow_redirect(conn)
+
+  Or in the case of an error tuple:
+
+      assert {:error, {:redirect, %{to: "/somewhere"}}} = result = live(conn, "my-path")
+      {:ok, view, html} = follow_redirect(result, conn)
 
   `follow_redirect/3` expects a connection as second argument.
   This is the connection that will be used to perform the underlying
