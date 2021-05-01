@@ -1,4 +1,4 @@
-# DOM patching and temporary assigns
+# DOM patching & temporary assigns
 
 A container can be marked with `phx-update`, allowing the DOM patch
 operations to avoid updating or removing portions of the LiveView, or to append
