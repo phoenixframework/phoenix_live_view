@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.6
+
+### Bug fixes
+  - Fix live patch failing to update URL when live patch link is patched again from `handle_params`
+
 ## 0.15.5 (2021-04-20)
 
 ### Enhancements

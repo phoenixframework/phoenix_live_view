@@ -724,7 +724,7 @@ export class LiveSocket {
     this.prevActive = null
     this.silenced = false
     this.main = null
-    this.linkRef = 0
+    this.linkRef = 1
     this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
@@ -1195,14 +1195,16 @@ export class LiveSocket {
 
   pushHistoryPatch(href, linkState, targetEl){
     this.withPageLoading({to: href, kind: "patch"}, done => {
-      this.main.pushLinkPatch(href, targetEl, () => {
-        this.historyPatch(href, linkState)
+      this.main.pushLinkPatch(href, targetEl, linkRef => {
+        this.historyPatch(href, linkState, linkRef)
         done()
       })
     })
   }
 
-  historyPatch(href, linkState){
+  historyPatch(href, linkState, linkRef = this.setPendingLink(href)){
+    if(!this.commitPendingLink(linkRef)){ return }
+
     Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
     this.registerNewLocation(window.location)
   }
@@ -2847,10 +2849,12 @@ export class View {
     this.pushWithReply(refGen, "link", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
-      } else if(this.liveSocket.commitPendingLink(linkRef)){
-        this.href = href
+      } else {
+        if(this.liveSocket.commitPendingLink(linkRef)){
+          this.href = href
+        }
         this.applyPendingUpdates()
-        callback && callback()
+        callback && callback(linkRef)
       }
     }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
   }
