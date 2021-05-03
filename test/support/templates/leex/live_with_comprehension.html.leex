@@ -1,0 +1,7 @@
+pre: <%= @pre %>
+<%= for point <- @points do %>
+  x: <%= point.x %>
+  <%= render "inner_live.html", assigns %>
+  y: <%= point.y %>
+<% end %>
+post: <%= @post %>

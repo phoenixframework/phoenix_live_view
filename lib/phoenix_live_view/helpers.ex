@@ -288,6 +288,9 @@ defmodule Phoenix.LiveView.Helpers do
   The given function must expect one argument, which are the `assigns` as a
   map.
 
+  All of the `assigns` given are forwarded directly to the function as
+  the first only argument.
+
   ## Examples
 
   The function can be either local:
@@ -470,6 +473,20 @@ defmodule Phoenix.LiveView.Helpers do
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
+
+  @doc """
+  Provides `~H` sigil with HTML safe Live HEEx syntax inside source files.
+  """
+  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       indentation: meta[:indentation] || 0

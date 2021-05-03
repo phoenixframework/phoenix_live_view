@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.5.7"},
-      {:phoenix_html, "~> 2.14"},
+      {:phoenix_html, git: "https://github.com/phoenixframework/phoenix_html.git", override: true},
       {:telemetry, "~> 0.4.2 or ~> 0.5"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
@@ -100,6 +100,7 @@ defmodule Phoenix.LiveView.MixProject do
       ],
       "Live EEx Engine": [
         Phoenix.LiveView.Engine,
+        Phoenix.LiveView.HTMLEngine,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension

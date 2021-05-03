@@ -293,6 +293,8 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  # TODO
+
   defmodule MyComponent do
     use Phoenix.LiveComponent
 
