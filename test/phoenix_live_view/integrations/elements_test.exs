@@ -12,8 +12,9 @@ defmodule Phoenix.LiveView.ElementsTest do
   end
 
   setup do
-    {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/elements")
-    %{live: live}
+    conn = Phoenix.ConnTest.build_conn()
+    {:ok, live, _} = live(conn, "/elements")
+    %{live: live, conn: conn}
   end
 
   describe "has_element?/1" do
@@ -409,6 +410,34 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> element("#empty-form") |> render_submit(%{"foo" => "bar"})
       assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
     end
+  end
+
+  describe "follow_trigger_action" do
+    test "raises if element is not a form", %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   "a form element was given but the selected node is not a form, got \"a\"}",
+                   fn ->
+                     view |> element("#a-no-form") |> follow_trigger_action(conn)
+                   end
+    end
+
+    test "raises if element doesn't set phx-trigger-action on the form element", %{
+      live: view,
+      conn: conn
+    } do
+      assert_raise RuntimeError, "No form found with phx-trigger-action.", fn ->
+        view |> element("#empty-form") |> follow_trigger_action(conn)
+      end
+    end
+
+    test "uses default method and request path", %{live: view, conn: conn} do
+      conn = view |> element("#trigger-form") |> follow_trigger_action(conn)
+
+      assert conn.method == "GET"
+      assert conn.request_path == "/"
+    end
+
+    # todo: test that it... actually makes the request?
   end
 
   describe "form" do

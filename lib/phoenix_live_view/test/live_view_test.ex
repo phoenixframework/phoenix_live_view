@@ -1321,6 +1321,59 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc """
+  Use this to test that phx_trigger_action on a form gets set and properly
+  followed after a given form action.
+
+  Imagine you have a LiveView that you want to send an HTTP form submission.
+  Say that it sets the phx_trigger_action to true, as a response to a
+  socket-only form event. `follow_trigger_action/3` triggers that socket form event,
+  then ensures that it makes the HTTP form submission.
+
+      live_view
+      |> form(selector)
+      |> follow_trigger_action(conn, :submit)
+
+  """
+  defmacro follow_trigger_action(form_element, conn, event_type \\ :submit) do
+    quote bind_quoted: binding() do
+      {method, path, form_data} =
+        Phoenix.LiveViewTest.__render_trigger_event__(form_element, conn, event_type)
+
+      dispatch(conn, @endpoint, method, path, form_data)
+    end
+  end
+
+  def __render_trigger_event__(%Element{form_data: form_data} = form_element, conn, event_type)
+      when form_data != nil do
+    node =
+      form_element
+      |> render_event(event_type, form_data)
+      |> DOM.parse()
+      |> DOM.maybe_one("form[phx-trigger-action=true]")
+
+    case node do
+      {:ok, {"form", attrs, _child_nodes}} ->
+        # html defaults
+        %{"action" => path, "method" => method} =
+          Enum.into(attrs, %{
+            "action" => conn.request_path,
+            "method" => "get"
+          })
+
+        {method, path, form_data}
+
+      {:error, _,
+       "expected selector \"form[phx-trigger-action=true]\" to return a single element, but got none within:" <>
+           _rest} ->
+        raise RuntimeError, "No form found with phx-trigger-action."
+    end
+  end
+
+  def __render_trigger_event__(form_element, conn, event_type) do
+    __render_trigger_event__(Map.merge(form_element, %{form_data: %{}}), conn, event_type)
+  end
+
   defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
