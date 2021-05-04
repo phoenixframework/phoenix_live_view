@@ -186,14 +186,31 @@ defmodule Phoenix.LiveComponent do
   should assume only one of them to be the source of truth. Let's discuss
   the two different approaches in detail.
 
-  Imagine a scenario where LiveView represents a board with each card in
-  it as a separate component. Each card has a form that allows to update
-  its title directly in the component. We will see how to organize the
-  data flow keeping either the view or the component as the source of truth.
+  Imagine a scenario where a LiveView represents a board with each card
+  in it as a separate stateful LiveComponent. Each card has a form to
+  allow update of the card title directly in the component, as follows:
+
+      defmodule CardComponent do
+        use Phoenix.LiveComponent
+
+        def render(assigns) do
+          ~L\"""
+          <form phx-submit="..." phx-target="<%= @myself %>">
+            <input name="title"><%= @card.title %></input>
+            ...
+          </form>
+          \"""
+        end
+
+        ...
+      end
+
+  We will see how to organize the data flow to keep either the board LiveView or
+  the card LiveComponents as the source of truth.
 
   ### LiveView as the source of truth
 
-  If the LiveView is the source of truth, it will be responsible
+  If the board LiveView is the source of truth, it will be responsible
   for fetching all of the cards in a board. Then it will call [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
   for each card, passing the card struct as argument to `CardComponent`:
 
@@ -201,16 +218,16 @@ defmodule Phoenix.LiveComponent do
         <%= live_component CardComponent, card: card, id: card.id, board_id: @id %>
       <% end %>
 
-  Now, when the user submits a form inside the `CardComponent` to update the
-  card, `CardComponent.handle_event/3` will be triggered. However, if the
-  update succeeds, you must not change the card struct inside the component.
-  If you do so, the card struct in the component will get out of sync with
-  the LiveView. Since the LiveView is the source of truth, you should instead
-  tell the LiveView that the card was updated.
+  Now, when the user submits the form, `CardComponent.handle_event/3`
+  will be triggered. However, if the update succeeds, you must not
+  change the card struct inside the component. If you do so, the card
+  struct in the component will get out of sync with the LiveView.  Since
+  the LiveView is the source of truth, you should instead tell the
+  LiveView that the card was updated.
 
   Luckily, because the component and the view run in the same process,
-  sending a message from the component to the parent LiveView is as simple
-  as sending a message to `self()`:
+  sending a message from the LiveComponent to the parent LiveView is as
+  simple as sending a message to `self()`:
 
       defmodule CardComponent do
         ...
@@ -230,14 +247,14 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  As the list of cards in the parent socket was updated, the parent
-  will be re-rendered, sending the updated card to the component.
+  Because the list of cards in the parent socket was updated, the parent
+  LiveView will be re-rendered, sending the updated card to the component.
   So in the end, the component does get the updated card, but always
   driven from the parent.
 
-  Alternatively, instead of having the component directly send a
-  message to the parent, the component could broadcast the update
-  using `Phoenix.PubSub`. Such as:
+  Alternatively, instead of having the component send a message directly to the
+  parent view, the component could broadcast the update using `Phoenix.PubSub`.
+  Such as:
 
       defmodule CardComponent do
         ...
@@ -252,33 +269,33 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  As long as the parent LiveView subscribes to the "board:ID" topic,
+  As long as the parent LiveView subscribes to the `board:<ID>` topic,
   it will receive updates. The advantage of using PubSub is that we get
   distributed updates out of the box. Now, if any user connected to the
   board changes a card, all other users will see the change.
 
   ### LiveComponent as the source of truth
 
-  If the component is the source of truth, then the LiveView must no
-  longer fetch all of the cards structs from the database. Instead,
-  the view must only fetch all of the card ids and render the component
-  only by passing the IDs:
+  If each card LiveComponent is the source of truth, then the board LiveView
+  must no longer fetch the card structs from the database. Instead, the board
+  LiveView must only fetch the card ids, then render each component only by
+  passing an ID:
 
       <%= for card_id <- @card_ids do %>
         <%= live_component CardComponent, id: card_id, board_id: @id %>
       <% end %>
 
-  Now, each CardComponent loads their own card. Of course, doing so per
-  card would be expensive and lead to N queries, where N is the number
-  of components, so we must use the `c:preload/1` callback to make it
+  Now, each CardComponent will load its own card. Of course, doing so
+  per card could be expensive and lead to N queries, where N is the
+  number of cards, so we can use the `c:preload/1` callback to make it
   efficient.
 
-  Once all card components are started, they can fully manage each
-  card as a whole, without concerning themselves with the parent LiveView.
+  Once the card components are started, they can each manage their own
+  card, without concerning themselves with the parent LiveView.
 
-  However, note that components do not have a `c:Phoenix.LiveView.handle_info/2` callback.
-  Therefore, if you want to track distributed changes on a card, you
-  must have the parent LiveView receive those events and redirect them
+  However, note that components do not have a `c:Phoenix.LiveView.handle_info/2`
+  callback. Therefore, if you want to track distributed changes on a card,
+  you must have the parent LiveView receive those events and redirect them
   to the appropriate card. For example, assuming card updates are sent
   to the "board:ID" topic, and that the board LiveView is subscribed to
   said topic, one could do:
@@ -288,11 +305,11 @@ defmodule Phoenix.LiveComponent do
         {:noreply, socket}
       end
 
-  With `Phoenix.Liveview.send_update/3`, the `CardComponent` given by `id` will be invoked,
-  triggering both preload and update callbacks, which will load the
-  most up to date data from the database.
+  With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
+  will be invoked, triggering both preload and update callbacks, which will
+  load the most up to date data from the database.
 
-  ## Live component blocks
+  ## LiveComponent blocks
 
   When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked, it is also possible to pass a `do/end`
   block:
