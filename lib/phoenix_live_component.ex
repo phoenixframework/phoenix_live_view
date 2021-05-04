@@ -191,7 +191,8 @@ defmodule Phoenix.LiveComponent do
   allow update of the card title directly in the component, as follows:
 
       defmodule CardComponent do
-        ...
+        use Phoenix.LiveComponent
+
         def render(assigns) do
           ~L\"""
           <form phx-submit="..." phx-target="<%= @myself %>">
@@ -217,7 +218,7 @@ defmodule Phoenix.LiveComponent do
         <%= live_component CardComponent, card: card, id: card.id, board_id: @id %>
       <% end %>
 
-  Now, when the user submits the self-targeted form, `CardComponent.handle_event/3`
+  Now, when the user submits the form, `CardComponent.handle_event/3`
   will be triggered. However, if the update succeeds, you must not
   change the card struct inside the component. If you do so, the card
   struct in the component will get out of sync with the LiveView.  Since
@@ -292,9 +293,9 @@ defmodule Phoenix.LiveComponent do
   Once the card components are started, they can each manage their own
   card, without concerning themselves with the parent LiveView.
 
-  However, note that components do not have a `c:Phoenix.LiveView.handle_info/2` callback.
-  Therefore, if you want to track distributed changes on a card, you
-  must have the parent LiveView receive those events and redirect them
+  However, note that components do not have a `c:Phoenix.LiveView.handle_info/2`
+  callback. Therefore, if you want to track distributed changes on a card,
+  you must have the parent LiveView receive those events and redirect them
   to the appropriate card. For example, assuming card updates are sent
   to the "board:ID" topic, and that the board LiveView is subscribed to
   said topic, one could do:
@@ -304,9 +305,9 @@ defmodule Phoenix.LiveComponent do
         {:noreply, socket}
       end
 
-  With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id` will be invoked,
-  triggering both preload and update callbacks, which will load the
-  most up to date data from the database.
+  With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
+  will be invoked, triggering both preload and update callbacks, which will
+  load the most up to date data from the database.
 
   ## LiveComponent blocks
 
