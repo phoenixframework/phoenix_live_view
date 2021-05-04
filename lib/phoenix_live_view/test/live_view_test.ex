@@ -1322,56 +1322,50 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Use this to test that phx_trigger_action on a form gets set and properly
-  followed after a given form action.
+  Receives a `form_element` and asserts that `phx-trigger-action` has been
+  set to true, following up on that request.
 
-  Imagine you have a LiveView that you want to send an HTTP form submission.
-  Say that it sets the phx_trigger_action to true, as a response to a
-  socket-only form event. `follow_trigger_action/3` triggers that socket form event,
-  then ensures that it makes the HTTP form submission.
+  Imagine you have a LiveView that sends an HTTP form submission. Say that it
+  sets the `phx-trigger-action` to true, as a response to a submit event.
+  You can follow the trigger action like this:
 
-      live_view
-      |> form(selector)
-      |> follow_trigger_action(conn, :submit)
+      form = form(live_view, selector, %{"form" => "data"})
+
+      # First we submit the form. Optionally verify that phx-trigger-action
+      # is now part of the form.
+      assert render_submit(form) =~ ~r/phx-trigger-action/
+
+      # Now follow the request made by the form
+      conn = follow_trigger_action(form, conn)
+      assert conn.method == "POST"
+      assert conn.params == %{"form" => "data"}
 
   """
-  defmacro follow_trigger_action(form_element, conn, event_type \\ :submit) do
+  defmacro follow_trigger_action(form, conn) do
     quote bind_quoted: binding() do
-      {method, path, form_data} =
-        Phoenix.LiveViewTest.__render_trigger_event__(form_element, conn, event_type)
-
+      {method, path, form_data} = Phoenix.LiveViewTest.__render_trigger_event__(form)
       dispatch(conn, @endpoint, method, path, form_data)
     end
   end
 
-  def __render_trigger_event__(%Element{form_data: form_data} = form_element, conn, event_type)
-      when form_data != nil do
-    node =
-      form_element
-      |> render_event(event_type, form_data)
-      |> DOM.parse()
-      |> DOM.maybe_one("form[phx-trigger-action=true]")
+  def __render_trigger_event__(%Element{} = form) do
+    case render_tree(form) do
+      {"form", attrs, _child_nodes} ->
+        unless List.keymember?(attrs, "phx-trigger-action", 0) do
+          raise ArgumentError,
+                "could not follow trigger action because form #{inspect(form.selector)} " <>
+                  "does not have phx-trigger-action attribute, got: #{inspect(attrs)}"
+        end
 
-    case node do
-      {:ok, {"form", attrs, _child_nodes}} ->
-        # html defaults
-        %{"action" => path, "method" => method} =
-          Enum.into(attrs, %{
-            "action" => conn.request_path,
-            "method" => "get"
-          })
+        {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
+        {"method", method} = List.keyfind(attrs, "method", 0) || {"method", "get"}
+        {method, path, form.form_data || %{}}
 
-        {method, path, form_data}
-
-      {:error, _,
-       "expected selector \"form[phx-trigger-action=true]\" to return a single element, but got none within:" <>
-           _rest} ->
-        raise RuntimeError, "No form found with phx-trigger-action."
+      {tag, _, _} ->
+        raise ArgumentError,
+              "could not follow trigger action because given element did not return a form, " <>
+                "got #{inspect(tag)} instead"
     end
-  end
-
-  def __render_trigger_event__(form_element, conn, event_type) do
-    __render_trigger_event__(Map.merge(form_element, %{form_data: %{}}), conn, event_type)
   end
 
   defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid

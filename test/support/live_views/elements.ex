@@ -105,7 +105,12 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
     </form>
 
-    <form id="trigger-form" phx-submit="form-submit-trigger" phx-value-key="value" phx-trigger-action=<%= @trigger_action %>>
+    <form id="trigger-form-default" phx-submit="form-submit-trigger"
+          <%= @trigger_action && "phx-trigger-action" %>>
+    </form>
+
+    <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
+          <%= @trigger_action && "phx-trigger-action" %>>
     </form>
     """
   end

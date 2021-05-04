@@ -49,6 +49,7 @@ defmodule Phoenix.LiveViewTest.Router do
     get "/controller/:type", Controller, :incoming
     get "/widget", Controller, :widget
     get "/not_found", Controller, :not_found
+    post "/not_found", Controller, :not_found
 
     # router test
     live "/router/thermo_defaults/:id", DashboardLive
