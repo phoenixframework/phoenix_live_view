@@ -61,6 +61,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     Process.unlink(channel_pid)
   end
 
+  def consume(%LiveView.UploadEntry{} = entry, socket) do
+    if entry.done? do
+      Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> :ok end)
+    end
+
+    {:noreply, socket}
+  end
+
   setup_all do
     ExUnit.CaptureLog.capture_log(fn ->
       {:ok, _} = @endpoint.start_link()
@@ -82,11 +90,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   defp setup_lv(%{allow: opts}) do
+    opts = opts_for_allow_upload(opts)
     {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
     {:ok, lv: lv}
   end
 
   defp setup_component(%{allow: opts}) do
+    opts = opts_for_allow_upload(opts)
+
     {:ok, lv} =
       mount_lv_with_component(fn component_socket ->
         new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, opts)
@@ -94,6 +105,18 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end)
 
     {:ok, lv: lv}
+  end
+
+  defp opts_for_allow_upload(opts) do
+      case Keyword.fetch(opts, :progress) do
+        {:ok, progress} ->
+          Keyword.put(opts, :progress, fn _, entry, socket ->
+            apply(__MODULE__, progress, [entry, socket])
+          end)
+
+        :error ->
+          opts
+      end
   end
 
   for context <- [:lv, :component] do
@@ -247,6 +270,16 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert render_upload(avatar, "foo.jpeg", 20) =~ "#{@context}:foo.jpeg:20%"
         assert render_upload(avatar, "foo.jpeg", 25) =~ "#{@context}:foo.jpeg:45%"
+      end
+
+      @tag allow: [max_entries: 3, chunk_size: 20, accept: :any, progress: :consume]
+      test "render_upload uploads with progress callback", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+          assert render_upload(avatar, "foo.jpeg") =~ "100%"
       end
 
       @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]

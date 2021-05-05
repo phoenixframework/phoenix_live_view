@@ -4,6 +4,7 @@
 
 ### Bug fixes
   - Fix live patch failing to update URL when live patch link is patched again from `handle_params`
+  - Fix regression in `LiveViewTest.render_upload/3` when using channel uploads and progress callback
 
 ## 0.15.5 (2021-04-20)
 

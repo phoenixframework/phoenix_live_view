@@ -65,19 +65,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     {:reply, pids, state}
   end
 
-  def handle_call({:chunk, entry_name, percent, proxy_pid, element}, _from, state) do
-    ref = make_ref()
-    new_state = chunk_upload(state, {self(), ref}, entry_name, percent, proxy_pid, element)
-
-    # We need to wait for ClientProxy to sync the
-    # :upload_progress before replying to the caller,
-    # otherwise the proxy's reply will race our own.
-    receive do
-      {^ref, {:ok, _}} ->
-        {:reply, :ok, new_state}
-    after
-      1000 -> exit(:timeout)
-    end
+  def handle_call({:chunk, entry_name, percent, proxy_pid, element}, from, state) do
+    {:reply, :ok, chunk_upload(state, from, entry_name, percent, proxy_pid, element)}
   end
 
   def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
@@ -155,10 +144,19 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end
   end
 
-  defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
+  defp do_chunk(%{socket: nil, cid: cid} = state, _from, entry, proxy_pid, element, percent) do
+    ref = make_ref()
     stats = progress_stats(entry, percent)
-    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, cid)
-    update_entry_start(state, entry, stats.new_start)
+    :ok = ClientProxy.report_upload_progress(proxy_pid, {self(), ref}, element, entry.ref, stats.new_percent, cid)
+
+    # For external uploads, we need to wait for ClientProxy
+    # to sync the :upload_progress before replying to the
+    # caller, otherwise the proxy's reply will race our own.
+    receive do
+      {^ref, {:ok, _}} -> update_entry_start(state, entry, stats.new_start)
+    after
+      1000 -> exit(:timeout)
+    end
   end
 
   defp do_chunk(state, from, entry, proxy_pid, element, percent) do
