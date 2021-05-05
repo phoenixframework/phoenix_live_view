@@ -38,8 +38,8 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.5.7"},
-      {:phoenix_html, git: "https://github.com/phoenixframework/phoenix_html.git", override: true},
+      {:phoenix, github: "phoenixframework/phoenix", branch: "v1.5"},
+      {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
       {:telemetry, "~> 0.4.2 or ~> 0.5"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
