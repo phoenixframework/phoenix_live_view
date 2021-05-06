@@ -748,6 +748,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag session: %{nest: []}
+    test "push_redirect with destination that can vary", %{conn: conn} do
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
+
+      assert clock_view = find_live_child(thermo_view, "clock")
+
+      id = Enum.random(1000..9999)
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=#{id}")}
+         end}
+      )
+
+      {path, _flash} = assert_redirect(thermo_view)
+      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
+    end
+
+    @tag session: %{nest: []}
     test "push_patch", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
@@ -763,6 +784,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert_patch(thermo_view, "/thermo?redirect=patch")
       assert render(thermo_view) =~ "Redirect: patch"
+    end
+
+    @tag session: %{nest: []}
+    test "push_patch to destination which can vary", %{conn: conn} do
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
+      assert clock_view = find_live_child(thermo_view, "clock")
+
+      id = Enum.random(1000..9999)
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=#{id}")}
+         end}
+      )
+
+      path = assert_patch(thermo_view)
+      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
+      assert render(thermo_view) =~ "Redirect: #{id}"
     end
 
     @tag session: %{nest: []}

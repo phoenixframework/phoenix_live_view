@@ -1035,34 +1035,74 @@ defmodule Phoenix.LiveViewTest do
     call(view, :page_title)
   end
 
-  @doc """
-  Asserts a live patch will happen within `timeout`.
 
-  It always returns `:ok`. To assert on the flash message,
-  you can assert on the result of the rendered LiveView.
+  @doc """
+  Asserts a live patch will happen within `timeout` milliseconds. The default
+  `timeout` is 100.
+
+  It returns the new path.
+
+  To assert on the flash message, you can assert on the result of the
+  rendered LiveView.
 
   ## Examples
 
       render_click(view, :event_that_triggers_patch)
+      assert_patch view
+
+      render_click(view, :event_that_triggers_patch)
+      assert_patch view, 30
+
+      render_click(view, :event_that_triggers_patch)
+      path = assert_patch view
+      assert path =~ ~r/path/\d+/
+  """
+  def assert_patch(view, timeout \\ 100)
+
+  def assert_patch(view, timeout) when is_integer(timeout) do
+    {path, _flash} = assert_navigation(view, :patch, nil, timeout)
+    path
+  end
+
+  def assert_patch(view, to) when is_binary(to), do: assert_patch(view, to, 100)
+
+  @doc """
+  Asserts a live patch will to a given path within `timeout` milliseconds. The
+  default `timeout` is 100.
+
+  It always returns `:ok`.
+
+  To assert on the flash message, you can assert on the result of the
+  rendered LiveView.
+
+  ## Examples
+      render_click(view, :event_that_triggers_patch)
       assert_patch view, "/path"
 
+      render_click(view, :event_that_triggers_patch)
+      assert_patch view, "/path", 30
+
   """
-  def assert_patch(%View{} = view, to, timeout \\ 100)
+  def assert_patch(view, to, timeout)
       when is_binary(to) and is_integer(timeout) do
     assert_navigation(view, :patch, to, timeout)
     :ok
   end
 
   @doc """
-  Asserts a live patch was performed.
+  Asserts a live patch was performed, and returns the new path.
 
-  It always returns `:ok`. To assert on the flash message,
-  you can assert on the result of the rendered LiveView.
+  To assert on the flash message, you can assert on the result of
+  the rendered LiveView.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
       assert_patched view, "/path"
+
+      render_click(view, :event_that_triggers_redirect)
+      path = assert_patched view
+      assert path =~ ~r/path/\d+/
 
   """
   def assert_patched(view, to) do
@@ -1070,7 +1110,34 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a redirect will happen within `timeout`.
+  Asserts a redirect will happen within `timeout` milliseconds.
+  The default `timout` is 100.
+
+  It returns a tuple containing the new path and the flash messages from said
+  redirect, if any. Note the flash will contain string keys.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_redirect)
+      {_path, flash} = assert_redirect view
+      assert flash["info"] == "Welcome"
+      assert path =~ ~r/path\/\d+/
+
+      render_click(view, :event_that_triggers_redirect)
+      assert_redirect view, 30
+  """
+  def assert_redirect(view, timeout \\ 100)
+
+  def assert_redirect(view, timeout) when is_integer(timeout) do
+    assert_navigation(view, :redirect, nil, timeout)
+  end
+
+  def assert_redirect(view, to) when is_binary(to), do: assert_redirect(view, to, 100)
+
+  @doc """
+  Asserts a redirect will happen to a given path within `timeout` milliseconds.
+  The default `timout` is 100.
+
 
   It returns the flash messages from said redirect, if any.
   Note the flash will contain string keys.
@@ -1081,26 +1148,34 @@ defmodule Phoenix.LiveViewTest do
       flash = assert_redirect view, "/path"
       assert flash["info"] == "Welcome"
 
+      render_click(view, :event_that_triggers_redirect)
+      assert_redirect view, "/path", 30
   """
-  def assert_redirect(%View{} = view, to, timeout \\ 100)
+  def assert_redirect(view, to, timeout)
       when is_binary(to) and is_integer(timeout) do
-    assert_navigation(view, :redirect, to, timeout)
+    {_path, flash} = assert_navigation(view, :redirect, to, timeout)
+    flash
   end
 
   @doc """
   Asserts a redirect was performed.
 
-  It returns the flash messages from said redirect, if any.
-  Note the flash will contain string keys.
+  It returns a tuple containing the new path and the flash messages
+  from said redirect, if any. Note the flash will contain string keys.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      flash = assert_redirected view, "/path"
+      {_path, flash} = assert_redirected view, "/path"
       assert flash["info"] == "Welcome"
 
+      render_click(view, :event_that_triggers_redirect)
+      {path, flash} = assert_redirected view
+      assert flash["info"] == "Welcome"
+      assert path =~ ~r/path\/\d+/
+
   """
-  def assert_redirected(view, to) do
+  def assert_redirected(view, to \\ nil) do
     assert_redirect(view, to, 0)
   end
 
@@ -1108,11 +1183,15 @@ defmodule Phoenix.LiveViewTest do
     %{proxy: {ref, topic, _}, endpoint: endpoint} = view
 
     receive do
-      {^ref, {^kind, ^topic, %{to: ^to} = opts}} ->
-        Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])
+      {^ref, {^kind, ^topic, %{to: new_to} = opts}} when new_to == to or to == nil ->
+        {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
     after
       timeout ->
-        message = "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
+        message = if to do
+          "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
+        else
+          "expected #{inspect(view.module)} to #{kind}, "
+        end
 
         case flush_navigation(ref, topic, nil) do
           nil -> raise ArgumentError, message <> "but got none"
