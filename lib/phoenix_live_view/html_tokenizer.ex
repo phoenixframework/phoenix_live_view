@@ -11,9 +11,20 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       location =
         exception.file
         |> Path.relative_to_cwd()
-        |> Exception.format_file_line_column(exception.line, exception.column)
+        |> format_file_line_column(exception.line, exception.column)
 
       "#{location} #{exception.message}"
+    end
+
+    # Use Exception.format_file_line_column/4 instead when support
+    # for Elixir < v1.11 is removed.
+    def format_file_line_column(file, line, column, suffix \\ "") do
+      cond do
+        is_nil(file) -> ""
+        is_nil(line) or line == 0 -> "#{file}:#{suffix}"
+        is_nil(column) or column == 0 -> "#{file}:#{line}:#{suffix}"
+        true -> "#{file}:#{line}:#{column}:#{suffix}"
+      end
     end
   end
 

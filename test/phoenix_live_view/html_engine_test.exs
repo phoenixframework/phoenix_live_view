@@ -186,36 +186,54 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "handle errors in expressions" do
-    test "inside attribute values" do
-      assert_raise(SyntaxError, "nofile:12:22: syntax error before: ','", fn ->
-        opts = [line: 10, indentation: 8]
+    if Version.match?(System.version(), ">= 1.12.0-rc.0") do
+      test "inside attribute values" do
+        assert_raise(SyntaxError, "nofile:12:22: syntax error before: ','", fn ->
+          opts = [line: 10, indentation: 8]
 
-        eval(
-          """
-          text
-          <%= "interpolation" %>
-          <div class={[,]}/>
-          """,
-          [],
-          opts
-        )
-      end)
-    end
+          eval(
+            """
+            text
+            <%= "interpolation" %>
+            <div class={[,]}/>
+            """,
+            [],
+            opts
+          )
+        end)
+      end
 
-    test "inside root attribute value" do
-      assert_raise(SyntaxError, "nofile:12:16: syntax error before: ','", fn ->
-        opts = [line: 10, indentation: 8]
+      test "inside root attribute value" do
+        assert_raise(SyntaxError, "nofile:12:16: syntax error before: ','", fn ->
+          opts = [line: 10, indentation: 8]
 
-        eval(
-          """
-          text
-          <%= "interpolation" %>
-          <div {[,]}/>
-          """,
-          [],
-          opts
-        )
-      end)
+          eval(
+            """
+            text
+            <%= "interpolation" %>
+            <div {[,]}/>
+            """,
+            [],
+            opts
+          )
+        end)
+      end
+    else
+      test "older versions cannot provide correct line on errors" do
+        assert_raise(SyntaxError, ~r/nofile:2/, fn ->
+          opts = [line: 10, indentation: 8]
+
+          eval(
+            """
+            text
+            <%= "interpolation" %>
+            <div class={[,]}/>
+            """,
+            [],
+            opts
+          )
+        end)
+      end
     end
   end
 
