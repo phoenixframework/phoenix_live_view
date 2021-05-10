@@ -82,6 +82,13 @@ defmodule Phoenix.LiveComponent do
   for stateful components. LiveView will emit warnings in future versions if
   this is not the case.
 
+  The assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
+  are handled as for a stateless component: either passed to
+  `c:update/2` if it is defined; or, merged to the socket assigns
+  otherwise.  The optional `c:preload/1` receives a list of the assigns
+  maps for all instances of the component in the parent LiveView, see
+  below for an example of how this may be helpful.
+
   In stateful components, `c:mount/1` is called only once, when the
   component is first rendered. For each rendering, the optional
   `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
