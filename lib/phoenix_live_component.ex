@@ -42,7 +42,7 @@ defmodule Phoenix.LiveComponent do
   First `c:mount/1` is called only with the socket. `c:mount/1` can be used
   to set any initial state. Then `c:update/2` is invoked with all of the
   assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
-  If `c:update/2` is not defined all assigns are simply merged to the socket
+  If `c:update/2` is not defined, all assigns are simply merged into the socket
   assigns after `c:mount/1`.  After the component is updated, `c:render/1` is
   called with all assigns.
 
@@ -81,6 +81,13 @@ defmodule Phoenix.LiveComponent do
   It is recommended to have only a single root element in the HTML template
   for stateful components. LiveView will emit warnings in future versions if
   this is not the case.
+
+  The assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
+  are handled as for a stateless component: either passed to
+  `c:update/2` if it is defined; or, merged to the socket assigns
+  otherwise.  The optional `c:preload/1` receives a list of the assigns
+  maps for all instances of the component in the parent LiveView, see
+  below for an example when this may be helpful.
 
   In stateful components, `c:mount/1` is called only once, when the
   component is first rendered. For each rendering, the optional
