@@ -188,24 +188,31 @@ defmodule Phoenix.LiveView.Helpers do
   Renders a `Phoenix.LiveComponent` within a parent LiveView.
 
   While `LiveView`s can be nested, each LiveView starts its
-  own process. A LiveComponent provides similar functionality
-  to LiveView, except they run in the same process as the
-  `LiveView`, with its own encapsulated state.
+  own process. A LiveComponent provides functionality similar
+  to a LiveView, except it runs in the same process as the parent
+  `LiveView` and has its own encapsulated state.
 
-  LiveComponent comes in two shapes, stateful and stateless.
-  See `Phoenix.LiveComponent` for more information.
+  LiveComponent may be either stateful or stateless, see
+  `Phoenix.LiveComponent` for more information.
 
-  ## Examples
-
-  All of the `assigns` given are forwarded directly to the
-  `live_component`:
-
-      <%= live_component(MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+  The `assigns` are either received by the component's optional
+  `preload/2` if defined, or otherwise automatically merged to the
+  parent LiveView socket assigns after the component's `mount/1`
+  (therefore overriding existing assigns of the same name already in
+  the socket).
 
   Note the `:id` won't necessarily be used as the DOM ID.
   That's up to the component. However, note that the `:id` has
   a special meaning: whenever an `:id` is given, the component
   becomes stateful. Otherwise, `:id` is always set to `nil`.
+
+  ## Examples
+
+  The `%{city: "Kraków"}` assigns will be available in the component
+  via socket assigns after `mount/1`; or may be handled in `update/2`.
+
+      <%= live_component(MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+
   """
   defmacro live_component(component, assigns \\ [], do_block \\ []) do
     if match?({:@, _, [{:socket, _, _}]}, component) or match?({:socket, _, _}, component) do
