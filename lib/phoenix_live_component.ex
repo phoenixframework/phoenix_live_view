@@ -42,8 +42,9 @@ defmodule Phoenix.LiveComponent do
   First `c:mount/1` is called only with the socket. `c:mount/1` can be used
   to set any initial state. Then `c:update/2` is invoked with all of the
   assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket.
-  After the component is updated, `c:render/1` is called with all assigns.
+  If `c:update/2` is not defined, all assigns are simply merged into the socket
+  assigns after `c:mount/1`.  After the component is updated, `c:render/1` is
+  called with all assigns.
 
   A stateless component is always mounted, updated, and rendered whenever
   the parent template changes. That's why they are stateless: no state
