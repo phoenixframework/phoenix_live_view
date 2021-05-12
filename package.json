@@ -4,10 +4,18 @@
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
   "main": "./priv/static/phoenix_live_view.js",
+  "module": "./assets/js/phoenix_live_view.js",
+  "exports": {
+    "import": "./assets/js/phoenix_live_view.js",
+    "require": "./priv/static/phoenix_live_view.js"
+  },
   "author": "Chris McCord <chris@chrismccord.com> (http://www.phoenixframework.org)",
   "repository": {
     "type": "git",
     "url": "git://github.com/phoenixframework/phoenix_live_view.git"
+  },
+  "dependencies": {
+    "morphdom": "2.6.1"
   },
   "files": [
     "README.md",
