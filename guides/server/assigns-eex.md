@@ -117,6 +117,14 @@ change tracking in the called template:
 
     <%= render "sidebar.html", assigns %>
 
+Note that passing the `assigns` when rendering another `.leex` template with temporary assigns can cause unexpected behavior:
+
+    # `posts` is a temporary assign
+    <%= for post <- @posts do %>
+      <%= render "post.html", assigns %>
+
+In this case, any change to `assigns` will cause the temporary assign to reset to the default value. Instead you should only pass the required subset of `assigns` to `render/2`.
+
 Similarly, variables introduced by Elixir's block constructs are fine. For example,
 accessing the `post` variable defined by the comprehension below works as expected:
 
