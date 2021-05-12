@@ -1441,7 +1441,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_chunk(upload, entry_name, percent) do
-    :ok = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
+    {:ok, _} = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
     render(upload.view)
   end
 end
