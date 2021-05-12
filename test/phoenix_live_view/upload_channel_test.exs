@@ -62,8 +62,11 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def consume(%LiveView.UploadEntry{} = entry, socket) do
-    if entry.done? do
-      Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> :ok end)
+    socket = if entry.done? do
+      name = Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> entry.client_name end)
+      LiveView.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
+    else
+      socket
     end
 
     {:noreply, socket}
@@ -279,7 +282,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
           ])
 
-          assert render_upload(avatar, "foo.jpeg") =~ "100%"
+        assert render_upload(avatar, "foo.jpeg") =~ "consumed:foo.jpeg"
       end
 
       @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
