@@ -62,12 +62,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def consume(%LiveView.UploadEntry{} = entry, socket) do
-    socket = if entry.done? do
-      name = Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> entry.client_name end)
-      LiveView.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
-    else
-      socket
-    end
+    socket =
+      if entry.done? do
+        name =
+          Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> entry.client_name end)
+
+        LiveView.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
+      else
+        socket
+      end
 
     {:noreply, socket}
   end
@@ -111,15 +114,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   defp opts_for_allow_upload(opts) do
-      case Keyword.fetch(opts, :progress) do
-        {:ok, progress} ->
-          Keyword.put(opts, :progress, fn _, entry, socket ->
-            apply(__MODULE__, progress, [entry, socket])
-          end)
+    case Keyword.fetch(opts, :progress) do
+      {:ok, progress} ->
+        Keyword.put(opts, :progress, fn _, entry, socket ->
+          apply(__MODULE__, progress, [entry, socket])
+        end)
 
-        :error ->
-          opts
-      end
+      :error ->
+        opts
+    end
   end
 
   for context <- [:lv, :component] do
@@ -532,40 +535,62 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
 
       GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})
-      GenServer.call(lv.pid, {:setup, fn socket ->
-        run = fn component_socket ->
-          new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
-          {:reply, :ok, new_socket}
-        end
-        LiveView.send_update(Phoenix.LiveViewTest.UploadComponent, id: "upload1", run: {run, nil})
-        socket
-      end})
+
+      GenServer.call(
+        lv.pid,
+        {:setup,
+         fn socket ->
+           run = fn component_socket ->
+             new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
+             {:reply, :ok, new_socket}
+           end
+
+           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+             id: "upload1",
+             run: {run, nil}
+           )
+
+           socket
+         end}
+      )
 
       dup_avatar = file_input(lv, "#upload1", :avatar, build_entries(1))
 
       assert UploadLive.exits_with(lv, dup_avatar, RuntimeError, fn ->
-        render_upload(dup_avatar, "myfile1.jpeg", 1)
-      end) =~ "existing upload for avatar already allowed in another component"
+               render_upload(dup_avatar, "myfile1.jpeg", 1)
+             end) =~ "existing upload for avatar already allowed in another component"
+
       refute Process.alive?(lv.pid)
     end
 
     @tag allow: [accept: :any]
     test "get allowed uploads from the form's target cid", %{lv: lv} do
       GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})
-      GenServer.call(lv.pid, {:setup, fn socket ->
-        run = fn component_socket ->
-          new_socket =
-            component_socket
-            |> Phoenix.LiveView.allow_upload(:avatar, accept: :any)
-            |> Phoenix.LiveView.allow_upload(:background, accept: :any)
 
-          {:reply, :ok, new_socket}
-        end
-        LiveView.send_update(Phoenix.LiveViewTest.UploadComponent, id: "upload1", run: {run, nil})
-        socket
-      end})
+      GenServer.call(
+        lv.pid,
+        {:setup,
+         fn socket ->
+           run = fn component_socket ->
+             new_socket =
+               component_socket
+               |> Phoenix.LiveView.allow_upload(:avatar, accept: :any)
+               |> Phoenix.LiveView.allow_upload(:background, accept: :any)
 
-      assert %Phoenix.LiveViewTest.Upload{} = file_input(lv, "#upload1", :background, build_entries(1))
+             {:reply, :ok, new_socket}
+           end
+
+           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+             id: "upload1",
+             run: {run, nil}
+           )
+
+           socket
+         end}
+      )
+
+      assert %Phoenix.LiveViewTest.Upload{} =
+               file_input(lv, "#upload1", :background, build_entries(1))
 
       assert_raise RuntimeError, "no uploads allowed for background", fn ->
         file_input(lv, "#upload0", :background, build_entries(1))
