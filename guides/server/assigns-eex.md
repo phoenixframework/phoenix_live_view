@@ -110,23 +110,11 @@ Instead explicitly precompute the assign in your LiveView, outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Generally speaking, avoid accessing variables inside LiveViews. This also applies
-to the `assigns` variable, except when rendering another `.leex` template. In such
-cases, it is ok to pass the whole assigns, as LiveView will continue to perform
-change tracking in the called template:
-
-    <%= render "sidebar.html", assigns %>
-
-Note that passing the `assigns` when rendering another `.leex` template with temporary assigns can cause unexpected behavior:
-
-    # `posts` is a temporary assign
-    <%= for post <- @posts do %>
-      <%= render "post.html", assigns %>
-
-In this case, any change to `assigns` will cause the temporary assign to reset to the default value. Instead you should only pass the required subset of `assigns` to `render/2`.
-
-Similarly, variables introduced by Elixir's block constructs are fine. For example,
-accessing the `post` variable defined by the comprehension below works as expected:
+Generally speaking, avoid accessing variables inside LiveViews, as code that
+access variables is always executed on every render. This also applies to the
+`assigns` variable. The exception are variables introduced by Elixir's block
+constructs. For example, accessing the `post` variable defined by the comprehension
+below works as expected:
 
     <%= for post <- @posts do %>
       ...
