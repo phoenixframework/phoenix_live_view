@@ -478,17 +478,11 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
-  defp extract_call(func) when is_atom(func) do
-    func
-  end
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
+    do: func
 
-  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}) do
-    func
-  end
-
-  defp extract_call(call) do
-    call
-  end
+  defp extract_call(call),
+    do: call
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
     for {:->, meta, [args, block]} <- blocks do
