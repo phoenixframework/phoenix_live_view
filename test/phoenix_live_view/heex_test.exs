@@ -79,6 +79,27 @@ defmodule Phoenix.LiveView.HEExTest do
               {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
   end
 
+  test "renders dead engine with function component" do
+    assert %Rendered{
+              static: ["pre: ", "\n", "\npost: ", "\n"],
+              dynamic: ["pre", %Rendered{dynamic: ["the value"], static: ["COMPONENT:", "\n"]}, "post"]
+            } =
+              Phoenix.View.render(View, "dead_with_function_component.html", @assigns) |> expand_rendered(true)
+  end
+
+  test "renders dead engine with function component with inner content" do
+    assert %Rendered{
+              static: ["pre: ", "\n", "\npost: ", "\n"],
+              dynamic: [
+                "pre",
+                %Rendered{dynamic: ["the value", ["\n  The inner content\n"]], static: ["COMPONENT:", ", Content: ", "\n"]},
+                "post"
+              ]
+            } =
+              Phoenix.View.render(View, "dead_with_function_component_with_inner_content.html", @assigns)
+              |> expand_rendered(true)
+  end
+
   test "renders inside render_layout/4" do
     import Phoenix.View
     assigns = @assigns

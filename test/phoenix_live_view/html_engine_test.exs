@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
+  import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1]
   alias Phoenix.LiveView.HTMLEngine
 
   defmacrop render_component(string) do
@@ -11,26 +12,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  def fake_remote_function_component(assigns) do
-    "REMOTE COMPONENT: #{inspect(assigns)}"
+  def remote_function_component(assigns) do
+    ~H"REMOTE COMPONENT: Value: <%= @value %>"
   end
 
-  defp fake_local_function_component(assigns) do
-    "LOCAL COMPONENT: #{inspect(assigns)}"
+  def remote_function_component_with_inner_content(assigns) do
+    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
   end
 
-  # Fake implementation for `Phoenix.LiveView.Helpers.component/2`
-  defmacrop component(func, assigns) do
-    quote do
-      Phoenix.HTML.raw(unquote(func).(unquote(assigns)))
-    end
+  defp local_function_component(assigns) do
+    ~H"LOCAL COMPONENT: Value: <%= @value %>"
   end
 
-  # Fake implementation for `Phoenix.LiveView.Helpers.component/3`
-  defmacrop component(func, assigns, [do: _block]) do
-    quote do
-      Phoenix.HTML.raw(unquote(func).(unquote(assigns)) <> " WITH INNER CONTENT")
-    end
+  defp local_function_component_with_inner_content(assigns) do
+    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
   end
 
   test "handles text" do
@@ -121,32 +116,32 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   describe "handle function components" do
     test "remote call (self close)" do
       assigns = %{}
-      assert render_component("<Phoenix.LiveView.HTMLEngineTest.fake_remote_function_component value='1'/>") ==
-        "REMOTE COMPONENT: %{value: \"1\"}"
+      assert render_component("<Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'/>") ==
+        "REMOTE COMPONENT: Value: 1"
     end
 
     test "remote call with inner content" do
       assigns = %{}
       assert render_component("""
-      <Phoenix.LiveView.HTMLEngineTest.fake_remote_function_component value='1'>
+      <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
         The inner content
-      </Phoenix.LiveView.HTMLEngineTest.fake_remote_function_component>
-      """) == "REMOTE COMPONENT: %{value: \"1\"} WITH INNER CONTENT\n"
+      </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
+      """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n\n"
     end
 
     test "local call (self close)" do
       assigns = %{}
-      assert render_component("<.fake_local_function_component value='1'/>") ==
-        "LOCAL COMPONENT: %{value: \"1\"}"
+      assert render_component("<.local_function_component value='1'/>") ==
+        "LOCAL COMPONENT: Value: 1"
     end
 
     test "local call with inner content" do
       assigns = %{}
       assert render_component("""
-      <.fake_local_function_component value='1'>
+      <.local_function_component_with_inner_content value='1'>
         The inner content
-      </.fake_local_function_component>
-      """) == "LOCAL COMPONENT: %{value: \"1\"} WITH INNER CONTENT\n"
+      </.local_function_component_with_inner_content>
+      """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
     end
   end
 

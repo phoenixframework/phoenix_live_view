@@ -437,7 +437,9 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct({macro, meta, [_ | _] = args} = expr, vars, assigns)
        when is_atom(macro) do
-    if classify_taint(macro, args) in [:live, :render] do
+    call = extract_call(macro)
+
+    if classify_taint(call, args) in [:live, :render] do
       {args, [opts]} = Enum.split(args, -1)
 
       # The reason we can safely ignore assigns here is because
@@ -466,7 +468,7 @@ defmodule Phoenix.LiveView.Engine do
           {key, maybe_block_to_rendered(value, vars)}
         end
 
-      to_safe({macro, meta, args ++ [opts]}, true)
+      to_safe({call, meta, args ++ [opts]}, true)
     else
       to_safe(expr, true)
     end
@@ -474,6 +476,18 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct(expr, _vars, _assigns) do
     to_safe(expr, true)
+  end
+
+  defp extract_call(func) when is_atom(func) do
+    func
+  end
+
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}) do
+    func
+  end
+
+  defp extract_call(call) do
+    call
   end
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
@@ -700,7 +714,9 @@ defmodule Phoenix.LiveView.Engine do
 
   # Classify calls
   defp analyze({left, meta, args} = expr, vars, assigns) do
-    case classify_taint(left, args) do
+    call = extract_call(left)
+
+    case classify_taint(call, args) do
       :always ->
         case vars do
           {:restricted, _} -> {expr, vars, assigns}

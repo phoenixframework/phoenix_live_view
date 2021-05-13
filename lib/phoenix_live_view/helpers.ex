@@ -325,6 +325,7 @@ defmodule Phoenix.LiveView.Helpers do
     quote do
       fn parent_changed, arg ->
         var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
+        _ = var!(assigns)
         unquote(inner_fun).(arg)
       end
     end

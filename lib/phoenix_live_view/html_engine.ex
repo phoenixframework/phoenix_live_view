@@ -56,7 +56,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
-    invoke_subengine(state, :handle_body, [])
+    ast = invoke_subengine(state, :handle_body, [])
+
+    quote do
+      require Phoenix.LiveView.Helpers
+      unquote(ast)
+    end
   end
 
   @doc false
@@ -153,7 +158,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        component(&unquote(mod).unquote(fun)/1, unquote(assigns))
+        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
@@ -181,7 +186,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        component(&unquote(mod).unquote(fun)/1, unquote(assigns)) do
+        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns)) do
           _assigns ->
             unquote(invoke_subengine(state, :handle_end, []))
         end
@@ -204,7 +209,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns))
+        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
@@ -229,7 +234,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns)) do
+        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns)) do
           _assigns ->
             unquote(invoke_subengine(state, :handle_end, []))
         end
