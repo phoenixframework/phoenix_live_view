@@ -85,7 +85,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         <div>
           <span>
 
-        <p>\
+        <p/><br>\
         """)
 
       assert [
@@ -93,7 +93,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
                {:text, _},
                {:tag_open, "span", [], %{line: 2, column: 3}},
                {:text, _},
-               {:tag_open, "p", [], %{line: 4, column: 1}}
+               {:tag_open, "p", [], %{column: 1, line: 4, self_close: true}},
+               {:tag_open, "br", [], %{column: 5, line: 4}}
              ] = tokens
     end
 
