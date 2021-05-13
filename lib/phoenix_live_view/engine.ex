@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView.Engine do
        quote do
          dynamic = fn track_changes? ->
            changed =
-             case var!(assigns) do
+             case unquote(@assigns_var) do
                %{__changed__: changed} when track_changes? -> changed
                _ -> nil
              end
