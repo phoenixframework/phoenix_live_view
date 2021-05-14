@@ -516,14 +516,13 @@ defmodule Phoenix.LiveView.Helpers do
 
   `EEx` handles templates as plain text so you're free to interpolate elixir code anywhere in your
   template. `HEEx`, on the other hand, parses the code, validating its structure, including
-  HTML/component nodes and attributes. In order to be able to perform that validation, code interpolation
-  using `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of an HTML/component
-  node, i.e., it cannot be applied in the context of its opening/closing tag.
+  HTML/component nodes and attributes. In order to be able to perform validation, code interpolation
+  using `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the HTML/component
+  nodes, i.e., it cannot be applied in the context of their opening/closing tags.
 
   For instance, the following syntax is invalid:
 
-      <!-- This is invalid HEEx code -->
-      <div class=<%= @class %>>
+      <div class="<%= @class %>">
         ...
       </div>
 
