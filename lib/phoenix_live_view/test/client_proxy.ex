@@ -395,6 +395,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:reply, {:ok, state.page_title}, state}
   end
 
+  def handle_call(:url, _from, state) do
+    {:reply, {:ok, state.url}, state}
+  end
+
   def handle_call(:html, _from, state) do
     {:reply, {:ok, {state.html, state.static_path}}, state}
   end

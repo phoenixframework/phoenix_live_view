@@ -1321,6 +1321,53 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc """
+  Receives a `form_element` and asserts that `phx-trigger-action` has been
+  set to true, following up on that request.
+
+  Imagine you have a LiveView that sends an HTTP form submission. Say that it
+  sets the `phx-trigger-action` to true, as a response to a submit event.
+  You can follow the trigger action like this:
+
+      form = form(live_view, selector, %{"form" => "data"})
+
+      # First we submit the form. Optionally verify that phx-trigger-action
+      # is now part of the form.
+      assert render_submit(form) =~ ~r/phx-trigger-action/
+
+      # Now follow the request made by the form
+      conn = follow_trigger_action(form, conn)
+      assert conn.method == "POST"
+      assert conn.params == %{"form" => "data"}
+
+  """
+  defmacro follow_trigger_action(form, conn) do
+    quote bind_quoted: binding() do
+      {method, path, form_data} = Phoenix.LiveViewTest.__render_trigger_event__(form)
+      dispatch(conn, @endpoint, method, path, form_data)
+    end
+  end
+
+  def __render_trigger_event__(%Element{} = form) do
+    case render_tree(form) do
+      {"form", attrs, _child_nodes} ->
+        unless List.keymember?(attrs, "phx-trigger-action", 0) do
+          raise ArgumentError,
+                "could not follow trigger action because form #{inspect(form.selector)} " <>
+                  "does not have phx-trigger-action attribute, got: #{inspect(attrs)}"
+        end
+
+        {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
+        {"method", method} = List.keyfind(attrs, "method", 0) || {"method", "get"}
+        {method, path, form.form_data || %{}}
+
+      {tag, _, _} ->
+        raise ArgumentError,
+              "could not follow trigger action because given element did not return a form, " <>
+                "got #{inspect(tag)} instead"
+    end
+  end
+
   defp proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
@@ -1394,7 +1441,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_chunk(upload, entry_name, percent) do
-    :ok = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
+    {:ok, _} = UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view))
     render(upload.view)
   end
 end

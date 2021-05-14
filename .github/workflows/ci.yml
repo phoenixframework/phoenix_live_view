@@ -1,63 +1,130 @@
 name: CI
 
 on:
-  pull_request:
   push:
-      branches:
+  pull_request:
+    branches:
       - master
 
 jobs:
   mix_test:
     name: mix test (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
+
     strategy:
       matrix:
         include:
-          - otp: 21.3.8.16
-            elixir: 1.7.4
-          - otp: 21.3.8.16
-            elixir: 1.8.2
-          - otp: 21.3.8.16
-            elixir: 1.9.4
-          - otp: 21.3.8.16
-            elixir: 1.10.4
-          - otp: 23.3
-            elixir: 1.11.4
-          - otp: 23.3
-            elixir: 1.12.0-rc.1
+          - elixir: 1.7.4
+            otp: 21.3.8.16
+
+          - elixir: 1.8.2
+            otp: 21.3.8.16
+
+          - elixir: 1.9.4
+            otp: 21.3.8.16
+
+          - elixir: 1.10.4
+            otp: 21.3.8.16
+
+          - elixir: 1.10.4
+            otp: 23.0.2
+
+          - elixir: 1.11.4
+            otp: 23.3.1
+            lint: lint
+
+          - elixir: 1.12.0-rc.1
+            otp: 23.3
 
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v2
-    - uses: erlef/setup-elixir@v1
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Elixir
+      uses: erlef/setup-elixir@v1
       with:
-        otp-version: ${{matrix.otp}}
-        elixir-version: ${{matrix.elixir}}
-    - name: Install Dependencies
-      run: |
-        mix local.rebar --force
-        mix local.hex --force
-        mix deps.get
-    - name: Run Tests
+        elixir-version: ${{ matrix.elixir }}
+        otp-version: ${{ matrix.otp }}
+
+    - name: Restore deps and _build cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          deps
+          _build
+        key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+
+    - name: Install dependencies
+      run: mix deps.get --only test
+
+    #- name: Check source code format
+    #  run: mix format --check-formatted
+    #  if: ${{ matrix.lint }}
+
+    - name: Check unused dependencies
+      run: mix deps.unlock --check-unused
+      if: ${{ matrix.lint }}
+
+    - name: Remove compiled application files
+      run: mix clean
+
+    - name: Compile dependencies
+      run: mix compile
+      if: ${{ !matrix.lint }}
+      env:
+        MIX_ENV: test
+
+    - name: Compile & lint dependencies
+      run: mix compile --warnings-as-errors
+      if: ${{ matrix.lint }}
+      env:
+        MIX_ENV: test
+
+    - name: Run tests
       run: mix test
 
   npm_test:
     name: npm test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: erlef/setup-elixir@v1
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Elixir
+        uses: erlef/setup-elixir@v1
         with:
-          otp-version: 22.x
-          elixir-version: 1.9.x
-      - name: Install Dependencies
-        run: |
-          mix local.rebar --force
-          mix local.hex --force
-          mix deps.get
+          elixir-version: 1.11.4
+          otp-version: 23.3.1
+
+      - name: Restore deps and _build cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+
+      - name: Install dependencies
+        run: mix deps.get --only test
+
       - name: Set up Node.js 12.x
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
+
+      - name: Restore npm cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: npm install and test
         run: |
           cd assets

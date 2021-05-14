@@ -6,6 +6,9 @@ defmodule Phoenix.LiveViewTest.UploadLive do
     <%= for preflight <- @preflights do %>
       preflight:<%= inspect(preflight) %>
     <% end %>
+    <%= for name <- @consumed do %>
+      consumed:<%= name %>
+    <% end %>
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
         lv:<%= entry.client_name %>:<%= entry.progress %>%
@@ -27,7 +30,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :preflights, [])}
+    {:ok, assign(socket, preflights: [], consumed: [])}
   end
 
   def handle_call({:setup, setup_func}, _from, socket) do
@@ -77,6 +80,9 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
     <%= for preflight <- @preflights do %>
       preflight:<%= inspect(preflight) %>
     <% end %>
+    <%= for name <- @consumed do %>
+      consumed:<%= name %>
+    <% end %>
     <form phx-change="validate" id="<%= @id %>" phx-submit="save" phx-target="<%= @myself %>">
       <%= for entry <- @uploads.avatar.entries do %>
         component:<%= entry.client_name %>:<%= entry.progress %>%
@@ -114,6 +120,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
     {:ok,
      new_socket
      |> assign(preflights: [])
+     |> assign(consumed: [])
      |> assign(assigns)}
   end
 

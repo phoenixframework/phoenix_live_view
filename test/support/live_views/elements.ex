@@ -104,15 +104,32 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[utc_text]" type="text">
       <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
     </form>
+
+    <form id="trigger-form-default" phx-submit="form-submit-trigger"
+          <%= @trigger_action && "phx-trigger-action" %>>
+    </form>
+
+    <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
+          <%= @trigger_action && "phx-trigger-action" %>>
+    </form>
     """
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :event, nil)}
+    socket =
+      socket
+      |> assign(:event, nil)
+      |> assign(:trigger_action, false)
+
+    {:ok, socket}
   end
 
   def handle_params(params, _uri, socket) do
     {:noreply, assign(socket, :event, "handle_params: #{inspect(params)}")}
+  end
+
+  def handle_event("form-submit-trigger", _value, socket) do
+    {:noreply, assign(socket, :trigger_action, true)}
   end
 
   def handle_event(event, value, socket) do

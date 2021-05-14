@@ -12,8 +12,9 @@ defmodule Phoenix.LiveView.ElementsTest do
   end
 
   setup do
-    {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/elements")
-    %{live: live}
+    conn = Phoenix.ConnTest.build_conn()
+    {:ok, live, _} = live(conn, "/elements")
+    %{live: live, conn: conn}
   end
 
   describe "has_element?/1" do
@@ -411,6 +412,39 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
   end
 
+  describe "follow_trigger_action" do
+    test "raises if element is not a form", %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"given element did not return a form",
+                   fn -> view |> element("#a-no-form") |> follow_trigger_action(conn) end
+    end
+
+    test "raises if element doesn't set phx-trigger-action on the form element",
+         %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"\"#empty-form\" does not have phx-trigger-action attribute",
+                   fn -> view |> element("#empty-form") |> follow_trigger_action(conn) end
+    end
+
+    test "uses default method and request path", %{live: view, conn: conn} do
+      view |> element("#trigger-form-default") |> render_submit()
+
+      conn = view |> element("#trigger-form-default") |> follow_trigger_action(conn)
+      assert conn.method == "GET"
+      assert conn.request_path == "/elements"
+
+      conn = view |> form("#trigger-form-default", %{"foo" => "bar"}) |> follow_trigger_action(conn)
+      assert conn.method == "GET"
+      assert conn.request_path == "/elements"
+      assert conn.query_string == "foo=bar"
+
+      conn = view |> form("#trigger-form-value", %{"baz" => "bat"}) |> follow_trigger_action(conn)
+      assert conn.method == "POST"
+      assert conn.request_path == "/not_found"
+      assert conn.params == %{"baz" => "bat"}
+    end
+  end
+
   describe "form" do
     test "defaults", %{live: view} do
       view |> form("#form") |> render_change()
@@ -666,8 +700,13 @@ defmodule Phoenix.LiveView.ElementsTest do
     setup do
       open_fun = fn path ->
         assert content = File.read!(path)
-        assert content =~ ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/css\/custom\.css"\/>]
-        assert content =~ ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/static\/css\/app\.css"\/>]
+
+        assert content =~
+                 ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/css\/custom\.css"\/>]
+
+        assert content =~
+                 ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/static\/css\/app\.css"\/>]
+
         assert content =~ "<link rel=\"stylesheet\" href=\"//example.com/a.css\"/>"
         assert content =~ "<link rel=\"stylesheet\" href=\"https://example.com/b.css\"/>"
         assert content =~ "body { background-color: #eee; }"
