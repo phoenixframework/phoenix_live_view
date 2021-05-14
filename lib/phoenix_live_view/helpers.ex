@@ -483,7 +483,95 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Provides `~H` sigil with HTML safe Live HEEx syntax inside source files.
+  Provides `~H` sigil with HTML safe Live `HEEx` syntax inside source files.
+
+  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate file:line:column information
+  > in error messages. Earlier Elixir versions will work but will show inaccurate error messages.
+
+  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
+
+    * Syntactic sugar for handling attributes
+    * An HTML-like notation for injecting function components
+    * Compile-time validation of the structure of the template
+
+  ## Example
+
+      def render(assigns) do
+        ~H"\""
+        <div title="My div" class={@class}>
+          <MyApp.Weather.component city="Kraków"/>
+        </div>
+        "\""
+      end
+
+  ## Syntax extensions
+
+  Although `HEEx` may be considered an extension of `EEx`, templates written in `EEx` may not
+  be fully compatible with `HEEx`. The same goes the other way around. Whenever copying/pasting
+  code from one format to the other, make sure your update it accordingly.
+
+  The main difference comes when defining attributes and function components.
+
+  ## Defining attributes
+
+  `EEx` handles templates as plain text so you're free to interpolate elixir code anywhere in your
+  template. `HEEx`, on the other hand, parses the code, validating its structure, including
+  HTML/component nodes and attributes. In order to be able to perform that validation, code interpolation
+  using `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of an HTML/component
+  node, i.e., it cannot be applied in the context of its opening/closing tag.
+
+  For instance, the following syntax is invalid:
+
+      <!-- This is invalid HEEx code -->
+      <div class=<%= @class %>>
+        ...
+      </div>
+
+  In order to assign dynamic values to attributes, one must wrap the expression inside `{...}`.
+
+  ### Example
+
+      <div class={@class}>
+        ...
+      </div>
+
+  For multiple dynamic attributes, you can use the same notation but without
+  assigning the expression to any specific attribute.
+
+  ### Example
+
+      <div {@dynamic_attrs}>
+        ...
+      </div>
+
+  The expression inside `{ ... }` must be either a keyword list or a map containing the key-value pairs
+  representing the dynamic attributes.
+
+  ## Defining function components
+
+  Function components are stateless components implemented as pure functions. They can be either
+  local (same module) or remote (external module).
+
+  `HEEx` allows injecting whose function components directly in the template using an HTML-like
+  notation.
+
+  ### Example
+
+  Remote function:
+
+      <MyApp.Weather.component city="Kraków"/>
+
+
+  Local function:
+
+      <.component city="Kraków"/>
+
+  Function components also receive their inner content as the `@inner_block` assign:
+
+      <MyApp.Weather.component city="Kraków">
+        Some content to be assigned to @inner_block
+      </MyApp.Weather.component>
+
   """
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     options = [
