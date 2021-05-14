@@ -283,7 +283,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   It takes two optional arguments, the assigns to pass to the given function
   and a do-block - which will be converted into a `@inner_block`  assign (see
-  `render_block/3` for more information).
+  `render_block/2` for more information).
 
   The given function must expect one argument, which are the `assigns` as a
   map.
