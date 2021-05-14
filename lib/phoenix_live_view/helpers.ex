@@ -499,7 +499,7 @@ defmodule Phoenix.LiveView.Helpers do
       def render(assigns) do
         ~H"\""
         <div title="My div" class={@class}>
-          <MyApp.Weather.component city="Kraków"/>
+          <MyApp.Weather.render city="Kraków"/>
         </div>
         "\""
       end
@@ -550,7 +550,7 @@ defmodule Phoenix.LiveView.Helpers do
   `HEEx` allows invoking whose function components directly in the template using an HTML-like
   notation. For example, a remote function:
 
-      <MyApp.Weather.component city="Kraków"/>
+      <MyApp.Weather.render city="Kraków"/>
 
   A local function can be invoked with a leading dot:
 
@@ -559,9 +559,9 @@ defmodule Phoenix.LiveView.Helpers do
   Function components can also receive their inner content as
   the `@inner_block` assign to be rendered with `render_block/2`:
 
-      <MyApp.Weather.component city="Kraków">
+      <MyApp.Weather.render city="Kraków">
         Some content to be assigned to @inner_block
-      </MyApp.Weather.component>
+      </MyApp.Weather.render>
 
   """
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
