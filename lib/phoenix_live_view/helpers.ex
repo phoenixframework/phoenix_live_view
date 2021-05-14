@@ -283,10 +283,13 @@ defmodule Phoenix.LiveView.Helpers do
 
   It takes two optional arguments, the assigns to pass to the given function
   and a do-block - which will be converted into a `@inner_block`  assign (see
-  `render_block/3` for more information).
+  `render_block/2` for more information).
 
   The given function must expect one argument, which are the `assigns` as a
   map.
+
+  All of the `assigns` given are forwarded directly to the function as
+  the first only argument.
 
   ## Examples
 
@@ -322,6 +325,7 @@ defmodule Phoenix.LiveView.Helpers do
     quote do
       fn parent_changed, arg ->
         var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
+        _ = var!(assigns)
         unquote(inner_fun).(arg)
       end
     end
@@ -470,6 +474,99 @@ defmodule Phoenix.LiveView.Helpers do
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
+
+  @doc """
+  Provides `~H` sigil with HTML safe Live `HEEx` syntax inside source files.
+
+  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate file:line:column information
+  > in error messages. Earlier Elixir versions will work but will show inaccurate error messages.
+
+  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
+
+    * Built-in handling of HTML attributes
+    * An HTML-like notation for injecting function components
+    * Compile-time validation of the structure of the template
+
+  ## Example
+
+      def render(assigns) do
+        ~H"\""
+        <div title="My div" class={@class}>
+          <MyApp.Weather.render city="Kraków"/>
+        </div>
+        "\""
+      end
+
+  ## Syntax extensions
+
+  Although `HEEx` may be considered an extension of `EEx`, templates written in `EEx` may not
+  be fully compatible with `HEEx`. The same goes the other way around. Whenever copying/pasting
+  code from one format to the other, make sure your update it accordingly.
+
+  The main difference comes when defining attributes and function components.
+
+  ### Defining attributes
+
+  `EEx` handles templates as plain text so you're free to interpolate elixir code anywhere in your
+  template. `HEEx`, on the other hand, parses the code, validating its structure, including
+  HTML/component nodes and attributes. In order to perform validation, code interpolation
+  using `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the HTML/component
+  nodes and it cannot be applied within tags.
+
+  For instance, the following syntax is invalid:
+
+      <div class="<%= @class %>">
+        ...
+      </div>
+
+  Instead do:
+
+      <div class={@class}>
+        ...
+      </div>
+
+  For multiple dynamic attributes, you can use the same notation but without
+  assigning the expression to any specific attribute.
+
+      <div {@dynamic_attrs}>
+        ...
+      </div>
+
+  The expression inside `{ ... }` must be either a keyword list or a map containing
+  the key-value pairs representing the dynamic attributes.
+
+  ### Defining function components
+
+  Function components are stateless components implemented as pure functions. They can be either
+  local (same module) or remote (external module).
+
+  `HEEx` allows invoking whose function components directly in the template using an HTML-like
+  notation. For example, a remote function:
+
+      <MyApp.Weather.render city="Kraków"/>
+
+  A local function can be invoked with a leading dot:
+
+      <.component city="Kraków"/>
+
+  Function components can also receive their inner content as
+  the `@inner_block` assign to be rendered with `render_block/2`:
+
+      <MyApp.Weather.render city="Kraków">
+        Some content to be assigned to @inner_block
+      </MyApp.Weather.render>
+
+  """
+  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       indentation: meta[:indentation] || 0

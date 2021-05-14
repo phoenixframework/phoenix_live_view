@@ -25,12 +25,15 @@ jobs:
           - elixir: 1.10.4
             otp: 21.3.8.16
 
-          - elixir: 1.10.4
-            otp: 23.0.2
+          - elixir: 1.11.4
+            otp: 21.3.8.16
 
           - elixir: 1.11.4
-            otp: 23.3.1
+            otp: 23.3
             lint: lint
+
+          - elixir: 1.12.0-rc.1
+            otp: 23.3
 
     runs-on: ubuntu-latest
 
@@ -60,10 +63,6 @@ jobs:
     #- name: Check source code format
     #  run: mix format --check-formatted
     #  if: ${{ matrix.lint }}
-
-    - name: Check unused dependencies
-      run: mix deps.unlock --check-unused
-      if: ${{ matrix.lint }}
 
     - name: Remove compiled application files
       run: mix clean

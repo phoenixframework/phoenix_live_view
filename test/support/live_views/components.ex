@@ -6,6 +6,12 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
     COMPONENT:<%= @value %>
     """
   end
+
+  def render_with_inner_content(assigns) do
+    ~L"""
+    COMPONENT:<%= @value %>, Content: <%= render_block(@inner_block) %>
+    """
+  end
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do
