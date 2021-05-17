@@ -2116,7 +2116,7 @@ export class View {
   withinTargets(phxTarget, callback){
     if(phxTarget instanceof HTMLElement) {
       return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
-    } 
+    }
 
     if(/^(0|[1-9]\d*)$/.test(phxTarget)){
       let targets = DOM.findComponentNodeList(this.el, phxTarget)
@@ -2496,7 +2496,8 @@ export class View {
 
   onClose(reason){
     if(this.isDestroyed()){ return }
-    if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && reason !== "leave")){
+    if((this.isJoinPending() && document.visibilityState !== "hidden") ||
+       (this.liveSocket.hasPendingLink() && reason !== "leave")){
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()
