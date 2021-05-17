@@ -37,6 +37,8 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
 
   """
+  def live_patch(text, opts)
+
   def live_patch(%Socket{}, _) do
     raise """
     you are invoking live_patch/2 with a socket but a socket is not expected.
@@ -85,6 +87,8 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
 
   """
+  def live_redirect(text, opts)
+
   def live_redirect(%Socket{}, _) do
     raise """
     you are invoking live_redirect/2 with a socket but a socket is not expected.
