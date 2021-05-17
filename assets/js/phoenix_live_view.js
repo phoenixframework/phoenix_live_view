@@ -734,7 +734,7 @@ export class LiveSocket {
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.boundTopLevelEvents = false
     this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
-    window.addEventListener("unload", e => {
+    window.addEventListener("pagehide", e => {
       this.unloaded = true
     })
     this.socket.onOpen(() => {
@@ -1019,10 +1019,11 @@ export class LiveSocket {
     document.body.addEventListener("click", function(){}) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
       if(e.persisted){ // reload page if being restored from back/forward cache
+        this.getSocket().disconnect()
         this.withPageLoading({to: window.location.href, kind: "redirect"})
         window.location.reload()
       }
-    })
+    }, true)
     this.bindClicks()
     this.bindNav()
     this.bindForms()
@@ -2498,6 +2499,7 @@ export class View {
     if(this.isDestroyed()){ return }
     if((this.isJoinPending() && document.visibilityState !== "hidden") ||
        (this.liveSocket.hasPendingLink() && reason !== "leave")){
+
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()
