@@ -159,17 +159,17 @@ class UploadEntry {
 
   metadata(){ return this.meta }
 
-  progress(progress){
+  progress(progress, progressStatusTimeout){
     this._progress = Math.floor(progress)
     if(this._progress >= 100){
       this._progress = 100
       this._isDone = true
-      this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
+      this.view.pushFileProgress(this.fileEl, this.ref, 100, progressStatusTimeout, () => {
         LiveUploader.untrackFile(this.fileEl, this.file)
         this._onDone()
       })
     } else {
-      this.view.pushFileProgress(this.fileEl, this.ref, this._progress)
+      this.view.pushFileProgress(this.fileEl, this.ref, this._progress, progressStatusTimeout)
     }
   }
 
@@ -182,7 +182,7 @@ class UploadEntry {
   isDone(){ return this._isDone }
 
   error(reason = "failed"){
-    this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
+    this.view.pushFileProgress(this.fileEl, this.ref, {error: reason}, PUSH_TIMEOUT)
   }
 
   //private
@@ -360,17 +360,18 @@ class LiveUploader {
 
 let channelUploader = function(entries, onError, resp, liveSocket){
   entries.forEach(entry => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, resp.config.progress_status_timeout, liveSocket)
     entryUploader.upload()
   })
 }
 
 class EntryUploader {
-  constructor(entry, chunkSize, liveSocket){
+  constructor(entry, chunkSize, progressStatusTimeout, liveSocket){
     this.liveSocket = liveSocket
     this.entry = entry
     this.offset = 0
     this.chunkSize = chunkSize
+    this.progressStatusTimeout = progressStatusTimeout
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
   }
 
@@ -403,7 +404,7 @@ class EntryUploader {
     if(!this.uploadChannel.isJoined()){ return }
     this.uploadChannel.push("chunk", chunk)
       .receive("ok", () => {
-        this.entry.progress((this.offset / this.entry.file.size) * 100)
+        this.entry.progress((this.offset / this.entry.file.size) * 100, this.progressStatusTimeout)
         if(!this.isDone()){
           setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
         }
@@ -2495,17 +2496,21 @@ export class View {
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
 
-  pushWithReply(refGenerator, event, payload, onReply = function(){}){
+  pushWithReply(refGenerator, event, payload, onReply = function(){}, opts = {}){
     let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
     let onLoadingDone = function(){}
     if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
+    const progressStatusTimeout =  opts['progressStatusTimeout']
+    const timeout = progressStatusTimeout !== null
+    const timeoutLength = opts['progressStatusTimeout'] || PUSH_TIMEOUT
+
     if(typeof(payload.cid) !== "number"){ delete payload.cid }
     return(
-      this.liveSocket.wrapPush(this, {timeout: true}, () => {
-        return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+      this.liveSocket.wrapPush(this, {timeout: timeout}, () => {
+        return this.channel.push(event, payload, timeoutLength).receive("ok", resp => {
           let hookReply = null
           if(ref !== null){ this.undoRefs(ref) }
           if(resp.diff){
@@ -2604,7 +2609,7 @@ export class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }, (resp, reply) => onReply(reply, ref))
+    }, (resp, reply) => onReply(reply, ref), {})
 
     return ref
   }
@@ -2643,7 +2648,7 @@ export class View {
     })
   }
 
-  pushFileProgress(fileEl, entryRef, progress, onReply = function(){}){
+  pushFileProgress(fileEl, entryRef, progress, progressStatusTimeout, onReply = function(){}){
     this.liveSocket.withinOwners(fileEl.form, (view, targetCtx) => {
       view.pushWithReply(null, "progress", {
         event: fileEl.getAttribute(view.binding(PHX_PROGRESS)),
@@ -2651,7 +2656,7 @@ export class View {
         entry_ref: entryRef,
         progress: progress,
         cid: view.targetComponentID(fileEl.form, targetCtx)
-      }, onReply)
+      }, onReply, { progressStatusTimeout: progressStatusTimeout })
     })
   }
 

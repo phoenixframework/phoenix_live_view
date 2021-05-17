@@ -707,6 +707,9 @@ defmodule Phoenix.LiveView do
     * `:chunk_timeout` - The time in milliseconds to wait before closing the
       upload channel when a new chunk has not been received. Defaults `10_000`.
 
+    * `:progress_status_timeout` - The time in milliseconds to wait before receving
+      a response to the `progess` event. If set to `nil`, there is no timeout Defaults to `30_000`.
+
     * `:external` - The 2-arity function for generating metadata for external
       client uploaders. See the Uploads section for example usage.
 
