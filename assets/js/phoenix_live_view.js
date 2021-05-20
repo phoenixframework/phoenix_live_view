@@ -154,6 +154,7 @@ class UploadEntry {
     this._isCancelled = false
     this._isDone = false
     this._progress = 0
+    this._lastProgressSent = -1
     this._onDone = function(){}
   }
 
@@ -161,15 +162,19 @@ class UploadEntry {
 
   progress(progress){
     this._progress = Math.floor(progress)
-    if(this._progress >= 100){
-      this._progress = 100
-      this._isDone = true
-      this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
-        LiveUploader.untrackFile(this.fileEl, this.file)
-        this._onDone()
-      })
-    } else {
-      this.view.pushFileProgress(this.fileEl, this.ref, this._progress)
+    if(this._progress > this._lastProgressSent) {
+      if(this._progress >= 100){
+        this._progress = 100
+        this._lastProgressSent = 100
+        this._isDone = true
+        this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
+          LiveUploader.untrackFile(this.fileEl, this.file)
+          this._onDone()
+        })
+      } else {
+        this._lastProgressSent = this._progress
+        this.view.pushFileProgress(this.fileEl, this.ref, this._progress)
+      }
     }
   }
 
