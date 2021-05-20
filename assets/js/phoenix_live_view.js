@@ -162,7 +162,7 @@ class UploadEntry {
 
   progress(progress){
     this._progress = Math.floor(progress)
-    if(this._progress > this._lastProgressSent) {
+    if(this._progress > this._lastProgressSent){
       if(this._progress >= 100){
         this._progress = 100
         this._lastProgressSent = 100
