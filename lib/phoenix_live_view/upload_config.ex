@@ -55,6 +55,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   @default_max_entries 1
   @default_max_file_size 8_000_000
   @default_chunk_size 64_000
+  @default_chunk_count 2
   @default_chunk_timeout 10_000
 
   @unregistered :unregistered
@@ -83,6 +84,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             max_entries: @default_max_entries,
             max_file_size: @default_max_file_size,
             chunk_size: @default_chunk_size,
+            chunk_count: @default_chunk_count,
             chunk_timeout: @default_chunk_timeout,
             entries: [],
             entry_refs_to_pids: %{},
@@ -234,6 +236,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           @default_chunk_size
       end
 
+    chunk_count =
+      case Keyword.fetch(opts, :chunk_count) do
+        {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
+          pos_integer
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :chunk_count value provided to allow_upload.
+
+          Only a positive integer is supported (Defaults to #{@default_chunk_count} chunks). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_chunk_count
+      end
+
     chunk_timeout =
       case Keyword.fetch(opts, :chunk_timeout) do
         {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
@@ -284,6 +304,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       acceptable_exts: acceptable_exts,
       external: external,
       chunk_size: chunk_size,
+      chunk_count: chunk_count,
       chunk_timeout: chunk_timeout,
       progress_event: progress_event,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
