@@ -1,7 +1,7 @@
 import {Socket} from "phoenix"
 import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
 
-import {tag, simulateJoinedView, stubChannel} from "./test_helpers"
+import {tag, simulateJoinedView, stubChannel, rootContainer} from "./test_helpers"
 
 function liveViewDOM(content) {
   const div = document.createElement("div")
@@ -55,7 +55,7 @@ describe("View + DOM", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.value).toBe("increment=1")
@@ -73,7 +73,7 @@ describe("View + DOM", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       leave(){
         return {
@@ -108,7 +108,7 @@ describe("View + DOM", function() {
     let el = liveViewDOM()
     let input = el.querySelector("input")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("keyup")
@@ -131,7 +131,7 @@ describe("View + DOM", function() {
     let el = liveViewDOM()
     let input = el.querySelector(`input[type="checkbox"]`)
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({})
@@ -151,9 +151,10 @@ describe("View + DOM", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let input = el.querySelector(`input[type="checkbox"]`)
+    let view = simulateJoinedView(el, liveSocket)
+
     input.checked = true
 
-    let view = new View(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({"value": "on"})
@@ -173,10 +174,11 @@ describe("View + DOM", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let input = el.querySelector(`input[type="checkbox"]`)
+    let view = simulateJoinedView(el, liveSocket)
+
     input.value = "1"
     input.checked = true
 
-    let view = new View(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.value).toEqual({"value": "1"})
@@ -197,7 +199,7 @@ describe("View + DOM", function() {
     let el = liveViewDOM()
     let input = el.querySelector("input")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("keydown")
@@ -220,7 +222,7 @@ describe("View + DOM", function() {
     let el = liveViewDOM()
     let input = el.querySelector("input")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("form")
@@ -274,7 +276,7 @@ describe("View + DOM", function() {
       let el = liveViewDOM()
       let form = el.querySelector("form")
 
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       let channelStub = {
         push(evt, payload, timeout) {
           expect(payload.type).toBe("form")
@@ -294,7 +296,7 @@ describe("View + DOM", function() {
       let el = liveViewDOM()
       let form = el.querySelector("form")
 
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
 
       view.submitForm(form, form, { target: form })
@@ -318,7 +320,7 @@ describe("View + DOM", function() {
       `)
       let form = el.querySelector("form")
 
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
 
       view.submitForm(form, form, { target: form })
@@ -334,7 +336,7 @@ describe("View + DOM", function() {
     test("triggers external submit on updated DOM el", (done) => {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       let html = `<form id="form" phx-submit="submit"><input type="text"></form>`
 
       stubChannel(view)
@@ -353,7 +355,7 @@ describe("View + DOM", function() {
     test("triggers external submit on added DOM el", (done) => {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       let html = `<div>not a form</div>`
       HTMLFormElement.prototype.submit = done
 
@@ -376,7 +378,7 @@ describe("View + DOM", function() {
     let createView = (updateType, initialDynamics) => {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
 
       stubChannel(view)
 
@@ -570,7 +572,7 @@ describe("View", function() {
   test("sets defaults", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     expect(view.liveSocket).toBe(liveSocket)
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
@@ -583,25 +585,25 @@ describe("View", function() {
   test("binding", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     expect(view.binding("submit")).toEqual("phx-submit")
   })
 
   test("getSession", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     expect(view.getSession()).toEqual("abc123")
   })
 
   test("getStatic", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     expect(view.getStatic()).toEqual(null)
 
     el.setAttribute("data-phx-static", "foo")
-    view = new View(el, liveSocket)
+    view = simulateJoinedView(el, liveSocket)
     expect(view.getStatic()).toEqual("foo")
   })
 
@@ -609,7 +611,7 @@ describe("View", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = document.querySelector("[data-phx-view]")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     view.showLoader()
     expect(el.classList.contains("phx-disconnected")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
@@ -627,7 +629,7 @@ describe("View", function() {
     phxView.parentNode.insertBefore(loader, phxView.nextSibling)
     let el = document.querySelector("[data-phx-view]")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     view.displayError()
     expect(el.classList.contains("phx-disconnected")).toBeTruthy()
     expect(el.classList.contains("phx-error")).toBeTruthy()
@@ -638,7 +640,7 @@ describe("View", function() {
   test("join", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     // view.join()
     // still need a few tests
@@ -697,7 +699,7 @@ describe("View Hooks", function() {
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
     let el = liveViewDOM()
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     view.onJoin({rendered: {
       s: [`<h2 id="up" phx-hook="Upcase">test mount</h2>`],
@@ -732,7 +734,7 @@ describe("View Hooks", function() {
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
     let el = liveViewDOM()
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     view.onJoin({rendered: {
       s: [`<h2 id="check" phx-hook="Check">test mount</h2>`],
@@ -757,7 +759,7 @@ describe("View Hooks", function() {
     let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
     let el = liveViewDOM()
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     view.onJoin({rendered: {
       s: [`<h2 id="check" phx-hook="Check"></h2>`],
@@ -782,7 +784,7 @@ describe("View Hooks", function() {
       onBeforeElUpdated(from, to){ fromHTML = from.innerHTML; toHTML = to.innerHTML }
     }})
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     view.onJoin({rendered: {s: [`<div>initial</div>`], fingerprint: 123}})
     expect(view.el.firstChild.innerHTML).toBe("initial")
@@ -826,7 +828,7 @@ describe("View + Component", function() {
   test("targetComponentID", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let form = el.querySelector(`input[type="checkbox"]`)
     let targetCtx = el.querySelector(".form-wrapper")
     expect(view.targetComponentID(el, targetCtx)).toBe(null)
@@ -841,7 +843,7 @@ describe("View + Component", function() {
     let targetCtx = el.querySelector(".form-wrapper")
     let input = el.querySelector("input")
 
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(evt, payload, timeout) {
         expect(payload.type).toBe("keyup")
@@ -870,8 +872,7 @@ describe("View + Component", function() {
     </form>`
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM(html)
-    let view = new View(el, liveSocket)
-    view.onJoin({rendered: {s: [html], fingerprint: 123}})
+    let view = simulateJoinedView(el, liveSocket, html)
     let channelStub = {
       validate: "",
       nextValidate(payload) {
@@ -928,7 +929,7 @@ describe("View + Component", function() {
   test("adds auto ID to prevent teardown/re-add", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     stubChannel(view)
 
@@ -956,7 +957,7 @@ describe("View + Component", function() {
   test("respects nested components", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     stubChannel(view)
 
@@ -976,7 +977,7 @@ describe("View + Component", function() {
   test("wraps non-empty text nodes in span tags", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     stubChannel(view)
 
@@ -994,7 +995,7 @@ describe("View + Component", function() {
   test("wraps empty component in a single span tag", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = new View(el, liveSocket)
+    let view = simulateJoinedView(el, liveSocket)
 
     stubChannel(view)
 
@@ -1049,8 +1050,8 @@ describe("View + Component", function() {
         </form>
       `.trim()
       let liveSocket = new LiveSocket("/live", Socket)
-      let el = tag("div", {}, content)
-      let view = new View(el, liveSocket)
+      let el = rootContainer(content)
+      let view = simulateJoinedView(el, liveSocket)
 
       view.undoRefs(1)
       expect(el.innerHTML).toBe(`
@@ -1059,7 +1060,7 @@ describe("View + Component", function() {
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-disable-with-restore="GO TO HEXDOCS" data-phx-ref="38">Searching...</button>
         </form>
       `.trim())
 
@@ -1077,14 +1078,14 @@ describe("View + Component", function() {
 
     test("replaces any previous applied component", () => {
       let liveSocket = new LiveSocket("/live", Socket)
-      let el = tag("div", {}, "")
-      let view = new View(el, liveSocket)
+      let el = rootContainer("")
 
       let fromEl = tag("span", {"data-phx-ref": "1"}, "hello")
       let toEl = tag("span", {"class": "new"}, "world")
 
       DOM.putPrivate(fromEl, "data-phx-ref", toEl)
       el.appendChild(fromEl)
+      let view = simulateJoinedView(el, liveSocket)
 
       view.undoRefs(1)
       expect(el.innerHTML).toBe(`<span class="new">world</span>`)
@@ -1102,7 +1103,7 @@ describe("View + Component", function() {
       }
       let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
       let el = liveViewDOM()
-      let view = new View(el, liveSocket)
+      let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
       view.onJoin({rendered: {s: [`<span id="myhook" phx-hook="MyHook">Hello</span>`]}})
       view.update({s: [`<span id="myhook" data-phx-ref="1" phx-hook="MyHook">Hello</span>`]}, [])

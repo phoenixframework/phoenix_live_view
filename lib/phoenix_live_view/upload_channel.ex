@@ -53,8 +53,11 @@ defmodule Phoenix.LiveView.UploadChannel do
 
       {:ok, socket}
     else
-      {:error, :limit_exceeded} -> {:error, %{reason: :limit_exceeded}}
-      _ -> {:error, %{reason: :invalid_token}}
+      {:error, reason} when reason in [:expired, :invalid] ->
+        {:error, %{reason: :invalid_token}}
+
+      {:error, reason} when reason in [:already_registered, :disallowed] ->
+        {:error, %{reason: reason}}
     end
   end
 
