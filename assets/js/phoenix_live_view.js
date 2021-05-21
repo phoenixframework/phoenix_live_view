@@ -187,6 +187,7 @@ class UploadEntry {
   isDone(){ return this._isDone }
 
   error(reason = "failed"){
+    LiveUploader.clearFiles(this.fileEl)
     this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
   }
 
@@ -291,6 +292,7 @@ class LiveUploader {
 
   static clearFiles(inputEl){
     inputEl.value = null
+    inputEl.removeAttribute(PHX_UPLOAD_REF)
     DOM.putPrivate(inputEl, "files", [])
   }
 
@@ -376,16 +378,21 @@ class EntryUploader {
     this.entry = entry
     this.offset = 0
     this.chunkSize = chunkSize
+    this.chunkTimer = null
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
   }
 
+  error(reason){
+    clearTimeout(this.chunkTimer)
+    this.uploadChannel.leave()
+    this.entry.error(reason)
+  }
+
   upload(){
+    this.uploadChannel.onError(reason => this.error(reason))
     this.uploadChannel.join()
       .receive("ok", data => this.readNextChunk())
-      .receive("error", reason => {
-        this.uploadChannel.leave()
-        this.entry.error()
-      })
+      .receive("error", reason => this.error(reason))
   }
 
   isDone(){ return this.offset >= this.entry.file.size }
@@ -410,7 +417,7 @@ class EntryUploader {
       .receive("ok", () => {
         this.entry.progress((this.offset / this.entry.file.size) * 100)
         if(!this.isDone()){
-          setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
+          this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
         }
       })
   }
@@ -2529,6 +2536,8 @@ export class View {
   }
 
   pushWithReply(refGenerator, event, payload, onReply = function(){}){
+    if(!this.isConnected()){ return }
+
     let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
     let onLoadingDone = function(){}
     if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){

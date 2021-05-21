@@ -8,6 +8,12 @@ export let appendTitle = opts => {
   document.head.appendChild(title)
 }
 
+export let rootContainer = (content) => {
+  let div = tag("div", {id: 123}, content)
+  document.body.appendChild(div)
+  return div
+}
+
 export let tag = (tagName, attrs, innerHTML) => {
   let el = document.createElement(tagName)
   el.innerHTML = innerHTML
@@ -19,7 +25,8 @@ export let simulateJoinedView = (el, liveSocket) => {
   let view = new View(el, liveSocket)
   stubChannel(view)
   liveSocket.roots[view.id] = view
-  view.onJoin({rendered: {s: []}})
+  view.isConnected = () => true
+  view.onJoin({rendered: {s: [el.innerHTML]}})
   return view
 }
 
