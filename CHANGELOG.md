@@ -5,6 +5,12 @@
 ### Bug fixes
   - Fix live patch failing to update URL when live patch link is patched again from `handle_params`
   - Fix regression in `LiveViewTest.render_upload/3` when using channel uploads and progress callback
+  - Fix component uploads not being cleaned up on remove
+  - Fix KeyError on LiveView reconnect when an active upload was previously in progress
+
+### Enhancements
+  - Optimize progress events to send less messages for larger file sizes
+  - Allow session and local storage client overrides
 
 ## 0.15.5 (2021-04-20)
 
