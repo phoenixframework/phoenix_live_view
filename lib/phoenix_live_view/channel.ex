@@ -187,11 +187,8 @@ defmodule Phoenix.LiveView.Channel do
         %{topic: topic} = state
       ) do
     %{"cids" => cids} = msg.payload
-
-    {cids, new_components} =
-      Enum.flat_map_reduce(cids, state.components, &Diff.delete_component/2)
-
-    {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{cids: cids})}
+    {deleted_cids, new_state} = delete_components(state, cids)
+    {:noreply, reply(new_state, msg.ref, :ok, %{cids: deleted_cids})}
   end
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
@@ -494,7 +491,7 @@ defmodule Phoenix.LiveView.Channel do
   defp unregister_upload(state, ref, entry_ref, cid) do
     write_socket(state, cid, nil, fn socket, _ ->
       conf = Upload.get_upload_by_ref!(socket, ref)
-      {_, new_state} = pop_in(state.upload_names[conf.name])
+      new_state = drop_upload_name(state, conf.name)
       {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil, new_state}}
     end)
   end
@@ -506,6 +503,11 @@ defmodule Phoenix.LiveView.Channel do
 
   defp drop_upload_pid(state, pid) when is_pid(pid) do
     %{state | upload_pids: Map.delete(state.upload_pids, pid)}
+  end
+
+  defp drop_upload_name(state, name) do
+    {_, new_state} = pop_in(state.upload_names[name])
+    new_state
   end
 
   defp inner_component_handle_event(component_socket, _component, "lv:clear-flash", val) do
@@ -1044,6 +1046,29 @@ defmodule Phoenix.LiveView.Channel do
       :error ->
         push_noop(state, ref)
     end
+  end
+
+  defp delete_components(state, cids) do
+    upload_cids = Enum.into(state.upload_names, MapSet.new(), fn {_name, {_ref, cid}} -> cid end)
+
+    Enum.flat_map_reduce(cids, state, fn cid, acc ->
+      {deleted_cids, new_components} = Diff.delete_component(cid, acc.components)
+
+      canceled_confs =
+        deleted_cids
+        |> Enum.filter(fn deleted_cid -> deleted_cid in upload_cids end)
+        |> Enum.flat_map(fn deleted_cid ->
+          read_socket(acc, deleted_cid, fn c_socket, _ ->
+            {_new_c_socket, canceled_confs} = Upload.maybe_cancel_uploads(c_socket)
+            canceled_confs
+          end)
+        end)
+
+      new_state =
+        Enum.reduce(canceled_confs, acc, fn conf, acc -> drop_upload_name(acc, conf.name) end)
+
+      {deleted_cids, %{new_state | components: new_components}}
+    end)
   end
 
   defp ensure_unique_upload_name!(state, conf) do
