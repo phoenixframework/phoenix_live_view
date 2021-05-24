@@ -563,6 +563,60 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       refute Process.alive?(lv.pid)
     end
 
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "cancel_upload in progress when component is removed", %{lv: lv} do
+      avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+      unlink(channel_pid, lv, avatar)
+      Process.monitor(channel_pid)
+
+      assert render(lv) =~ "myfile1.jpeg"
+      GenServer.call(lv.pid, {:uploads, 0})
+
+      refute render(lv) =~ "myfile1.jpeg"
+
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+
+      # retry with new component
+      GenServer.call(lv.pid, {:uploads, 1})
+      UploadLive.run(lv, fn component_socket ->
+        new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
+        {:reply, :ok, new_socket}
+      end)
+
+      avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 100) =~ "component:myfile1.jpeg:100%"
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "cancel_upload not yet in progress when component is removed", %{lv: lv} do
+      file_name = "myfile1.jpeg"
+      avatar = file_input(lv, "#upload0", :avatar, [%{name: file_name, content: "ok"}])
+      assert lv
+             |> form("form", user: %{})
+             |> render_change(avatar) =~ file_name
+
+      assert UploadClient.channel_pids(avatar) == %{}
+
+      assert render(lv) =~ file_name
+
+      GenServer.call(lv.pid, {:uploads, 0})
+
+      refute render(lv) =~ file_name
+
+      # retry with new component
+      GenServer.call(lv.pid, {:uploads, 1})
+      UploadLive.run(lv, fn component_socket ->
+        new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
+        {:reply, :ok, new_socket}
+      end)
+
+      avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 100) =~ "component:myfile1.jpeg:100%"
+    end
+
     @tag allow: [accept: :any]
     test "get allowed uploads from the form's target cid", %{lv: lv} do
       GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})

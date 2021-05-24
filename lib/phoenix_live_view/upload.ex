@@ -78,6 +78,26 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
+  Cancels all uploads that exist.
+
+  Returns the new socket with the cancelled upload configs.
+  """
+  def maybe_cancel_uploads(socket) do
+    uploads = socket.assigns[:uploads] || %{}
+
+    uploads
+    |> Map.delete(@refs_to_names)
+    |> Enum.reduce({socket, []}, fn {name, conf}, {socket_acc, conf_acc} ->
+      new_socket =
+        Enum.reduce(conf.entries, socket_acc, fn entry, inner_acc ->
+          cancel_upload(inner_acc, name, entry.ref)
+        end)
+
+      {new_socket, [conf | conf_acc]}
+    end)
+  end
+
+  @doc """
   Updates the entry metadata.
   """
   def update_upload_entry_meta(%Socket{} = socket, upload_conf_name, %UploadEntry{} = entry, meta) do
@@ -170,7 +190,7 @@ defmodule Phoenix.LiveView.Upload do
   defp no_upload_allowed_message(socket) do
     "no uploads have been allowed on " <>
       if(socket.assigns[:myself], do: "component running inside ", else: "") <>
-      "LiveView named #{inspect socket.view}"
+      "LiveView named #{inspect(socket.view)}"
   end
 
   @doc """
@@ -301,7 +321,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   defp mark_preflighted(socket, conf) do
-    {new_conf, new_entries} =  UploadConfig.mark_preflighted(conf)
+    {new_conf, new_entries} = UploadConfig.mark_preflighted(conf)
     new_socket = update_uploads(new_conf, socket)
     {new_socket, new_conf, new_entries}
   end
