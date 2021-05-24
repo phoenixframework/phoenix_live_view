@@ -712,7 +712,9 @@ export class Rendered {
  *         }
  *       }
  *     }
- * @param {Object} [opts.sessionStorage] - An optional Storage compatible object for when LiveView won't have access to `sessionStorage`.  This could happen if a site loads a cross-domain LiveView in an iframe, for example.  The following is an example of a minimal replacement:
+ * @param {Object} [opts.sessionStorage] - An optional Storage compatible object
+ * Useful when LiveView won't have access to `sessionStorage`.  For example, This could
+ * happen if a site loads a cross-domain LiveView in an iframe.  Example usage:
  *
  *     class InMemoryStorage {
  *       constructor() { this.storage = {} }
@@ -721,7 +723,9 @@ export class Rendered {
  *       setItem(keyName, keyValue) { this.storage[keyName] = keyValue }
  *     }
  *
- * @param {Object} [opts.localStorage] - An optional Storage compatible object for when LiveView won't have access to `localStorage`.  See `opts.sessionStorage` for examples.
+ * @param {Object} [opts.localStorage] - An optional Storage compatible object
+ * Useful for when LiveView won't have access to `localStorage`.
+ * See `opts.sessionStorage` for examples.
 */
 export class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -755,7 +759,7 @@ export class LiveSocket {
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
     this.localStorage = opts.localStorage || window.localStorage
-    this.sessionStorage = opts.sessionStorage || sessionStorage
+    this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
     this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
     window.addEventListener("pagehide", e => {
