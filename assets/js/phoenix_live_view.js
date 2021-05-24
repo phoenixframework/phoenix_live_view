@@ -712,6 +712,16 @@ export class Rendered {
  *         }
  *       }
  *     }
+ * @param {Object} [opts.sessionStorage] - An optional Storage compatible object for when LiveView won't have access to `sessionStorage`.  This could happen if a site loads a cross-domain LiveView in an iframe, for example.  The following is an example of a minimal replacement:
+ *
+ *     class InMemoryStorage {
+ *       constructor() { this.storage = {} }
+ *       getItem(keyName) { return this.storage[keyName] }
+ *       removeItem(keyName) { delete this.storage[keyName] }
+ *       setItem(keyName, keyValue) { this.storage[keyName] = keyValue }
+ *     }
+ *
+ * @param {Object} [opts.localStorage] - An optional Storage compatible object for when LiveView won't have access to `localStorage`.  See `opts.sessionStorage` for examples.
 */
 export class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -744,6 +754,8 @@ export class LiveSocket {
     this.hooks = opts.hooks || {}
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
+    this.localStorage = opts.localStorage || window.localStorage
+    this.sessionStorage = opts.sessionStorage || sessionStorage
     this.boundTopLevelEvents = false
     this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
     window.addEventListener("pagehide", e => {
@@ -759,28 +771,28 @@ export class LiveSocket {
 
   // public
 
-  isProfileEnabled(){ return sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
+  isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
 
-  isDebugEnabled(){ return sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
+  isDebugEnabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
 
-  enableDebug(){ sessionStorage.setItem(PHX_LV_DEBUG, "true") }
+  enableDebug(){ this.sessionStorage.setItem(PHX_LV_DEBUG, "true") }
 
-  enableProfiling(){ sessionStorage.setItem(PHX_LV_PROFILE, "true") }
+  enableProfiling(){ this.sessionStorage.setItem(PHX_LV_PROFILE, "true") }
 
-  disableDebug(){ sessionStorage.removeItem(PHX_LV_DEBUG) }
+  disableDebug(){ this.sessionStorage.removeItem(PHX_LV_DEBUG) }
 
-  disableProfiling(){ sessionStorage.removeItem(PHX_LV_PROFILE) }
+  disableProfiling(){ this.sessionStorage.removeItem(PHX_LV_PROFILE) }
 
   enableLatencySim(upperBoundMs){
     this.enableDebug()
     console.log("latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable")
-    sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs)
+    this.sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs)
   }
 
-  disableLatencySim(){ sessionStorage.removeItem(PHX_LV_LATENCY_SIM) }
+  disableLatencySim(){ this.sessionStorage.removeItem(PHX_LV_LATENCY_SIM) }
 
   getLatencySim(){
-    let str = sessionStorage.getItem(PHX_LV_LATENCY_SIM)
+    let str = this.sessionStorage.getItem(PHX_LV_LATENCY_SIM)
     return str ? parseInt(str) : null
   }
 
@@ -869,7 +881,7 @@ export class LiveSocket {
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    let tries = Browser.updateLocal(view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
+    let tries = Browser.updateLocal(this.localStorage, view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
@@ -1308,20 +1320,20 @@ export class LiveSocket {
 export let Browser = {
   canPushState(){ return (typeof(history.pushState) !== "undefined") },
 
-  dropLocal(namespace, subkey){
-    return window.localStorage.removeItem(this.localKey(namespace, subkey))
+  dropLocal(localStorage, namespace, subkey){
+    return localStorage.removeItem(this.localKey(namespace, subkey))
   },
 
-  updateLocal(namespace, subkey, initial, func){
-    let current = this.getLocal(namespace, subkey)
+  updateLocal(localStorage, namespace, subkey, initial, func){
+    let current = this.getLocal(localStorage, namespace, subkey)
     let key = this.localKey(namespace, subkey)
     let newVal = current === null ? initial : func(current)
-    window.localStorage.setItem(key, JSON.stringify(newVal))
+    localStorage.setItem(key, JSON.stringify(newVal))
     return newVal
   },
 
-  getLocal(namespace, subkey){
-    return JSON.parse(window.localStorage.getItem(this.localKey(namespace, subkey)))
+  getLocal(localStorage, namespace, subkey){
+    return JSON.parse(localStorage.getItem(this.localKey(namespace, subkey)))
   },
 
   fetchPage(href, callback){
@@ -2160,7 +2172,7 @@ export class View {
     this.joinPending = true
     this.flash = null
 
-    Browser.dropLocal(this.name(), CONSECUTIVE_RELOADS)
+    Browser.dropLocal(this.liveSocket.localStorage, this.name(), CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
       this.rendered = new Rendered(this.id, diff)
       let html = this.renderContainer(null, "join")

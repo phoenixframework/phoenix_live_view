@@ -227,4 +227,16 @@ describe('LiveSocket', () => {
     // this fails.  Is this correct?
     // expect(liveSocket.getActiveElement()).not.toEqual(input)
   })
+
+  test('storage can be overridden', async () => {
+    let getItemCalls = 0
+    let override = {
+      getItem: function(keyName) { getItemCalls = getItemCalls + 1 }
+    }
+
+    let liveSocket = new LiveSocket('/live', Socket, {sessionStorage: override})
+    liveSocket.getLatencySim()
+
+    expect(getItemCalls).toEqual(1)
+  })
 })
