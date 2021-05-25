@@ -425,5 +425,12 @@ defmodule Phoenix.LiveView.ComponentTest do
     test "nested render only" do
       assert render_component(NestedRenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
     end
+
+    test "loads unloaded component" do
+      module = Phoenix.LiveViewTest.ComponentInLive.Component
+      :code.purge(module)
+      :code.delete(module)
+      assert render_component(module, %{}) =~ "<div>Hello World</div>"
+    end
   end
 end
