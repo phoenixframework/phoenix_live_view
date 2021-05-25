@@ -7,9 +7,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @behaviour Phoenix.Template.Engine
 
-  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
-
-  @doc false
+  @impl true
   def compile(path, _name) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
     EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim)
@@ -33,7 +31,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     "source"
   ]
 
-  @doc false
+  @impl true
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
 
@@ -54,7 +52,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## These callbacks return AST
 
-  @doc false
+  @impl true
   def handle_body(state) do
     ast = invoke_subengine(state, :handle_body, [])
 
@@ -64,23 +62,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  @doc false
+  @impl true
   def handle_end(state) do
     invoke_subengine(state, :handle_end, [])
   end
 
   ## These callbacks udpate the state
 
-  @doc false
+  @impl true
   def handle_begin(state) do
     update_subengine(state, :handle_begin, [])
   end
 
-  @doc false
   def handle_text(state, text) do
     handle_text(state, [line: 1, column: 1, skip_metadata: true], text)
   end
 
+  @impl true
   def handle_text(state, meta, text) do
     opts = Keyword.take(state.opts, [:indentation]) ++ meta
 
@@ -89,7 +87,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> Enum.reduce(state, &handle_token(&1, &2, meta))
   end
 
-  @doc false
+  @impl true
   def handle_expr(state, marker, expr) do
     update_subengine(state, :handle_expr, [marker, expr])
   end
