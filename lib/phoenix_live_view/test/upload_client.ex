@@ -52,14 +52,9 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call({:allowed_ack, ref, config, entries, entries_resp}, _from, state) do
-    entries =
-      for client_entry <- entries, into: %{} do
-        %{"ref" => ref, "name" => name} = client_entry
-        token = Map.fetch!(entries_resp, ref)
-        {name, build_and_join_entry(state, client_entry, token)}
-      end
+    {resp, entries} = build_join_entries(state, entries, entries_resp)
 
-    {:reply, :ok, %{state | upload_ref: ref, config: config, entries: entries}}
+    {:reply, resp, %{state | upload_ref: ref, config: config, entries: entries}}
   end
 
   def handle_call(:channel_pids, _from, state) do
@@ -84,7 +79,38 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end
   end
 
-  defp build_and_join_entry(%{socket: nil} = _state, client_entry, token) do
+  defp build_join_entries(state, entries, entries_resp) do
+    Enum.reduce_while(entries, {:ok, %{}}, fn client_entry, {:ok, acc} ->
+      %{
+        "ref" => ref,
+        "name" => name,
+        "content" => content,
+        "size" => client_size
+      } = client_entry
+
+      token = Map.fetch!(entries_resp, ref)
+      content_size = byte_size(content)
+
+      if content_size == client_size do
+        {:cont,
+         {:ok, Map.put(acc, name, build_and_join_entry(state, client_entry, content_size, token))}}
+      else
+        reason = """
+        invalid :size value provided to file_input.
+
+        The :size value is optional and in most cases it can
+        safely be omitted. The option exists mostly for
+        testing bad clients, therefore if you provide an entry
+        :size it must match exactly the calculated byte_size
+        of the :content value.
+        """
+
+        {:halt, {{:error, reason}, %{}}}
+      end
+    end)
+  end
+
+  defp build_and_join_entry(%{socket: nil} = _state, client_entry, content_size, token) do
     %{
       "name" => name,
       "content" => content,
@@ -96,7 +122,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     %{
       name: name,
       content: content,
-      size: byte_size(content),
+      size: content_size,
       type: type,
       ref: ref,
       token: token,
@@ -104,7 +130,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     }
   end
 
-  defp build_and_join_entry(state, client_entry, token) do
+  defp build_and_join_entry(state, client_entry, content_size, token) do
     %{
       "name" => name,
       "content" => content,
@@ -119,7 +145,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     %{
       name: name,
       content: content,
-      size: byte_size(content),
+      size: content_size,
       type: type,
       socket: entry_socket,
       ref: ref,
@@ -182,7 +208,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   defp get_entry!(state, name) do
     case Map.fetch(state.entries, name) do
       {:ok, entry} -> entry
-      :error ->  raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
+      :error -> raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
     end
   end
 

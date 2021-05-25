@@ -39,7 +39,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
         content: String.duplicate("0", 100),
-        size: 1_396_009,
         type: "image/jpeg"
       })
     end
@@ -523,6 +522,18 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                  end)
                end) =~ "cannot allow_upload on an existing upload with active entries"
       end
+
+      @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+      test "testing uploads with invalid size raises", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: String.duplicate("0", 100), size: 200}
+          ])
+
+          assert_raise RuntimeError, ~r/invalid :size value provided to file_input/, fn ->
+            render_upload(avatar, "foo.jpeg")
+          end
+      end
     end
   end
 
@@ -581,6 +592,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
+
       UploadLive.run(lv, fn component_socket ->
         new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
         {:reply, :ok, new_socket}
@@ -594,6 +606,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     test "cancel_upload not yet in progress when component is removed", %{lv: lv} do
       file_name = "myfile1.jpeg"
       avatar = file_input(lv, "#upload0", :avatar, [%{name: file_name, content: "ok"}])
+
       assert lv
              |> form("form", user: %{})
              |> render_change(avatar) =~ file_name
@@ -608,6 +621,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
+
       UploadLive.run(lv, fn component_socket ->
         new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
         {:reply, :ok, new_socket}

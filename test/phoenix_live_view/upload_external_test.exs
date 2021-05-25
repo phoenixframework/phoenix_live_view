@@ -67,6 +67,18 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     {:noreply, socket}
   end
 
+  @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :preflight]
+  test "testing uploads with invalid size raises", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo.jpeg", content: String.duplicate("0", 100), size: 200}
+      ])
+
+      assert_raise RuntimeError, ~r/invalid :size value provided to file_input/, fn ->
+        render_upload(avatar, "foo.jpeg")
+      end
+  end
+
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
   test "external upload invokes preflight per entry", %{lv: lv} do
     avatar =
