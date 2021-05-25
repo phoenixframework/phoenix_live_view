@@ -34,7 +34,16 @@ end
 defmodule Phoenix.LiveViewTest.ComponentInLive.Component do
   use Phoenix.LiveComponent
 
+  # Make sure mount is calling by setting assigns in them.
+  def mount(socket) do
+    {:ok, assign(socket, world: "World")}
+  end
+
+  def update(_assigns, socket) do
+    {:ok, assign(socket, hello: "Hello")}
+  end
+
   def render(assigns) do
-    ~L"<div>Hello World</div>"
+    ~L"<div><%= @hello %> <%= @world %></div>"
   end
 end

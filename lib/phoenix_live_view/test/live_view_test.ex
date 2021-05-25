@@ -398,7 +398,7 @@ defmodule Phoenix.LiveViewTest do
     quote do
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
-        unquote(component),
+        unquote(component).__live__(),
         unquote(assigns),
         unquote(opts)
       )
@@ -406,7 +406,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __render_component__(endpoint, component, assigns, opts) do
+  def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
