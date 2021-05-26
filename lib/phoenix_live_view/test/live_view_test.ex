@@ -1413,7 +1413,7 @@ defmodule Phoenix.LiveViewTest do
         {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
           case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
             :ok -> render_chunk(upload, entry_name, percent)
-            {:error, reason} -> raise "failed to render upload, reason: #{reason}"
+            {:error, reason} -> raise "failed to render upload, reason: #{inspect(reason)}"
           end
 
         {:error, reason} ->
