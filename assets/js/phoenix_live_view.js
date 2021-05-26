@@ -365,11 +365,38 @@ class LiveUploader {
   }
 }
 
-let channelUploader = function(entries, onError, resp, liveSocket){
-  entries.forEach(entry => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
-    entryUploader.upload()
+let uploadEntry = function(entry, resp, liveSocket) {
+  let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+  entryUploader.upload()
+  return entryUploader
+}
+
+let channelUploader = function(entries, onError, resp, liveSocket) {
+  if (entries.length <= resp.config.batch_size) {
+    entries.forEach(entry => uploadEntry(entry, resp, liveSocket))
+  } else {
+    uploadInBatches(entries, onError, resp, liveSocket, [])
+  }
+}
+
+let uploadInBatches = function(entries, onError, resp, liveSocket, uploaders) {
+  const done = [], inProgress = []
+
+  uploaders.forEach((uploader) => { uploader.isDone() 
+          ?  done.push(uploader.entry.ref) 
+          : inProgress.push(uploader.entry.ref)
   })
+
+  // Filter out the entries that have already started uploading or are done uploading
+  const entriesToProcess = entries.filter((entry) => !done.includes(entry.ref) && !inProgress.includes(entry.ref))
+  if (entriesToProcess.length === 0) return
+
+  for (let i = 0; i < resp.config.batch_size - inProgress.length; i++) {
+    let entryUploader = uploadEntry(entriesToProcess.shift(), resp, liveSocket)
+    uploaders.push(entryUploader)
+  }
+
+  setTimeout(uploadInBatches, 500, entries, onError, resp, liveSocket, uploaders)
 }
 
 class EntryUploader {

@@ -56,6 +56,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   @default_max_file_size 8_000_000
   @default_chunk_size 64_000
   @default_chunk_timeout 10_000
+  @default_batch_size 10
 
   @unregistered :unregistered
   @invalid :invalid
@@ -84,6 +85,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             max_file_size: @default_max_file_size,
             chunk_size: @default_chunk_size,
             chunk_timeout: @default_chunk_timeout,
+            batch_size: @default_batch_size,
             entries: [],
             entry_refs_to_pids: %{},
             entry_refs_to_metas: %{},
@@ -254,6 +256,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           @default_chunk_timeout
       end
 
+    batch_size =
+      case Keyword.fetch(opts, :batch_size) do
+        {:ok, pos_integer} when is_integer(pos_integer) and pos_integer > 0 ->
+          pos_integer
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :batch_size value provided to allow_upload.
+
+          Only a positive integer is supported (Defaults to #{@default_batch_size} ). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_batch_size
+      end
+
     progress_event =
       case Keyword.fetch(opts, :progress) do
         {:ok, func} when is_function(func, 3) ->
@@ -285,6 +305,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       external: external,
       chunk_size: chunk_size,
       chunk_timeout: chunk_timeout,
+      batch_size: batch_size,
       progress_event: progress_event,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
       allowed?: true
