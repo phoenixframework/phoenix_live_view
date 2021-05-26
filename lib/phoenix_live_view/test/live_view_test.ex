@@ -955,13 +955,17 @@ defmodule Phoenix.LiveViewTest do
     * `:size` - the byte size of the content
     * `:type` - the MIME type of the file
 
+  **Note:** Do not provide the `:size` option unless its
+  value differs from the byte_size of the content. The
+  entry size is calculated automatically; the option is
+  provided mostly for testing bad client behaviour.
+
   ## Examples
 
       avatar = file_input(lv, "#my-form-id", :avatar, [%{
         last_modified: 1_594_171_879_000,
         name: "myfile.jpeg",
         content: File.read!("myfile.jpg"),
-        size: 1_396_009,
         type: "image/jpeg"
       }])
 
