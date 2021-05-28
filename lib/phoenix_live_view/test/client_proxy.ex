@@ -11,6 +11,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             static_token: nil,
             module: nil,
             endpoint: nil,
+            router: nil,
             pid: nil,
             proxy: nil,
             topic: nil,
@@ -19,6 +20,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             children: [],
             child_statics: %{},
             id: nil,
+            uri: nil,
             connect_params: %{},
             connect_info: %{}
 
@@ -28,6 +30,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   Encoding used by the Channel serializer.
   """
   def encode!(msg), do: msg
+
+  @doc """
+  Stops the client proxy gracefully.
+  """
+  def stop(proxy_pid, reason) do
+    GenServer.call(proxy_pid, {:stop, reason})
+  end
+
+  @doc """
+  Returns the tokens of the root view.
+  """
+  def root_view(proxy_pid) do
+    GenServer.call(proxy_pid, :root_view)
+  end
 
   @doc """
   Reports upload progress to the proxy.
@@ -62,6 +78,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       connect_info: connect_info,
       live_module: module,
       endpoint: endpoint,
+      router: router,
       session: session,
       url: url,
       test_supervisor: test_supervisor
@@ -70,7 +87,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     # We can assume there is at least one LiveView
     # because the live_module assign was set.
     root_html = DOM.parse(response_html)
-    [{id, session_token, static_token} | _] = DOM.find_live_views(root_html)
+
+    {id, session_token, static_token, redirect_url} =
+      case Map.fetch(opts, :live_redirect) do
+        {:ok, {id, session_token, static_token}} ->
+          {id, session_token, static_token, url}
+
+        :error ->
+          [{id, session_token, static_token} | _] = DOM.find_live_views(root_html)
+          {id, session_token, static_token, nil}
+      end
 
     root_view = %ClientProxy{
       id: id,
@@ -81,8 +107,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       static_token: static_token,
       module: module,
       endpoint: endpoint,
+      router: router,
+      uri: URI.parse(url),
       child_statics: Map.delete(DOM.find_static_views(root_html), id),
-      topic: Phoenix.LiveView.Utils.random_id()
+      topic: "lv:#{id}"
     }
 
     # We build an absolute path to any relative
@@ -117,10 +145,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     }
 
     try do
-      {root_view, rendered} = mount_view(state, root_view, url)
+      {root_view, rendered, resp} = mount_view(state, root_view, url, redirect_url)
 
       new_state =
         state
+        |> maybe_put_container(resp)
         |> Map.put(:root_view, root_view)
         |> put_view(root_view, rendered)
         |> detect_added_or_removed_children(root_view, root_html)
@@ -138,28 +167,38 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp maybe_put_container(state, %{container: container}) do
+    [tag, attrs] = container
+    %{state | html: DOM.replace_root_container(state.html, tag, attrs)}
+  end
+
+  defp maybe_put_container(state, %{} = _resp), do: state
+
   defp build_client_view(%ClientProxy{} = proxy) do
     %{id: id, ref: ref, topic: topic, module: module, endpoint: endpoint, pid: pid} = proxy
     %View{id: id, pid: pid, proxy: {ref, topic, self()}, module: module, endpoint: endpoint}
   end
 
-  defp mount_view(state, view, url) do
+  defp mount_view(state, view, url, redirect_url) do
     ref = make_ref()
 
-    case start_supervised_channel(state, view, ref, url) do
+    case start_supervised_channel(state, view, ref, url, redirect_url) do
       {:ok, pid} ->
         mon_ref = Process.monitor(pid)
 
         receive do
-          {^ref, {:ok, %{rendered: rendered}}} ->
+          {^ref, {:ok, %{rendered: rendered} = resp}} ->
             Process.demonitor(mon_ref, [:flush])
-            {%{view | pid: pid}, DOM.merge_diff(%{}, rendered)}
+            {%{view | pid: pid}, DOM.merge_diff(%{}, rendered), resp}
 
           {^ref, {:error, %{live_redirect: opts}}} ->
             throw(stop_redirect(state, view.topic, {:live_redirect, opts}))
 
           {^ref, {:error, %{redirect: opts}}} ->
             throw(stop_redirect(state, view.topic, {:redirect, opts}))
+
+          {^ref, {:error, %{reason: "unauthorized"}}} ->
+            throw(stop_redirect(state, view.topic, {:redirect, to: redirect_url}))
 
           {^ref, {:error, reason}} ->
             throw({:stop, reason, state})
@@ -173,7 +212,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp start_supervised_channel(state, view, ref, url) do
+  defp start_supervised_channel(state, view, ref, url, redirect_url) do
     socket = %Phoenix.Socket{
       transport_pid: self(),
       serializer: __MODULE__,
@@ -187,10 +226,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     params = %{
       "session" => view.session_token,
       "static" => view.static_token,
-      "url" => url,
       "params" => Map.put(view.connect_params, "_mounts", 0),
       "caller" => state.caller
     }
+
+    params = put_non_nil(params, "url", url)
+    params = put_non_nil(params, "redirect", redirect_url)
 
     from = {self(), ref}
 
@@ -205,6 +246,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, pid}
     end
   end
+
+  defp put_non_nil(%{} = map, _key, nil), do: map
+  defp put_non_nil(%{} = map, key, val), do: Map.put(map, key, val)
 
   def handle_info({:sync_children, topic, from}, state) do
     view = fetch_view_by_topic!(state, topic)
@@ -378,8 +422,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:socket_close, pid, reason}, state) do
-    {:ok, view} = fetch_view_by_pid(state, pid)
-    {:noreply, drop_view_by_id(state, view.id, reason)}
+    case fetch_view_by_pid(state, pid) do
+      {:ok, view} ->
+        {:noreply, drop_view_by_id(state, view.id, reason)}
+
+      :error ->
+        {:noreply, state}
+    end
   end
 
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
@@ -401,6 +450,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call(:html, _from, state) do
     {:reply, {:ok, {state.html, state.static_path}}, state}
+  end
+
+  def handle_call(:root_view, _from, state) do
+    {:reply, {state.session, state.root_view}, state}
   end
 
   def handle_call({:live_children, topic}, from, state) do
@@ -428,7 +481,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_patch, topic, path}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    state = push_with_reply(state, from, view, "link", %{"url" => path})
+    state = push_with_reply(state, from, view, "live_patch", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
     {:noreply, state}
   end
@@ -450,6 +503,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       )
 
     {:noreply, new_state}
+  end
+
+  def handle_call({:stop, reason}, _from, state) do
+    %{caller: {pid, _}} = state
+    Process.unlink(pid)
+    {:stop, :ok, reason, state}
   end
 
   defp drop_view_by_id(state, id, reason) do
@@ -506,11 +565,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp verify_session(%ClientProxy{} = view) do
-    Phoenix.LiveView.Static.verify_session(view.endpoint, view.session_token, view.static_token)
+    Phoenix.LiveView.Static.verify_session(
+      view.endpoint,
+      view.topic,
+      view.session_token,
+      view.static_token
+    )
   end
 
   defp put_view(state, %ClientProxy{pid: pid} = view, rendered) do
-    {:ok, %{view: module}} = verify_session(view)
+    {:ok, %Phoenix.LiveView.Session{view: module}} = verify_session(view)
     new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
@@ -641,7 +705,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           static = static || Map.get(state.root_view.child_statics, id)
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
-          {child_view, rendered} = mount_view(acc, child_view, state.url)
+          {child_view, rendered, _resp} = mount_view(acc, child_view, nil, nil)
 
           acc
           |> put_view(child_view, rendered)
@@ -681,6 +745,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp handle_reply(state, reply) do
     %{payload: payload, topic: topic} = reply
+
     new_state =
       case payload do
         %{diff: diff} -> merge_rendered(state, topic, diff)
@@ -717,7 +782,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         ref: ref,
         proxy: proxy,
         endpoint: endpoint,
-        topic: Phoenix.LiveView.Utils.random_id()
+        topic: "lv:#{Keyword.fetch!(attrs, :id)}"
       )
 
     struct!(__MODULE__, attrs_with_defaults)

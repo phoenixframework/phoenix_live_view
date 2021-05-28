@@ -93,6 +93,17 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration components
     live "/component_in_live", ComponentInLive.Root
     live "/cids_destroyed", CidsDestroyedLive
+
+    # live_session
+    live_session :default do
+      live "/thermo-live-session", ThermostatLive
+      live "/clock-live-session", ClockLive
+    end
+
+    live_session :admin, %{"admin" => true} do
+      live "/thermo-live-session-admin", ThermostatLive
+      live "/clock-live-session-admin", ClockLive
+    end
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do

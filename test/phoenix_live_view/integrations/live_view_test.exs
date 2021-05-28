@@ -303,10 +303,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "renders a live view with custom session and a router", %{conn: conn} do
+      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
       {:ok, view, _} =
         live_isolated(conn, Phoenix.LiveViewTest.DashboardLive,
-          session: %{"hello" => "world"},
-          router: Phoenix.LiveViewTest.Router
+          session: %{"hello" => "world"}
         )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
@@ -502,22 +502,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".* data-phx-view=\"ThermostatLive\"[^>]*>/
+               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".* data-phx-view=\"\"[^>]*>/
 
       assert static_html =~ ~r/<\/article>/
 
       assert static_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert static_html =~ ~r/<\/section>/
 
       assert connected_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert connected_html =~ ~r/<\/section>/
 
       assert render(view) =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert render(view) =~ ~r/<\/section>/
     end
@@ -532,22 +532,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<span class="thermo"[^>]*data-phx-view=\"ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+               ~r/<span class="thermo"[^>]*data-phx-view=\"\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
 
       assert static_html =~ ~r/<\/span>/
 
       assert static_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert static_html =~ ~r/<\/p>/
 
       assert connected_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert connected_html =~ ~r/<\/p>/
 
       assert render(view) =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
     end

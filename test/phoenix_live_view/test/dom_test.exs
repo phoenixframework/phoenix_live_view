@@ -59,6 +59,63 @@ defmodule Phoenix.LiveViewTest.DOMTest do
     end
   end
 
+  describe "replace_root_html" do
+    test "replaces tag name and merges attributes" do
+      container =
+        DOM.parse("""
+        <div id="container"
+             data-phx-main="true"
+             data-phx-session="session"
+             data-phx-static="static"
+             data-phx-view class="old">contents</div>
+        """)
+
+      assert DOM.replace_root_container(container, :span, %{class: "new"}) ==
+               [
+                 {"span",
+                  [
+                    {"id", "container"},
+                    {"data-phx-main", "true"},
+                    {"data-phx-session", "session"},
+                    {"data-phx-static", "static"},
+                    {"data-phx-view", "data-phx-view"},
+                    {"class", "new"}
+                  ], ["contents"]}
+               ]
+    end
+
+    test "does not overwrite reserved attributes" do
+      container =
+        DOM.parse("""
+        <div id="container"
+             data-phx-main="true"
+             data-phx-session="session"
+             data-phx-static="static"
+             data-phx-view>contents</div>
+        """)
+
+      new_attrs = %{
+        "id" => "new",
+        "data-phx-session" => "new",
+        "data-phx-static" => "new",
+        "data-phx-main" => "new",
+        "data-phx-view" => "new"
+      }
+
+      assert DOM.replace_root_container(container, :div, new_attrs) ==
+               [
+                 {"div",
+                  [
+                    {"id", "container"},
+                    {"data-phx-main", "true"},
+                    {"data-phx-session", "session"},
+                    {"data-phx-static", "static"},
+                    {"data-phx-view", "data-phx-view"}
+                  ], ["contents"]}
+               ]
+    end
+  end
+
   describe "patch_id" do
     test "updates deeply nested html" do
       html = """

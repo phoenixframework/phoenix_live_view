@@ -7,12 +7,12 @@ defmodule Phoenix.LiveView.PlugTest do
   alias Phoenix.LiveViewTest.{ThermostatLive, DashboardLive, Endpoint}
 
   defp call(conn, view, opts \\ []) do
-    opts = Keyword.merge([router: __MODULE__, layout: false], opts)
+    opts = Keyword.merge([router: Phoenix.LiveViewTest.Router, layout: false], opts)
 
     conn
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
-    |> put_private(:phoenix_live_view, {view, opts})
+    |> put_private(:phoenix_live_view, {view, opts, {:default, %{}, 0}})
     |> LiveViewPlug.call(view)
   end
 
@@ -52,26 +52,17 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{"user_id" => "alex"})
   end
 
-  test "with existing #{LiveViewPlug.link_header()} header", %{conn: conn} do
-    conn =
-      conn
-      |> put_req_header(LiveViewPlug.link_header(), "some.site.com")
-      |> call(DashboardLive)
-
-    assert conn.resp_body =~ ~s(session: %{})
-  end
-
   test "with a module container", %{conn: conn} do
     conn = call(conn, ThermostatLive)
 
     assert conn.resp_body =~
-             ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
+             ~r/<article[^>]*class="thermo"[^>]*>/
   end
 
   test "with container options", %{conn: conn} do
     conn = call(conn, DashboardLive, container: {:span, style: "phx-flex"})
 
     assert conn.resp_body =~
-             ~r/<span[^>]*data-phx-view="LiveViewTest.DashboardLive"[^>]*style="phx-flex">/
+             ~r/<span[^>]*class="Phoenix.LiveViewTest.DashboardLive"[^>]*style="phx-flex">/
   end
 end

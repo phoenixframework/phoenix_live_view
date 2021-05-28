@@ -678,9 +678,9 @@ export class Rendered {
  *   - throttle - the millisecond phx-throttle time. Defaults 300
  *
  * @param {Function} [opts.params] - The optional function for passing connect params.
- * The function receives the viewName associated with a given LiveView. For example:
+ * The function receives the element associated with a given LiveView. For example:
  *
- *     (viewName) => {view: viewName, token: window.myToken}
+ *     (el) => {view: el.getAttribute("data-my-view-name"), token: window.myToken}
  *
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
@@ -742,6 +742,7 @@ export class LiveSocket {
     this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
+    this.ref = 0
     this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
     this.metadataCallbacks = opts.metadata || {}
@@ -820,6 +821,8 @@ export class LiveSocket {
 
   // private
 
+  nextRef(){ return this.ref++ }
+
   triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
   time(name, func){
@@ -875,6 +878,7 @@ export class LiveSocket {
       receive(kind, cb){ this.receives.push([kind, cb])}
     }
     setTimeout(() => {
+      if(view.isDestroyed()){ return }
       fakePush.receives.reduce((acc, [kind, cb]) => acc.receive(kind, cb), push())
     }, latency)
     return fakePush
@@ -885,7 +889,7 @@ export class LiveSocket {
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    let tries = Browser.updateLocal(this.localStorage, view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
+    let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
@@ -918,8 +922,9 @@ export class LiveSocket {
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       if(!this.getRootById(rootEl.id)){
-        let view = this.joinRootView(rootEl, this.getHref())
-        this.root = this.root || view
+        let view = this.newRootView(rootEl)
+        view.setHref(this.getHref())
+        view.join()
         if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
       }
       rootsFound = true
@@ -933,37 +938,26 @@ export class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
-    let mainEl = this.main.el
+    let oldMainEl = this.main.el
+    let newMainEl = DOM.cloneNode(oldMainEl)
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
+    oldMainEl.replaceWith(newMainEl)
 
-    Browser.fetchPage(href, (status, html) => {
-      if(status !== 200){ return this.redirect(href) }
-
-      let template = document.createElement("template")
-      template.innerHTML = html
-      let el = template.content.childNodes[0]
-      if(!el || !this.isPhxView(el)){ return this.redirect(href) }
-
-      this.joinRootView(el, href, flash, (newMain, joinCount) => {
-        if(joinCount !== 1){ return }
-        if(!this.commitPendingLink(linkRef)){
-          newMain.destroy()
-          return
-        }
-        mainEl.replaceWith(newMain.el)
-        this.main = newMain
+    this.main = this.newRootView(newMainEl, flash)
+    this.main.setRedirect(href)
+    this.main.join(joinCount => {
+      if(joinCount === 1 && this.commitPendingLink(linkRef)){
         callback && callback()
-      })
+      }
     })
   }
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
 
-  joinRootView(el, href, flash, callback){
-    let view = new View(el, this, null, href, flash)
+  newRootView(el, href, flash){
+    let view = new View(el, this, null, flash)
     this.roots[view.id] = view
-    view.join(callback)
     return view
   }
 
@@ -1340,34 +1334,6 @@ export let Browser = {
     return JSON.parse(localStorage.getItem(this.localKey(namespace, subkey)))
   },
 
-  fetchPage(href, callback){
-    let req = new XMLHttpRequest()
-    req.open("GET", href, true)
-    req.timeout = PUSH_TIMEOUT
-    req.setRequestHeader("content-type", "text/html")
-    req.setRequestHeader("cache-control", "max-age=0, no-cache, no-store, must-revalidate, post-check=0, pre-check=0")
-    req.setRequestHeader(LINK_HEADER, "live-link")
-    req.onerror = () => callback(400)
-    req.ontimeout = () => callback(504)
-    req.onreadystatechange = () => {
-      if(req.readyState !== 4){ return }
-      let requestURL = new URL(href)
-      let requestPath = requestURL.pathname + requestURL.search
-      let responseURL = maybe(req.getResponseHeader(RESPONSE_URL_HEADER) || req.responseURL, url => new URL(url))
-      let responsePath = responseURL ? responseURL.pathname + responseURL.search : null
-      if(req.getResponseHeader(LINK_HEADER) !== "live-link"){
-        return callback(400)
-      } else if(responseURL === null || responsePath != requestPath){
-        return callback(302)
-      } else if(req.status !== 200){
-        return callback(req.status)
-      } else {
-        callback(200, req.responseText)
-      }
-    }
-    req.send()
-  },
-
   updateCurrentState(callback){ if(!this.canPushState()){ return }
     history.replaceState(callback(history.state || {}), "", window.location.href)
   },
@@ -1497,7 +1463,7 @@ export let DOM = {
   withinSameLiveView(node, parent){
     while(node = node.parentNode){
       if(node.isSameNode(parent)){ return true }
-      if(node.getAttribute(PHX_VIEW)){ return false }
+      if(node.getAttribute(PHX_VIEW) !== null){ return false }
     }
   },
 
@@ -1728,6 +1694,30 @@ export let DOM = {
         }
       })
       toRemove.forEach(childNode => childNode.remove())
+    }
+  },
+
+  replaceRootContainer(container, tagName, attrs){
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_VIEW])
+    let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase())
+    if(container.tagName.toLowerCase() === tagName.toLowerCase()){
+      Array.from(container.attributes)
+        .filter(notRetained)
+        .forEach(attr => container.removeAttribute(attr.name))
+
+      Object.keys(attrs)
+        .filter(notRetained)
+        .forEach(attr => container.setAttribute(attr, attrs[attr]))
+
+      return container
+
+    } else {
+      let newContainer = document.createElement(tagName)
+      Object.keys(attrs).forEach(attr => newContainer.setAttribute(attr, attrs[attr]))
+      retainedAttrs.forEach(attr => newContainer.setAttribute(attr, container.getAttribute(attr)))
+      newContainer.innerHTML = container.innerHTML
+      container.replaceWith(newContainer)
+      return newContainer
     }
   }
 }
@@ -2023,20 +2013,20 @@ class DOMPatch {
 }
 
 export class View {
-  constructor(el, liveSocket, parentView, href, flash){
+  constructor(el, liveSocket, parentView, flash){
     this.liveSocket = liveSocket
     this.flash = flash
     this.parent = parentView
     this.root = parentView ? parentView.root : this
     this.el = el
     this.id = this.el.id
-    this.view = this.el.getAttribute(PHX_VIEW)
     this.ref = 0
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
     this.pruningCIDs = []
-    this.href = href
+    this.redirect = false
+    this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
     this.destroyed = false
@@ -2050,7 +2040,8 @@ export class View {
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        url: this.href,
+        redirect: this.redirect ? this.href : undefined,
+        url: this.redirect ? undefined : this.href,
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
@@ -2061,10 +2052,17 @@ export class View {
     this.bindChannel()
   }
 
+  setHref(href){ this.href = href }
+
+  setRedirect(href){
+    this.redirect = true
+    this.href = href
+  }
+
   isMain(){ return this.liveSocket.main === this }
 
   connectParams(){
-    let params = this.liveSocket.params(this.view)
+    let params = this.liveSocket.params(this.el)
     let manifest =
       DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
       .map(node => node.src || node.href).filter(url => typeof(url) === "string")
@@ -2074,8 +2072,6 @@ export class View {
 
     return params
   }
-
-  name(){ return this.view }
 
   isConnected(){ return this.channel.canPush() }
 
@@ -2171,12 +2167,16 @@ export class View {
   }
 
   onJoin(resp){
-    let {rendered} = resp
+    let {rendered, container} = resp
+    if(container){
+      let [tag, attrs] = container
+      this.el = DOM.replaceRootContainer(this.el, tag, attrs)
+    }
     this.childJoins = 0
     this.joinPending = true
     this.flash = null
 
-    Browser.dropLocal(this.liveSocket.localStorage, this.name(), CONSECUTIVE_RELOADS)
+    Browser.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
       this.rendered = new Rendered(this.id, diff)
       let html = this.renderContainer(null, "join")
@@ -2503,16 +2503,20 @@ export class View {
     if(!this.parent){
       this.stopCallback = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
-    this.joinCallback = () => callback && callback(this, this.joinCount)
+    this.joinCallback = () => callback && callback(this.joinCount)
     this.liveSocket.wrapPush(this, {timeout: false}, () => {
       return this.channel.join()
-        .receive("ok", data => this.onJoin(data))
-        .receive("error", resp => this.onJoinError(resp))
-        .receive("timeout", () => this.onJoinError({reason: "timeout"}))
+        .receive("ok", data => !this.isDestroyed() && this.onJoin(data))
+        .receive("error", resp => !this.isDestroyed() && this.onJoinError(resp))
+        .receive("timeout", () => !this.isDestroyed() && this.onJoinError({reason: "timeout"}))
     })
   }
 
   onJoinError(resp){
+    if(resp.reason === "unauthorized" && this.href){
+      this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
+      return this.onRedirect({to: this.href})
+    }
     if(resp.redirect || resp.live_redirect){
       this.joinPending = false
       this.channel.leave()
@@ -2883,7 +2887,7 @@ export class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
 
-    this.pushWithReply(refGen, "link", {url: href}, resp => {
+    this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else {
@@ -2967,7 +2971,6 @@ class ViewHook {
     this.__listeners = new Set()
     this.__isDisconnected = false
     this.el = el
-    this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }

@@ -370,7 +370,7 @@ defmodule Phoenix.LiveView do
     * [Uploads (External)](uploads-external.md)
   '''
 
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Socket, Route}
 
   @type unsigned_params :: map
 
@@ -882,7 +882,7 @@ defmodule Phoenix.LiveView do
     %{to: to} = opts = push_opts!(opts, "push_patch/2")
 
     case Phoenix.LiveView.Utils.live_link_info!(socket, socket.private.root_view, to) do
-      {:internal, params, action, _parsed_uri} ->
+      {:internal, %Route{params: params, action: action}} ->
         put_redirect(socket, {:live, {params, action}, opts})
 
       {:external, _uri} ->
