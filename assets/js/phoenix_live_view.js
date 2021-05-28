@@ -184,6 +184,10 @@ class UploadEntry {
     this._onDone()
   }
 
+  isCancelled() {
+    return this._isCancelled
+  }
+
   isDone(){ return this._isDone }
 
   error(reason = "failed"){
@@ -367,36 +371,30 @@ class LiveUploader {
 
 let uploadEntry = function(entry, resp, liveSocket) {
   let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
-  entryUploader.upload()
   return entryUploader
 }
 
 let channelUploader = function(entries, onError, resp, liveSocket) {
-  if (entries.length <= resp.config.batch_size) {
-    entries.forEach(entry => uploadEntry(entry, resp, liveSocket))
+  let uploaders = entries.map(entry => uploadEntry(entry, resp, liveSocket))
+  if (entries.length <= resp.config.max_concurrency) {
+    uploaders.forEach(uploader => uploader.upload()) 
   } else {
-    uploadInBatches(entries, onError, resp, liveSocket, [])
+    uploadInBatches(uploaders, onError, resp, liveSocket)
   }
 }
 
-let uploadInBatches = function(entries, onError, resp, liveSocket, uploaders) {
-  const done = [], inProgress = []
+let uploadInBatches = function(uploaders, onError, resp, liveSocket) {
+  const inProgress = uploaders.filter(u => u.hasStarted() && !u.isDone()).length
+  // Filter out the entries that have already started uploading or are done uploading or are cancelled
+  const entriesToProcess = uploaders.filter((u) => !u.isDone() || !u.hasStarted() || !u.entry.isCancelled())
 
-  uploaders.forEach((uploader) => { uploader.isDone() 
-          ?  done.push(uploader.entry.ref) 
-          : inProgress.push(uploader.entry.ref)
-  })
-
-  // Filter out the entries that have already started uploading or are done uploading
-  const entriesToProcess = entries.filter((entry) => !done.includes(entry.ref) && !inProgress.includes(entry.ref))
   if (entriesToProcess.length === 0) return
 
-  for (let i = 0; i < resp.config.batch_size - inProgress.length; i++) {
-    let entryUploader = uploadEntry(entriesToProcess.shift(), resp, liveSocket)
-    uploaders.push(entryUploader)
+  for (let i = 0; i < resp.config.max_concurrency - inProgress; i++) {
+    entriesToProcess[i].upload()
   }
 
-  setTimeout(uploadInBatches, 500, entries, onError, resp, liveSocket, uploaders)
+  setTimeout(uploadInBatches, 700, uploaders, onError, resp, liveSocket)
 }
 
 class EntryUploader {
@@ -407,6 +405,7 @@ class EntryUploader {
     this.chunkSize = chunkSize
     this.chunkTimer = null
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
+    this._started = false
   }
 
   error(reason){
@@ -420,8 +419,10 @@ class EntryUploader {
     this.uploadChannel.join()
       .receive("ok", data => this.readNextChunk())
       .receive("error", reason => this.error(reason))
+    this._started = true
   }
 
+  hasStarted() { return this._started }
   isDone(){ return this.offset >= this.entry.file.size }
 
   readNextChunk(){
