@@ -1,5 +1,4 @@
-import {Socket} from "phoenix"
-import LiveSocket, {DOM} from '../js/phoenix_live_view'
+import DOM from "phoenix_live_view/dom"
 
 let after = (time, func) => setTimeout(func, time)
 
@@ -9,7 +8,7 @@ let simulateInput = (input, val) => {
 }
 
 let simulateKeyDown = (input, val) => {
-  input.value = input.value + val;
+  input.value = input.value + val
   DOM.dispatchEvent(input, "input")
 }
 
@@ -27,7 +26,7 @@ let container = () => {
   return div
 }
 
-describe("debounce", function() {
+describe("debounce", function (){
   test("triggers on input blur", async () => {
     let calls = 0
     let el = container().querySelector("input[name=blur]")
@@ -154,7 +153,7 @@ describe("debounce", function() {
   })
 })
 
-describe("throttle", function() {
+describe("throttle", function (){
   test("triggers immediately, then on timeout", done => {
     let calls = 0
     let el = container().querySelector("#throttle-200")
@@ -239,7 +238,7 @@ describe("throttle", function() {
 })
 
 
-describe("throttle keydown", function() {
+describe("throttle keydown", function (){
   test("when the same key is pressed triggers immediately, then on timeout", done => {
     let keyPresses = {}
     let el = container().querySelector("#throttle-keydown")

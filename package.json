@@ -4,6 +4,10 @@
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
   "main": "./priv/static/phoenix_live_view.js",
+  "exports": {
+    ".": "./assets/js/phoenix_live_view/index.js",
+    "./": "./assets/js/phoenix_live_view/"
+  },
   "author": "Chris McCord <chris@chrismccord.com> (http://www.phoenixframework.org)",
   "repository": {
     "type": "git",
@@ -14,6 +18,6 @@
     "LICENSE.md",
     "package.json",
     "priv/static/phoenix_live_view.js",
-    "assets/js/phoenix_live_view.js"
+    "assets/js/phoenix_live_view/*"
   ]
 }

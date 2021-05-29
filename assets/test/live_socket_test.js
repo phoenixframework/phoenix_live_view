@@ -1,22 +1,22 @@
 import {Socket} from "phoenix"
-import LiveSocket, {View} from '../js/phoenix_live_view'
+import LiveSocket from "phoenix_live_view/live_socket"
 
 let container = (num) => global.document.getElementById(`container${num}`)
 
 let prepareLiveViewDOM = (document) => {
-  const div = document.createElement('div')
-  div.setAttribute('data-phx-view', '')
-  div.setAttribute('data-phx-session', 'abc123')
-  div.setAttribute('data-phx-root-id', 'container1')
-  div.setAttribute('id', 'container1')
+  const div = document.createElement("div")
+  div.setAttribute("data-phx-view", "")
+  div.setAttribute("data-phx-session", "abc123")
+  div.setAttribute("data-phx-root-id", "container1")
+  div.setAttribute("id", "container1")
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
     <button phx-click="inc_temperature">Inc Temperature</button>
   `
-  const button = div.querySelector('button')
-  const input = div.querySelector('input')
-  button.addEventListener('click', () => {
+  const button = div.querySelector("button")
+  const input = div.querySelector("input")
+  button.addEventListener("click", () => {
     setTimeout(() => {
       input.value += 1
     }, 200)
@@ -24,58 +24,58 @@ let prepareLiveViewDOM = (document) => {
   document.body.appendChild(div)
 }
 
-describe('LiveSocket', () => {
+describe("LiveSocket", () => {
   beforeEach(() => {
     prepareLiveViewDOM(global.document)
   })
 
   afterAll(() => {
-    global.document.body.innerHTML = ''
+    global.document.body.innerHTML = ""
   })
 
-  test('sets defaults', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("sets defaults", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
     expect(liveSocket.socket).toBeDefined()
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.viewLogger).toBeUndefined()
     expect(liveSocket.unloaded).toBe(false)
-    expect(liveSocket.bindingPrefix).toBe('phx-')
+    expect(liveSocket.bindingPrefix).toBe("phx-")
     expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
 
-  test('sets defaults with socket', async () => {
-    let liveSocket = new LiveSocket(new Socket('//example.org/chat'), Socket)
+  test("sets defaults with socket", async () => {
+    let liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket)
     expect(liveSocket.socket).toBeDefined()
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.unloaded).toBe(false)
-    expect(liveSocket.bindingPrefix).toBe('phx-')
+    expect(liveSocket.bindingPrefix).toBe("phx-")
     expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
 
-  test('viewLogger', async () => {
+  test("viewLogger", async () => {
     let viewLogger = (view, kind, msg, obj) => {
-      expect(view.id).toBe('container1')
-      expect(kind).toBe('updated')
-      expect(msg).toBe('')
-      expect(obj).toBe('\"<div>\"')
+      expect(view.id).toBe("container1")
+      expect(kind).toBe("updated")
+      expect(msg).toBe("")
+      expect(obj).toBe("\"<div>\"")
     }
-    let liveSocket = new LiveSocket('/live', Socket, {viewLogger})
+    let liveSocket = new LiveSocket("/live", Socket, {viewLogger})
     expect(liveSocket.viewLogger).toBe(viewLogger)
     liveSocket.connect()
     let view = liveSocket.getViewByEl(container(1))
-    liveSocket.log(view, 'updated', () => ['', JSON.stringify('<div>')])
+    liveSocket.log(view, "updated", () => ["", JSON.stringify("<div>")])
   })
 
-  test('connect', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
-    let socket = liveSocket.connect()
+  test("connect", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let _socket = liveSocket.connect()
     expect(liveSocket.getViewByEl(container(1))).toBeDefined()
   })
 
-  test('disconnect', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("disconnect", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
     liveSocket.disconnect()
@@ -83,31 +83,31 @@ describe('LiveSocket', () => {
     expect(liveSocket.getViewByEl(container(1)).destroy).toBeDefined()
   })
 
-  test('channel', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("channel", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
-    let channel = liveSocket.channel('lv:def456', () => {
-        return { session: this.getSession() }
+    let channel = liveSocket.channel("lv:def456", () => {
+      return {session: this.getSession()}
     })
 
     expect(channel).toBeDefined()
   })
 
-  test('getViewByEl', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("getViewByEl", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
 
     expect(liveSocket.getViewByEl(container(1)).destroy).toBeDefined()
   })
 
-  test('destroyAllViews', async () => {
-    const secondLiveView = document.createElement('div')
-    secondLiveView.setAttribute('data-phx-view', '')
-    secondLiveView.setAttribute('data-phx-session', 'def456')
-    secondLiveView.setAttribute('data-phx-root-id', 'container1')
-    secondLiveView.setAttribute('id', 'container2')
+  test("destroyAllViews", async () => {
+    const secondLiveView = document.createElement("div")
+    secondLiveView.setAttribute("data-phx-view", "")
+    secondLiveView.setAttribute("data-phx-session", "def456")
+    secondLiveView.setAttribute("data-phx-root-id", "container1")
+    secondLiveView.setAttribute("id", "container2")
     secondLiveView.innerHTML = `
       <label for="plus">Plus</label>
       <input id="plus" value="1" />
@@ -115,7 +115,7 @@ describe('LiveSocket', () => {
     `
     document.body.appendChild(secondLiveView)
 
-    let liveSocket = new LiveSocket('/live', Socket)
+    let liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
 
     let el = container(1)
@@ -130,49 +130,49 @@ describe('LiveSocket', () => {
     expect(liveSocket.roots).toEqual({})
   })
 
-  test('binding', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("binding", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    expect(liveSocket.binding('value')).toBe('phx-value')
+    expect(liveSocket.binding("value")).toBe("phx-value")
   })
 
-  test('getBindingPrefix', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("getBindingPrefix", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    expect(liveSocket.getBindingPrefix()).toEqual('phx-')
+    expect(liveSocket.getBindingPrefix()).toEqual("phx-")
   })
 
-  test('getBindingPrefix custom', async () => {
-    let liveSocket = new LiveSocket('/live', Socket, {bindingPrefix: 'company-'})
+  test("getBindingPrefix custom", async () => {
+    let liveSocket = new LiveSocket("/live", Socket, {bindingPrefix: "company-"})
 
-    expect(liveSocket.getBindingPrefix()).toEqual('company-')
+    expect(liveSocket.getBindingPrefix()).toEqual("company-")
   })
 
-  test('owner', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("owner", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
 
-    let view = liveSocket.getViewByEl(container(1))
-    let btn = document.querySelector('button')
-    let callback = (view) => {
+    let _view = liveSocket.getViewByEl(container(1))
+    let btn = document.querySelector("button")
+    let _callback = (view) => {
       expect(view.id).toBe(view.id)
     }
     liveSocket.owner(btn, (view) => view.id)
   })
 
-  test('getActiveElement default before LiveSocket activeElement is set', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("getActiveElement default before LiveSocket activeElement is set", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    let input = document.querySelector('input')
+    let input = document.querySelector("input")
     input.focus()
 
     expect(liveSocket.getActiveElement()).toEqual(input)
   })
 
-  test('setActiveElement and getActiveElement', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("setActiveElement and getActiveElement", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    let input = document.querySelector('input')
+    let input = document.querySelector("input")
 
     // .activeElement
     liveSocket.setActiveElement(input)
@@ -180,10 +180,10 @@ describe('LiveSocket', () => {
     expect(liveSocket.getActiveElement()).toEqual(input)
   })
 
-  test('blurActiveElement', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("blurActiveElement", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    let input = document.querySelector('input')
+    let input = document.querySelector("input")
     input.focus()
 
     expect(liveSocket.prevActive).toBeNull()
@@ -194,10 +194,10 @@ describe('LiveSocket', () => {
     expect(liveSocket.getActiveElement()).not.toEqual(input)
   })
 
-  test('restorePreviouslyActiveFocus', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("restorePreviouslyActiveFocus", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
-    let input = document.querySelector('input')
+    let input = document.querySelector("input")
     input.focus()
 
     liveSocket.blurActiveElement()
@@ -211,12 +211,12 @@ describe('LiveSocket', () => {
     expect(document.activeElement).toEqual(input)
   })
 
-  test('dropActiveElement unsets prevActive', async () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+  test("dropActiveElement unsets prevActive", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
 
-    let input = document.querySelector('input')
+    let input = document.querySelector("input")
     liveSocket.setActiveElement(input)
     liveSocket.blurActiveElement()
     expect(liveSocket.prevActive).toEqual(input)
@@ -228,13 +228,13 @@ describe('LiveSocket', () => {
     // expect(liveSocket.getActiveElement()).not.toEqual(input)
   })
 
-  test('storage can be overridden', async () => {
+  test("storage can be overridden", async () => {
     let getItemCalls = 0
     let override = {
-      getItem: function(keyName) { getItemCalls = getItemCalls + 1 }
+      getItem: function (_keyName){ getItemCalls = getItemCalls + 1 }
     }
 
-    let liveSocket = new LiveSocket('/live', Socket, {sessionStorage: override})
+    let liveSocket = new LiveSocket("/live", Socket, {sessionStorage: override})
     liveSocket.getLatencySim()
 
     expect(getItemCalls).toEqual(1)

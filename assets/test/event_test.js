@@ -1,5 +1,6 @@
 import {Socket} from "phoenix"
-import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
+import LiveSocket from "phoenix_live_view/live_socket"
+import View from "phoenix_live_view/view"
 
 let containerId = 0
 
@@ -42,14 +43,16 @@ describe("events", () => {
   })
 
   test("events on join", () => {
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Map: {
-        mounted(){
-          this.handleEvent("points", data => processedEvents.push({event: "points", data: data}))
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Map: {
+          mounted(){
+            this.handleEvent("points", data => processedEvents.push({event: "points", data: data}))
+          }
         }
       }
-    }})
-    let view = simulateView(liveSocket, [["points", {values: [1, 2, 3]}]], `
+    })
+    let _view = simulateView(liveSocket, [["points", {values: [1, 2, 3]}]], `
       <div id="map" phx-hook="Map">
       </div>
     `)
@@ -58,13 +61,15 @@ describe("events", () => {
   })
 
   test("events on update", () => {
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Game: {
-        mounted(){
-          this.handleEvent("scores", data => processedEvents.push({event: "scores", data: data}))
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Game: {
+          mounted(){
+            this.handleEvent("scores", data => processedEvents.push({event: "scores", data: data}))
+          }
         }
       }
-    }})
+    })
     let view = simulateView(liveSocket, [], `
       <div id="game" phx-hook="Game">
       </div>
@@ -78,14 +83,16 @@ describe("events", () => {
 
   test("events handlers are cleaned up on destroy", () => {
     let destroyed = []
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Handler: {
-        mounted(){
-          this.handleEvent("my-event", data => processedEvents.push({id: this.el.id, event: "my-event", data: data}))
-        },
-        destroyed(){ destroyed.push(this.el.id) }
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Handler: {
+          mounted(){
+            this.handleEvent("my-event", data => processedEvents.push({id: this.el.id, event: "my-event", data: data}))
+          },
+          destroyed(){ destroyed.push(this.el.id) }
+        }
       }
-    }})
+    })
     let view = simulateView(liveSocket, [], `
       <div id="handler1" phx-hook="Handler"></div>
       <div id="handler2" phx-hook="Handler"></div>
@@ -99,7 +106,7 @@ describe("events", () => {
       {id: "handler2", event: "my-event", data: {val: 1}}
     ])
 
-    let newHTML = `<div id="handler1" phx-hook="Handler"></div>`
+    let newHTML = "<div id=\"handler1\" phx-hook=\"Handler\"></div>"
     view.update({s: [newHTML]}, [["my-event", {val: 2}]])
 
     expect(destroyed).toEqual(["handler2"])
@@ -112,16 +119,18 @@ describe("events", () => {
   })
 
   test("removeHandleEvent", () => {
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Remove: {
-        mounted(){
-          let ref = this.handleEvent("remove", data => {
-            this.removeHandleEvent(ref)
-            processedEvents.push({event: "remove", data: data})
-          })
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Remove: {
+          mounted(){
+            let ref = this.handleEvent("remove", data => {
+              this.removeHandleEvent(ref)
+              processedEvents.push({event: "remove", data: data})
+            })
+          }
         }
       }
-    }})
+    })
     let view = simulateView(liveSocket, [], `
       <div id="remove" phx-hook="Remove"></div>
     `)
@@ -145,21 +154,25 @@ describe("pushEvent replies", () => {
   test("reply", () => {
     let view
     let pushedRef = null
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Gateway: {
-        mounted(){
-          stubNextChannelReply(view, {transactionID: "1001"})
-          pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
-            processedReplies.push({resp, ref})
-          })
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReply(view, {transactionID: "1001"})
+            pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
+              processedReplies.push({resp, ref})
+            })
+          }
         }
       }
-    }})
-    view = simulateView(liveSocket, [], ``)
-    view.update({s: [`
+    })
+    view = simulateView(liveSocket, [], "")
+    view.update({
+      s: [`
       <div id="gateway" phx-hook="Gateway">
       </div>
-    `]}, [])
+    `]
+    }, [])
 
     expect(pushedRef).toEqual(0)
     expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
@@ -168,20 +181,24 @@ describe("pushEvent replies", () => {
   test("pushEvent without connection noops", () => {
     let view
     let pushedRef = "before"
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: {
-      Gateway: {
-        mounted(){
-          stubNextChannelReply(view, {transactionID: "1001"})
-          pushedRef = this.pushEvent("charge", {amount: 123})
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReply(view, {transactionID: "1001"})
+            pushedRef = this.pushEvent("charge", {amount: 123})
+          }
         }
       }
-    }})
-    view = simulateView(liveSocket, [], ``)
+    })
+    view = simulateView(liveSocket, [], "")
     view.isConnected = () => false
-    view.update({s: [`
+    view.update({
+      s: [`
       <div id="gateway" phx-hook="Gateway">
       </div>
-    `]}, [])
+    `]
+    }, [])
 
     expect(pushedRef).toEqual(false)
   })
