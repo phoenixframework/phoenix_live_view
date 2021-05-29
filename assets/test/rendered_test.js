@@ -1,4 +1,4 @@
-import { Rendered } from "../js/phoenix_live_view"
+import Rendered from "phoenix_live_view/rendered"
 
 const STATIC = "s"
 const DYNAMICS = "d"
@@ -17,96 +17,102 @@ describe("Rendered", () => {
     })
 
     test("merges the latter diff if it contains a `static` key", () => {
-      const diff1 = { 0: ["a"], 1: ["b"] }
-      const diff2 = { 0: ["c"], [STATIC]: ["c"]}
+      const diff1 = {0: ["a"], 1: ["b"]}
+      const diff2 = {0: ["c"], [STATIC]: ["c"]}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("merges the latter diff if it contains a `static` key even when nested", () => {
-      const diff1 = { 0: { 0: ["a"], 1: ["b"] } }
-      const diff2 = { 0: { 0: ["c"], [STATIC]: ["c"]} }
+      const diff1 = {0: {0: ["a"], 1: ["b"]}}
+      const diff2 = {0: {0: ["c"], [STATIC]: ["c"]}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("merges components considering links", () => {
-      const diff1 = { }
-      const diff2 = { [COMPONENTS]: { 1: { [STATIC]: ["c"] }, 2: { [STATIC]: 1 } } }
+      const diff1 = {}
+      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({ [COMPONENTS]: { 1: { [STATIC]: ["c"] }, 2: { [STATIC]: ["c"] } } })
+      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: ["c"]}}})
     })
 
     test("merges components considering old and new links", () => {
-      const diff1 = { [COMPONENTS]: { 1: { [STATIC]: ["old"] } } }
-      const diff2 = { [COMPONENTS]: { 1: { [STATIC]: ["new"] }, 2: { [STATIC]: -1 }, 3: { [STATIC]: 1 } } }
+      const diff1 = {[COMPONENTS]: {1: {[STATIC]: ["old"]}}}
+      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {[STATIC]: -1}, 3: {[STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({ [COMPONENTS]: {
-        1: { [STATIC]: ["new"] },
-        2: { [STATIC]: ["old"] },
-        3: { [STATIC]: ["new"] }
-      } })
+      expect(rendered.get()).toEqual({
+        [COMPONENTS]: {
+          1: {[STATIC]: ["new"]},
+          2: {[STATIC]: ["old"]},
+          3: {[STATIC]: ["new"]}
+        }
+      })
     })
 
     test("merges components whole tree considering old and new links", () => {
-      const diff1 = { [COMPONENTS]: { 1: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] } } }
+      const diff1 = {[COMPONENTS]: {1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]}}}
 
       const diff2 = {
         [COMPONENTS]: {
-          1: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["new"] },
-          2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: -1 },
-          3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: 1 },
-          4: { [STATIC]: -1 },
-          5: { [STATIC]: 1 }
+          1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: -1},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: 1},
+          4: {[STATIC]: -1},
+          5: {[STATIC]: 1}
         }
       }
 
       let rendered1 = new Rendered("123", diff1)
       rendered1.mergeDiff(diff2)
-      expect(rendered1.get()).toEqual({ [COMPONENTS]: {
-        1: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["new"] },
-        2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["old"] },
-        3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["new"] },
-        4: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] },
-        5: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["new"] },
-      } })
+      expect(rendered1.get()).toEqual({
+        [COMPONENTS]: {
+          1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
+        }
+      })
 
       const diff3 = {
         [COMPONENTS]: {
-          1: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
-          2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: -1 },
-          3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: 1 },
-          4: { [STATIC]: -1 },
-          5: { [STATIC]: 1 }
+          1: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: -1},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: 1},
+          4: {[STATIC]: -1},
+          5: {[STATIC]: 1}
         }
       }
 
       let rendered2 = new Rendered("123", diff1)
       rendered2.mergeDiff(diff3)
-      expect(rendered2.get()).toEqual({ [COMPONENTS]: {
-        1: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
-        2: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["old"] },
-        3: { 0: { [STATIC]: ["replaced"] }, [STATIC]: ["new"] },
-        4: { 0: { [STATIC]: ["nested"] }, [STATIC]: ["old"] },
-        5: { 0: { [STATIC]: ["changed"] }, [STATIC]: ["new"] },
-      } })
+      expect(rendered2.get()).toEqual({
+        [COMPONENTS]: {
+          1: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
+        }
+      })
     })
 
     test("replaces a string when a map is returned", () => {
-      const diff1 = { 0: { 0: "<button>Press Me</button>", [STATIC]: "" } }
-      const diff2 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: ""} }
+      const diff1 = {0: {0: "<button>Press Me</button>", [STATIC]: ""}}
+      const diff2 = {0: {0: {0: "val", [STATIC]: ""}, [STATIC]: ""}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
 
     test("replaces a map when a string is returned", () => {
-      const diff1 = { 0: { 0: { 0: "val", [STATIC]: "" }, [STATIC]: "" } }
-      const diff2 = { 0: { 0: "<button>Press Me</button>", [STATIC]: ""} }
+      const diff1 = {0: {0: {0: "val", [STATIC]: ""}, [STATIC]: ""}}
+      const diff2 = {0: {0: "<button>Press Me</button>", [STATIC]: ""}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
@@ -211,13 +217,13 @@ describe("Rendered", () => {
 
   describe("isNewFingerprint", () => {
     test("returns true if `diff.static` is truthy", () => {
-      const diff = { [STATIC]: ["<h2>"] }
+      const diff = {[STATIC]: ["<h2>"]}
       let rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint(diff)).toEqual(true)
     })
 
     test("returns false if `diff.static` is falsy", () => {
-      const diff = { [STATIC]: undefined }
+      const diff = {[STATIC]: undefined}
       let rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint(diff)).toEqual(false)
     })
@@ -232,7 +238,7 @@ describe("Rendered", () => {
     test("stringifies a diff", () => {
       let rendered = new Rendered("123", simpleDiffResult)
       expect(rendered.toString().trim()).toEqual(
-`<div class="thermostat">
+        `<div class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
@@ -243,105 +249,105 @@ describe("Rendered", () => {
 })
 
 const simpleDiff1 = {
-  '0': 'cooling',
-  '1': 'cooling',
-  '2': '07:15:03 PM',
+  "0": "cooling",
+  "1": "cooling",
+  "2": "07:15:03 PM",
   [STATIC]: [
-    '<div class="thermostat">\n  <div class="bar ',
-    '">\n    <a href="#" phx-click="toggle-mode">',
-    '</a>\n    <span>',
-    '</span>\n  </div>\n</div>\n',
+    "<div class=\"thermostat\">\n  <div class=\"bar ",
+    "\">\n    <a href=\"#\" phx-click=\"toggle-mode\">",
+    "</a>\n    <span>",
+    "</span>\n  </div>\n</div>\n",
   ]
-};
+}
 
 const simpleDiff2 = {
-  '2': '07:15:04 PM',
-};
+  "2": "07:15:04 PM",
+}
 
 const simpleDiffResult = {
-  '0': 'cooling',
-  '1': 'cooling',
-  '2': '07:15:04 PM',
+  "0": "cooling",
+  "1": "cooling",
+  "2": "07:15:04 PM",
   [STATIC]: [
-    '<div class="thermostat">\n  <div class="bar ',
-    '">\n    <a href="#" phx-click="toggle-mode">',
-    '</a>\n    <span>',
-    '</span>\n  </div>\n</div>\n',
+    "<div class=\"thermostat\">\n  <div class=\"bar ",
+    "\">\n    <a href=\"#\" phx-click=\"toggle-mode\">",
+    "</a>\n    <span>",
+    "</span>\n  </div>\n</div>\n",
   ]
-};
+}
 
 const deepDiff1 = {
-  '0': {
-    '0': {
-      [DYNAMICS]: [['user1058', '1'], ['user99', '1']],
-      [STATIC]: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
+  "0": {
+    "0": {
+      [DYNAMICS]: [["user1058", "1"], ["user99", "1"]],
+      [STATIC]: ["        <tr>\n          <td>", " (", ")</td>\n        </tr>\n"],
     },
     [STATIC]: [
-      '  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n',
-      '    </tbody>\n  </table>\n',
+      "  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n",
+      "    </tbody>\n  </table>\n",
     ],
   },
-  '1': {
+  "1": {
     [DYNAMICS]: [
       [
-        'asdf_asdf',
-        'asdf@asdf.com',
-        '123-456-7890',
-        '<a href="/users/1">Show</a>',
-        '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+        "asdf_asdf",
+        "asdf@asdf.com",
+        "123-456-7890",
+        "<a href=\"/users/1\">Show</a>",
+        "<a href=\"/users/1/edit\">Edit</a>",
+        "<a href=\"#\" phx-click=\"delete_user\" phx-value=\"1\">Delete</a>",
       ],
     ],
     [STATIC]: [
-      '    <tr>\n      <td>',
-      '</td>\n      <td>',
-      '</td>\n      <td>',
-      '</td>\n\n      <td>\n',
-      '        ',
-      '\n',
-      '      </td>\n    </tr>\n',
+      "    <tr>\n      <td>",
+      "</td>\n      <td>",
+      "</td>\n      <td>",
+      "</td>\n\n      <td>\n",
+      "        ",
+      "\n",
+      "      </td>\n    </tr>\n",
     ],
   }
-};
+}
 
 const deepDiff2 = {
-  '0': {
-    '0': {
-      [DYNAMICS]: [['user1058', '2']],
+  "0": {
+    "0": {
+      [DYNAMICS]: [["user1058", "2"]],
     },
   }
-};
+}
 
 const deepDiffResult = {
-  '0': {
-    '0': {
-      [DYNAMICS]: [['user1058', '2']],
-      [STATIC]: ['        <tr>\n          <td>', ' (', ')</td>\n        </tr>\n'],
+  "0": {
+    "0": {
+      [DYNAMICS]: [["user1058", "2"]],
+      [STATIC]: ["        <tr>\n          <td>", " (", ")</td>\n        </tr>\n"],
     },
     [STATIC]: [
-      '  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n',
-      '    </tbody>\n  </table>\n',
+      "  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n",
+      "    </tbody>\n  </table>\n",
     ],
   },
-  '1': {
+  "1": {
     [DYNAMICS]: [
       [
-        'asdf_asdf',
-        'asdf@asdf.com',
-        '123-456-7890',
-        '<a href="/users/1">Show</a>',
-        '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+        "asdf_asdf",
+        "asdf@asdf.com",
+        "123-456-7890",
+        "<a href=\"/users/1\">Show</a>",
+        "<a href=\"/users/1/edit\">Edit</a>",
+        "<a href=\"#\" phx-click=\"delete_user\" phx-value=\"1\">Delete</a>",
       ],
     ],
     [STATIC]: [
-      '    <tr>\n      <td>',
-      '</td>\n      <td>',
-      '</td>\n      <td>',
-      '</td>\n\n      <td>\n',
-      '        ',
-      '\n',
-      '      </td>\n    </tr>\n',
+      "    <tr>\n      <td>",
+      "</td>\n      <td>",
+      "</td>\n      <td>",
+      "</td>\n\n      <td>\n",
+      "        ",
+      "\n",
+      "      </td>\n    </tr>\n",
     ],
   }
-};
+}
