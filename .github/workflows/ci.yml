@@ -61,10 +61,6 @@ jobs:
     #  run: mix format --check-formatted
     #  if: ${{ matrix.lint }}
 
-    - name: Check unused dependencies
-      run: mix deps.unlock --check-unused
-      if: ${{ matrix.lint }}
-
     - name: Remove compiled application files
       run: mix clean
 
