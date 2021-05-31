@@ -122,7 +122,9 @@ defmodule Phoenix.LiveView.Upload do
     |> update_uploads(socket)
   end
 
-  def update_progress(%Socket{} = socket, config_ref, entry_ref, %{"error" => reason})
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, %{
+        "error" => %{"reason" => reason}
+      })
       when is_binary(reason) do
     conf = get_upload_by_ref!(socket, config_ref)
 

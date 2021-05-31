@@ -404,7 +404,7 @@ class EntryUploader {
     this.offset = 0
     this.chunkSize = chunkSize
     this.chunkTimer = null
-    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
+    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: this.entry.metadata()})
     this._started = false
   }
 
@@ -417,9 +417,14 @@ class EntryUploader {
   upload(){
     this.uploadChannel.onError(reason => this.error(reason))
     this.uploadChannel.join()
-      .receive("ok", data => this.readNextChunk())
-      .receive("error", reason => this.error(reason))
-    this._started = true
+      .receive("ok", data => {
+        this._started = true
+        this.readNextChunk()
+      })
+      .receive("error", reason => {
+          console.log("error",reason)
+          this.error(reason)
+      })
   }
 
   hasStarted() { return this._started }
