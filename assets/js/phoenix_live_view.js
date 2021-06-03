@@ -386,7 +386,7 @@ let channelUploader = function(entries, onError, resp, liveSocket) {
 let uploadInBatches = function(uploaders, onError, resp, liveSocket) {
   const inProgress = uploaders.filter(u => u.hasStarted() && !u.isDone()).length
   // Filter out the entries that have already started uploading or are done uploading or are cancelled
-  const entriesToProcess = uploaders.filter((u) => !u.isDone() || !u.hasStarted() || !u.entry.isCancelled())
+  const entriesToProcess = uploaders.filter((u) => !(u.isDone() || u.hasStarted()) && !u.entry.isCancelled())
 
   if (entriesToProcess.length === 0) return
 
@@ -404,7 +404,7 @@ class EntryUploader {
     this.offset = 0
     this.chunkSize = chunkSize
     this.chunkTimer = null
-    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: this.entry.metadata()})
+    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
     this._started = false
   }
 
@@ -415,10 +415,10 @@ class EntryUploader {
   }
 
   upload(){
+    this._started = true
     this.uploadChannel.onError(reason => this.error(reason))
     this.uploadChannel.join()
       .receive("ok", data => {
-        this._started = true
         this.readNextChunk()
       })
       .receive("error", reason => {
