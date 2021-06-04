@@ -1381,7 +1381,7 @@ defmodule Phoenix.LiveViewTest do
 
   Given the following LiveView template:
 
-      <%= for entry <- @uploads.avatar.entries %>
+      <%= for entry <- @uploads.avatar.entries do %>
           <%=entry.name %>: <%= entry.progress %>%
       <% end %>
 
