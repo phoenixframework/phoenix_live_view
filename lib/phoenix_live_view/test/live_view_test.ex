@@ -1381,8 +1381,8 @@ defmodule Phoenix.LiveViewTest do
 
   Given the following LiveView template:
 
-      <%= for entry <- @uploads.avatar.entries %>
-          <%=entry.name %>: <%= entry.progress %>%
+      <%= for entry <- @uploads.avatar.entries do %>
+          <%= entry.name %>: <%= entry.progress %>%
       <% end %>
 
   Your test case can assert the uploaded content:
