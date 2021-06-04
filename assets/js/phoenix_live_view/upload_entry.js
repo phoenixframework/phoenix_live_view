@@ -66,8 +66,8 @@ export default class UploadEntry {
   isDone(){ return this._isDone }
 
   error(reason = "failed"){
-    LiveUploader.clearFiles(this.fileEl)
     this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
+    LiveUploader.clearFiles(this.fileEl)
   }
 
   //private
