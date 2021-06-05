@@ -241,9 +241,14 @@ Hooks.LiveImgPreview = {
   mounted() {
     this.ref = this.el.getAttribute("data-phx-entry-ref")
     this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF))
-    this.img = document.createElement("img")
-    this.el.appendChild(this.img)
-    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => this.img.src = url)
+    LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
+      let img = document.createElement("img")
+      this.el.appendChild(img)
+      img.src = url
+    })
+  },
+  destroyed() {
+    LiveUploader.revokeEntryDataURL(this.inputEl, this.ref)
   }
 }
 
@@ -259,11 +264,24 @@ class LiveUploader {
     }
   }
 
-  static getEntryDataURL(inputEl, ref, callback){
-    let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
-    let reader = new FileReader()
-    reader.onload = (e) => callback(e.target.result)
-    reader.readAsDataURL(file)
+  static getEntryDataURL(inputEl, ref, callback) {
+    let preview = (DOM.private(inputEl, "urls") || []).find(p => p.ref === ref)
+    if(preview !== undefined){
+      callback(preview.url)
+    } else {
+      let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
+      let url = URL.createObjectURL(file)
+      DOM.putPrivate(inputEl, "urls", (DOM.private(inputEl, "urls") || []).concat([{ ref, url }]))
+      callback(url)
+    }
+  }
+
+  static revokeEntryDataURL(inputEl, ref) {
+    let preview = (DOM.private(inputEl, "urls") || []).find(p => p.ref === ref)
+    if(preview !== undefined){
+      URL.revokeObjectURL(preview.url)
+      DOM.putPrivate(inputEl, "urls", DOM.private(inputEl, "urls").filter(p => !Object.is(p, preview)))
+    }
   }
 
   static hasUploadsInProgress(formEl){
