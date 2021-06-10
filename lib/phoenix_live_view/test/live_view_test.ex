@@ -1035,7 +1035,6 @@ defmodule Phoenix.LiveViewTest do
     call(view, :page_title)
   end
 
-
   @doc """
   Asserts a live patch will happen within `timeout` milliseconds. The default
   `timeout` is 100.
@@ -1137,7 +1136,6 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
   The default `timout` is 100.
-
 
   It returns the flash messages from said redirect, if any.
   Note the flash will contain string keys.
