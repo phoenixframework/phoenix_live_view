@@ -64,7 +64,7 @@ There are two common pitfalls to keep in mind when using the `~L` sigil
 or `.leex` templates.
 
 When it comes to `do/end` blocks, change tracking is supported only on blocks
-given to Elixir's basic constructs, such as `if`, `case`, `for`, and friends.
+given to Elixir's basic constructs, such as `if`, `case`, `for`, and similar.
 If the do/end block is given to a library function or user function, such as
 `content_tag`, change tracking won't work. For example, imagine the following
 template that renders a `div`:

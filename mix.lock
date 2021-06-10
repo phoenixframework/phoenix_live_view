@@ -1,4 +1,5 @@
 %{
+  "earmark_parser": {:hex, :earmark_parser, "1.4.13", "0c98163e7d04a15feb62000e1a891489feb29f3d10cb57d4f845c405852bbef8", [:mix], [], "hexpm", "d602c26af3a0af43d2f2645613f65841657ad6efc9f0e361c3b6c06b578214ba"},
   "ex_doc": {:hex, :ex_doc, "0.24.0", "2df14354835afaabdf87cb2971ea9485d8a36ff590e4b6c250b4f60c8fdf9143", [:mix], [{:earmark_parser, "~> 1.4.0", [hex: :earmark_parser, repo: "hexpm", optional: false]}, {:makeup_elixir, "~> 0.14", [hex: :makeup_elixir, repo: "hexpm", optional: false]}, {:makeup_erlang, "~> 0.1", [hex: :makeup_erlang, repo: "hexpm", optional: false]}], "hexpm", "a0f4bcff21ceebea48414e49885d2a3e542200f76a2facf3f8faa54935eeb721"},
   "floki": {:hex, :floki, "0.30.0", "22ebbe681a5d3777cdd830ca091b1b806d33c3449c26312eadca7f7be685c0c8", [:mix], [{:html_entities, "~> 0.5.0", [hex: :html_entities, repo: "hexpm", optional: false]}], "hexpm", "a9e128a4ca9bb71f11affa315b6768a9ad326d5996ff1e92acf1d7a01a10076a"},
   "html_entities": {:hex, :html_entities, "0.5.2", "9e47e70598da7de2a9ff6af8758399251db6dbb7eebe2b013f2bbd2515895c3c", [:mix], [], "hexpm", "c53ba390403485615623b9531e97696f076ed415e8d8058b1dbaa28181f4fdcc"},

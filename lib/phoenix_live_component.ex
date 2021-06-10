@@ -25,12 +25,12 @@ defmodule Phoenix.LiveComponent do
   When `use Phoenix.LiveComponent` is used, all functions in
   `Phoenix.LiveView` are imported. A component can be invoked as:
 
-      <%= live_component HeroComponent, content: @content %>
+      <%= live_component HeroComponent, id: :hero, content: @content %>
 
-  Components come in two shapes, stateless or stateful. The component
-  above is a stateless component. Of course, the component above is not
-  any different compared to a regular function. However, as we will see,
-  components do provide their own exclusive feature set.
+  Components come in two shapes, stateless or stateful. Stateless
+  components are documented below but note they are deprecated in
+  favor of function components described in `Phoenix.LiveView.Helpers.sigil_h/2`.
+  Stateful components always require the `:id` key to be given, as done above.
 
   ## Stateless components life-cycle
 

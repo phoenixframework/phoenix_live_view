@@ -371,8 +371,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
     def render(assigns) do
       ~L"""
-      HELLO <%= @id %> <%= render_block(@inner_block, value: 1) %>
-      HELLO <%= @id %> <%= render_block(@inner_block, value: 2) %>
+      HELLO <%= @id %> <%= render_block(@inner_block, %{value: 1}) %>
+      HELLO <%= @id %> <%= render_block(@inner_block, %{value: 2}) %>
       """
     end
   end
@@ -419,7 +419,8 @@ defmodule Phoenix.LiveView.DiffTest do
       ~L"""
       COMPONENT
       <%= live_component BlockComponent, id: "WORLD" do %>
-        WITH VALUE <%= @value %>
+        <% %{value: value } -> %>
+        WITH VALUE <%= value %>
       <% end %>
       """
     end
@@ -1340,46 +1341,17 @@ defmodule Phoenix.LiveView.DiffTest do
       assert rendered_to_binary(full_render) =~ "nothingnothing"
     end
 
-    test "block tracking" do
-      assigns = %{socket: %Socket{}}
-
-      rendered = ~L"""
-      <%= live_component BlockComponent, id: "WORLD" do %>
-        WITH VALUE <%= @value %>
-      <% end %>
-      """
-
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => 1,
-               :c => %{
-                 1 => %{
-                   0 => "WORLD",
-                   1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
-                   2 => "WORLD",
-                   3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
-                   :s => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
-                 }
-               },
-               :s => ["", "\n"]
-             }
-
-      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => 1}
-    end
-
     defp tracking(assigns) do
       ~L"""
       <%= live_component BlockComponent, %{id: "TRACKING"} do %>
-        WITH PARENT VALUE <%= @parent_value %>
-        WITH VALUE <%= @value %>
+        <% %{value: value} -> %>
+          WITH PARENT VALUE <%= @parent_value %>
+          WITH VALUE <%= value %>
       <% end %>
       """
     end
 
-    # TODO: Change this to "with args and parent assign" once we deprecate implicit assigns
-    test "block tracking with child and parent assigns" do
+    test "block tracking with args and parent assigns" do
       assigns = %{socket: %Socket{}, parent_value: 123}
       {socket, full_render, components} = render(tracking(assigns))
 
@@ -1391,13 +1363,13 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{
                      0 => "123",
                      1 => "1",
-                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
+                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
                    },
                    2 => "TRACKING",
                    3 => %{
                      0 => "123",
                      1 => "2",
-                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
+                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
                    },
                    :s => ["HELLO ", " ", "\nHELLO ", " ", "\n"]
                  }
