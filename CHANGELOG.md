@@ -1,5 +1,97 @@
 # Changelog
 
+## 0.16.0-dev
+
+LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function components.
+The new HEEx templates validate the markup in the template is valid while also providing
+syntax conveniences to make it easy to build composable components.
+
+A function component is any function that receives a map of assigns and returns a `~H` template:
+
+```elixir
+defmodule MyComponent do
+  import Phoenix.LiveView.Helpers
+
+  def btn(assigns) do
+    ~H"""
+    <button class="btn"><%= @text %></button>
+    """
+  end
+end
+```
+
+This component can now be used as in your HEEx templates as:
+
+    <MyComponent.btn text="Save">
+
+The introduction of HEEx and function components introduces a series of deprecation warnings,
+some introduced in this release and others which will be added in the future. HEEx requires Elixir v1.12+.
+
+### Upgrading and deprecations
+
+The main deprecation is that the `~L` sigil and the `.leex` extension will be deprecated.
+We recommend to migrate to the `~H` sigil and the `.heex` extension instead, which validate
+the HTML is structurally valid and help developers avoid mistakes.
+
+Migrating from `LEEx` to `HEEx` is relatively straighforward. There are two main difference.
+First of all, HEEx does not allow interpolation inside tags. So instead of:
+
+```elixir
+<div id="<%= @id %>">
+  ...
+</div>
+```
+
+One should use the HEEx syntax:
+
+```elixir
+<div id={@id}>
+  ...
+</div>
+```
+
+The other difference is in regards to `form_for`. Some templates may do the following:
+
+```elixir
+~L"""
+<%= f = form_for @changeset, "#" %>
+  <%= input f, :foo %>
+</form>
+"""
+```
+
+However, when converted to `~H`, it is not valid HTML: there is a `</form>` tag but
+its opening is hidden as it is made dynamically. On Phoenix v0.16, `form_for` can now
+be used as a function component:
+
+```elixir
+~H"""
+<.form_for let={f} data={@changeset} url="#">
+  <%= input f, :foo %>
+</.form_for>
+"""
+```
+
+We understanding migrating all templates from `~L` to `~H` can be a daunting task.
+Therefore we plan to support `~L` in LiveViews for a long time. However, we can't
+do the same for stateful LiveComponents, as some important client-side features and
+optimizations will depend on the `~H` sigil. Therefore **our recommendation is to
+start replacing `~L` by `~H` in live components**, particularly stateful live components.
+
+Furthermore, stateless `live_component` (i.e. live components without an `:id`)
+will be deprecated in favor of the new function components. Our plan is to support
+them for a reasonable period of time, but you should avoid creating new ones in
+your application.
+
+### Enhacements
+  - Introduce HEEx templates
+
+### Bug fixes
+  - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
+
+### Deprecations
+  - Implicit assigns when passing a `do-end` block to `live_component` is deprecated
+
 ## 0.15.6 (2021-05-24)
 
 ### Bug fixes
@@ -9,8 +101,12 @@
   - Fix KeyError on LiveView reconnect when an active upload was previously in progress
 
 ### Enhancements
+  - Support function components via `component/3`
   - Optimize progress events to send less messages for larger file sizes
   - Allow session and local storage client overrides
+
+### Deprecations
+  - Deprecate `@socket/socket` argument on `live_component/3` call
 
 ## 0.15.5 (2021-04-20)
 

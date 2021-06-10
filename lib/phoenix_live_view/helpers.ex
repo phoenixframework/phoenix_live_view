@@ -454,7 +454,22 @@ defmodule Phoenix.LiveView.Helpers do
     assigns = Map.new(assigns)
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
 
-    func.(assigns)
+    case func.(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        rendered
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~H to define its template.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
+    end
   end
 
   def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
@@ -522,8 +537,9 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Provides `~H` sigil with HTML safe Live `HEEx` syntax inside source files.
 
-  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate file:line:column information
-  > in error messages. Earlier Elixir versions will work but will show inaccurate error messages.
+  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
+  > file:line:column information in error messages. Earlier Elixir versions will
+  > work but will show inaccurate error messages.
 
   `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
 
@@ -543,19 +559,21 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Syntax extensions
 
-  Although `HEEx` may be considered an extension of `EEx`, templates written in `EEx` may not
-  be fully compatible with `HEEx`. The same goes the other way around. Whenever copying/pasting
-  code from one format to the other, make sure your update it accordingly.
+  Although `HEEx` may be considered an extension of `EEx`, templates written in
+  `EEx` may not be fully compatible with `HEEx`. The same goes the other way
+  around. Whenever copying/pasting code from one format to the other, make sure
+  you update it accordingly.
 
   The main difference comes when defining attributes and function components.
 
   ### Defining attributes
 
-  `EEx` handles templates as plain text so you're free to interpolate elixir code anywhere in your
-  template. `HEEx`, on the other hand, parses the code, validating its structure, including
-  HTML/component nodes and attributes. In order to perform validation, code interpolation
-  using `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the HTML/component
-  nodes and it cannot be applied within tags.
+  `EEx` handles templates as plain text so you're free to interpolate Elixir code
+  anywhere in your template. `HEEx`, on the other hand, parses the code, validating
+  its structure, including HTML/component nodes and attributes. In order to perform
+  validation, code interpolation using `<%= ... %>` and `<% ... %>` are restricted
+  to the body (inner content) of the HTML/component nodes and it cannot be applied
+  within tags.
 
   For instance, the following syntax is invalid:
 
@@ -581,17 +599,29 @@ defmodule Phoenix.LiveView.Helpers do
 
   ### Defining function components
 
-  Function components are stateless components implemented as pure functions. They can be either
-  local (same module) or remote (external module).
+  Function components are stateless components implemented as pure functions. They
+  can be either local (same module) or remote (external module).
 
-  `HEEx` allows invoking whose function components directly in the template using an HTML-like
-  notation. For example, a remote function:
+  `HEEx` allows invoking whose function components directly in the template using an
+  HTML-like notation. For example, a remote function:
 
-      <MyApp.Weather.render city="Kraków"/>
+      <MyApp.Weather.component city="Kraków"/>
 
   A local function can be invoked with a leading dot:
 
       <.component city="Kraków"/>
+
+  where the compnoent could be define as follows:
+
+      defmodule MyApp.Weather do
+        import Phoenix.LiveView.Helpers
+
+        def component(assigns) do
+          ~H"\""
+          The chosen city is: <%= @city %>.
+          "\""
+        end
+      end
 
   Function components can also receive their inner content as
   the `@inner_block` assign to be rendered with `render_block/2`:
