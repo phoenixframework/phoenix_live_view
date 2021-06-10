@@ -391,7 +391,10 @@ let uploadInBatches = function(uploaders, onError, resp, liveSocket) {
   if (entriesToProcess.length === 0) return
 
   for (let i = 0; i < resp.config.max_concurrency - inProgress; i++) {
-    entriesToProcess[i].upload()
+    let entry = entriesToProcess[i]
+    if (entry) {
+        entry.upload()
+    }
   }
 
   setTimeout(uploadInBatches, 700, uploaders, onError, resp, liveSocket)
