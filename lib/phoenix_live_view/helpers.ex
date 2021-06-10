@@ -344,12 +344,17 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  # TODO: deprecate implicit assigns (i.e. do/end without -> should not get any assign)
   defp rewrite_do(do_block, true) do
     quote do
       fn changed, extra_assigns ->
         var!(assigns) =
-          unquote(__MODULE__).__render_inner_do__(var!(assigns), changed, extra_assigns)
+          unquote(__MODULE__).__render_inner_do__(
+            __ENV__.line,
+            __ENV__.file,
+            var!(assigns),
+            changed,
+            extra_assigns
+          )
 
         unquote(do_block)
       end
@@ -379,7 +384,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
-  def __render_inner_do__(assigns, parent_changed, extra_assigns) do
+  def __render_inner_do__(line, file, assigns, parent_changed, extra_assigns) do
     # If the parent is tracking changes or the inner content changed,
     # we will keep the current __changed__ values
     changed =
@@ -388,6 +393,25 @@ defmodule Phoenix.LiveView.Helpers do
       else
         %{}
       end
+
+    if extra_assigns != [] and extra_assigns != %{} do
+      message = """
+      implicit assigns in live_component do-blocks is deprecated. Instead of:
+
+          <%= live_component WillInjectUserAssign do %>
+            <%= @user.name %>
+          <% end %>
+
+      You should do:
+
+          <%= live_component WillInjectUserAssign do %>
+            <% user -> %>
+              <%= user.name %>
+          <% end %>
+      """
+
+      IO.warn(message, [{__MODULE__, :live_component, 2, [file: to_charlist(file), line: line]}])
+    end
 
     assigns = Enum.into(extra_assigns, assigns)
 

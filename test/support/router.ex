@@ -31,8 +31,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/clock", ClockLive
     live "/redir", RedirLive
     live "/elements", ElementsLive
-    live "/inner_block_do", InnerDoLive
-    live "/inner_block_fun", InnerFunLive
+    live "/inner_block", InnerLive
 
     live "/same-child", SameChildLive
     live "/root", RootLive
