@@ -222,8 +222,8 @@ defmodule Phoenix.LiveView.Helpers do
 
     {inner_block, do_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), [], assigns}
-        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), [], []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), [], assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), [], []}
         {_, _} -> {nil, do_block, assigns}
       end
 
@@ -265,8 +265,8 @@ defmodule Phoenix.LiveView.Helpers do
 
     {inner_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), assigns}
-        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), []}
         {_, _} -> {nil, assigns}
       end
 
@@ -309,8 +309,8 @@ defmodule Phoenix.LiveView.Helpers do
   defmacro component(func, assigns \\ [], do_block \\ []) do
     {inner_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do(do_block, __CALLER__), assigns}
-        {_, [do: do_block]} -> {rewrite_do(do_block, __CALLER__), []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, false), assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, false), []}
         {_, _} -> {nil, assigns}
       end
 
@@ -323,33 +323,29 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  defp rewrite_do([{:->, meta, _} | _] = do_block, _caller) do
+  defp rewrite_do!(do_block, caller, implicit?) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      rewrite_do(do_block, implicit?)
+    else
+      raise ArgumentError,
+            "cannot use component/live_component because the assigns var is unbound/unset"
+    end
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block, _implicit?) do
     inner_fun = {:fn, meta, do_block}
 
     quote do
       fn parent_changed, arg ->
-        var!(assigns) = unquote(__MODULE__).__render_inner_fun__(var!(assigns), parent_changed)
+        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
         _ = var!(assigns)
         unquote(inner_fun).(arg)
       end
     end
   end
 
-  defp rewrite_do(do_block, caller) do
-    unless Macro.Env.has_var?(caller, {:assigns, nil}) and
-             Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
-      raise ArgumentError, """
-      cannot use live_component do/end blocks because we could not find existing assigns.
-
-      Please pass a `->` clause to do/end instead, for example:
-
-          live_component GridComponent, entries: @entries do
-            new_assigns -> "New entry: " <> new_assigns[:entry]
-          end
-      """
-    end
-
-    # TODO: deprecate implicit assigns (i.e. do/end without -> should not get any assign)
+  # TODO: deprecate implicit assigns (i.e. do/end without -> should not get any assign)
+  defp rewrite_do(do_block, true) do
     quote do
       fn changed, extra_assigns ->
         var!(assigns) =
@@ -360,8 +356,21 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  defp rewrite_do(do_block, false) do
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
+        _ = var!(assigns)
+        unquote(do_block)
+      end
+    end
+  end
+
   @doc false
-  def __render_inner_fun__(assigns, parent_changed) do
+  def __render_inner__(assigns, parent_changed) do
+    # If the inner_block is precisely the same
+    # (i.e. the same function and the same bindings),
+    # then the outer bindings have not changed.
     if is_nil(parent_changed) or parent_changed[:inner_block] == true do
       assigns
     else

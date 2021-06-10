@@ -375,7 +375,7 @@ defmodule Phoenix.LiveViewTest do
     do: request_path <> "?" <> query_string
 
   @doc """
-  Mounts, updates and renders a component.
+  Mounts, updates, and renders a component.
 
   If the component uses the `@myself` assigns, then an `id` must
   be given to it is marked as stateful.
@@ -409,6 +409,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
+    # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
     rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())

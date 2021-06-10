@@ -45,6 +45,27 @@ defmodule Phoenix.LiveView.FunctionComponentsTest do
     end
   end
 
+  defmodule RenderWithContentTagBlock do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~L"""
+      <%= Phoenix.HTML.Tag.content_tag :div do %>
+      <%= component &hello/1, name: "WORLD" do %>
+      THE INNER BLOCK
+      <% end %>
+      <% end %>
+      """
+    end
+
+    def hello(assigns) do
+      ~L"""
+      Hello <%= @name %>
+      <%= render_block @inner_block %>
+      """
+    end
+  end
+
   defmodule RenderWithBlockPassingArgs do
     use Phoenix.LiveComponent
 
@@ -79,7 +100,7 @@ defmodule Phoenix.LiveView.FunctionComponentsTest do
     def render_with_live_component(assigns) do
       ~L"""
       COMPONENT
-      <%= live_component RenderWithBlockPassingArgs %>
+      <%= live_component RenderWithBlockPassingArgs, id: 123 %>
       """
     end
   end
@@ -98,6 +119,18 @@ defmodule Phoenix.LiveView.FunctionComponentsTest do
     THE INNER BLOCK
 
 
+    """
+  end
+
+  test "render component with content tag block" do
+    assert render_component(RenderWithContentTagBlock, %{}) == """
+    <div>
+    Hello WORLD
+
+    THE INNER BLOCK
+
+
+    </div>
     """
   end
 
