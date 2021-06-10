@@ -1,5 +1,5 @@
 # TODO: Rename this file and test case to stateful_component
-defmodule Phoenix.LiveView.ComponentTest do
+defmodule Phoenix.LiveView.LiveComponentsTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest
 

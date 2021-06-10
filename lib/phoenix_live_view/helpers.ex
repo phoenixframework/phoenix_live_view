@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView.Helpers do
   Renders a component defined by the given function.
 
   It takes two optional arguments, the assigns to pass to the given function
-  and a do-block - which will be converted into a `@inner_block`  assign (see
+  and a do-block - which will be converted into a `@inner_block` assign (see
   `render_block/2` for more information).
 
   The given function must expect one argument, which are the `assigns` as a
@@ -599,11 +599,12 @@ defmodule Phoenix.LiveView.Helpers do
 
   ### Defining function components
 
-  Function components are stateless components implemented as pure functions. They
-  can be either local (same module) or remote (external module).
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
 
-  `HEEx` allows invoking whose function components directly in the template using an
-  HTML-like notation. For example, a remote function:
+  `HEEx` allows invoking whose function components directly in the template
+  using an HTML-like notation. For example, a remote function:
 
       <MyApp.Weather.component city="Kraków"/>
 
@@ -611,7 +612,7 @@ defmodule Phoenix.LiveView.Helpers do
 
       <.component city="Kraków"/>
 
-  where the compnoent could be define as follows:
+  where the component could be defined as follows:
 
       defmodule MyApp.Weather do
         import Phoenix.LiveView.Helpers

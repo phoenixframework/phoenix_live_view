@@ -2,15 +2,15 @@
 
 ## 0.16.0-dev
 
-LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function components.
-The new HEEx templates validate the markup in the template is valid while also providing
-syntax conveniences to make it easy to build composable components.
+LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function components
+via `Phoenix.Component`. The new HEEx templates validate the markup in the template is valid
+while also providing syntax conveniences to make it easy to build composable components.
 
 A function component is any function that receives a map of assigns and returns a `~H` template:
 
 ```elixir
 defmodule MyComponent do
-  import Phoenix.LiveView.Helpers
+  use Phoenix.Component
 
   def btn(assigns) do
     ~H"""
@@ -85,6 +85,7 @@ your application.
 
 ### Enhacements
   - Introduce HEEx templates
+  - Introduce `Phoenix.Component`
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
