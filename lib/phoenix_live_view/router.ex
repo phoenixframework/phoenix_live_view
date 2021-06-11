@@ -1,4 +1,6 @@
 defmodule Phoenix.LiveView.Route do
+  @moduledoc false
+
   defstruct path: nil,
             view: nil,
             action: nil,
@@ -152,7 +154,9 @@ defmodule Phoenix.LiveView.Router do
         """
       end
 
-      existing = Enum.find(@phoenix_live_sessions, fn {existing_name, _, _} -> name == existing_name end)
+      existing =
+        Enum.find(@phoenix_live_sessions, fn {existing_name, _, _} -> name == existing_name end)
+
       if existing do
         raise """
         attempting to redefine live_session #{inspect(name)}.
