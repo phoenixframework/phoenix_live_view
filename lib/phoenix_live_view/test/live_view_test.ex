@@ -1110,7 +1110,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a redirect will happen within `timeout` milliseconds.
-  The default `timout` is 100.
+  The default `timeout` is 100.
 
   It returns a tuple containing the new path and the flash messages from said
   redirect, if any. Note the flash will contain string keys.
@@ -1135,7 +1135,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
-  The default `timout` is 100.
+  The default `timeout` is 100.
 
   It returns the flash messages from said redirect, if any.
   Note the flash will contain string keys.
