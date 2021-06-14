@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.Channel do
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
+  @version Mix.Project.config()[:version]
 
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
@@ -748,6 +749,10 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
+    unless Map.has_key?(phx_socket, :parent_pid) do
+      check_version_match(params, phx_socket.endpoint)
+    end
+
     case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
       {:ok, verified} ->
         %{private: %{connect_info: connect_info}} = phx_socket
@@ -803,6 +808,19 @@ defmodule Phoenix.LiveView.Channel do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
     GenServer.reply(from, {:error, %{reason: "stale"}})
     {:stop, :shutdown, :no_session}
+  end
+
+  defp check_version_match(params, phx_endpoint) do
+    client_version = Map.get(params, "vsn", :not_found)
+    should_display_warning = Application.fetch_env!(:phoenix_live_view, :warn_version_mismatch)
+
+    if should_display_warning && @version != client_version do
+      Logger.warn("""
+      There is a mismatch between the LiveView version on the server (#{@version}) and the client (#{client_version}).
+      The client side can be synced to match by running `npm install --prefix assets`.
+      The LiveView triggering this warning is part of the following endpoint: #{phx_endpoint}
+      """)
+    end
   end
 
   defp verify_flash(endpoint, verified, flash_token, connect_params) do

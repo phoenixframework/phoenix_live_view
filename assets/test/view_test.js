@@ -653,7 +653,7 @@ describe("View", function() {
     stubChannel(view)
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "params": {"_mounts": 0}, "session": "abc123", "static": null, "url": undefined}
+      "flash": undefined, "params": { "_mounts": 0 }, "session": "abc123", "static": null, "url": undefined, "vsn": PACKAGE_VSN}
     )
 
     el.innerHTML += `<link rel="stylesheet" href="/css/app-123.css?vsn=d" phx-track-static="">`
@@ -662,7 +662,7 @@ describe("View", function() {
     el.innerHTML += `<img src="/img/untracked.png">`
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "session": "abc123", "static": null, "url": undefined,
+      "flash": undefined, "session": "abc123", "static": null, "url": undefined, "vsn": PACKAGE_VSN,
       "params": {
         "_mounts": 0,
         "_track_static": [

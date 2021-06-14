@@ -2054,7 +2054,8 @@ export class View {
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
+        vsn: this.parent ? undefined : PACKAGE_VSN
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
