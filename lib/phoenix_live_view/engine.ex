@@ -435,43 +435,61 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({macro, meta, [_ | _] = args} = expr, vars, assigns)
-       when is_atom(macro) do
-    call = extract_call(macro)
+  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns) do
+    call = extract_call(left)
 
-    if classify_taint(call, args) in [:live, :render] do
-      {args, [opts]} = Enum.split(args, -1)
+    args =
+      if classify_taint(call, args) in [:live, :render] do
+        {args, [opts]} = Enum.split(args, -1)
 
-      # The reason we can safely ignore assigns here is because
-      # each branch in the live/render constructs are their own
-      # rendered struct and, if the rendered has a new fingerpint,
-      # then change tracking is fully disabled.
-      #
-      # For example, take this code:
-      #
-      #   <%= if @foo do %>
-      #     <%= @bar %>
-      #   <% else %>
-      #     <%= @baz %>
-      #   <% end %>
-      #
-      # In theory, @bar and @baz should be recomputed whenever
-      # @foo changes, because changing @foo may require a value
-      # that was not available on the page to show. However,
-      # given the branches have different fingerprints, the
-      # diff mechanism takes care of forcing all assigns to
-      # be rendered without us needing to handle it here.
-      {args, vars, _} = analyze_list(args, vars, assigns, [])
+        # The reason we can safely ignore assigns here is because
+        # each branch in the live/render constructs are their own
+        # rendered struct and, if the rendered has a new fingerpint,
+        # then change tracking is fully disabled.
+        #
+        # For example, take this code:
+        #
+        #   <%= if @foo do %>
+        #     <%= @bar %>
+        #   <% else %>
+        #     <%= @baz %>
+        #   <% end %>
+        #
+        # In theory, @bar and @baz should be recomputed whenever
+        # @foo changes, because changing @foo may require a value
+        # that was not available on the page to show. However,
+        # given the branches have different fingerprints, the
+        # diff mechanism takes care of forcing all assigns to
+        # be rendered without us needing to handle it here.
+        {args, vars, _} = analyze_list(args, vars, assigns, [])
 
-      opts =
-        for {key, value} <- opts do
-          {key, maybe_block_to_rendered(value, vars)}
-        end
+        opts =
+          for {key, value} <- opts do
+            {key, maybe_block_to_rendered(value, vars)}
+          end
 
-      to_safe({call, meta, args ++ [opts]}, true)
-    else
-      to_safe(expr, true)
-    end
+        args ++ [opts]
+      else
+        args
+      end
+
+    # If we have a component, now we provide change tracking to individual keys.
+    args =
+      case {call, args} do
+        {:component, [fun, [do: block]]} ->
+          [fun, to_component_tracking([], [inner_block: block], vars), [do: block]]
+
+        {:component, [fun, expr]} ->
+          [fun, to_component_tracking(expr, [], vars)]
+
+        {:component, [fun, expr, [do: block]]} ->
+          [fun, to_component_tracking(expr, [inner_block: block], vars), [do: block]]
+
+        {_, _} ->
+          args
+      end
+
+    to_safe({left, meta, args}, true)
   end
 
   defp to_live_struct(expr, _vars, _assigns) do
@@ -571,6 +589,124 @@ defmodule Phoenix.LiveView.Engine do
 
   defp parent_is_checked?(rest, assigns),
     do: Map.has_key?(assigns, Enum.reverse(rest)) or parent_is_checked?(tl(rest), assigns)
+
+  ## Component keys change tracking
+
+  defp to_component_tracking(expr, extra, vars) do
+    # Separate static and dynamic parts
+    {static, dynamic} =
+      case expr do
+        {{:., _, [{:__aliases__, _, [:Map]}, :merge]}, _, [dynamic, {:%{}, _, static}]} ->
+          {static, dynamic}
+
+        {:%{}, _, static} ->
+          {static, %{}}
+
+        static ->
+          {static, %{}}
+      end
+
+    # And now validate the static bits. If they are not valid,
+    # treat the whole thing as dynamic.
+    {static, dynamic} =
+      if Keyword.keyword?(static) do
+        {static, dynamic}
+      else
+        {[], expr}
+      end
+
+    all = extra ++ static
+
+    static_changed =
+      if all != [] do
+        keys =
+          for {key, value} <- all,
+              # We pass empty assigns because if this code is rendered,
+              # it means that upstream assigns were change tracked.
+              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}),
+              # If keys are empty, it is never changed.
+              keys != %{},
+              do: {key, to_component_keys(keys)}
+
+        quote do
+          unquote(__MODULE__).to_component_static(unquote(keys), unquote(@assigns_var), changed)
+        end
+      else
+        Macro.escape(%{})
+      end
+
+    cond do
+      # We can't infer anything, so return the expression as is.
+      all == [] and dynamic == %{} ->
+        expr
+
+      # We were actually able to find some static bits, but no dynamic.
+      # Embed the static parts alongside the computed changed.
+      dynamic == %{} ->
+        quote do
+          %{unquote_splicing([__changed__: static_changed] ++ static)}
+        end
+
+      # Merge both static and dynamic.
+      true ->
+        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{})
+
+        quote do
+          unquote(__MODULE__).to_component_dynamic(
+            %{unquote_splicing(static)},
+            unquote(dynamic),
+            unquote(static_changed),
+            unquote(to_component_keys(keys)),
+            unquote(@assigns_var),
+            changed
+          )
+        end
+    end
+  end
+
+  defp to_component_keys(:all), do: :all
+  defp to_component_keys(map), do: Map.keys(map)
+
+  @doc false
+  def to_component_static(_keys, _assigns, nil) do
+    nil
+  end
+
+  def to_component_static(keys, assigns, changed) do
+    for {assign, entries} <- keys,
+        component_changed?(entries, assigns, changed),
+        into: %{},
+        do: {assign, true}
+  end
+
+  @doc false
+  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil) do
+    merge_dynamic_static_changed(dynamic, static, nil)
+  end
+
+  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed) do
+    component_changed =
+      if component_changed?(keys, assigns, changed) do
+        Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
+      else
+        static_changed
+      end
+
+    merge_dynamic_static_changed(dynamic, static, component_changed)
+  end
+
+  defp merge_dynamic_static_changed(dynamic, static, changed) do
+    dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
+  end
+
+  defp component_changed?(:all, _assigns, _changed), do: true
+
+  defp component_changed?(entries, assigns, changed) do
+    Enum.any?(entries, fn
+      [key] -> changed_assign?(changed, key)
+      nested -> nested_changed_assign?(assigns, changed, nested)
+    end)
+  end
 
   ## Extracts binaries and variable from iodata
 

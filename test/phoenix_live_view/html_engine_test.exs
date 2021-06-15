@@ -6,10 +6,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   defmacrop render_component(string) do
     quote do
-      unquote(EEx.compile_string(string, [file: __ENV__.file, engine: HTMLEngine]))
+      unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine))
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
     end
+  end
+
+  def assigns_component(assigns) do
+    ~H"<%= inspect(Map.delete(assigns, :__changed__)) %>"
   end
 
   def remote_function_component(assigns) do
@@ -84,13 +88,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   test "handles dynamic attributes" do
     assert render("Hello <omg {@attrs}>text</omg>", %{attrs: [name: "1", phone: to_string(2)]}) ==
-      "Hello <omg name=\"1\" phone=\"2\">text</omg>"
+             "Hello <omg name=\"1\" phone=\"2\">text</omg>"
   end
 
-  test "attributes are sorted by group: static, static_dynamic and dynamic" do
+  test "sorts attributes by group: static, static_dynamic and dynamic" do
     assigns = %{attrs1: [d1: "1"], attrs2: [d2: "2"]}
+
     assert render(~S(<omg {@attrs1} sd1={1} s1="1" {@attrs2} sd2={2} s2="2" />), assigns) ==
-      ~S(<omg s1="1" s2="2" sd1="1" sd2="2" d1="1" d2="2"/>)
+             ~S(<omg s1="1" s2="2" sd1="1" sd2="2" d1="1" d2="2"/>)
   end
 
   test "handle void elements" do
@@ -116,32 +121,54 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   describe "handle function components" do
     test "remote call (self close)" do
       assigns = %{}
-      assert render_component("<Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'/>") ==
-        "REMOTE COMPONENT: Value: 1"
+
+      assert render_component(
+               "<Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'/>"
+             ) ==
+               "REMOTE COMPONENT: Value: 1"
     end
 
     test "remote call with inner content" do
       assigns = %{}
+
       assert render_component("""
-      <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
-        The inner content
-      </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
-      """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
+               The inner content
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
+             """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n\n"
     end
 
     test "local call (self close)" do
       assigns = %{}
+
       assert render_component("<.local_function_component value='1'/>") ==
-        "LOCAL COMPONENT: Value: 1"
+               "LOCAL COMPONENT: Value: 1"
     end
 
     test "local call with inner content" do
       assigns = %{}
+
       assert render_component("""
-      <.local_function_component_with_inner_content value='1'>
-        The inner content
-      </.local_function_component_with_inner_content>
-      """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+             <.local_function_component_with_inner_content value='1'>
+               The inner content
+             </.local_function_component_with_inner_content>
+             """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+    end
+
+    test "dynamic attributes" do
+      assigns = %{attrs: [name: "1", phone: true]}
+
+      assert render_component("<.assigns_component {@attrs} />") ==
+               "%{name: &quot;1&quot;, phone: true}"
+    end
+
+    test "sorts attributes by group: static + dynamic" do
+      assigns = %{attrs1: [d1: "1"], attrs2: [d2: "2", d3: "3"]}
+
+      assert render_component(
+               "<.assigns_component d1=\"one\" {@attrs1} d=\"middle\" {@attrs2} d2=\"two\" />"
+             ) ==
+               "%{d: &quot;middle&quot;, d1: &quot;one&quot;, d2: &quot;two&quot;, d3: &quot;3&quot;}"
     end
   end
 

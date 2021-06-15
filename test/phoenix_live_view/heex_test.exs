@@ -92,7 +92,13 @@ defmodule Phoenix.LiveView.HEExTest do
               static: ["pre: ", "\n", "\npost: ", "\n"],
               dynamic: [
                 "pre",
-                %Rendered{dynamic: ["the value", ["\n  The inner content\n"]], static: ["COMPONENT:", ", Content: ", "\n"]},
+                %Rendered{
+                  dynamic: [
+                    "the value",
+                    %Rendered{dynamic: [], static: ["\n  The inner content\n"]}
+                  ],
+                  static: ["COMPONENT:", ", Content: ", "\n"]
+                },
                 "post"
               ]
             } =

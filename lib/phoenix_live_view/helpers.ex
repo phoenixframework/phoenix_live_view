@@ -451,7 +451,12 @@ defmodule Phoenix.LiveView.Helpers do
   @doc false
   def __component__(func, assigns, inner)
       when is_function(func, 1) and is_list(assigns) or is_map(assigns) do
-    assigns = Map.new(assigns)
+    assigns =
+      case assigns do
+        %{__changed__: _} -> assigns
+        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
+      end
+
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
 
     case func.(assigns) do

@@ -705,9 +705,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 0 => "DEFAULT",
                  1 => %{0 => "1", 1 => "123"},
-                 2 => "DEFAULT",
                  3 => %{0 => "2", 1 => "123"}
                }
              }
