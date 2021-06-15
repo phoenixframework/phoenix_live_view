@@ -2037,7 +2037,7 @@ export class View {
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
         redirect: this.redirect ? this.href : undefined,
-        url: this.redirect ? undefined : this.href,
+        url: this.redirect ? undefined : this.href || undefined,
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),

@@ -577,7 +577,7 @@ describe("View", function() {
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
     expect(view.id).toEqual("container")
-    expect(view.view).toEqual("User.Form")
+    expect(view.getSession).toBeDefined()
     expect(view.channel).toBeDefined()
     expect(view.loaderTimer).toBeDefined()
   })
@@ -653,7 +653,8 @@ describe("View", function() {
     stubChannel(view)
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "params": {"_mounts": 0}, "session": "abc123", "static": null, "url": undefined}
+      "flash": undefined, "params": {"_mounts": 0},
+      "session": "abc123", "static": null, "url": undefined, "redirect": undefined}
     )
 
     el.innerHTML += `<link rel="stylesheet" href="/css/app-123.css?vsn=d" phx-track-static="">`
@@ -663,6 +664,7 @@ describe("View", function() {
 
     expect(view.channel.params()).toEqual({
       "flash": undefined, "session": "abc123", "static": null, "url": undefined,
+      "redirect": undefined,
       "params": {
         "_mounts": 0,
         "_track_static": [
