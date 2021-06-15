@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView.Utils
+  alias Phoenix.LiveView.Route
   alias Phoenix.LiveViewTest.{Endpoint, DashboardLive}
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
@@ -66,16 +66,14 @@ defmodule Phoenix.LiveView.RouterTest do
 
   describe "live_session" do
     test "with defaults" do
-      assert {:internal, route} = Utils.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session")
-      assert route.live_session_name == :default
-      assert route.live_session_extra == %{}
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session")
+      assert route.live_session_name == :test
       assert route.live_session_vsn
     end
 
     test "with extra session metadata" do
-      assert {:internal, route} = Utils.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session-admin")
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session-admin")
       assert route.live_session_name == :admin
-      assert route.live_session_extra == %{"admin" => true}
       assert route.live_session_vsn
     end
 

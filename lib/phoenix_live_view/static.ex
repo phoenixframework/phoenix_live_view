@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Session}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Session, Route}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
@@ -39,10 +39,10 @@ defmodule Phoenix.LiveView.Static do
       {:error, :expired}
   """
   def verify_session(endpoint, topic, session_token, static_token) do
-    with {:ok, %{id: id} = raw_session} <- verify_token(endpoint, session_token),
+    with {:ok, %{id: id} = session} <- verify_token(endpoint, session_token),
          :ok <- verify_topic(topic, id),
          {:ok, static} <- verify_static_token(endpoint, id, static_token) do
-      merged_session = Map.merge(raw_session, static)
+      merged_session = Map.merge(session, static)
       {live_session_name, vsn} = merged_session[:live_session] || {nil, nil}
 
       session = %Session{
@@ -88,14 +88,10 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp live_session_extra(%Plug.Conn{} = conn) do
+  defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
-      {_view, _opts, live_session} ->
-        {_name, live_session_extra, _vsn} = live_session
-        live_session_extra
-
-      nil ->
-        %{}
+      {_view, _opts, {_name, _live_session_extra, _vsn} = lv_session} -> lv_session
+      nil -> nil
     end
   end
 
@@ -136,8 +132,8 @@ defmodule Phoenix.LiveView.Static do
   """
   def render(%Plug.Conn{} = conn, view, opts) do
     conn_session = maybe_get_session(conn)
-    {to_sign_session, mount_session_base} = load_session(conn_session, opts)
-    mount_session = Map.merge(mount_session_base, live_session_extra(conn))
+    {to_sign_session, mount_session} = load_session(conn_session, opts)
+    live_session = live_session(conn)
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
@@ -166,8 +162,7 @@ defmodule Phoenix.LiveView.Static do
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
         data_attrs = [
-          phx_view: "",
-          phx_session: sign_root_session(socket, router, view, to_sign_session, host_uri),
+          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
           phx_static: sign_static_token(socket)
         ]
 
@@ -262,7 +257,6 @@ defmodule Phoenix.LiveView.Static do
     attrs = [
       {:id, socket.id},
       {:data,
-       phx_view: "",
        phx_session: "",
        phx_static: sign_static_token(socket),
        phx_parent_id: parent.id}
@@ -279,7 +273,7 @@ defmodule Phoenix.LiveView.Static do
 
     attrs = [
       {:id, socket.id},
-      {:data, phx_parent_id: parent.id, phx_view: "", phx_session: session_token, phx_static: ""}
+      {:data, phx_parent_id: parent.id, phx_session: session_token, phx_static: ""}
       | extended_attrs
     ]
 
@@ -330,7 +324,7 @@ defmodule Phoenix.LiveView.Static do
 
       is_nil(socket.router) ->
         # Let the callback fail for the usual reasons
-        Utils.live_link_info!(socket, view, uri)
+        Route.live_link_info!(socket, view, uri)
 
       true ->
         Utils.call_handle_params!(socket, view, params, uri)
@@ -339,13 +333,12 @@ defmodule Phoenix.LiveView.Static do
 
   defp exports_handle_params?(view), do: function_exported?(view, :handle_params, 3)
 
-  defp sign_root_session(%Socket{} = socket, router, view, session, host_uri) do
+  defp sign_root_session(%Socket{} = socket, router, view, session, live_session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
-    {live_session_name, live_session_vsn} =
-      if route = Utils.live_session_route(socket, host_uri) do
-        {route.live_session_name, route.live_session_vsn}
-      else
-        {nil, nil}
+    live_session_pair =
+      case live_session do
+        {name, _extra, vsn} -> {name, vsn}
+        nil -> nil
       end
 
     sign_token(socket.endpoint, %{
@@ -353,7 +346,7 @@ defmodule Phoenix.LiveView.Static do
       view: view,
       root_view: view,
       router: router,
-      live_session: {live_session_name, live_session_vsn},
+      live_session: live_session_pair,
       parent_pid: nil,
       root_pid: nil,
       session: session

@@ -1,24 +1,23 @@
-defmodule Phoenix.LiveView.Route do
-  @moduledoc false
-
-  defstruct path: nil,
-            view: nil,
-            action: nil,
-            container: nil,
-            layout: nil,
-            live_session_name: nil,
-            live_session_extra: nil,
-            live_session_vsn: nil,
-            params: %{},
-            uri: nil
-end
-
 defmodule Phoenix.LiveView.Router do
   @moduledoc """
   Provides LiveView routing for Phoenix routers.
   """
 
   @cookie_key "__phoenix_flash__"
+
+  @doc false
+  defmacro __session_vsn__ do
+    quote do
+      if vsn = Module.get_attribute(__MODULE__, :phoenix_session_vsn) do
+        vsn
+      else
+        vsn = System.system_time()
+        @phoenix_session_vsn vsn
+
+        vsn
+      end
+    end
+  end
 
   @doc """
   Defines a LiveView route.
@@ -84,9 +83,6 @@ defmodule Phoenix.LiveView.Router do
       the connection and should return a map (with string keys) to be merged into the session.
       For example, `{MyModule, :my_function, []}` means `MyModule.my_function(conn)` is called.
 
-    * `:layout` - an optional tuple to specify the rendering layout for the LiveView.
-      If set, this option will replace the current root layout.
-
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
       See `Phoenix.LiveView.Helpers.live_render/3` for more information and examples.
@@ -109,7 +105,7 @@ defmodule Phoenix.LiveView.Router do
 
           live "/thermostat", ThermostatLive
           live "/clock", ClockLive
-          live "/dashboard", DashboardLive, layout: {MyApp.AlternativeView, "app.html"}
+          live "/dashboard", DashboardLive, container: {:main, class: "row"}
         end
       end
 
@@ -118,11 +114,10 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
-    vsn = session_vsn()
-
     quote bind_quoted: binding() do
-      live_session =
-        Module.get_attribute(__MODULE__, :phoenix_live_session_current, {:default, %{}, vsn})
+      vsn = Phoenix.LiveView.Router.__session_vsn__()
+      default = {:default, %{session: %{}}, vsn}
+      live_session = Module.get_attribute(__MODULE__, :phoenix_live_session_current, default)
 
       {action, router_options} =
         Phoenix.LiveView.Router.__live__(__MODULE__, live_view, action, live_session, opts)
@@ -136,33 +131,21 @@ defmodule Phoenix.LiveView.Router do
   """
   defmacro live_session(name, do: block) do
     quote do
-      live_session(unquote(name), %{}, do: unquote(block))
+      live_session(unquote(name), [], do: unquote(block))
     end
   end
 
-  defmacro live_session(name, extra, do: block) do
+  defmacro live_session(name, opts, do: block) do
     quote do
       Module.register_attribute(__MODULE__, :phoenix_live_sessions, accumulate: true)
-      name = unquote(name)
-      extra = unquote(extra)
-      vsn = unquote(session_vsn())
 
-      if nested = Module.get_attribute(__MODULE__, :phoenix_live_session_current) do
-        raise """
-        attempting to define live_session #{inspect(name)} inside #{inspect(elem(nested, 0))}.
-        live_session definitions cannot be nested.
-        """
-      end
-
-      existing =
-        Enum.find(@phoenix_live_sessions, fn {existing_name, _, _} -> name == existing_name end)
-
-      if existing do
-        raise """
-        attempting to redefine live_session #{inspect(name)}.
-        live_session routes must be declared in a single named block.
-        """
-      end
+      {name, extra, vsn} =
+        unquote(__MODULE__).__live_session__(
+          __MODULE__,
+          unquote(opts),
+          unquote(name),
+          unquote(__MODULE__).__session_vsn__()
+        )
 
       @phoenix_live_session_current {name, extra, vsn}
       @phoenix_live_sessions {name, extra, vsn}
@@ -171,7 +154,83 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
-  defp session_vsn, do: System.system_time()
+  @doc false
+  def __live_session__(module, opts, name, vsn) do
+    unless is_atom(name) do
+      raise ArgumentError, """
+      expected live_session name to be an atom, got: #{inspect(name)}
+      """
+    end
+
+    extra = validate_live_session_opts(opts, name)
+
+    if nested = Module.get_attribute(module, :phoenix_live_session_current) do
+      raise """
+      attempting to define live_session #{inspect(name)} inside #{inspect(elem(nested, 0))}.
+      live_session definitions cannot be nested.
+      """
+    end
+
+    live_sessions = Module.get_attribute(module, :phoenix_live_sessions)
+    existing = Enum.find(live_sessions, fn {existing_name, _, _} -> name == existing_name end)
+
+    if existing do
+      raise """
+      attempting to redefine live_session #{inspect(name)}.
+      live_session routes must be declared in a single named block.
+      """
+    end
+
+    {name, extra, vsn}
+  end
+
+  @live_session_opts [:root_layout, :session]
+  defp validate_live_session_opts(opts, _name) when is_list(opts) do
+    opts
+    |> Keyword.put_new(:session, %{})
+    |> Enum.reduce(%{}, fn
+      {:session, %{} = session}, acc ->
+        Map.put(acc, :session, session)
+
+      {:session, bad_session}, _acc ->
+        raise ArgumentError, """
+        invalid live_session :session
+
+        expected a map with string keys, got #{inspect(bad_session)}
+        """
+
+      {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
+        Map.put(acc, :root_layout, {mod, template})
+
+      {:root_layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
+        Map.put(acc, :root_layout, {mod, "#{template}.html"})
+
+      {:root_layout, false}, acc ->
+        Map.put(acc, :root_layout, false)
+
+      {:root_layout, bad_layout}, _acc ->
+        raise ArgumentError, """
+        invalid live_session :root_layout
+
+        expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
+        """
+
+      {key, _val}, _acc ->
+        raise ArgumentError, """
+        unknown live_session option "#{inspect(key)}"
+
+        Supported options include: #{inspect(@live_session_opts)}
+        """
+    end)
+  end
+
+  defp validate_live_session_opts(invalid, name) do
+    raise ArgumentError, """
+    expected second argument to live_session to be a list of options, got:
+
+        live_session #{inspect(name)}, #{inspect(invalid)}
+    """
+  end
 
   @doc """
   Fetches the LiveView and merges with the controller flash.

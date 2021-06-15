@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView.Channel do
     %{view: view} = socket
     %{"url" => url} = msg.payload
 
-    case Utils.live_link_info!(socket, view, url) do
+    case Route.live_link_info!(socket, view, url) do
       {:internal, %Route{params: params, action: action}} ->
         socket = socket |> assign_action(action) |> Utils.clear_flash()
 
@@ -368,7 +368,7 @@ defmodule Phoenix.LiveView.Channel do
 
       socket.root_pid != self() or is_nil(router) ->
         # Let the callback fail for the usual reasons
-        Utils.live_link_info!(%{socket | router: nil}, view, url)
+        Route.live_link_info!(%{socket | router: nil}, view, url)
 
       params == @not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
@@ -878,29 +878,21 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     }
 
-    {params, host_uri, action, live_session_name, live_session_extra} =
+    {params, host_uri, action, layout} =
       case route do
         %Route{} = route ->
-          {route.params, route.uri, route.action, route.live_session_name,
-           route.live_session_extra}
+          {route.params, route.uri, route.action, Route.layout(route)}
 
         nil ->
-          {@not_mounted_at_router, @not_mounted_at_router, nil, @not_mounted_at_router, %{}}
+          {@not_mounted_at_router, @not_mounted_at_router, nil, nil}
       end
 
-    merged_session = merged_session(live_session_extra, socket_session, verified_user_session)
+    merged_session = Map.merge(socket_session, verified_user_session)
 
     socket =
       Utils.configure_socket(
         socket,
-        mount_private(
-          parent,
-          root_view,
-          assign_new,
-          connect_params,
-          connect_info,
-          live_session_name
-        ),
+        mount_private(parent, root_view, assign_new, connect_params, connect_info, layout),
         action,
         flash,
         host_uri
@@ -913,12 +905,6 @@ defmodule Phoenix.LiveView.Channel do
     |> reply_mount(from, verified, route)
   end
 
-  defp merged_session(live_session_extra, socket_session, verified_session) do
-    socket_session
-    |> Map.merge(verified_session)
-    |> Map.merge(live_session_extra)
-  end
-
   defp load_csrf_token(endpoint, socket_session) do
     if token = socket_session["_csrf_token"] do
       state = Plug.CSRFProtection.dump_state_from_session(token)
@@ -927,25 +913,23 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, live_session_name) do
-    %{
+  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, layout) do
+    private = %{
       connect_params: connect_params,
       connect_info: connect_info,
-      live_session_name: live_session_name,
       assign_new: {%{}, assign_new},
       changed: %{},
       root_view: root_view
     }
+
+    # if layout do
+    #   Map.put(private, :phoenix_live_layout, layout)
+    # else
+      private
+    # end
   end
 
-  defp mount_private(
-         parent,
-         root_view,
-         assign_new,
-         connect_params,
-         connect_info,
-         _live_session_name
-       ) do
+  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, _layout) do
     parent_assigns = sync_with_parent(parent, assign_new)
 
     # Child live views always ignore the layout on `:use`.
@@ -970,7 +954,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp put_container(%Session{} = session, %Route{} = route, %{} = diff) do
-    if container = session.redirected? && route.container do
+    if container = session.redirected? && Route.container(route) do
       {tag, attrs} = container
       Map.put(diff, :container, [tag, Enum.into(attrs, %{})])
     else
@@ -1170,7 +1154,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp session_route(%Session{} = session, endpoint, url) do
-    case Utils.live_link_info(endpoint, session.router, url) do
+    case Route.live_link_info(endpoint, session.router, url) do
       {:internal, %Route{} = route} -> route
       _ -> nil
     end

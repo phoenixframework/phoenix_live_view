@@ -254,7 +254,6 @@ defmodule Phoenix.LiveView.ParamsTest do
                  {"data-phx-main", "true"},
                  {"data-phx-session", _},
                  {"data-phx-static", _},
-                 {"data-phx-view", ""},
                  {"id", "phx-" <> _}
                ],
                ["The value is: 1" <> _]

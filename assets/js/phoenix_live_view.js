@@ -13,7 +13,6 @@ const CONSECUTIVE_RELOADS = "consecutive-reloads"
 const MAX_RELOADS = 10
 const RELOAD_JITTER = [1000, 3000]
 const FAILSAFE_JITTER = 30000
-const PHX_VIEW = "data-phx-view"
 const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
   "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading"
@@ -36,7 +35,6 @@ const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 const PHX_NO_FEEDBACK_CLASS = "phx-no-feedback"
 const PHX_ERROR_CLASS = "phx-error"
 const PHX_PARENT_ID = "data-phx-parent-id"
-const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 const PHX_MAIN = `data-phx-main`
 const PHX_ROOT_ID = `data-phx-root-id`
 const PHX_TRIGGER_ACTION = "trigger-action"
@@ -46,6 +44,7 @@ const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "se
 const CHECKABLE_INPUTS = ["checkbox", "radio"]
 const PHX_HAS_SUBMITTED = "phx-has-submitted"
 const PHX_SESSION = "data-phx-session"
+const PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`
 const PHX_STATIC = "data-phx-static"
 const PHX_READONLY = "data-phx-readonly"
 const PHX_DISABLED = "data-phx-disabled"
@@ -742,7 +741,6 @@ export class LiveSocket {
     this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
-    this.ref = 0
     this.params = closure(opts.params || {})
     this.viewLogger = opts.viewLogger
     this.metadataCallbacks = opts.metadata || {}
@@ -820,8 +818,6 @@ export class LiveSocket {
   disconnect(callback){ this.socket.disconnect(callback) }
 
   // private
-
-  nextRef(){ return this.ref++ }
 
   triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
@@ -953,7 +949,7 @@ export class LiveSocket {
     })
   }
 
-  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
+  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
   newRootView(el, href, flash){
     let view = new View(el, this, null, flash)
@@ -1463,7 +1459,7 @@ export let DOM = {
   withinSameLiveView(node, parent){
     while(node = node.parentNode){
       if(node.isSameNode(parent)){ return true }
-      if(node.getAttribute(PHX_VIEW) !== null){ return false }
+      if(node.getAttribute(PHX_SESSION) !== null){ return false }
     }
   },
 
@@ -1698,7 +1694,7 @@ export let DOM = {
   },
 
   replaceRootContainer(container, tagName, attrs){
-    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_VIEW])
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN])
     let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase())
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)

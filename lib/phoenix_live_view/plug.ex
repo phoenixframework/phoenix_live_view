@@ -7,27 +7,36 @@ defmodule Phoenix.LiveView.Plug do
   def init(view) when is_atom(view), do: view
 
   @impl Plug
-  def call(%{private: %{phoenix_live_view: {view, opts, _live_session}}} = conn, _) do
-    opts = maybe_dispatch_session(conn, opts)
+  def call(%Plug.Conn{private: %{phoenix_live_view: {view, opts, live_session}}} = conn, _) do
+    {_name, live_session_extra, _vsn} = live_session
+
+    session =
+      %{}
+      |> merge_session(opts, conn)
+      |> merge_session(live_session_extra, conn)
+
+    opts = Keyword.put(opts, :session, session)
 
     conn
     |> Phoenix.Controller.put_layout(false)
-    |> put_root_layout_from_router(opts)
+    |> put_root_layout_from_router(live_session_extra)
     |> Phoenix.LiveView.Controller.live_render(view, opts)
   end
 
-  defp maybe_dispatch_session(conn, opts) do
+  defp merge_session(acc, opts, conn) do
     case opts[:session] do
       {mod, fun, args} when is_atom(mod) and is_atom(fun) and is_list(args) ->
-        Keyword.put(opts, :session, apply(mod, fun, [conn | args]))
+        Map.merge(acc, apply(mod, fun, [conn | args]))
+
+      %{} = session -> Map.merge(acc, session)
 
       _ ->
-        opts
+        acc
     end
   end
 
-  defp put_root_layout_from_router(conn, opts) do
-    case Keyword.fetch(opts, :layout) do
+  defp put_root_layout_from_router(conn, extra) do
+    case Map.fetch(extra, :root_layout) do
       {:ok, layout} -> Phoenix.Controller.put_root_layout(conn, layout)
       :error -> conn
     end

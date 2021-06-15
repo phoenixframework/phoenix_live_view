@@ -679,7 +679,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     ids_after =
       new_state.html
-      |> DOM.reverse_filter(&DOM.attribute(&1, "data-phx-view"))
+      |> DOM.reverse_filter(&DOM.attribute(&1, "data-phx-session"))
       |> DOM.all_attributes("id")
       |> MapSet.new()
 

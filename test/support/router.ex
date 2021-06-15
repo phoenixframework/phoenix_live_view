@@ -43,8 +43,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/assigns-not-in-socket", AssignsNotInSocketLive
     live "/errors", ErrorsLive
 
-    live "/styled-elements", ElementsLive, layout: {Phoenix.LiveViewTest.LayoutView, :styled}
-
     # controller test
     get "/controller/:type", Controller, :incoming
     get "/widget", Controller, :widget
@@ -66,13 +64,21 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
+    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, "styled.html"} do
+      live "/styled-elements", ElementsLive
+    end
+    live_session :app_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, :app} do
+      live "/layout", LayoutLive
+    end
+
     scope "/" do
       pipe_through [:bad_layout]
 
       # The layout option needs to have higher precedence than bad layout
       live "/bad_layout", LayoutLive
-      live "/layout", LayoutLive, layout: {Phoenix.LiveViewTest.LayoutView, :app}
-      live "/parent_layout", ParentLayoutLive, layout: false
+      live_session :parent_layout, root_layout: false do
+        live "/parent_layout", ParentLayoutLive
+      end
     end
 
     # integration params
@@ -95,12 +101,12 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/cids_destroyed", CidsDestroyedLive
 
     # live_session
-    live_session :default do
+    live_session :test do
       live "/thermo-live-session", ThermostatLive
       live "/clock-live-session", ClockLive
     end
 
-    live_session :admin, %{"admin" => true} do
+    live_session :admin, session: %{"admin" => true} do
       live "/thermo-live-session-admin", ThermostatLive
       live "/clock-live-session-admin", ClockLive
     end

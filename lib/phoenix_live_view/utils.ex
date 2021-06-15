@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket, Route}
+  alias Phoenix.LiveView.{Rendered, Socket}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -261,78 +261,6 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Returns the internal or external matched LiveView route info for the given uri
-  """
-  def live_link_info!(%Socket{router: nil}, view, _uri) do
-    raise ArgumentError,
-          "cannot invoke handle_params/3 on #{inspect(view)} " <>
-            "because it is not mounted nor accessed through the router live/3 macro"
-  end
-
-  def live_link_info!(%Socket{} = socket, view, uri) do
-    case live_link_info(socket.endpoint, socket.router, uri) do
-      {:internal, %Route{view: ^view} = route} ->
-        {:internal, route}
-
-      {:internal, %Route{view: _view} = route} ->
-        {:external, route.uri}
-
-      {:external, _parsed_uri} = external ->
-        external
-
-      :error ->
-        raise ArgumentError,
-              "cannot invoke handle_params nor live_redirect/live_patch to #{inspect(uri)} " <>
-                "because it isn't defined in #{inspect(socket.router)}"
-    end
-  end
-
-  def live_link_info(endpoint, router, uri) when is_binary(uri) do
-    live_link_info(endpoint, router, URI.parse(uri))
-  end
-
-  def live_link_info(endpoint, router, %URI{} = uri) when is_atom(endpoint) and is_atom(router) do
-    %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
-    query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
-
-    split_path =
-      for segment <- String.split(path || "", "/"), segment != "", do: URI.decode(segment)
-
-    route_path = strip_segments(endpoint.script_name(), split_path) || split_path
-
-    case Phoenix.Router.route_info(router, "GET", route_path, host) do
-      %{plug: Phoenix.LiveView.Plug, phoenix_live_view: lv, path_params: path_params} ->
-        {view, action, opts, {live_session_name, extra, vsn}} = lv
-        live_view_opts = view.__live__()
-
-        route = %Route{
-          view: view,
-          path: route_path,
-          action: action,
-          uri: parsed_uri,
-          container: opts[:container] || live_view_opts[:container],
-          layout: opts[:layout] || live_view_opts[:layout],
-          live_session_name: live_session_name,
-          live_session_extra: extra,
-          live_session_vsn: vsn,
-          params: Map.merge(query_params, path_params)
-        }
-
-        {:internal, route}
-
-      %{} ->
-        {:external, parsed_uri}
-
-      :error ->
-        :error
-    end
-  end
-
-  defp strip_segments([head | tail1], [head | tail2]), do: strip_segments(tail1, tail2)
-  defp strip_segments([], tail2), do: tail2
-  defp strip_segments(_, _), do: nil
-
-  @doc """
   Raises error message for bad live patch on mount.
   """
   def raise_bad_mount_and_live_patch!() do
@@ -484,19 +412,6 @@ defmodule Phoenix.LiveView.Utils do
     >>
 
     Base.url_encode64(binary)
-  end
-
-  @doc """
-  TODO
-  """
-  def live_session_route(%Socket{router: nil}, %URI{}), do: nil
-
-  def live_session_route(%Socket{} = socket, %URI{} = request_uri) do
-    case live_link_info(socket.endpoint, socket.router, request_uri) do
-      {:internal, %Route{} = route} -> route
-      {:external, _} -> nil
-      :error -> nil
-    end
   end
 
   defp mount_opt(%Socket{} = socket, key, val, _arity) when key in @mount_opts do

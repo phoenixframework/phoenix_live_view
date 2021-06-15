@@ -244,7 +244,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   def replace_root_container(container_html, new_tag, attrs) do
-    reserved_attrs = ~w(id data-phx-session data-phx-static data-phx-main data-phx-view)
+    reserved_attrs = ~w(id data-phx-session data-phx-static data-phx-main)
     [{_container_tag, container_attrs_list, children}] = container_html
     container_attrs = Enum.into(container_attrs_list, %{})
 

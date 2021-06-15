@@ -18,13 +18,10 @@ defmodule Phoenix.LiveView.Session do
   def main?(%Session{} = session), do: !is_nil(session.router) and !session.parent_pid
 
   def authorize_root_redirect(%Session{} = session, %Route{} = route) do
-    %Session{root_view: root_view, view: view, live_session_vsn: vsn} = session
+    %Session{live_session_name: session_name, live_session_vsn: session_vsn} = session
 
     cond do
-      route.view == root_view and route.view == view and route.live_session_vsn == vsn ->
-        {:ok, %Session{session | redirected?: true}}
-
-      route.live_session_name == session.live_session_name and route.live_session_vsn == vsn ->
+      route.live_session_name == session_name and route.live_session_vsn == session_vsn ->
         {:ok, replace_root(session, route.view, self())}
 
       true ->

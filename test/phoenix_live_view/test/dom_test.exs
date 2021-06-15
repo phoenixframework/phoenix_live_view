@@ -11,16 +11,13 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       assert DOM.find_live_views(
                DOM.parse("""
                <h1>top</h1>
-               <div data-phx-view="789"
-                 data-phx-session="SESSION1"
+               <div data-phx-session="SESSION1"
                  id="phx-123"></div>
                <div data-phx-parent-id="456"
-                   data-phx-view="789"
                    data-phx-session="SESSION2"
                    data-phx-static="STATIC2"
                    id="phx-456"></div>
                <div data-phx-session="#{@too_big_session}"
-                 data-phx-view="789"
                  id="phx-458"></div>
                <h1>bottom</h1>
                """)
@@ -37,16 +34,13 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       assert DOM.find_live_views(
                DOM.parse("""
                <h1>top</h1>
-               <div data-phx-view="789"
-                 data-phx-session="SESSION1"
+               <div data-phx-session="SESSION1"
                  id="phx-123"></div>
                <div data-phx-parent-id="456"
-                   data-phx-view="789"
                    data-phx-session="SESSION2"
                    data-phx-static="STATIC2"
                    id="phx-456"></div>
                <div data-phx-session="SESSIONMAIN"
-                 data-phx-view="789"
                  data-phx-main="true"
                  id="phx-458"></div>
                <h1>bottom</h1>
@@ -67,7 +61,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
              data-phx-main="true"
              data-phx-session="session"
              data-phx-static="static"
-             data-phx-view class="old">contents</div>
+             class="old">contents</div>
         """)
 
       assert DOM.replace_root_container(container, :span, %{class: "new"}) ==
@@ -78,7 +72,6 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                     {"data-phx-main", "true"},
                     {"data-phx-session", "session"},
                     {"data-phx-static", "static"},
-                    {"data-phx-view", "data-phx-view"},
                     {"class", "new"}
                   ], ["contents"]}
                ]
@@ -90,16 +83,14 @@ defmodule Phoenix.LiveViewTest.DOMTest do
         <div id="container"
              data-phx-main="true"
              data-phx-session="session"
-             data-phx-static="static"
-             data-phx-view>contents</div>
+             data-phx-static="static">contents</div>
         """)
 
       new_attrs = %{
         "id" => "new",
         "data-phx-session" => "new",
         "data-phx-static" => "new",
-        "data-phx-main" => "new",
-        "data-phx-view" => "new"
+        "data-phx-main" => "new"
       }
 
       assert DOM.replace_root_container(container, :div, new_attrs) ==
@@ -109,8 +100,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                     {"id", "container"},
                     {"data-phx-main", "true"},
                     {"data-phx-session", "session"},
-                    {"data-phx-static", "static"},
-                    {"data-phx-view", "data-phx-view"}
+                    {"data-phx-static", "static"}
                   ], ["contents"]}
                ]
     end
@@ -120,7 +110,6 @@ defmodule Phoenix.LiveViewTest.DOMTest do
     test "updates deeply nested html" do
       html = """
       <div data-phx-session="SESSIONMAIN"
-                     data-phx-view="789"
                      data-phx-main="true"
                      id="phx-458">
       <div id="foo">Hello</div>
@@ -156,7 +145,6 @@ defmodule Phoenix.LiveViewTest.DOMTest do
     test "inserts new elements when phx-update=append" do
       html = """
       <div data-phx-session="SESSIONMAIN"
-                     data-phx-view="789"
                      data-phx-main="true"
                      id="phx-458">
       <div id="list" phx-update="append">
@@ -185,7 +173,6 @@ defmodule Phoenix.LiveViewTest.DOMTest do
     test "inserts new elements when phx-update=prepend" do
       html = """
       <div data-phx-session="SESSIONMAIN"
-                     data-phx-view="789"
                      data-phx-main="true"
                      id="phx-458">
       <div id="list" phx-update="append">
@@ -213,15 +200,12 @@ defmodule Phoenix.LiveViewTest.DOMTest do
 
     test "updates existing elements when phx-update=append" do
       html = """
-      <div data-phx-session="SESSIONMAIN"
-                     data-phx-view="789"
-                     data-phx-main="true"
-                     id="phx-458">
-      <div id="list" phx-update="append">
-        <div id="1">a</div>
-        <div id="2">a</div>
-        <div id="3">a</div>
-      </div>
+      <div data-phx-session="SESSIONMAIN" data-phx-main="true" id="phx-458">
+        <div id="list" phx-update="append">
+          <div id="1">a</div>
+          <div id="2">a</div>
+          <div id="3">a</div>
+        </div>
       </div>
       """
 

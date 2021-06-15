@@ -502,22 +502,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".* data-phx-view=\"\"[^>]*>/
+               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".*[^>]*>/
 
       assert static_html =~ ~r/<\/article>/
 
       assert static_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert static_html =~ ~r/<\/section>/
 
       assert connected_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert connected_html =~ ~r/<\/section>/
 
       assert render(view) =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert render(view) =~ ~r/<\/section>/
     end
@@ -532,22 +532,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<span class="thermo"[^>]*data-phx-view=\"\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+               ~r/<span class="thermo"[^>]*[^>]*style=\"thermo-flex&lt;script&gt;\">/
 
       assert static_html =~ ~r/<\/span>/
 
       assert static_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert static_html =~ ~r/<\/p>/
 
       assert connected_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert connected_html =~ ~r/<\/p>/
 
       assert render(view) =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
     end
