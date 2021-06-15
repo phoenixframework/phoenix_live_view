@@ -200,7 +200,7 @@ reply from the server via a `{:reply, map, socket}` return value. The reply payl
 passed to the optional `pushEvent` response callback.
 
 Communication with the hook from the server can be done by reading data attributes on the
-hook element or by using `push_event` on the server and `handleEvent` on the client.
+hook element or by using `Phoenix.LiveView.push_event/3` on the server and `handleEvent` on the client.
 
 For example, to implement infinite scrolling, one can pass the current page using data attributes:
 
