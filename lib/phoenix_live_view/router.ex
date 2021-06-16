@@ -171,14 +171,14 @@ defmodule Phoenix.LiveView.Router do
     opts
     |> Keyword.put_new(:session, %{})
     |> Enum.reduce(%{}, fn
-      {:session, %{} = session}, acc ->
-        Map.put(acc, :session, session)
+      {:session, val}, acc when is_map(val) or (is_tuple(val) and tuple_size(val) == 3) ->
+        Map.put(acc, :session, val)
 
       {:session, bad_session}, _acc ->
         raise ArgumentError, """
         invalid live_session :session
 
-        expected a map with string keys, got #{inspect(bad_session)}
+        expected a map with string keys or an MFA tuple, got #{inspect(bad_session)}
         """
 
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->

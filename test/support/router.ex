@@ -110,10 +110,16 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/thermo-live-session-admin", ThermostatLive
       live "/clock-live-session-admin", ClockLive
     end
+
+    live_session :mfa, session: {__MODULE__, :session, [%{"inlined" => true}]} do
+      live "/thermo-live-session-mfa", ThermostatLive
+    end
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
     live "/sessionless-thermo", ThermostatLive
     live "/thermo-with-metadata", ThermostatLive, metadata: %{route_name: "opts"}
   end
+
+  def session(%Plug.Conn{}, extra), do: Map.merge(extra, %{"called" => true})
 end

@@ -28,7 +28,8 @@ defmodule Phoenix.LiveView.Plug do
       {mod, fun, args} when is_atom(mod) and is_atom(fun) and is_list(args) ->
         Map.merge(acc, apply(mod, fun, [conn | args]))
 
-      %{} = session -> Map.merge(acc, session)
+      %{} = session ->
+        Map.merge(acc, session)
 
       _ ->
         acc

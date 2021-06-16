@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.Route do
 
     case Phoenix.Router.route_info(router, "GET", route_path, host) do
       %{plug: Phoenix.LiveView.Plug, phoenix_live_view: lv, path_params: path_params} ->
-        {view, action, opts, {live_session_name, _extra, vsn}} = lv
+        {view, action, opts, {live_session_name, _live_session_opts, vsn}} = lv
 
         route = %Route{
           view: view,

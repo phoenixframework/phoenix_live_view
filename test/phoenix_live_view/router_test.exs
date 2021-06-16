@@ -3,11 +3,20 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView.Route
-  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive}
+  alias Phoenix.LiveView.{Route, Static}
+  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive, DOM}
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
   @endpoint Endpoint
+
+  def verified_session(html) do
+    [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
+
+    {:ok, live_session} =
+      Static.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
+
+    live_session.session
+  end
 
   setup config do
     conn = Plug.Test.init_test_session(build_conn(), config[:plug_session] || %{})
@@ -65,16 +74,33 @@ defmodule Phoenix.LiveView.RouterTest do
   end
 
   describe "live_session" do
-    test "with defaults" do
-      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session")
+    test "with defaults", %{conn: conn} do
+      path = "/thermo-live-session"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
       assert route.live_session_name == :test
       assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() == %{}
     end
 
-    test "with extra session metadata" do
-      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, "/thermo-live-session-admin")
+    test "with extra session metadata", %{conn: conn} do
+      path = "/thermo-live-session-admin"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
       assert route.live_session_name == :admin
       assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() ==
+               %{"admin" => true}
+    end
+
+    test "with session MFA metadata", %{conn: conn} do
+      path = "/thermo-live-session-mfa"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+      assert route.live_session_name == :mfa
+      assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() ==
+               %{"inlined" => true, "called" => true}
     end
 
     test "raises when nesting" do
