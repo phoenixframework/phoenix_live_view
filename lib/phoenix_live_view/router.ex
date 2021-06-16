@@ -5,17 +5,6 @@ defmodule Phoenix.LiveView.Router do
 
   @cookie_key "__phoenix_flash__"
 
-  @doc false
-  defp session_vsn(module) do
-    if vsn = Module.get_attribute(module, :phoenix_session_vsn) do
-      vsn
-    else
-      vsn = System.system_time()
-      Module.put_attribute(module, :phoenix_session_vsn, vsn)
-      vsn
-    end
-  end
-
   @doc """
   Defines a LiveView route.
 
@@ -111,8 +100,8 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
+    vsn = session_vsn(__CALLER__.module)
     quote bind_quoted: binding() do
-      vsn = Phoenix.LiveView.Router.__session_vsn__()
       default = {:default, %{session: %{}}, vsn}
       live_session = Module.get_attribute(__MODULE__, :phoenix_live_session_current, default)
 
@@ -137,12 +126,7 @@ defmodule Phoenix.LiveView.Router do
       Module.register_attribute(__MODULE__, :phoenix_live_sessions, accumulate: true)
 
       {name, extra, vsn} =
-        unquote(__MODULE__).__live_session__(
-          __MODULE__,
-          unquote(opts),
-          unquote(name),
-          unquote(__MODULE__).__session_vsn__()
-        )
+        unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))
 
       @phoenix_live_session_current {name, extra, vsn}
       @phoenix_live_sessions {name, extra, vsn}
@@ -152,7 +136,8 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc false
-  def __live_session__(module, opts, name, vsn) do
+  def __live_session__(module, opts, name) do
+    vsn = session_vsn(module)
     unless is_atom(name) do
       raise ArgumentError, """
       expected live_session name to be an atom, got: #{inspect(name)}
@@ -322,4 +307,14 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
+
+  defp session_vsn(module) do
+    if vsn = Module.get_attribute(module, :phoenix_session_vsn) do
+      vsn
+    else
+      vsn = System.system_time()
+      Module.put_attribute(module, :phoenix_session_vsn, vsn)
+      vsn
+    end
+  end
 end
