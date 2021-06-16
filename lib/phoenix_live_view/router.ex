@@ -6,16 +6,13 @@ defmodule Phoenix.LiveView.Router do
   @cookie_key "__phoenix_flash__"
 
   @doc false
-  defmacro __session_vsn__ do
-    quote do
-      if vsn = Module.get_attribute(__MODULE__, :phoenix_session_vsn) do
-        vsn
-      else
-        vsn = System.system_time()
-        @phoenix_session_vsn vsn
-
-        vsn
-      end
+  defp session_vsn(module) do
+    if vsn = Module.get_attribute(module, :phoenix_session_vsn) do
+      vsn
+    else
+      vsn = System.system_time()
+      Module.put_attribute(module, :phoenix_session_vsn, vsn)
+      vsn
     end
   end
 
