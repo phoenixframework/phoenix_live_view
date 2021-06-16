@@ -103,6 +103,16 @@ defmodule Phoenix.LiveView.RouterTest do
                %{"inlined" => true, "called" => true}
     end
 
+    test "merges live_session session with live route session", %{conn: conn} do
+      path = "/thermo-live-session-merged"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+      assert route.live_session_name == :merged
+      assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() ==
+               %{"route" => true, "top-level" => true}
+    end
+
     test "raises when nesting" do
       assert_raise(RuntimeError, ~r"attempting to define live_session :invalid inside :ok", fn ->
         Code.eval_quoted(

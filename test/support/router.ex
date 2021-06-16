@@ -114,6 +114,10 @@ defmodule Phoenix.LiveViewTest.Router do
     live_session :mfa, session: {__MODULE__, :session, [%{"inlined" => true}]} do
       live "/thermo-live-session-mfa", ThermostatLive
     end
+
+    live_session :merged, session: %{"top-level" => true} do
+      live "/thermo-live-session-merged", ThermostatLive, session: %{"route" => true}
+    end
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
