@@ -100,13 +100,9 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
-    vsn = session_vsn(__CALLER__.module)
     quote bind_quoted: binding() do
-      default = {:default, %{session: %{}}, vsn}
-      live_session = Module.get_attribute(__MODULE__, :phoenix_live_session_current, default)
-
       {action, router_options} =
-        Phoenix.LiveView.Router.__live__(__MODULE__, live_view, action, live_session, opts)
+        Phoenix.LiveView.Router.__live__(__MODULE__, live_view, action, opts)
 
       Phoenix.Router.get(path, Phoenix.LiveView.Plug, action, router_options)
     end
@@ -138,6 +134,7 @@ defmodule Phoenix.LiveView.Router do
   @doc false
   def __live_session__(module, opts, name) do
     vsn = session_vsn(module)
+
     unless is_atom(name) do
       raise ArgumentError, """
       expected live_session name to be an atom, got: #{inspect(name)}
@@ -245,15 +242,17 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc false
-  def __live__(router, live_view, action, live_session, opts)
+  def __live__(router, live_view, action, opts)
       when is_list(action) and is_list(opts) do
-    __live__(router, live_view, nil, live_session, Keyword.merge(action, opts))
+    __live__(router, live_view, nil, Keyword.merge(action, opts))
   end
 
-  def __live__(router, live_view, action, live_session, opts)
+  def __live__(router, live_view, action, opts)
       when is_atom(action) and is_list(opts) do
+    vsn = session_vsn(router)
+    default = {:default, %{session: %{}}, vsn}
+    live_session = Module.get_attribute(router, :phoenix_live_session_current, default)
     live_view = Phoenix.Router.scoped_alias(router, live_view)
-
     {private, opts} = Keyword.pop(opts, :private, %{})
     {metadata, opts} = Keyword.pop(opts, :metadata, %{})
 
