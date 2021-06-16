@@ -1127,11 +1127,13 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url}) do
-    redir_route = session_route(session, endpoint, url)
-
-    case Session.authorize_root_redirect(session, redir_route) do
-      {:ok, %Session{} = new_session} -> {:ok, new_session, redir_route, url}
-      {:error, :unauthorized} = err -> err
+    if redir_route = session_route(session, endpoint, url) do
+      case Session.authorize_root_redirect(session, redir_route) do
+        {:ok, %Session{} = new_session} -> {:ok, new_session, redir_route, url}
+        {:error, :unauthorized} = err -> err
+      end
+    else
+      {:error, :unauthorized}
     end
   end
 
