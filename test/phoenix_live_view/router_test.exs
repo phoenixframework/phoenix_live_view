@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView.{Route, Static}
+  alias Phoenix.LiveView.{Route, Session}
   alias Phoenix.LiveViewTest.{Endpoint, DashboardLive, DOM}
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.RouterTest do
     [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
 
     {:ok, live_session} =
-      Static.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
+      Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
 
     live_session.session
   end

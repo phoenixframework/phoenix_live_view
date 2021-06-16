@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Static, Upload, UploadConfig, Route, Session}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
@@ -752,7 +752,7 @@ defmodule Phoenix.LiveView.Channel do
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint, topic: topic} = phx_socket
 
-    case Static.verify_session(endpoint, topic, session_token, params["static"]) do
+    case Session.verify_session(endpoint, topic, session_token, params["static"]) do
       {:ok, %Session{} = verified} ->
         %Phoenix.Socket{private: %{connect_info: connect_info}} = phx_socket
 

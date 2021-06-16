@@ -565,7 +565,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp verify_session(%ClientProxy{} = view) do
-    Phoenix.LiveView.Static.verify_session(
+    Phoenix.LiveView.Session.verify_session(
       view.endpoint,
       view.topic,
       view.session_token,
