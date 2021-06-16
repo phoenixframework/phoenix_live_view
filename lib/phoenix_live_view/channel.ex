@@ -878,13 +878,13 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     }
 
-    {params, host_uri, action, layout} =
+    {params, host_uri, action} =
       case route do
         %Route{} = route ->
-          {route.params, route.uri, route.action, Route.layout(route)}
+          {route.params, route.uri, route.action}
 
         nil ->
-          {@not_mounted_at_router, @not_mounted_at_router, nil, nil}
+          {@not_mounted_at_router, @not_mounted_at_router, nil}
       end
 
     merged_session = Map.merge(socket_session, verified_user_session)
@@ -892,7 +892,7 @@ defmodule Phoenix.LiveView.Channel do
     socket =
       Utils.configure_socket(
         socket,
-        mount_private(parent, root_view, assign_new, connect_params, connect_info, layout),
+        mount_private(parent, root_view, assign_new, connect_params, connect_info),
         action,
         flash,
         host_uri
@@ -913,23 +913,17 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, layout) do
-    private = %{
+  defp mount_private(nil, root_view, assign_new, connect_params, connect_info) do
+    %{
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {%{}, assign_new},
       changed: %{},
       root_view: root_view
     }
-
-    # if layout do
-    #   Map.put(private, :phoenix_live_layout, layout)
-    # else
-      private
-    # end
   end
 
-  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, _layout) do
+  defp mount_private(parent, root_view, assign_new, connect_params, connect_info) do
     parent_assigns = sync_with_parent(parent, assign_new)
 
     # Child live views always ignore the layout on `:use`.
