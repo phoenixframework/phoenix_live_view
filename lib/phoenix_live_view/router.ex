@@ -116,7 +116,7 @@ defmodule Phoenix.LiveView.Router do
 
   A `live_redirect` from the client will *not go through the plug pipeline*
   as a hard-refresh or initial HTTP render would. This means authentication,
-  authorization, etc that may be done in the `Plug.Conn` pipeline must now
+  authorization, etc that may be done in the `Plug.Conn` pipeline must always
   be performed within the LiveView mount lifecycle. Live sessions allow you
   to support a shared security model by allowing `live_redirect`s to only be
   issued betwen routes defined under the same live session name. If a client
