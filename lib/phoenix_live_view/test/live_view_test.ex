@@ -1361,7 +1361,22 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Performs a live redirect from one LiveView to another.
+
+  When redirecting between two LiveViews of the same `live_session`,
+  mounts the new LiveView and shutsdown the previous one, which
+  mimicks general browser live navigation behaviour.
+
+  When attempting to navigate from a LiveView of a different
+  `live_session`, an error redirect condition is returned indicating
+  a failed `live_redirect` from the client.
+
+  ## Examples
+
+      assert {:ok, page_live, _html} = live(conn, "/page/1")
+      assert {:ok, page2_live, _html} = live(conn, "/page/2")
+
+      assert {:error, {:redirect, _}} = live_redirect(page2_live, to: "/admin")
   """
   def live_redirect(view, opts) do
     Phoenix.LiveViewTest.__live_redirect__(view, opts)

@@ -108,6 +108,16 @@ In the example above, the Blog context receives the user on both `get` and
 `update` operations, and always validates accordingly that the user has access,
 raising an error otherwise.
 
+## Live Redirects
+
+Like the mount considerations above, using `live_redirect` links from the client
+will navigate and mount a new LiveView *without invoking the plug pipeline*. LiveView
+enforces only live routes defined within the same `live_session` name can be mounted via
+live redirects, but you must ensure authentication and verification steps take place
+in your LiveView mount instead of the plug pipeline. See the
+`Phoenix.LiveView.Router.live_session/3` documentation for more information on
+live redirect behavior and usage.
+
 ## Disconnecting all instances of a given live user
 
 Another security consideration is how to disconnect all instances of a given

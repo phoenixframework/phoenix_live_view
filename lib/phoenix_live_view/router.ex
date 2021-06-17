@@ -109,7 +109,51 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  TODO
+  Defines a live session for live redirects within a group of live routes.
+
+  `live_session/3` allow routes defined with `live/4` to support
+  `live_redirect` from the client with navigation purely over the existing
+  websocket connection. This allows live routes defined in the router to
+  mount a new root LiveView without additional HTTP requests to the server.
+
+  ## Security Considerations
+
+  A `live_redirect` from the client will *not go through the plug pipeline*
+  as a hard-refresh or initial HTTP render would. This means authentication,
+  authorization, etc that may be done in the `Plug.Conn` pipeline must now
+  be performed within the LiveView mount lifecycle. Live sessions allow you
+  to support a shared security model by allowing `live_redirect`s to only be
+  issued betwen routes defined under the same live session name. If a client
+  attempts to live redirect to a different live session, it will be refushed
+  and a graceful client-side redirect will trigger a regular HTTP request to
+  the attempted URL.
+
+  ## Options
+
+  * `:session` - The optional extra session map or MFA tuple to be merged with
+    the LiveView session. For example, `%{"admin" => true}`, `{MyMod, :session, []}`.
+    For MFA, the function is invoked, passing the `%Plug.Conn{}` prepended to
+    the arguments list.
+
+  * `:root_layout` - The optional root layout tuple for the intial HTTP render to
+    override any existing root layout set in the router.
+
+  ## Examples
+
+      scope "/", MyAppWeb do
+        pipe_through :browser
+
+        live_session :default do
+          live "/feed", FeedLive, :index
+          live "/status", StatusLive, :index
+          live "/status/:id", StatusLive, :show
+        end
+
+        live_session :admin, %{"admin" => true} do
+          live "/admin", AdminDashboardLive, :index
+          live "/admin/posts", AdminPostLive, :index
+        end
+      end
   """
   defmacro live_session(name, do: block) do
     quote do
