@@ -913,12 +913,12 @@ defmodule Phoenix.LiveViewTest do
             |> element("#term a:first-child()", "Increment")
             |> render() =~ "Increment</a>"
 
-  Attribute selectors are also supported, and may be used as a workaround for
-  special cases like ids which contain periods:
+  Attribute selectors are also supported, and may be used on special cases
+  like ids which contain periods:
 
       assert view
-            |> element(~s{[href="/foo"][id="foo.bar.baz"]})
-            |> render() =~ "Increment</a>"
+             |> element(~s{[href="/foo"][id="foo.bar.baz"]})
+             |> render() =~ "Increment</a>"
   """
   def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
     %Element{proxy: proxy, selector: selector, text_filter: text_filter}
