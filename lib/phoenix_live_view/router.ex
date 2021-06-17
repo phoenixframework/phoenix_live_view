@@ -197,13 +197,7 @@ defmodule Phoenix.LiveView.Router do
 
   defmacro live_session(name, opts, do: block) do
     quote do
-      Module.register_attribute(__MODULE__, :phoenix_live_sessions, accumulate: true)
-
-      {name, extra, vsn} =
-        unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))
-
-      @phoenix_live_session_current {name, extra, vsn}
-      @phoenix_live_sessions {name, extra, vsn}
+      unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))
       unquote(block)
       Module.delete_attribute(__MODULE__, :phoenix_live_session_current)
     end
@@ -211,6 +205,7 @@ defmodule Phoenix.LiveView.Router do
 
   @doc false
   def __live_session__(module, opts, name) do
+    Module.register_attribute(module, :phoenix_live_sessions, accumulate: true)
     vsn = session_vsn(module)
 
     unless is_atom(name) do
@@ -238,7 +233,8 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    {name, extra, vsn}
+    Module.put_attribute(module, :phoenix_live_session_current, {name, extra, vsn})
+    Module.put_attribute(module, :phoenix_live_sessions, {name, extra, vsn})
   end
 
   @live_session_opts [:root_layout, :session]
