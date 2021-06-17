@@ -360,17 +360,17 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "live render with bad session", %{conn: conn} do
       conn = simulate_bad_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render with outdated session", %{conn: conn} do
       conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render with expired session", %{conn: conn} do
       conn = simulate_expired_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render in widget-style", %{conn: conn} do

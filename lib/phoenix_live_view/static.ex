@@ -29,6 +29,7 @@ defmodule Phoenix.LiveView.Static do
     case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
       {:ok, {@token_vsn, term}} -> {:ok, term}
       {:ok, _} -> {:error, :outdated}
+      {:error, :missing} -> {:error, :invalid}
       {:error, reason} when reason in [:expired, :invalid] -> {:error, reason}
     end
   end

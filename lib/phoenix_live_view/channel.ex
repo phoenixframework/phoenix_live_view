@@ -800,7 +800,7 @@ defmodule Phoenix.LiveView.Channel do
 
               {:error, :unauthorized} ->
                 GenServer.reply(from, {:error, %{reason: "unauthorized"}})
-                {:stop, :shutdown, :unauthorized}
+                {:stop, :shutdown, :no_state}
 
               {:error, _reason} ->
                 GenServer.reply(from, {:error, %{reason: "stale"}})

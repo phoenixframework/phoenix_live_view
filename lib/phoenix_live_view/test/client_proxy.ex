@@ -197,8 +197,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           {^ref, {:error, %{redirect: opts}}} ->
             throw(stop_redirect(state, view.topic, {:redirect, opts}))
 
-          {^ref, {:error, %{reason: "unauthorized"}}} ->
-            throw(stop_redirect(state, view.topic, {:redirect, to: redirect_url}))
+          {^ref, {:error, %{reason: reason}}} when reason in ~w(stale unauthorized) ->
+            redir_to =
+              case redirect_url do
+                %URI{} = uri -> URI.to_string(uri)
+                nil -> url
+              end
+
+            throw(stop_redirect(state, view.topic, {:redirect, %{to: redir_to}}))
 
           {^ref, {:error, reason}} ->
             throw({:stop, reason, state})

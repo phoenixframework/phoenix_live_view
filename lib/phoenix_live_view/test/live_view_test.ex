@@ -1363,14 +1363,12 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  defmacro live_redirect(view, opts) do
-    quote bind_quoted: binding() do
-      Phoenix.LiveViewTest.__live_redirect__(view, opts)
-    end
+  def live_redirect(view, opts) do
+    Phoenix.LiveViewTest.__live_redirect__(view, opts)
   end
 
   @doc false
-  def __live_redirect__(%View{} = view, opts) do
+  def __live_redirect__(%View{} = view, opts, token_func \\ &(&1)) do
     {session, %ClientProxy{} = root} = ClientProxy.root_view(proxy_pid(view))
 
     url =
@@ -1392,10 +1390,12 @@ defmodule Phoenix.LiveViewTest do
 
     html = render(view)
     ClientProxy.stop(proxy_pid(view), {:shutdown, :duplicate_topic})
+    root_token = token_func.(root.session_token)
+    static_token = token_func.(root.static_token)
 
     start_proxy(url, %{
       html: html,
-      live_redirect: {root.id, root.session_token, root.static_token},
+      live_redirect: {root.id, root_token, static_token},
       connect_params: root.connect_params,
       connect_info: root.connect_info,
       live_module: live_module,

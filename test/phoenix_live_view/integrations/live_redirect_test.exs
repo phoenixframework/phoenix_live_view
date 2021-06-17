@@ -22,6 +22,7 @@ defmodule Phoenix.LiveView.LiveRedirectTest do
       Enum.into(root_attrs, %{})
 
     assert {:ok, clock_live, html} = live_redirect(thermo_live, to: "/clock-live-session")
+
     for str <- [html, render(clock_live)] do
       content = DOM.parse(str)
       assert [{"section", attrs, _inner}] = content
@@ -34,6 +35,7 @@ defmodule Phoenix.LiveView.LiveRedirectTest do
     assert_receive {:DOWN, ^thermo_ref, :process, _pid, {:shutdown, :closed}}
 
     assert {:ok, thermo_live2, html} = live_redirect(clock_live, to: "/thermo-live-session")
+
     for str <- [html, render(thermo_live2)] do
       content = DOM.parse(str)
       assert [{"article", attrs, _inner}] = content
@@ -53,5 +55,19 @@ defmodule Phoenix.LiveView.LiveRedirectTest do
 
     assert {:ok, thermo_live, _html} = live(conn, "/thermo")
     assert {:error, {:redirect, _}} = live_redirect(thermo_live, to: "/thermo-live-session-admin")
+  end
+
+  test "live_redirect with outdated token", %{conn: conn} do
+    assert {:ok, thermo_live, _html} = live(conn, "/thermo-live-session")
+
+    assert {:error, {:redirect, %{to: "http://www.example.com/clock-live-session"}}} =
+             Phoenix.LiveViewTest.__live_redirect__(
+               thermo_live,
+               [to: "/clock-live-session"],
+               fn _token ->
+                 salt = Phoenix.LiveView.Utils.salt!(@endpoint)
+                 Phoenix.Token.sign(@endpoint, salt, {0, %{}})
+               end
+             )
   end
 end
