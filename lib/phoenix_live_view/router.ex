@@ -62,13 +62,6 @@ defmodule Phoenix.LiveView.Router do
 
   ## Options
 
-    * `:session` - a map to be merged into the session, for example: `%{"my_key" => 123}`.
-      The map keys must be strings.
-
-      Can also be a "MFA" (module, function, arguments) tuple. That function will receive
-      the connection and should return a map (with string keys) to be merged into the session.
-      For example, `{MyModule, :my_function, []}` means `MyModule.my_function(conn)` is called.
-
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
       See `Phoenix.LiveView.Helpers.live_render/3` for more information and examples.
@@ -78,6 +71,9 @@ defmodule Phoenix.LiveView.Router do
       actions.
 
     * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
+      for example: `%{route_name: :foo, access: :user}`.
+
+    * `:private` - an optional map of private data to put in the plug connection.
       for example: `%{route_name: :foo, access: :user}`.
 
   ## Examples
@@ -124,7 +120,7 @@ defmodule Phoenix.LiveView.Router do
   be performed within the LiveView mount lifecycle. Live sessions allow you
   to support a shared security model by allowing `live_redirect`s to only be
   issued betwen routes defined under the same live session name. If a client
-  attempts to live redirect to a different live session, it will be refushed
+  attempts to live redirect to a different live session, it will be refused
   and a graceful client-side redirect will trigger a regular HTTP request to
   the attempted URL.
 
@@ -152,6 +148,44 @@ defmodule Phoenix.LiveView.Router do
         live_session :admin, session: %{"admin" => true} do
           live "/admin", AdminDashboardLive, :index
           live "/admin/posts", AdminPostLive, :index
+        end
+      end
+
+  To avoid a false security of plug pipeline enforcement, avoid defining
+  live session routes under different scopes and pipelines. For example, the following
+  routes would share a live session, but go through different authenticate pipelines
+  on first mount. This would work and be secure only if you were also enforcing
+  the admin authentication in your mount, but could be confusing and error prone
+  later if you are using only pipelines to gauge security. Instead of the following
+  routes:
+
+      live_session :default do
+        scope "/" do
+          pipe_through [:authenticate_user]
+          live ...
+        end
+
+        scope "/admin" do
+          pipe_through [:authenticate_user, :require_admin]
+          live ...
+        end
+      end
+
+  Prefer different live sessions to enforce a separation and guarantee
+  live redirects may only happen between admin to admin routes, and
+  default to default routes:
+
+      live_session :default do
+        scope "/" do
+          pipe_through [:authenticate_user]
+          live ...
+        end
+      end
+
+      live_session :admin do
+        scope "/admin" do
+          pipe_through [:authenticate_user, :require_admin]
+          live ...
         end
       end
   """
@@ -297,8 +331,7 @@ defmodule Phoenix.LiveView.Router do
     default = {:default, %{session: %{}}, vsn}
     live_session = Module.get_attribute(router, :phoenix_live_session_current, default)
     live_view = Phoenix.Router.scoped_alias(router, live_view)
-    {private, opts} = Keyword.pop(opts, :private, %{})
-    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
+    {private, metadata, opts} = validate_live_opts!(opts)
 
     opts =
       opts
@@ -312,6 +345,48 @@ defmodule Phoenix.LiveView.Router do
      as: as_helper,
      private: Map.put(private, :phoenix_live_view, {live_view, opts, live_session}),
      metadata: Map.put(metadata, :phoenix_live_view, {live_view, action, opts, live_session})}
+  end
+
+  defp validate_live_opts!(opts) do
+    {private, opts} = Keyword.pop(opts, :private, %{})
+    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
+
+    Enum.each(opts, fn
+      {:container, {tag, attrs}} when is_atom(tag) and is_list(attrs) ->
+        :ok
+
+      {:container, val} ->
+        raise ArgumentError, """
+        expected live :container to be a tuple matching {atom, attrs :: list}, got: #{inspect(val)}
+        """
+
+      {:as, as} when is_atom(as) ->
+        :ok
+
+      {:as, bad_val} ->
+        raise ArgumentError, """
+        expected live :as to be an atom, got: #{inspect(bad_val)}
+        """
+
+      {key, %{} = meta} when key in [:metadata, :private] and is_map(meta) ->
+        :ok
+
+      {key, bad_val} when key in [:metadata, :private] ->
+        raise ArgumentError, """
+        expected live :#{key} to be a map, got: #{inspect(bad_val)}
+        """
+
+      {key, val} ->
+        raise ArgumentError, """
+        unkown live option :#{key}.
+
+        Supported options include: :container, :as, :metadata, :private.
+
+        Got: #{inspect([{key, val}])}
+        """
+    end)
+
+    {private, metadata, opts}
   end
 
   defp inferred_as(live_view, as, nil), do: {as || :live, live_view}

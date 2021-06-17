@@ -116,7 +116,7 @@ defmodule Phoenix.LiveViewTest.Router do
     end
 
     live_session :merged, session: %{"top-level" => true} do
-      live "/thermo-live-session-merged", ThermostatLive, session: %{"route" => true}
+      live "/thermo-live-session-merged", ThermostatLive
     end
   end
 
