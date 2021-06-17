@@ -36,16 +36,6 @@ defmodule Phoenix.LiveView.PlugTest do
     assert conn.resp_body =~ ~s(session: %{})
   end
 
-  test "with session opts as a map", %{conn: conn} do
-    conn = call(conn, DashboardLive, session: %{"hello" => "world"})
-    assert conn.resp_body =~ ~s(session: %{"hello" => "world"})
-  end
-
-  test "with session opts as a mfargs", %{conn: conn} do
-    conn = call(conn, DashboardLive, session: {__MODULE__, :with_session, ["hello", "world"]})
-    assert conn.resp_body =~ ~s(session: %{"hello" => "world"})
-  end
-
   @tag plug_session: %{user_id: "alex"}
   test "with user session", %{conn: conn} do
     conn = call(conn, DashboardLive)

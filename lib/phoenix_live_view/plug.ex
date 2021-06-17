@@ -10,10 +10,7 @@ defmodule Phoenix.LiveView.Plug do
   def call(%Plug.Conn{private: %{phoenix_live_view: {view, opts, live_session}}} = conn, _) do
     {_name, live_session_extra, _vsn} = live_session
 
-    session =
-      %{}
-      |> merge_session(opts, conn)
-      |> merge_session(live_session_extra, conn)
+    session = live_session(live_session_extra, conn)
 
     opts = Keyword.put(opts, :session, session)
 
@@ -23,16 +20,16 @@ defmodule Phoenix.LiveView.Plug do
     |> Phoenix.LiveView.Controller.live_render(view, opts)
   end
 
-  defp merge_session(acc, opts, conn) do
+  defp live_session(opts, conn) do
     case opts[:session] do
       {mod, fun, args} when is_atom(mod) and is_atom(fun) and is_list(args) ->
-        Map.merge(acc, apply(mod, fun, [conn | args]))
+        apply(mod, fun, [conn | args])
 
       %{} = session ->
-        Map.merge(acc, session)
+        session
 
-      _ ->
-        acc
+      nil ->
+        %{}
     end
   end
 
