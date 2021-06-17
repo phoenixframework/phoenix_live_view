@@ -323,9 +323,10 @@ defmodule Phoenix.LiveView.Router do
 
   def __live__(router, live_view, action, opts)
       when is_atom(action) and is_list(opts) do
-    vsn = session_vsn(router)
-    default = {:default, %{session: %{}}, vsn}
-    live_session = Module.get_attribute(router, :phoenix_live_session_current, default)
+    live_session =
+      Module.get_attribute(router, :phoenix_live_session_current) ||
+        {:default, %{session: %{}}, session_vsn(router)}
+
     live_view = Phoenix.Router.scoped_alias(router, live_view)
     {private, metadata, opts} = validate_live_opts!(opts)
 
