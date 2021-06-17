@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.Router do
           live "/status/:id", StatusLive, :show
         end
 
-        live_session :admin, %{"admin" => true} do
+        live_session :admin, session: %{"admin" => true} do
           live "/admin", AdminDashboardLive, :index
           live "/admin/posts", AdminPostLive, :index
         end
