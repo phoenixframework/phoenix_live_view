@@ -243,6 +243,29 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> Enum.reduce([], &traverse_component_ids/2)
   end
 
+  def replace_root_container(container_html, new_tag, attrs) do
+    reserved_attrs = ~w(id data-phx-session data-phx-static data-phx-main)
+    [{_container_tag, container_attrs_list, children}] = container_html
+    container_attrs = Enum.into(container_attrs_list, %{})
+
+    merged_attrs =
+      attrs
+      |> Enum.map(fn {attr, value} -> {String.downcase(to_string(attr)), value} end)
+      |> Enum.filter(fn {attr, _value} -> attr not in reserved_attrs end)
+      |> Enum.reduce(container_attrs_list, fn {attr, new_val}, acc ->
+        if Map.has_key?(container_attrs, attr) do
+          Enum.map(acc, fn
+            {^attr, _old_val} -> {attr, new_val}
+            {_, _} = other -> other
+          end)
+        else
+          acc ++ [{attr, new_val}]
+        end
+      end)
+
+    [{to_string(new_tag), merged_attrs, children}]
+  end
+
   defp traverse_component_ids(current, acc) do
     acc =
       if id = attribute(current, @phx_component) do

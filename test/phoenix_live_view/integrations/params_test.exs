@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
 
@@ -157,13 +157,15 @@ defmodule Phoenix.LiveView.ParamsTest do
       live(conn, "/counter/123?foo=bar")
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
-                      %{socket: %{transport_pid: pid}} = metadata} when is_pid(pid)
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
       assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :stop], %{duration: _},
-                      %{socket: %{transport_pid: pid}} = metadata} when is_pid(pid)
+                      %{socket: %{transport_pid: pid}} = metadata}
+                     when is_pid(pid)
 
       assert metadata.params == %{"id" => "123", "foo" => "bar"}
       assert metadata.uri == "http://www.example.com/counter/123?foo=bar"
@@ -175,10 +177,12 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert catch_exit(live(conn, "/errors?crash_on=connected_handle_params"))
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], %{system_time: _},
-                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}} when is_pid(pid)
+                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}}
+                     when is_pid(pid)
 
       assert_receive {:event, [:phoenix, :live_view, :handle_params, :exception], %{duration: _},
-                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}} when is_pid(pid)
+                      %{socket: %Phoenix.LiveView.Socket{transport_pid: pid}}}
+                     when is_pid(pid)
     end
 
     test "hard redirects", %{conn: conn} do
@@ -237,11 +241,23 @@ defmodule Phoenix.LiveView.ParamsTest do
 
   describe "live_link" do
     test "renders static container", %{conn: conn} do
-      assert conn
-             |> put_req_header("x-requested-with", "live-link")
-             |> get("/counter/123", query1: "query1", query2: "query2")
-             |> html_response(200) =~
-               ~r(<div data-phx-session="[^"]+" data-phx-view="[^"]+" id="[^"]+"></div>)
+      container =
+        conn
+        |> get("/counter/123", query1: "query1", query2: "query2")
+        |> html_response(200)
+        |> DOM.parse()
+        |> hd()
+
+      assert {
+               "div",
+               [
+                 {"data-phx-main", "true"},
+                 {"data-phx-session", _},
+                 {"data-phx-static", _},
+                 {"id", "phx-" <> _}
+               ],
+               ["The value is: 1" <> _]
+             } = container
     end
 
     test "invokes handle_params", %{conn: conn} do

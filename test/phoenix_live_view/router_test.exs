@@ -3,10 +3,20 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive}
+  alias Phoenix.LiveView.{Route, Session}
+  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive, DOM}
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
 
   @endpoint Endpoint
+
+  def verified_session(html) do
+    [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
+
+    {:ok, live_session} =
+      Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
+
+    live_session.session
+  end
 
   setup config do
     conn = Plug.Test.init_test_session(build_conn(), config[:plug_session] || %{})
@@ -15,7 +25,7 @@ defmodule Phoenix.LiveView.RouterTest do
 
   test "routing at root", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
-    assert html =~ ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
+    assert html =~ ~r/<article[^>]*class="thermo"[^>]*>/
   end
 
   test "routing with empty session", %{conn: conn} do
@@ -31,14 +41,14 @@ defmodule Phoenix.LiveView.RouterTest do
 
   test "routing with module container", %{conn: conn} do
     conn = get(conn, "/thermo")
-    assert conn.resp_body =~ ~r/<article[^>]*data-phx-view="ThermostatLive"[^>]*>/
+    assert conn.resp_body =~ ~r/<article[^>]*class="thermo"[^>]*>/
   end
 
   test "routing with container", %{conn: conn} do
     conn = get(conn, "/router/thermo_container/123")
 
     assert conn.resp_body =~
-             ~r/<span[^>]*data-phx-view="LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
+             ~r/<span[^>]*class="Phoenix.LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
   end
 
   test "live non-action helpers", %{conn: conn} do
@@ -61,5 +71,74 @@ defmodule Phoenix.LiveView.RouterTest do
     assert Phoenix.LiveViewTest.Router
            |> Phoenix.Router.route_info("GET", "/thermo-with-metadata", nil)
            |> Map.get(:route_name) == "opts"
+  end
+
+  describe "live_session" do
+    test "with defaults", %{conn: conn} do
+      path = "/thermo-live-session"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+      assert route.live_session_name == :test
+      assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() == %{}
+    end
+
+    test "with extra session metadata", %{conn: conn} do
+      path = "/thermo-live-session-admin"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+      assert route.live_session_name == :admin
+      assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() ==
+               %{"admin" => true}
+    end
+
+    test "with session MFA metadata", %{conn: conn} do
+      path = "/thermo-live-session-mfa"
+      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+      assert route.live_session_name == :mfa
+      assert route.live_session_vsn
+
+      assert conn |> get(path) |> html_response(200) |> verified_session() ==
+               %{"inlined" => true, "called" => true}
+    end
+
+    test "raises when nesting" do
+      assert_raise(RuntimeError, ~r"attempting to define live_session :invalid inside :ok", fn ->
+        Code.eval_quoted(
+          quote do
+            defmodule NestedRouter do
+              import Phoenix.LiveView.Router
+
+              live_session :ok do
+                live_session :invalid do
+                end
+              end
+            end
+          end
+        )
+      end)
+    end
+
+    test "raises when redefining" do
+      assert_raise(RuntimeError, ~r"attempting to redefine live_session :one", fn ->
+        Code.eval_quoted(
+          quote do
+            defmodule DupRouter do
+              import Phoenix.LiveView.Router
+
+              live_session :one do
+              end
+
+              live_session :two do
+              end
+
+              live_session :one do
+              end
+            end
+          end
+        )
+      end)
+    end
   end
 end

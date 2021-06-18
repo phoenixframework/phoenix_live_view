@@ -106,7 +106,7 @@ defmodule Phoenix.LiveViewTest.ClockControlsLive do
 end
 
 defmodule Phoenix.LiveViewTest.DashboardLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, container: {:div, class: inspect(__MODULE__)}
 
   def render(assigns) do
     ~L"""

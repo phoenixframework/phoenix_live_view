@@ -285,36 +285,24 @@ defmodule Phoenix.LiveViewTest do
          path
        ) do
     DOM.ensure_loaded!()
-    html = Phoenix.ConnTest.html_response(conn, 200)
-    endpoint = Phoenix.Controller.endpoint_module(conn)
-    ref = make_ref()
 
-    opts = %{
-      caller: {self(), ref},
-      html: html,
+    router =
+      try do
+        Phoenix.Controller.router_module(conn)
+      rescue
+        KeyError -> nil
+      end
+
+    start_proxy(path, %{
+      html: Phoenix.ConnTest.html_response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
       connect_info: conn.private[:live_view_connect_info] || %{},
       live_module: live_module,
-      endpoint: endpoint,
+      router: router,
+      endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
-      url: Plug.Conn.request_url(conn),
-      test_supervisor: fetch_test_supervisor!()
-    }
-
-    case ClientProxy.start_link(opts) do
-      {:ok, _} ->
-        receive do
-          {^ref, {:ok, view, html}} -> {:ok, view, html}
-        end
-
-      {:error, reason} ->
-        exit({reason, {__MODULE__, :live, [path]}})
-
-      :ignore ->
-        receive do
-          {^ref, {:error, reason}} -> {:error, reason}
-        end
-    end
+      url: Plug.Conn.request_url(conn)
+    })
   end
 
   defp connect_from_static_token(%Plug.Conn{status: 200}, _path) do
@@ -342,6 +330,38 @@ defmodule Phoenix.LiveViewTest do
 
   defp error_redirect_key(%{private: %{phoenix_live_redirect: true}}), do: :live_redirect
   defp error_redirect_key(_), do: :redirect
+
+  defp start_proxy(path, %{} = opts) do
+    ref = make_ref()
+
+    opts =
+      Map.merge(opts, %{
+        caller: {self(), ref},
+        html: opts.html,
+        connect_params: opts.connect_params,
+        connect_info: opts.connect_info,
+        live_module: opts.live_module,
+        endpoint: opts.endpoint,
+        session: opts.session,
+        url: opts.url,
+        test_supervisor: fetch_test_supervisor!()
+      })
+
+    case ClientProxy.start_link(opts) do
+      {:ok, _} ->
+        receive do
+          {^ref, {:ok, view, html}} -> {:ok, view, html}
+        end
+
+      {:error, reason} ->
+        exit({reason, {__MODULE__, :live, [path]}})
+
+      :ignore ->
+        receive do
+          {^ref, {:error, reason}} -> {:error, reason}
+        end
+    end
+  end
 
   # TODO: replace with ExUnit.Case.fetch_test_supervisor!() when we require Elixir v1.11.
   defp fetch_test_supervisor!() do
@@ -977,14 +997,29 @@ defmodule Phoenix.LiveViewTest do
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
       cid = Phoenix.LiveViewTest.__find_cid__!(view, selector)
+
       case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
         {:ok, %{external: false}} ->
           require Phoenix.ChannelTest
           builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-          Phoenix.LiveViewTest.__start_upload_client__(builder, view, selector, name, entries, cid)
+
+          Phoenix.LiveViewTest.__start_upload_client__(
+            builder,
+            view,
+            selector,
+            name,
+            entries,
+            cid
+          )
 
         {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(view, selector, name, entries, cid)
+          Phoenix.LiveViewTest.__start_external_upload_client__(
+            view,
+            selector,
+            name,
+            entries,
+            cid
+          )
 
         :error ->
           raise "no uploads allowed for #{name}"
@@ -994,6 +1029,7 @@ defmodule Phoenix.LiveViewTest do
 
   def __find_cid__!(view, selector) do
     html_tree = view |> render() |> DOM.parse()
+
     with {:ok, form} <- DOM.maybe_one(html_tree, selector),
          {:ok, cid} <- ClientProxy.__maybe_cid__(html_tree, form) do
       cid
@@ -1005,9 +1041,7 @@ defmodule Phoenix.LiveViewTest do
   def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
-      start:
-        {UploadClient, :start_link,
-         [[socket_builder: socket_builder, cid: cid]]},
+      start: {UploadClient, :start_link, [[socket_builder: socket_builder, cid: cid]]},
       restart: :temporary
     }
 
@@ -1019,11 +1053,10 @@ defmodule Phoenix.LiveViewTest do
   def __start_external_upload_client__(view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
-      start:
-        {UploadClient, :start_link,
-         [[cid: cid]]},
+      start: {UploadClient, :start_link, [[cid: cid]]},
       restart: :temporary
     }
+
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
@@ -1255,16 +1288,19 @@ defmodule Phoenix.LiveViewTest do
         # If we are rendering the main LiveView,
         # we return the full page html.
         html
+
       _ ->
         # Otherwise we build a basic html structure around the
         # view_or_element content.
         [
-          {"html", [], [
+          {"html", [],
+           [
              head,
-             {"body", [], [
-               content
-             ]}
-          ]}
+             {"body", [],
+              [
+                content
+              ]}
+           ]}
         ]
     end
     |> Floki.traverse_and_update(fn
@@ -1286,7 +1322,10 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp prefix_static_path(<<"//" <> _::binary>> = url, _prefix), do: url
-  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix), do: "file://#{Path.join([prefix, path])}"
+
+  defp prefix_static_path(<<"/" <> _::binary>> = path, prefix),
+    do: "file://#{Path.join([prefix, path])}"
+
   defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
@@ -1406,6 +1445,67 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Performs a live redirect from one LiveView to another.
+
+  When redirecting between two LiveViews of the same `live_session`,
+  mounts the new LiveView and shutsdown the previous one, which
+  mimicks general browser live navigation behaviour.
+
+  When attempting to navigate from a LiveView of a different
+  `live_session`, an error redirect condition is returned indicating
+  a failed `live_redirect` from the client.
+
+  ## Examples
+
+      assert {:ok, page_live, _html} = live(conn, "/page/1")
+      assert {:ok, page2_live, _html} = live(conn, "/page/2")
+
+      assert {:error, {:redirect, _}} = live_redirect(page2_live, to: "/admin")
+  """
+  def live_redirect(view, opts) do
+    Phoenix.LiveViewTest.__live_redirect__(view, opts)
+  end
+
+  @doc false
+  def __live_redirect__(%View{} = view, opts, token_func \\ &(&1)) do
+    {session, %ClientProxy{} = root} = ClientProxy.root_view(proxy_pid(view))
+
+    url =
+      case Keyword.fetch!(opts, :to) do
+        "/" <> path -> URI.merge(root.uri, path)
+        url -> url
+      end
+
+    live_module =
+      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url) do
+        {:internal, route} ->
+          route.view
+
+        _ ->
+          raise ArgumentError, """
+          attempted to live_redirect to a non-live route at #{inspect(url)}
+          """
+      end
+
+    html = render(view)
+    ClientProxy.stop(proxy_pid(view), {:shutdown, :duplicate_topic})
+    root_token = token_func.(root.session_token)
+    static_token = token_func.(root.static_token)
+
+    start_proxy(url, %{
+      html: html,
+      live_redirect: {root.id, root_token, static_token},
+      connect_params: root.connect_params,
+      connect_info: root.connect_info,
+      live_module: live_module,
+      endpoint: root.endpoint,
+      router: root.router,
+      session: session,
+      url: url
+    })
+  end
+
+  @doc """
   Receives a `form_element` and asserts that `phx-trigger-action` has been
   set to true, following up on that request.
 
@@ -1518,7 +1618,10 @@ defmodule Phoenix.LiveViewTest do
   """
   def preflight_upload(%Upload{} = upload) do
     # LiveView channel returns error conditions as error key in payload, ie `%{error: reason}`
-    case call(upload.element, {:render_event, upload.element, :allow_upload, {upload.entries, upload.cid}}) do
+    case call(
+           upload.element,
+           {:render_event, upload.element, :allow_upload, {upload.entries, upload.cid}}
+         ) do
       %{error: reason} -> {:error, reason}
       %{ref: _ref} = resp -> {:ok, resp}
     end

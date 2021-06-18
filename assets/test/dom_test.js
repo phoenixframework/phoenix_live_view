@@ -67,7 +67,7 @@ describe("DOM", () => {
     test("returns nodes with cid ID (except indirect children)", () => {
       let component1 = tag("div", {"data-phx-component": 0}, `Hello`)
       let component2 = tag("div", {"data-phx-component": 0}, `World`)
-      let component3 = tag("div", {"data-phx-view": "Example"}, `
+      let component3 = tag("div", {"data-phx-session": "123"}, `
         <div data-phx-component="0"></div>
       `)
       document.body.appendChild(component1)

@@ -62,13 +62,17 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Generates a link that will redirect to a new LiveView.
+  Generates a link that will redirect to a new LiveView of the same live session.
 
   The current LiveView will be shut down and a new one will be mounted
   in its place, without reloading the whole page. This can
   also be used to remount the same LiveView, in case you want to start
   fresh. If you want to navigate to the same LiveView without remounting
   it, use `live_patch/2` instead.
+
+  *Note*: The live redirects are only supported between two LiveViews defined
+  under the same live session. See `Phoenix.LiveView.Router.live_session/3` for
+  more details.
 
   ## Options
 
