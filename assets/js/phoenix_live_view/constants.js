@@ -3,7 +3,6 @@ export const CONSECUTIVE_RELOADS = "consecutive-reloads"
 export const MAX_RELOADS = 10
 export const RELOAD_JITTER = [1000, 3000]
 export const FAILSAFE_JITTER = 30000
-export const PHX_VIEW = "data-phx-view"
 export const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
   "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading"
@@ -26,7 +25,6 @@ export const PHX_DISCONNECTED_CLASS = "phx-disconnected"
 export const PHX_NO_FEEDBACK_CLASS = "phx-no-feedback"
 export const PHX_ERROR_CLASS = "phx-error"
 export const PHX_PARENT_ID = "data-phx-parent-id"
-export const PHX_VIEW_SELECTOR = `[${PHX_VIEW}]`
 export const PHX_MAIN = "data-phx-main"
 export const PHX_ROOT_ID = "data-phx-root-id"
 export const PHX_TRIGGER_ACTION = "trigger-action"
@@ -36,6 +34,7 @@ export const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "passwor
 export const CHECKABLE_INPUTS = ["checkbox", "radio"]
 export const PHX_HAS_SUBMITTED = "phx-has-submitted"
 export const PHX_SESSION = "data-phx-session"
+export const PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`
 export const PHX_STATIC = "data-phx-static"
 export const PHX_READONLY = "data-phx-readonly"
 export const PHX_DISABLED = "data-phx-disabled"

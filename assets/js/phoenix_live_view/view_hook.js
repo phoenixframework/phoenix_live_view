@@ -10,7 +10,6 @@ export default class ViewHook {
     this.__listeners = new Set()
     this.__isDisconnected = false
     this.el = el
-    this.viewName = view.name()
     this.el.phxHookId = this.constructor.makeID()
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
   }

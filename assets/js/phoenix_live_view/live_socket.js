@@ -18,9 +18,9 @@
  *   - throttle - the millisecond phx-throttle time. Defaults 300
  *
  * @param {Function} [opts.params] - The optional function for passing connect params.
- * The function receives the viewName associated with a given LiveView. For example:
+ * The function receives the element associated with a given LiveView. For example:
  *
- *     (viewName) => {view: viewName, token: window.myToken}
+ *     (el) => {view: el.getAttribute("data-my-view-name", token: window.myToken}
  *
  * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
  * Defaults to "phx-".
@@ -86,7 +86,6 @@ import {
   PHX_LV_PROFILE,
   PHX_MAIN,
   PHX_PARENT_ID,
-  PHX_VIEW,
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
   PHX_THROTTLE,
@@ -107,6 +106,7 @@ import DOM from "phoenix_live_view/dom"
 import Hooks from "phoenix_live_view/hooks"
 import LiveUploader from "phoenix_live_view/live_uploader"
 import View from "phoenix_live_view/view"
+import {PHX_SESSION} from "./constants"
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -256,6 +256,7 @@ export default class LiveSocket {
       receive(kind, cb){ this.receives.push([kind, cb]) }
     }
     setTimeout(() => {
+      if(view.isDestroyed()){ return }
       fakePush.receives.reduce((acc, [kind, cb]) => acc.receive(kind, cb), push())
     }, latency)
     return fakePush
@@ -266,7 +267,7 @@ export default class LiveSocket {
     this.disconnect()
     let [minMs, maxMs] = RELOAD_JITTER
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    let tries = Browser.updateLocal(this.localStorage, view.name(), CONSECUTIVE_RELOADS, 0, count => count + 1)
+    let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
     if(tries > MAX_RELOADS){
       this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
@@ -299,8 +300,9 @@ export default class LiveSocket {
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       if(!this.getRootById(rootEl.id)){
-        let view = this.joinRootView(rootEl, this.getHref())
-        this.root = this.root || view
+        let view = this.newRootView(rootEl)
+        view.setHref(this.getHref())
+        view.join()
         if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
       }
       rootsFound = true
@@ -314,37 +316,26 @@ export default class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
-    let mainEl = this.main.el
+    let oldMainEl = this.main.el
+    let newMainEl = DOM.cloneNode(oldMainEl)
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
+    oldMainEl.replaceWith(newMainEl)
 
-    Browser.fetchPage(href, (status, html) => {
-      if(status !== 200){ return this.redirect(href) }
-
-      let template = document.createElement("template")
-      template.innerHTML = html
-      let el = template.content.childNodes[0]
-      if(!el || !this.isPhxView(el)){ return this.redirect(href) }
-
-      this.joinRootView(el, href, flash, (newMain, joinCount) => {
-        if(joinCount !== 1){ return }
-        if(!this.commitPendingLink(linkRef)){
-          newMain.destroy()
-          return
-        }
-        mainEl.replaceWith(newMain.el)
-        this.main = newMain
+    this.main = this.newRootView(newMainEl, flash)
+    this.main.setRedirect(href)
+    this.main.join(joinCount => {
+      if(joinCount === 1 && this.commitPendingLink(linkRef)){
         callback && callback()
-      })
+      }
     })
   }
 
-  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_VIEW) !== null }
+  isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
-  joinRootView(el, href, flash, callback){
-    let view = new View(el, this, null, href, flash)
+  newRootView(el, href, flash){
+    let view = new View(el, this, null, flash)
     this.roots[view.id] = view
-    view.join(callback)
     return view
   }
 

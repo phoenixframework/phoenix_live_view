@@ -25,7 +25,6 @@ import {
   PHX_TRACK_STATIC,
   PHX_UPDATE,
   PHX_UPLOAD_REF,
-  PHX_VIEW,
   PHX_VIEW_SELECTOR,
   PUSH_TIMEOUT,
 } from "phoenix_live_view/constants"
@@ -65,20 +64,20 @@ let serializeForm = (form, meta = {}) => {
 }
 
 export default class View {
-  constructor(el, liveSocket, parentView, href, flash){
+  constructor(el, liveSocket, parentView, flash){
     this.liveSocket = liveSocket
     this.flash = flash
     this.parent = parentView
     this.root = parentView ? parentView.root : this
     this.el = el
     this.id = this.el.id
-    this.view = this.el.getAttribute(PHX_VIEW)
     this.ref = 0
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
     this.pruningCIDs = []
-    this.href = href
+    this.redirect = false
+    this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
     this.destroyed = false
@@ -92,7 +91,8 @@ export default class View {
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       return {
-        url: this.href,
+        redirect: this.redirect ? this.href : undefined,
+        url: this.redirect ? undefined : this.href || undefined,
         params: this.connectParams(),
         session: this.getSession(),
         static: this.getStatic(),
@@ -103,10 +103,17 @@ export default class View {
     this.bindChannel()
   }
 
+  setHref(href){ this.href = href }
+
+  setRedirect(href){
+    this.redirect = true
+    this.href = href
+  }
+
   isMain(){ return this.liveSocket.main === this }
 
   connectParams(){
-    let params = this.liveSocket.params(this.view)
+    let params = this.liveSocket.params(this.el)
     let manifest =
       DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
         .map(node => node.src || node.href).filter(url => typeof (url) === "string")
@@ -116,8 +123,6 @@ export default class View {
 
     return params
   }
-
-  name(){ return this.view }
 
   isConnected(){ return this.channel.canPush() }
 
@@ -213,12 +218,16 @@ export default class View {
   }
 
   onJoin(resp){
-    let {rendered} = resp
+    let {rendered, container} = resp
+    if(container){
+      let [tag, attrs] = container
+      this.el = DOM.replaceRootContainer(this.el, tag, attrs)
+    }
     this.childJoins = 0
     this.joinPending = true
     this.flash = null
 
-    Browser.dropLocal(this.liveSocket.localStorage, this.name(), CONSECUTIVE_RELOADS)
+    Browser.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
       this.rendered = new Rendered(this.id, diff)
       let html = this.renderContainer(null, "join")
@@ -546,16 +555,20 @@ export default class View {
     if(!this.parent){
       this.stopCallback = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
-    this.joinCallback = () => callback && callback(this, this.joinCount)
+    this.joinCallback = () => callback && callback(this.joinCount)
     this.liveSocket.wrapPush(this, {timeout: false}, () => {
       return this.channel.join()
-        .receive("ok", data => this.onJoin(data))
-        .receive("error", resp => this.onJoinError(resp))
-        .receive("timeout", () => this.onJoinError({reason: "timeout"}))
+        .receive("ok", data => !this.isDestroyed() && this.onJoin(data))
+        .receive("error", resp => !this.isDestroyed() && this.onJoinError(resp))
+        .receive("timeout", () => !this.isDestroyed() && this.onJoinError({reason: "timeout"}))
     })
   }
 
   onJoinError(resp){
+    if(resp.reason === "unauthorized" || resp.reason === "stale"){
+      this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
+      return this.onRedirect({to: this.href})
+    }
     if(resp.redirect || resp.live_redirect){
       this.joinPending = false
       this.channel.leave()
@@ -926,7 +939,7 @@ export default class View {
     let linkRef = this.liveSocket.setPendingLink(href)
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
 
-    this.pushWithReply(refGen, "link", {url: href}, resp => {
+    this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
       if(resp.link_redirect){
         this.liveSocket.replaceMain(href, null, callback, linkRef)
       } else {
