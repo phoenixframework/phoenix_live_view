@@ -141,7 +141,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       test_supervisor: test_supervisor,
       url: url,
-      page_title: nil
+      page_title: root_page_title(root_html)
     }
 
     try do
@@ -1235,4 +1235,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp put_cid(payload, nil), do: payload
   defp put_cid(payload, cid), do: Map.put(payload, "cid", cid)
+
+  defp root_page_title(root_html) do
+    case DOM.maybe_one(root_html, "title") do
+      {:ok, {"title", _, [text]}} -> text
+      {:error, _kind, _desc} -> nil
+    end
+  end
 end

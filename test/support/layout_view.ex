@@ -52,6 +52,7 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     ~L"""
     <html>
       <head>
+        <title>Styled</title>
         <link rel="stylesheet" href="/css/custom.css"/>
         <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
         <link rel="stylesheet" href="//example.com/a.css"/>
