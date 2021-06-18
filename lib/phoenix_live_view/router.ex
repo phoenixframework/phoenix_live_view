@@ -119,7 +119,7 @@ defmodule Phoenix.LiveView.Router do
   authorization, etc that may be done in the `Plug.Conn` pipeline must always
   be performed within the LiveView mount lifecycle. Live sessions allow you
   to support a shared security model by allowing `live_redirect`s to only be
-  issued betwen routes defined under the same live session name. If a client
+  issued between routes defined under the same live session name. If a client
   attempts to live redirect to a different live session, it will be refused
   and a graceful client-side redirect will trigger a regular HTTP request to
   the attempted URL.

@@ -2,6 +2,29 @@
 
 ## 0.16.0-dev
 
+### Security Considerations Upgrading from 0.15
+
+LiveView v0.16 optimizes live redirects by supporting navigation purely over the existing WebSocket connection. This is accomplished by the new `live_session/3` feature of `Phoenix.LiveView.Router`. The [security guide](/guides/server/security-model.md) has always stressed  the following:
+
+> ... As we have seen, LiveView begins its life-cycle as a regular HTTP request. Then a stateful connection is established. Both the HTTP request and the stateful connection receives the client data via parameters and session. This means that any session validation must happen both in the HTTP request (plug pipeline) and the stateful connection (LiveView mount)...
+
+These guidelines continue to be valid, but it is now essential that the
+stateful connection enforces authentication and session validation within
+the LiveView mount lifecycle because
+*a `live_redirect` from the client will not go through the plug pipeline*
+as a hard-refresh or initial HTTP render would. This means authentication,
+authorization, etc that may be done in the `Plug.Conn` pipeline must always
+be performed within the LiveView mount lifecycle. Live sessions allow you
+to support a shared security model by allowing `live_redirect`s to only be
+issued between routes defined under the same live session name. If a client
+attempts to live redirect to a different live session, it will be refused
+and a graceful client-side redirect will trigger a regular HTTP request to
+the attempted URL.
+
+See the `Phoenix.LiveView.Router.live_session/3` docs for more information and example usage.
+
+### New HTML Engine
+
 LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function components
 via `Phoenix.Component`. The new HEEx templates validate the markup in the template is valid
 while also providing syntax conveniences to make it easy to build composable components.
@@ -83,9 +106,10 @@ will be deprecated in favor of the new function components. Our plan is to suppo
 them for a reasonable period of time, but you should avoid creating new ones in
 your application.
 
-### Enhacements
+### Enhancements
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`
+  - Introduce `Phoenix.Router.live_session/3` for optimized live redirects
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
