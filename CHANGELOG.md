@@ -113,6 +113,7 @@ your application.
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
+  - Fix `Phoenix.LiveViewTest.page_title` returning nil in some cases
 
 ### Deprecations
   - Implicit assigns when passing a `do-end` block to `live_component` is deprecated
