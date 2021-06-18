@@ -7,13 +7,14 @@ import {
   PHX_EVENT_CLASSES,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
+  PHX_MAIN,
   PHX_NO_FEEDBACK_CLASS,
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF,
   PHX_SESSION,
+  PHX_STATIC,
   PHX_UPLOAD_REF,
-  PHX_VIEW,
   PHX_VIEW_SELECTOR,
   THROTTLED
 } from "phoenix_live_view/constants"
@@ -101,7 +102,7 @@ let DOM = {
   withinSameLiveView(node, parent){
     while(node = node.parentNode){
       if(node.isSameNode(parent)){ return true }
-      if(node.getAttribute(PHX_VIEW)){ return false }
+      if(node.getAttribute(PHX_SESSION) !== null){ return false }
     }
   },
 
@@ -332,6 +333,30 @@ let DOM = {
         }
       })
       toRemove.forEach(childNode => childNode.remove())
+    }
+  },
+
+  replaceRootContainer(container, tagName, attrs){
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN])
+    let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase())
+    if(container.tagName.toLowerCase() === tagName.toLowerCase()){
+      Array.from(container.attributes)
+        .filter(notRetained)
+        .forEach(attr => container.removeAttribute(attr.name))
+
+      Object.keys(attrs)
+        .filter(notRetained)
+        .forEach(attr => container.setAttribute(attr, attrs[attr]))
+
+      return container
+
+    } else {
+      let newContainer = document.createElement(tagName)
+      Object.keys(attrs).forEach(attr => newContainer.setAttribute(attr, attrs[attr]))
+      retainedAttrs.forEach(attr => newContainer.setAttribute(attr, container.getAttribute(attr)))
+      newContainer.innerHTML = container.innerHTML
+      container.replaceWith(newContainer)
+      return newContainer
     }
   }
 }
