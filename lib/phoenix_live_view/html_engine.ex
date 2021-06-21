@@ -353,6 +353,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_component_attrs(attrs) do
     entries =
       case build_component_attrs(attrs) do
+        {[], []} -> [{:%{}, [], []}]
         {r, []} -> r
         {r, d} -> r ++ [{:%{}, [], d}]
       end

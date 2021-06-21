@@ -163,6 +163,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
     end
 
+    test "empty attributes" do
+      assigns = %{}
+      assert render_component("<.assigns_component />") == "%{}"
+    end
+
     test "dynamic attributes" do
       assigns = %{attrs: [name: "1", phone: true]}
 
