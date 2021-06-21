@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView.Static do
           connect_info: %{},
           conn_session: conn_session,
           root_view: view,
-          changed: %{}
+          __changed__: %{}
         },
         action,
         flash,
@@ -167,8 +167,8 @@ defmodule Phoenix.LiveView.Static do
         %{
           assign_new: {parent.assigns.__assigns__, []},
           phoenix_live_layout: false,
-          changed: %{},
-          root_view: parent.private.root_view
+          root_view: parent.private.root_view,
+          __changed__: %{}
         },
         nil,
         %{},

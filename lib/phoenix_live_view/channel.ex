@@ -918,8 +918,8 @@ defmodule Phoenix.LiveView.Channel do
       connect_params: connect_params,
       connect_info: connect_info,
       assign_new: {%{}, assign_new},
-      changed: %{},
-      root_view: root_view
+      root_view: root_view,
+      __changed__: %{}
     }
   end
 
@@ -932,8 +932,8 @@ defmodule Phoenix.LiveView.Channel do
       connect_info: connect_info,
       assign_new: {parent_assigns, assign_new},
       phoenix_live_layout: false,
-      changed: %{},
-      root_view: root_view
+      root_view: root_view,
+      __changed__: %{}
     }
   end
 

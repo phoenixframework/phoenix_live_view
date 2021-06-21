@@ -203,7 +203,7 @@ defmodule Phoenix.LiveView.Engine do
   map in the assigns with the key `__changed__` and passing
   `true` to the dynamic parts. The map should contain
   the name of any changed field as key and the boolean
-  true as value. If a field is not listed in `:changed`,
+  true as value. If a field is not listed in `__changed__`,
   then it is always considered unchanged.
 
   If a field is unchanged and live believes a dynamic

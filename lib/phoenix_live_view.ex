@@ -583,12 +583,8 @@ defmodule Phoenix.LiveView do
 
   def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
     case assigns do
-      %{^key => _} ->
-        assigns
-
-      %{} ->
-        {assigns, changed} = Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
-        %{assigns | __changed__: changed}
+      %{^key => _} -> assigns
+      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
     end
   end
 
@@ -622,8 +618,7 @@ defmodule Phoenix.LiveView do
         assigns
 
       %{} ->
-        {assigns, changed} = Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
-        %{assigns | __changed__: changed}
+        Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
     end
   end
 
@@ -693,6 +688,33 @@ defmodule Phoenix.LiveView do
   end
 
   def update(assigns, _key, fun) when is_function(fun, 1) do
+    raise ArgumentError,
+          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+            inspect(assigns)
+  end
+
+  @doc """
+  Checks if the given key changed in `socket_or_assigns`.
+
+  The first argument is either a LiveView `socket` or an
+  `assigns` map from function components.
+
+  ## Examples
+
+      iex> changed?(socket, :count)
+
+  """
+  def changed?(socket_or_assigns, key)
+
+  def changed?(%Socket{assigns: assigns}, key) do
+    Phoenix.LiveView.Utils.changed?(assigns, key)
+  end
+
+  def changed?(%{__changed__: _} = assigns, key) do
+    Phoenix.LiveView.Utils.changed?(assigns, key)
+  end
+
+  def changed?(assigns, _key) do
     raise ArgumentError,
           "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
             inspect(assigns)
