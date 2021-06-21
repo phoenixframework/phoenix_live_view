@@ -558,12 +558,13 @@ defmodule Phoenix.LiveView.Engine do
               unquote(__MODULE__).changed_assign?(changed, unquote(assign))
             end
 
-          nested ->
+          [assign | tail] ->
             quote do
               unquote(__MODULE__).nested_changed_assign?(
                 unquote(@assigns_var),
                 changed,
-                unquote(nested)
+                unquote(assign),
+                unquote(tail)
               )
             end
         end
@@ -704,7 +705,7 @@ defmodule Phoenix.LiveView.Engine do
   defp component_changed?(entries, assigns, changed) do
     Enum.any?(entries, fn
       [key] -> changed_assign?(changed, key)
-      nested -> nested_changed_assign?(assigns, changed, nested)
+      [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
     end)
   end
 
@@ -754,8 +755,13 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Nested assign
+  defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
+    {{{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns}
+  end
+
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
-    {left, vars, assigns} = analyze_assign(left, vars, assigns, [right | nest])
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
   end
 
@@ -787,6 +793,10 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Delegates to analyze assign
+  defp analyze({{:., _, [Access, :get]}, _, [_, _]} = expr, vars, assigns) do
+    analyze_assign(expr, vars, assigns, [])
+  end
+
   defp analyze({{:., _, [_, _]}, _, []} = expr, vars, assigns) do
     analyze_assign(expr, vars, assigns, [])
   end
@@ -983,30 +993,51 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def changed_assign?(nil, _name) do
-    true
-  end
-
   def changed_assign?(changed, name) do
     case changed do
       %{^name => _} -> true
       %{} -> false
+      nil -> true
     end
   end
 
   @doc false
-  def nested_changed_assign?(assigns, changed, [head | _] = all) do
-    changed_assign?(changed, head) and recur_changed_assign?(assigns, changed, all)
+  def nested_changed_assign?(assigns, changed, head, tail) do
+    case changed do
+      %{^head => changed} ->
+        case assigns do
+          %{^head => assigns} -> recur_changed_assign?(assigns, changed, tail)
+          %{} -> true
+        end
+
+      %{} ->
+        false
+
+      nil ->
+        true
+    end
   end
 
-  defp recur_changed_assign?(assigns, changed, [head]) do
+  defp recur_changed_assign?(assigns, changed, [{:struct, head} | tail]) do
+    recur_changed_assign?(assigns, changed, head, tail)
+  end
+
+  defp recur_changed_assign?(assigns, changed, [{:access, head} | tail]) do
+    if match?(%_{}, assigns) or match?(%_{}, changed) do
+      true
+    else
+      recur_changed_assign?(assigns, changed, head, tail)
+    end
+  end
+
+  defp recur_changed_assign?(assigns, changed, head, []) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
       {_, _} -> true
     end
   end
 
-  defp recur_changed_assign?(assigns, changed, [head | tail]) do
+  defp recur_changed_assign?(assigns, changed, head, tail) do
     case {assigns, changed} do
       {%{^head => assigns_value}, %{^head => changed_value}} ->
         recur_changed_assign?(assigns_value, changed_value, tail)
