@@ -12,25 +12,29 @@ considered:
     in the root layout will remain the same, even as you live navigate
     across LiveViews. All LiveViews defined at the router must have
     a root layout. The root layout is typically declared on the
-    router with `put_root_layout` and defined as "root.html.leex"
+    router with `put_root_layout` and defined as "root.html.heex"
     in your `MyAppWeb.LayoutView`. It may also be given via the
     `:layout` option to the router's `live` macro.
 
   * the app layout - this is the default application layout which
-    is not included or used by LiveViews. It defaults to "app.html.eex"
+    is not included or used by LiveViews. It defaults to "app.html.heex"
     in your `MyAppWeb.LayoutView`.
 
   * the live layout - this is the layout which wraps a LiveView and
     is rendered as part of the LiveView life-cycle. It must be opt-in
     by passing the `:layout` option on `use Phoenix.LiveView`. It is
-    typically set to "live.html.leex"in your `MyAppWeb.LayoutView`.
+    typically set to "live.html.heex"in your `MyAppWeb.LayoutView`.
 
 Overall, those layouts are found in `templates/layout` with the
 following names:
 
-    * root.html.leex
-    * app.html.eex
-    * live.html.leex
+    * root.html.heex
+    * app.html.heex
+    * live.html.heex
+
+> Note: if you are using earlier Phoenix versions, those layouts
+> may use `.eex` and `.leex` extensions instead of `.heex`, but
+> we have since then normalized on the latter.
 
 All layouts must call `<%= @inner_content %>` to inject the
 content rendered by the layout.
@@ -52,7 +56,7 @@ other, but the "app" layout uses the `@conn` and is used as part
 of the regular request life-cycle. The "live" layout is part of
 the LiveView and therefore has direct access to the `@socket`.
 
-For example, you can define a new `live.html.leex` layout with
+For example, you can define a new `live.html.heex` layout with
 dynamic content. You must use `@inner_content` where the output
 of the actual template will be placed at:
 

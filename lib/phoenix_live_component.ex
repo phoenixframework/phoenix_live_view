@@ -352,7 +352,7 @@ defmodule Phoenix.LiveComponent do
       end
 
   The above approach is the preferred one when passing blocks to `do/end`.
-  However, if you are outside of a .leex template and you want to invoke a
+  However, if you are outside of a .heex template and you want to invoke a
   component passing a `do/end` block, you will have to explicitly handle the
   assigns by giving it a `->` clause:
 

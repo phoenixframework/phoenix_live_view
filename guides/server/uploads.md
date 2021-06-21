@@ -44,7 +44,7 @@ Use the `Phoenix.LiveView.Helpers.live_file_input/2` file
 input generator to render a file input for the upload:
 
 ```elixir
-# lib/my_app_web/live/upload_live.html.leex
+# lib/my_app_web/live/upload_live.html.heex
 
 <form id="upload-form" phx-submit="save" phx-change="validate">
   <%= live_file_input @uploads.avatar %>
@@ -74,10 +74,10 @@ info, errors, etc.
 Let's look at an annotated example:
 
 ```elixir
-# lib/my_app_web/live/upload_live.html.leex
+# lib/my_app_web/live/upload_live.html.heex
 
 <%# use phx-drop-target with the upload ref to enable file drag and drop %>
-<section phx-drop-target="<%= @uploads.avatar.ref %>">
+<section phx-drop-target={@uploads.avatar.ref}>
 
 <%# render each avatar entry %>
 <%= for entry <- @uploads.avatar.entries do %>
@@ -90,10 +90,10 @@ Let's look at an annotated example:
     </figure>
 
     <%# entry.progress will update automatically for in-flight entries %>
-    <progress value="<%= entry.progress %>" max="100"> <%= entry.progress %>% </progress>
+    <progress value={entry.progress} max="100"> <%= entry.progress %>% </progress>
 
     <%# a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 %>
-    <button phx-click="cancel-upload" phx-value-ref="<%= entry.ref %>" aria-label="cancel">&times;</button>
+    <button phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
 
     <%# Phoenix.LiveView.Helpers.upload_errors/2 returns a list of error atoms %>
     <%= for err <- upload_errors(@uploads.avatar, entry) do %>

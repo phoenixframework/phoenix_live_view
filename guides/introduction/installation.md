@@ -153,7 +153,7 @@ latest javascript, then force an install with:
 npm install --force phoenix_live_view --prefix assets
 ```
 
-Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/root.html.leex`), before `app.js` is included like so:
+Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
 
 ```html
 <%= csrf_meta_tag() %>
@@ -212,13 +212,13 @@ The layout given to `put_root_layout` must use `<%= @inner_content %>` instead o
 </html>
 ```
 
-Once you have specified a root layout, "app.html.eex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.leex" layout to be used across all LiveViews, as we will describe in the next section.
+Once you have specified a root layout, "app.html.heex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.heex" layout to be used across all LiveViews, as we will describe in the next section.
 
-Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements that uses `src` and `href`. This way you can detect when new assets have been deployed by calling `static_changed?`.
+Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements in your layout that use `src` and `href`. This way you can detect when new assets have been deployed by calling `static_changed?`.
 
 ```elixir
-<link phx-track-static rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
-<script phx-track-static defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+<link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")} />
+<script phx-track-static defer type="text/javascript" src={Routes.static_path(@conn, "/js/app.js")}></script>
 ```
 
 ## phx.gen.live support
@@ -278,14 +278,14 @@ The change is to define the `live_view` and `live_component` functions in your `
   end
 ```
 
-Note that LiveViews are automatically configured to use a "live.html.leex" layout in this line:
+Note that LiveViews are automatically configured to use a "live.html.heex" layout in this line:
 
 ```elixir
 use Phoenix.LiveView,
   layout: {<%= web_namespace %>.LayoutView, "live.html"}
 ```
 
-"root.html.leex" is shared by regular and live views, "app.html.eex" is rendered inside the root layout for regular views, and "live.html.leex" is rendered inside the root layout for LiveViews. "live.html.leex" typically starts out as a copy of "app.html.eex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
+"layouts/root.html.heex" is shared by regular and live views, "app.html.heex" is rendered inside the root layout for regular views, and "live.html.heex" is rendered inside the root layout for LiveViews. "live.html.heex" typically starts out as a copy of "app.html.heex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
 
 ## Progress animation
 
@@ -310,4 +310,4 @@ window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 
 ## Location for LiveView modules
 
-By convention your LiveView modules and `leex` templates should be placed in `lib/my_app_web/live/` directory.
+By convention your LiveView modules and `heex` templates should be placed in `lib/my_app_web/live/` directory.

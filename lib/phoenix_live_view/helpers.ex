@@ -532,6 +532,7 @@ defmodule Phoenix.LiveView.Helpers do
       {:safe, ["Hello ", "world", "\\n"]}
 
   """
+  @deprecated "Use ~H instead"
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
@@ -555,34 +556,50 @@ defmodule Phoenix.LiveView.Helpers do
     * Built-in handling of HTML attributes
     * An HTML-like notation for injecting function components
     * Compile-time validation of the structure of the template
+    * The ability to minimize the amount of data sent over the wire
 
   ## Example
 
       def render(assigns) do
         ~H"\""
         <div title="My div" class={@class}>
+          <p>Hello <%= @name %></p>
           <MyApp.Weather.render city="Kraków"/>
         </div>
         "\""
       end
 
-  ## Syntax extensions
+  ## Syntax
 
-  Although `HEEx` may be considered an extension of `EEx`, templates written in
-  `EEx` may not be fully compatible with `HEEx`. The same goes the other way
-  around. Whenever copying/pasting code from one format to the other, make sure
-  you update it accordingly.
+  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
+  `<%= ... %>` for interpolating results. In this section, we are going to cover the
+  basic constructs in `HEEx` templates as well as its syntax extensions.
 
-  The main difference comes when defining attributes and function components.
+  ### Interpolation
 
-  ### Defining attributes
+  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
+  of HTML tags:
 
-  `EEx` handles templates as plain text so you're free to interpolate Elixir code
-  anywhere in your template. `HEEx`, on the other hand, parses the code, validating
-  its structure, including HTML/component nodes and attributes. In order to perform
-  validation, code interpolation using `<%= ... %>` and `<% ... %>` are restricted
-  to the body (inner content) of the HTML/component nodes and it cannot be applied
-  within tags.
+      <p>Hello, <%= @name %></p>
+
+  Similarly, conditionals and other block Elixir constructs are supported:
+
+      <%= if @show_greeting? do %>
+        <p>Hello, <%= @name %></p>
+      <% end %>
+
+  Note we don't include the equal sign `=` in the closing tag (because the closing
+  tag does not output anything).
+
+  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
+  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
+  Let's check it out.
+
+  ### HEEx extension: Defining attributes
+
+  Since `HEEx` must parse and validating the HTML structure, code interpolation using
+  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
+  HTML/component nodes and it cannot be applied within tags.
 
   For instance, the following syntax is invalid:
 
@@ -606,7 +623,7 @@ defmodule Phoenix.LiveView.Helpers do
   The expression inside `{ ... }` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
 
-  ### Defining function components
+  ### HEEx extension: Defining function components
 
   Function components are stateless components implemented as pure functions
   with the help of the `Phoenix.Component` module. They can be either local
