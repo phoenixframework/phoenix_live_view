@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          ~L"""
+          ~H"""
           Current temperature: <%= @temperature %>
           """
         end
@@ -121,8 +121,11 @@ defmodule Phoenix.LiveView do
       end
 
   The `c:render/1` callback receives the `socket.assigns` and is responsible
-  for returning rendered content. You can use `Phoenix.LiveView.Helpers.sigil_L/2`
-  to inline LiveView templates.
+  for returning rendered content. We use the `~H` sigil to define a HEEx
+  template, which stands for HTML+EEx. They are an extension of Elixir's
+  builtin EEx templates, with support for HTML validation, syntax-based
+  components, smart change tracking, and more. You can learn more about
+  the template syntax in `Phoenix.LiveView.Helpers.sigil_H/2`.
 
   Next, decide where you want to use your LiveView.
 
@@ -225,7 +228,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          ~L"""
+          ~H"""
           Current temperature: <%= @temperature %>
           """
         end
@@ -234,7 +237,7 @@ defmodule Phoenix.LiveView do
   and same name as the LiveView. For example, if the file above is placed
   at `lib/my_app_web/live/thermostat_live.ex`, you can also remove the
   `c:render/1` definition above and instead put the template code at
-  `lib/my_app_web/live/thermostat_live.html.leex`.
+  `lib/my_app_web/live/thermostat_live.html.heex`.
 
   Alternatively, you can keep the `c:render/1` callback but delegate to an
   existing `Phoenix.View` module in your application. For example:
@@ -276,59 +279,61 @@ defmodule Phoenix.LiveView do
   | [DOM Patching](dom-patching.md) | `phx-update` |
   | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
 
-  ## Compartmentalizing markup and events with `render`, `live_render`, and `live_component`
+  ## Compartmentalize state, markup, and events in LiveView
 
-  We can render another template directly from a LiveView template by simply
-  calling `Phoenix.View.render/3`:
+  LiveView supports two extension mechanisms: function components, provided by
+  `HEEx` templates, and stateful components.
 
-      render SomeView, "child_template.html", assigns
+  Function components are any function that receives an assigns map, similar
+  to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
 
-  Where `SomeView` is a regular `Phoenix.View`, typically defined in
-  `lib/my_app_web/views/some_view.ex` and "child_template.html" is defined
-  at `lib/my_app_web/templates/some_view/child_template.html.leex`. As long
-  as the template has the `.leex` extension and all assigns are passed,
-  LiveView change tracking will also work across templates.
+      def weather_greeting(assigns) do
+        ~H"\""
+        <div title="My div" class={@class}>
+          <p>Hello <%= @name %></p>
+          <MyApp.Weather.render city="Kraków"/>
+        </div>
+        "\""
+      end
 
-  When rendering a child template, any of the `phx-*` events in the child
-  template will be sent to the LiveView. In other words, similar to regular
-  Phoenix templates, a regular `render` call does not start another LiveView.
-  This means `render` is useful for sharing markup between views.
+  You can learn more about function components in the `Phoenix.Component`
+  module. At the end of the day, they are useful mechanism to reuse markup
+  in your LiveViews.
 
-  If you want to start a separate LiveView from within a LiveView, then you
-  can call [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`) instead of
-  [`render/3`](`Phoenix.View.render/3`). This child LiveView runs
-  in a separate process than the parent, with its own `c:mount/3` and `c:handle_event/3`
-  callbacks. If a child LiveView crashes, it won't affect the parent. If the
-  parent crashes, all children are terminated.
-
-  When rendering a child LiveView, the `:id` option is required to uniquely
-  identify the child. A child LiveView will only ever be rendered and mounted
-  a single time, provided its ID remains unchanged. Updates to a child session
-  will be merged on the client, but not passed back up until either a crash and
-  re-mount or a connection drop and recovery. To force a child to re-mount with
-  new session data, a new ID must be provided.
-
-  Given that a LiveView runs on its own process, it is an excellent tool for creating
-  completely isolated UI elements, but it is a slightly expensive abstraction if
-  all you want is to compartmentalize markup and events. For example, if you are
-  showing a table with all users in the system, and you want to compartmentalize
-  this logic, rendering a separate `LiveView` for each user, then using a process
-  per user would likely be too expensive. For these cases, LiveView provides
-  `Phoenix.LiveComponent`, which are rendered using [`live_component/3`](`Phoenix.LiveView.Helpers.live_render/3`):
+  However, sometimes you need to compartmentlize or reuse more than markup.
+  Perhaps you want to move part of the state or part of the events in your
+  LiveView to a separate module. For these cases, LiveView provides
+  `Phoenix.LiveComponent`, which are rendered using
+  [`live_component/2`](`Phoenix.LiveView.Helpers.live_component/2`):
 
       <%= live_component(UserComponent, id: user.id, user: user) %>
 
-  Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as well as their
-  own state with change tracking support. Components are also lightweight as they
-  "run" in the same process as the parent `LiveView`. However, this means an error
-  in a component would cause the whole view to fail to render. See `Phoenix.LiveComponent`
-  for a complete rundown on components.
+  Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as
+  well as their own state with change tracking support. Components are also
+  lightweight as they "run" in the same process as the parent `LiveView`.
+  However, this means an error in a component would cause the whole view to
+  fail to render. See `Phoenix.LiveComponent` for a complete rundown on components.
+
+  Finally, if you want complete isolation between parts of a LiveView, you can
+  always render a LiveView inside another LiveView by calling
+  [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`). This child LiveView
+  runs in a separate process than the parent, with its own callbacks. If a child
+  LiveView crashes, it won't affect the parent. If the parent crashes, all children
+  are terminated.
+
+  When rendering a child LiveView, the `:id` option is required to uniquely
+  identify the child. A child LiveView will only ever be rendered and mounted
+  a single time, provided its ID remains unchanged.
+
+  Given that a LiveView runs on its own process, it is an excellent tool for creating
+  completely isolated UI elements, but it is a slightly expensive abstraction if
+  all you want is to compartmentalize markup or events (or both).
 
   To sum it up:
 
-    * [`render/3`](`Phoenix.View.render/3`) - compartmentalizes markup
-    * [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) - compartmentalizes state, markup, and events
-    * [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`) - compartmentalizes state, markup, events, and error isolation
+    * use `Phoenix.Component` to compartmentalize/reuse markup
+    * use `Phoenix.LiveComponent` to compartmentalize state, markup, and events
+    * use nested `Phoenix.LiveView` to compartmentalize state, markup, events, and error isolation
 
   ## Endpoint configuration
 
@@ -350,7 +355,7 @@ defmodule Phoenix.LiveView do
 
   These guides focus on server-side functionality:
 
-    * [Assigns and LiveEEx](assigns-eex.md)
+    * [Assigns and HEEx templates](assigns-eex.md)
     * [Error and exception handling](error-handling.md)
     * [Live Layouts](live-layouts.md)
     * [Live Navigation](live-navigation.md)

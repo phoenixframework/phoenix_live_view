@@ -560,14 +560,12 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Example
 
-      def render(assigns) do
-        ~H"\""
-        <div title="My div" class={@class}>
-          <p>Hello <%= @name %></p>
-          <MyApp.Weather.render city="Kraków"/>
-        </div>
-        "\""
-      end
+      ~H"\""
+      <div title="My div" class={@class}>
+        <p>Hello <%= @name %></p>
+        <MyApp.Weather.render city="Kraków"/>
+      </div>
+      "\""
 
   ## Syntax
 

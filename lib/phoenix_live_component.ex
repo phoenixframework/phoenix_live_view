@@ -5,8 +5,9 @@ defmodule Phoenix.LiveComponent do
 
   Components are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.LiveView.Helpers.live_component/3` in a parent LiveView.
-  Components run inside the LiveView process, but may have their own
-  state and event handling.
+  Components run inside the LiveView process, but they have their own
+  state, event handling and life-cycle. That's why they are also called
+  stateful components.
 
   The simplest component only needs to define a `c:render/1` function:
 
@@ -28,36 +29,15 @@ defmodule Phoenix.LiveComponent do
 
       <%= live_component HeroComponent, id: :hero, content: @content %>
 
-  Components come in two shapes, stateless or stateful. Stateless
-  components are documented below but note they are deprecated in
-  favor of function components described in `Phoenix.Component`.
-  Stateful components always require the `:id` key to be given,
-  as done above.
+  A component must receive the `:id` assign as argument, which is
+  used to uniquely identify the component. A component will be treated
+  as the same component as long as its `:id` does not change.
 
-  ## Stateless components life-cycle
+  > Note: previous LiveView versions allowed the `:id` to be skipped
+  > on `live_component` but those are now discouraged since the addition
+  > of function components, outlined in `Phoenix.Component`.
 
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called, the following callbacks will be invoked
-  in the component:
-
-      mount(socket) -> update(assigns, socket) -> render(assigns)
-
-  First `c:mount/1` is called only with the socket. `c:mount/1` can be used
-  to set any initial state. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket.
-  After the component is updated, `c:render/1` is called with all assigns.
-
-  A stateless component is always mounted, updated, and rendered whenever
-  the parent template changes. That's why they are stateless: no state
-  is kept after the component.
-
-  However, any component can be made stateful by passing an `:id` assign.
-
-  ## Stateful components life-cycle
-
-  A stateful component is a component that receives an `:id` on [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`):
-
-      <%= live_component HeroComponent, id: :hero, content: @content %>
+  ## Life-cycle
 
   Stateful components are identified by the component module and their ID.
   Therefore, two different component modules with the same ID are different
@@ -66,34 +46,36 @@ defmodule Phoenix.LiveComponent do
 
       <%= live_component UserComponent, id: @user.id, user: @user %>
 
-  Also note the given `:id` is not necessarily used as the DOM ID. If you
-  want to set a DOM ID, it is your responsibility to set it when rendering:
+  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called,
+  `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
+  receives the `socket` as argument. Then `c:update/2` is invoked with all of the
+  assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
+  If `c:update/2` is not defined all assigns are simply merged into the socket.
+  After the component is updated, `c:render/1` is called with all assigns.
+  On first render, we get:
+
+      mount(socket) -> update(assigns, socket) -> render(assigns)
+
+  On further rendering:
+
+      update(assigns, socket) -> render(assigns)
+
+  Note all stateful components require a single root element in the HTML template
+  and you will receive a warning otherwise. Furthermore, the given `:id` is not
+  necessarily used as the DOM ID. If you want to set a DOM ID, it is your
+  responsibility to do so when rendering:
 
       defmodule UserComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L\"""
-          <div id="user-<%= @id %>" class="user"><%= @user.name %></div>
-          \"""
+          ~H"\""
+          <div id={"user-\#{@id}"} class="user">
+            <%= @user.name %>
+            </div>
+          "\""
         end
       end
-
-  It is recommended to have only a single root element in the HTML template
-  for stateful components. LiveView will emit warnings in future versions if
-  this is not the case.
-
-  In stateful components, `c:mount/1` is called only once, when the
-  component is first rendered. For each rendering, the optional
-  `c:preload/1` and `c:update/2` callbacks are called before `c:render/1`.
-
-  So on first render, the following callbacks will be invoked:
-
-      preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
-
-  On subsequent renders, these callbacks will be invoked:
-
-      preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
 
   ## Targeting Component Events
 
@@ -104,7 +86,7 @@ defmodule Phoenix.LiveComponent do
   `@myself` assign, which is an *internal unique reference* to the
   component instance:
 
-      <a href="#" phx-click="say_hello" phx-target="<%= @myself %>">
+      <a href="#" phx-click="say_hello" phx-target={@myself}>
         Say hello!
       </a>
 
@@ -133,12 +115,27 @@ defmodule Phoenix.LiveComponent do
         Dismiss
       </a>
 
-  ### Preloading and update
+  ## Preloading and update
 
-  Every time a stateful component is rendered, both `c:preload/1` and
-  `c:update/2` are called. To understand why both callbacks are necessary,
-  imagine that you implement a component and the component needs to load
-  some state from the database. For example:
+  Stateful components also support an optional `c:preload/1` callback.
+  The `c:preload/1` callback is useful when multiple components of the
+  same type are rendered on the page and you want to preload or augment
+  their data in batches.
+
+  For each rendering, the optional `c:preload/1` and `c:update/2` callbacks
+  are called before `c:render/1`.
+
+  So on first render, the following callbacks will be invoked:
+
+      preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
+
+  On subsequent renders, these callbacks will be invoked:
+
+      preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
+
+  To provide a more complete understanding of why both callbacks are necessary,
+  let's see an example. Imagine you are implementing a component and the component
+  needs to load some state from the database. For example:
 
       <%= live_component UserComponent, id: user_id %>
 
@@ -146,7 +143,7 @@ defmodule Phoenix.LiveComponent do
   callback:
 
       def update(assigns, socket) do
-        user = Repo.get! User, assigns.id
+        user = Repo.get!(User, assigns.id)
         {:ok, assign(socket, :user, user)}
       end
 
@@ -196,12 +193,12 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L\"""
-          <form phx-submit="..." phx-target="<%= @myself %>">
+          ~H"\""
+          <form phx-submit="..." phx-target={@myself}>
             <input name="title"><%= @card.title %></input>
             ...
           </form>
-          \"""
+          "\""
         end
 
         ...
@@ -313,11 +310,11 @@ defmodule Phoenix.LiveComponent do
 
   ## LiveComponent blocks
 
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked, it is also possible to pass a `do/end`
-  block:
+  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked,
+  it is also possible to pass a `do/end` block:
 
       <%= live_component GridComponent, entries: @entries do %>
-        New entry: <%= @entry %>
+        <% entry -> %>New entry: <%= entry %>
       <% end %>
 
   The `do/end` will be available in an assign named `@inner_block`.
@@ -329,19 +326,19 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L\"""
+          ~H"\""
           <div class="grid">
             <%= for entry <- @entries do %>
               <div class="column">
-                <%= render_block(@inner_block, entry: entry) %>
+                <%= render_block(@inner_block, entry) %>
               </div>
             <% end %>
           </div>
-          \"""
+          "\""
         end
       end
 
-  Where the `:entry` assign was injected into the `do/end` block.
+  Where the `entry` variable was injected into the `do/end` block.
 
   Note the `@inner_block` assign is also passed to `c:update/2`
   along all other assigns. So if you have a custom `update/2`
@@ -349,15 +346,6 @@ defmodule Phoenix.LiveComponent do
 
       def update(%{inner_block: inner_block}, socket) do
         {:ok, assign(socket, inner_block: inner_block)}
-      end
-
-  The above approach is the preferred one when passing blocks to `do/end`.
-  However, if you are outside of a .heex template and you want to invoke a
-  component passing a `do/end` block, you will have to explicitly handle the
-  assigns by giving it a `->` clause:
-
-      live_component GridComponent, entries: @entries do
-        new_assigns -> "New entry: " <> new_assigns[:entry]
       end
 
   ## Live patches and live redirects
@@ -385,9 +373,9 @@ defmodule Phoenix.LiveComponent do
       <%= live_component MyComponent, user: @user, org: @org %>
 
   Luckily, because LiveViews and LiveComponents are in the same process,
-  they share the same data structures. For example, in the code above,
-  the view and the component will share the same copies of the `@user`
-  and `@org` assigns.
+  they share the data structure representations in memory. For example,
+  in the code above, the view and the component will share the same copies
+  of the `@user` and `@org` assigns.
 
   You should also avoid using stateful components to provide abstract DOM
   components. As a guideline, a good LiveComponent encapsulates
@@ -402,11 +390,11 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~L\"""
+          ~H"\""
           <button class="css-framework-class" phx-click="click">
             <%= @text %>
           </button>
-          \"""
+          "\""
         end
 
         def handle_event("click", _, socket) do
@@ -420,11 +408,11 @@ defmodule Phoenix.LiveComponent do
       def my_button(text, click) do
         assigns = %{text: text, click: click}
 
-        ~L\"""
+        ~H"\""
         <button class="css-framework-class" phx-click="<%= @click %>">
             <%= @text %>
         </button>
-        \"""
+        "\""
       end
 
   If you keep components mostly as an application concern with
@@ -442,34 +430,31 @@ defmodule Phoenix.LiveComponent do
   ### Change tracking requirement
 
   Another limitation of components is that they must always be change
-  tracked. For example, if you render a component inside `form_for`, like
+  tracked. For example, if you render a component inside `content_tag`, like
   this:
 
-      <%= form_for @changeset, "#", fn f -> %>
-        <%= live_component SomeComponent, f: f %>
+      <%= content_tag :div, @div_attrs do %>
+        <%= live_component SomeComponent, id: :example %>
       <% end %>
 
-  The component ends up enclosed by the form markup, where LiveView
+  The component ends up enclosed by the `content_tag`, where LiveView
   cannot track it. In such cases, you may receive an error such as:
 
       ** (ArgumentError) cannot convert component SomeComponent to HTML.
       A component must always be returned directly as part of a LiveView template
 
-  In this particular case, this can be addressed by using the `form_for`
-  variant without anonymous functions:
+  Luckily, there is little reason to use `content_tag` inside HEEx templates.
+  So instead you can do:
 
-      <%= f = form_for @changeset, "#" %>
-        <%= live_component SomeComponent, f: f %>
-      </form>
+      <div {@div_attrs}>
+        <%= live_component SomeComponent, id: :example %>
+      </div>
 
-  This issue can also happen with other helpers, such as `content_tag`:
+  Similarly, they also work inside any function component, such as `form_for`:
 
-      <%= content_tag :div do %>
-        <%= live_component SomeComponent, f: f %>
-      <% end %>
-
-  In this case, the solution is to not use `content_tag` and rely on LiveEEx
-  to build the markup.
+      <.form_for let={f} data={@changeset} url="#">
+        <%= live_component FormComponent, id: :form %>
+      </.form_for>
 
   ### SVG support
 
@@ -487,9 +472,10 @@ defmodule Phoenix.LiveComponent do
   corner cases. For example, the `<image>` SVG tag may be rewritten to
   the `<img>` tag, since `<image>` is an obsolete HTML tag.
 
-  Luckily, there is a solution to this problem. Since SVG allows `<svg>`
-  tags to be nested, you can wrap the component content into an `<svg>`
-  tag. This will ensure that it is correctly interpreted by the browser.
+  Luckily, there is a simple solution to this problem. Since SVG allows
+  `<svg>` tags to be nested, you can wrap the component content into an
+  `<svg>` tag. This will ensure that it is correctly interpreted by the
+  browser.
   """
 
   defmodule CID do
