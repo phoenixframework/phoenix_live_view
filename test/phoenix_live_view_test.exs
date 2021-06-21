@@ -23,6 +23,9 @@ defmodule Phoenix.LiveViewUnitTest do
             URI.parse("https://www.example.com")
           )
 
+  @assigns_changes %{key: "value", map: %{foo: :bar}, __changed__: %{}}
+  @assigns_nil_changes %{key: "value", map: %{foo: :bar}, __changed__: nil}
+
   describe "flash" do
     test "get and put" do
       assert put_flash(@socket, :hello, "world").assigns.flash == %{"hello" => "world"}
@@ -204,6 +207,32 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
+  describe "assign with assigns" do
+    test "tracks changes" do
+      assigns = assign(@assigns_changes, key: "value")
+      assert assigns.key == "value"
+      refute assigns.__changed__[:key]
+
+      assigns = assign(@assigns_changes, key: "changed")
+      assert assigns.key == "changed"
+      assert assigns.__changed__[:key]
+
+      assigns = assign(@assigns_nil_changes, key: "changed")
+      assert assigns.key == "changed"
+      assert assigns.__changed__ == nil
+    end
+
+    test "keeps whole maps in changes" do
+      assigns = assign(@assigns_changes, map: %{foo: :baz})
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__[:map] == %{foo: :bar}
+
+      assigns = assign(@assigns_nil_changes, map: %{foo: :baz})
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__ == nil
+    end
+  end
+
   describe "assign_new with socket" do
     test "uses socket assigns if no parent assigns are present" do
       socket =
@@ -235,6 +264,52 @@ defmodule Phoenix.LiveViewUnitTest do
                live_action: nil,
                flash: %{}
              }
+    end
+  end
+
+  describe "assign_new with assigns" do
+    test "tracks changes" do
+      assigns = assign_new(@assigns_changes, :key, fn -> raise "wont be invoked" end)
+      assert assigns.key == "value"
+      refute assigns.__changed__[:key]
+
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
+      assert assigns.another == "changed"
+      assert assigns.__changed__[:another]
+
+      assigns = assign_new(@assigns_nil_changes, :another, fn -> "changed" end)
+      assert assigns.another == "changed"
+      assert assigns.__changed__ == nil
+    end
+  end
+
+  describe "update with socket" do
+    test "tracks changes" do
+      socket = @socket |> assign(key: "value") |> Utils.clear_changed()
+
+      socket = update(socket, :key, fn "value" -> "value" end)
+      assert socket.assigns.key == "value"
+      refute socket.changed[:key]
+
+      socket = update(socket, :key, fn "value" -> "changed" end)
+      assert socket.assigns.key == "changed"
+      assert socket.changed[:key]
+    end
+  end
+
+  describe "update with assigns" do
+    test "tracks changes" do
+      assigns = update(@assigns_changes, :key, fn "value" -> "value" end)
+      assert assigns.key == "value"
+      refute assigns.__changed__[:key]
+
+      assigns = update(@assigns_changes, :key, fn "value" -> "changed" end)
+      assert assigns.key == "changed"
+      assert assigns.__changed__[:key]
+
+      assigns = update(@assigns_nil_changes, :key, fn "value" -> "changed" end)
+      assert assigns.key == "changed"
+      assert assigns.__changed__ == nil
     end
   end
 

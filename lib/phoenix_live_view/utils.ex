@@ -21,17 +21,26 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Forces an assign.
+  Forces an assign on a socket.
   """
   def force_assign(%Socket{assigns: assigns, changed: changed} = socket, key, val) do
-    current_val = Map.get(assigns, key)
+    {assigns, changed} = force_assign(assigns, changed, key, val)
+    %{socket | assigns: assigns, changed: changed}
+  end
+
+  @doc """
+  Forces an assign with the given changed map.
+  """
+  def force_assign(assigns, nil, key, val), do: {Map.put(assigns, key, val), nil}
+
+  def force_assign(assigns, changed, key, val) do
     # If the current value is a map, we store it in changed so
     # we can perform nested change tracking. Also note the use
     # of put_new is important. We want to keep the original value
     # from assigns and not any intermediate ones that may appear.
-    new_changed = Map.put_new(changed, key, if(is_map(current_val), do: current_val, else: true))
-    new_assigns = Map.put(assigns, key, val)
-    %{socket | assigns: new_assigns, changed: new_changed}
+    current_val = Map.get(assigns, key)
+    changed_val = if is_map(current_val), do: current_val, else: true
+    {Map.put(assigns, key, val), Map.put_new(changed, key, changed_val)}
   end
 
   @doc """

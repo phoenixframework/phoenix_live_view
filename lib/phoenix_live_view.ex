@@ -526,7 +526,11 @@ defmodule Phoenix.LiveView do
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
   @doc """
-  Assigns a value into the socket only if it does not exist.
+  Assigns the given `key` with value from `fun` into `socket_or_assigns` if
+  one does not yet exist.
+
+  The first argument is either a LiveView `socket` or an `assigns` map from
+  function components.
 
   Useful for lazily assigning values and referencing parent assigns.
 
@@ -552,7 +556,9 @@ defmodule Phoenix.LiveView do
       end
 
   """
-  def assign_new(%Socket{} = socket, key, func) when is_function(func, 0) do
+  def assign_new(socket_or_assigns, key, fun)
+
+  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
     validate_assign_key!(key)
 
     case socket do
@@ -563,37 +569,83 @@ defmodule Phoenix.LiveView do
         # It is important to store the keys even if they are not in assigns
         # because maybe the controller doesn't have it but the view does.
         socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, func))
+        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, fun))
 
       %{} ->
-        Phoenix.LiveView.Utils.force_assign(socket, key, func.())
+        Phoenix.LiveView.Utils.force_assign(socket, key, fun.())
     end
   end
 
-  @doc """
-  Adds key value pairs to socket assigns.
+  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
+    case assigns do
+      %{^key => _} ->
+        assigns
 
-  A single key value pair may be passed, or a keyword list or a map
-  of assigns may be provided to be merged into existing socket assigns.
+      %{} ->
+        {assigns, changed} = Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
+        %{assigns | __changed__: changed}
+    end
+  end
+
+  def assign_new(assigns, _key, fun) when is_function(fun, 0) do
+    raise ArgumentError,
+          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+            inspect(assigns)
+  end
+
+  @doc """
+  Adds a `key`-`value` pair to `socket_or_assigns`.
+
+  The first argument is either a LiveView `socket` or an
+  `assigns` map from function components.
 
   ## Examples
 
       iex> assign(socket, :name, "Elixir")
-      iex> assign(socket, name: "Elixir", logo: "💧")
-      iex> assign(socket, %{name: "Elixir"})
+
   """
+  def assign(socket_or_assigns, key, value)
+
   def assign(%Socket{} = socket, key, value) do
     validate_assign_key!(key)
     Phoenix.LiveView.Utils.assign(socket, key, value)
   end
 
+  def assign(%{__changed__: changed} = assigns, key, value) do
+    case assigns do
+      %{^key => ^value} ->
+        assigns
+
+      %{} ->
+        {assigns, changed} = Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
+        %{assigns | __changed__: changed}
+    end
+  end
+
+  def assign(assigns, _key, _val) do
+    raise ArgumentError,
+          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+            inspect(assigns)
+  end
+
   @doc """
-  See `assign/3`.
+  Adds key-value pairs to assigns.
+
+  The first argument is either a LiveView `socket` or an
+  `assigns` map from function components.
+
+  A keyword list or a map of assigns must be given as argument
+  to be merged into existing assigns.
+
+  ## Examples
+
+      iex> assign(socket, name: "Elixir", logo: "💧")
+      iex> assign(socket, %{name: "Elixir"})
+
   """
-  def assign(%Socket{} = socket, attrs) when is_map(attrs) or is_list(attrs) do
-    Enum.reduce(attrs, socket, fn {key, value}, acc ->
-      validate_assign_key!(key)
-      Phoenix.LiveView.Utils.assign(acc, key, value)
+  def assign(socket_or_assigns, keyword_or_map) when is_map(keyword_or_map) or is_list(keyword_or_map) do
+    Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
+      assign(acc, key, value)
     end)
   end
 
@@ -606,7 +658,10 @@ defmodule Phoenix.LiveView do
   defp validate_assign_key!(_key), do: :ok
 
   @doc """
-  Updates an existing key in the socket assigns.
+  Updates an existing `key` with `fun` in the given `socket_or_assigns`.
+
+  The first argument is either a LiveView `socket` or an
+  `assigns` map from function components.
 
   The update function receives the current key's value and
   returns the updated value. Raises if the key does not exist.
@@ -616,11 +671,26 @@ defmodule Phoenix.LiveView do
       iex> update(socket, :count, fn count -> count + 1 end)
       iex> update(socket, :count, &(&1 + 1))
   """
-  def update(%Socket{assigns: assigns} = socket, key, func) do
-    case Map.fetch(assigns, key) do
-      {:ok, val} -> assign(socket, [{key, func.(val)}])
-      :error -> raise KeyError, key: key, term: assigns
+  def update(socket_or_assigns, key, fun)
+
+  def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 1) do
+    case assigns do
+      %{^key => val} -> assign(socket, key, fun.(val))
+      %{} -> raise KeyError, key: key, term: assigns
     end
+  end
+
+  def update(assigns, key, fun) when is_function(fun, 1) do
+    case assigns do
+      %{^key => val} -> assign(assigns, key, fun.(val))
+      %{} -> raise KeyError, key: key, term: assigns
+    end
+  end
+
+  def update(assigns, _key, fun) when is_function(fun, 1) do
+    raise ArgumentError,
+          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+            inspect(assigns)
   end
 
   @doc """
@@ -632,8 +702,8 @@ defmodule Phoenix.LiveView do
   calls `push_redirect/2` or `push_patch/2`.
 
   *Note*: You must also place the `Phoenix.LiveView.Router.fetch_live_flash/2`
-  plug in your browser's pipeline in place of `fetch_flash` to be supported,
-  for example:
+  plug in your browser's pipeline in place of `fetch_flash` for LiveView flash
+  messages be supported, for example:
 
       import Phoenix.LiveView.Router
 
