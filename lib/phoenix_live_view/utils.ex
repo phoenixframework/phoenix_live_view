@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.Utils do
     raise RuntimeError, """
     expected #{inspect(view)} to return a %Phoenix.LiveView.Rendered{} struct
 
-    Ensure your render function uses ~L, or your eex template uses the .leex extension.
+    Ensure your render function uses ~H, or your template uses the .heex extension.
 
     Got:
 

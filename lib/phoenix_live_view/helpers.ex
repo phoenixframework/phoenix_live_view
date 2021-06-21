@@ -487,12 +487,12 @@ defmodule Phoenix.LiveView.Helpers do
 
     Please call component with a 1-arity function, for example:
 
-        <%= component &func/1 %>
+        <%= component &example/1 %>
 
-        def func(assigns) do
-          ~L\"""
+        def example(assigns) do
+          ~H"\""
           Hello
-          \"""
+          "\""
         end
     """
   end

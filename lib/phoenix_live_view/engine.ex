@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Component do
   @moduledoc """
-  The struct returned by components in .leex templates.
+  The struct returned by components in .heex templates.
 
   This component is never meant to be output directly
   into the template. It should always be handled by
@@ -53,7 +53,7 @@ end
 
 defmodule Phoenix.LiveView.Comprehension do
   @moduledoc """
-  The struct returned by for-comprehensions in .leex templates.
+  The struct returned by for-comprehensions in .heex templates.
 
   See a description about its fields and use cases
   in `Phoenix.LiveView.Engine` docs.
@@ -96,7 +96,7 @@ end
 
 defmodule Phoenix.LiveView.Rendered do
   @moduledoc """
-  The struct returned by .leex templates.
+  The struct returned by .heex templates.
 
   See a description about its fields and use cases
   in `Phoenix.LiveView.Engine` docs.
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.Rendered do
     end
 
     def to_iodata(nil) do
-      raise "cannot convert .leex template with change tracking to iodata"
+      raise "cannot convert .heex/.leex template with change tracking to iodata"
     end
 
     def to_iodata(other) do
@@ -147,14 +147,15 @@ end
 
 defmodule Phoenix.LiveView.Engine do
   @moduledoc ~S"""
-  The `.leex` (Live EEx) template engine that tracks changes.
+  An `EEx` template engine that tracks changes.
 
-  In the documentation below, we will explain how it works internally.
-  For user-facing documentation, see `Phoenix.LiveView`.
+  This is often used by `Phoenix.LiveView.HTMLEngine` which also adds
+  HTML validation. In the documentation below, we will explain how it
+  works internally. For user-facing documentation, see `Phoenix.LiveView`.
 
   ## Phoenix.LiveView.Rendered
 
-  Whenever you render a `.leex` template, it returns a
+  Whenever you render a live template, it returns a
   `Phoenix.LiveView.Rendered` structure. This structure has
   three fields: `:static`, `:dynamic` and `:fingerprint`.
 
@@ -172,7 +173,7 @@ defmodule Phoenix.LiveView.Engine do
     4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
-  When you render a `.leex` template, you can convert the
+  When you render a live template, you can convert the
   rendered structure to iodata by alternating the static
   and dynamic fields, always starting with a static entry
   followed by a dynamic entry. The last entry will always
@@ -191,13 +192,13 @@ defmodule Phoenix.LiveView.Engine do
   This is also what calling `Phoenix.HTML.Safe.to_iodata/1`
   with a `Phoenix.LiveView.Rendered` structure returns.
 
-  Of course, the benefit of `.leex` templates is exactly
+  Of course, the benefit of live templates is exactly
   that you do not need to send both static and dynamic
   segments every time. So let's talk about tracking changes.
 
   ## Tracking changes
 
-  By default, a `.leex` template does not track changes.
+  By default, a live template does not track changes.
   Change tracking can be enabled by including a changed
   map in the assigns with the key `__changed__` and passing
   `true` to the dynamic parts. The map should contain
@@ -205,27 +206,27 @@ defmodule Phoenix.LiveView.Engine do
   true as value. If a field is not listed in `:changed`,
   then it is always considered unchanged.
 
-  If a field is unchanged and `.leex` believes a dynamic
+  If a field is unchanged and live believes a dynamic
   expression no longer needs to be computed, its value
   in the `dynamic` list will be `nil`. This information
   can be leveraged to avoid sending data to the client.
 
   ## Nesting and fingerprinting
 
-  `Phoenix.LiveView` also tracks changes across `.leex`
+  `Phoenix.LiveView` also tracks changes across live
   templates. Therefore, if your view has this:
 
       <%= render "form.html", assigns %>
 
   Phoenix will be able to track what is static and dynamic
   across templates, as well as what changed. A rendered
-  nested `.leex` template will appear in the `dynamic`
+  nested `live template will appear in the `dynamic`
   list as another `Phoenix.LiveView.Rendered` structure,
   which must be handled recursively.
 
   However, because the rendering of live templates can
   be dynamic in itself, it is important to distinguish
-  which `.leex` template was rendered. For example,
+  which live template was rendered. For example,
   imagine this code:
 
       <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
@@ -238,7 +239,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Comprehensions
 
-  Another optimization done by `.leex` templates is to
+  Another optimization done by live templates is to
   track comprehensions. If your code has this:
 
       <%= for point <- @points do %>
@@ -261,7 +262,7 @@ defmodule Phoenix.LiveView.Engine do
         ]
       }
 
-  This allows `.leex` templates to drastically optimize
+  This allows live templates to drastically optimize
   the data sent by comprehensions, as the static parts
   are emitted only once, regardless of the number of items.
 
@@ -275,8 +276,9 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Components
 
-  `.leex` also supports stateful components. Since they are
-  stateful, they are always handled lazily by the diff algorithm.
+  Live also supports stateful components defined with
+  `Phoenix.LiveComponent`. Since they are stateful, they are always
+  handled lazily by the diff algorithm.
   """
 
   @behaviour Phoenix.Template.Engine

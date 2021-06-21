@@ -121,7 +121,7 @@ Similarly, **do not** define variables at the top of your `render` function:
     def render(assigns) do
       sum = assigns.x + assigns.y
 
-      ~L"""
+      ~H"""
       <%= sum %>
       """
     end
