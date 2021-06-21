@@ -128,6 +128,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                "REMOTE COMPONENT: Value: 1"
     end
 
+    test "remote call from alias (self close)" do
+      alias Phoenix.LiveView.HTMLEngineTest
+      assigns = %{}
+
+      assert render_component("<HTMLEngineTest.remote_function_component value='1'/>") ==
+               "REMOTE COMPONENT: Value: 1"
+    end
+
     test "remote call with inner content" do
       assigns = %{}
 

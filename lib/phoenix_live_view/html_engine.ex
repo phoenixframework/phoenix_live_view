@@ -392,9 +392,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp decompose_remote_component_tag!(tag_name) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
-        mod = rest |> Enum.reverse() |> Module.concat()
+        aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
         fun = String.to_atom(fun_name)
-        {mod, fun}
+        {{:__aliases__, [], aliases}, fun}
 
       _ ->
         # TODO: Raise a proper error at the line of the component definition
