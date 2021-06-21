@@ -2,13 +2,13 @@ import {
   PHX_DONE_REFS,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import DOM from "phoenix_live_view/dom"
-import UploadEntry from "phoenix_live_view/upload_entry"
+import DOM from "./dom"
+import UploadEntry from "./upload_entry"
 
 let liveUploaderFileRef = 0
 

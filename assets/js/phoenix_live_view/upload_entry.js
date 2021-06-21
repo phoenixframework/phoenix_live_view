@@ -1,14 +1,14 @@
 import {
   PHX_ACTIVE_ENTRY_REFS,
   PHX_PREFLIGHTED_REFS
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   channelUploader,
   logError
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import LiveUploader from "phoenix_live_view/live_uploader"
+import LiveUploader from "./live_uploader"
 
 export default class UploadEntry {
   static isActive(fileEl, file){

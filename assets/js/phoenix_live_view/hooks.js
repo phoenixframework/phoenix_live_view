@@ -1,9 +1,9 @@
 import {
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF
-} from "phoenix_live_view/constants"
+} from "./constants"
 
-import LiveUploader from "phoenix_live_view/live_uploader"
+import LiveUploader from "./live_uploader"
 
 let Hooks = {
   LiveFileUpload: {

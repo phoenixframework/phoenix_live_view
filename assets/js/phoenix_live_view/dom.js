@@ -17,12 +17,12 @@ import {
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
   THROTTLED
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   clone,
   logError
-} from "phoenix_live_view/utils"
+} from "./utils"
 
 let DOM = {
   byId(id){ return document.getElementById(id) || logError(`no id found for ${id}`) },

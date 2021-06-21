@@ -9,14 +9,14 @@ import {
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   detectDuplicateIds
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import DOM from "phoenix_live_view/dom"
-import DOMPostMorphRestorer from "phoenix_live_view/dom_post_morph_restorer"
+import DOM from "./dom"
+import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {

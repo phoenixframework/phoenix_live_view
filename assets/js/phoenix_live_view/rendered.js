@@ -7,12 +7,12 @@ import {
   REPLY,
   STATIC,
   TITLE
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   isObject,
   logError
-} from "phoenix_live_view/utils"
+} from "./utils"
 
 export default class Rendered {
   static extract(diff){

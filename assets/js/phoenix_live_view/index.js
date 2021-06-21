@@ -7,7 +7,7 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 */
 
-import LiveSocket from "phoenix_live_view/live_socket"
+import LiveSocket from "./live_socket"
 export {
   LiveSocket
 }

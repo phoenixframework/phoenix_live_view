@@ -82,8 +82,6 @@ module.exports = {
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   moduleNameMapper: {
-    "^phoenix$": "<rootDir>/node_modules/phoenix/assets/js/phoenix/index.js",
-    "^phoenix/(.*)$": "<rootDir>/node_modules/phoenix/assets/js/phoenix/$1.js",
     "^phoenix_live_view$": "<rootDir>/js/phoenix_live_view/index.js",
     "^phoenix_live_view/(.*)$": "<rootDir>/js/phoenix_live_view/$1.js"
   },

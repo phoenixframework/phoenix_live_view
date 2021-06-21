@@ -1,8 +1,8 @@
 import {
   PHX_VIEW_SELECTOR
-} from "phoenix_live_view/constants"
+} from "./constants"
 
-import EntryUploader from "phoenix_live_view/entry_uploader"
+import EntryUploader from "./entry_uploader"
 
 export let logError = (msg, obj) => console.error && console.error(msg, obj)
 

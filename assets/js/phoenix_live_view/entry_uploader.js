@@ -1,6 +1,6 @@
 import {
   logError
-} from "phoenix_live_view/utils"
+} from "./utils"
 
 export default class EntryUploader {
   constructor(entry, chunkSize, liveSocket){

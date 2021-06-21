@@ -1,8 +1,8 @@
 import {
   maybe
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import DOM from "phoenix_live_view/dom"
+import DOM from "./dom"
 
 export default class DOMPostMorphRestorer {
   constructor(containerBefore, containerAfter, updateType){

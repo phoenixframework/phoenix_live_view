@@ -27,7 +27,7 @@ import {
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
   PUSH_TIMEOUT,
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   clone,
@@ -36,14 +36,14 @@ import {
   isEqualObj,
   logError,
   maybe
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import Browser from "phoenix_live_view/browser"
-import DOM from "phoenix_live_view/dom"
-import DOMPatch from "phoenix_live_view/dom_patch"
-import LiveUploader from "phoenix_live_view/live_uploader"
-import Rendered from "phoenix_live_view/rendered"
-import ViewHook from "phoenix_live_view/view_hook"
+import Browser from "./browser"
+import DOM from "./dom"
+import DOMPatch from "./dom_patch"
+import LiveUploader from "./live_uploader"
+import Rendered from "./rendered"
+import ViewHook from "./view_hook"
 
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)

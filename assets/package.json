@@ -29,7 +29,7 @@
     "expose-loader": "^3.0.0",
     "jest": "^27.0.1",
     "mini-css-extract-plugin": "1.6.0",
-    "phoenix": "file:../deps/phoenix",
+    "phoenix": "1.5.9",
     "style-loader": "^0.20.2",
     "wait-for-expect": "^1.1.0",
     "webpack": "5.37.1",

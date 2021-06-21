@@ -91,7 +91,7 @@ import {
   PHX_THROTTLE,
   RELOAD_JITTER
 
-} from "phoenix_live_view/constants"
+} from "./constants"
 
 import {
   clone,
@@ -99,13 +99,13 @@ import {
   closure,
   debug,
   maybe
-} from "phoenix_live_view/utils"
+} from "./utils"
 
-import Browser from "phoenix_live_view/browser"
-import DOM from "phoenix_live_view/dom"
-import Hooks from "phoenix_live_view/hooks"
-import LiveUploader from "phoenix_live_view/live_uploader"
-import View from "phoenix_live_view/view"
+import Browser from "./browser"
+import DOM from "./dom"
+import Hooks from "./hooks"
+import LiveUploader from "./live_uploader"
+import View from "./view"
 import {PHX_SESSION} from "./constants"
 
 export default class LiveSocket {
