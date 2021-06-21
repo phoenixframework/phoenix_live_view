@@ -177,7 +177,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
-  describe "assign" do
+  describe "assign with socket" do
     test "tracks changes" do
       socket = assign(@socket, existing: "foo")
       assert socket.changed.existing == true
@@ -204,7 +204,7 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
-  describe "assign_new" do
+  describe "assign_new with socket" do
     test "uses socket assigns if no parent assigns are present" do
       socket =
         @socket

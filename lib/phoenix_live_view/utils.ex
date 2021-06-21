@@ -168,9 +168,7 @@ defmodule Phoenix.LiveView.Utils do
   Clears the flash.
   """
   def clear_flash(%Socket{} = socket) do
-    socket
-    |> assign(:flash, %{})
-    |> Map.update!(:changed, &Map.delete(&1, {:private, :flash}))
+    assign(socket, :flash, %{})
   end
 
   @doc """
