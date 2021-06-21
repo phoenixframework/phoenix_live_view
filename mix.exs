@@ -99,6 +99,7 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveViewTest.View
       ],
       "Live EEx Engine": [
+        Phoenix.LiveComponent.CID,
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
         Phoenix.LiveView.Component,

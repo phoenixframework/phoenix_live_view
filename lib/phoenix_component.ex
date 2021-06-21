@@ -43,12 +43,39 @@ defmodule Phoenix.Component do
 
   ## `use Phoenix.Component`
 
-  Modules that have to define components should call `use Phoenix.Component`
-  at the top. Doing so will import the functions found in the `Phoenix.LiveView`
+  Modules that have to define function components should call `use Phoenix.Component`
+  at the top. Doing so will import the functions from both `Phoenix.LiveView`
   and `Phoenix.LiveView.Helpers` modules.
 
   Note it is not necessary to `use Phoenix.Component` inside `Phoenix.LiveView`
   and `Phoenix.LiveComponent`.
+
+  ## Assigns
+
+  While inside a function component, it is recommended to use
+  the functions in `Phoenix.LiveView` to manipulate assigns.
+  For example, let's imagine a component that receives the first
+  name and last name and must compute the name assign. One option
+  would be:
+
+      def show_name(assigns) do
+        assigns = assigns(assigns, :name, assigns.first_name <> assigns.last_name)
+
+        ~H"\""
+        <p>Your name is: <%= @name %></p>
+        "\""
+      end
+
+  However, when possible, it may be cleaner to break the logic over function
+  calls instead of precomputed assigns:
+
+      def show_name(assigns) do
+        ~H"\""
+        <p>Your name is: <%= full_name(@first_name, @last_name) %></p>
+        "\""
+      end
+
+      defp full_name(first_name, last_name), do: first_name <> last_name
 
   ## Blocks
 

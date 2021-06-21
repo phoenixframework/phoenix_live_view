@@ -544,7 +544,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Provides `~H` sigil with HTML safe Live `HEEx` syntax inside source files.
+  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
 
   > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
   > file:line:column information in error messages. Earlier Elixir versions will
