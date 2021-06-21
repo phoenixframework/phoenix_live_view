@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.Helpers do
   map.
 
   All of the `assigns` given are forwarded directly to the function as
-  the first only argument.
+  a single argument.
 
   ## Examples
 
