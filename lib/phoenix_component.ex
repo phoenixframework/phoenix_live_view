@@ -59,7 +59,7 @@ defmodule Phoenix.Component do
   would be:
 
       def show_name(assigns) do
-        assigns = assigns(assigns, :name, assigns.first_name <> assigns.last_name)
+        assigns = assign(assigns, :name, assigns.first_name <> assigns.last_name)
 
         ~H"\""
         <p>Your name is: <%= @name %></p>

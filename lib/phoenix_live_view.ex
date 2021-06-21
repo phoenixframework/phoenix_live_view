@@ -624,7 +624,7 @@ defmodule Phoenix.LiveView do
 
   def assign(assigns, _key, _val) do
     raise ArgumentError,
-          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+          "assign/3 expects a socket or an assigns map from a function component as first argument, got: " <>
             inspect(assigns)
   end
 
@@ -716,7 +716,7 @@ defmodule Phoenix.LiveView do
 
   def changed?(assigns, _key) do
     raise ArgumentError,
-          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
+          "changed?/2 expects a socket or an assigns map from a function component as first argument, got: " <>
             inspect(assigns)
   end
 
