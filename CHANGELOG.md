@@ -134,6 +134,11 @@ your application.
 ### Deprecations
   - Implicit assigns when passing a `do-end` block to `live_component` is deprecated
 
+## 0.15.7 (2021-05-24)
+
+### Bug fixes
+  - Fix broken webpack build throwing missing morphdom dependency
+
 ## 0.15.6 (2021-05-24)
 
 ### Bug fixes
