@@ -1036,6 +1036,10 @@ export class LiveSocket {
     this.boundTopLevelEvents = true
     document.body.addEventListener("click", function(){}) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
+      let scroll = history.state.scroll
+      if(typeof(scroll) === "number"){
+        window.scrollTo(0, scroll) // handle scroll restoration when navigating from a non-live view page
+      }
       if(e.persisted){ // reload page if being restored from back/forward cache
         this.getSocket().disconnect()
         this.withPageLoading({to: window.location.href, kind: "redirect"})
@@ -1154,8 +1158,20 @@ export class LiveSocket {
         this.withinOwners(target, (view, targetCtx) => {
           view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target))
         })
-      })
-    }, capture)
+      }, capture)
+    })
+    window.addEventListener("click", e => {
+      // This listener has been added to handle scroll restoration when navigating away from live view
+      let target = e.target
+      let href = target.getAttribute("href")
+
+      if(typeof(href) === "string") {
+        let scroll = window.scrollY
+
+        Browser.pushState("push", {type: "native", id: this.main.id, scroll: scroll}, href) // use pushState to store scroll position
+        e.preventDefault()
+      }
+    })
   }
 
   bindNav(){
@@ -1342,6 +1358,14 @@ export let Browser = {
           let currentState = history.state || {}
           currentState.scroll = meta.scroll
           history.replaceState(currentState, "", window.location.href)
+        } else if(meta.type == "native" && meta.scroll) {
+          let currentState = history.state || {}
+          currentState.scroll = meta.scroll
+          history.replaceState(currentState, "", window.location.href)
+
+          window.location.href = to
+
+          return
         }
 
         delete meta.scroll // Only store the scroll in the redirect case.
