@@ -34,7 +34,6 @@ defmodule Phoenix.LiveView.Socket do
                :parent_pid,
                :root_pid,
                :assigns,
-               :changed,
                :transport_pid
              ]}
   end
@@ -45,9 +44,8 @@ defmodule Phoenix.LiveView.Socket do
             parent_pid: nil,
             root_pid: nil,
             router: nil,
-            assigns: %{},
-            changed: %{},
-            private: %{changed: %{}},
+            assigns: %{__changed__: %{}},
+            private: %{__changed__: %{}},
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,
@@ -69,7 +67,6 @@ defmodule Phoenix.LiveView.Socket do
           root_pid: pid(),
           router: module(),
           assigns: assigns,
-          changed: map(),
           private: map(),
           fingerprints: fingerprints,
           redirected: nil | tuple(),

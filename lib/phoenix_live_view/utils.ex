@@ -23,15 +23,14 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Forces an assign on a socket.
   """
-  def force_assign(%Socket{assigns: assigns, changed: changed} = socket, key, val) do
-    {assigns, changed} = force_assign(assigns, changed, key, val)
-    %{socket | assigns: assigns, changed: changed}
+  def force_assign(%Socket{assigns: assigns} = socket, key, val) do
+    %{socket | assigns: force_assign(assigns, assigns.__changed__, key, val)}
   end
 
   @doc """
   Forces an assign with the given changed map.
   """
-  def force_assign(assigns, nil, key, val), do: {Map.put(assigns, key, val), nil}
+  def force_assign(assigns, nil, key, val), do: Map.put(assigns, key, val)
 
   def force_assign(assigns, changed, key, val) do
     # If the current value is a map, we store it in changed so
@@ -40,7 +39,8 @@ defmodule Phoenix.LiveView.Utils do
     # from assigns and not any intermediate ones that may appear.
     current_val = Map.get(assigns, key)
     changed_val = if is_map(current_val), do: current_val, else: true
-    {Map.put(assigns, key, val), Map.put_new(changed, key, changed_val)}
+    changed = Map.put_new(changed, key, changed_val)
+    Map.put(%{assigns | __changed__: changed}, key, val)
   end
 
   @doc """
@@ -51,22 +51,21 @@ defmodule Phoenix.LiveView.Utils do
 
     %Socket{
       socket
-      | changed: %{},
-        assigns: Map.merge(assigns, temporary),
-        private: Map.put(private, :changed, %{})
+      | assigns: assigns |> Map.merge(temporary) |> Map.put(:__changed__, %{}),
+        private: Map.put(private, :__changed__, %{})
     }
   end
 
   @doc """
   Checks if the socket changed.
   """
-  def changed?(%Socket{changed: changed}), do: changed != %{}
+  def changed?(%Socket{assigns: %{__changed__: changed}}), do: changed != %{}
 
   @doc """
   Checks if the given assign changed.
   """
-  def changed?(%Socket{changed: %{} = changed}, assign), do: Map.has_key?(changed, assign)
-  def changed?(%Socket{}, _), do: false
+  def changed?(%{__changed__: nil}, _assign), do: true
+  def changed?(%{__changed__: changed}, assign), do: Map.has_key?(changed, assign)
 
   @doc """
   Configures the socket for use.
@@ -188,7 +187,7 @@ defmodule Phoenix.LiveView.Utils do
     new_flash = Map.delete(socket.assigns.flash, key)
 
     socket = assign(socket, :flash, new_flash)
-    update_in(socket.private.changed[:flash], &Map.delete(&1 || %{}, key))
+    update_in(socket.private.__changed__[:flash], &Map.delete(&1 || %{}, key))
   end
 
   @doc """
@@ -199,14 +198,14 @@ defmodule Phoenix.LiveView.Utils do
     new_flash = Map.put(assigns.flash, key, msg)
 
     socket = assign(socket, :flash, new_flash)
-    update_in(socket.private.changed[:flash], &Map.put(&1 || %{}, key, msg))
+    update_in(socket.private.__changed__[:flash], &Map.put(&1 || %{}, key, msg))
   end
 
   @doc """
   Returns a map of the flash messages which have changed.
   """
   def changed_flash(%Socket{} = socket) do
-    socket.private.changed[:flash] || %{}
+    socket.private.__changed__[:flash] || %{}
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
@@ -220,28 +219,28 @@ defmodule Phoenix.LiveView.Utils do
   redirects, the events won't be invoked.
   """
   def push_event(%Socket{} = socket, event, %{} = payload) do
-    update_in(socket.private.changed[:push_events], &[[event, payload] | &1 || []])
+    update_in(socket.private.__changed__[:push_events], &[[event, payload] | &1 || []])
   end
 
   @doc """
   Annotates the reply in the socket changes.
   """
   def put_reply(%Socket{} = socket, %{} = payload) do
-    put_in(socket.private.changed[:push_reply], payload)
+    put_in(socket.private.__changed__[:push_reply], payload)
   end
 
   @doc """
   Returns the push events in the socket.
   """
   def get_push_events(%Socket{} = socket) do
-    Enum.reverse(socket.private.changed[:push_events] || [])
+    Enum.reverse(socket.private.__changed__[:push_events] || [])
   end
 
   @doc """
   Returns the reply in the socket.
   """
   def get_reply(%Socket{} = socket) do
-    socket.private.changed[:push_reply]
+    socket.private.__changed__[:push_reply]
   end
 
   @doc """
@@ -466,12 +465,9 @@ defmodule Phoenix.LiveView.Utils do
     %Socket{socket | private: Map.drop(private, keys)}
   end
 
-  defp render_assigns(%{assigns: assigns, changed: changed} = socket) do
+  defp render_assigns(%{assigns: assigns} = socket) do
     socket = %Socket{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
-
-    assigns
-    |> Map.put(:socket, socket)
-    |> Map.put(:__changed__, changed)
+    Map.put(assigns, :socket, socket)
   end
 
   defp layout(socket, view) do

@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp maybe_put_title(diff, socket) do
-    if Utils.changed?(socket, :page_title) do
+    if Utils.changed?(socket.assigns, :page_title) do
       Map.put(diff, @title, socket.assigns.page_title)
     else
       diff
@@ -670,7 +670,7 @@ defmodule Phoenix.LiveView.Diff do
     private =
       socket.private
       |> Map.take([:conn_session, :root_view])
-      |> Map.put(:changed, %{})
+      |> Map.put(:__changed__, %{})
 
     socket =
       configure_socket_for_component(socket, assigns, private, new_fingerprints())
@@ -682,10 +682,9 @@ defmodule Phoenix.LiveView.Diff do
   defp configure_socket_for_component(socket, assigns, private, prints) do
     %{
       socket
-      | assigns: assigns,
+      | assigns: Map.put(assigns, :__changed__, %{}),
         private: private,
         fingerprints: prints,
-        changed: %{}
     }
   end
 

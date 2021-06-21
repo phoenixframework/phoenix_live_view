@@ -511,7 +511,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}}
+      assert assigns[:flash] == %{}
 
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
@@ -535,13 +535,13 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}}
+      assert assigns[:flash] == %{}
 
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}}
+      assert assigns[:flash] == %{}
 
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
@@ -757,7 +757,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert {MyComponent, "hello", _, _, _} = cid_to_component[1]
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}, myself: %CID{cid: 1}}
+      assert assigns[:flash] == %{}
+      assert assigns[:myself] == %CID{cid: 1}
 
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
@@ -778,7 +779,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{}}
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}, myself: %CID{cid: 1}}
+      assert assigns[:flash] == %{}
+      assert assigns[:myself] == %CID{cid: 1}
 
       assert_received :render
 
@@ -797,7 +799,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints != another_socket.fingerprints
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}, myself: %CID{cid: 2}}
+      assert assigns[:flash] == %{}
+      assert assigns[:myself] == %CID{cid: 2}
 
       assert_received :render
     end
@@ -828,7 +831,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == previous_components
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}, myself: %CID{cid: 1}}
+      assert assigns[:flash] == %{}
+      assert assigns[:myself] == %CID{cid: 1}
 
       assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
       assert_received :render
@@ -852,7 +856,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components != previous_components
 
       assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-                      when assigns == %{flash: %{}, myself: %CID{cid: 1}}
+      assert assigns[:flash] == %{}
+      assert assigns[:myself] == %CID{cid: 1}
 
       assert_received {:update, %{from: :component},
                        %Socket{assigns: %{hello: "world", myself: %CID{cid: 1}}}}
