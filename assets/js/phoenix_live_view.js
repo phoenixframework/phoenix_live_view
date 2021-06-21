@@ -1853,8 +1853,6 @@ class DOMPatch {
           return DOM.isPhxDestroyed(node) ? null : node.id
         },
         onBeforeNodeAdded: (el) => {
-          //input handling
-          DOM.discardError(targetContainer, el, phxFeedbackFor)
           this.trackBefore("added", el)
           return el
         },
@@ -1862,6 +1860,8 @@ class DOMPatch {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
+          //input handling
+          DOM.discardError(targetContainer, el, phxFeedbackFor)
           // nested view handling
           if(DOM.isPhxChild(el) && view.ownsElement(el)){
             this.trackAfter("phxChildAdded", el)
