@@ -87,10 +87,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
   end
 
-  defp validate_unclosed_tags!(%{tags: [tag|_]} = state) do
+  defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
     {:tag_open, name, _attrs, %{line: line, column: column}} = tag
     file = state.opts[:file]
+
     message = "end of file reached without closing tag for <#{name}>"
+
     raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
@@ -138,14 +140,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp pop_tag(
+  defp pop_tag!(
          %{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state,
          {:tag_close, tag_name, _}
        ) do
     {tag, %{state | tags: tags}}
   end
 
-  defp pop_tag(
+  defp pop_tag!(
          %{tags: [{:tag_open, tag_open_name, _attrs, tag_open_meta} | _]} = state,
          {:tag_close, tag_close_name, tag_close_meta}
        ) do
@@ -160,7 +162,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
-  defp pop_tag(state, {:tag_close, tag_name, tag_meta}) do
+  defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
     %{line: line, column: column} = tag_meta
     file = state.opts[:file]
 
@@ -216,7 +218,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag(state, token)
+    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
     assigns = handle_component_attrs(attrs)
 
     # TODO: Implement `let`
@@ -265,7 +267,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state, _meta) do
-    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag(state, token)
+    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
     assigns = handle_component_attrs(attrs)
@@ -303,7 +305,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
-    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag(state, token)
+    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
     update_subengine(state, :handle_text, [meta, "</#{name}>"])
   end
 
