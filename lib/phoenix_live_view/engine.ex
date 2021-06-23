@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.Rendered do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamic, :fingerprint]
+  defstruct [:static, :dynamic, :fingerprint, :root]
 
   @type t :: %__MODULE__{
           static: [String.t()],
@@ -115,7 +115,8 @@ defmodule Phoenix.LiveView.Rendered do
                  | Phoenix.LiveView.Comprehension.t()
                  | Phoenix.LiveView.Component.t()
                ]),
-          fingerprint: integer()
+          fingerprint: integer(),
+          root: nil | true | false
         }
 
   defimpl Phoenix.HTML.Safe do
@@ -316,8 +317,8 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def handle_body(state) do
-    {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{})
+  def handle_body(state, opts \\ []) do
+    {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{}, opts)
 
     quote do
       require Phoenix.LiveView.Engine
@@ -355,7 +356,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Entry point for rendered structs
 
-  defp to_rendered_struct(expr, vars, assigns) do
+  defp to_rendered_struct(expr, vars, assigns, opts) do
     with {:__block__, [live_rendered: true], entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
@@ -377,7 +378,8 @@ defmodule Phoenix.LiveView.Engine do
          %Phoenix.LiveView.Rendered{
            static: unquote(static),
            dynamic: dynamic,
-           fingerprint: unquote(fingerprint)
+           fingerprint: unquote(fingerprint),
+           root: unquote(opts[:root])
          }
        end}
     else
@@ -513,7 +515,7 @@ defmodule Phoenix.LiveView.Engine do
       # So we collect them as usual but keep the original tainting.
       vars = reset_vars(vars, match_vars)
 
-      case to_rendered_struct(block, vars, assigns) do
+      case to_rendered_struct(block, vars, assigns, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}
       end
@@ -521,7 +523,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, vars) do
-    case to_rendered_struct(block, vars, %{}) do
+    case to_rendered_struct(block, vars, %{}, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end

@@ -325,7 +325,19 @@ defmodule Phoenix.LiveView.Diff do
 
     socket
     |> Utils.maybe_call_update!(component, assigns)
-    |> Utils.to_rendered(component)
+    |> component_to_rendered(component, assigns[:id])
+  end
+
+  defp component_to_rendered(socket, component, id) do
+    rendered = Utils.to_rendered(socket, component)
+
+    if rendered.root == false and id != nil do
+      raise ArgumentError,
+            "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. " <>
+              "LiveView expects stateful components to have a single static HTML tag at the root"
+    end
+
+    rendered
   end
 
   ## Traversal
@@ -575,7 +587,7 @@ defmodule Phoenix.LiveView.Diff do
 
     {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
       if changed? do
-        rendered = Utils.to_rendered(socket, component)
+        rendered = component_to_rendered(socket, component, id)
 
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, socket, component, cids, components)

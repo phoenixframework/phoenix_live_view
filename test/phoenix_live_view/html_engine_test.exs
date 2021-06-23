@@ -4,7 +4,25 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1]
   alias Phoenix.LiveView.HTMLEngine
 
-  defmacrop render_component(string) do
+  defp eval(string, assigns \\ %{}, opts \\ []) do
+    opts =
+      Keyword.merge(opts,
+        file: __ENV__.file,
+        engine: HTMLEngine,
+        subengine: Phoenix.LiveView.Engine
+      )
+
+    EEx.eval_string(string, [assigns: assigns], opts)
+  end
+
+  defp render(string, assigns \\ %{}) do
+    string
+    |> eval(assigns)
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
+
+  defmacrop compile(string) do
     quote do
       unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine))
       |> Phoenix.HTML.Safe.to_iodata()
@@ -122,7 +140,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "remote call (self close)" do
       assigns = %{}
 
-      assert render_component(
+      assert compile(
                "<Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'/>"
              ) ==
                "REMOTE COMPONENT: Value: 1"
@@ -132,14 +150,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       alias Phoenix.LiveView.HTMLEngineTest
       assigns = %{}
 
-      assert render_component("<HTMLEngineTest.remote_function_component value='1'/>") ==
+      assert compile("<HTMLEngineTest.remote_function_component value='1'/>") ==
                "REMOTE COMPONENT: Value: 1"
     end
 
     test "remote call with inner content" do
       assigns = %{}
 
-      assert render_component("""
+      assert compile("""
              <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
                The inner content
              </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
@@ -149,14 +167,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "local call (self close)" do
       assigns = %{}
 
-      assert render_component("<.local_function_component value='1'/>") ==
+      assert compile("<.local_function_component value='1'/>") ==
                "LOCAL COMPONENT: Value: 1"
     end
 
     test "local call with inner content" do
       assigns = %{}
 
-      assert render_component("""
+      assert compile("""
              <.local_function_component_with_inner_content value='1'>
                The inner content
              </.local_function_component_with_inner_content>
@@ -165,23 +183,55 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "empty attributes" do
       assigns = %{}
-      assert render_component("<.assigns_component />") == "%{}"
+      assert compile("<.assigns_component />") == "%{}"
     end
 
     test "dynamic attributes" do
       assigns = %{attrs: [name: "1", phone: true]}
 
-      assert render_component("<.assigns_component {@attrs} />") ==
+      assert compile("<.assigns_component {@attrs} />") ==
                "%{name: &quot;1&quot;, phone: true}"
     end
 
     test "sorts attributes by group: static + dynamic" do
       assigns = %{attrs1: [d1: "1"], attrs2: [d2: "2", d3: "3"]}
 
-      assert render_component(
+      assert compile(
                "<.assigns_component d1=\"one\" {@attrs1} d=\"middle\" {@attrs2} d2=\"two\" />"
              ) ==
                "%{d: &quot;middle&quot;, d1: &quot;one&quot;, d2: &quot;two&quot;, d3: &quot;3&quot;}"
+    end
+  end
+
+  describe "tracks root" do
+    test "valid cases" do
+      assert eval("<foo></foo>").root == true
+      assert eval("<foo><%= 123 %></foo>").root == true
+      assert eval("<foo><bar></bar></foo>").root == true
+      assert eval("<foo><br /></foo>").root == true
+
+      assert eval("<foo />").root == true
+      assert eval("<br />").root == true
+      assert eval("<br>").root == true
+
+      assert eval("  <foo></foo>  ").root == true
+      assert eval("\n\n<foo></foo>\n\n").root == true
+    end
+
+    test "invalid cases" do
+      assert eval("").root == false
+      assert eval("<foo></foo><bar></bar>").root == false
+      assert eval("<foo></foo><bar></bar>").root == false
+      assert eval("<br /><br />").root == false
+      assert eval("<%= 123 %>").root == false
+      assert eval("<foo></foo><%= 123 %>").root == false
+      assert eval("<%= 123 %><foo></foo>").root == false
+      assert eval("123<foo></foo>").root == false
+      assert eval("<foo></foo>123").root == false
+      assert eval("<.to_string />").root == false
+      assert eval("<.to_string></.to_string>").root == false
+      assert eval("<Kernel.to_string />").root == false
+      assert eval("<Kernel.to_string></Kernel.to_string>").root == false
     end
   end
 
@@ -270,23 +320,5 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         end)
       end
     end
-  end
-
-  defp eval(string, assigns \\ %{}, opts \\ []) do
-    opts =
-      Keyword.merge(opts,
-        file: __ENV__.file,
-        engine: HTMLEngine,
-        subengine: Phoenix.LiveView.Engine
-      )
-
-    EEx.eval_string(string, [assigns: assigns], opts)
-  end
-
-  defp render(string, assigns \\ %{}) do
-    string
-    |> eval(assigns)
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
   end
 end

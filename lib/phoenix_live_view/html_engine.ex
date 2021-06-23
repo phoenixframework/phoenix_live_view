@@ -17,21 +17,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @behaviour EEx.Engine
 
-  @void_elements [
-    "area",
-    "base",
-    "br",
-    "col",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "param",
-    "command",
-    "keygen",
-    "source"
-  ]
+  for void <- ~w(area base br col hr img input link meta param command keygen source) do
+    defp void?(unquote(void)), do: true
+  end
+
+  defp void?(_), do: false
 
   @doc false
   def init(opts) do
@@ -46,6 +36,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       substate: nil,
       stack: [],
       tags: [],
+      root: nil,
       opts: opts
     }
 
@@ -56,7 +47,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
-    ast = invoke_subengine(state, :handle_body, [])
+    opts = [root: state.root || false]
+    ast = invoke_subengine(state, :handle_body, [opts])
 
     quote do
       require Phoenix.LiveView.Helpers
@@ -91,7 +83,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_expr(state, marker, expr) do
-    update_subengine(state, :handle_expr, [marker, expr])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, [marker, expr])
   end
 
   ## Helpers
@@ -121,12 +115,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | substate: invoke_subengine(state, fun, args)}
   end
 
-  defp push_tag(state, {:tag_open, tag, _attrs, _meta}) when tag in @void_elements do
-    state
-  end
-
   defp push_tag(state, token) do
-    %{state | tags: [token | state.tags]}
+    # If we have a void tag, we don't actually push it into the stack.
+    with {:tag_open, name, _attrs, _meta} <- token,
+         true <- void?(name) do
+      state
+    else
+      _ -> %{state | tags: [token | state.tags]}
+    end
   end
 
   defp pop_tag(%{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state, tag_name) do
@@ -142,7 +138,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Text
 
   defp handle_token({:text, text}, state, meta) do
-    update_subengine(state, :handle_text, [meta, text])
+    state
+    |> set_root_on_text(text)
+    |> update_subengine(:handle_text, [meta, text])
   end
 
   # Remote function component (self close)
@@ -161,7 +159,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
         Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns))
       end
 
-    update_subengine(state, :handle_expr, ["=", ast])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, ["=", ast])
   end
 
   # Remote function component (with inner content)
@@ -172,6 +172,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
+    |> set_root_on_dynamic()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
@@ -212,13 +213,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
         Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns))
       end
 
-    update_subengine(state, :handle_expr, ["=", ast])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, ["=", ast])
   end
 
   # Local function component (with inner content)
 
   defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state, _meta) do
     state
+    |> set_root_on_dynamic()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
@@ -245,68 +249,70 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
-  # HTML void element
-
-  defp handle_token({:tag_open, name, attrs, tag_meta}, state, meta)
-       when name in @void_elements do
-    state
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, tag_meta)
-    |> update_subengine(:handle_text, [meta, ">"])
-  end
-
   # HTML element (self close)
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
     state
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, meta)
-    |> update_subengine(:handle_text, [meta, "/>"])
+    |> set_root_on_tag()
+    |> handle_tag_attrs(name, attrs, "/>", meta)
   end
 
-  # HTML element (with inner content)
+  # HTML element
 
   defp handle_token({:tag_open, name, attrs, _tag_meta} = token, state, meta) do
     state
+    |> set_root_on_tag()
     |> push_tag(token)
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, meta)
-    |> update_subengine(:handle_text, [meta, ">"])
+    |> handle_tag_attrs(name, attrs, ">", meta)
   end
 
   defp handle_token({:tag_close, name}, state, meta) do
     {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag(state, name)
-    update_subengine(state, :handle_text, [meta, "</#{String.downcase(name)}>"])
+    update_subengine(state, :handle_text, [meta, "</#{name}>"])
   end
 
-  # Fallback
+  # Root tracking
 
-  defp handle_token(_, state, _meta) do
-    state
+  defp set_root_on_dynamic(%{root: root, tags: tags} = state) do
+    if tags == [] and root != false do
+      %{state | root: false}
+    else
+      state
+    end
   end
 
-  ## handle_attrs
-
-  defp handle_attrs(state, attrs, meta) do
-    {static, static_dynamic, dynamic} = group_attrs(attrs)
-
-    state
-    |> handle_static_attrs(static, meta)
-    |> handle_static_dynamic_attrs(static_dynamic)
-    |> handle_dynamic_attrs(dynamic)
+  defp set_root_on_text(%{root: root, tags: tags} = state, text) do
+    if tags == [] and root != false and String.trim_leading(text) != "" do
+      %{state | root: false}
+    else
+      state
+    end
   end
 
-  defp handle_static_attrs(state, parts, meta) do
-    update_subengine(state, :handle_text, [meta, to_string(parts)])
+  defp set_root_on_tag(state) do
+    case state do
+      %{root: nil, tags: []} -> %{state | root: true}
+      %{root: true, tags: []} -> %{state | root: false}
+      %{root: bool} when is_boolean(bool) -> state
+    end
   end
 
-  defp handle_static_dynamic_attrs(state, parts) do
-    ast =
-      quote do
-        Phoenix.HTML.Tag.attributes_escape(unquote(parts))
-      end
+  ## handle_tag_attrs
 
-    update_subengine(state, :handle_expr, ["=", ast])
+  defp handle_tag_attrs(state, name, attrs, suffix, meta) do
+    {static, dynamic} = group_attrs(attrs)
+    prefix = "<#{name}#{static}"
+
+    # We want to reduce the number of handle_text calls, because each
+    # call is an individual entry in LiveEngine's static buffer.
+    if dynamic == [] do
+      update_subengine(state, :handle_text, [meta, "#{prefix}#{suffix}"])
+    else
+      state
+      |> update_subengine(:handle_text, [meta, prefix])
+      |> handle_dynamic_attrs(dynamic)
+      |> update_subengine(:handle_text, [meta, suffix])
+    end
   end
 
   defp handle_dynamic_attrs(state, parts) do
@@ -320,13 +326,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp group_attrs(attrs) do
-    group_attrs(attrs, {[], [], []})
-  end
-
-  defp group_attrs([], {s, sd, d}) do
-    {Enum.reverse(s), Enum.reverse(sd), Enum.reverse(d)}
-  end
+  defp group_attrs(attrs), do: group_attrs(attrs, {[], [], []})
 
   defp group_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {s, sd, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
@@ -349,6 +349,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp group_attrs([{name, nil} | attrs], {s, sd, d}) do
     group_attrs(attrs, {[" #{name}" | s], sd, d})
   end
+
+  defp group_attrs([], {s, [], d}), do: {Enum.reverse(s), Enum.reverse(d)}
+  defp group_attrs([], {s, sd, d}), do: {Enum.reverse(s), [Enum.reverse(sd) | Enum.reverse(d)]}
 
   defp handle_component_attrs(attrs) do
     entries =
