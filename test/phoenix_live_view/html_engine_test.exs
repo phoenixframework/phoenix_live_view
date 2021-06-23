@@ -278,22 +278,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing closing tag" do
-      message = ~r/.exs:3:1: end of file reached without closing tag for <div>/
+      message = ~r/.exs:2:1: end of file reached without closing tag for <div>/
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
-        ~H"""
         <br>
         <div foo={@foo}>
         """)
       end)
 
-      message = ~r/.exs:4:3: end of file reached without closing tag for <span>/
+      message = ~r/.exs:2:3: end of file reached without closing tag for <span>/
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
-        ~H"""
-        <br>
         <%= "text" %>
           <span foo={@foo}>
             <%= "text" %>
