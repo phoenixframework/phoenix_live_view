@@ -115,7 +115,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_close(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc = [{:tag_close, name} | acc]
+        acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
         handle_tag_close_end(rest, line, new_column, acc, state)
 
       {:error, message} ->

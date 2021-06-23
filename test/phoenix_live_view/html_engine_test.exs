@@ -237,23 +237,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "tag validations" do
     test "unmatched open/close tags" do
-      assert_raise(RuntimeError, "missing open tag for </span>", fn ->
+      message = ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+
+      assert_raise(SyntaxError, message, fn ->
         eval("""
+        <br>
         <div>
          text
-         <%= String.upcase("123") %>
         </span>
         """)
       end)
     end
 
     test "unmatched open/close tags with nested tags" do
-      assert_raise(RuntimeError, "missing open tag for </span>", fn ->
+      message = ~r".exs:6:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+
+      assert_raise(SyntaxError, message, fn ->
         eval("""
+        <br>
         <div>
           <p>
             text
-            <%= String.upcase("123") %>
           </p>
         </span>
         """)
@@ -261,10 +265,45 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing open tag" do
-      assert_raise(RuntimeError, "missing open tag for </span>", fn ->
+      message = ~r".exs:2:(3:)? missing opening tag for </span>"
+
+      assert_raise(SyntaxError, message, fn ->
         eval("""
         text
-        </span>
+          </span>
+        """)
+      end)
+    end
+
+    test "missing closing tag" do
+      message = ~r/.exs:2:(1:)? end of file reached without closing tag for <div>/
+
+      assert_raise(SyntaxError, message, fn ->
+        eval("""
+        <br>
+        <div foo={@foo}>
+        """)
+      end)
+
+      message = ~r/.exs:2:(3:)? end of file reached without closing tag for <span>/
+
+      assert_raise(SyntaxError, message, fn ->
+        eval("""
+        text
+          <span foo={@foo}>
+            text
+        """)
+      end)
+    end
+
+    test "invalid tag name" do
+      message = ~r/.exs:2:(3:)? invalid tag <Oops>/
+      assert_raise(SyntaxError, message, fn ->
+        eval("""
+        <br>
+          <Oops foo={@foo}>
+            Bar
+          </Oops>
         """)
       end)
     end

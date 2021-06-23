@@ -47,6 +47,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
+    validate_unclosed_tags!(state)
+
     opts = [root: state.root || false]
     ast = invoke_subengine(state, :handle_body, [opts])
 
@@ -79,6 +81,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
     text
     |> HTMLTokenizer.tokenize(opts)
     |> Enum.reduce(state, &handle_token(&1, &2, meta))
+  end
+
+  defp validate_unclosed_tags!(%{tags: []} = state) do
+    state
+  end
+
+  defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
+    {:tag_open, name, _attrs, %{line: line, column: column}} = tag
+    file = state.opts[:file]
+
+    message = "end of file reached without closing tag for <#{name}>"
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
   @doc false
@@ -125,12 +140,35 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp pop_tag(%{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state, tag_name) do
+  defp pop_tag!(
+         %{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state,
+         {:tag_close, tag_name, _}
+       ) do
     {tag, %{state | tags: tags}}
   end
 
-  defp pop_tag(_state, tag_name) do
-    raise "missing open tag for </#{tag_name}>"
+  defp pop_tag!(
+         %{tags: [{:tag_open, tag_open_name, _attrs, tag_open_meta} | _]} = state,
+         {:tag_close, tag_close_name, tag_close_meta}
+       ) do
+    %{line: line, column: column} = tag_close_meta
+    file = state.opts[:file]
+
+    message = """
+    unmatched closing tag. Expected </#{tag_open_name}> for <#{tag_open_name}> \
+    at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
+    """
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
+  end
+
+  defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
+    %{line: line, column: column} = tag_meta
+    file = state.opts[:file]
+
+    message = "missing opening tag for </#{tag_name}>"
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
   ## handle_token
@@ -146,12 +184,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}},
+         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}} = tag_meta,
          state,
          _meta
        )
        when first in ?A..?Z do
-    {mod, fun} = decompose_remote_component_tag!(tag_name)
+    {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, state.opts[:file])
     assigns = handle_component_attrs(attrs)
 
     ast =
@@ -168,7 +206,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state, _meta)
        when first in ?A..?Z do
-    mod_fun = decompose_remote_component_tag!(tag_name)
+    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.opts[:file])
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
@@ -178,9 +216,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>> = name}, state, _meta)
+  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag(state, name)
+    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
     assigns = handle_component_attrs(attrs)
 
     # TODO: Implement `let`
@@ -228,8 +266,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name = tag_name}, state, _meta) do
-    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag(state, tag_name)
+  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state, _meta) do
+    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
     assigns = handle_component_attrs(attrs)
@@ -266,8 +304,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> handle_tag_attrs(name, attrs, ">", meta)
   end
 
-  defp handle_token({:tag_close, name}, state, meta) do
-    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag(state, name)
+  defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
+    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
     update_subengine(state, :handle_text, [meta, "</#{name}>"])
   end
 
@@ -393,7 +431,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     build_component_attrs(attrs, {r, [{String.to_atom(name), true} | d]})
   end
 
-  defp decompose_remote_component_tag!(tag_name) do
+  defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
         aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
@@ -401,8 +439,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
         {{:__aliases__, [], aliases}, fun}
 
       _ ->
-        # TODO: Raise a proper error at the line of the component definition
-        raise ArgumentError, "invalid tag #{tag_name}"
+        %{line: line, column: column} = tag_meta
+        message = "invalid tag <#{tag_name}>"
+        raise SyntaxError, line: line, column: column, file: file, description: message
     end
   end
 end
