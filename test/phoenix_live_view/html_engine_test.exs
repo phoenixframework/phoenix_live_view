@@ -237,21 +237,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "tag validations" do
     test "unmatched open/close tags" do
-      message = ~r".exs:5:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
         <br>
         <div>
          text
-         <%= String.upcase("123") %>
         </span>
         """)
       end)
     end
 
     test "unmatched open/close tags with nested tags" do
-      message = ~r".exs:7:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = ~r".exs:6:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
@@ -259,7 +258,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div>
           <p>
             text
-            <%= String.upcase("123") %>
           </p>
         </span>
         """)
@@ -267,7 +265,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing open tag" do
-      message = ~r".exs:2:3: missing opening tag for </span>"
+      message = ~r".exs:2:(3:)? missing opening tag for </span>"
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
@@ -278,7 +276,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing closing tag" do
-      message = ~r/.exs:2:1: end of file reached without closing tag for <div>/
+      message = ~r/.exs:2:(1:)? end of file reached without closing tag for <div>/
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
@@ -287,19 +285,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:2:3: end of file reached without closing tag for <span>/
+      message = ~r/.exs:2:(3:)? end of file reached without closing tag for <span>/
 
       assert_raise(SyntaxError, message, fn ->
         eval("""
-        <%= "text" %>
+        text
           <span foo={@foo}>
-            <%= "text" %>
+            text
         """)
       end)
     end
 
     test "invalid tag name" do
-      message = ~r/.exs:2:3: invalid tag <Oops>/
+      message = ~r/.exs:2:(3:)? invalid tag <Oops>/
       assert_raise(SyntaxError, message, fn ->
         eval("""
         <br>
