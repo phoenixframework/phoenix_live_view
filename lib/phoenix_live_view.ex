@@ -1322,4 +1322,14 @@ defmodule Phoenix.LiveView do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+
+  @doc """
+  TODO
+  """
+  defdelegate attach_hook(socket, name, hook, fun), to: Phoenix.LiveView.Lifecycle
+
+  @doc """
+  TODO
+  """
+  defdelegate detach_hook(socket, name, hook), to: Phoenix.LiveView.Lifecycle
 end
