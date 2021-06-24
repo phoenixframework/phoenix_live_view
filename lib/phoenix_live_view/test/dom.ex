@@ -93,6 +93,9 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def component_id(html_tree), do: Floki.attribute(html_tree, @phx_component) |> List.first()
 
+  @doc """
+  Find static information in the given HTML tree.
+  """
   def find_static_views(html_tree) do
     html_tree
     |> all("[#{@phx_static}]")
@@ -101,6 +104,9 @@ defmodule Phoenix.LiveViewTest.DOM do
     end)
   end
 
+  @doc """
+  Find live views in the given HTML tree.
+  """
   def find_live_views(html_tree) do
     html_tree
     |> all("[data-phx-session]")
@@ -122,17 +128,25 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> Enum.reverse()
   end
 
-  def deep_merge(target, source) do
-    Map.merge(target, source, fn
-      _, %{} = target, %{} = source -> deep_merge(target, source)
-      _, _target, source -> source
-    end)
-  end
+  @doc """
+  Deep merges two maps.
+  """
+  def deep_merge(%{} = target, %{} = source),
+    do: Map.merge(target, source, fn _, t, s -> deep_merge(t, s) end)
 
+  def deep_merge(_target, source),
+    do: source
+
+  @doc """
+  Filters nodes according to `fun`.
+  """
   def filter(node, fun) do
     node |> reverse_filter(fun) |> Enum.reverse()
   end
 
+  @doc """
+  Filters nodes and returns them in reverse order.
+  """
   def reverse_filter(node, fun) do
     node
     |> Floki.traverse_and_update([], fn node, acc ->
@@ -144,25 +158,29 @@ defmodule Phoenix.LiveViewTest.DOM do
   # Diff merging
 
   def merge_diff(rendered, diff) do
+    old = Map.get(rendered, @components, %{})
     {new, diff} = Map.pop(diff, @components)
-    rendered = deep_merge(rendered, diff)
+    rendered = deep_merge_diff(rendered, diff)
 
     # If we have any component, we need to get the components
     # sent by the diff and remove any link between components
     # statics. We cannot let those links reside in the diff
     # as components can be removed at any time.
-    if new do
-      old = Map.get(rendered, @components, %{})
+    cond do
+      new ->
+        {acc, _} =
+          Enum.reduce(new, {old, %{}}, fn {cid, cdiff}, {acc, cache} ->
+            {value, cache} = find_component(cid, cdiff, old, new, cache)
+            {Map.put(acc, cid, value), cache}
+          end)
 
-      {acc, _} =
-        Enum.reduce(new, {old, %{}}, fn {cid, cdiff}, {acc, cache} ->
-          {value, cache} = find_component(cid, cdiff, old, new, cache)
-          {Map.put(acc, cid, value), cache}
-        end)
+        Map.put(rendered, @components, acc)
 
-      Map.put(rendered, @components, acc)
-    else
-      rendered
+      old != %{} ->
+        Map.put(rendered, @components, old)
+
+      true ->
+        rendered
     end
   end
 
@@ -176,13 +194,13 @@ defmodule Phoenix.LiveViewTest.DOM do
           case cdiff do
             %{@static => cid} when is_integer(cid) and cid > 0 ->
               {res, cache} = find_component(cid, new[cid], old, new, cache)
-              {deep_merge(res, Map.delete(cdiff, @static)), cache}
+              {deep_merge_diff(res, Map.delete(cdiff, @static)), cache}
 
             %{@static => cid} when is_integer(cid) and cid < 0 ->
-              {deep_merge(old[-cid], Map.delete(cdiff, @static)), cache}
+              {deep_merge_diff(old[-cid], Map.delete(cdiff, @static)), cache}
 
             %{} ->
-              {deep_merge(Map.get(old, cid, %{}), cdiff), cache}
+              {deep_merge_diff(Map.get(old, cid, %{}), cdiff), cache}
           end
 
         {res, Map.put(cache, cid, res)}
@@ -192,6 +210,15 @@ defmodule Phoenix.LiveViewTest.DOM do
   def drop_cids(rendered, cids) do
     update_in(rendered[@components], &Map.drop(&1, cids))
   end
+
+  defp deep_merge_diff(_target, %{s: _} = source),
+    do: source
+
+  defp deep_merge_diff(%{} = target, %{} = source),
+    do: Map.merge(target, source, fn _, t, s -> deep_merge_diff(t, s) end)
+
+  defp deep_merge_diff(_target, source),
+    do: source
 
   # Diff rendering
 

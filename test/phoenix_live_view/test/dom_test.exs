@@ -225,4 +225,14 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       assert new_html =~ ~S(<div id="3">a</div>)
     end
   end
+
+  describe "merge_diff" do
+    test "merges unless static" do
+      assert DOM.merge_diff(%{0 => "bar", s: "foo"}, %{0 => "baz"}) ==
+               %{0 => "baz", s: "foo"}
+
+      assert DOM.merge_diff(%{s: "foo", d: []}, %{s: "bar"}) ==
+               %{s: "bar"}
+    end
+  end
 end
