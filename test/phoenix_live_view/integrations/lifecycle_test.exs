@@ -20,8 +20,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
              lv |> element("#inc") |> render_click()
-           end) =~
-             "Got: :boom\nFrom: #Phoenix.LiveView.Hook<id: :boom, stage: :handle_event, ...>"
+           end) =~ "Got: :boom"
   end
 
   test "handle_event/3 halt and continue", %{conn: conn} do
@@ -57,8 +56,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
              lv |> element("#patch") |> render_click()
-           end) =~
-             "Got: :boom\nFrom: #Phoenix.LiveView.Hook<id: :boom, stage: :handle_params, ...>"
+           end) =~ "Got: :boom"
   end
 
   test "handle_params/3 attached after connected", %{conn: conn} do
@@ -119,7 +117,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
       send(lv.pid, :noop)
       ref = Process.monitor(lv.pid)
       assert_receive {:DOWN, ^ref, _, _, _}
-    end) =~ "Got: :boom\nFrom: #Phoenix.LiveView.Hook<id: :boom, stage: :handle_info, ...>"
+    end) =~ "** (ArgumentError) invalid return from Phoenix.LiveViewTest.HooksLive.handle_info/2 lifecycle hook"
   end
 
   test "handle_info/2 attached and detached", %{conn: conn} do
