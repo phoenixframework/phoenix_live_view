@@ -99,6 +99,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/component_in_live", ComponentInLive.Root
     live "/cids_destroyed", CidsDestroyedLive
 
+    # integration lifecycle
+    live "/lifecycle", HooksLive
+
     # live_session
     live_session :test do
       live "/thermo-live-session", ThermostatLive

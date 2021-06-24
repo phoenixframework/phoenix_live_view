@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session, Lifecycle}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
@@ -93,7 +93,7 @@ defmodule Phoenix.LiveView.Channel do
 
       :error ->
         msg
-        |> socket.view.handle_info(socket)
+        |> view_handle_info(socket)
         |> handle_result({:handle_info, 2, nil}, state)
     end
   end
@@ -247,7 +247,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(msg, %{socket: socket} = state) do
     msg
-    |> socket.view.handle_info(socket)
+    |> view_handle_info(socket)
     |> handle_result({:handle_info, 2, nil}, state)
   end
 
@@ -341,18 +341,31 @@ defmodule Phoenix.LiveView.Channel do
       [:phoenix, :live_view, :handle_event],
       %{socket: socket, event: event, params: val},
       fn ->
-        case socket.view.handle_event(event, val, socket) do
-          {:noreply, %Socket{} = socket} ->
+        case Lifecycle.handle_event(event, val, socket) do
+          {:halt, %Socket{} = socket} ->
             {{:noreply, socket}, %{socket: socket, event: event, params: val}}
 
-          {:reply, reply, %Socket{} = socket} ->
-            {{:reply, reply, socket}, %{socket: socket, event: event, params: val}}
+          {:cont, %Socket{} = socket} ->
+            case socket.view.handle_event(event, val, socket) do
+              {:noreply, %Socket{} = socket} ->
+                {{:noreply, socket}, %{socket: socket, event: event, params: val}}
 
-          other ->
-            raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+              {:reply, reply, %Socket{} = socket} ->
+                {{:reply, reply, socket}, %{socket: socket, event: event, params: val}}
+
+              other ->
+                raise_bad_callback_response!(other, socket.view, :handle_event, 3)
+            end
         end
       end
     )
+  end
+
+  defp view_handle_info(msg, %{view: view} = socket) do
+    case Lifecycle.handle_info(msg, socket) do
+      {:halt, %Socket{} = socket} -> {:noreply, socket}
+      {:cont, %Socket{} = socket} -> view.handle_info(msg, socket)
+    end
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do

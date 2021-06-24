@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket}
+  alias Phoenix.LiveView.{Rendered, Socket, Lifecycle}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -348,16 +348,22 @@ defmodule Phoenix.LiveView.Utils do
       [:phoenix, :live_view, :handle_params],
       %{socket: socket, params: params, uri: uri},
       fn ->
-        case view.handle_params(params, uri, socket) do
-          {:noreply, %Socket{} = socket} ->
+        case Lifecycle.handle_params(params, uri, socket) do
+          {:halt, %Socket{} = socket} ->
             {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
 
-          other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(view)}.handle_params/3.
+          {:cont, %Socket{} = socket} ->
+            case view.handle_params(params, uri, socket) do
+              {:noreply, %Socket{} = socket} ->
+                {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
 
-            Expected {:noreply, socket}, got: #{inspect(other)}
-            """
+              other ->
+                raise ArgumentError, """
+                invalid result returned from #{inspect(view)}.handle_params/3.
+
+                Expected {:noreply, socket}, got: #{inspect(other)}
+                """
+            end
         end
       end
     )

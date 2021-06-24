@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Route}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
@@ -266,6 +266,7 @@ defmodule Phoenix.LiveView.Static do
         {:noreply, socket}
 
       not exports_handle_params?(view) ->
+        {_, socket} = Lifecycle.handle_params(params, uri, socket)
         {:noreply, socket}
 
       is_nil(socket.router) ->

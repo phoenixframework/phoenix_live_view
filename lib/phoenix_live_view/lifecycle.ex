@@ -106,4 +106,60 @@ defmodule Phoenix.LiveView.Lifecycle do
   defp put_private(%Socket{private: private} = socket, key, value) when is_atom(key) do
     %{socket | private: Map.put(private, key, value)}
   end
+
+  # Lifecycle Event API
+
+  @doc false
+  def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
+    Enum.reduce_while(lifecycle.handle_event, {:cont, socket}, fn %Hook{} = hook,
+                                                                  {:cont, socket} ->
+      case hook.function.(event, val, socket) do
+        {:cont, %Socket{}} = state -> {:cont, state}
+        {:halt, %Socket{}} = state -> {:halt, state}
+        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_event, 3)
+      end
+    end)
+  end
+
+  def handle_event(_event, _val, %Socket{} = socket), do: {:cont, socket}
+
+  @doc false
+  def handle_params(params, uri, %Socket{private: %{@lifecycle => hooks}} = socket) do
+    Enum.reduce_while(hooks.handle_params, {:cont, socket}, fn %Hook{} = hook, {:cont, socket} ->
+      case hook.function.(params, uri, socket) do
+        {:cont, %Socket{}} = state -> {:cont, state}
+        {:halt, %Socket{}} = state -> {:halt, state}
+        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_params, 3)
+      end
+    end)
+  end
+
+  def handle_params(_params, _uri, %Socket{} = socket), do: {:cont, socket}
+
+  @doc false
+  def handle_info(msg, %Socket{private: %{@lifecycle => hooks}} = socket) do
+    Enum.reduce_while(hooks.handle_info, {:cont, socket}, fn %Hook{} = hook, {:cont, socket} ->
+      case hook.function.(msg, socket) do
+        {:cont, %Socket{}} = state -> {:cont, state}
+        {:halt, %Socket{}} = state -> {:halt, state}
+        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_info, 2)
+      end
+    end)
+  end
+
+  def handle_info(_msg, %Socket{} = socket), do: {:cont, socket}
+
+  defp raise_bad_lifecycle_response!(result, view, hook, name, arity) do
+    raise ArgumentError, """
+    invalid return from #{inspect(view)}.#{name}/#{arity} lifecycle hook.
+
+    Expected one of:
+
+        {:cont, %Socket{}}
+        {:halt, %Socket{}}
+
+    Got: #{inspect(result)}
+    From: #{inspect(hook)}
+    """
+  end
 end
