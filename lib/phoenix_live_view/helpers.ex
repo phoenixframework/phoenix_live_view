@@ -503,6 +503,8 @@ defmodule Phoenix.LiveView.Helpers do
       <%= render_block(@inner_block, value: @value)
 
   """
+  # TODO: we may want to default to nil or a map once
+  # implicit assigns are removed and slots are considered
   defmacro render_block(inner_block, argument \\ []) do
     quote do
       unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
