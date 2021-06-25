@@ -124,6 +124,11 @@ defmodule Phoenix.LiveView.Router do
   and a graceful client-side redirect will trigger a regular HTTP request to
   the attempted URL.
 
+  *Note*: the live_session is tied to the LiveView and not the browser/cookie
+  session. Logging out does not expire the live_session, therefore, one should
+  avoid storing credential/authentication values, such as `current_user_id`, in
+  the live_session and use the browser/cookie session instead.
+
   ## Options
 
   * `:session` - The optional extra session map or MFA tuple to be merged with
