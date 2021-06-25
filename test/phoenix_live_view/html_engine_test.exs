@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1]
+  import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1, render_block: 2]
   alias Phoenix.LiveView.HTMLEngine
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
@@ -42,12 +42,32 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
   end
 
+  def remote_function_component_with_inner_content_args(assigns) do
+    ~H"""
+    REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
+    <%= render_block(@inner_block, %{
+      downcase: String.downcase(@value),
+      upcase: String.upcase(@value)
+    }) %>
+    """
+  end
+
   defp local_function_component(assigns) do
     ~H"LOCAL COMPONENT: Value: <%= @value %>"
   end
 
   defp local_function_component_with_inner_content(assigns) do
     ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
+  end
+
+  defp local_function_component_with_inner_content_args(assigns) do
+    ~H"""
+    LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
+    <%= render_block(@inner_block, %{
+      downcase: String.downcase(@value),
+      upcase: String.upcase(@value)
+    }) %>
+    """
   end
 
   test "handles text" do
@@ -164,6 +184,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n\n"
     end
 
+    test "remote call with inner content with args" do
+      expected = """
+      REMOTE COMPONENT WITH ARGS: Value: aBcD
+
+        Upcase: ABCD
+        Downcase: abcd
+      """
+
+      assigns = %{}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args
+               value="aBcD"
+               let={%{upcase: upcase, downcase: downcase}}
+             >
+               Upcase: <%= upcase %>
+               Downcase: <%= downcase %>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args>
+             """) =~ expected
+    end
+
     test "local call (self close)" do
       assigns = %{}
 
@@ -179,6 +220,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                The inner content
              </.local_function_component_with_inner_content>
              """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+    end
+
+    test "local call with inner content with args" do
+      expected = """
+      LOCAL COMPONENT WITH ARGS: Value: aBcD
+
+        Upcase: ABCD
+        Downcase: abcd
+      """
+
+      assigns = %{}
+
+      assert compile("""
+             <.local_function_component_with_inner_content_args
+               value="aBcD"
+               let={%{upcase: upcase, downcase: downcase}}
+             >
+               Upcase: <%= upcase %>
+               Downcase: <%= downcase %>
+             </.local_function_component_with_inner_content_args>
+             """) =~ expected
     end
 
     test "empty attributes" do

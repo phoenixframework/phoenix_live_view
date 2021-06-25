@@ -220,13 +220,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when first in ?A..?Z do
     {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
     assigns = handle_component_attrs(attrs)
-
-    # TODO: Implement `let`
+    {args, assigns} = pop_args(assigns)
 
     ast =
       quote do
         Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns)) do
-          _assigns ->
+          unquote(args) ->
             unquote(invoke_subengine(state, :handle_end, []))
         end
       end
@@ -271,13 +270,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     fun = String.to_atom(fun_name)
     assigns = handle_component_attrs(attrs)
-
-    # TODO: Implement `let`
+    {args, assigns} = pop_args(assigns)
 
     ast =
       quote do
         Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns)) do
-          _assigns ->
+          unquote(args) ->
             unquote(invoke_subengine(state, :handle_end, []))
         end
       end
@@ -443,5 +441,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
         message = "invalid tag <#{tag_name}>"
         raise SyntaxError, line: line, column: column, file: file, description: message
     end
+  end
+
+  defp pop_args({wrapper, meta, kw}) do
+    {let, kw} = Keyword.pop(kw, :let, quote do: _assigns)
+    {let, {wrapper, meta, kw}}
+  end
+
+  defp pop_args(assigns) do
+    assigns
   end
 end
