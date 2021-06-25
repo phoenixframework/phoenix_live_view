@@ -269,7 +269,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
     assigns = Map.take(state.socket.assigns, assign_new)
-    {:reply, assigns, state}
+    {:reply, {:ok, assigns}, state}
   end
 
   def handle_call({@prefix, :register_entry_upload, info}, from, state) do
@@ -889,20 +889,20 @@ defmodule Phoenix.LiveView.Channel do
 
     merged_session = Map.merge(socket_session, verified_user_session)
 
-    socket =
-      Utils.configure_socket(
-        socket,
-        mount_private(parent, root_view, assign_new, connect_params, connect_info),
-        action,
-        flash,
-        host_uri
-      )
+    case mount_private(parent, root_view, assign_new, connect_params, connect_info) do
+      {:ok, mount_priv} ->
+        socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
-    socket
-    |> Utils.maybe_call_live_view_mount!(view, params, merged_session)
-    |> build_state(phx_socket)
-    |> maybe_call_mount_handle_params(router, url, params)
-    |> reply_mount(from, verified, route)
+        socket
+        |> Utils.maybe_call_live_view_mount!(view, params, merged_session)
+        |> build_state(phx_socket)
+        |> maybe_call_mount_handle_params(router, url, params)
+        |> reply_mount(from, verified, route)
+
+      {:error, :noproc} ->
+        GenServer.reply(from, {:error, %{reason: "stale"}})
+        {:stop, :shutdown, :no_state}
+    end
   end
 
   defp load_csrf_token(endpoint, socket_session) do
@@ -914,27 +914,33 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp mount_private(nil, root_view, assign_new, connect_params, connect_info) do
-    %{
-      connect_params: connect_params,
-      connect_info: connect_info,
-      assign_new: {%{}, assign_new},
-      root_view: root_view,
-      __changed__: %{}
-    }
+    {:ok,
+     %{
+       connect_params: connect_params,
+       connect_info: connect_info,
+       assign_new: {%{}, assign_new},
+       root_view: root_view,
+       __changed__: %{}
+     }}
   end
 
   defp mount_private(parent, root_view, assign_new, connect_params, connect_info) do
-    parent_assigns = sync_with_parent(parent, assign_new)
+    case sync_with_parent(parent, assign_new) do
+      {:ok, parent_assigns} ->
+        # Child live views always ignore the layout on `:use`.
+        {:ok,
+         %{
+           connect_params: connect_params,
+           connect_info: connect_info,
+           assign_new: {parent_assigns, assign_new},
+           phoenix_live_layout: false,
+           root_view: root_view,
+           __changed__: %{}
+         }}
 
-    # Child live views always ignore the layout on `:use`.
-    %{
-      connect_params: connect_params,
-      connect_info: connect_info,
-      assign_new: {parent_assigns, assign_new},
-      phoenix_live_layout: false,
-      root_view: root_view,
-      __changed__: %{}
-    }
+      {:error, :noproc} ->
+        {:error, :noproc}
+    end
   end
 
   defp sync_with_parent(parent, assign_new) do
@@ -943,7 +949,7 @@ defmodule Phoenix.LiveView.Channel do
     try do
       GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
     catch
-      :exit, {:noproc, _} -> :ok
+      :exit, {:noproc, _} -> {:error, :noproc}
     end
   end
 
