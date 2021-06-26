@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.HookTest do
   alias Phoenix.LiveView.{Lifecycle, Hook}
 
   defp build_socket() do
-    %LiveView.Socket{}
+    %LiveView.Socket{private: %{lifecycle: %Lifecycle{}}}
   end
 
   describe "attach_hook/3" do
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.HookTest do
     end
   end
 
-  defp lifecycle(%LiveView.Socket{private: %{__lifecycle__: struct}}), do: struct
+  defp lifecycle(%LiveView.Socket{private: %{lifecycle: struct}}), do: struct
   defp lifecycle(%LiveView.Socket{}), do: nil
 
   defp noop(_, socket), do: {:cont, socket}

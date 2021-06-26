@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Hook do
 
   @type t :: %__MODULE__{
           id: term(),
-          stage: :handle_event | :handle_info | :handle_params,
+          stage: :handle_event | :handle_info | :handle_params | :mount,
           function: function()
         }
 
@@ -23,15 +23,16 @@ defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
   alias Phoenix.LiveView.{Hook, Socket}
 
-  @lifecycle :__lifecycle__
+  @lifecycle :lifecycle
 
   @type t :: %__MODULE__{
           handle_event: [Hook.t()],
           handle_info: [Hook.t()],
-          handle_params: [Hook.t()]
+          handle_params: [Hook.t()],
+          mount: [Hook.t()]
         }
 
-  defstruct handle_event: [], handle_info: [], handle_params: []
+  defstruct handle_event: [], handle_info: [], handle_params: [], mount: []
 
   @doc """
   TODO
@@ -67,6 +68,20 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
+  @doc false
+  def __attach_at_mount__(%__MODULE__{} = lifecycle, at_mount) when is_list(at_mount) do
+    Enum.reduce(at_mount, lifecycle, fn id, acc ->
+      {mod, fun} =
+        case id do
+          {mod, fun} when is_atom(mod) and is_atom(fun) -> {mod, fun}
+          mod when is_atom(mod) -> {mod, :mount}
+        end
+
+      hook = Hook.new!(id, :mount, Function.capture(mod, fun, 3))
+      %{acc | mount: [hook | acc.mount]}
+    end)
+  end
+
   @doc """
   TODO
 
@@ -90,7 +105,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   defp lifecycle(socket) do
-    Map.get(socket.private, @lifecycle, %__MODULE__{})
+    Map.fetch!(socket.private, @lifecycle)
   end
 
   defp update_lifecycle(socket, stage, fun) do
@@ -108,6 +123,16 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   # Lifecycle Event API
+
+  @doc false
+  def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
+    Enum.reduce(lifecycle.mount, {:ok, socket}, fn %Hook{} = hook, {:ok, socket} ->
+      case hook.function.(params, session, socket) do
+        {:ok, %Socket{}} = state -> state
+        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :mount, 3)
+      end
+    end)
+  end
 
   @doc false
   def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
@@ -148,6 +173,17 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   def handle_info(_msg, %Socket{} = socket), do: {:cont, socket}
+
+  defp raise_bad_lifecycle_response!(result, view, hook, :mount, 3) do
+    raise ArgumentError, """
+    invalid return from #{inspect(view)}.mount/3 lifecycle hook.
+
+    Expected: {:ok, %Socket{}}
+
+    Got: #{inspect(result)}
+    From: #{inspect(hook)}
+    """
+  end
 
   defp raise_bad_lifecycle_response!(result, view, hook, name, arity) do
     raise ArgumentError, """

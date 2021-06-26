@@ -13,6 +13,16 @@ defmodule Phoenix.LiveView.LifecycleTest do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}
   end
 
+  test "@mount hooks are invoked in the order they are declared", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    assigns = HooksLive.run(lv, fn socket -> {:reply, socket.assigns, socket} end)
+
+    assert assigns.init_assigns_mount
+    assert assigns.init_assigns_other_mount
+    assert assigns.last_at_mount == :init_assigns_other_mount
+  end
+
   test "handle_event/3 raises when hook result is invalid", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
@@ -86,8 +96,10 @@ defmodule Phoenix.LiveView.LifecycleTest do
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: 0}} = socket ->
         {:halt, LiveView.update(socket, :params_hook_ref, &(&1 + 1))}
+
       _params, _uri, %{assigns: %{params_hook_ref: 1}} = socket ->
         {:cont, socket}
+
       _params, _uri, socket ->
         {:halt, LiveView.assign(socket, :params_hook_ref, 0)}
     end)
@@ -98,13 +110,15 @@ defmodule Phoenix.LiveView.LifecycleTest do
     HooksLive.detach_hook(lv, :hook, :handle_params)
 
     Process.flag(:trap_exit, true)
+
     assert ExUnit.CaptureLog.capture_log(fn ->
-      try do
-        lv |> element("#patch") |> render_click()
-      catch
-        :exit, _ -> :ok
-      end
-     end) =~ "** (UndefinedFunctionError) function Phoenix.LiveViewTest.HooksLive.handle_params/3 is undefined"
+             try do
+               lv |> element("#patch") |> render_click()
+             catch
+               :exit, _ -> :ok
+             end
+           end) =~
+             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.HooksLive.handle_params/3 is undefined"
   end
 
   test "handle_info/2 raises when hook result is invalid", %{conn: conn} do
@@ -114,10 +128,11 @@ defmodule Phoenix.LiveView.LifecycleTest do
     HooksLive.attach_hook(lv, :boom, :handle_info, fn _, _ -> :boom end)
 
     assert ExUnit.CaptureLog.capture_log(fn ->
-      send(lv.pid, :noop)
-      ref = Process.monitor(lv.pid)
-      assert_receive {:DOWN, ^ref, _, _, _}
-    end) =~ "** (ArgumentError) invalid return from Phoenix.LiveViewTest.HooksLive.handle_info/2 lifecycle hook"
+             send(lv.pid, :noop)
+             ref = Process.monitor(lv.pid)
+             assert_receive {:DOWN, ^ref, _, _, _}
+           end) =~
+             "** (ArgumentError) invalid return from Phoenix.LiveViewTest.HooksLive.handle_info/2 lifecycle hook"
   end
 
   test "handle_info/2 attached and detached", %{conn: conn} do

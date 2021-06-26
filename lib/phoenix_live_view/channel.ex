@@ -859,7 +859,9 @@ defmodule Phoenix.LiveView.Channel do
     # ever is a LiveView connection, the view won't be loaded and
     # the mount/handle_params callbacks won't be invoked as they
     # are optional, leading to errors.
-    view.__live__()
+    %{at_mount: at_mount} = view.__live__()
+
+    lifecycle = Lifecycle.__attach_at_mount__(%Lifecycle{}, at_mount)
 
     %Phoenix.Socket{
       endpoint: endpoint,
@@ -902,7 +904,7 @@ defmodule Phoenix.LiveView.Channel do
 
     merged_session = Map.merge(socket_session, verified_user_session)
 
-    case mount_private(parent, root_view, assign_new, connect_params, connect_info) do
+    case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
@@ -926,18 +928,19 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info) do
+  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do
     {:ok,
      %{
        connect_params: connect_params,
        connect_info: connect_info,
        assign_new: {%{}, assign_new},
+       lifecycle: lifecycle,
        root_view: root_view,
        __changed__: %{}
      }}
   end
 
-  defp mount_private(parent, root_view, assign_new, connect_params, connect_info) do
+  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
     case sync_with_parent(parent, assign_new) do
       {:ok, parent_assigns} ->
         # Child live views always ignore the layout on `:use`.
@@ -947,6 +950,7 @@ defmodule Phoenix.LiveView.Channel do
            connect_info: connect_info,
            assign_new: {parent_assigns, assign_new},
            phoenix_live_layout: false,
+           lifecycle: lifecycle,
            root_view: root_view,
            __changed__: %{}
          }}

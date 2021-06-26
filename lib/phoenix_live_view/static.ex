@@ -82,6 +82,7 @@ defmodule Phoenix.LiveView.Static do
     live_session = live_session(conn)
     config = load_live!(view, :view)
     {tag, extended_attrs} = container(config, opts)
+    lifecycle = lifecycle(config)
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
@@ -97,6 +98,7 @@ defmodule Phoenix.LiveView.Static do
           connect_params: %{},
           connect_info: %{},
           conn_session: conn_session,
+          lifecycle: lifecycle,
           root_view: view,
           __changed__: %{}
         },
@@ -147,6 +149,7 @@ defmodule Phoenix.LiveView.Static do
       ) do
     config = load_live!(view, :view)
     container = container(config, opts)
+    lifecycle = lifecycle(config)
 
     child_id =
       opts[:id] ||
@@ -166,6 +169,7 @@ defmodule Phoenix.LiveView.Static do
         },
         %{
           assign_new: {parent.assigns.__assigns__, []},
+          lifecycle: lifecycle,
           phoenix_live_layout: false,
           root_view: parent.private.root_view,
           __changed__: %{}
@@ -343,4 +347,10 @@ defmodule Phoenix.LiveView.Static do
     {_, keys} = socket.private.assign_new
     keys
   end
+
+  defp lifecycle(%{at_mount: hooks}) when is_list(hooks) and hooks != [] do
+    %Lifecycle{} |> Lifecycle.__attach_at_mount__(hooks)
+  end
+
+  defp lifecycle(_config), do: %Lifecycle{}
 end

@@ -473,13 +473,26 @@ defmodule Phoenix.LiveView do
       require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
+      @phoenix_live_opts opts
+      Module.register_attribute(__MODULE__, :mount, accumulate: true)
+      @before_compile Phoenix.LiveView
+    end
+  end
+
+  defmacro __before_compile__(env) do
+    opts = Module.get_attribute(env.module, :phoenix_live_opts, [])
+    at_mount = Module.get_attribute(env.module, :mount, [])
+
+    quote bind_quoted: [opts: opts, at_mount: at_mount] do
       @doc false
-      def __live__, do: unquote(Macro.escape(Phoenix.LiveView.__live__(__MODULE__, opts)))
+      def __live__ do
+        unquote(Macro.escape(Phoenix.LiveView.__live__(__MODULE__, at_mount, opts)))
+      end
     end
   end
 
   @doc false
-  def __live__(module, opts) do
+  def __live__(module, at_mount, opts) do
     container = opts[:container] || {:div, []}
     namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
     name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
@@ -498,7 +511,14 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
-    %{container: container, name: name, kind: :view, module: module, layout: layout}
+    %{
+      at_mount: at_mount,
+      container: container,
+      name: name,
+      kind: :view,
+      module: module,
+      layout: layout
+    }
   end
 
   @doc """

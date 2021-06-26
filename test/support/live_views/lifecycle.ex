@@ -1,9 +1,31 @@
+defmodule Phoenix.LiveViewTest.InitAssigns do
+  alias Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> LiveView.assign(:init_assigns_mount, true)
+     |> LiveView.assign(:last_at_mount, :init_assigns_mount)}
+  end
+
+  def other_mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> LiveView.assign(:init_assigns_other_mount, true)
+     |> LiveView.assign(:last_at_mount, :init_assigns_other_mount)}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.HooksLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
-  @lifecycle :__lifecycle__
+  alias Phoenix.LiveViewTest.InitAssigns
+
+  @mount InitAssigns
+  @mount {InitAssigns, :other_mount}
 
   def render(assigns) do
     ~L"""
+    last_at_mount:<%= inspect(assigns[:last_at_mount]) %>
     params_hook:<%= assigns[:params_hook_ref] %>
     count:<%= @count %>
     <button id="dec" phx-click="dec">-</button>
@@ -55,7 +77,7 @@ defmodule Phoenix.LiveViewTest.HooksLive do
 
   def fetch_lifecycle(lv) do
     run(lv, fn socket ->
-      {:reply, Map.fetch(socket.private, @lifecycle), socket}
+      {:reply, Map.fetch(socket.private, :lifecycle), socket}
     end)
   end
 
