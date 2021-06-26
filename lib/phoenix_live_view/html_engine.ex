@@ -501,14 +501,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         ++
         quote line: line, generated: true do
           other ->
-            message = """
-            cannot match arguments sent from `render_block/2` against the pattern in `let`.
-
-            Expected a value matching `#{unquote(Macro.to_string(pattern))}`, got: `#{inspect(other)}`.
-            """
-            raise RuntimeError, message
-
-            # Phoenix.LiveView.HTMLEngine.__unmatched_let__!(unquote(Macro.to_string(pattern)), other)
+            Phoenix.LiveView.HTMLEngine.__unmatched_let__!(unquote(Macro.to_string(pattern)), other)
         end
 
       _ ->
