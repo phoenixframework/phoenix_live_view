@@ -189,8 +189,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        )
        when first in ?A..?Z do
-    {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, state.opts[:file])
-    assigns = handle_component_attrs(attrs)
+    file = state.opts[:file]
+    {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
+
+    {let, assigns} = handle_component_attrs(attrs, file)
+    raise_if_let!(let, file)
 
     ast =
       quote do
@@ -219,15 +222,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
        when first in ?A..?Z do
     {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
-    assigns = handle_component_attrs(attrs)
-    {args, assigns} = pop_args(assigns)
+    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    clauses = build_component_clauses(let, state)
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns)) do
-          unquote(args) ->
-            unquote(invoke_subengine(state, :handle_end, []))
-        end
+        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns), do: unquote(clauses))
       end
 
     state
@@ -243,7 +243,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        ) do
     fun = String.to_atom(name)
-    assigns = handle_component_attrs(attrs)
+    file = state.opts[:file]
+
+    {let, assigns} = handle_component_attrs(attrs, file)
+    raise_if_let!(let, file)
 
     ast =
       quote do
@@ -269,15 +272,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
-    assigns = handle_component_attrs(attrs)
-    {args, assigns} = pop_args(assigns)
+    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    clauses = build_component_clauses(let, state)
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns)) do
-          unquote(args) ->
-            unquote(invoke_subengine(state, :handle_end, []))
-        end
+        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns), do: unquote(clauses))
       end
 
     state
@@ -389,44 +389,68 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp group_attrs([], {s, [], d}), do: {Enum.reverse(s), Enum.reverse(d)}
   defp group_attrs([], {s, sd, d}), do: {Enum.reverse(s), [Enum.reverse(sd) | Enum.reverse(d)]}
 
-  defp handle_component_attrs(attrs) do
-    entries =
+  defp handle_component_attrs(attrs, file) do
+    {lets, entries} =
       case build_component_attrs(attrs) do
-        {[], []} -> [{:%{}, [], []}]
-        {r, []} -> r
-        {r, d} -> r ++ [{:%{}, [], d}]
+        {lets, [], []} -> {lets, [{:%{}, [], []}]}
+        {lets, r, []} -> {lets, r}
+        {lets, r, d} -> {lets, r ++ [{:%{}, [], d}]}
       end
 
-    Enum.reduce(entries, fn expr, acc ->
-      quote do: Map.merge(unquote(acc), unquote(expr))
-    end)
+    let =
+      case lets do
+        [] ->
+          nil
+
+        [let] ->
+          let
+
+        [{_, meta}, {_, previous_meta} | _] ->
+          message = """
+          cannot define multiple `let` attributes. \
+          Another `let` has already been defined at line #{previous_meta.line}\
+          """
+          raise SyntaxError, line: meta.line, column: meta.column, file: file, description: message
+      end
+
+    assigns =
+      Enum.reduce(entries, fn expr, acc ->
+        quote do: Map.merge(unquote(acc), unquote(expr))
+      end)
+
+    {let, assigns}
   end
 
   defp build_component_attrs(attrs) do
-    build_component_attrs(attrs, {[], []})
+    build_component_attrs(attrs, {[], [], []})
   end
 
-  defp build_component_attrs([], {r, d}) do
-    {Enum.reverse(r), Enum.reverse(d)}
+  defp build_component_attrs([], {lets, r, d}) do
+    {lets, Enum.reverse(r), Enum.reverse(d)}
   end
 
-  defp build_component_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {r, d}) do
+  defp build_component_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     quoted_value = quote do: Map.new(unquote(quoted_value))
-    build_component_attrs(attrs, {[quoted_value | r], d})
+    build_component_attrs(attrs, {lets, [quoted_value | r], d})
   end
 
-  defp build_component_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {r, d}) do
+  defp build_component_attrs([{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs], {lets, r, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {r, [{String.to_atom(name), quoted_value} | d]})
+    build_component_attrs(attrs, {[{quoted_value, meta} | lets], r, d})
   end
 
-  defp build_component_attrs([{name, {:string, value, _}} | attrs], {r, d}) do
-    build_component_attrs(attrs, {r, [{String.to_atom(name), value} | d]})
+  defp build_component_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), quoted_value} | d]})
   end
 
-  defp build_component_attrs([{name, nil} | attrs], {r, d}) do
-    build_component_attrs(attrs, {r, [{String.to_atom(name), true} | d]})
+  defp build_component_attrs([{name, {:string, value, _}} | attrs], {lets, r, d}) do
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), value} | d]})
+  end
+
+  defp build_component_attrs([{name, nil} | attrs], {lets, r, d}) do
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), true} | d]})
   end
 
   defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
@@ -443,12 +467,54 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp pop_args({wrapper, meta, kw}) do
-    {let, kw} = Keyword.pop(kw, :let, quote do: _assigns)
-    {let, {wrapper, meta, kw}}
+  @doc false
+  def __unmatched_let__!(pattern, value) do
+    message = """
+    cannot match arguments sent from `render_block/2` against the pattern in `let`.
+
+    Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
+    """
+
+    stacktrace =
+      self()
+      |> Process.info(:current_stacktrace)
+      |> elem(1)
+      |> Enum.drop(2)
+
+    reraise(message, stacktrace)
   end
 
-  defp pop_args(assigns) do
-    assigns
+  defp raise_if_let!(let, file) do
+    with {_pattern, %{line: line}} <- let do
+      message = "cannot use `let` on a component without inner content"
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  defp build_component_clauses(let, state) do
+    case let do
+      {pattern, %{line: line}} ->
+        quote line: line do
+          unquote(pattern) ->
+            unquote(invoke_subengine(state, :handle_end, []))
+        end
+        ++
+        quote line: line, generated: true do
+          other ->
+            message = """
+            cannot match arguments sent from `render_block/2` against the pattern in `let`.
+
+            Expected a value matching `#{unquote(Macro.to_string(pattern))}`, got: `#{inspect(other)}`.
+            """
+            raise RuntimeError, message
+
+            # Phoenix.LiveView.HTMLEngine.__unmatched_let__!(unquote(Macro.to_string(pattern)), other)
+        end
+
+      _ ->
+        quote do
+          _ -> unquote(invoke_subengine(state, :handle_end, []))
+        end
+    end
   end
 end

@@ -205,6 +205,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) =~ expected
     end
 
+    test "raise on remote call with inner content passing non-matching args" do
+      message = ~r"""
+      cannot match arguments sent from `render_block/2` against the pattern in `let`.
+
+      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      """
+
+      assigns =%{}
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args
+          {[value: "aBcD"]}
+          let={%{wrong: _}}
+        >
+          ...
+        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args>
+        """)
+      end)
+    end
+
+    test "raise on remote call passing args to self close components" do
+      message = ~r".exs:2: cannot use `let` on a component without inner content"
+
+      assert_raise(CompileError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' let={var}/>
+        """)
+      end)
+    end
+
     test "local call (self close)" do
       assigns = %{}
 
@@ -241,6 +273,48 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                Downcase: <%= downcase %>
              </.local_function_component_with_inner_content_args>
              """) =~ expected
+
+      assert compile("""
+             <.local_function_component_with_inner_content_args
+               {[value: "aBcD"]}
+               let={%{upcase: upcase, downcase: downcase}}
+             >
+               Upcase: <%= upcase %>
+               Downcase: <%= downcase %>
+             </.local_function_component_with_inner_content_args>
+             """) =~ expected
+    end
+
+    test "raise on local call with inner content passing non-matching args" do
+      message = ~r"""
+      cannot match arguments sent from `render_block/2` against the pattern in `let`.
+
+      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      """
+
+      assigns =%{}
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <.local_function_component_with_inner_content_args
+          {[value: "aBcD"]}
+          let={%{wrong: _}}
+        >
+          ...
+        </.local_function_component_with_inner_content_args>
+        """)
+      end)
+    end
+
+    test "raise on local call passing args to self close components" do
+      message = ~r".exs:2: cannot use `let` on a component without inner content"
+
+      assert_raise(CompileError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1' let={var}/>
+        """)
+      end)
     end
 
     test "empty attributes" do
