@@ -317,6 +317,30 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "raise on duplicated `let`" do
+      message = ~r".exs:4:(8:)? cannot define multiple `let` attributes. Another `let` has already been defined at line 3"
+
+      assert_raise(SyntaxError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+          let={var1}
+          let={var2}
+        />
+        """)
+      end)
+
+      assert_raise(SyntaxError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1'
+          let={var1}
+          let={var2}
+        />
+        """)
+      end)
+    end
+
     test "empty attributes" do
       assigns = %{}
       assert compile("<.assigns_component />") == "%{}"
