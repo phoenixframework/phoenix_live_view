@@ -479,46 +479,48 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  defmacro __before_compile__(env) do
-    opts = Module.get_attribute(env.module, :phoenix_live_opts, [])
-    at_mount = Module.get_attribute(env.module, :mount, [])
-
-    quote bind_quoted: [opts: opts, at_mount: at_mount] do
+  defmacro __before_compile__(_env) do
+    quote do
       @doc false
       def __live__ do
-        unquote(Macro.escape(Phoenix.LiveView.__live__(__MODULE__, at_mount, opts)))
+        alias Phoenix.LiveView.Lifecycle
+
+        module = __MODULE__
+        opts = @phoenix_live_opts
+
+        container = opts[:container] || {:div, []}
+
+        namespace =
+          opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
+
+        name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+
+        layout =
+          case opts[:layout] do
+            {mod, template} when is_atom(mod) and is_binary(template) ->
+              {mod, template}
+
+            nil ->
+              nil
+
+            other ->
+              raise ArgumentError,
+                    ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
+                      "got: #{inspect(other)}"
+          end
+
+        lifecycle = Lifecycle.mount(module, @mount)
+
+        %{
+          container: container,
+          name: name,
+          kind: :view,
+          module: module,
+          layout: layout,
+          lifecycle: lifecycle
+        }
       end
     end
-  end
-
-  @doc false
-  def __live__(module, at_mount, opts) do
-    container = opts[:container] || {:div, []}
-    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
-    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-
-    layout =
-      case opts[:layout] do
-        {mod, template} when is_atom(mod) and is_binary(template) ->
-          {mod, template}
-
-        nil ->
-          nil
-
-        other ->
-          raise ArgumentError,
-                ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
-                  "got: #{inspect(other)}"
-      end
-
-    %{
-      at_mount: at_mount,
-      container: container,
-      name: name,
-      kind: :view,
-      module: module,
-      layout: layout
-    }
   end
 
   @doc """
@@ -663,7 +665,8 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, %{name: "Elixir"})
 
   """
-  def assign(socket_or_assigns, keyword_or_map) when is_map(keyword_or_map) or is_list(keyword_or_map) do
+  def assign(socket_or_assigns, keyword_or_map)
+      when is_map(keyword_or_map) or is_list(keyword_or_map) do
     Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
       assign(acc, key, value)
     end)

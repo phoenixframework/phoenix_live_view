@@ -13,6 +13,24 @@ defmodule Phoenix.LiveView.LifecycleTest do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}
   end
 
+  test "@mount hook raises when the LiveView tries to invoke its own mount as a hook", %{
+    conn: conn
+  } do
+    assert_raise Plug.Conn.WrapperError,
+                 ~r(invalid on_mount hook declared on Phoenix.LiveViewTest.HooksLive.OwnMount.),
+                 fn ->
+                   live(conn, "/lifecycle/own-mount")
+                 end
+  end
+
+  test "@mount hook raises when hook result is invalid", %{conn: conn} do
+    assert_raise Plug.Conn.WrapperError,
+                 ~r(invalid return from Phoenix.LiveViewTest.HooksLive.BadMount.mount/3 lifecycle hook),
+                 fn ->
+                   live(conn, "/lifecycle/bad-mount")
+                 end
+  end
+
   test "@mount hooks are invoked in the order they are declared", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 

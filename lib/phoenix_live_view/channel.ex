@@ -859,9 +859,7 @@ defmodule Phoenix.LiveView.Channel do
     # ever is a LiveView connection, the view won't be loaded and
     # the mount/handle_params callbacks won't be invoked as they
     # are optional, leading to errors.
-    %{at_mount: at_mount} = view.__live__()
-
-    lifecycle = Lifecycle.__attach_at_mount__(%Lifecycle{}, at_mount)
+    %{lifecycle: lifecycle} = view.__live__()
 
     %Phoenix.Socket{
       endpoint: endpoint,

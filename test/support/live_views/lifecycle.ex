@@ -98,3 +98,30 @@ defmodule Phoenix.LiveViewTest.HooksLive do
 
   def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 end
+
+defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  @mount {__MODULE__, :bad_mount}
+
+  @spec mount(any, any, any) :: none
+  def mount(_params, _session, _socket) do
+    raise "expected to exit before #{__MODULE__}.mount/3"
+  end
+
+  def bad_mount(_params, _session, _socket), do: :boom
+
+  def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.OwnMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  @mount __MODULE__
+
+  def mount(_params, _session, _socket) do
+    raise "expected to exit before #{__MODULE__}.mount/3"
+  end
+
+  def render(assigns), do: ~L""
+end

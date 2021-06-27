@@ -101,6 +101,8 @@ defmodule Phoenix.LiveViewTest.Router do
 
     # integration lifecycle
     live "/lifecycle", HooksLive
+    live "/lifecycle/bad-mount", HooksLive.BadMount
+    live "/lifecycle/own-mount", HooksLive.OwnMount
 
     # live_session
     live_session :test do

@@ -53,8 +53,7 @@ defmodule Phoenix.LiveView.Lifecycle do
     end
 
     update_lifecycle(socket, stage, fn hooks ->
-      hooks = Enum.reverse(hooks)
-      Enum.reverse([hook | hooks])
+      hooks ++ [hook]
     end)
   end
 
@@ -66,20 +65,6 @@ defmodule Phoenix.LiveView.Lifecycle do
 
     Got: #{inspect(stage)}
     """
-  end
-
-  @doc false
-  def __attach_at_mount__(%__MODULE__{} = lifecycle, at_mount) when is_list(at_mount) do
-    Enum.reduce(at_mount, lifecycle, fn id, acc ->
-      {mod, fun} =
-        case id do
-          {mod, fun} when is_atom(mod) and is_atom(fun) -> {mod, fun}
-          mod when is_atom(mod) -> {mod, :mount}
-        end
-
-      hook = Hook.new!(id, :mount, Function.capture(mod, fun, 3))
-      %{acc | mount: [hook | acc.mount]}
-    end)
   end
 
   @doc """
@@ -123,6 +108,23 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   # Lifecycle Event API
+
+  @doc false
+  def mount(view, hooks) when is_list(hooks) do
+    Enum.reduce(hooks, %__MODULE__{}, fn id, acc ->
+      {mod, fun} =
+        case id do
+          ^view -> raise_own_mount!(view, id)
+          {^view, :mount} -> raise_own_mount!(view, id)
+          {mod, fun} when is_atom(mod) and is_atom(fun) -> {mod, fun}
+          mod when is_atom(mod) -> {mod, :mount}
+          other -> raise_bad_mount_hook!(view, other)
+        end
+
+      hook = Hook.new!(id, :mount, Function.capture(mod, fun, 3))
+      %{acc | mount: [hook | acc.mount]}
+    end)
+  end
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
@@ -196,6 +198,33 @@ defmodule Phoenix.LiveView.Lifecycle do
 
     Got: #{inspect(result)}
     From: #{inspect(hook)}
+    """
+  end
+
+  defp raise_bad_mount_hook!(view, result) do
+    raise ArgumentError, """
+    invalid on_mount hook declared on #{inspect(view)}.
+
+    Expected one of:
+
+        Module
+        {Module, Function}
+
+    Got: #{inspect(result)}
+    """
+  end
+
+  defp raise_own_mount!(view, result) do
+    raise ArgumentError, """
+    invalid on_mount hook declared on #{inspect(view)}.
+
+    The module tried to attach its own mount callback as a hook.
+    This can lead to the mount/3 callback being invoked multiple
+    times for both the disconnected and connected render.
+
+    Remove the following declaration:
+
+        on_mount #{inspect(result)}
     """
   end
 end
