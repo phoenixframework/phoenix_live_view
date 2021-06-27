@@ -20,8 +20,8 @@ defmodule Phoenix.LiveViewTest.HooksLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.InitAssigns
 
-  @mount InitAssigns
-  @mount {InitAssigns, :other_mount}
+  on_mount InitAssigns
+  on_mount {InitAssigns, :other_mount}
 
   def render(assigns) do
     ~L"""
@@ -102,7 +102,7 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  @mount {__MODULE__, :bad_mount}
+  on_mount {__MODULE__, :bad_mount}
 
   @spec mount(any, any, any) :: none
   def mount(_params, _session, _socket) do
@@ -117,10 +117,31 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.OwnMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  @mount __MODULE__
+  on_mount __MODULE__
 
   def mount(_params, _session, _socket) do
     raise "expected to exit before #{__MODULE__}.mount/3"
+  end
+
+  def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  on_mount {__MODULE__, :hook}
+
+  def hook(_, _, socket), do: {:halt, socket}
+  def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  on_mount {__MODULE__, :hook}
+
+  def hook(_, _, %{assigns: %{live_action: action}} = socket) do
+    {action, push_redirect(socket, to: "/lifecycle")}
   end
 
   def render(assigns), do: ~L""

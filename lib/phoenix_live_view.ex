@@ -474,7 +474,7 @@ defmodule Phoenix.LiveView do
       @before_compile Phoenix.LiveView.Renderer
 
       @phoenix_live_opts opts
-      Module.register_attribute(__MODULE__, :mount, accumulate: true)
+      Module.register_attribute(__MODULE__, :phoenix_live_on_mount, accumulate: true)
       @before_compile Phoenix.LiveView
     end
   end
@@ -509,7 +509,7 @@ defmodule Phoenix.LiveView do
                       "got: #{inspect(other)}"
           end
 
-        lifecycle = Lifecycle.mount(module, @mount)
+        lifecycle = Lifecycle.mount(module, @phoenix_live_on_mount)
 
         %{
           container: container,
@@ -520,6 +520,17 @@ defmodule Phoenix.LiveView do
           lifecycle: lifecycle
         }
       end
+    end
+  end
+
+  @doc """
+  Declares a hook to be attached to the `:mount` lifecycle event.
+
+  For more information about lifecycle hooks, see `attach_hook/4`.
+  """
+  defmacro on_mount(id) do
+    quote do
+      Module.put_attribute(__MODULE__, :phoenix_live_on_mount, unquote(id))
     end
   end
 

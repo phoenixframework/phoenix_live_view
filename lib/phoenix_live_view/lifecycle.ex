@@ -129,7 +129,11 @@ defmodule Phoenix.LiveView.Lifecycle do
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn %Hook{} = hook, acc ->
-      hook.function.(params, session, acc)
+      case hook.function.(params, session, acc) do
+        {:halt, %Socket{redirected: nil}} -> raise_halt_without_redirect!(hook)
+        {:cont, %Socket{redirected: to}} when not is_nil(to) -> raise_continue_with_redirect!(hook)
+        ok -> ok
+      end
     end)
   end
 
@@ -158,23 +162,15 @@ defmodule Phoenix.LiveView.Lifecycle do
     case function.(hook, acc) do
       {:cont, %Socket{} = socket} -> reduce_socket(hooks, socket, function)
       {:halt, %Socket{} = socket} -> {:halt, socket}
-      other -> bad_lifecycle_response!(other, acc, hook)
+      other -> bad_lifecycle_response!(other, hook)
     end
   end
 
   defp reduce_socket([], acc, _function), do: {:cont, acc}
 
-  defp bad_lifecycle_response!(result, acc, %Hook{} = hook) do
-    view =
-      case acc do
-        %Socket{view: view} -> view
-        {:cont, %Socket{view: view}} -> view
-      end
-
+  defp bad_lifecycle_response!(result, %Hook{} = hook) do
     raise ArgumentError, """
-    invalid return from hook #{inspect(hook.id)} on #{inspect(view)}.
-
-    The lifecycle event: #{inspect(hook.stage)}
+    invalid return from hook #{inspect(hook.id)} for lifecycle event #{inspect(hook.stage)}.
 
     Expected one of:
 
@@ -196,6 +192,14 @@ defmodule Phoenix.LiveView.Lifecycle do
 
     Got: #{inspect(result)}
     """
+  end
+
+  defp raise_halt_without_redirect!(hook) do
+    raise ArgumentError, "the lifecycle hook #{inspect(hook.id)} attempted to halt on_mount without redirecting."
+  end
+
+  defp raise_continue_with_redirect!(hook) do
+    raise ArgumentError, "the lifecycle hook #{inspect(hook.id)} attempted to redirect on_mount without halting."
   end
 
   defp raise_own_mount!(view, result) do
