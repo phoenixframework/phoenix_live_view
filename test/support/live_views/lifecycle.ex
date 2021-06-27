@@ -2,14 +2,14 @@ defmodule Phoenix.LiveViewTest.InitAssigns do
   alias Phoenix.LiveView
 
   def mount(_params, _session, socket) do
-    {:ok,
+    {:cont,
      socket
      |> LiveView.assign(:init_assigns_mount, true)
      |> LiveView.assign(:last_at_mount, :init_assigns_mount)}
   end
 
   def other_mount(_params, _session, socket) do
-    {:ok,
+    {:cont,
      socket
      |> LiveView.assign(:init_assigns_other_mount, true)
      |> LiveView.assign(:last_at_mount, :init_assigns_other_mount)}

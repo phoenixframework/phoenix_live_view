@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
   test "@mount hook raises when hook result is invalid", %{conn: conn} do
     assert_raise Plug.Conn.WrapperError,
-                 ~r(invalid return from Phoenix.LiveViewTest.HooksLive.BadMount.mount/3 lifecycle hook),
+                 ~r(invalid return from hook {Phoenix.LiveViewTest.HooksLive.BadMount, :bad_mount}),
                  fn ->
                    live(conn, "/lifecycle/bad-mount")
                  end
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
              ref = Process.monitor(lv.pid)
              assert_receive {:DOWN, ^ref, _, _, _}
            end) =~
-             "** (ArgumentError) invalid return from Phoenix.LiveViewTest.HooksLive.handle_info/2 lifecycle hook"
+             "** (ArgumentError) invalid return from hook :boom on Phoenix.LiveViewTest.HooksLive."
   end
 
   test "handle_info/2 attached and detached", %{conn: conn} do

@@ -128,68 +128,53 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    Enum.reduce(lifecycle.mount, {:ok, socket}, fn %Hook{} = hook, {:ok, socket} ->
-      case hook.function.(params, session, socket) do
-        {:ok, %Socket{}} = state -> state
-        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :mount, 3)
-      end
+    reduce_socket(lifecycle.mount, socket, fn %Hook{} = hook, acc ->
+      hook.function.(params, session, acc)
     end)
   end
 
   @doc false
   def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    Enum.reduce_while(lifecycle.handle_event, {:cont, socket}, fn %Hook{} = hook,
-                                                                  {:cont, socket} ->
-      case hook.function.(event, val, socket) do
-        {:cont, %Socket{}} = state -> {:cont, state}
-        {:halt, %Socket{}} = state -> {:halt, state}
-        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_event, 3)
-      end
+    reduce_socket(lifecycle.handle_event, socket, fn %Hook{} = hook, acc ->
+      hook.function.(event, val, acc)
     end)
   end
-
-  def handle_event(_event, _val, %Socket{} = socket), do: {:cont, socket}
 
   @doc false
-  def handle_params(params, uri, %Socket{private: %{@lifecycle => hooks}} = socket) do
-    Enum.reduce_while(hooks.handle_params, {:cont, socket}, fn %Hook{} = hook, {:cont, socket} ->
-      case hook.function.(params, uri, socket) do
-        {:cont, %Socket{}} = state -> {:cont, state}
-        {:halt, %Socket{}} = state -> {:halt, state}
-        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_params, 3)
-      end
+  def handle_params(params, uri, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
+    reduce_socket(lifecycle.handle_params, socket, fn %Hook{} = hook, acc ->
+      hook.function.(params, uri, acc)
     end)
   end
-
-  def handle_params(_params, _uri, %Socket{} = socket), do: {:cont, socket}
 
   @doc false
-  def handle_info(msg, %Socket{private: %{@lifecycle => hooks}} = socket) do
-    Enum.reduce_while(hooks.handle_info, {:cont, socket}, fn %Hook{} = hook, {:cont, socket} ->
-      case hook.function.(msg, socket) do
-        {:cont, %Socket{}} = state -> {:cont, state}
-        {:halt, %Socket{}} = state -> {:halt, state}
-        other -> raise_bad_lifecycle_response!(other, socket.view, hook, :handle_info, 2)
-      end
+  def handle_info(msg, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
+    reduce_socket(lifecycle.handle_info, socket, fn %Hook{} = hook, acc ->
+      hook.function.(msg, acc)
     end)
   end
 
-  def handle_info(_msg, %Socket{} = socket), do: {:cont, socket}
-
-  defp raise_bad_lifecycle_response!(result, view, hook, :mount, 3) do
-    raise ArgumentError, """
-    invalid return from #{inspect(view)}.mount/3 lifecycle hook.
-
-    Expected: {:ok, %Socket{}}
-
-    Got: #{inspect(result)}
-    From: #{inspect(hook)}
-    """
+  defp reduce_socket([hook | hooks], acc, function) do
+    case function.(hook, acc) do
+      {:cont, %Socket{} = socket} -> reduce_socket(hooks, socket, function)
+      {:halt, %Socket{} = socket} -> {:halt, socket}
+      other -> bad_lifecycle_response!(other, acc, hook)
+    end
   end
 
-  defp raise_bad_lifecycle_response!(result, view, hook, name, arity) do
+  defp reduce_socket([], acc, _function), do: {:cont, acc}
+
+  defp bad_lifecycle_response!(result, acc, %Hook{} = hook) do
+    view =
+      case acc do
+        %Socket{view: view} -> view
+        {:cont, %Socket{view: view}} -> view
+      end
+
     raise ArgumentError, """
-    invalid return from #{inspect(view)}.#{name}/#{arity} lifecycle hook.
+    invalid return from hook #{inspect(hook.id)} on #{inspect(view)}.
+
+    The lifecycle event: #{inspect(hook.stage)}
 
     Expected one of:
 
@@ -197,7 +182,6 @@ defmodule Phoenix.LiveView.Lifecycle do
         {:halt, %Socket{}}
 
     Got: #{inspect(result)}
-    From: #{inspect(hook)}
     """
   end
 
