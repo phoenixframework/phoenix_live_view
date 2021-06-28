@@ -110,18 +110,33 @@ defmodule Phoenix.LiveView.Lifecycle do
   # Lifecycle Event API
 
   @doc false
-  def mount(view, hooks) when is_list(hooks) do
-    Enum.reduce(hooks, %__MODULE__{}, fn id, acc ->
-      {mod, fun} =
-        case id do
-          ^view -> raise_own_mount!(view, id)
-          {^view, :mount} -> raise_own_mount!(view, id)
-          {mod, fun} when is_atom(mod) and is_atom(fun) -> {mod, fun}
-          mod when is_atom(mod) -> {mod, :mount}
-          other -> raise_bad_mount_hook!(view, other)
-        end
+  def on_mount(view, view), do: raise_own_mount_hook!(view, view)
+  def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
 
-      hook = Hook.new!(id, :mount, Function.capture(mod, fun, 3))
+  def on_mount(_view, {module, fun} = id) when is_atom(module) and is_atom(fun) do
+    Hook.new!(id, :mount, Function.capture(module, fun, 3))
+  end
+
+  def on_mount(_view, module) when is_atom(module) do
+    Hook.new!(module, :mount, Function.capture(module, :mount, 3))
+  end
+
+  def on_mount(view, result) do
+    raise ArgumentError, """
+    invalid on_mount hook declared in #{inspect(view)}.
+
+    Expected one of:
+
+        Module
+        {Module, Function}
+
+    Got: #{inspect(result)}
+    """
+  end
+
+  @doc false
+  def mount(_view, hooks) when is_list(hooks) do
+    Enum.reduce(hooks, %__MODULE__{}, fn %Hook{} = hook, acc ->
       %{acc | mount: [hook | acc.mount]}
     end)
   end
@@ -130,9 +145,14 @@ defmodule Phoenix.LiveView.Lifecycle do
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn %Hook{} = hook, acc ->
       case hook.function.(params, session, acc) do
-        {:halt, %Socket{redirected: nil}} -> raise_halt_without_redirect!(hook)
-        {:cont, %Socket{redirected: to}} when not is_nil(to) -> raise_continue_with_redirect!(hook)
-        ok -> ok
+        {:halt, %Socket{redirected: nil}} ->
+          raise_halt_without_redirect!(hook)
+
+        {:cont, %Socket{redirected: to}} when not is_nil(to) ->
+          raise_continue_with_redirect!(hook)
+
+        ok ->
+          ok
       end
     end)
   end
@@ -181,36 +201,27 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
-  defp raise_bad_mount_hook!(view, result) do
-    raise ArgumentError, """
-    invalid on_mount hook declared on #{inspect(view)}.
-
-    Expected one of:
-
-        Module
-        {Module, Function}
-
-    Got: #{inspect(result)}
-    """
-  end
-
   defp raise_halt_without_redirect!(hook) do
-    raise ArgumentError, "the lifecycle hook #{inspect(hook.id)} attempted to halt on_mount without redirecting."
+    raise ArgumentError,
+          "the hook #{inspect(hook.id)} for lifecycle event :mount attempted to halt without redirecting."
   end
 
   defp raise_continue_with_redirect!(hook) do
-    raise ArgumentError, "the lifecycle hook #{inspect(hook.id)} attempted to redirect on_mount without halting."
+    raise ArgumentError,
+          "the hook #{inspect(hook.id)} for lifecycle event :mount attempted to redirect without halting."
   end
 
-  defp raise_own_mount!(view, result) do
+  defp raise_own_mount_hook!(view, result) do
     raise ArgumentError, """
-    invalid on_mount hook declared on #{inspect(view)}.
+    cannot attach the mount/3 callback to its own lifecycle.
 
-    The module tried to attach its own mount callback as a hook.
-    This can lead to the mount/3 callback being invoked multiple
-    times for both the disconnected and connected render.
+    The LiveView module #{inspect(view)}
+    attempted to attach its own mount/3 function via the
+    on_mount macro. Doing so will lead to the mount function
+    being invoked multiple times per disconnected and connected
+    render of the LiveView and is therefore prohibited.
 
-    Remove the following declaration:
+    To silence this error, please remove the following declaration:
 
         on_mount #{inspect(result)}
     """

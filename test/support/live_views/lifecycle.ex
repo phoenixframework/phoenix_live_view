@@ -114,18 +114,6 @@ defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
   def render(assigns), do: ~L""
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.OwnMount do
-  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
-
-  on_mount __MODULE__
-
-  def mount(_params, _session, _socket) do
-    raise "expected to exit before #{__MODULE__}.mount/3"
-  end
-
-  def render(assigns), do: ~L""
-end
-
 defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 

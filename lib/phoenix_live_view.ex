@@ -479,46 +479,45 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    opts = Module.get_attribute(env.module, :phoenix_live_opts)
+
+    layout =
+      case opts[:layout] do
+        {mod, template} when is_atom(mod) and is_binary(template) ->
+          {mod, template}
+
+        nil ->
+          nil
+
+        other ->
+          raise ArgumentError,
+                ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
+                  "got: #{inspect(other)}"
+      end
+
+    phoenix_live_on_mount = Module.get_attribute(env.module, :phoenix_live_on_mount)
+    lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_on_mount)
+
+    namespace =
+      opts[:namespace] || env.module |> Module.split() |> Enum.take(1) |> Module.concat()
+
+    name = env.module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+    container = opts[:container] || {:div, []}
+
+    live = %{
+      container: container,
+      name: name,
+      kind: :view,
+      module: env.module,
+      layout: layout,
+      lifecycle: lifecycle
+    }
+
     quote do
       @doc false
       def __live__ do
-        alias Phoenix.LiveView.Lifecycle
-
-        module = __MODULE__
-        opts = @phoenix_live_opts
-
-        container = opts[:container] || {:div, []}
-
-        namespace =
-          opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
-
-        name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
-
-        layout =
-          case opts[:layout] do
-            {mod, template} when is_atom(mod) and is_binary(template) ->
-              {mod, template}
-
-            nil ->
-              nil
-
-            other ->
-              raise ArgumentError,
-                    ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
-                      "got: #{inspect(other)}"
-          end
-
-        lifecycle = Lifecycle.mount(module, @phoenix_live_on_mount)
-
-        %{
-          container: container,
-          name: name,
-          kind: :view,
-          module: module,
-          layout: layout,
-          lifecycle: lifecycle
-        }
+        unquote(Macro.escape(live))
       end
     end
   end
@@ -526,11 +525,24 @@ defmodule Phoenix.LiveView do
   @doc """
   Declares a hook to be attached to the `:mount` lifecycle event.
 
+  ## Examples
+
+      defmodule DemoWeb.PageLive do
+        use Phoenix.LiveView
+
+        on_mount DemoWeb.InitAssigns
+        on_mount {DemoWeb.LiveAuth, :check_auth_user}
+      end
+
   For more information about lifecycle hooks, see `attach_hook/4`.
   """
   defmacro on_mount(id) do
     quote do
-      Module.put_attribute(__MODULE__, :phoenix_live_on_mount, unquote(id))
+      Module.put_attribute(
+        __MODULE__,
+        :phoenix_live_on_mount,
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(id))
+      )
     end
   end
 
