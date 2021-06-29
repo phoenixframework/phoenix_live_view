@@ -231,7 +231,8 @@ defmodule Phoenix.LiveView.Helpers do
         {_, _} -> {nil, do_block, assigns}
       end
 
-    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or is_map(assigns) do
+    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or
+         is_map(assigns) do
       quote do
         Phoenix.LiveView.Helpers.__live_component__(
           unquote(component).__live__(),
@@ -454,7 +455,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc false
   def __component__(func, assigns, inner)
-      when is_function(func, 1) and is_list(assigns) or is_map(assigns) do
+      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
     assigns =
       case assigns do
         %{__changed__: _} -> assigns
@@ -825,5 +826,64 @@ defmodule Phoenix.LiveView.Helpers do
   defp title_tag(_title, _prefix = nil, _suffix = nil, opts) do
     raise ArgumentError,
           "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
+  end
+
+  @doc """
+  Renders a function component using `Phoenix.HTML.form_for/4`.
+
+  ## Options
+
+  The `:data` assign is the form's source data and the optional `:url`
+  assign can be provided for the form's action. Additionally accepts
+  the same options as `Phoenix.HTML.form_for/4` as optional assigns:
+
+    * `:as` - the server side parameter in which all params for this
+      form will be collected (i.e. `as: :user_params` would mean all fields
+      for this form will be accessed as `conn.params.user_params` server
+      side). Automatically inflected when a changeset is given.
+
+    * `:method` - the HTTP method. If the method is not "get" nor "post",
+      an input tag with name `_method` is generated along-side the form tag.
+      Defaults to "post".
+
+    * `:multipart` - when true, sets enctype to "multipart/form-data".
+      Required when uploading files
+
+    * `:csrf_token` - for "post" requests, the form tag will automatically
+      include an input tag with name `_csrf_token`. When set to false, this
+      is disabled
+
+    * `:errors` - use this to manually pass a keyword list of errors to the form
+      (for example from `conn.assigns[:errors]`). This option is only used when a
+      connection is used as the form source and it will make the errors available
+      under `f.errors`
+
+    * `:id` - the ID of the form attribute. If an ID is given, all form inputs
+      will also be prefixed by the given ID
+
+  ## Examples
+
+      <.form_for let={f} data={@changeset}>
+        <%= text_input f, :name %>
+      </.form_for>
+
+      <.form_for let={user_form} data={@changeset} as="user">
+        <%= text_input user_form, :name %>
+      </.form_for>
+  """
+  def form_for(assigns) do
+    opts =
+      assigns |> Map.take([:as, :method, :multipart, :csrf_token, :errors, :id]) |> Enum.into([])
+
+    assigns =
+      assigns
+      |> Map.put(:opts, opts)
+      |> Map.put(:url, assigns[:url] || "#")
+
+    ~H"""
+    <%= Phoenix.HTML.Form.form_for @data, @url, @opts, fn f -> %>
+      <%= render_block(@inner_block, f) %>
+    <% end %>
+    """
   end
 end

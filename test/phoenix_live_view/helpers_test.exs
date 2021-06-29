@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
   import Phoenix.LiveView.Helpers
   import Phoenix.HTML
+  import Phoenix.HTML.Form
 
   describe "live_patch" do
     test "single arity" do
@@ -114,6 +115,71 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert_raise ArgumentError, ~r/expects a :prefix and\/or :suffix/, fn ->
         live_title_tag("bad", bad: :bad)
       end
+    end
+  end
+
+  defp parse(template) do
+    template
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+    |> Phoenix.LiveViewTest.DOM.parse()
+  end
+
+  describe "form_for" do
+    test "geneates form with no options" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+          <.form_for let={f} data={:myform}>
+            <%= text_input f, :foo %>
+          </.form_for>
+        """)
+
+      assert [
+               {"form", [{"action", "#"}, {"method", "post"}],
+                [
+                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
+    test "geneates form with available options" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+          <.form_for let={user_form}
+            id="form"
+            data={%Plug.Conn{}}
+            url="/"
+            method="put"
+            multipart={true}
+            csrf_token="123"
+            as="user"
+            errors={[name: "can't be blank"]}
+          >
+            <%= text_input user_form, :foo %>
+            <%= inspect(user_form.errors) %>
+          </.form_for>
+        """)
+
+      assert [
+               {"form",
+                [
+                  {"action", "/"},
+                  {"enctype", "multipart/form-data"},
+                  {"id", "form"},
+                  {"method", "post"}
+                ],
+                [
+                  {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},
+                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", "123"}], []},
+                  {"input", [{"id", "form_foo"}, {"name", "user[foo]"}, {"type", "text"}], []},
+                  "\n    [name: \"can't be blank\"]\n  \n"
+                ]}
+             ] = html
     end
   end
 end
