@@ -221,7 +221,7 @@ defmodule Phoenix.LiveView.Engine do
 
   Phoenix will be able to track what is static and dynamic
   across templates, as well as what changed. A rendered
-  nested `live template will appear in the `dynamic`
+  nested `live` template will appear in the `dynamic`
   list as another `Phoenix.LiveView.Rendered` structure,
   which must be handled recursively.
 
