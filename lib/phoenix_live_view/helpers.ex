@@ -871,19 +871,58 @@ defmodule Phoenix.LiveView.Helpers do
         <%= text_input user_form, :name %>
       </.form_for>
   """
+  @form_opts [:as, :method, :multipart, :csrf_token, :errors, :id]
+  @form_required [:for, :url]
+  @reserved_assigns [:__changed__, :inner_block]
   def form_for(assigns) do
-    opts =
-      assigns |> Map.take([:as, :method, :multipart, :csrf_token, :errors, :id]) |> Enum.into([])
+    data = assigns[:for] || raise ArgumentError, "missing :for assign to form_for"
+    action = assigns[:url] || "#"
+    opts = assigns |> Map.take(@form_opts) |> Enum.into([])
+    %{action: action, options: tag_opts} = form = Phoenix.HTML.Form.form_for(data, action, opts)
+
+    enctype =
+      case Keyword.fetch(opts, :multipart) do
+        {:ok, true} -> "multipart/form-data"
+        {:ok, false} -> false
+        :error -> false
+      end
+
+    extra_attrs =
+      assigns
+      |> Map.drop(@form_opts)
+      |> Map.drop(@form_required)
+      |> Map.drop(@reserved_assigns)
+      |> Map.merge(%{id: form.id, enctype: enctype})
+      |> Enum.into([])
+
+    {method, hidden_method} =
+      case assigns[:method] do
+        method when method in ~w(get post) -> {method, nil}
+        hidden when is_binary(hidden) -> {"post", hidden}
+        nil -> {"post", nil}
+      end
 
     assigns =
       assigns
-      |> Map.put(:opts, opts)
-      |> Map.put(:url, assigns[:url] || "#")
+      |> Map.merge(%{action: action, opts: tag_opts, form: form, method: method})
+      |> Map.put(:hidden_method, hidden_method)
+      |> Map.put(:csrf_token, opts[:csrf_token] || form.options[:csrf_token])
+      |> Map.put(:extra_attrs, extra_attrs)
 
     ~H"""
-    <%= Phoenix.HTML.Form.form_for @data, @url, @opts, fn f -> %>
-      <%= render_block(@inner_block, f) %>
-    <% end %>
+    <form
+      action={@action}
+      method={@method}
+      {@extra_attrs}
+    >
+      <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
+        <input name="_method" type="hidden" value={@hidden_method}>
+      <% end %>
+      <%= if @csrf_token do %>
+        <input name="_csrf_token" type="hidden" value={@csrf_token}>
+      <% end %>
+      <%= render_block(@inner_block, @form) %>
+    </form>
     """
   end
 end

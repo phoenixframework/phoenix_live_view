@@ -131,13 +131,13 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-          <.form_for let={f} data={:myform}>
+          <.form_for let={f} for={:myform}>
             <%= text_input f, :foo %>
           </.form_for>
         """)
 
       assert [
-               {"form", [{"action", "#"}, {"method", "post"}],
+               {"form", [{"action", "#"}, {"method", "post"}, {"id", "myform"}],
                 [
                   {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
@@ -145,20 +145,22 @@ defmodule Phoenix.LiveView.HelpersTest do
              ] = html
     end
 
-    test "geneates form with available options" do
+    test "geneates form with available options and custom attributes" do
       assigns = %{}
 
       html =
         parse(~H"""
           <.form_for let={user_form}
             id="form"
-            data={%Plug.Conn{}}
+            for={%Plug.Conn{}}
             url="/"
             method="put"
             multipart={true}
             csrf_token="123"
             as="user"
             errors={[name: "can't be blank"]}
+            data-foo="bar"
+            class="pretty"
           >
             <%= text_input user_form, :foo %>
             <%= inspect(user_form.errors) %>
@@ -169,9 +171,11 @@ defmodule Phoenix.LiveView.HelpersTest do
                {"form",
                 [
                   {"action", "/"},
+                  {"method", "post"},
+                  {"class", "pretty"},
+                  {"data-foo", "bar"},
                   {"enctype", "multipart/form-data"},
-                  {"id", "form"},
-                  {"method", "post"}
+                  {"id", "form"}
                 ],
                 [
                   {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},
