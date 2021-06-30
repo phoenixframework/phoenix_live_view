@@ -4,10 +4,11 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Static, Upload, UploadConfig}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session}
   alias Phoenix.Socket.Message
 
   @prefix :phoenix
+  @not_mounted_at_router :not_mounted_at_router
 
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
@@ -98,17 +99,18 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
+    send(state.socket.transport_pid, {:socket_close, self(), {:shutdown, :left}})
     reply(state, msg.ref, :ok, %{})
     {:stop, {:shutdown, :left}, state}
   end
 
-  def handle_info(%Message{topic: topic, event: "link"} = msg, %{topic: topic} = state) do
+  def handle_info(%Message{topic: topic, event: "live_patch"} = msg, %{topic: topic} = state) do
     %{socket: socket} = state
     %{view: view} = socket
     %{"url" => url} = msg.payload
 
-    case Utils.live_link_info!(socket, view, url) do
-      {:internal, params, action, _} ->
+    case Route.live_link_info!(socket, view, url) do
+      {:internal, %Route{params: params, action: action}} ->
         socket = socket |> assign_action(action) |> Utils.clear_flash()
 
         socket
@@ -267,7 +269,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
     assigns = Map.take(state.socket.assigns, assign_new)
-    {:reply, assigns, state}
+    {:reply, {:ok, assigns}, state}
   end
 
   def handle_call({@prefix, :register_entry_upload, info}, from, state) do
@@ -366,9 +368,9 @@ defmodule Phoenix.LiveView.Channel do
 
       socket.root_pid != self() or is_nil(router) ->
         # Let the callback fail for the usual reasons
-        Utils.live_link_info!(%{socket | router: nil}, view, url)
+        Route.live_link_info!(%{socket | router: nil}, view, url)
 
-      params == :not_mounted_at_router ->
+      params == @not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
                 " was not mounted at the router with the live/3 macro under URL #{inspect(url)}"
 
@@ -748,9 +750,11 @@ defmodule Phoenix.LiveView.Channel do
   ## Mount
 
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
-    case Static.verify_session(phx_socket.endpoint, session_token, params["static"]) do
-      {:ok, verified} ->
-        %{private: %{connect_info: connect_info}} = phx_socket
+    %Phoenix.Socket{endpoint: endpoint, topic: topic} = phx_socket
+
+    case Session.verify_session(endpoint, topic, session_token, params["static"]) do
+      {:ok, %Session{} = verified} ->
+        %Phoenix.Socket{private: %{connect_info: connect_info}} = phx_socket
 
         case connect_info do
           %{session: nil} ->
@@ -790,7 +794,18 @@ defmodule Phoenix.LiveView.Channel do
             {:stop, :shutdown, :no_state}
 
           %{} ->
-            verified_mount(verified, params, from, phx_socket, connect_info)
+            case authorize_session(verified, endpoint, params) do
+              {:ok, %Session{} = new_verified, route, url} ->
+                verified_mount(new_verified, route, url, params, from, phx_socket, connect_info)
+
+              {:error, :unauthorized} ->
+                GenServer.reply(from, {:error, %{reason: "unauthorized"}})
+                {:stop, :shutdown, :no_state}
+
+              {:error, _reason} ->
+                GenServer.reply(from, {:error, %{reason: "stale"}})
+                {:stop, :shutdown, :no_state}
+            end
         end
 
       {:error, _reason} ->
@@ -805,27 +820,26 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verify_flash(endpoint, verified, flash_token, connect_params) do
-    verified_flash = verified[:flash]
-
+  defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
     # verified_flash is fetched from the disconnected render.
     # params["flash"] is sent on live redirects and therefore has higher priority.
     cond do
       flash_token -> Utils.verify_flash(endpoint, flash_token)
-      connect_params["_mounts"] == 0 && verified_flash -> verified_flash
+      connect_params["_mounts"] == 0 && verified.flash -> verified.flash
       true -> %{}
     end
   end
 
-  defp verified_mount(verified, params, from, phx_socket, connect_info) do
-    %{
+  defp verified_mount(%Session{} = verified, route, url, params, from, phx_socket, connect_info) do
+    %Session{
       id: id,
       view: view,
       root_view: root_view,
       parent_pid: parent,
-      root_pid: root,
-      session: session,
-      assign_new: assign_new
+      root_pid: root_pid,
+      session: verified_user_session,
+      assign_new: assign_new,
+      router: router
     } = verified
 
     # Make sure the view is loaded. Otherwise if the first request
@@ -840,11 +854,9 @@ defmodule Phoenix.LiveView.Channel do
     } = phx_socket
 
     # Optional parameter handling
-    url = params["url"]
     connect_params = params["params"]
 
     # Optional verified parts
-    router = verified[:router]
     flash = verify_flash(endpoint, verified, params["flash"], connect_params)
     socket_session = connect_info[:session] || %{}
 
@@ -861,32 +873,36 @@ defmodule Phoenix.LiveView.Channel do
       view: view,
       transport_pid: transport_pid,
       parent_pid: parent,
-      root_pid: root || self(),
+      root_pid: root_pid || self(),
       id: id,
       router: router
     }
 
     {params, host_uri, action} =
-      case router && url && Utils.live_link_info!(socket, view, url) do
-        {:internal, params, action, host_uri} -> {params, host_uri, action}
-        {:external, host_uri} -> {:not_mounted_at_router, host_uri, nil}
-        _ -> {:not_mounted_at_router, :not_mounted_at_router, nil}
+      case route do
+        %Route{} = route ->
+          {route.params, route.uri, route.action}
+
+        nil ->
+          {@not_mounted_at_router, @not_mounted_at_router, nil}
       end
 
-    socket =
-      Utils.configure_socket(
-        socket,
-        mount_private(parent, root_view, assign_new, connect_params, connect_info),
-        action,
-        flash,
-        host_uri
-      )
+    merged_session = Map.merge(socket_session, verified_user_session)
 
-    socket
-    |> Utils.maybe_call_live_view_mount!(view, params, Map.merge(socket_session, session))
-    |> build_state(phx_socket)
-    |> maybe_call_mount_handle_params(router, url, params)
-    |> reply_mount(from)
+    case mount_private(parent, root_view, assign_new, connect_params, connect_info) do
+      {:ok, mount_priv} ->
+        socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
+
+        socket
+        |> Utils.maybe_call_live_view_mount!(view, params, merged_session)
+        |> build_state(phx_socket)
+        |> maybe_call_mount_handle_params(router, url, params)
+        |> reply_mount(from, verified, route)
+
+      {:error, :noproc} ->
+        GenServer.reply(from, {:error, %{reason: "stale"}})
+        {:stop, :shutdown, :no_state}
+    end
   end
 
   defp load_csrf_token(endpoint, socket_session) do
@@ -898,43 +914,67 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp mount_private(nil, root_view, assign_new, connect_params, connect_info) do
-    %{
-      connect_params: connect_params,
-      connect_info: connect_info,
-      assign_new: {%{}, assign_new},
-      changed: %{},
-      root_view: root_view
-    }
+    {:ok,
+     %{
+       connect_params: connect_params,
+       connect_info: connect_info,
+       assign_new: {%{}, assign_new},
+       root_view: root_view,
+       __changed__: %{}
+     }}
   end
 
   defp mount_private(parent, root_view, assign_new, connect_params, connect_info) do
-    parent_assigns = sync_with_parent(parent, assign_new)
+    case sync_with_parent(parent, assign_new) do
+      {:ok, parent_assigns} ->
+        # Child live views always ignore the layout on `:use`.
+        {:ok,
+         %{
+           connect_params: connect_params,
+           connect_info: connect_info,
+           assign_new: {parent_assigns, assign_new},
+           phoenix_live_layout: false,
+           root_view: root_view,
+           __changed__: %{}
+         }}
 
-    # Child live views always ignore the layout on `:use`.
-    %{
-      connect_params: connect_params,
-      connect_info: connect_info,
-      assign_new: {parent_assigns, assign_new},
-      phoenix_live_layout: false,
-      changed: %{},
-      root_view: root_view
-    }
+      {:error, :noproc} ->
+        {:error, :noproc}
+    end
   end
 
   defp sync_with_parent(parent, assign_new) do
     _ref = Process.monitor(parent)
-    GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
+
+    try do
+      GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
+    catch
+      :exit, {:noproc, _} -> {:error, :noproc}
+    end
   end
 
-  defp reply_mount(result, from) do
+  defp put_container(%Session{} = session, %Route{} = route, %{} = diff) do
+    if container = session.redirected? && Route.container(route) do
+      {tag, attrs} = container
+      Map.put(diff, :container, [tag, Enum.into(attrs, %{})])
+    else
+      diff
+    end
+  end
+
+  defp put_container(%Session{}, nil = _route, %{} = diff), do: diff
+
+  defp reply_mount(result, from, %Session{} = session, route) do
     case result do
       {:ok, diff, :mount, new_state} ->
-        GenServer.reply(from, {:ok, %{rendered: diff}})
-        {:noreply, post_mount_prune(new_state)}
+        reply = put_container(session, route, %{rendered: diff})
+        GenServer.reply(from, {:ok, reply})
+        {:noreply, post_verified_mount(new_state)}
 
       {:ok, diff, {:live_patch, opts}, new_state} ->
-        GenServer.reply(from, {:ok, %{rendered: diff, live_patch: opts}})
-        {:noreply, post_mount_prune(new_state)}
+        reply = put_container(session, route, %{rendered: diff, live_patch: opts})
+        GenServer.reply(from, {:ok, reply})
+        {:noreply, post_verified_mount(new_state)}
 
       {:live_redirect, opts, new_state} ->
         GenServer.reply(from, {:error, %{live_redirect: opts}})
@@ -962,7 +1002,7 @@ defmodule Phoenix.LiveView.Channel do
     URI.to_string(%{socket.host_uri | path: to})
   end
 
-  defp post_mount_prune(%{socket: socket} = state) do
+  defp post_verified_mount(%{socket: socket} = state) do
     %{state | socket: Utils.post_mount_prune(socket)}
   end
 
@@ -1094,6 +1134,36 @@ defmodule Phoenix.LiveView.Channel do
         If you want to allow simultaneous uploads across different components, pass a
         unique upload name to allow_upload/3
         """
+    end
+  end
+
+  defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url}) do
+    if redir_route = session_route(session, endpoint, url) do
+      case Session.authorize_root_redirect(session, redir_route) do
+        {:ok, %Session{} = new_session} -> {:ok, new_session, redir_route, url}
+        {:error, :unauthorized} = err -> err
+      end
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  defp authorize_session(%Session{} = session, endpoint, %{"url" => url}) do
+    if Session.main?(session) do
+      {:ok, session, session_route(session, endpoint, url), url}
+    else
+      {:ok, session, _route = nil, _url = nil}
+    end
+  end
+
+  defp authorize_session(%Session{} = session, _endpoint, %{} = _params) do
+    {:ok, session, _route = nil, _url = nil}
+  end
+
+  defp session_route(%Session{} = session, endpoint, url) do
+    case Route.live_link_info(endpoint, session.router, url) do
+      {:internal, %Route{} = route} -> route
+      _ -> nil
     end
   end
 end

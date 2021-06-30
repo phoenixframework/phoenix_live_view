@@ -1,5 +1,4 @@
-# TODO: Rename this file and test case to stateful_component
-defmodule Phoenix.LiveView.ComponentTest do
+defmodule Phoenix.LiveView.LiveComponentsTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest
 
@@ -395,6 +394,17 @@ defmodule Phoenix.LiveView.ComponentTest do
     end
   end
 
+  defmodule BadRootComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <foo><%= @id %></foo>
+      <bar><%= @id %></bar>
+      """
+    end
+  end
+
   describe "render_component/2" do
     test "full life-cycle without id" do
       assert render_component(MyComponent, [from: "test"], router: SomeRouter) =~
@@ -424,6 +434,12 @@ defmodule Phoenix.LiveView.ComponentTest do
 
     test "nested render only" do
       assert render_component(NestedRenderOnlyComponent, %{from: "test"}) =~ "RENDER ONLY test"
+    end
+
+    test "raises on bad root" do
+      assert_raise ArgumentError, ~r/have a single static HTML tag at the root/, fn ->
+        render_component(BadRootComponent, %{id: "id"})
+      end
     end
 
     test "loads unloaded component" do

@@ -109,7 +109,7 @@ Imagine you want to show an error message when the input is less than
 
 ```elixir
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%= if @too_short do %>
       Input too short...
     <% end %>

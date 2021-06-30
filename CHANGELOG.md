@@ -2,15 +2,51 @@
 
 ## 0.16.0-dev
 
-LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function components.
-The new HEEx templates validate the markup in the template is valid while also providing
-syntax conveniences to make it easy to build composable components.
+### Security Considerations Upgrading from 0.15
 
-A function component is any function that receives a map of assigns and returns a `~H` template:
+LiveView v0.16 optimizes live redirects by supporting navigation purely
+over the existing WebSocket connection. This is accomplished by the new
+`live_session/3` feature of `Phoenix.LiveView.Router`. The
+[security guide](/guides/server/security-model.md) has always stressed
+the following:
+
+> ... As we have seen, LiveView begins its life-cycle as a regular HTTP
+> request. Then a stateful connection is established. Both the HTTP
+> request and the stateful connection receives the client data via
+> parameters and session. This means that any session validation must
+> happen both in the HTTP request (plug pipeline) and the stateful
+> connection (LiveView mount) ...
+
+These guidelines continue to be valid, but it is now essential that the
+stateful connection enforces authentication and session validation within
+the LiveView mount lifecycle because **a `live_redirect` from the client
+will not go through the plug pipeline** as a hard-refresh or initial HTTP
+render would. This means authentication, authorization, etc that may be
+done in the `Plug.Conn` pipeline must also be performed within the
+LiveView mount lifecycle.
+
+Live sessions allow you to support a shared security model by allowing
+`live_redirect`s to only be issued between routes defined under the same
+live session name. If a client attempts to live redirect to a different
+live session, it will be refused and a graceful client-side redirect will
+trigger a regular HTTP request to the attempted URL.
+
+See the `Phoenix.LiveView.Router.live_session/3` docs for more information
+and example usage.
+
+### New HTML Engine
+
+LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function
+components via `Phoenix.Component`. The new HEEx templates validate the markup in
+the template while also providing smarter change tracking as well as syntax
+conveniences to make it easier to build composable components.
+
+A function component is any function that receives a map of assigns and returns
+a `~H` template:
 
 ```elixir
 defmodule MyComponent do
-  import Phoenix.LiveView.Helpers
+  use Phoenix.Component
 
   def btn(assigns) do
     ~H"""
@@ -24,16 +60,19 @@ This component can now be used as in your HEEx templates as:
 
     <MyComponent.btn text="Save">
 
-The introduction of HEEx and function components introduces a series of deprecation warnings,
-some introduced in this release and others which will be added in the future. HEEx requires Elixir v1.12+.
+The introduction of HEEx and function components brings a series of deprecation
+warnings, some introduced in this release and others which will be added in the
+future. Note HEEx templates require Elixir v1.12+.
 
 ### Upgrading and deprecations
 
-The main deprecation is that the `~L` sigil and the `.leex` extension will be deprecated.
-We recommend to migrate to the `~H` sigil and the `.heex` extension instead, which validate
-the HTML is structurally valid and help developers avoid mistakes.
+The main deprecation in this release is that the `~L` sigil and the `.leex` extension
+are now soft-deprecated. The docs have been updated to discourage them and using them
+will emit warnings in future releases. We recommend using the `~H` sigil and the `.heex`
+extension for all future templates in your application. You should also plan to migrate
+the old templates accordingly using the recommendations below.
 
-Migrating from `LEEx` to `HEEx` is relatively straighforward. There are two main difference.
+Migrating from `LEEx` to `HEEx` is relatively straighforward. There are two main differences.
 First of all, HEEx does not allow interpolation inside tags. So instead of:
 
 ```elixir
@@ -61,7 +100,7 @@ The other difference is in regards to `form_for`. Some templates may do the foll
 ```
 
 However, when converted to `~H`, it is not valid HTML: there is a `</form>` tag but
-its opening is hidden as it is made dynamically. On Phoenix v0.16, `form_for` can now
+its opening is hidden inside the Elixir code. On LiveView v0.16, `form_for` can now
 be used as a function component:
 
 ```elixir
@@ -72,25 +111,33 @@ be used as a function component:
 """
 ```
 
-We understanding migrating all templates from `~L` to `~H` can be a daunting task.
+We understand migrating all templates from `~L` to `~H` can be a daunting task.
 Therefore we plan to support `~L` in LiveViews for a long time. However, we can't
 do the same for stateful LiveComponents, as some important client-side features and
 optimizations will depend on the `~H` sigil. Therefore **our recommendation is to
-start replacing `~L` by `~H` in live components**, particularly stateful live components.
+replace `~L` by `~H` first in live components**, particularly stateful live components.
 
 Furthermore, stateless `live_component` (i.e. live components without an `:id`)
 will be deprecated in favor of the new function components. Our plan is to support
 them for a reasonable period of time, but you should avoid creating new ones in
 your application.
 
-### Enhacements
+### Enhancements
   - Introduce HEEx templates
+  - Introduce `Phoenix.Component`
+  - Introduce `Phoenix.Router.live_session/3` for optimized live redirects
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
+  - Fix `Phoenix.LiveViewTest.page_title` returning nil in some cases
 
 ### Deprecations
   - Implicit assigns when passing a `do-end` block to `live_component` is deprecated
+
+## 0.15.7 (2021-05-24)
+
+### Bug fixes
+  - Fix broken webpack build throwing missing morphdom dependency
 
 ## 0.15.6 (2021-05-24)
 

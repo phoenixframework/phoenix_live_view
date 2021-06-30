@@ -36,7 +36,6 @@ defmodule Phoenix.LiveView.Controller do
       {:ok, content, socket_assigns} ->
         conn
         |> Phoenix.Controller.put_view(LiveView.Static)
-        |> LiveView.Plug.put_cache_headers()
         |> Phoenix.Controller.render(
           "template.html",
           Map.merge(socket_assigns, %{content: content, live_module: view})

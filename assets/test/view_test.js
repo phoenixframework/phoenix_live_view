@@ -1,9 +1,11 @@
 import {Socket} from "phoenix"
-import LiveSocket, {View, DOM} from "../js/phoenix_live_view"
+import LiveSocket from "phoenix_live_view/live_socket"
+import DOM from "phoenix_live_view/dom"
+import View from "phoenix_live_view/view"
 
 import {tag, simulateJoinedView, stubChannel, rootContainer} from "./test_helpers"
 
-function liveViewDOM(content) {
+function liveViewDOM(content){
   const div = document.createElement("div")
   div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
@@ -23,10 +25,10 @@ function liveViewDOM(content) {
   return div
 }
 
-describe("View + DOM", function() {
+describe("View + DOM", function (){
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit
-    global.Phoenix = { Socket }
+    global.Phoenix = {Socket}
     global.document.body.innerHTML = liveViewDOM().outerHTML
   })
 
@@ -49,7 +51,7 @@ describe("View + DOM", function() {
     expect(view.rendered.get()).toEqual(updateDiff)
   })
 
-  test("pushWithReply", function() {
+  test("pushWithReply", function (){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -57,7 +59,7 @@ describe("View + DOM", function() {
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toBe("increment=1")
         return {
           receive(){ return this }
@@ -66,10 +68,10 @@ describe("View + DOM", function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply(null, { target: el.querySelector("form") }, { value: "increment=1" })
+    view.pushWithReply(null, {target: el.querySelector("form")}, {value: "increment=1"})
   })
 
-  test("pushWithReply with update", function() {
+  test("pushWithReply with update", function (){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
 
@@ -77,13 +79,13 @@ describe("View + DOM", function() {
     let channelStub = {
       leave(){
         return {
-          receive(status, cb){ return this }
+          receive(_status, _cb){ return this }
         }
       },
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toBe("increment=1")
         return {
-          receive(status, cb) {
+          receive(_status, cb){
             let diff = {
               s: ["<h2>", "</h2>"],
               fingerprint: 123
@@ -96,12 +98,12 @@ describe("View + DOM", function() {
     }
     view.channel = channelStub
 
-    view.pushWithReply(null, { target: el.querySelector("form") }, { value: "increment=1" })
+    view.pushWithReply(null, {target: el.querySelector("form")}, {value: "increment=1"})
 
     expect(view.el.querySelector("form")).toBeTruthy()
   })
 
-  test("pushEvent", function() {
+  test("pushEvent", function (){
     expect.assertions(3)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -110,7 +112,7 @@ describe("View + DOM", function() {
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.type).toBe("keyup")
         expect(payload.event).toBeDefined()
         expect(payload.value).toEqual({"value": "1"})
@@ -124,16 +126,16 @@ describe("View + DOM", function() {
     view.pushEvent("keyup", input, el, "click", {})
   })
 
-  test("pushEvent as checkbox not checked", function() {
+  test("pushEvent as checkbox not checked", function (){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let input = el.querySelector(`input[type="checkbox"]`)
+    let input = el.querySelector("input[type=\"checkbox\"]")
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toEqual({})
         return {
           receive(){ return this }
@@ -145,18 +147,18 @@ describe("View + DOM", function() {
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushEvent as checkbox when checked", function() {
+  test("pushEvent as checkbox when checked", function (){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let input = el.querySelector(`input[type="checkbox"]`)
+    let input = el.querySelector("input[type=\"checkbox\"]")
     let view = simulateJoinedView(el, liveSocket)
 
     input.checked = true
 
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toEqual({"value": "on"})
         return {
           receive(){ return this }
@@ -168,19 +170,19 @@ describe("View + DOM", function() {
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushEvent as checkbox with value", function() {
+  test("pushEvent as checkbox with value", function (){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let input = el.querySelector(`input[type="checkbox"]`)
+    let input = el.querySelector("input[type=\"checkbox\"]")
     let view = simulateJoinedView(el, liveSocket)
 
     input.value = "1"
     input.checked = true
 
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toEqual({"value": "1"})
         return {
           receive(){ return this }
@@ -192,7 +194,7 @@ describe("View + DOM", function() {
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushKey", function() {
+  test("pushKey", function (){
     expect.assertions(3)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -201,7 +203,7 @@ describe("View + DOM", function() {
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.type).toBe("keydown")
         expect(payload.event).toBeDefined()
         expect(payload.value).toEqual({"key": "A", "value": "1"})
@@ -215,7 +217,7 @@ describe("View + DOM", function() {
     view.pushKey(input, el, "keydown", "move", {key: "A"})
   })
 
-  test("pushInput", function() {
+  test("pushInput", function (){
     expect.assertions(3)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -224,7 +226,7 @@ describe("View + DOM", function() {
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
         expect(payload.value).toBe("increment=1&note=2&_target=increment")
@@ -238,10 +240,10 @@ describe("View + DOM", function() {
     view.pushInput(input, el, "validate", input)
   })
 
-  test("formsForRecovery", function() {
+  test("formsForRecovery", function (){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
-    html = `<form phx-change="cg"><input name="foo"></form>`
+    html = "<form phx-change=\"cg\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     expect(view.joinCount).toBe(0)
     expect(view.formsForRecovery(html).length).toBe(0)
@@ -252,24 +254,24 @@ describe("View + DOM", function() {
     view.joinCount++
     expect(view.formsForRecovery(html).length).toBe(1)
 
-    html = `<form phx-change="cg" phx-auto-recover="ignore"><input name="foo"></form>`
+    html = "<form phx-change=\"cg\" phx-auto-recover=\"ignore\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
 
-    html = `<form><input name="foo"></form>`
+    html = "<form><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
 
-    html = `<form phx-change="cg"></form>`
+    html = "<form phx-change=\"cg\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
   })
 
-  describe("submitForm", function() {
-    test("submits payload", function() {
+  describe("submitForm", function (){
+    test("submits payload", function (){
       expect.assertions(3)
 
       let liveSocket = new LiveSocket("/live", Socket)
@@ -278,7 +280,7 @@ describe("View + DOM", function() {
 
       let view = simulateJoinedView(el, liveSocket)
       let channelStub = {
-        push(evt, payload, timeout) {
+        push(_evt, payload, _timeout){
           expect(payload.type).toBe("form")
           expect(payload.event).toBeDefined()
           expect(payload.value).toBe("increment=1&note=2")
@@ -288,10 +290,10 @@ describe("View + DOM", function() {
         }
       }
       view.channel = channelStub
-      view.submitForm(form, form, { target: form })
+      view.submitForm(form, form, {target: form})
     })
 
-    test("disables elements after submission", function() {
+    test("disables elements after submission", function (){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let form = el.querySelector("form")
@@ -299,7 +301,7 @@ describe("View + DOM", function() {
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
 
-      view.submitForm(form, form, { target: form })
+      view.submitForm(form, form, {target: form})
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
       expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
@@ -307,7 +309,7 @@ describe("View + DOM", function() {
       expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
     })
 
-    test("disables elements outside form", function() {
+    test("disables elements outside form", function (){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM(`
       <form id="my-form">
@@ -323,7 +325,7 @@ describe("View + DOM", function() {
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
 
-      view.submitForm(form, form, { target: form })
+      view.submitForm(form, form, {target: form})
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
       expect(el.querySelector("button").dataset.phxDisabled).toBeTruthy()
@@ -337,7 +339,7 @@ describe("View + DOM", function() {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let view = simulateJoinedView(el, liveSocket)
-      let html = `<form id="form" phx-submit="submit"><input type="text"></form>`
+      let html = "<form id=\"form\" phx-submit=\"submit\"><input type=\"text\"></form>"
 
       stubChannel(view)
       view.onJoin({rendered: {s: [html], fingerprint: 123}})
@@ -345,7 +347,7 @@ describe("View + DOM", function() {
 
       let formEl = document.getElementById("form")
       formEl.submit = () => done()
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
+      let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
       view.update({s: [updatedHtml]}, [])
 
       expect(liveSocket.socket.closeWasClean).toBe(true)
@@ -356,14 +358,14 @@ describe("View + DOM", function() {
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let view = simulateJoinedView(el, liveSocket)
-      let html = `<div>not a form</div>`
+      let html = "<div>not a form</div>"
       HTMLFormElement.prototype.submit = done
 
       stubChannel(view)
       view.onJoin({rendered: {s: [html], fingerprint: 123}})
       expect(view.el.innerHTML).toBe(html)
 
-      let updatedHtml = `<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>`
+      let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
       view.update({s: [updatedHtml]}, [])
 
       expect(liveSocket.socket.closeWasClean).toBe(true)
@@ -371,7 +373,7 @@ describe("View + DOM", function() {
     })
   })
 
-  describe("phx-update", function() {
+  describe("phx-update", function (){
     let childIds = () => Array.from(document.getElementById("list").children).map(child => parseInt(child.id))
     let countChildNodes = () => document.getElementById("list").childNodes.length
 
@@ -383,8 +385,8 @@ describe("View + DOM", function() {
       stubChannel(view)
 
       let joinDiff = {
-        "0": {"d": initialDynamics, "s": [`\n<div id="`, `">`, `</div>\n`]},
-        "s": [`<div id="list" phx-update="${updateType}">`, `</div>`]
+        "0": {"d": initialDynamics, "s": ["\n<div id=\"", "\">", "</div>\n"]},
+        "s": [`<div id="list" phx-update="${updateType}">`, "</div>"]
       }
 
       view.onJoin({rendered: joinDiff})
@@ -409,7 +411,7 @@ describe("View + DOM", function() {
       updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
-      expect(childIds()).toEqual([2,3])
+      expect(childIds()).toEqual([2, 3])
     })
 
     test("append", async () => {
@@ -420,57 +422,57 @@ describe("View + DOM", function() {
       updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
-      expect(childIds()).toEqual([1,2,3])
+      expect(childIds()).toEqual([1, 2, 3])
 
       // Update the last element
       updateDynamics(view,
         [["3", "3"]]
       )
-      expect(childIds()).toEqual([1,2,3])
+      expect(childIds()).toEqual([1, 2, 3])
 
       // Update the first element
       updateDynamics(view,
         [["1", "1"]]
       )
-      expect(childIds()).toEqual([1,2,3])
+      expect(childIds()).toEqual([1, 2, 3])
 
       // Update before new elements
       updateDynamics(view,
-         [["4", "4"], ["5", "5"]]
+        [["4", "4"], ["5", "5"]]
       )
-      expect(childIds()).toEqual([1,2,3,4,5])
+      expect(childIds()).toEqual([1, 2, 3, 4, 5])
 
       // Update after new elements
       updateDynamics(view,
-         [["6", "6"], ["7", "7"], ["5", "modified"]]
+        [["6", "6"], ["7", "7"], ["5", "modified"]]
       )
-      expect(childIds()).toEqual([1,2,3,4,5,6,7])
+      expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7])
 
       // Sandwich an update between two new elements
       updateDynamics(view,
-        [["8", "8"], ["7", "modified"],  ["9", "9"]]
+        [["8", "8"], ["7", "modified"], ["9", "9"]]
       )
-      expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+      expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
       // Update all elements in reverse order
       updateDynamics(view,
-        [["9", "9"], ["8", "8"],  ["7", "7"], ["6", "6"], ["5", "5"], ["4", "4"], ["3", "3"], ["2", "2"], ["1", "1"]]
+        [["9", "9"], ["8", "8"], ["7", "7"], ["6", "6"], ["5", "5"], ["4", "4"], ["3", "3"], ["2", "2"], ["1", "1"]]
       )
-      expect(childIds()).toEqual([1,2,3,4,5,6,7,8,9])
+      expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
       // Make sure we don't have a memory leak when doing updates
       let initalCount = countChildNodes()
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
 
       expect(countChildNodes()).toBe(initalCount)
@@ -484,57 +486,57 @@ describe("View + DOM", function() {
       updateDynamics(view,
         [["2", "2"], ["3", "3"]]
       )
-      expect(childIds()).toEqual([2,3,1])
+      expect(childIds()).toEqual([2, 3, 1])
 
       // Update the last element
       updateDynamics(view,
         [["3", "3"]]
       )
-      expect(childIds()).toEqual([2,3,1])
+      expect(childIds()).toEqual([2, 3, 1])
 
       // Update the first element
       updateDynamics(view,
         [["1", "1"]]
       )
-      expect(childIds()).toEqual([2,3,1])
+      expect(childIds()).toEqual([2, 3, 1])
 
       // Update before new elements
       updateDynamics(view,
-         [["4", "4"], ["5", "5"]]
+        [["4", "4"], ["5", "5"]]
       )
-      expect(childIds()).toEqual([4,5,2,3,1])
+      expect(childIds()).toEqual([4, 5, 2, 3, 1])
 
       // Update after new elements
       updateDynamics(view,
-         [["6", "6"], ["7", "7"], ["5", "modified"]]
+        [["6", "6"], ["7", "7"], ["5", "modified"]]
       )
-      expect(childIds()).toEqual([6,7,4,5,2,3,1])
+      expect(childIds()).toEqual([6, 7, 4, 5, 2, 3, 1])
 
       // Sandwich an update between two new elements
       updateDynamics(view,
-        [["8", "8"], ["7", "modified"],  ["9", "9"]]
+        [["8", "8"], ["7", "modified"], ["9", "9"]]
       )
-      expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
+      expect(childIds()).toEqual([8, 9, 6, 7, 4, 5, 2, 3, 1])
 
       // Update all elements in reverse order
       updateDynamics(view,
-        [["1", "1"], ["3", "3"],  ["2", "2"], ["5", "5"], ["4", "4"], ["7", "7"], ["6", "6"], ["9", "9"], ["8", "8"]]
+        [["1", "1"], ["3", "3"], ["2", "2"], ["5", "5"], ["4", "4"], ["7", "7"], ["6", "6"], ["9", "9"], ["8", "8"]]
       )
-      expect(childIds()).toEqual([8,9,6,7,4,5,2,3,1])
+      expect(childIds()).toEqual([8, 9, 6, 7, 4, 5, 2, 3, 1])
 
       // Make sure we don't have a memory leak when doing updates
       let initalCount = countChildNodes()
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
       updateDynamics(view,
-        [["1", "1"], ["2", "2"],  ["3", "3"]]
+        [["1", "1"], ["2", "2"], ["3", "3"]]
       )
 
       expect(countChildNodes()).toBe(initalCount)
@@ -554,10 +556,10 @@ describe("View + DOM", function() {
 })
 
 let submitBefore
-describe("View", function() {
+describe("View", function (){
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit
-    global.Phoenix = { Socket }
+    global.Phoenix = {Socket}
     global.document.body.innerHTML = liveViewDOM().outerHTML
   })
 
@@ -577,7 +579,7 @@ describe("View", function() {
     expect(view.parent).toBeUndefined()
     expect(view.el).toBe(el)
     expect(view.id).toEqual("container")
-    expect(view.view).toEqual("User.Form")
+    expect(view.getSession).toBeDefined()
     expect(view.channel).toBeDefined()
     expect(view.loaderTimer).toBeDefined()
   })
@@ -640,7 +642,7 @@ describe("View", function() {
   test("join", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
-    let view = simulateJoinedView(el, liveSocket)
+    let _view = simulateJoinedView(el, liveSocket)
 
     // view.join()
     // still need a few tests
@@ -653,16 +655,18 @@ describe("View", function() {
     stubChannel(view)
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "params": {"_mounts": 0}, "session": "abc123", "static": null, "url": undefined}
+      "flash": undefined, "params": {"_mounts": 0},
+      "session": "abc123", "static": null, "url": undefined, "redirect": undefined}
     )
 
-    el.innerHTML += `<link rel="stylesheet" href="/css/app-123.css?vsn=d" phx-track-static="">`
-    el.innerHTML += `<link rel="stylesheet" href="/css/nontracked.css">`
-    el.innerHTML += `<img src="/img/tracked.png" phx-track-static>`
-    el.innerHTML += `<img src="/img/untracked.png">`
+    el.innerHTML += "<link rel=\"stylesheet\" href=\"/css/app-123.css?vsn=d\" phx-track-static=\"\">"
+    el.innerHTML += "<link rel=\"stylesheet\" href=\"/css/nontracked.css\">"
+    el.innerHTML += "<img src=\"/img/tracked.png\" phx-track-static>"
+    el.innerHTML += "<img src=\"/img/untracked.png\">"
 
     expect(view.channel.params()).toEqual({
       "flash": undefined, "session": "abc123", "static": null, "url": undefined,
+      "redirect": undefined,
       "params": {
         "_mounts": 0,
         "_track_static": [
@@ -674,7 +678,7 @@ describe("View", function() {
   })
 })
 
-describe("View Hooks", function() {
+describe("View Hooks", function (){
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML
   })
@@ -701,14 +705,16 @@ describe("View Hooks", function() {
 
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {
-      s: [`<h2 id="up" phx-hook="Upcase">test mount</h2>`],
-      fingerprint: 123
-    }})
+    view.onJoin({
+      rendered: {
+        s: ["<h2 id=\"up\" phx-hook=\"Upcase\">test mount</h2>"],
+        fingerprint: 123
+      }
+    })
     expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT")
 
     view.update({
-      s: [`<h2 id="up" phx-hook="Upcase">test update</h2>`],
+      s: ["<h2 id=\"up\" phx-hook=\"Upcase\">test update</h2>"],
       fingerprint: 123
     }, [])
     expect(upcaseBeforeUpdate).toBe(true)
@@ -736,10 +742,12 @@ describe("View Hooks", function() {
 
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {
-      s: [`<h2 id="check" phx-hook="Check">test mount</h2>`],
-      fingerprint: 123
-    }})
+    view.onJoin({
+      rendered: {
+        s: ["<h2 id=\"check\" phx-hook=\"Check\">test mount</h2>"],
+        fingerprint: 123
+      }
+    })
     expect(view.el.firstChild.innerHTML).toBe("test mount")
 
     view.destroy()
@@ -761,10 +769,12 @@ describe("View Hooks", function() {
 
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {
-      s: [`<h2 id="check" phx-hook="Check"></h2>`],
-      fingerprint: 123
-    }})
+    view.onJoin({
+      rendered: {
+        s: ["<h2 id=\"check\" phx-hook=\"Check\"></h2>"],
+        fingerprint: 123
+      }
+    })
     expect(values).toEqual(["mounted"])
 
     view.triggerReconnected()
@@ -780,23 +790,25 @@ describe("View Hooks", function() {
 
   test("dom hooks", async () => {
     let fromHTML, toHTML = null
-    let liveSocket = new LiveSocket("/live", Socket, {dom: {
-      onBeforeElUpdated(from, to){ fromHTML = from.innerHTML; toHTML = to.innerHTML }
-    }})
+    let liveSocket = new LiveSocket("/live", Socket, {
+      dom: {
+        onBeforeElUpdated(from, to){ fromHTML = from.innerHTML; toHTML = to.innerHTML }
+      }
+    })
     let el = liveViewDOM()
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {s: [`<div>initial</div>`], fingerprint: 123}})
+    view.onJoin({rendered: {s: ["<div>initial</div>"], fingerprint: 123}})
     expect(view.el.firstChild.innerHTML).toBe("initial")
 
-    view.update({s: [`<div>updated</div>`], fingerprint: 123}, [])
+    view.update({s: ["<div>updated</div>"], fingerprint: 123}, [])
     expect(fromHTML).toBe("initial")
     expect(toHTML).toBe("updated")
     expect(view.el.firstChild.innerHTML).toBe("updated")
   })
 })
 
-function liveViewComponent() {
+function liveViewComponent(){
   const div = document.createElement("div")
   div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
@@ -815,9 +827,9 @@ function liveViewComponent() {
   return div
 }
 
-describe("View + Component", function() {
+describe("View + Component", function (){
   beforeEach(() => {
-    global.Phoenix = { Socket }
+    global.Phoenix = {Socket}
     global.document.body.innerHTML = liveViewComponent().outerHTML
   })
 
@@ -829,13 +841,13 @@ describe("View + Component", function() {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
     let view = simulateJoinedView(el, liveSocket)
-    let form = el.querySelector(`input[type="checkbox"]`)
+    let form = el.querySelector("input[type=\"checkbox\"]")
     let targetCtx = el.querySelector(".form-wrapper")
     expect(view.targetComponentID(el, targetCtx)).toBe(null)
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", function() {
+  test("pushEvent", function (){
     expect.assertions(4)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -845,7 +857,7 @@ describe("View + Component", function() {
 
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.type).toBe("keyup")
         expect(payload.event).toBeDefined()
         expect(payload.value).toEqual({"value": "1"})
@@ -860,10 +872,10 @@ describe("View + Component", function() {
     view.pushEvent("keyup", input, targetCtx, "click", {})
   })
 
-  test("pushInput", function() {
+  test("pushInput", function (){
     expect.assertions(6)
     let html =
-    `<form id="form" phx-change="validate">
+      `<form id="form" phx-change="validate">
       <label for="first_name">First Name</label>
       <input id="first_name" value="" name="user[first_name]" />
 
@@ -875,16 +887,16 @@ describe("View + Component", function() {
     let view = simulateJoinedView(el, liveSocket, html)
     let channelStub = {
       validate: "",
-      nextValidate(payload) {
+      nextValidate(payload){
         this.validate = Object.entries(payload)
           .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
           .join("&")
       },
-      push(evt, payload, timeout) {
+      push(_evt, payload, _timeout){
         expect(payload.value).toBe(this.validate)
         return {
-          receive(status, cb) {
-            if (status === "ok") {
+          receive(status, cb){
+            if(status === "ok"){
               let diff = {
                 s: [`
                 <form id="form" phx-change="validate">
@@ -948,10 +960,10 @@ describe("View + Component", function() {
     }
 
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe(`<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
+    expect(view.el.innerHTML.trim()).toBe("<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>")
 
     view.update(updateDiff, [])
-    expect(view.el.innerHTML.trim().replace("\n", "")).toBe(`<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>`)
+    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>")
   })
 
   test("respects nested components", () => {
@@ -971,7 +983,7 @@ describe("View + Component", function() {
     }
 
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe(`<div data-phx-component="0" id="container-0-0">Hello</div><div data-phx-component="1" id="container-1-0">World</div>`)
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-component=\"0\" id=\"container-0-0\">Hello</div><div data-phx-component=\"1\" id=\"container-1-0\">World</div>")
   })
 
   test("wraps non-empty text nodes in span tags", () => {
@@ -987,9 +999,9 @@ describe("View + Component", function() {
       "s": ["", ""]
     }
 
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, "error").mockImplementation(() => { })
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe(`<span data-phx-component="0"></span><div data-phx-component="0" id="container-0-1">World</div>`)
+    expect(view.el.innerHTML.trim()).toBe("<span data-phx-component=\"0\"></span><div data-phx-component=\"0\" id=\"container-0-1\">World</div>")
   })
 
   test("wraps empty component in a single span tag", () => {
@@ -1005,15 +1017,15 @@ describe("View + Component", function() {
       "s": ["", ""]
     }
 
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, "error").mockImplementation(() => { })
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe(`<span data-phx-component="0"></span>`)
+    expect(view.el.innerHTML.trim()).toBe("<span data-phx-component=\"0\"></span>")
   })
 
   test("destroys children when they are removed by an update", () => {
     let id = "root"
     let childHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BarLive" id="bar" data-phx-root-id="${id}"></div>`
-    let newChildHTML =`<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BazLive" id="baz" data-phx-root-id="${id}"></div>`
+    let newChildHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BazLive" id="baz" data-phx-root-id="${id}"></div>`
     let el = document.createElement("div")
     el.setAttribute("data-phx-view", "Root")
     el.setAttribute("data-phx-session", "abc123")
@@ -1088,7 +1100,7 @@ describe("View + Component", function() {
       let view = simulateJoinedView(el, liveSocket)
 
       view.undoRefs(1)
-      expect(el.innerHTML).toBe(`<span class="new">world</span>`)
+      expect(el.innerHTML).toBe("<span class=\"new\">world</span>")
     })
 
     test("triggers beforeUpdate and updated hooks", () => {
@@ -1098,30 +1110,30 @@ describe("View + Component", function() {
       let Hooks = {
         MyHook: {
           beforeUpdate(){ beforeUpdate = true },
-          updated(){ updated = true},
+          updated(){ updated = true },
         }
       }
       let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
       let el = liveViewDOM()
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
-      view.onJoin({rendered: {s: [`<span id="myhook" phx-hook="MyHook">Hello</span>`]}})
-      view.update({s: [`<span id="myhook" data-phx-ref="1" phx-hook="MyHook">Hello</span>`]}, [])
+      view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}})
+      view.update({s: ["<span id=\"myhook\" data-phx-ref=\"1\" phx-hook=\"MyHook\">Hello</span>"]}, [])
 
       let toEl = tag("span", {"id": "myhook", "phx-hook": "MyHook"}, "world")
       DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref", toEl)
 
       view.undoRefs(1)
 
-      expect(el.querySelector("#myhook").outerHTML).toBe(`<span id="myhook" phx-hook="MyHook">world</span>`)
+      expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\">world</span>")
       expect(beforeUpdate).toBe(true)
       expect(updated).toBe(true)
     })
   })
 })
 
-describe("DOM", function() {
-  it("mergeAttrs attributes", function() {
+describe("DOM", function (){
+  it("mergeAttrs attributes", function (){
     const target = document.createElement("target")
     target.type = "checkbox"
     target.id = "foo"
@@ -1140,7 +1152,7 @@ describe("DOM", function() {
     expect(target.id).toEqual("bar")
   })
 
-  it("mergeAttrs with properties", function() {
+  it("mergeAttrs with properties", function (){
     const target = document.createElement("target")
     target.type = "checkbox"
     target.id = "foo"

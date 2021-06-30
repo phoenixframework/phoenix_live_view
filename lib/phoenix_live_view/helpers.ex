@@ -62,13 +62,17 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Generates a link that will redirect to a new LiveView.
+  Generates a link that will redirect to a new LiveView of the same live session.
 
   The current LiveView will be shut down and a new one will be mounted
   in its place, without reloading the whole page. This can
   also be used to remount the same LiveView, in case you want to start
   fresh. If you want to navigate to the same LiveView without remounting
   it, use `live_patch/2` instead.
+
+  *Note*: The live redirects are only supported between two LiveViews defined
+  under the same live session. See `Phoenix.LiveView.Router.live_session/3` for
+  more details.
 
   ## Options
 
@@ -286,14 +290,14 @@ defmodule Phoenix.LiveView.Helpers do
   Renders a component defined by the given function.
 
   It takes two optional arguments, the assigns to pass to the given function
-  and a do-block - which will be converted into a `@inner_block`  assign (see
+  and a do-block - which will be converted into a `@inner_block` assign (see
   `render_block/2` for more information).
 
   The given function must expect one argument, which are the `assigns` as a
   map.
 
   All of the `assigns` given are forwarded directly to the function as
-  the first only argument.
+  a single argument.
 
   ## Examples
 
@@ -451,7 +455,12 @@ defmodule Phoenix.LiveView.Helpers do
   @doc false
   def __component__(func, assigns, inner)
       when is_function(func, 1) and is_list(assigns) or is_map(assigns) do
-    assigns = Map.new(assigns)
+    assigns =
+      case assigns do
+        %{__changed__: _} -> assigns
+        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
+      end
+
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
 
     case func.(assigns) do
@@ -478,12 +487,12 @@ defmodule Phoenix.LiveView.Helpers do
 
     Please call component with a 1-arity function, for example:
 
-        <%= component &func/1 %>
+        <%= component &example/1 %>
 
-        def func(assigns) do
-          ~L\"""
+        def example(assigns) do
+          ~H"\""
           Hello
-          \"""
+          "\""
         end
     """
   end
@@ -494,6 +503,8 @@ defmodule Phoenix.LiveView.Helpers do
       <%= render_block(@inner_block, value: @value)
 
   """
+  # TODO: we may want to default to nil or a map once
+  # implicit assigns are removed and slots are considered
   defmacro render_block(inner_block, argument \\ []) do
     quote do
       unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
@@ -523,6 +534,7 @@ defmodule Phoenix.LiveView.Helpers do
       {:safe, ["Hello ", "world", "\\n"]}
 
   """
+  @deprecated "Use ~H instead"
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
@@ -535,7 +547,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Provides `~H` sigil with HTML safe Live `HEEx` syntax inside source files.
+  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
 
   > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
   > file:line:column information in error messages. Earlier Elixir versions will
@@ -546,34 +558,48 @@ defmodule Phoenix.LiveView.Helpers do
     * Built-in handling of HTML attributes
     * An HTML-like notation for injecting function components
     * Compile-time validation of the structure of the template
+    * The ability to minimize the amount of data sent over the wire
 
   ## Example
 
-      def render(assigns) do
-        ~H"\""
-        <div title="My div" class={@class}>
-          <MyApp.Weather.render city="Kraków"/>
-        </div>
-        "\""
-      end
+      ~H"\""
+      <div title="My div" class={@class}>
+        <p>Hello <%= @name %></p>
+        <MyApp.Weather.render city="Kraków"/>
+      </div>
+      "\""
 
-  ## Syntax extensions
+  ## Syntax
 
-  Although `HEEx` may be considered an extension of `EEx`, templates written in
-  `EEx` may not be fully compatible with `HEEx`. The same goes the other way
-  around. Whenever copying/pasting code from one format to the other, make sure
-  you update it accordingly.
+  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
+  `<%= ... %>` for interpolating results. In this section, we are going to cover the
+  basic constructs in `HEEx` templates as well as its syntax extensions.
 
-  The main difference comes when defining attributes and function components.
+  ### Interpolation
 
-  ### Defining attributes
+  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
+  of HTML tags:
 
-  `EEx` handles templates as plain text so you're free to interpolate Elixir code
-  anywhere in your template. `HEEx`, on the other hand, parses the code, validating
-  its structure, including HTML/component nodes and attributes. In order to perform
-  validation, code interpolation using `<%= ... %>` and `<% ... %>` are restricted
-  to the body (inner content) of the HTML/component nodes and it cannot be applied
-  within tags.
+      <p>Hello, <%= @name %></p>
+
+  Similarly, conditionals and other block Elixir constructs are supported:
+
+      <%= if @show_greeting? do %>
+        <p>Hello, <%= @name %></p>
+      <% end %>
+
+  Note we don't include the equal sign `=` in the closing tag (because the closing
+  tag does not output anything).
+
+  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
+  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
+  Let's check it out.
+
+  ### HEEx extension: Defining attributes
+
+  Since `HEEx` must parse and validating the HTML structure, code interpolation using
+  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
+  HTML/component nodes and it cannot be applied within tags.
 
   For instance, the following syntax is invalid:
 
@@ -597,13 +623,14 @@ defmodule Phoenix.LiveView.Helpers do
   The expression inside `{ ... }` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
 
-  ### Defining function components
+  ### HEEx extension: Defining function components
 
-  Function components are stateless components implemented as pure functions. They
-  can be either local (same module) or remote (external module).
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
 
-  `HEEx` allows invoking whose function components directly in the template using an
-  HTML-like notation. For example, a remote function:
+  `HEEx` allows invoking whose function components directly in the template
+  using an HTML-like notation. For example, a remote function:
 
       <MyApp.Weather.component city="Kraków"/>
 
@@ -611,7 +638,7 @@ defmodule Phoenix.LiveView.Helpers do
 
       <.component city="Kraków"/>
 
-  where the compnoent could be define as follows:
+  where the component could be defined as follows:
 
       defmodule MyApp.Weather do
         import Phoenix.LiveView.Helpers

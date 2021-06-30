@@ -17,21 +17,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @behaviour EEx.Engine
 
-  @void_elements [
-    "area",
-    "base",
-    "br",
-    "col",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "param",
-    "command",
-    "keygen",
-    "source"
-  ]
+  for void <- ~w(area base br col hr img input link meta param command keygen source) do
+    defp void?(unquote(void)), do: true
+  end
+
+  defp void?(_), do: false
 
   @doc false
   def init(opts) do
@@ -46,6 +36,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       substate: nil,
       stack: [],
       tags: [],
+      root: nil,
       opts: opts
     }
 
@@ -56,7 +47,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
-    ast = invoke_subengine(state, :handle_body, [])
+    validate_unclosed_tags!(state)
+
+    opts = [root: state.root || false]
+    ast = invoke_subengine(state, :handle_body, [opts])
 
     quote do
       require Phoenix.LiveView.Helpers
@@ -89,9 +83,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> Enum.reduce(state, &handle_token(&1, &2, meta))
   end
 
+  defp validate_unclosed_tags!(%{tags: []} = state) do
+    state
+  end
+
+  defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
+    {:tag_open, name, _attrs, %{line: line, column: column}} = tag
+    file = state.opts[:file]
+
+    message = "end of file reached without closing tag for <#{name}>"
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
+  end
+
   @doc false
   def handle_expr(state, marker, expr) do
-    update_subengine(state, :handle_expr, [marker, expr])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, [marker, expr])
   end
 
   ## Helpers
@@ -121,20 +130,45 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | substate: invoke_subengine(state, fun, args)}
   end
 
-  defp push_tag(state, {:tag_open, tag, _attrs, _meta}) when tag in @void_elements do
-    state
-  end
-
   defp push_tag(state, token) do
-    %{state | tags: [token | state.tags]}
+    # If we have a void tag, we don't actually push it into the stack.
+    with {:tag_open, name, _attrs, _meta} <- token,
+         true <- void?(name) do
+      state
+    else
+      _ -> %{state | tags: [token | state.tags]}
+    end
   end
 
-  defp pop_tag(%{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state, tag_name) do
+  defp pop_tag!(
+         %{tags: [{:tag_open, tag_name, _attrs, _meta} = tag | tags]} = state,
+         {:tag_close, tag_name, _}
+       ) do
     {tag, %{state | tags: tags}}
   end
 
-  defp pop_tag(_state, tag_name) do
-    raise "missing open tag for </#{tag_name}>"
+  defp pop_tag!(
+         %{tags: [{:tag_open, tag_open_name, _attrs, tag_open_meta} | _]} = state,
+         {:tag_close, tag_close_name, tag_close_meta}
+       ) do
+    %{line: line, column: column} = tag_close_meta
+    file = state.opts[:file]
+
+    message = """
+    unmatched closing tag. Expected </#{tag_open_name}> for <#{tag_open_name}> \
+    at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
+    """
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
+  end
+
+  defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
+    %{line: line, column: column} = tag_meta
+    file = state.opts[:file]
+
+    message = "missing opening tag for </#{tag_name}>"
+
+    raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
   ## handle_token
@@ -142,54 +176,58 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Text
 
   defp handle_token({:text, text}, state, meta) do
-    update_subengine(state, :handle_text, [meta, text])
+    state
+    |> set_root_on_text(text)
+    |> update_subengine(:handle_text, [meta, text])
   end
 
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}},
+         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}} = tag_meta,
          state,
          _meta
        )
        when first in ?A..?Z do
-    {mod, fun} = decompose_remote_component_tag!(tag_name)
-    assigns = handle_component_attrs(attrs)
+    file = state.opts[:file]
+    {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
+
+    {let, assigns} = handle_component_attrs(attrs, file)
+    raise_if_let!(let, file)
 
     ast =
       quote do
         Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns))
       end
 
-    update_subengine(state, :handle_expr, ["=", ast])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, ["=", ast])
   end
 
   # Remote function component (with inner content)
 
   defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state, _meta)
        when first in ?A..?Z do
-    mod_fun = decompose_remote_component_tag!(tag_name)
+    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.opts[:file])
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
+    |> set_root_on_dynamic()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>> = name}, state, _meta)
+  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag(state, name)
-    assigns = handle_component_attrs(attrs)
-
-    # TODO: Implement `let`
+    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
+    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    clauses = build_component_clauses(let, state)
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns)) do
-          _assigns ->
-            unquote(invoke_subengine(state, :handle_end, []))
-        end
+        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns), do: unquote(clauses))
       end
 
     state
@@ -205,39 +243,41 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        ) do
     fun = String.to_atom(name)
-    assigns = handle_component_attrs(attrs)
+    file = state.opts[:file]
+
+    {let, assigns} = handle_component_attrs(attrs, file)
+    raise_if_let!(let, file)
 
     ast =
       quote do
         Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns))
       end
 
-    update_subengine(state, :handle_expr, ["=", ast])
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, ["=", ast])
   end
 
   # Local function component (with inner content)
 
   defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state, _meta) do
     state
+    |> set_root_on_dynamic()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name = tag_name}, state, _meta) do
-    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag(state, tag_name)
+  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state, _meta) do
+    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
-    assigns = handle_component_attrs(attrs)
-
-    # TODO: Implement `let`
+    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    clauses = build_component_clauses(let, state)
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns)) do
-          _assigns ->
-            unquote(invoke_subengine(state, :handle_end, []))
-        end
+        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns), do: unquote(clauses))
       end
 
     state
@@ -245,68 +285,70 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
-  # HTML void element
-
-  defp handle_token({:tag_open, name, attrs, tag_meta}, state, meta)
-       when name in @void_elements do
-    state
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, tag_meta)
-    |> update_subengine(:handle_text, [meta, ">"])
-  end
-
   # HTML element (self close)
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
     state
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, meta)
-    |> update_subengine(:handle_text, [meta, "/>"])
+    |> set_root_on_tag()
+    |> handle_tag_attrs(name, attrs, "/>", meta)
   end
 
-  # HTML element (with inner content)
+  # HTML element
 
   defp handle_token({:tag_open, name, attrs, _tag_meta} = token, state, meta) do
     state
+    |> set_root_on_tag()
     |> push_tag(token)
-    |> update_subengine(:handle_text, [meta, "<#{String.downcase(name)}"])
-    |> handle_attrs(attrs, meta)
-    |> update_subengine(:handle_text, [meta, ">"])
+    |> handle_tag_attrs(name, attrs, ">", meta)
   end
 
-  defp handle_token({:tag_close, name}, state, meta) do
-    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag(state, name)
-    update_subengine(state, :handle_text, [meta, "</#{String.downcase(name)}>"])
+  defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
+    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
+    update_subengine(state, :handle_text, [meta, "</#{name}>"])
   end
 
-  # Fallback
+  # Root tracking
 
-  defp handle_token(_, state, _meta) do
-    state
+  defp set_root_on_dynamic(%{root: root, tags: tags} = state) do
+    if tags == [] and root != false do
+      %{state | root: false}
+    else
+      state
+    end
   end
 
-  ## handle_attrs
-
-  defp handle_attrs(state, attrs, meta) do
-    {static, static_dynamic, dynamic} = group_attrs(attrs)
-
-    state
-    |> handle_static_attrs(static, meta)
-    |> handle_static_dynamic_attrs(static_dynamic)
-    |> handle_dynamic_attrs(dynamic)
+  defp set_root_on_text(%{root: root, tags: tags} = state, text) do
+    if tags == [] and root != false and String.trim_leading(text) != "" do
+      %{state | root: false}
+    else
+      state
+    end
   end
 
-  defp handle_static_attrs(state, parts, meta) do
-    update_subengine(state, :handle_text, [meta, to_string(parts)])
+  defp set_root_on_tag(state) do
+    case state do
+      %{root: nil, tags: []} -> %{state | root: true}
+      %{root: true, tags: []} -> %{state | root: false}
+      %{root: bool} when is_boolean(bool) -> state
+    end
   end
 
-  defp handle_static_dynamic_attrs(state, parts) do
-    ast =
-      quote do
-        Phoenix.HTML.Tag.attributes_escape(unquote(parts))
-      end
+  ## handle_tag_attrs
 
-    update_subengine(state, :handle_expr, ["=", ast])
+  defp handle_tag_attrs(state, name, attrs, suffix, meta) do
+    {static, dynamic} = group_attrs(attrs)
+    prefix = "<#{name}#{static}"
+
+    # We want to reduce the number of handle_text calls, because each
+    # call is an individual entry in LiveEngine's static buffer.
+    if dynamic == [] do
+      update_subengine(state, :handle_text, [meta, "#{prefix}#{suffix}"])
+    else
+      state
+      |> update_subengine(:handle_text, [meta, prefix])
+      |> handle_dynamic_attrs(dynamic)
+      |> update_subengine(:handle_text, [meta, suffix])
+    end
   end
 
   defp handle_dynamic_attrs(state, parts) do
@@ -320,13 +362,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp group_attrs(attrs) do
-    group_attrs(attrs, {[], [], []})
-  end
-
-  defp group_attrs([], {s, sd, d}) do
-    {Enum.reverse(s), Enum.reverse(sd), Enum.reverse(d)}
-  end
+  defp group_attrs(attrs), do: group_attrs(attrs, {[], [], []})
 
   defp group_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {s, sd, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
@@ -350,54 +386,128 @@ defmodule Phoenix.LiveView.HTMLEngine do
     group_attrs(attrs, {[" #{name}" | s], sd, d})
   end
 
-  defp handle_component_attrs(attrs) do
-    {r, d} = build_component_attrs(attrs)
+  defp group_attrs([], {s, [], d}), do: {Enum.reverse(s), Enum.reverse(d)}
+  defp group_attrs([], {s, sd, d}), do: {Enum.reverse(s), [Enum.reverse(sd) | Enum.reverse(d)]}
 
-    quote do
-      Enum.reduce([unquote_splicing(r ++ [d])], %{}, &Map.merge(&2, Map.new(&1)))
-    end
+  defp handle_component_attrs(attrs, file) do
+    {lets, entries} =
+      case build_component_attrs(attrs) do
+        {lets, [], []} -> {lets, [{:%{}, [], []}]}
+        {lets, r, []} -> {lets, r}
+        {lets, r, d} -> {lets, r ++ [{:%{}, [], d}]}
+      end
+
+    let =
+      case lets do
+        [] ->
+          nil
+
+        [let] ->
+          let
+
+        [{_, meta}, {_, previous_meta} | _] ->
+          message = """
+          cannot define multiple `let` attributes. \
+          Another `let` has already been defined at line #{previous_meta.line}\
+          """
+          raise SyntaxError, line: meta.line, column: meta.column, file: file, description: message
+      end
+
+    assigns =
+      Enum.reduce(entries, fn expr, acc ->
+        quote do: Map.merge(unquote(acc), unquote(expr))
+      end)
+
+    {let, assigns}
   end
 
   defp build_component_attrs(attrs) do
-    build_component_attrs(attrs, {[], []})
+    build_component_attrs(attrs, {[], [], []})
   end
 
-  defp build_component_attrs([], {r, d}) do
-    {Enum.reverse(r), Enum.reverse(d)}
+  defp build_component_attrs([], {lets, r, d}) do
+    {lets, Enum.reverse(r), Enum.reverse(d)}
   end
 
-  defp build_component_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {r, d}) do
+  defp build_component_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {[quoted_value | r], d})
+    quoted_value = quote do: Map.new(unquote(quoted_value))
+    build_component_attrs(attrs, {lets, [quoted_value | r], d})
   end
 
-  defp build_component_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {r, d}) do
+  defp build_component_attrs([{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs], {lets, r, d}) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {r, [{String.to_atom(name), quoted_value} | d]})
+    build_component_attrs(attrs, {[{quoted_value, meta} | lets], r, d})
   end
 
-  defp build_component_attrs([{name, {:string, value, %{delimiter: ?"}}} | attrs], {r, d}) do
-    build_component_attrs(attrs, {r, [{String.to_atom(name), value} | d]})
+  defp build_component_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), quoted_value} | d]})
   end
 
-  defp build_component_attrs([{name, {:string, value, %{delimiter: ?'}}} | attrs], {r, d}) do
-    build_component_attrs(attrs, {r, [{String.to_atom(name), value} | d]})
+  defp build_component_attrs([{name, {:string, value, _}} | attrs], {lets, r, d}) do
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), value} | d]})
   end
 
-  defp build_component_attrs([{name, nil} | attrs], {r, d}) do
-    build_component_attrs(attrs, {r, [{String.to_atom(name), true} | d]})
+  defp build_component_attrs([{name, nil} | attrs], {lets, r, d}) do
+    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), true} | d]})
   end
 
-  defp decompose_remote_component_tag!(tag_name) do
+  defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
-        mod = rest |> Enum.reverse() |> Module.concat()
+        aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
         fun = String.to_atom(fun_name)
-        {mod, fun}
+        {{:__aliases__, [], aliases}, fun}
 
       _ ->
-        # TODO: Raise a proper error at the line of the component definition
-        raise ArgumentError, "invalid tag #{tag_name}"
+        %{line: line, column: column} = tag_meta
+        message = "invalid tag <#{tag_name}>"
+        raise SyntaxError, line: line, column: column, file: file, description: message
+    end
+  end
+
+  @doc false
+  def __unmatched_let__!(pattern, value) do
+    message = """
+    cannot match arguments sent from `render_block/2` against the pattern in `let`.
+
+    Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
+    """
+
+    stacktrace =
+      self()
+      |> Process.info(:current_stacktrace)
+      |> elem(1)
+      |> Enum.drop(2)
+
+    reraise(message, stacktrace)
+  end
+
+  defp raise_if_let!(let, file) do
+    with {_pattern, %{line: line}} <- let do
+      message = "cannot use `let` on a component without inner content"
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  defp build_component_clauses(let, state) do
+    case let do
+      {pattern, %{line: line}} ->
+        quote line: line do
+          unquote(pattern) ->
+            unquote(invoke_subengine(state, :handle_end, []))
+        end
+        ++
+        quote line: line, generated: true do
+          other ->
+            Phoenix.LiveView.HTMLEngine.__unmatched_let__!(unquote(Macro.to_string(pattern)), other)
+        end
+
+      _ ->
+        quote do
+          _ -> unquote(invoke_subengine(state, :handle_end, []))
+        end
     end
   end
 end

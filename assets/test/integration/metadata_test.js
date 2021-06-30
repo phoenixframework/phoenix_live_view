@@ -1,5 +1,5 @@
 import {Socket} from "phoenix"
-import LiveSocket, {View} from '../../js/phoenix_live_view'
+import LiveSocket from "phoenix_live_view/live_socket"
 
 let stubViewPushEvent = (view, callback) => {
   view.pushEvent = (type, target, targetCtx, phxEvent, meta) => {
@@ -26,10 +26,10 @@ describe("metadata", () => {
   })
 
   test("is empty by default", () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+    let liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
     let view = liveSocket.getViewByEl(document.getElementById("root"))
-    let btn = view.el.querySelector('button')
+    let btn = view.el.querySelector("button")
     let meta = {}
     stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
       meta = metadata
@@ -40,7 +40,7 @@ describe("metadata", () => {
   })
 
   test("can be user defined", () => {
-    let liveSocket = new LiveSocket('/live', Socket, {
+    let liveSocket = new LiveSocket("/live", Socket, {
       metadata: {
         click: (e, el) => {
           return {
@@ -53,7 +53,7 @@ describe("metadata", () => {
     liveSocket.connect()
     liveSocket.isConnected = () => true
     let view = liveSocket.getViewByEl(document.getElementById("root"))
-    let btn = view.el.querySelector('button')
+    let btn = view.el.querySelector("button")
     let meta = {}
     stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
       meta = metadata

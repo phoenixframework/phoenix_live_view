@@ -42,7 +42,7 @@ defmodule Phoenix.LiveView.Renderer do
         :ok
 
       {false, []} ->
-        template = Path.join(root, filename <> ".leex")
+        template = Path.join(root, filename <> ".heex")
 
         message = ~s'''
         render/1 was not implemented for #{inspect(env.module)}.
@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.Renderer do
         Make sure to either explicitly define a render/1 clause with a LiveView template:
 
             def render(assigns) do
-              ~L"""
+              ~H"""
               ...
               """
             end

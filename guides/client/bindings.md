@@ -131,7 +131,7 @@ window-level binding may be provided via `phx-window-keydown` or `phx-window-key
 for example:
 
     def render(assigns) do
-      ~L"""
+      ~H"""
       <div id="thermostat" phx-window-keyup="update_temp">
         Current temperature: <%= @temperature %>
       </div>

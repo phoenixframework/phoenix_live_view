@@ -116,7 +116,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
         nil ->
           socket
 
-        other -> IO.inspect {:other, other}
+        other -> {:other, other}
       end
 
     {:ok,

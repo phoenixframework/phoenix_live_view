@@ -64,4 +64,12 @@ defmodule Phoenix.LiveView.LayoutTest do
     assert html =~
              ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
   end
+
+  test "uses root page title on first render", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/styled-elements")
+    assert page_title(view) == "Styled"
+
+    {:ok, no_title_tag_view, _html} = live(conn, "/parent_layout")
+    assert page_title(no_title_tag_view) == nil
+  end
 end

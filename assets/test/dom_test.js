@@ -1,4 +1,4 @@
-import {DOM} from "../js/phoenix_live_view"
+import DOM from "phoenix_live_view/dom"
 import {appendTitle, tag} from "./test_helpers"
 
 describe("DOM", () => {
@@ -65,9 +65,9 @@ describe("DOM", () => {
 
   describe("findComponentNodeList", () => {
     test("returns nodes with cid ID (except indirect children)", () => {
-      let component1 = tag("div", {"data-phx-component": 0}, `Hello`)
-      let component2 = tag("div", {"data-phx-component": 0}, `World`)
-      let component3 = tag("div", {"data-phx-view": "Example"}, `
+      let component1 = tag("div", {"data-phx-component": 0}, "Hello")
+      let component2 = tag("div", {"data-phx-component": 0}, "World")
+      let component3 = tag("div", {"data-phx-session": "123"}, `
         <div data-phx-component="0"></div>
       `)
       document.body.appendChild(component1)
@@ -117,7 +117,7 @@ describe("DOM", () => {
       let div = tag("div", {"phx-update": "append"}, content)
       DOM.cleanChildNodes(div, "phx-update")
 
-      expect(div.innerHTML).toBe(`<div id="1">1</div><div id="2">2</div>`)
+      expect(div.innerHTML).toBe("<div id=\"1\">1</div><div id=\"2\">2</div>")
     })
 
     test("emits warning when removing elements without id", () => {
@@ -134,7 +134,7 @@ describe("DOM", () => {
       jest.spyOn(console, "error").mockImplementation(() => errorCount += 1)
       DOM.cleanChildNodes(div, "phx-update")
 
-      expect(div.innerHTML).toBe(`<div id="1">1</div>`)
+      expect(div.innerHTML).toBe("<div id=\"1\">1</div>")
       expect(errorCount).toBe(2)
     })
   })

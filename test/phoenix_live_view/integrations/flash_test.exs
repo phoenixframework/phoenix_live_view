@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert result =~ "uri[http://www.example.com/flash-root?foo]"
       assert result =~ "root[ok!]:info"
 
-      assert assert_patch(flash_live, "/flash-root?foo") == :ok
+      assert_patch(flash_live, "/flash-root?foo")
     end
 
     test "push_patch with flash does not include previous event flash", %{conn: conn} do
@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert result =~ "root[ok!]:info"
       assert result =~ "root[]:error"
 
-      assert assert_patch(flash_live, "/flash-root?foo") == :ok
+      assert_patch(flash_live, "/flash-root?foo")
     end
 
     test "clears flash on client-side patches", %{conn: conn} do

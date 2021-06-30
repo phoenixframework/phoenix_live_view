@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, false) == ["3"]
     end
 
-    test "renders dynamic with nested assigns tracking" do
+    test "renders dynamic with dot tracking" do
       template = "<%= @map.foo + @map.bar %>"
       old = %{map: %{foo: 123, bar: 456}}
       new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
@@ -197,12 +197,13 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, old, nil) == ["579"]
       assert changed(template, old, %{}) == [nil]
       assert changed(template, old, %{map: true}) == ["579"]
+      assert changed(template, old, old) == [nil]
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]
     end
 
-    test "renders dynamic with nested assigns tracking 3-levels deeps" do
+    test "renders dynamic with dot tracking 3-levels deeps" do
       template = "<%= @root.map.foo + @root.map.bar %>"
       old = %{root: %{map: %{foo: 123, bar: 456}}}
       new_augmented = %{root: %{map: %{foo: 123, bar: 456, baz: 789}}}
@@ -212,6 +213,34 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, old, %{}) == [nil]
       assert changed(template, old, %{root: true}) == ["579"]
       assert changed(template, old, %{root: %{map: true}}) == ["579"]
+      assert changed(template, old, old) == [nil]
+      assert changed(template, new_augmented, old) == [nil]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "renders dynamic with access tracking" do
+      template = "<%= @not_map[:foo] + @not_map[:bar] %>"
+      old = %{not_map: [foo: 123, bar: 456]}
+      new_augmented = %{not_map: [foo: 123, bar: 456, baz: 789]}
+      new_changed_foo = %{not_map: [foo: 321, bar: 456]}
+      new_changed_bar = %{not_map: [foo: 123, bar: 654]}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{not_map: true}) == ["579"]
+      assert changed(template, old, old) == ["579"]
+      assert changed(template, new_augmented, old) == ["579"]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+
+      template = "<%= @map[:foo] + @map[:bar] %>"
+      old = %{map: %{foo: 123, bar: 456}}
+      new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
+      new_changed_foo = %{map: %{foo: 321, bar: 456}}
+      new_changed_bar = %{map: %{foo: 123, bar: 654}}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{map: true}) == ["579"]
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]

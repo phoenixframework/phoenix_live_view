@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Component do
   @moduledoc """
-  The struct returned by components in .leex templates.
+  The struct returned by components in .heex templates.
 
   This component is never meant to be output directly
   into the template. It should always be handled by
@@ -53,7 +53,7 @@ end
 
 defmodule Phoenix.LiveView.Comprehension do
   @moduledoc """
-  The struct returned by for-comprehensions in .leex templates.
+  The struct returned by for-comprehensions in .heex templates.
 
   See a description about its fields and use cases
   in `Phoenix.LiveView.Engine` docs.
@@ -96,13 +96,13 @@ end
 
 defmodule Phoenix.LiveView.Rendered do
   @moduledoc """
-  The struct returned by .leex templates.
+  The struct returned by .heex templates.
 
   See a description about its fields and use cases
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamic, :fingerprint]
+  defstruct [:static, :dynamic, :fingerprint, :root]
 
   @type t :: %__MODULE__{
           static: [String.t()],
@@ -115,7 +115,8 @@ defmodule Phoenix.LiveView.Rendered do
                  | Phoenix.LiveView.Comprehension.t()
                  | Phoenix.LiveView.Component.t()
                ]),
-          fingerprint: integer()
+          fingerprint: integer(),
+          root: nil | true | false
         }
 
   defimpl Phoenix.HTML.Safe do
@@ -128,7 +129,7 @@ defmodule Phoenix.LiveView.Rendered do
     end
 
     def to_iodata(nil) do
-      raise "cannot convert .leex template with change tracking to iodata"
+      raise "cannot convert .heex/.leex template with change tracking to iodata"
     end
 
     def to_iodata(other) do
@@ -147,14 +148,15 @@ end
 
 defmodule Phoenix.LiveView.Engine do
   @moduledoc ~S"""
-  The `.leex` (Live EEx) template engine that tracks changes.
+  An `EEx` template engine that tracks changes.
 
-  In the documentation below, we will explain how it works internally.
-  For user-facing documentation, see `Phoenix.LiveView`.
+  This is often used by `Phoenix.LiveView.HTMLEngine` which also adds
+  HTML validation. In the documentation below, we will explain how it
+  works internally. For user-facing documentation, see `Phoenix.LiveView`.
 
   ## Phoenix.LiveView.Rendered
 
-  Whenever you render a `.leex` template, it returns a
+  Whenever you render a live template, it returns a
   `Phoenix.LiveView.Rendered` structure. This structure has
   three fields: `:static`, `:dynamic` and `:fingerprint`.
 
@@ -172,7 +174,7 @@ defmodule Phoenix.LiveView.Engine do
     4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
-  When you render a `.leex` template, you can convert the
+  When you render a live template, you can convert the
   rendered structure to iodata by alternating the static
   and dynamic fields, always starting with a static entry
   followed by a dynamic entry. The last entry will always
@@ -191,41 +193,41 @@ defmodule Phoenix.LiveView.Engine do
   This is also what calling `Phoenix.HTML.Safe.to_iodata/1`
   with a `Phoenix.LiveView.Rendered` structure returns.
 
-  Of course, the benefit of `.leex` templates is exactly
+  Of course, the benefit of live templates is exactly
   that you do not need to send both static and dynamic
   segments every time. So let's talk about tracking changes.
 
   ## Tracking changes
 
-  By default, a `.leex` template does not track changes.
+  By default, a live template does not track changes.
   Change tracking can be enabled by including a changed
   map in the assigns with the key `__changed__` and passing
   `true` to the dynamic parts. The map should contain
   the name of any changed field as key and the boolean
-  true as value. If a field is not listed in `:changed`,
+  true as value. If a field is not listed in `__changed__`,
   then it is always considered unchanged.
 
-  If a field is unchanged and `.leex` believes a dynamic
+  If a field is unchanged and live believes a dynamic
   expression no longer needs to be computed, its value
   in the `dynamic` list will be `nil`. This information
   can be leveraged to avoid sending data to the client.
 
   ## Nesting and fingerprinting
 
-  `Phoenix.LiveView` also tracks changes across `.leex`
+  `Phoenix.LiveView` also tracks changes across live
   templates. Therefore, if your view has this:
 
       <%= render "form.html", assigns %>
 
   Phoenix will be able to track what is static and dynamic
   across templates, as well as what changed. A rendered
-  nested `.leex` template will appear in the `dynamic`
+  nested `live` template will appear in the `dynamic`
   list as another `Phoenix.LiveView.Rendered` structure,
   which must be handled recursively.
 
   However, because the rendering of live templates can
   be dynamic in itself, it is important to distinguish
-  which `.leex` template was rendered. For example,
+  which live template was rendered. For example,
   imagine this code:
 
       <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
@@ -238,7 +240,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Comprehensions
 
-  Another optimization done by `.leex` templates is to
+  Another optimization done by live templates is to
   track comprehensions. If your code has this:
 
       <%= for point <- @points do %>
@@ -261,7 +263,7 @@ defmodule Phoenix.LiveView.Engine do
         ]
       }
 
-  This allows `.leex` templates to drastically optimize
+  This allows live templates to drastically optimize
   the data sent by comprehensions, as the static parts
   are emitted only once, regardless of the number of items.
 
@@ -275,8 +277,9 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Components
 
-  `.leex` also supports stateful components. Since they are
-  stateful, they are always handled lazily by the diff algorithm.
+  Live also supports stateful components defined with
+  `Phoenix.LiveComponent`. Since they are stateful, they are always
+  handled lazily by the diff algorithm.
   """
 
   @behaviour Phoenix.Template.Engine
@@ -314,8 +317,8 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def handle_body(state) do
-    {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{})
+  def handle_body(state, opts \\ []) do
+    {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{}, opts)
 
     quote do
       require Phoenix.LiveView.Engine
@@ -353,7 +356,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Entry point for rendered structs
 
-  defp to_rendered_struct(expr, vars, assigns) do
+  defp to_rendered_struct(expr, vars, assigns, opts) do
     with {:__block__, [live_rendered: true], entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
@@ -375,7 +378,8 @@ defmodule Phoenix.LiveView.Engine do
          %Phoenix.LiveView.Rendered{
            static: unquote(static),
            dynamic: dynamic,
-           fingerprint: unquote(fingerprint)
+           fingerprint: unquote(fingerprint),
+           root: unquote(opts[:root])
          }
        end}
     else
@@ -435,43 +439,61 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({macro, meta, [_ | _] = args} = expr, vars, assigns)
-       when is_atom(macro) do
-    call = extract_call(macro)
+  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns) do
+    call = extract_call(left)
 
-    if classify_taint(call, args) in [:live, :render] do
-      {args, [opts]} = Enum.split(args, -1)
+    args =
+      if classify_taint(call, args) in [:live, :render] do
+        {args, [opts]} = Enum.split(args, -1)
 
-      # The reason we can safely ignore assigns here is because
-      # each branch in the live/render constructs are their own
-      # rendered struct and, if the rendered has a new fingerpint,
-      # then change tracking is fully disabled.
-      #
-      # For example, take this code:
-      #
-      #   <%= if @foo do %>
-      #     <%= @bar %>
-      #   <% else %>
-      #     <%= @baz %>
-      #   <% end %>
-      #
-      # In theory, @bar and @baz should be recomputed whenever
-      # @foo changes, because changing @foo may require a value
-      # that was not available on the page to show. However,
-      # given the branches have different fingerprints, the
-      # diff mechanism takes care of forcing all assigns to
-      # be rendered without us needing to handle it here.
-      {args, vars, _} = analyze_list(args, vars, assigns, [])
+        # The reason we can safely ignore assigns here is because
+        # each branch in the live/render constructs are their own
+        # rendered struct and, if the rendered has a new fingerpint,
+        # then change tracking is fully disabled.
+        #
+        # For example, take this code:
+        #
+        #   <%= if @foo do %>
+        #     <%= @bar %>
+        #   <% else %>
+        #     <%= @baz %>
+        #   <% end %>
+        #
+        # In theory, @bar and @baz should be recomputed whenever
+        # @foo changes, because changing @foo may require a value
+        # that was not available on the page to show. However,
+        # given the branches have different fingerprints, the
+        # diff mechanism takes care of forcing all assigns to
+        # be rendered without us needing to handle it here.
+        {args, vars, _} = analyze_list(args, vars, assigns, [])
 
-      opts =
-        for {key, value} <- opts do
-          {key, maybe_block_to_rendered(value, vars)}
-        end
+        opts =
+          for {key, value} <- opts do
+            {key, maybe_block_to_rendered(value, vars)}
+          end
 
-      to_safe({call, meta, args ++ [opts]}, true)
-    else
-      to_safe(expr, true)
-    end
+        args ++ [opts]
+      else
+        args
+      end
+
+    # If we have a component, now we provide change tracking to individual keys.
+    args =
+      case {call, args} do
+        {:component, [fun, [do: block]]} ->
+          [fun, to_component_tracking([], [inner_block: block], vars), [do: block]]
+
+        {:component, [fun, expr]} ->
+          [fun, to_component_tracking(expr, [], vars)]
+
+        {:component, [fun, expr, [do: block]]} ->
+          [fun, to_component_tracking(expr, [inner_block: block], vars), [do: block]]
+
+        {_, _} ->
+          args
+      end
+
+    to_safe({left, meta, args}, true)
   end
 
   defp to_live_struct(expr, _vars, _assigns) do
@@ -493,7 +515,7 @@ defmodule Phoenix.LiveView.Engine do
       # So we collect them as usual but keep the original tainting.
       vars = reset_vars(vars, match_vars)
 
-      case to_rendered_struct(block, vars, assigns) do
+      case to_rendered_struct(block, vars, assigns, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}
       end
@@ -501,7 +523,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, vars) do
-    case to_rendered_struct(block, vars, %{}) do
+    case to_rendered_struct(block, vars, %{}, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -540,12 +562,13 @@ defmodule Phoenix.LiveView.Engine do
               unquote(__MODULE__).changed_assign?(changed, unquote(assign))
             end
 
-          nested ->
+          [assign | tail] ->
             quote do
               unquote(__MODULE__).nested_changed_assign?(
                 unquote(@assigns_var),
                 changed,
-                unquote(nested)
+                unquote(assign),
+                unquote(tail)
               )
             end
         end
@@ -571,6 +594,124 @@ defmodule Phoenix.LiveView.Engine do
 
   defp parent_is_checked?(rest, assigns),
     do: Map.has_key?(assigns, Enum.reverse(rest)) or parent_is_checked?(tl(rest), assigns)
+
+  ## Component keys change tracking
+
+  defp to_component_tracking(expr, extra, vars) do
+    # Separate static and dynamic parts
+    {static, dynamic} =
+      case expr do
+        {{:., _, [{:__aliases__, _, [:Map]}, :merge]}, _, [dynamic, {:%{}, _, static}]} ->
+          {static, dynamic}
+
+        {:%{}, _, static} ->
+          {static, %{}}
+
+        static ->
+          {static, %{}}
+      end
+
+    # And now validate the static bits. If they are not valid,
+    # treat the whole thing as dynamic.
+    {static, dynamic} =
+      if Keyword.keyword?(static) do
+        {static, dynamic}
+      else
+        {[], expr}
+      end
+
+    all = extra ++ static
+
+    static_changed =
+      if all != [] do
+        keys =
+          for {key, value} <- all,
+              # We pass empty assigns because if this code is rendered,
+              # it means that upstream assigns were change tracked.
+              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}),
+              # If keys are empty, it is never changed.
+              keys != %{},
+              do: {key, to_component_keys(keys)}
+
+        quote do
+          unquote(__MODULE__).to_component_static(unquote(keys), unquote(@assigns_var), changed)
+        end
+      else
+        Macro.escape(%{})
+      end
+
+    cond do
+      # We can't infer anything, so return the expression as is.
+      all == [] and dynamic == %{} ->
+        expr
+
+      # We were actually able to find some static bits, but no dynamic.
+      # Embed the static parts alongside the computed changed.
+      dynamic == %{} ->
+        quote do
+          %{unquote_splicing([__changed__: static_changed] ++ static)}
+        end
+
+      # Merge both static and dynamic.
+      true ->
+        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{})
+
+        quote do
+          unquote(__MODULE__).to_component_dynamic(
+            %{unquote_splicing(static)},
+            unquote(dynamic),
+            unquote(static_changed),
+            unquote(to_component_keys(keys)),
+            unquote(@assigns_var),
+            changed
+          )
+        end
+    end
+  end
+
+  defp to_component_keys(:all), do: :all
+  defp to_component_keys(map), do: Map.keys(map)
+
+  @doc false
+  def to_component_static(_keys, _assigns, nil) do
+    nil
+  end
+
+  def to_component_static(keys, assigns, changed) do
+    for {assign, entries} <- keys,
+        component_changed?(entries, assigns, changed),
+        into: %{},
+        do: {assign, true}
+  end
+
+  @doc false
+  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil) do
+    merge_dynamic_static_changed(dynamic, static, nil)
+  end
+
+  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed) do
+    component_changed =
+      if component_changed?(keys, assigns, changed) do
+        Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
+      else
+        static_changed
+      end
+
+    merge_dynamic_static_changed(dynamic, static, component_changed)
+  end
+
+  defp merge_dynamic_static_changed(dynamic, static, changed) do
+    dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
+  end
+
+  defp component_changed?(:all, _assigns, _changed), do: true
+
+  defp component_changed?(entries, assigns, changed) do
+    Enum.any?(entries, fn
+      [key] -> changed_assign?(changed, key)
+      [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
+    end)
+  end
 
   ## Extracts binaries and variable from iodata
 
@@ -618,8 +759,13 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Nested assign
+  defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
+    {{{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns}
+  end
+
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
-    {left, vars, assigns} = analyze_assign(left, vars, assigns, [right | nest])
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
   end
 
@@ -651,6 +797,10 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Delegates to analyze assign
+  defp analyze({{:., _, [Access, :get]}, _, [_, _]} = expr, vars, assigns) do
+    analyze_assign(expr, vars, assigns, [])
+  end
+
   defp analyze({{:., _, [_, _]}, _, []} = expr, vars, assigns) do
     analyze_assign(expr, vars, assigns, [])
   end
@@ -847,30 +997,51 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def changed_assign?(nil, _name) do
-    true
-  end
-
   def changed_assign?(changed, name) do
     case changed do
       %{^name => _} -> true
       %{} -> false
+      nil -> true
     end
   end
 
   @doc false
-  def nested_changed_assign?(assigns, changed, [head | _] = all) do
-    changed_assign?(changed, head) and recur_changed_assign?(assigns, changed, all)
+  def nested_changed_assign?(assigns, changed, head, tail) do
+    case changed do
+      %{^head => changed} ->
+        case assigns do
+          %{^head => assigns} -> recur_changed_assign?(assigns, changed, tail)
+          %{} -> true
+        end
+
+      %{} ->
+        false
+
+      nil ->
+        true
+    end
   end
 
-  defp recur_changed_assign?(assigns, changed, [head]) do
+  defp recur_changed_assign?(assigns, changed, [{:struct, head} | tail]) do
+    recur_changed_assign?(assigns, changed, head, tail)
+  end
+
+  defp recur_changed_assign?(assigns, changed, [{:access, head} | tail]) do
+    if match?(%_{}, assigns) or match?(%_{}, changed) do
+      true
+    else
+      recur_changed_assign?(assigns, changed, head, tail)
+    end
+  end
+
+  defp recur_changed_assign?(assigns, changed, head, []) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
       {_, _} -> true
     end
   end
 
-  defp recur_changed_assign?(assigns, changed, [head | tail]) do
+  defp recur_changed_assign?(assigns, changed, head, tail) do
     case {assigns, changed} do
       {%{^head => assigns_value}, %{^head => changed_value}} ->
         recur_changed_assign?(assigns_value, changed_value, tail)

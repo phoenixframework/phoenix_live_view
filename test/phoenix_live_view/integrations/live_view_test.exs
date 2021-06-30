@@ -303,10 +303,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "renders a live view with custom session and a router", %{conn: conn} do
+      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
       {:ok, view, _} =
         live_isolated(conn, Phoenix.LiveViewTest.DashboardLive,
-          session: %{"hello" => "world"},
-          router: Phoenix.LiveViewTest.Router
+          session: %{"hello" => "world"}
         )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
@@ -360,17 +360,17 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "live render with bad session", %{conn: conn} do
       conn = simulate_bad_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render with outdated session", %{conn: conn} do
       conn = simulate_outdated_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render with expired session", %{conn: conn} do
       conn = simulate_expired_token_on_page(get(conn, "/thermo"))
-      assert {%{reason: "stale"}, _} = catch_exit(live(conn))
+      assert {:error, {:redirect, %{to: "http://www.example.com/thermo"}}} = live(conn)
     end
 
     test "live render in widget-style", %{conn: conn} do
@@ -502,22 +502,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".* data-phx-view=\"ThermostatLive\"[^>]*>/
+               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".*[^>]*>/
 
       assert static_html =~ ~r/<\/article>/
 
       assert static_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert static_html =~ ~r/<\/section>/
 
       assert connected_html =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert connected_html =~ ~r/<\/section>/
 
       assert render(view) =~
-               ~r/<section class="clock"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<section class="clock"[^>]*[^>]*>/
 
       assert render(view) =~ ~r/<\/section>/
     end
@@ -532,22 +532,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<span class="thermo"[^>]*data-phx-view=\"ThermostatLive\"[^>]*style=\"thermo-flex&lt;script&gt;\">/
+               ~r/<span class="thermo"[^>]*[^>]*style=\"thermo-flex&lt;script&gt;\">/
 
       assert static_html =~ ~r/<\/span>/
 
       assert static_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert static_html =~ ~r/<\/p>/
 
       assert connected_html =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert connected_html =~ ~r/<\/p>/
 
       assert render(view) =~
-               ~r/<p class=\"clock-flex"[^>]*data-phx-view=\"LiveViewTest.ClockLive\"[^>]*>/
+               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
 
       assert render(view) =~ ~r/<\/p>/
     end
@@ -748,6 +748,27 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag session: %{nest: []}
+    test "push_redirect with destination that can vary", %{conn: conn} do
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
+
+      assert clock_view = find_live_child(thermo_view, "clock")
+
+      id = Enum.random(1000..9999)
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=#{id}")}
+         end}
+      )
+
+      {path, _flash} = assert_redirect(thermo_view)
+      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
+    end
+
+    @tag session: %{nest: []}
     test "push_patch", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
@@ -763,6 +784,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert_patch(thermo_view, "/thermo?redirect=patch")
       assert render(thermo_view) =~ "Redirect: patch"
+    end
+
+    @tag session: %{nest: []}
+    test "push_patch to destination which can vary", %{conn: conn} do
+      {:ok, thermo_view, html} = live(conn, "/thermo")
+      assert html =~ "Redirect: none"
+      assert clock_view = find_live_child(thermo_view, "clock")
+
+      id = Enum.random(1000..9999)
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=#{id}")}
+         end}
+      )
+
+      path = assert_patch(thermo_view)
+      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
+      assert render(thermo_view) =~ "Redirect: #{id}"
     end
 
     @tag session: %{nest: []}

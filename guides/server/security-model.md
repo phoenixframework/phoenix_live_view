@@ -3,8 +3,8 @@
 As we have seen, LiveView begins its life-cycle as a regular HTTP request.
 Then a stateful connection is established. Both the HTTP request and
 the stateful connection receives the client data via parameters and session.
-This means that any session validation must happen both in the HTTP request
-and the stateful connection.
+This means that any session validation must happen both in the HTTP request (plug pipeline)
+and the stateful connection (LiveView mount).
 
 ## Mounting considerations
 
@@ -107,6 +107,16 @@ the user is an editor on mount and on every event:
 In the example above, the Blog context receives the user on both `get` and
 `update` operations, and always validates accordingly that the user has access,
 raising an error otherwise.
+
+## Live Redirects
+
+Like the mount considerations above, using `live_redirect` links from the client
+will navigate and mount a new LiveView *without invoking the plug pipeline*. LiveView
+enforces only live routes defined within the same `live_session` name can be mounted via
+live redirects, but you must ensure authentication and verification steps take place
+in your LiveView mount instead of the plug pipeline. See the
+`Phoenix.LiveView.Router.live_session/3` documentation for more information on
+live redirect behavior and usage.
 
 ## Disconnecting all instances of a given live user
 

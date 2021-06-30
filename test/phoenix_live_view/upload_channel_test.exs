@@ -365,8 +365,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
         assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
-        # synchronize with LV to ensure it has processed DOWN
+        # synchronize with LV and Plug.Upload to ensure they have processed DOWN
         assert render(lv)
+        assert :sys.get_state(Plug.Upload)
         refute File.exists?(tmp_path)
       end
 
