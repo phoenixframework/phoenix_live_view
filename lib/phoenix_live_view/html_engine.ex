@@ -17,6 +17,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @behaviour EEx.Engine
 
+  @reserved_assigns [:__changed__, :inner_block]
+
   for void <- ~w(area base br col hr img input link meta param command keygen source) do
     defp void?(unquote(void)), do: true
   end
@@ -355,11 +357,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
     Enum.reduce(parts, state, fn expr, state ->
       ast =
         quote do
-          Phoenix.HTML.Tag.attributes_escape(unquote(expr))
+          unquote(__MODULE__).attributes_escape(unquote(expr))
         end
 
       update_subengine(state, :handle_expr, ["=", ast])
     end)
+  end
+
+  def attributes_escape(attrs) do
+    attrs
+    |> Enum.filter(fn {key, _val} -> key not in @reserved_assigns end)
+    |> Phoenix.HTML.Tag.attributes_escape()
   end
 
   defp group_attrs(attrs), do: group_attrs(attrs, {[], [], []})

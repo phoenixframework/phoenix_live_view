@@ -127,6 +127,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   test "handles dynamic attributes" do
     assert render("Hello <omg {@attrs}>text</omg>", %{attrs: [name: "1", phone: to_string(2)]}) ==
              "Hello <omg name=\"1\" phone=\"2\">text</omg>"
+
+    attrs = [__changed__: %{}, inner_block: :ok, name: "1", phone: to_string(2)]
+    assert render("Hello <omg {@attrs}>text</omg>", %{attrs: attrs}) ==
+             "Hello <omg name=\"1\" phone=\"2\">text</omg>"
   end
 
   test "sorts attributes by group: static, static_dynamic and dynamic" do
