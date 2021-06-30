@@ -1393,17 +1393,47 @@ defmodule Phoenix.LiveView do
 
   Lifecycle hooks are effectively a single
   [`reduce_while`](`Enum.reduce_while/3`) operation that takes place
-  immediately before a given lifecycle callback is invoked on your
+  immediately before a given lifecycle callback is invoked on the
   LiveView. A hook may return `{:halt, socket}` to halt the reduction,
   otherwise it must return `{:cont, socket}` so the operation may
   continue until all hooks have been invoked for the current stage.
+
+  ## Halting the lifecycle
+
+  Note that halting from a hook _will halt the entire lifecycle stage_.
+  This means that when a hook returns `{:halt, socket}` then the
+  LiveView callback will **not** be invoked. This has some
+  implications.
+
+  ### Implications for plugin authors
+
+  When defining your plugin, you **must** define a catch-all clause
+  that either halts or continues _and_ you should make this behaviour
+  clear to the end-user, perhaps exposing it as a config option if
+  sensible.
+
+  ### Implications for end-users
+
+  Let's say you invoke a plugin that attaches a hook for a callback
+  that you did not define. You are not required to define a
+  catch-all for that callback in your LiveView.
+
+  Further, allowing a hook to halt the invocation of the callback
+  means that you can attach hooks to intercept specific events
+  before detaching themselves, while allowing other events to
+  continue normally.
 
   ## Examples
 
       def mount(_params, _session, socket) do
         socket =
-          attach_hook(socket, :assign_uri, :handle_params, fn _params, _uri, socket ->
-            {:halt, assign(socket, :uri, uri)}
+          attach_hook(socket, :my_hook, :handle_event, fn
+            "very-special-event", _params, socket ->
+              # Handle the very special event and then detach the hook
+              {:halt, detach_hook(socket, :my_hook, :handle_event)}
+
+            _event, _params, socket ->
+              {:cont, socket}
           end)
 
         {:ok, socket}
