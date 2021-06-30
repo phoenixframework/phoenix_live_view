@@ -13,7 +13,6 @@ defmodule Phoenix.LiveView.Hook do
           function: function()
         }
 
-  @spec new!(any, atom, fun) :: Phoenix.LiveView.Hook.t()
   def new!(id, stage, fun) when is_atom(stage) and is_function(fun) do
     %__MODULE__{id: id, stage: stage, function: fun}
   end
@@ -34,12 +33,6 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   defstruct handle_event: [], handle_info: [], handle_params: [], mount: []
 
-  @doc """
-  TODO
-
-  `fun` must match the arity of the lifecycle event callback and
-  it must return either {:cont, socket} or {:halt, socket}
-  """
   def attach_hook(%Socket{} = socket, id, stage, fun)
       when stage in [:handle_event, :handle_info, :handle_params] do
     hook = Hook.new!(id, stage, fun)
@@ -67,11 +60,6 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
-  @doc """
-  TODO
-
-  Must match the id given to attach_hook/4
-  """
   def detach_hook(%Socket{} = socket, id, stage)
       when stage in [:handle_event, :handle_info, :handle_params] do
     update_lifecycle(socket, stage, fn hooks ->

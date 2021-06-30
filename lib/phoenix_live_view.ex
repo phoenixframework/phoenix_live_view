@@ -474,7 +474,7 @@ defmodule Phoenix.LiveView do
       @before_compile Phoenix.LiveView.Renderer
 
       @phoenix_live_opts opts
-      Module.register_attribute(__MODULE__, :phoenix_live_on_mount, accumulate: true)
+      Module.register_attribute(__MODULE__, :phoenix_live_mount, accumulate: true)
       @before_compile Phoenix.LiveView
     end
   end
@@ -496,8 +496,8 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
-    phoenix_live_on_mount = Module.get_attribute(env.module, :phoenix_live_on_mount)
-    lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_on_mount)
+    phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
+    lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
 
     namespace =
       opts[:namespace] || env.module |> Module.split() |> Enum.take(1) |> Module.concat()
@@ -523,25 +523,28 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Declares a hook to be attached to the `:mount` lifecycle event.
+  Declares a hook to be attached to the `:mount` stage of the LiveView lifecycle.
+
+  Hooks declared `on_mount` are invoked immediately before the
+  LiveView's `c:mount/3` callback.
+
+  For more information about lifecycle hooks, see `attach_hook/4`.
 
   ## Examples
 
       defmodule DemoWeb.PageLive do
         use Phoenix.LiveView
 
+        on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
         on_mount DemoWeb.InitAssigns
-        on_mount {DemoWeb.LiveAuth, :check_auth_user}
       end
-
-  For more information about lifecycle hooks, see `attach_hook/4`.
   """
-  defmacro on_mount(id) do
+  defmacro on_mount(mod_or_mod_fun) do
     quote do
       Module.put_attribute(
         __MODULE__,
-        :phoenix_live_on_mount,
-        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(id))
+        :phoenix_live_mount,
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun))
       )
     end
   end
@@ -1370,12 +1373,62 @@ defmodule Phoenix.LiveView do
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
 
   @doc """
-  TODO
+  Attaches the given `fun` by `name` for the lifecycle `stage` into `socket`.
+
+  > Note: This function is for server-side lifecycle callbacks.
+  > For client-side hooks, see the
+  > [JS Interop guide](js-interop.html#client-hooks).
+
+  Hooks provide a mechanism to tap into key stages of the LiveView
+  lifecycle in order to bind/update assigns, intercept events,
+  patches, and regular messages when necessary, and to inject
+  common functionality. Hooks may be attached to any of the following
+  lifecycle stages: `:mount` (via `on_mount/1`), `:handle_params`,
+  `:handle_event`, and `:handle_info`.
+
+  ## Return Values
+
+  Lifecycle hooks are effectively a single
+  [`reduce_while`](`Enum.reduce_while/3`) operation that takes place
+  immediately before a given lifecycle callback is invoked on your
+  LiveView. A hook may return `{:halt, socket}` to halt the reduction,
+  otherwise it must return `{:cont, socket}` so the operation may
+  continue until all hooks have been invoked for the current stage.
+
+  ## Redirects and on_mount
+
+  The `on_mount/1` macro provides an injection point for hooks to run
+  before both the disconnected _and_ connected render of the LiveView.
+  A hook that wishes to redirect the LiveView during the `:mount` stage
+  **must** halt the session, otherwise an error will be raised.
+
+  ## Examples
+
+      def mount(_params, _session, socket) do
+        socket =
+          attach_hook(socket, :assign_uri, :handle_params, fn _params, _uri, socket ->
+            {:halt, assign(socket, :uri, uri)}
+          end)
+
+        {:ok, socket}
+      end
   """
-  defdelegate attach_hook(socket, name, hook, fun), to: Phoenix.LiveView.Lifecycle
+  defdelegate attach_hook(socket, name, stage, fun), to: Phoenix.LiveView.Lifecycle
 
   @doc """
-  TODO
+  Detaches a hook with the given `name` from the lifecycle `stage`.
+
+  > Note: This function is for server-side lifecycle callbacks.
+  > For client-side hooks, see the
+  > [JS Interop guide](js-interop.html#client-hooks).
+
+  If no hook is found, this function is a no-op.
+
+  ## Examples
+
+      def handle_event(_, socket) do
+        {:noreply, detach_hook(socket, :hook_that_was_attached, :handle_event)}
+      end
   """
-  defdelegate detach_hook(socket, name, hook), to: Phoenix.LiveView.Lifecycle
+  defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
 end

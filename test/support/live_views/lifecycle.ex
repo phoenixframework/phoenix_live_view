@@ -104,7 +104,6 @@ defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
 
   on_mount {__MODULE__, :bad_mount}
 
-  @spec mount(any, any, any) :: none
   def mount(_params, _session, _socket) do
     raise "expected to exit before #{__MODULE__}.mount/3"
   end
