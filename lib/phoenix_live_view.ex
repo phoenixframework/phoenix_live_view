@@ -525,8 +525,11 @@ defmodule Phoenix.LiveView do
   @doc """
   Declares a hook to be attached to the `:mount` stage of the LiveView lifecycle.
 
-  Hooks declared `on_mount` are invoked immediately before the
-  LiveView's `c:mount/3` callback.
+  The `on_mount/1` macro provides an injection point for hooks to run
+  before both the disconnected _and_ connected render of the LiveView.
+  Hooks declared `on_mount` are invoked immediately before the `c:mount/3`
+  callback. A hook that wishes to redirect the LiveView during the
+  `:mount` stage **must** halt, otherwise an error will be raised.
 
   For more information about lifecycle hooks, see `attach_hook/4`.
 
@@ -1394,13 +1397,6 @@ defmodule Phoenix.LiveView do
   LiveView. A hook may return `{:halt, socket}` to halt the reduction,
   otherwise it must return `{:cont, socket}` so the operation may
   continue until all hooks have been invoked for the current stage.
-
-  ## Redirects and on_mount
-
-  The `on_mount/1` macro provides an injection point for hooks to run
-  before both the disconnected _and_ connected render of the LiveView.
-  A hook that wishes to redirect the LiveView during the `:mount` stage
-  **must** halt the session, otherwise an error will be raised.
 
   ## Examples
 
