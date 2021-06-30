@@ -534,7 +534,7 @@ defmodule Phoenix.LiveView.Helpers do
       {:safe, ["Hello ", "world", "\\n"]}
 
   """
-  @deprecated "Use ~H instead"
+  @doc deprecated: "Use ~H instead"
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,

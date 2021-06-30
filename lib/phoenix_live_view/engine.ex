@@ -453,11 +453,11 @@ defmodule Phoenix.LiveView.Engine do
         #
         # For example, take this code:
         #
-        #   <%= if @foo do %>
-        #     <%= @bar %>
-        #   <% else %>
-        #     <%= @baz %>
-        #   <% end %>
+        #     <%= if @foo do %>
+        #       <%= @bar %>
+        #     <% else %>
+        #       <%= @baz %>
+        #     <% end %>
         #
         # In theory, @bar and @baz should be recomputed whenever
         # @foo changes, because changing @foo may require a value
