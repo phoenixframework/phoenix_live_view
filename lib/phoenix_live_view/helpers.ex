@@ -15,18 +15,20 @@ defmodule Phoenix.LiveView.Helpers do
   ## Examples
 
   Imagine the following `my_link` component which allows a caller
-  to pass a `target` assign, along with any other attributes they
+  to pass a `new_window` assign, along with any other attributes they
   would like to add to the element, such as class, data attributes, etc:
 
-      <.my_link id={@id} class="my-class">Home</a>
+      <.my_link id={@id} new_window={true} class="my-class">Home</a>
 
   We could support the dynamic attributes with the following component:
 
       def my_link(assigns) do
+        target = if assigns[:new_window], do: "_blank", else: false
+
         assigns =
           assigns
-          |> Phoenix.LiveView.assign(:target, assigns[:target] || "_blank")
-          |> Phoenix.LiveView.assign(:extra, assigns_to_attrs(assigns, [:target]))
+          |> Phoenix.LiveView.assign(:target, target)
+          |> Phoenix.LiveView.assign(:extra, assigns_to_attrs(assigns, [:new_window]))
 
         ~H"\""
         <a href={@href} target={@target}>
