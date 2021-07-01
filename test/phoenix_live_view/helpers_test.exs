@@ -125,19 +125,30 @@ defmodule Phoenix.LiveView.HelpersTest do
     |> Phoenix.LiveViewTest.DOM.parse()
   end
 
-  describe "form_for" do
+  describe "form" do
+    test "raises when missing required assigns" do
+      assert_raise ArgumentError, ~r/missing :for assign/, fn ->
+        assigns = %{}
+        parse(~H"""
+          <.form let={f}>
+            <%= text_input f, :foo %>
+          </.form>
+        """)
+      end
+    end
+
     test "geneates form with no options" do
       assigns = %{}
 
       html =
         parse(~H"""
-          <.form_for let={f} for={:myform}>
+          <.form let={f} for={:myform}>
             <%= text_input f, :foo %>
-          </.form_for>
+          </.form>
         """)
 
       assert [
-               {"form", [{"action", "#"}, {"method", "post"}, {"id", "myform"}],
+               {"form", [{"id", "myform"}, {"action", "#"}, {"method", "post"}],
                 [
                   {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
@@ -150,10 +161,10 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-          <.form_for let={user_form}
-            id="form"
+          <.form let={user_form}
             for={%Plug.Conn{}}
-            url="/"
+            id="form"
+            action="/"
             method="put"
             multipart={true}
             csrf_token="123"
@@ -164,18 +175,18 @@ defmodule Phoenix.LiveView.HelpersTest do
           >
             <%= text_input user_form, :foo %>
             <%= inspect(user_form.errors) %>
-          </.form_for>
+          </.form>
         """)
 
       assert [
                {"form",
                 [
+                  {"id", "form"},
                   {"action", "/"},
                   {"method", "post"},
-                  {"class", "pretty"},
-                  {"data-foo", "bar"},
                   {"enctype", "multipart/form-data"},
-                  {"id", "form"}
+                  {"class", "pretty"},
+                  {"data-foo", "bar"}
                 ],
                 [
                   {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},

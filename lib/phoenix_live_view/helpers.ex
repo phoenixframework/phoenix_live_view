@@ -3,7 +3,46 @@ defmodule Phoenix.LiveView.Helpers do
   A collection of helpers to be imported into your views.
   """
 
+  alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
+
+  @doc ~S"""
+  Filters the assigns as a list of keywords for use in dynamic tag attributes.
+
+  Useful for transforming caller assigns into dynamic attributes while
+  stripping reserved keys from the result.
+
+  ## Examples
+
+  Imagine the following `my_link` component which allows a caller
+  to pass a `target` assign, along with any other attributes they
+  would like to add to the element, such as class, data attributes, etc:
+
+      <.my_link id={@id} class="my-class">Home</a>
+
+  We could support the dynamic attributes with the following component:
+
+      def my_link(assigns) do
+        assigns =
+          assigns
+          |> Phoenix.LiveView.assign(:target, assigns[:target] || "_blank")
+          |> Phoenix.LiveView.assign(:extra, assigns_to_attrs(assigns, [:target]))
+
+        ~H"\""
+        <a href={@href} target={@target}>
+          <%= render_block(@inner_block) %>
+        </a>
+        "\""
+      end
+
+  The optional second argument to `assigns_to_attrs` takes a list of keys to exclude
+  which will typically be the keys reserved by the component itself which either
+  do not belong in the markup, or are already handled explicitly by the component.
+  """
+  def assigns_to_attrs(assigns, exclude \\ []) do
+    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
+  end
 
   @doc false
   def live_patch(opts) when is_list(opts) do
@@ -829,11 +868,11 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a function component using `Phoenix.HTML.form_for/4`.
+  Renders a form function component using `Phoenix.HTML.form_for/4`.
 
   ## Options
 
-  The `:data` assign is the form's source data and the optional `:url`
+  The `:for` assign is the form's source data and the optional `:action`
   assign can be provided for the form's action. Additionally accepts
   the same options as `Phoenix.HTML.form_for/4` as optional assigns:
 
@@ -863,57 +902,45 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <.form_for let={f} data={@changeset}>
+      <.form let={f} for={@changeset}>
         <%= text_input f, :name %>
-      </.form_for>
+      </.form>
 
-      <.form_for let={user_form} data={@changeset} as="user">
+      <.form let={user_form} for={@changeset} as="user" {@extra}>
         <%= text_input user_form, :name %>
-      </.form_for>
+      </.form>
   """
   @form_opts [:as, :method, :multipart, :csrf_token, :errors, :id]
-  @form_required [:for, :url]
-  @reserved_assigns [:__changed__, :inner_block]
-  def form_for(assigns) do
-    data = assigns[:for] || raise ArgumentError, "missing :for assign to form_for"
-    action = assigns[:url] || "#"
-    opts = assigns |> Map.take(@form_opts) |> Enum.into([])
-    %{action: action, options: tag_opts} = form = Phoenix.HTML.Form.form_for(data, action, opts)
+  def form(assigns) do
+    action = assigns[:action] || "#"
 
-    enctype =
-      case Keyword.fetch(opts, :multipart) do
-        {:ok, true} -> "multipart/form-data"
-        {:ok, false} -> false
-        :error -> false
-      end
+    {form_for, assigns} =
+      Map.pop_lazy(assigns, :for, fn -> raise ArgumentError, "missing :for assign to form" end)
 
-    extra_attrs =
-      assigns
-      |> Map.drop(@form_opts)
-      |> Map.drop(@form_required)
-      |> Map.drop(@reserved_assigns)
-      |> Map.merge(%{id: form.id, enctype: enctype})
-      |> Enum.into([])
+    {csrf_token, assigns} =
+      Map.pop_lazy(assigns, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
 
-    {method, hidden_method} =
-      case assigns[:method] do
-        method when method in ~w(get post) -> {method, nil}
-        hidden when is_binary(hidden) -> {"post", hidden}
-        nil -> {"post", nil}
-      end
+    form_opts = assigns |> Map.take(@form_opts) |> Enum.into([])
+
+    form = %Phoenix.HTML.Form{Phoenix.HTML.FormData.to_form(form_for, form_opts) | action: action}
+
+    {method, hidden_method} = form_method(assigns[:method])
 
     assigns =
       assigns
-      |> Map.merge(%{action: action, opts: tag_opts, form: form, method: method})
-      |> Map.put(:hidden_method, hidden_method)
-      |> Map.put(:csrf_token, opts[:csrf_token] || form.options[:csrf_token])
-      |> Map.put(:extra_attrs, extra_attrs)
+      |> LiveView.assign(form: form, id: form.id, action: action)
+      |> LiveView.assign(enctype: enctype(assigns))
+      |> LiveView.assign(csrf_token: csrf_token)
+      |> LiveView.assign(method: method, hidden_method: hidden_method)
+      |> LiveView.assign(attrs: assigns_to_attrs(assigns, [:for, :action | @form_opts]))
 
     ~H"""
     <form
+      id={@id}
       action={@action}
       method={@method}
-      {@extra_attrs}
+      enctype={@enctype}
+      {@attrs}
     >
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
         <input name="_method" type="hidden" value={@hidden_method}>
@@ -924,5 +951,21 @@ defmodule Phoenix.LiveView.Helpers do
       <%= render_block(@inner_block, @form) %>
     </form>
     """
+  end
+
+  defp enctype(assigns) do
+    case assigns do
+      %{multipart: true} -> "multipart/form-data"
+      %{multipart: false} -> false
+      %{} -> false
+    end
+  end
+
+  defp form_method(method) do
+    case method do
+      method when method in ~w(get post) -> {method, nil}
+      hidden when is_binary(hidden) -> {"post", hidden}
+      nil -> {"post", nil}
+    end
   end
 end
