@@ -246,6 +246,20 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, new_changed_bar, old) == ["777"]
     end
 
+    test "renders dynamic with access tracking inside comprehension" do
+      template = """
+      <%= for x <- [:a, :b, :c] do %>
+        <%= @map[x] %>
+      <% end %>
+      """
+
+      old = %{map: [a: 1, b: 2, c: 3]}
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, nil)
+      assert [nil] = changed(template, old, %{})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, %{map: true})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
+    end
+
     test "renders dynamic if it has a lexical form" do
       template = "<%= import List %><%= flatten(@foo) %>"
       assert changed(template, %{foo: '123'}, nil) == ["Elixir.List", '123']

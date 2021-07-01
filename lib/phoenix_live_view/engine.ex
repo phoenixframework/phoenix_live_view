@@ -760,8 +760,17 @@ defmodule Phoenix.LiveView.Engine do
 
   # Nested assign
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
-    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
-    {{{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns}
+    {args, vars, assigns} =
+      if Macro.quoted_literal?(right) do
+        {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
+        {[left, right], vars, assigns}
+      else
+        {left, vars, assigns} = analyze(left, vars, assigns)
+        {right, vars, assigns} = analyze(right, vars, assigns)
+        {[left, right], vars, assigns}
+      end
+
+    {{{:., dot_meta, [Access, :get]}, meta, args}, vars, assigns}
   end
 
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
