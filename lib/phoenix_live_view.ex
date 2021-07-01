@@ -535,6 +535,16 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
+      defmodule DemoWeb.InitAssigns do
+        import Phoenix.LiveView
+
+        # Ensures common `assigns` are applied to all LiveViews
+        # that attach this module as an `on_mount` hook
+        def mount(_params, _session, socket) do
+          {:cont, assign(socket, :page_title, "DemoWeb")}
+        end
+      end
+
       defmodule DemoWeb.PageLive do
         use Phoenix.LiveView
 
@@ -1412,14 +1422,9 @@ defmodule Phoenix.LiveView do
 
   ### Implications for end-users
 
-  Let's say you invoke a plugin that attaches a hook for a callback
-  that you did not define. You are not required to define a
-  catch-all for that callback in your LiveView.
-
-  Further, allowing a hook to halt the invocation of the callback
-  means that you can attach hooks to intercept specific events
-  before detaching themselves, while allowing other events to
-  continue normally.
+  Allowing a hook to halt the invocation of the callback means that you can
+  attach hooks to intercept specific events before detaching themselves,
+  while allowing other events to continue normally.
 
   ## Examples
 
