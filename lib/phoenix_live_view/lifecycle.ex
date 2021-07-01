@@ -19,9 +19,9 @@ defmodule Phoenix.LiveView.Lifecycle do
       when stage in [:handle_event, :handle_info, :handle_params] do
     hook = hook!(id, stage, fun)
     lifecycle = lifecycle(socket)
-    existing = for h <- Map.fetch!(lifecycle, stage), h.id == id, do: h
+    existing = Enum.find(Map.fetch!(lifecycle, stage), &(&1.id == id))
 
-    unless existing == [] do
+    if existing do
       raise ArgumentError, """
       existing hook #{inspect(hook.id)} already attached on #{inspect(hook.stage)}.
       """
