@@ -141,9 +141,6 @@ defmodule Phoenix.LiveView.Router do
 
   * `:on_mount` - The optional list of hooks to attach to the mount lifecycle _of
     each LiveView in the session_. Passing a single value is also accepted.
-    _Note:_ using this option requires adding `use Phoenix.LiveView.Router`
-    to your router module, otherwise the hooks will not be registered and _no
-    warning will be emitted_.
 
   ## Examples
 
@@ -458,28 +455,6 @@ defmodule Phoenix.LiveView.Router do
       vsn = System.system_time()
       Module.put_attribute(module, :phoenix_session_vsn, vsn)
       vsn
-    end
-  end
-
-  defmacro __before_compile__(env) do
-    on_mount =
-      for {name, %{on_mount: on_mount}, _vsn} <-
-            Module.get_attribute(env.module, :phoenix_live_sessions),
-          into: %{},
-          do: {name, on_mount}
-
-    quote do
-      @phoenix_live_session_on_mount unquote(Macro.escape(on_mount))
-      def __phoenix_live_session_on_mount__(name) do
-        Map.fetch(@phoenix_live_session_on_mount, name)
-      end
-    end
-  end
-
-  defmacro __using__(_opts) do
-    quote do
-      import Phoenix.LiveView.Router
-      @before_compile Phoenix.LiveView.Router
     end
   end
 end

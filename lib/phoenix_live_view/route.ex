@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Route do
             opts: [],
             live_session_name: nil,
             live_session_vsn: nil,
+            live_session_extra: %{},
             params: %{},
             uri: nil
 
@@ -68,7 +69,7 @@ defmodule Phoenix.LiveView.Route do
 
     case Phoenix.Router.route_info(router, "GET", route_path, host) do
       %{plug: Phoenix.LiveView.Plug, phoenix_live_view: lv, path_params: path_params} ->
-        {view, action, opts, {live_session_name, _live_session_opts, vsn}} = lv
+        {view, action, opts, {live_session_name, live_session_extra, vsn}} = lv
 
         route = %Route{
           view: view,
@@ -78,6 +79,7 @@ defmodule Phoenix.LiveView.Route do
           opts: opts,
           live_session_name: live_session_name,
           live_session_vsn: vsn,
+          live_session_extra: live_session_extra,
           params: Map.merge(query_params, path_params)
         }
 
