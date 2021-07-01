@@ -39,8 +39,7 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.5.9"},
-      # {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
-      {:phoenix_html, path: "~/oss/phoenix_html", override: true},
+      {:phoenix_html, github: "phoenixframework/phoenix_html", branch: "cm-csrf-value", override: true},
       {:telemetry, "~> 0.4.2 or ~> 0.5"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
