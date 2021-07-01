@@ -863,7 +863,7 @@ defmodule Phoenix.LiveView.Channel do
     config = view.__live__()
 
     live_session_on_mount = load_live_session_on_mount(router, live_session_name)
-    lifecycle = lifecycle(config, live_session_on_mount) |> IO.inspect(label: :lifecycle)
+    lifecycle = lifecycle(config, live_session_on_mount)
 
     %Phoenix.Socket{
       endpoint: endpoint,
