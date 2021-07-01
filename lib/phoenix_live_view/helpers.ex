@@ -902,6 +902,8 @@ defmodule Phoenix.LiveView.Helpers do
     * `:id` - the ID of the form attribute. If an ID is given, all form inputs
       will also be prefixed by the given ID
 
+  All further assigns will be passed to the form tag.
+
   ## Examples
 
       <.form let={f} for={@changeset}>
