@@ -855,15 +855,13 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     } = verified
 
-    %Route{live_session_extra: extra} = route
-
     # Make sure the view is loaded. Otherwise if the first request
     # ever is a LiveView connection, the view won't be loaded and
     # the mount/handle_params callbacks won't be invoked as they
     # are optional, leading to errors.
     config = view.__live__()
 
-    live_session_on_mount = load_live_session_on_mount(extra)
+    live_session_on_mount = load_live_session_on_mount(route)
     lifecycle = lifecycle(config, live_session_on_mount)
 
     %Phoenix.Socket{
@@ -931,7 +929,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp load_live_session_on_mount(%{on_mount: hooks}), do: hooks
+  defp load_live_session_on_mount(%Route{live_session_extra: %{on_mount: hooks}}), do: hooks
   defp load_live_session_on_mount(_), do: []
 
   defp lifecycle(%{lifecycle: lifecycle}, []), do: lifecycle
