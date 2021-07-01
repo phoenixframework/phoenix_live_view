@@ -380,7 +380,7 @@ defmodule Phoenix.LiveView.Router do
 
       {key, val} ->
         raise ArgumentError, """
-        unkown live option :#{key}.
+        unknown live option :#{key}.
 
         Supported options include: :container, :as, :metadata, :private.
 
