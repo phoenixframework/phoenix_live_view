@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.HookTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.{Lifecycle, Hook}
+  alias Phoenix.LiveView.Lifecycle
 
   defp build_socket() do
     %LiveView.Socket{private: %{lifecycle: %Lifecycle{}}}
@@ -28,21 +28,21 @@ defmodule Phoenix.LiveView.HookTest do
     end
 
     test "supports handle_event/3" do
-      assert %Lifecycle{handle_event: [%Hook{id: :noop}]} =
+      assert %Lifecycle{handle_event: [%{id: :noop}]} =
                build_socket()
                |> LiveView.attach_hook(:noop, :handle_event, &noop/3)
                |> lifecycle()
     end
 
     test "supports handle_params/3" do
-      assert %Lifecycle{handle_params: [%Hook{id: :noop}]} =
+      assert %Lifecycle{handle_params: [%{id: :noop}]} =
                build_socket()
                |> LiveView.attach_hook(:noop, :handle_params, &noop/3)
                |> lifecycle()
     end
 
     test "supports handle_info/2" do
-      assert %Lifecycle{handle_info: [%Hook{id: :noop}]} =
+      assert %Lifecycle{handle_info: [%{id: :noop}]} =
                build_socket()
                |> LiveView.attach_hook(:noop, :handle_info, &noop/2)
                |> lifecycle()
@@ -64,9 +64,9 @@ defmodule Phoenix.LiveView.HookTest do
         |> LiveView.attach_hook(:noop, :handle_info, &noop/2)
 
       assert %Lifecycle{
-               handle_info: [%Hook{id: :noop, stage: :handle_info}],
-               handle_event: [%Hook{id: :noop, stage: :handle_event}],
-               handle_params: [%Hook{id: :noop, stage: :handle_params}]
+               handle_info: [%{id: :noop, stage: :handle_info}],
+               handle_event: [%{id: :noop, stage: :handle_event}],
+               handle_params: [%{id: :noop, stage: :handle_params}]
              } = lifecycle(socket)
     end
   end
@@ -100,12 +100,12 @@ defmodule Phoenix.LiveView.HookTest do
 
       assert %Lifecycle{
                handle_event: [
-                 %Hook{id: :a, stage: :handle_event},
-                 %Hook{id: :b, stage: :handle_event},
-                 %Hook{id: :c, stage: :handle_event}
+                 %{id: :a, stage: :handle_event},
+                 %{id: :b, stage: :handle_event},
+                 %{id: :c, stage: :handle_event}
                ],
                handle_params: [
-                 %Hook{id: :b, stage: :handle_params}
+                 %{id: :b, stage: :handle_params}
                ]
              } = lifecycle(socket)
 
@@ -113,11 +113,11 @@ defmodule Phoenix.LiveView.HookTest do
 
       assert %Lifecycle{
                handle_event: [
-                 %Hook{id: :a, stage: :handle_event},
-                 %Hook{id: :c, stage: :handle_event}
+                 %{id: :a, stage: :handle_event},
+                 %{id: :c, stage: :handle_event}
                ],
                handle_params: [
-                 %Hook{id: :b, stage: :handle_params}
+                 %{id: :b, stage: :handle_params}
                ]
              } = lifecycle(socket)
     end

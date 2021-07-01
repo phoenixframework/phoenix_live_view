@@ -1,41 +1,23 @@
-defmodule Phoenix.LiveView.Hook do
-  @moduledoc false
-
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect, only: [:id, :stage]}
-  end
-
-  defstruct id: nil, stage: nil, function: nil
-
-  @type t :: %__MODULE__{
-          id: term(),
-          stage: :handle_event | :handle_info | :handle_params | :mount,
-          function: function()
-        }
-
-  def new!(id, stage, fun) when is_atom(stage) and is_function(fun) do
-    %__MODULE__{id: id, stage: stage, function: fun}
-  end
-end
-
 defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
-  alias Phoenix.LiveView.{Hook, Socket}
+  alias Phoenix.LiveView.Socket
 
   @lifecycle :lifecycle
 
+  @type hook :: map()
+
   @type t :: %__MODULE__{
-          handle_event: [Hook.t()],
-          handle_info: [Hook.t()],
-          handle_params: [Hook.t()],
-          mount: [Hook.t()]
+          handle_event: [hook],
+          handle_info: [hook],
+          handle_params: [hook],
+          mount: [hook]
         }
 
   defstruct handle_event: [], handle_info: [], handle_params: [], mount: []
 
   def attach_hook(%Socket{} = socket, id, stage, fun)
       when stage in [:handle_event, :handle_info, :handle_params] do
-    hook = Hook.new!(id, stage, fun)
+    hook = hook!(id, stage, fun)
     lifecycle = lifecycle(socket)
     existing = for h <- Map.fetch!(lifecycle, stage), h.id == id, do: h
 
@@ -95,18 +77,16 @@ defmodule Phoenix.LiveView.Lifecycle do
     %{socket | private: Map.put(private, key, value)}
   end
 
-  # Lifecycle Event API
-
   @doc false
   def on_mount(view, view), do: raise_own_mount_hook!(view, view)
   def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
 
   def on_mount(_view, {module, fun} = id) when is_atom(module) and is_atom(fun) do
-    Hook.new!(id, :mount, Function.capture(module, fun, 3))
+    hook!(id, :mount, Function.capture(module, fun, 3))
   end
 
   def on_mount(_view, module) when is_atom(module) do
-    Hook.new!(module, :mount, Function.capture(module, :mount, 3))
+    hook!(module, :mount, Function.capture(module, :mount, 3))
   end
 
   def on_mount(view, result) do
@@ -122,6 +102,12 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
+  defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
+    %{id: id, stage: stage, function: fun}
+  end
+
+  # Lifecycle Event API
+
   @doc false
   def mount(_view, hooks) when is_list(hooks) do
     %__MODULE__{mount: Enum.reverse(hooks)}
@@ -129,7 +115,7 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.mount, socket, fn %Hook{} = hook, acc ->
+    reduce_socket(lifecycle.mount, socket, fn hook, acc ->
       case hook.function.(params, session, acc) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
@@ -145,21 +131,21 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.handle_event, socket, fn %Hook{} = hook, acc ->
+    reduce_socket(lifecycle.handle_event, socket, fn hook, acc ->
       hook.function.(event, val, acc)
     end)
   end
 
   @doc false
   def handle_params(params, uri, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.handle_params, socket, fn %Hook{} = hook, acc ->
+    reduce_socket(lifecycle.handle_params, socket, fn hook, acc ->
       hook.function.(params, uri, acc)
     end)
   end
 
   @doc false
   def handle_info(msg, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.handle_info, socket, fn %Hook{} = hook, acc ->
+    reduce_socket(lifecycle.handle_info, socket, fn hook, acc ->
       hook.function.(msg, acc)
     end)
   end
@@ -174,7 +160,7 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   defp reduce_socket([], acc, _function), do: {:cont, acc}
 
-  defp bad_lifecycle_response!(result, %Hook{} = hook) do
+  defp bad_lifecycle_response!(result, hook) do
     raise ArgumentError, """
     invalid return from hook #{inspect(hook.id)} for lifecycle event #{inspect(hook.stage)}.
 
