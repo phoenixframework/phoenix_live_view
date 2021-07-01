@@ -137,7 +137,7 @@ defmodule Phoenix.LiveView.HelpersTest do
       end
     end
 
-    test "geneates form with no options" do
+    test "generates form with no options" do
       assigns = %{}
 
       html =
@@ -148,7 +148,7 @@ defmodule Phoenix.LiveView.HelpersTest do
         """)
 
       assert [
-               {"form", [{"id", "myform"}, {"action", "#"}, {"method", "post"}],
+               {"form", [{"action", "#"}, {"method", "post"}],
                 [
                   {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
@@ -166,7 +166,7 @@ defmodule Phoenix.LiveView.HelpersTest do
             id="form"
             action="/"
             method="put"
-            multipart={true}
+            multipart
             csrf_token="123"
             as="user"
             errors={[name: "can't be blank"]}
@@ -181,12 +181,12 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert [
                {"form",
                 [
-                  {"id", "form"},
                   {"action", "/"},
                   {"method", "post"},
                   {"enctype", "multipart/form-data"},
                   {"class", "pretty"},
-                  {"data-foo", "bar"}
+                  {"data-foo", "bar"},
+                  {"id", "form"}
                 ],
                 [
                   {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},

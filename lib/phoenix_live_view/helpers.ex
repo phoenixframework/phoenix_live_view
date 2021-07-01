@@ -908,45 +908,44 @@ defmodule Phoenix.LiveView.Helpers do
         <%= text_input f, :name %>
       </.form>
 
-      <.form let={user_form} for={@changeset} as="user" {@extra}>
+      <.form let={user_form} for={@changeset} as="user" multipart {@extra}>
         <%= text_input user_form, :name %>
       </.form>
   """
-  @form_opts [:as, :method, :multipart, :csrf_token, :errors, :id]
   def form(assigns) do
+    # Extract options and then to the same call as form_for
     action = assigns[:action] || "#"
+    form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
+    form_options = assigns_to_attributes(assigns, [:action, :for])
 
-    {form_for, assigns} =
-      Map.pop_lazy(assigns, :for, fn -> raise ArgumentError, "missing :for assign to form" end)
+    # Since FormData may add options, read the actual options from form
+    %{options: opts} = form =
+      %Phoenix.HTML.Form{Phoenix.HTML.FormData.to_form(form_for, form_options) | action: action}
 
-    {csrf_token, assigns} =
-      Map.pop_lazy(assigns, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
+    # And then process csrf_token, multipart, and method as in form_tag
+    {csrf_token, opts} =
+      Keyword.pop_lazy(opts, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
 
-    form_opts = assigns |> Map.take(@form_opts) |> Enum.into([])
+    opts =
+      case Keyword.pop(opts, :multipart, false) do
+        {false, opts} -> opts
+        {true, opts} -> Keyword.put(opts, :enctype, "multipart/form-data")
+      end
 
-    form = %Phoenix.HTML.Form{Phoenix.HTML.FormData.to_form(form_for, form_opts) | action: action}
+    {method, opts} = Keyword.pop(opts, :method, "post")
+    {method, hidden_method} = form_method(method)
 
-    {method, hidden_method} = form_method(assigns[:method])
-
+    # Finally we can render the form
     assigns =
-      assigns
-      |> LiveView.assign(:form, form)
-      |> LiveView.assign(:id, form.id)
-      |> LiveView.assign(:action, action)
-      |> LiveView.assign(:enctype, enctype(assigns))
-      |> LiveView.assign(:csrf_token, csrf_token)
-      |> LiveView.assign(:method, method)
-      |> LiveView.assign(:hidden_method, hidden_method)
-      |> LiveView.assign(:attrs, assigns_to_attributes(assigns, [:for, :action | @form_opts]))
+      LiveView.assign(assigns,
+        form: form,
+        csrf_token: csrf_token,
+        hidden_method: hidden_method,
+        attrs: [action: action, method: method] ++ opts
+      )
 
     ~H"""
-    <form
-      id={@id}
-      action={@action}
-      method={@method}
-      enctype={@enctype}
-      {@attrs}
-    >
+    <form {@attrs}>
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
         <input name="_method" type="hidden" value={@hidden_method}>
       <% end %>
@@ -958,19 +957,6 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
-  defp enctype(assigns) do
-    case assigns do
-      %{multipart: true} -> "multipart/form-data"
-      %{multipart: false} -> false
-      %{} -> false
-    end
-  end
-
-  defp form_method(method) do
-    case method do
-      method when method in ~w(get post) -> {method, nil}
-      hidden when is_binary(hidden) -> {"post", hidden}
-      nil -> {"post", nil}
-    end
-  end
+  defp form_method(method) when method in ~w(get post), do: {method, nil}
+  defp form_method(method) when is_binary(method), do: {"post", method}
 end
