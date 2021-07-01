@@ -852,14 +852,18 @@ defmodule Phoenix.LiveView.Channel do
       root_pid: root_pid,
       session: verified_user_session,
       assign_new: assign_new,
-      router: router
+      router: router,
+      live_session_name: live_session_name
     } = verified
 
     # Make sure the view is loaded. Otherwise if the first request
     # ever is a LiveView connection, the view won't be loaded and
     # the mount/handle_params callbacks won't be invoked as they
     # are optional, leading to errors.
-    %{lifecycle: lifecycle} = view.__live__()
+    config = view.__live__()
+
+    live_session_on_mount = load_live_session_on_mount(router, live_session_name)
+    lifecycle = lifecycle(config, live_session_on_mount) |> IO.inspect(label: :lifecycle)
 
     %Phoenix.Socket{
       endpoint: endpoint,
@@ -924,6 +928,25 @@ defmodule Phoenix.LiveView.Channel do
       secret_key_base = endpoint.config(:secret_key_base)
       Plug.CSRFProtection.load_state(secret_key_base, state)
     end
+  end
+
+  defp load_live_session_on_mount(nil, _), do: []
+
+  defp load_live_session_on_mount(router, live_session_name) do
+    if function_exported?(router, :__phoenix_live_session_on_mount__, 1) do
+      case router.__phoenix_live_session_on_mount__(live_session_name) do
+        {:ok, hooks} -> hooks
+        _ -> []
+      end
+    else
+      []
+    end
+  end
+
+  defp lifecycle(%{lifecycle: lifecycle}, []), do: lifecycle
+
+  defp lifecycle(%{lifecycle: lifecycle}, on_mount) do
+    %{lifecycle | mount: on_mount ++ lifecycle.mount}
   end
 
   defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do

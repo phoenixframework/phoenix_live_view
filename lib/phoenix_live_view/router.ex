@@ -139,6 +139,12 @@ defmodule Phoenix.LiveView.Router do
   * `:root_layout` - The optional root layout tuple for the intial HTTP render to
     override any existing root layout set in the router.
 
+  * `:on_mount` - The optional list of hooks to attach to the mount lifecycle _of
+    each LiveView in the session_. Passing a single value is also accepted.
+    _Note:_ using this option requires adding `use Phoenix.LiveView.Router`
+    to your router module, otherwise the hooks will not be registered and _no
+    warning will be emitted_.
+
   ## Examples
 
       scope "/", MyAppWeb do
@@ -150,7 +156,7 @@ defmodule Phoenix.LiveView.Router do
           live "/status/:id", StatusLive, :show
         end
 
-        live_session :admin, session: %{"admin" => true} do
+        live_session :admin, session: %{"admin" => true}, on_mount: MyAppWeb.LiveAdmin do
           live "/admin", AdminDashboardLive, :index
           live "/admin/posts", AdminPostLive, :index
         end
@@ -219,7 +225,7 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    extra = validate_live_session_opts(opts, name)
+    extra = validate_live_session_opts(opts, module, name)
 
     if nested = Module.get_attribute(module, :phoenix_live_session_current) do
       raise """
@@ -242,8 +248,8 @@ defmodule Phoenix.LiveView.Router do
     Module.put_attribute(module, :phoenix_live_sessions, {name, extra, vsn})
   end
 
-  @live_session_opts [:root_layout, :session]
-  defp validate_live_session_opts(opts, _name) when is_list(opts) do
+  @live_session_opts [:on_mount, :root_layout, :session]
+  defp validate_live_session_opts(opts, module, _name) when is_list(opts) do
     opts
     |> Keyword.put_new(:session, %{})
     |> Enum.reduce(%{}, fn
@@ -273,6 +279,23 @@ defmodule Phoenix.LiveView.Router do
         expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
         """
 
+      {:on_mount, mod}, acc when is_atom(mod) ->
+        Map.put(acc, :on_mount, [Phoenix.LiveView.Lifecycle.on_mount(module, mod)])
+
+      {:on_mount, {mod, fun} = id}, acc when is_atom(mod) and is_atom(fun) ->
+        Map.put(acc, :on_mount, [Phoenix.LiveView.Lifecycle.on_mount(module, id)])
+
+      {:on_mount, on_mount}, acc when is_list(on_mount) ->
+        hooks = Enum.map(on_mount, &Phoenix.LiveView.Lifecycle.on_mount(module, &1))
+        Map.put(acc, :on_mount, hooks)
+
+      {:on_mount, bad_on_mount}, _acc ->
+        raise ArgumentError, """
+        invalid live_session :on_mount
+
+        expected a list (or single value) of Module or {Module, Function}, got #{inspect(bad_on_mount)}
+        """
+
       {key, _val}, _acc ->
         raise ArgumentError, """
         unknown live_session option "#{inspect(key)}"
@@ -282,7 +305,7 @@ defmodule Phoenix.LiveView.Router do
     end)
   end
 
-  defp validate_live_session_opts(invalid, name) do
+  defp validate_live_session_opts(invalid, _module, name) do
     raise ArgumentError, """
     expected second argument to live_session to be a list of options, got:
 
@@ -435,6 +458,28 @@ defmodule Phoenix.LiveView.Router do
       vsn = System.system_time()
       Module.put_attribute(module, :phoenix_session_vsn, vsn)
       vsn
+    end
+  end
+
+  defmacro __before_compile__(env) do
+    on_mount =
+      for {name, %{on_mount: on_mount}, _vsn} <-
+            Module.get_attribute(env.module, :phoenix_live_sessions),
+          into: %{},
+          do: {name, on_mount}
+
+    quote do
+      @phoenix_live_session_on_mount unquote(Macro.escape(on_mount))
+      def __phoenix_live_session_on_mount__(name) do
+        Map.fetch(@phoenix_live_session_on_mount, name)
+      end
+    end
+  end
+
+  defmacro __using__(_opts) do
+    quote do
+      import Phoenix.LiveView.Router
+      @before_compile Phoenix.LiveView.Router
     end
   end
 end

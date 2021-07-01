@@ -81,6 +81,7 @@ defmodule Phoenix.LiveView.Static do
     {to_sign_session, mount_session} = load_session(conn_session, opts)
     live_session = live_session(conn)
     config = load_live!(view, :view)
+    lifecycle = lifecycle(config, live_session)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
@@ -97,7 +98,7 @@ defmodule Phoenix.LiveView.Static do
           connect_params: %{},
           connect_info: %{},
           conn_session: conn_session,
-          lifecycle: config.lifecycle,
+          lifecycle: lifecycle,
           root_view: view,
           __changed__: %{}
         },
@@ -242,6 +243,14 @@ defmodule Phoenix.LiveView.Static do
       %{kind: other} ->
         raise "expected #{inspect(view_or_component)} to be a #{kind}, but it is a #{other}"
     end
+  end
+
+  defp lifecycle(%{lifecycle: lifecycle}, {_, %{on_mount: on_mount}, _}) do
+    %{lifecycle | mount: on_mount ++ lifecycle.mount}
+  end
+
+  defp lifecycle(%{lifecycle: lifecycle}, _) do
+    lifecycle
   end
 
   defp call_mount_and_handle_params!(socket, view, session, params, uri) do
