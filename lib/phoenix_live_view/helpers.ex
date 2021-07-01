@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.Helpers do
         assigns =
           assigns
           |> Phoenix.LiveView.assign(:target, target)
-          |> Phoenix.LiveView.assign(:extra, assigns_to_attrs(assigns, [:new_window]))
+          |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
 
         ~H"\""
         <a href={@href} target={@target}>
@@ -37,11 +37,11 @@ defmodule Phoenix.LiveView.Helpers do
         "\""
       end
 
-  The optional second argument to `assigns_to_attrs` takes a list of keys to exclude
+  The optional second argument to `assigns_to_attributes` takes a list of keys to exclude
   which will typically be the keys reserved by the component itself which either
   do not belong in the markup, or are already handled explicitly by the component.
   """
-  def assigns_to_attrs(assigns, exclude \\ []) do
+  def assigns_to_attributes(assigns, exclude \\ []) do
     excluded_keys = [:__changed__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
@@ -934,7 +934,7 @@ defmodule Phoenix.LiveView.Helpers do
       |> LiveView.assign(enctype: enctype(assigns))
       |> LiveView.assign(csrf_token: csrf_token)
       |> LiveView.assign(method: method, hidden_method: hidden_method)
-      |> LiveView.assign(attrs: assigns_to_attrs(assigns, [:for, :action | @form_opts]))
+      |> LiveView.assign(attrs: assigns_to_attributes(assigns, [:for, :action | @form_opts]))
 
     ~H"""
     <form
