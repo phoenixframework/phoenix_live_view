@@ -523,15 +523,15 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Declares a hook to be attached to the `:mount` stage of the LiveView lifecycle.
+  Declares a module-function to be invoked on the LiveView's mount.
 
-  The `on_mount/1` macro provides an injection point for hooks to run
-  before both the disconnected _and_ connected render of the LiveView.
-  Hooks declared `on_mount` are invoked immediately before the `c:mount/3`
-  callback. A hook that wishes to redirect the LiveView during the
-  `:mount` stage **must** halt, otherwise an error will be raised.
+  The given module-function will be invoked before both disconnected
+  and connected mounts. The hook has the option to either halt or
+  continue the mounting process as usual. If you wish to redirect the
+  LiveView, you **must** halt, otherwise an error will be raised.
 
-  For more information about lifecycle hooks, see `attach_hook/4`.
+  Registering `on_mount` hooks can be useful to perform authentication
+  as well as add custom behaviour to other callbacks via `attach_hook/4`.
 
   ## Examples
 
@@ -1391,12 +1391,11 @@ defmodule Phoenix.LiveView do
 
   ## Return Values
 
-  Lifecycle hooks are effectively a single
-  [`reduce_while`](`Enum.reduce_while/3`) operation that takes place
-  immediately before a given lifecycle callback is invoked on the
-  LiveView. A hook may return `{:halt, socket}` to halt the reduction,
-  otherwise it must return `{:cont, socket}` so the operation may
-  continue until all hooks have been invoked for the current stage.
+  Lifecycle hooks take place immediately before a given lifecycle
+  callback is invoked on the LiveView. A hook may return `{:halt, socket}`
+  to halt the reduction, otherwise it must return `{:cont, socket}` so
+  the operation may continue until all hooks have been invoked for
+  the current stage.
 
   ## Halting the lifecycle
 
@@ -1407,10 +1406,9 @@ defmodule Phoenix.LiveView do
 
   ### Implications for plugin authors
 
-  When defining your plugin, you **must** define a catch-all clause
-  that either halts or continues _and_ you should make this behaviour
-  clear to the end-user, perhaps exposing it as a config option if
-  sensible.
+  When defining a plugin that matches on specific callbacks, you **must**
+  define a catch-all clause, as your hook will be invoked even for events
+  you may not be interested on.
 
   ### Implications for end-users
 

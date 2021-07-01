@@ -124,9 +124,7 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(_view, hooks) when is_list(hooks) do
-    Enum.reduce(hooks, %__MODULE__{}, fn %Hook{} = hook, acc ->
-      %{acc | mount: [hook | acc.mount]}
-    end)
+    %__MODULE__{mount: Enum.reverse(hooks)}
   end
 
   @doc false
