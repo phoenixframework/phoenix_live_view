@@ -930,11 +930,14 @@ defmodule Phoenix.LiveView.Helpers do
 
     assigns =
       assigns
-      |> LiveView.assign(form: form, id: form.id, action: action)
-      |> LiveView.assign(enctype: enctype(assigns))
-      |> LiveView.assign(csrf_token: csrf_token)
-      |> LiveView.assign(method: method, hidden_method: hidden_method)
-      |> LiveView.assign(attrs: assigns_to_attributes(assigns, [:for, :action | @form_opts]))
+      |> LiveView.assign(:form, form)
+      |> LiveView.assign(:id, form.id)
+      |> LiveView.assign(:action, action)
+      |> LiveView.assign(:enctype, enctype(assigns))
+      |> LiveView.assign(:csrf_token, csrf_token)
+      |> LiveView.assign(:method, method)
+      |> LiveView.assign(:hidden_method, hidden_method)
+      |> LiveView.assign(:attrs, assigns_to_attributes(assigns, [:for, :action | @form_opts]))
 
     ~H"""
     <form
