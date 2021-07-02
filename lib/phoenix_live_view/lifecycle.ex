@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Socket, Utils}
 
   @lifecycle :lifecycle
 
@@ -17,8 +17,8 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   def attach_hook(%Socket{} = socket, id, stage, fun)
       when stage in [:handle_event, :handle_info, :handle_params] do
-    hook = hook!(id, stage, fun)
     lifecycle = lifecycle(socket)
+    hook = hook!(id, stage, fun)
     existing = Enum.find(Map.fetch!(lifecycle, stage), &(&1.id == id))
 
     if existing do
@@ -60,6 +60,10 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   defp lifecycle(socket) do
+    if Utils.cid(socket) do
+      raise ArgumentError, "lifecycle hooks are not supported on stateful components."
+    end
+
     Map.fetch!(socket.private, @lifecycle)
   end
 

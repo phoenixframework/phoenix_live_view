@@ -191,4 +191,20 @@ defmodule Phoenix.LiveView.LifecycleTest do
     assert_receive {:pong, ^ref}
     refute_received {:intercepted, ^ref}
   end
+
+  test "attach_hook raises when given a live component socket", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components")
+
+    assert HooksLive.exits_with(lv, ArgumentError, fn ->
+      lv |> element("#attach") |> render_click()
+    end) =~ "lifecycle hooks are not supported on stateful components."
+  end
+
+  test "detach_hook raises when given a live component socket", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components")
+
+    assert HooksLive.exits_with(lv, ArgumentError, fn ->
+      lv |> element("#detach") |> render_click()
+    end) =~ "lifecycle hooks are not supported on stateful components."
+  end
 end
