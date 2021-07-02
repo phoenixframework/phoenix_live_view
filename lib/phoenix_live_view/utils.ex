@@ -68,6 +68,12 @@ defmodule Phoenix.LiveView.Utils do
   def changed?(%{__changed__: changed}, assign), do: Map.has_key?(changed, assign)
 
   @doc """
+  Returns the CID of the given socket
+  """
+  def cid(%Socket{assigns: %{myself: %Phoenix.LiveComponent.CID{} = cid}}), do: cid
+  def cid(%Socket{}), do: nil
+
+  @doc """
   Configures the socket for use.
   """
   def configure_socket(%Socket{id: nil} = socket, private, action, flash, host_uri) do

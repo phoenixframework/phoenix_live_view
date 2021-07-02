@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Socket, Utils}
 
   @lifecycle :lifecycle
 
@@ -60,9 +60,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   defp lifecycle(socket) do
-    cid = Socket.cid(socket)
-
-    if cid do
+    if Utils.cid(socket) do
       raise ArgumentError, "lifecycle hooks are not supported on stateful components."
     end
 
