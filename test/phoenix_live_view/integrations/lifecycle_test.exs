@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
     assert assigns.init_assigns_mount
     assert assigns.init_assigns_other_mount
-    assert assigns.last_at_mount == :init_assigns_other_mount
+    assert assigns.last_on_mount == :init_assigns_other_mount
   end
 
   test "on_mount hook raises when :halt is returned without a redirected socket", %{conn: conn} do
