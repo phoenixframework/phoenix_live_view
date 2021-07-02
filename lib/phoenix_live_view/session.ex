@@ -21,7 +21,7 @@ defmodule Phoenix.LiveView.Session do
     %Session{live_session_name: session_name, live_session_vsn: session_vsn} = session
 
     cond do
-      route.live_session_name == session_name and route.live_session_vsn == session_vsn ->
+      route.live_session.name == session_name and route.live_session.vsn == session_vsn ->
         {:ok, replace_root(session, route.view, self())}
 
       true ->

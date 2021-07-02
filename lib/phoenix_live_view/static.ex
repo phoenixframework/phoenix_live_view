@@ -36,7 +36,7 @@ defmodule Phoenix.LiveView.Static do
 
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
-      {_view, _opts, {_name, _live_session_extra, _vsn} = lv_session} -> lv_session
+      {_view, _opts, %{name: _name, extra: _extra, vsn: _vsn} = lv_session} -> lv_session
       nil -> nil
     end
   end
@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
-  defp lifecycle(%{lifecycle: lifecycle}, {_, %{on_mount: on_mount}, _}) do
+  defp lifecycle(%{lifecycle: lifecycle}, %{extra: %{on_mount: on_mount}}) do
     %{lifecycle | mount: on_mount ++ lifecycle.mount}
   end
 
@@ -295,7 +295,7 @@ defmodule Phoenix.LiveView.Static do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     live_session_pair =
       case live_session do
-        {name, _extra, vsn} -> {name, vsn}
+        %{name: name, vsn: vsn} -> {name, vsn}
         nil -> nil
       end
 

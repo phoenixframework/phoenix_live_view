@@ -226,13 +226,13 @@ defmodule Phoenix.LiveView.Router do
 
     if nested = Module.get_attribute(module, :phoenix_live_session_current) do
       raise """
-      attempting to define live_session #{inspect(name)} inside #{inspect(elem(nested, 0))}.
+      attempting to define live_session #{inspect(name)} inside #{inspect(nested.name)}.
       live_session definitions cannot be nested.
       """
     end
 
     live_sessions = Module.get_attribute(module, :phoenix_live_sessions)
-    existing = Enum.find(live_sessions, fn {existing_name, _, _} -> name == existing_name end)
+    existing = Enum.find(live_sessions, fn %{name: existing_name} -> name == existing_name end)
 
     if existing do
       raise """
@@ -241,8 +241,8 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    Module.put_attribute(module, :phoenix_live_session_current, {name, extra, vsn})
-    Module.put_attribute(module, :phoenix_live_sessions, {name, extra, vsn})
+    Module.put_attribute(module, :phoenix_live_session_current, %{name: name, extra: extra, vsn: vsn})
+    Module.put_attribute(module, :phoenix_live_sessions, %{name: name, extra: extra, vsn: vsn})
   end
 
   @live_session_opts [:on_mount, :root_layout, :session]
@@ -337,7 +337,7 @@ defmodule Phoenix.LiveView.Router do
       when is_atom(action) and is_list(opts) do
     live_session =
       Module.get_attribute(router, :phoenix_live_session_current) ||
-        {:default, %{session: %{}}, session_vsn(router)}
+        %{name: :default, extra: %{session: %{}}, vsn: session_vsn(router)}
 
     live_view = Phoenix.Router.scoped_alias(router, live_view)
     {private, metadata, opts} = validate_live_opts!(opts)

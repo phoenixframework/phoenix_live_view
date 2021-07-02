@@ -77,8 +77,8 @@ defmodule Phoenix.LiveView.RouterTest do
     test "with defaults", %{conn: conn} do
       path = "/thermo-live-session"
       assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
-      assert route.live_session_name == :test
-      assert route.live_session_vsn
+      assert route.live_session.name == :test
+      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() == %{}
     end
@@ -86,8 +86,8 @@ defmodule Phoenix.LiveView.RouterTest do
     test "with extra session metadata", %{conn: conn} do
       path = "/thermo-live-session-admin"
       assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
-      assert route.live_session_name == :admin
-      assert route.live_session_vsn
+      assert route.live_session.name == :admin
+      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"admin" => true}
@@ -96,8 +96,8 @@ defmodule Phoenix.LiveView.RouterTest do
     test "with session MFA metadata", %{conn: conn} do
       path = "/thermo-live-session-mfa"
       assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
-      assert route.live_session_name == :mfa
-      assert route.live_session_vsn
+      assert route.live_session.name == :mfa
+      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"inlined" => true, "called" => true}
@@ -109,13 +109,16 @@ defmodule Phoenix.LiveView.RouterTest do
       assert {:internal, route} =
                Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
-      hook_map = %{
-        id: Phoenix.LiveViewTest.HaltConnectedMount,
-        stage: :mount,
-        function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :mount, 3)
+      assert route.live_session.extra == %{
+        on_mount: [
+          %{
+            id: Phoenix.LiveViewTest.HaltConnectedMount,
+            stage: :mount,
+            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :mount, 3)
+          }
+        ],
+        session: %{}
       }
-
-      assert %{on_mount: [^hook_map]} = route.live_session_extra
 
       assert conn |> get(path) |> html_response(200) =~
                "last_on_mount:Phoenix.LiveViewTest.HaltConnectedMount"

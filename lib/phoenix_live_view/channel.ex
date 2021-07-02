@@ -929,7 +929,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp load_live_session_on_mount(%Route{live_session_extra: %{on_mount: hooks}}), do: hooks
+  defp load_live_session_on_mount(%Route{live_session: %{extra: %{on_mount: hooks}}}), do: hooks
   defp load_live_session_on_mount(_), do: []
 
   defp lifecycle(%{lifecycle: lifecycle}, []), do: lifecycle
