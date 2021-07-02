@@ -424,8 +424,8 @@ export default class LiveSocket {
         window.location.reload()
       }
     }, true)
-    this.bindClicks()
     this.bindNav()
+    this.bindClicks()
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, _phxTarget) => {
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
