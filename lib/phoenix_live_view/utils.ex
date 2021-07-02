@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.Utils do
   def changed?(%{__changed__: changed}, assign), do: Map.has_key?(changed, assign)
 
   @doc """
-  Returns the CID of the given socket
+  Returns the CID of the given socket.
   """
   def cid(%Socket{assigns: %{myself: %Phoenix.LiveComponent.CID{} = cid}}), do: cid
   def cid(%Socket{}), do: nil
