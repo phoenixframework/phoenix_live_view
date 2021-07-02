@@ -84,4 +84,12 @@ defmodule Phoenix.LiveView.Socket do
 
   @impl Phoenix.Socket
   def id(socket), do: socket.private.connect_info[:session]["live_socket_id"]
+
+  @doc false
+  def cid(%__MODULE__{assigns: assigns}) do
+    case assigns do
+      %{myself: %Phoenix.LiveComponent.CID{} = cid} -> cid
+      _ -> nil
+    end
+  end
 end
