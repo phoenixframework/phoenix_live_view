@@ -5,14 +5,14 @@ defmodule Phoenix.LiveViewTest.InitAssigns do
     {:cont,
      socket
      |> LiveView.assign(:init_assigns_mount, true)
-     |> LiveView.assign(:last_at_mount, :init_assigns_mount)}
+     |> LiveView.assign(:last_on_mount, :init_assigns_mount)}
   end
 
   def other_mount(_params, _session, socket) do
     {:cont,
      socket
      |> LiveView.assign(:init_assigns_other_mount, true)
-     |> LiveView.assign(:last_at_mount, :init_assigns_other_mount)}
+     |> LiveView.assign(:last_on_mount, :init_assigns_other_mount)}
   end
 end
 
@@ -25,7 +25,7 @@ defmodule Phoenix.LiveViewTest.HooksLive do
 
   def render(assigns) do
     ~L"""
-    last_at_mount:<%= inspect(assigns[:last_at_mount]) %>
+    last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
     params_hook:<%= assigns[:params_hook_ref] %>
     count:<%= @count %>
     <button id="dec" phx-click="dec">-</button>
@@ -132,4 +132,27 @@ defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   end
 
   def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.Noop do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  def render(assigns) do
+    ~L"""
+    <h1>Noop</h1>
+    last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.HaltConnectedMount do
+  alias Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    if LiveView.connected?(socket) do
+      {:halt, LiveView.push_redirect(socket, to: "/lifecycle")}
+    else
+      {:cont, LiveView.assign(socket, :last_on_mount, __MODULE__)}
+    end
+  end
 end

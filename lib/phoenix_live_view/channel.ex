@@ -859,7 +859,10 @@ defmodule Phoenix.LiveView.Channel do
     # ever is a LiveView connection, the view won't be loaded and
     # the mount/handle_params callbacks won't be invoked as they
     # are optional, leading to errors.
-    %{lifecycle: lifecycle} = view.__live__()
+    config = view.__live__()
+
+    live_session_on_mount = load_live_session_on_mount(route)
+    lifecycle = lifecycle(config, live_session_on_mount)
 
     %Phoenix.Socket{
       endpoint: endpoint,
@@ -924,6 +927,15 @@ defmodule Phoenix.LiveView.Channel do
       secret_key_base = endpoint.config(:secret_key_base)
       Plug.CSRFProtection.load_state(secret_key_base, state)
     end
+  end
+
+  defp load_live_session_on_mount(%Route{live_session: %{extra: %{on_mount: hooks}}}), do: hooks
+  defp load_live_session_on_mount(_), do: []
+
+  defp lifecycle(%{lifecycle: lifecycle}, []), do: lifecycle
+
+  defp lifecycle(%{lifecycle: lifecycle}, on_mount) do
+    %{lifecycle | mount: on_mount ++ lifecycle.mount}
   end
 
   defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do

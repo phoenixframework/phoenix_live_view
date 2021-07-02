@@ -125,6 +125,10 @@ defmodule Phoenix.LiveViewTest.Router do
     live_session :merged, session: %{"top-level" => true} do
       live "/thermo-live-session-merged", ThermostatLive
     end
+
+    live_session :lifecycle, on_mount: Phoenix.LiveViewTest.HaltConnectedMount do
+      live "/lifecycle/halt-connected-mount", HooksLive.Noop
+    end
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
