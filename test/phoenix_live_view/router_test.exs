@@ -103,6 +103,26 @@ defmodule Phoenix.LiveView.RouterTest do
                %{"inlined" => true, "called" => true}
     end
 
+    test "with on_mount hook", %{conn: conn} do
+      path = "/lifecycle/halt-connected-mount"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      hook_map = %{
+        id: Phoenix.LiveViewTest.HaltConnectedMount,
+        stage: :mount,
+        function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :mount, 3)
+      }
+
+      assert %{on_mount: [^hook_map]} = route.live_session_extra
+
+      assert conn |> get(path) |> html_response(200) =~
+               "last_on_mount:Phoenix.LiveViewTest.HaltConnectedMount"
+
+      assert {:error, {:live_redirect, %{to: "/lifecycle"}}} = live(conn, path)
+    end
+
     test "raises when nesting" do
       assert_raise(RuntimeError, ~r"attempting to define live_session :invalid inside :ok", fn ->
         Code.eval_quoted(

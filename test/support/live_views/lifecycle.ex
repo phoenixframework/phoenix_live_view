@@ -133,3 +133,27 @@ defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
 
   def render(assigns), do: ~L""
 end
+
+defmodule Phoenix.LiveViewTest.HooksLive.Noop do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  @spec render(any) :: Phoenix.LiveView.Rendered.t()
+  def render(assigns) do
+    ~L"""
+    <h1>Noop</h1>
+    last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.HaltConnectedMount do
+  alias Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    if LiveView.connected?(socket) do
+      {:halt, LiveView.push_redirect(socket, to: "/lifecycle")}
+    else
+      {:cont, LiveView.assign(socket, :last_on_mount, __MODULE__)}
+    end
+  end
+end
