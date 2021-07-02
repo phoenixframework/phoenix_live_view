@@ -156,3 +156,63 @@ defmodule Phoenix.LiveViewTest.HaltConnectedMount do
     end
   end
 end
+
+defmodule Phoenix.LiveViewTest.HooksAttachComponent do
+  use Phoenix.LiveComponent
+  alias Phoenix.LiveView
+
+  def mount(socket) do
+    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_event, &__MODULE__.hook/3)}
+  end
+
+  def hook(_, _, _socket) do
+    raise "expected to exit before #{__MODULE__}.hook/3"
+  end
+
+  def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksDetachComponent do
+  use Phoenix.LiveComponent
+  alias Phoenix.LiveView
+
+  def mount(socket) do
+    {:ok, LiveView.detach_hook(socket, :live_view_hook, :handle_event)}
+  end
+
+  def render(assigns), do: ~L""
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+  alias Phoenix.LiveViewTest.{HooksAttachComponent, HooksDetachComponent}
+
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:component, nil)
+     |> attach_hook(:live_view_hook, :handle_event, fn _, _, socket ->
+       {:cont, socket}
+     end)}
+  end
+
+  def handle_event("load", %{"val" => val}, socket) do
+    component =
+      case val do
+        "attach" -> HooksAttachComponent
+        "detach" -> HooksDetachComponent
+      end
+
+    {:noreply, assign(socket, :component, component)}
+  end
+
+  def render(assigns) do
+    ~L"""
+    <button id="attach" phx-click="load" phx-value-val="attach">Load/Attach</button>
+    <button id="detach" phx-click="load" phx-value-val="detach">Load/Detach</button>
+    <%= if @component do %>
+    <%= live_component(@component, id: :hook) %>
+    <% end %>
+    """
+  end
+end
