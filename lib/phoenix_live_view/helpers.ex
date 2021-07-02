@@ -3,7 +3,48 @@ defmodule Phoenix.LiveView.Helpers do
   A collection of helpers to be imported into your views.
   """
 
+  alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
+
+  @doc ~S"""
+  Filters the assigns as a list of keywords for use in dynamic tag attributes.
+
+  Useful for transforming caller assigns into dynamic attributes while
+  stripping reserved keys from the result.
+
+  ## Examples
+
+  Imagine the following `my_link` component which allows a caller
+  to pass a `new_window` assign, along with any other attributes they
+  would like to add to the element, such as class, data attributes, etc:
+
+      <.my_link id={@id} new_window={true} class="my-class">Home</a>
+
+  We could support the dynamic attributes with the following component:
+
+      def my_link(assigns) do
+        target = if assigns[:new_window], do: "_blank", else: false
+
+        assigns =
+          assigns
+          |> Phoenix.LiveView.assign(:target, target)
+          |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
+
+        ~H"\""
+        <a href={@href} target={@target}>
+          <%= render_block(@inner_block) %>
+        </a>
+        "\""
+      end
+
+  The optional second argument to `assigns_to_attributes` takes a list of keys to exclude
+  which will typically be the keys reserved by the component itself which either
+  do not belong in the markup, or are already handled explicitly by the component.
+  """
+  def assigns_to_attributes(assigns, exclude \\ []) do
+    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
+  end
 
   @doc false
   def live_patch(opts) when is_list(opts) do
@@ -231,7 +272,8 @@ defmodule Phoenix.LiveView.Helpers do
         {_, _} -> {nil, do_block, assigns}
       end
 
-    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or is_map(assigns) do
+    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or
+         is_map(assigns) do
       quote do
         Phoenix.LiveView.Helpers.__live_component__(
           unquote(component).__live__(),
@@ -454,7 +496,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc false
   def __component__(func, assigns, inner)
-      when is_function(func, 1) and is_list(assigns) or is_map(assigns) do
+      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
     assigns =
       case assigns do
         %{__changed__: _} -> assigns
@@ -826,4 +868,97 @@ defmodule Phoenix.LiveView.Helpers do
     raise ArgumentError,
           "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
   end
+
+  @doc """
+  Renders a form function component using `Phoenix.HTML.form_for/4`.
+
+  ## Options
+
+  The `:for` assign is the form's source data and the optional `:action`
+  assign can be provided for the form's action. Additionally accepts
+  the same options as `Phoenix.HTML.form_for/4` as optional assigns:
+
+    * `:as` - the server side parameter in which all params for this
+      form will be collected (i.e. `as: :user_params` would mean all fields
+      for this form will be accessed as `conn.params.user_params` server
+      side). Automatically inflected when a changeset is given.
+
+    * `:method` - the HTTP method. If the method is not "get" nor "post",
+      an input tag with name `_method` is generated along-side the form tag.
+      Defaults to "post".
+
+    * `:multipart` - when true, sets enctype to "multipart/form-data".
+      Required when uploading files
+
+    * `:csrf_token` - for "post" requests, the form tag will automatically
+      include an input tag with name `_csrf_token`. When set to false, this
+      is disabled
+
+    * `:errors` - use this to manually pass a keyword list of errors to the form
+      (for example from `conn.assigns[:errors]`). This option is only used when a
+      connection is used as the form source and it will make the errors available
+      under `f.errors`
+
+    * `:id` - the ID of the form attribute. If an ID is given, all form inputs
+      will also be prefixed by the given ID
+
+  All further assigns will be passed to the form tag.
+
+  ## Examples
+
+      <.form let={f} for={@changeset}>
+        <%= text_input f, :name %>
+      </.form>
+
+      <.form let={user_form} for={@changeset} as="user" multipart {@extra}>
+        <%= text_input user_form, :name %>
+      </.form>
+  """
+  def form(assigns) do
+    # Extract options and then to the same call as form_for
+    action = assigns[:action] || "#"
+    form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
+    form_options = assigns_to_attributes(assigns, [:action, :for])
+
+    # Since FormData may add options, read the actual options from form
+    %{options: opts} = form =
+      %Phoenix.HTML.Form{Phoenix.HTML.FormData.to_form(form_for, form_options) | action: action}
+
+    # And then process csrf_token, multipart, and method as in form_tag
+    {csrf_token, opts} =
+      Keyword.pop_lazy(opts, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
+
+    opts =
+      case Keyword.pop(opts, :multipart, false) do
+        {false, opts} -> opts
+        {true, opts} -> Keyword.put(opts, :enctype, "multipart/form-data")
+      end
+
+    {method, opts} = Keyword.pop(opts, :method, "post")
+    {method, hidden_method} = form_method(method)
+
+    # Finally we can render the form
+    assigns =
+      LiveView.assign(assigns,
+        form: form,
+        csrf_token: csrf_token,
+        hidden_method: hidden_method,
+        attrs: [action: action, method: method] ++ opts
+      )
+
+    ~H"""
+    <form {@attrs}>
+      <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
+        <input name="_method" type="hidden" value={@hidden_method}>
+      <% end %>
+      <%= if @csrf_token do %>
+        <input name="_csrf_token" type="hidden" value={@csrf_token}>
+      <% end %>
+      <%= render_block(@inner_block, @form) %>
+    </form>
+    """
+  end
+
+  defp form_method(method) when method in ~w(get post), do: {method, nil}
+  defp form_method(method) when is_binary(method), do: {"post", method}
 end
