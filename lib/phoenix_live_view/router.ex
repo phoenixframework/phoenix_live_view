@@ -276,22 +276,9 @@ defmodule Phoenix.LiveView.Router do
         expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
         """
 
-      {:on_mount, mod}, acc when is_atom(mod) ->
-        Map.put(acc, :on_mount, [Phoenix.LiveView.Lifecycle.on_mount(module, mod)])
-
-      {:on_mount, {mod, fun} = id}, acc when is_atom(mod) and is_atom(fun) ->
-        Map.put(acc, :on_mount, [Phoenix.LiveView.Lifecycle.on_mount(module, id)])
-
-      {:on_mount, on_mount}, acc when is_list(on_mount) ->
-        hooks = Enum.map(on_mount, &Phoenix.LiveView.Lifecycle.on_mount(module, &1))
+      {:on_mount, on_mount}, acc  ->
+        hooks = Enum.map(List.wrap(on_mount), &Phoenix.LiveView.Lifecycle.on_mount(module, &1))
         Map.put(acc, :on_mount, hooks)
-
-      {:on_mount, bad_on_mount}, _acc ->
-        raise ArgumentError, """
-        invalid live_session :on_mount
-
-        expected a list (or single value) of Module or {Module, Function}, got #{inspect(bad_on_mount)}
-        """
 
       {key, _val}, _acc ->
         raise ArgumentError, """
