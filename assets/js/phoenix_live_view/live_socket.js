@@ -239,7 +239,7 @@ export default class LiveSocket {
     if(!latency){
       if(opts.timeout){
         return push().receive("timeout", () => {
-          if(view.joinCount === oldJoinCount){
+          if(view.joinCount === oldJoinCount && !view.isDestroyed()){
             this.reloadWithJitter(view, () => {
               this.log(view, "timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
             })
