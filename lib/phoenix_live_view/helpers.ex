@@ -705,7 +705,8 @@ defmodule Phoenix.LiveView.Helpers do
       engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
-      indentation: meta[:indentation] || 0
+      module: __CALLER__.module,
+      indentation: meta[:indentation] || 0,
     ]
 
     EEx.compile_string(expr, options)

@@ -26,6 +26,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
+    {module, opts} = Keyword.pop(opts, :module)
 
     unless subengine do
       raise ArgumentError, ":subengine is missing for HTMLEngine"
@@ -37,6 +38,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       root: nil,
+      module: module,
       opts: opts
     }
 
@@ -52,9 +54,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     opts = [root: state.root || false]
     ast = invoke_subengine(state, :handle_body, [opts])
 
-    quote do
-      require Phoenix.LiveView.Helpers
-      unquote(ast)
+    # Do not require if calling module is helpers. Fix for elixir < 1.12
+    if state.module === Phoenix.LiveView.Helpers do
+      ast
+    else
+      quote do
+        require Phoenix.LiveView.Helpers
+        unquote(ast)
+      end
     end
   end
 
