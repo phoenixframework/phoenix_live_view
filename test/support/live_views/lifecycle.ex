@@ -137,7 +137,6 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.Noop do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  @spec render(any) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~L"""
     <h1>Noop</h1>
