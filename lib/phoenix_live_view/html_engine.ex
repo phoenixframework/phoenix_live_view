@@ -55,6 +55,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     ast = invoke_subengine(state, :handle_body, [opts])
 
     # Do not require if calling module is helpers. Fix for elixir < 1.12
+    # TODO remove after Elixir >= 1.12 support
     if state.module === Phoenix.LiveView.Helpers do
       ast
     else
