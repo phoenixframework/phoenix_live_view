@@ -125,7 +125,7 @@ defmodule Phoenix.ComponentTest do
       assert eval(~H"<.changed foo={@foo} />") == [["%{foo: true}"]]
 
       assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
-      assert eval(~H"<.changed foo={@foo} />") == [["%{foo: true}"]]
+      assert eval(~H"<.changed foo={@foo} />") == [["%{foo: %{bar: true}}"]]
     end
 
     test "with changed assigns on map" do
@@ -143,6 +143,9 @@ defmodule Phoenix.ComponentTest do
 
       assigns = %{foo: %{bar: :bar}, __changed__: %{foo: %{bar: :baz}}}
       assert eval(~H"<.changed foo={@foo.bar} />") == [["%{foo: true}"]]
+
+      assigns = %{foo: %{bar: %{bar: :bar}}, __changed__: %{foo: %{bar: %{bar: :bat}}}}
+      assert eval(~H"<.changed foo={@foo.bar} />") == [["%{foo: %{bar: :bat}}"]]
     end
 
     test "with multiple changed assigns" do
