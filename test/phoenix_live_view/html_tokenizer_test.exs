@@ -25,6 +25,19 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
   end
 
+  describe "doctype" do
+    test "generated as text" do
+      assert tokenize("<!doctype html>") == [{:text, "<!doctype html>"}]
+    end
+
+    test "multiple lines" do
+      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") ==  [
+              {:text, "<!DOCTYPE\nhtml\n>  "},
+              {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
+            ]
+    end
+  end
+
   describe "comment" do
     test "generated as text" do
       assert tokenize("Begin<!-- comment -->End") == [{:text, "Begin<!-- comment -->End"}]

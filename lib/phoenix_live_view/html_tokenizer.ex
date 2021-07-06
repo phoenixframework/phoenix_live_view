@@ -48,6 +48,14 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     handle_text(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
   end
 
+  defp handle_text("<!doctype" <> rest, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 9, ["<!doctype" | buffer], acc, state)
+  end
+
+  defp handle_text("<!DOCTYPE" <> rest, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 9, ["<!DOCTYPE" | buffer], acc, state)
+  end
+
   defp handle_text("<!--" <> rest, line, column, buffer, acc, state) do
     case handle_comment(rest, line, column + 4, ["<!--" | buffer], state) do
       {:ok, new_rest, new_live, new_column, new_buffer} ->
@@ -72,6 +80,24 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_text(<<>>, _line, _column, buffer, acc, _state) do
     ok(text_to_acc(buffer, acc))
+  end
+
+  ## handle_doctype
+
+  defp handle_doctype(<<?>, rest::binary>>, line, column, buffer, acc, state) do
+    handle_text(rest, line, column + 1, [?> | buffer], acc, state)
+  end
+
+  defp handle_doctype("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_doctype(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_doctype("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_doctype(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_doctype(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
   ## handle_comment
