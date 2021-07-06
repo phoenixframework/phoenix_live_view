@@ -450,11 +450,11 @@ defmodule Phoenix.LiveComponent do
         <%= live_component SomeComponent, id: :example %>
       </div>
 
-  Similarly, they also work inside any function component, such as `form_for`:
+  Similarly, they also work inside any function component, such as `form`:
 
-      <.form_for let={f} data={@changeset} url="#">
+      <.form let={f} for={@changeset} url="#">
         <%= live_component FormComponent, id: :form %>
-      </.form_for>
+      </.form>
 
   ### SVG support
 

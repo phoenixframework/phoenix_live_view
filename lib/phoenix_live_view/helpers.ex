@@ -871,7 +871,11 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a form function component using `Phoenix.HTML.form_for/4`.
+  Renders a form function component.
+
+  This function is built on top of `Phoenix.HTML.Form.form_for/4`. For
+  more information about options and how to build inputs, see
+  `Phoenix.HTML.Form`.
 
   ## Options
 

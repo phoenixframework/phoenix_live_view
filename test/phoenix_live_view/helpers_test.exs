@@ -172,6 +172,7 @@ defmodule Phoenix.LiveView.HelpersTest do
             errors={[name: "can't be blank"]}
             data-foo="bar"
             class="pretty"
+            phx-change="valid"
           >
             <%= text_input user_form, :foo %>
             <%= inspect(user_form.errors) %>
@@ -186,7 +187,8 @@ defmodule Phoenix.LiveView.HelpersTest do
                   {"enctype", "multipart/form-data"},
                   {"class", "pretty"},
                   {"data-foo", "bar"},
-                  {"id", "form"}
+                  {"id", "form"},
+                  {"phx-change", "valid"}
                 ],
                 [
                   {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},

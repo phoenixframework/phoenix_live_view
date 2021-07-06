@@ -100,12 +100,12 @@ The other difference is in regards to `form_for`. Some templates may do the foll
 ```
 
 However, when converted to `~H`, it is not valid HTML: there is a `</form>` tag but
-its opening is hidden inside the Elixir code. On LiveView v0.16, `form_for` can now
-be used as a function component:
+its opening is hidden inside the Elixir code. On LiveView v0.16, there is a function
+component named `form`:
 
 ```elixir
 ~H"""
-<.form_for let={f} data={@changeset} url="#">
+<.form let={f} for={@changeset} url="#">
   <%= input f, :foo %>
 </.form_for>
 """
