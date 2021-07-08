@@ -333,7 +333,7 @@ export default class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
-  newRootView(el, href, flash){
+  newRootView(el, flash){
     let view = new View(el, this, null, flash)
     this.roots[view.id] = view
     return view
