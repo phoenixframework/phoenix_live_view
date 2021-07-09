@@ -174,3 +174,41 @@ $ npm run test.watch
 ```
 
 JS contributions are very welcome, but please do not include an updated `priv/static/phoenix_live_view.js` in pull requests. The maintainers will update it as part of the release process.
+
+### To use a development version of Phoenix Live View in a local project
+
+In `mix.exs` change the path to phoenix_live_view to reference your development version.
+
+```elixir
+defp deps do
+  [
+    ...
+    {:phoenix_live_view, path: "relative/path/to/phoenix_live_view", override: true}, # Relative from your project's root path
+    ...
+  ]
+end
+```
+
+Update your front end assets to reference live view's built JavaScript assets. From your project root:
+
+```bash
+$ ln -s absolute/path/to/your/phoenix_live_view ./assets/node_modules/phoenix_live_view
+```
+
+Inside `phoenix_live_view/assets`
+
+```bash
+$ npm run-script watch
+```
+
+This recompiles your development Phoenix Live View whenever you make changes in the assets folder.
+
+From a different terminal in your project root:
+
+```bash
+$ iex -S mix phx.server
+```
+
+Now you should be able to edit code in Phoenix Live View and see the changes in your project.
+
+You may need to clear your browser's cache.
