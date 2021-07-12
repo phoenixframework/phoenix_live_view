@@ -188,9 +188,7 @@ and the return value is ignored. For example, the following option could be used
       ...,
       dom: {
         onBeforeElUpdated(from, to){
-          if(from._x_dataStack){
-            window.Alpine.clone(from, to)
-          }
+          if(from._x_dataStack){ window.Alpine.clone(from, to) }
         }
       },
     })
