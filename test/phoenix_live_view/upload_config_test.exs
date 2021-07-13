@@ -276,6 +276,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
         build_socket()
         |> LiveView.allow_upload(:avatar, accept: ~w(.jpg .jpeg), max_entries: 5)
         |> LiveView.allow_upload(:hero, accept: ~w(.jpg .jpeg), max_entries: 5)
+        |> LiveView.allow_upload(:audio, accept: ~w(.wav), max_entries: 2)
 
       assert {:ok, config} =
                UploadConfig.put_entries(socket.assigns.uploads.avatar, [
@@ -291,6 +292,18 @@ defmodule Phoenix.LiveView.UploadConfigTest do
                %UploadEntry{client_name: "photo.jpeg"},
                %UploadEntry{client_name: "photo.JPEG"}
              ] = config.entries
+
+
+    assert {:ok, config} =
+    UploadConfig.put_entries(socket.assigns.uploads.audio, [
+      build_client_entry(:audio, %{"name" => "audio.wav", "type" => "audio/wav"}),
+      build_client_entry(:audio, %{"name" => "audio.WAV", "type" => "audio/wav"})
+    ])
+
+    assert [
+              %UploadEntry{client_name: "audio.wav"},
+              %UploadEntry{client_name: "audio.WAV"}
+            ] = config.entries
 
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "file.gif"})
