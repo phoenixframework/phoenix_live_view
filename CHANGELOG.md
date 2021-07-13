@@ -107,7 +107,7 @@ component named `form`:
 ~H"""
 <.form let={f} for={@changeset} url="#">
   <%= input f, :foo %>
-</.form_for>
+</.form>
 """
 ```
 
