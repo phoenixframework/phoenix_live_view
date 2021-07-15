@@ -2,13 +2,13 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
   import Phoenix.LiveView.Helpers
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     COMPONENT:<%= @value %>
     """
   end
 
   def render_with_inner_content(assigns) do
-    ~L"""
+    ~H"""
     COMPONENT:<%= @value %>, Content: <%= render_block(@inner_block) %>
     """
   end
@@ -82,13 +82,13 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
   use Phoenix.LiveView
 
   def render(%{disabled: :all} = assigns) do
-    ~L"""
+    ~H"""
     Disabled
     """
   end
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
       <%= live_component Phoenix.LiveViewTest.StatefulComponent,
