@@ -845,6 +845,11 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, assigns}
   end
 
+  # Ignore underscore
+  defp analyze({:_, _, context} = expr, vars, assigns) when is_atom(context) do
+    {expr, vars, assigns}
+  end
+
   # Also skip special variables
   defp analyze({name, _, context} = expr, vars, assigns)
        when name in [:__MODULE__, :__ENV__, :__STACKTRACE__, :__DIR__] and is_atom(context) do
