@@ -9,9 +9,11 @@ defmodule Phoenix.LiveViewTest.CidsDestroyedLive do
     end
 
     def render(assigns) do
-      ~L"""
-      <button type="submit"><%= @text %></button>
-      <div id="bumper" phx-click="bump" phx-target="<%= @myself %>">Bump: <%= @counter %></div>
+      ~H"""
+      <div>
+        <button type="submit"><%= @text %></button>
+        <div id="bumper" phx-click="bump" phx-target={@myself}>Bump: <%= @counter %></div>
+      </div>
       """
     end
 
@@ -21,7 +23,7 @@ defmodule Phoenix.LiveViewTest.CidsDestroyedLive do
   end
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%= if @form do %>
       <form phx-submit="event_1">
         <%= live_component(Button, id: "button", text: "Hello World") %>
