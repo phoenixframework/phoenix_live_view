@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.DiffTest do
   alias Phoenix.LiveComponent.CID
 
   def basic_template(assigns) do
-    ~L"""
+    ~H"""
     <div>
       <h2>It's <%= @time %></h2>
       <%= @subtitle %>
@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.DiffTest do
   end
 
   def literal_template(assigns) do
-    ~L"""
+    ~H"""
     <div>
       <%= @title %>
       <%= "<div>" %>
@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.DiffTest do
   end
 
   def comprehension_template(assigns) do
-    ~L"""
+    ~H"""
     <div>
       <h1><%= @title %></h1>
       <%= for name <- @names do %>
