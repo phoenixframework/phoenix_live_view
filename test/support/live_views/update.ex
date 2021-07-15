@@ -2,17 +2,17 @@ defmodule Phoenix.LiveViewTest.TZLive do
   use Phoenix.LiveView
 
   def render(%{name: "NestedAppend"} = assigns) do
-    ~L"""
+    ~H"""
     time: <%= @time %> <%= @name %>
-    <div id="append-<%= @name %>" phx-update="append"><%= for item <- @items do %>
+    <div id={"append-" <> @name} phx-update="append"><%= for item <- @items do %>
       <!-- example -->
-      <div id="item-<%= item %>"><%= item %></div>
+      <div id={"item-" <> item}><%= item %></div>
     <% end %></div>
     """
   end
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     time: <%= @time %> <%= @name %>
     """
   end
@@ -56,9 +56,9 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%= for zone <- @time_zones do %>
-      <div id="score-<%= zone["id"] %>">
+      <div id={"score-" <> zone["id"]}>
         <%= live_render(@socket, Phoenix.LiveViewTest.TZLive, id: "tz-#{zone["id"]}", session: %{"name" => zone["name"]}) %>
       </div>
     <% end %>
