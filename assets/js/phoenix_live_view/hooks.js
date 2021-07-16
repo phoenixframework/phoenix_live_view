@@ -1,5 +1,6 @@
 import {
   PHX_ACTIVE_ENTRY_REFS,
+  PHX_LIVE_FILE_UPDATED,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF
 } from "./constants"
@@ -24,6 +25,7 @@ let Hooks = {
       }
 
       if(this.activeRefs() === ""){ this.el.value = null }
+      this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED))
     }
   },
 
