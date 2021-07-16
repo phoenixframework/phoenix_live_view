@@ -213,6 +213,94 @@ describe("Rendered", () => {
       expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
       expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 3)[STATIC])
     })
+
+    test("statics referenced across diffs are resolved properly", () => {
+      const mountDiff = {
+        "0": {
+          "0": 1,
+          "s": [
+            "",
+            "\n"
+          ]
+        },
+        "c": {
+          "1": {
+            "0": "1",
+            "1": "",
+            "s": [
+              "<div>Component</div>\n<button phx-click=\"add\" phx-target=\"",
+              "\">Add</button>\n\n<div style=\"padding-left: 10px;\">\n  ",
+              "\n</div>\n"
+            ]
+          }
+        },
+        "s": [
+          "<main role=\"main\" class=\"container\">\n",
+          "\n</main>\n"
+        ]
+      }
+
+      // cid(2) originally starts without statics and dynamics
+      const updateDiff = {
+        "c": {
+          "1": {
+            "1": {
+              "d": [
+                [
+                  2
+                ]
+              ],
+              "s": [
+                "\n    ",
+                "\n  "
+              ]
+            }
+          },
+          "2": {
+            "0": "2",
+            "1": {
+              "d": []
+            },
+            "s": -1
+          }
+        }
+      }
+
+      // cid(3) references the statics of cid(2)
+      // The statics of cid(2) references cid(1), which has multiple entries
+      const updateDiff2 = {
+        "c": {
+          "2": {
+            "1": {
+              "d": [
+                [
+                  3
+                ]
+              ]
+            }
+          },
+          "3": {
+            "0": "3",
+            "1": {
+              "d": []
+            },
+            "s": -2
+          }
+        }
+      }
+
+      let rendered = new Rendered("123", mountDiff)
+      rendered.mergeDiff(updateDiff)
+      rendered.mergeDiff(updateDiff2)
+
+      // Notice that dynamics is not empty, but there are no statics
+      const cid2 = rendered.getComponent(rendered.get(), 2)
+      expect(cid2['1']).toEqual({ d: [[3]] })
+
+      // TODO: THIS BLOWS UP
+      // Reason: cid(3) references cid(2) statics, but it gets merged in as "" instead of a list, so there are no statics
+      console.log(rendered.toString())
+    })
   })
 
   describe("isNewFingerprint", () => {
