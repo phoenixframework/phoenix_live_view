@@ -38,14 +38,16 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   end
 
   def render(%{disabled: true} = assigns) do
-    ~L"""
-    DISABLED
+    ~H"""
+    <div>
+      DISABLED
+    </div>
     """
   end
 
   def render(%{socket: _} = assigns) do
-    ~L"""
-    <div id="<%= @id %>" phx-target="#<%= @id %>" phx-click="transform">
+    ~H"""
+    <div id={@id} phx-target={"#" <> @id} phx-click="transform">
       <%= @name %> says hi
       <%= if @dup_name, do: live_component __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
