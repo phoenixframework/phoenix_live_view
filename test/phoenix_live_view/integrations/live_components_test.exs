@@ -368,8 +368,10 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     def render(assigns) do
       send(self(), :render)
 
-      ~L"""
-      FROM <%= @from %> <%= @hello %>
+      ~H"""
+      <div>
+        FROM <%= @from %> <%= @hello %>
+      </div>
       """
     end
   end
@@ -378,8 +380,10 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     use Phoenix.LiveComponent
 
     def render(assigns) do
-      ~L"""
-      RENDER ONLY <%= @from %>
+      ~H"""
+      <div>
+        RENDER ONLY <%= @from %>
+      </div>
       """
     end
   end
@@ -388,7 +392,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     use Phoenix.LiveComponent
 
     def render(assigns) do
-      ~L"""
+      ~H"""
       <%= live_component RenderOnlyComponent, from: @from %>
       """
     end

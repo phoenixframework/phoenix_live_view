@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     The value is: <%= @val %>
     connect: <%= inspect(@connect_params) %>
     info: <%= inspect(@connect_info) %>
@@ -76,7 +76,7 @@ defmodule Phoenix.LiveViewTest.ActionLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     Live action: <%= inspect @live_action %>
     Mount action: <%= inspect @mount_action %>
     Params: <%= inspect @params %>
@@ -99,7 +99,7 @@ end
 defmodule Phoenix.LiveViewTest.ErrorInHandleParamsLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~L|<div>I crash in handle_params</div>|
+  def render(assigns), do: ~H|<div>I crash in handle_params</div>|
   def mount(_params, _session, socket), do: {:ok, socket}
   def handle_params(_params, _uri, _socket), do: raise("boom")
 end

@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.ParentLayoutLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%= live_render @socket, Phoenix.LiveViewTest.LayoutLive, session: @session, id: "layout" %>
     """
   end
@@ -15,7 +15,7 @@ end
 defmodule Phoenix.LiveViewTest.LayoutLive do
   use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, "live.html"}
 
-  def render(assigns), do: ~L|The value is: <%= @val %>|
+  def render(assigns), do: ~H|The value is: <%= @val %>|
 
   def mount(_params, session, socket) do
     socket

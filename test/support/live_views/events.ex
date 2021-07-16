@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.EventsLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     count: <%= @count %>
     """
   end
@@ -31,7 +31,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
     use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
     def render(assigns) do
-      ~L"hello!"
+      ~H"hello!"
     end
 
     def mount(_params, _session, socket) do
@@ -45,7 +45,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
   end
 
   def render(assigns) do
-    ~L"<%= live_render @socket, Child, id: :child_live %>"
+    ~H"<%= live_render @socket, Child, id: :child_live %>"
   end
 
   def mount(_params, _session, socket) do
@@ -65,10 +65,10 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
     use Phoenix.LiveComponent
 
     def render(assigns) do
-      ~L"""
+      ~H"""
       <button id="comp-reply"
               phx-click="reply"
-              phx-target=<%= @myself %>>
+              phx-target={@myself}>
         bump reply!
       </button>
       """
@@ -89,7 +89,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
   end
 
   def render(assigns) do
-    ~L"<%= live_component Child, id: :child_live, count: @count %>"
+    ~H"<%= live_component Child, id: :child_live, count: @count %>"
   end
 
   def mount(_params, _session, socket) do

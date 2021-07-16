@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.FlashLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     uri[<%= @uri %>]
     root[<%= live_flash(@flash, :info) %>]:info
     root[<%= live_flash(@flash, :error) %>]:error
@@ -47,8 +47,8 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
   use Phoenix.LiveComponent
 
   def render(assigns) do
-    ~L"""
-    <div id="<%= @id %>" phx-target="<%= @myself %>" phx-click="click">
+    ~H"""
+    <div id={@id}" phx-target={@myself} phx-click="click">
     <span phx-click="lv:clear-flash">Clear all</span>
     <span phx-click="lv:clear-flash" phx-value-key="info">component[<%= live_flash(@flash, :info) %>]:info</span>
     <span phx-click="lv:clear-flash" phx-value-key="error">component[<%= live_flash(@flash, :error) %>]:error</span>
@@ -82,8 +82,8 @@ defmodule Phoenix.LiveViewTest.StatelessFlashComponent do
 
   @spec render(any) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
-    ~L"""
-    <div id="<%= @id %>">
+    ~H"""
+    <div id={@id}>
     stateless_component[<%= live_flash(@flash, :info) %>]:info
     stateless_component[<%= live_flash(@flash, :error) %>]:error
     </div>
@@ -95,7 +95,7 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%= live_flash(@flash, :info) %>
     """
   end
