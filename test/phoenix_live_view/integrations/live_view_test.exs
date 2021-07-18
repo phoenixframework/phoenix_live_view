@@ -748,6 +748,41 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     @tag session: %{nest: []}
+    test "refute_redirect", %{conn: conn} do
+      {:ok, thermo_view, _html} = live(conn, "/thermo")
+
+      clock_view = find_live_child(thermo_view, "clock")
+
+      refute_redirect(thermo_view)
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/some_url")}
+         end}
+      )
+
+      refute_redirect(thermo_view, "/not_going_here")
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/another_url")}
+         end}
+      )
+
+      try do
+        refute_redirect(thermo_view, "/another_url")
+      rescue
+        e ->
+          assert %ArgumentError{message: message} = e
+          assert message =~ "not to redirect to"
+      end
+    end
+
+    @tag session: %{nest: []}
     test "push_redirect with destination that can vary", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
