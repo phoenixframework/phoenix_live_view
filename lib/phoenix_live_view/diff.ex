@@ -129,16 +129,22 @@ defmodule Phoenix.LiveView.Diff do
     {diff, prints, pending, components} =
       traverse(socket, rendered, prints, %{}, components, true)
 
-    {component_diffs, components} = render_pending_components(socket, pending, %{}, components)
+    # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
+    # However, given traverse does not change cid_to_component, we can read it now.
+    {cid_to_component, _, _} = components
+
+    {cdiffs, components} =
+      render_pending_components(socket, pending, cid_to_component, %{}, components)
+
     socket = %{socket | fingerprints: prints}
 
     diff = maybe_put_title(diff, socket)
-    {diff, component_diffs} = extract_events({diff, component_diffs})
+    {diff, cdiffs} = extract_events({diff, cdiffs})
 
-    if map_size(component_diffs) == 0 do
+    if map_size(cdiffs) == 0 do
       {socket, diff, components}
     else
-      {socket, Map.put(diff, @components, component_diffs), components}
+      {socket, Map.put(diff, @components, cdiffs), components}
     end
   end
 
@@ -178,13 +184,12 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Execute the `fun` with the component `cid` with the given `socket` as template.
 
-  It will store the result under the `cid` key in the `component_diffs` map.
-
-  It returns the updated `component_diffs` and the updated `components` or
+  It returns the updated `cdiffs` and the updated `components` or
   `:error` if the component cid does not exist.
   """
-  def write_component(socket, cid, component_diffs, components, fun) when is_integer(cid) do
-    {cid_to_component, _id_to_cid, _} = components
+  def write_component(socket, cid, components, fun) when is_integer(cid) do
+    # We need to extract the original cid_to_component for maybe_reuse_static later
+    {cid_to_component, _, _} = components
 
     case cid_to_component do
       %{^cid => {component, id, assigns, private, fingerprints}} ->
@@ -193,7 +198,7 @@ defmodule Phoenix.LiveView.Diff do
           |> configure_socket_for_component(assigns, private, fingerprints)
           |> fun.(component)
 
-        {pending, component_diffs, components} =
+        {pending, cdiffs, components} =
           render_component(
             component_socket,
             component,
@@ -202,18 +207,16 @@ defmodule Phoenix.LiveView.Diff do
             false,
             %{},
             cid_to_component,
-            component_diffs,
+            %{},
             components
           )
 
+        {cdiffs, components} =
+          render_pending_components(socket, pending, %{}, cid_to_component, cdiffs, components)
+
         diff = maybe_put_reply(%{}, component_socket)
-
-        {component_diffs, components} =
-          render_pending_components(socket, pending, component_diffs, components)
-
-        {diff, component_diffs} = extract_events({diff, component_diffs})
-
-        {Map.put(diff, @components, component_diffs), components, extra}
+        {diff, cdiffs} = extract_events({diff, cdiffs})
+        {Map.put(diff, @components, cdiffs), components, extra}
 
       %{} ->
         :error
@@ -239,7 +242,6 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-
   @doc """
   Sends an update to a component.
 
@@ -261,7 +263,7 @@ defmodule Phoenix.LiveView.Diff do
         updated_assigns = maybe_call_preload!(module, updated_assigns)
 
         {diff, new_components, :noop} =
-          write_component(socket, cid, %{}, components, fn component_socket, component ->
+          write_component(socket, cid, components, fn component_socket, component ->
             {Utils.maybe_call_update!(component_socket, component, updated_assigns), :noop}
           end)
 
@@ -494,12 +496,8 @@ defmodule Phoenix.LiveView.Diff do
 
   ## Component rendering
 
-  defp render_pending_components(socket, pending, diffs, components) do
-    # We keep the original `cid_to_component`. This helps us to guarantee
-    # that we are not rebuilding the same component multiple times and it
-    # also helps with optimizations.
-    {cid_to_component, _, _} = components
-    render_pending_components(socket, pending, %{}, cid_to_component, diffs, components)
+  defp render_pending_components(socket, pending, cids, diffs, components) do
+    render_pending_components(socket, pending, %{}, cids, diffs, components)
   end
 
   defp render_pending_components(_, pending, _seen_ids, _cids, diffs, components)

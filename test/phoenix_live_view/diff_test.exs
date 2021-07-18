@@ -335,6 +335,21 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule RecurComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        ID: <%= @id %>
+        <%= for {id, children} <- @children do %>
+          <%= live_component __MODULE__, id: id, children: children %>
+        <% end %>
+      </div>
+      """
+    end
+  end
+
   defmodule TempComponent do
     use Phoenix.LiveComponent
 
@@ -602,7 +617,7 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render ==  %{0 => %{0 => "", 2 => ""}}
+      assert full_render == %{0 => %{0 => "", 2 => ""}}
     end
   end
 
@@ -761,7 +776,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => 1,
-               :c => %{1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}},
+               :c => %{
+                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               },
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
@@ -786,7 +803,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => 1,
-               :c => %{1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}},
+               :c => %{
+                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               },
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
@@ -805,7 +824,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert another_full_render == %{
                0 => 2,
-               :c => %{2 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}},
+               :c => %{
+                 2 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               },
                :s => ["<span>\n  ", "\n</span>\n"]
              }
 
@@ -932,7 +953,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert diff == %{
                0 => 1,
-               :c => %{1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}}
+               :c => %{
+                 1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               }
              }
 
       assert socket.fingerprints == {root_prints, %{}}
@@ -1041,7 +1064,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => 2,
-               :c => %{2 => %{0 => "replaced", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}}
+               :c => %{
+                 2 => %{0 => "replaced", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               }
              }
 
       assert socket.fingerprints == previous_socket.fingerprints
@@ -1121,7 +1146,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{d: [["0", 1], ["1", 2]], s: ["\n    ", ": ", "\n  "]},
                :c => %{
-                 1 => %{0 => %{0 => "index_1", :s => ["\n    IF ", "\n  "]}, :s => ["<div>\n  ", "\n</div>\n"]},
+                 1 => %{
+                   0 => %{0 => "index_1", :s => ["\n    IF ", "\n  "]},
+                   :s => ["<div>\n  ", "\n</div>\n"]
+                 },
                  2 => %{0 => %{0 => "index_2"}, :s => 1}
                },
                :s => ["<div>\n  ", "\n</div>\n"]
@@ -1239,6 +1267,99 @@ defmodule Phoenix.LiveView.DiffTest do
       end
     end
 
+    test "inside comprehension with recursive subtree" do
+      template = fn id, children ->
+        assigns = %{id: id, children: children}
+
+        ~H"""
+        <%= live_component RecurComponent, id: @id, children: @children %>
+        """
+      end
+
+      {socket, full_render, diff_components} = render(template.(1, []))
+
+      assert full_render == %{
+               0 => 1,
+               :c => %{
+                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>\n"], 1 => ""}
+               },
+               :s => ["", "\n"]
+             }
+
+      {cid_to_component, _, 2} = diff_components
+      assert {RecurComponent, 1, _, _, _} = cid_to_component[1]
+
+      # Now let's add one level of nesting
+      {socket, diff, diff_components} =
+        render(template.(1, [{2, []}]), socket.fingerprints, diff_components)
+
+      assert diff == %{
+               0 => 1,
+               :c => %{
+                 1 => %{1 => %{d: [[2]], s: ["\n    ", "\n  "]}},
+                 2 => %{0 => "2", :s => -1, 1 => ""}
+               }
+             }
+
+      {cid_to_component, _, 3} = diff_components
+      assert {RecurComponent, 2, _, _, _} = cid_to_component[2]
+
+      # Now let's add two levels of nesting
+      {_socket, diff, diff_components} =
+        render(template.(1, [{2, [{3, []}]}]), socket.fingerprints, diff_components)
+
+      assert diff == %{
+               0 => 1,
+               :c => %{
+                 1 => %{1 => %{d: [[2]]}},
+                 2 => %{1 => %{d: [[3]], s: ["\n    ", "\n  "]}},
+                 3 => %{0 => "3", 1 => %{d: []}, :s => -1}
+               }
+             }
+
+      {cid_to_component, _, 4} = diff_components
+      assert {RecurComponent, 3, _, _, _} = cid_to_component[3]
+    end
+
+    test "inside comprehension with recursive subtree on update" do
+      template = fn id, children ->
+        assigns = %{id: id, children: children}
+
+        ~H"""
+        <%= live_component RecurComponent, id: @id, children: @children %>
+        """
+      end
+
+      {socket, full_render, diff_components} = render(template.(1, []))
+
+      assert full_render == %{
+               0 => 1,
+               :c => %{
+                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>\n"], 1 => ""}
+               },
+               :s => ["", "\n"]
+             }
+
+      {cid_to_component, _, 2} = diff_components
+      assert {RecurComponent, 1, _, _, _} = cid_to_component[1]
+
+      # Now let's add one level of nesting directly
+      {diff, diff_components, :extra} =
+        Diff.write_component(socket, 1, diff_components, fn socket, _component ->
+          {Phoenix.LiveView.assign(socket, children: [{2, []}]), :extra}
+        end)
+
+      assert diff == %{
+               c: %{
+                 1 => %{1 => %{d: [[2]], s: ["\n    ", "\n  "]}},
+                 2 => %{0 => "2", 1 => "", :s => -1}
+               }
+             }
+
+      {cid_to_component, _, 3} = diff_components
+      assert {RecurComponent, 2, _, _, _} = cid_to_component[2]
+    end
+
     test "inside rendered inside comprehension" do
       components = [
         %Component{id: "index_1", assigns: %{from: :index_1}, component: MyComponent},
@@ -1311,7 +1432,9 @@ defmodule Phoenix.LiveView.DiffTest do
                  d: [[""], [%{0 => "2", 1 => 1, :s => ["", ": ", ""]}]],
                  s: ["\n    ", "\n  "]
                },
-               :c => %{1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}},
+               :c => %{
+                 1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+               },
                :s => ["<div>\n  ", "\n</div>\n"]
              }
 
