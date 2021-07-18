@@ -5,8 +5,6 @@
   "license": "MIT",
   "repository": {},
   "scripts": {
-    "build": "esbuild ./js/phoenix_live_view --bundle --minify --sourcemap --format=esm --outfile=../priv/static/phoenix_live_view.js",
-    "watch": "esbuild ./js/phoenix_live_view --bundle --sourcemap --format=esm --outfile=../priv/static/phoenix_live_view.js --watch",
     "test": "jest",
     "test.coverage": "jest --coverage",
     "test.watch": "jest --watch"
@@ -18,7 +16,6 @@
     "@babel/cli": "7.14.3",
     "@babel/core": "7.14.3",
     "@babel/preset-env": "7.14.2",
-    "esbuild": "^0.12.15",
     "eslint": "7.27.0",
     "eslint-plugin-jest": "24.3.6",
     "jest": "^27.0.1",
