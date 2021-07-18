@@ -401,13 +401,13 @@ defmodule Phoenix.LiveView.Engine do
     {block, _} =
       Enum.map_reduce(dynamic, {0, initial_vars}, fn
         to_safe_match(var, ast), {counter, vars} ->
-          vars = reset_vars(initial_vars, vars)
+          vars = set_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns)
           live_struct = to_live_struct(ast, vars, assigns)
           {to_conditional_var(keys, var, live_struct), {counter + 1, vars}}
 
         ast, {counter, vars} ->
-          vars = reset_vars(initial_vars, vars)
+          vars = set_vars(initial_vars, vars)
           {ast, vars, _} = analyze(ast, vars, assigns)
           {ast, {counter, vars}}
       end)
@@ -465,6 +465,11 @@ defmodule Phoenix.LiveView.Engine do
         # given the branches have different fingerprints, the
         # diff mechanism takes care of forcing all assigns to
         # be rendered without us needing to handle it here.
+        #
+        # Similarly, when expanding the blocks, we can remove all
+        # untainting, as the parent untainting is already causing
+        # the block to be rendered and then we can proceed with
+        # its own tainting.
         {args, vars, _} = analyze_list(args, vars, assigns, [])
 
         opts =
@@ -508,14 +513,9 @@ defmodule Phoenix.LiveView.Engine do
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
     for {:->, meta, [args, block]} <- blocks do
-      # Variables defined in the head should not taint the whole body,
-      # only their usage within the body.
-      {args, match_vars, assigns} = analyze_list(args, vars, %{}, [])
+      {args, vars, assigns} = analyze_list(args, vars, %{}, [])
 
-      # So we collect them as usual but keep the original tainting.
-      vars = reset_vars(vars, match_vars)
-
-      case to_rendered_struct(block, vars, assigns, []) do
+      case to_rendered_struct(block, untaint_vars(vars), assigns, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}
       end
@@ -523,7 +523,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, vars) do
-    case to_rendered_struct(block, vars, %{}, []) do
+    case to_rendered_struct(block, untaint_vars(vars), %{}, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -947,12 +947,14 @@ defmodule Phoenix.LiveView.Engine do
     {ast, {unless_tainted(new_kind, kind), map}, assigns}
   end
 
-  defp reset_vars({kind, _}, {_, map}), do: {kind, map}
+  defp set_vars({kind, _}, {_, map}), do: {kind, map}
   defp taint_vars({_, map}), do: {:tainted, map}
-  defp taint_assigns(assigns), do: Map.put(assigns, __MODULE__, true)
+  defp untaint_vars({_, map}), do: {:untainted, map}
 
   defp unless_tainted(:tainted, _), do: :tainted
   defp unless_tainted(_, kind), do: kind
+
+  defp taint_assigns(assigns), do: Map.put(assigns, __MODULE__, true)
 
   ## Callbacks
 
