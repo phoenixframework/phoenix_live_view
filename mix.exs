@@ -43,7 +43,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.5.9"},
       # TODO bump before release
       {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
-      {:esbuild, github: "phoenixframework/esbuild", only: :dev},
+      {:esbuild, "~> 0.1", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
@@ -126,8 +126,8 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp aliases do
     [
-      "assets.build": ["esbuild default --minify"],
-      "assets.watch": ["esbuild default --watch"]
+      "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min"],
+      "assets.watch": ["esbuild module --watch"]
     ]
   end
 end

@@ -1,18 +1,3337 @@
-var _e="consecutive-reloads",Me=10,ot=[1e3,3e3],lt=3e4,Se=["phx-click-loading","phx-change-loading","phx-submit-loading","phx-keydown-loading","phx-keyup-loading","phx-blur-loading","phx-focus-loading"],C="data-phx-component",Ee="data-phx-link",at="track-static",ht="data-phx-link-state",k="data-phx-ref",R="data-phx-upload-ref",ee="data-phx-preflighted-refs",dt="data-phx-done-refs",Be="drop-target",ut="data-phx-active-refs",se="data-phx-skip",$e="data-phx-remove",Ve="page-loading",je="phx-connected",oe="phx-disconnected",Je="phx-no-feedback",Ke="phx-error",V="data-phx-parent-id",Ae="data-phx-main",W="data-phx-root-id",ct="trigger-action",Pe="feedback-for",ye="phx-has-focused",ft=["text","textarea","number","email","password","search","tel","url","date","time"],we=["checkbox","radio"],Ce="phx-has-submitted",L="data-phx-session",N=`[${L}]`,j="data-phx-static",Te="data-phx-readonly",le="data-phx-disabled",ae="disable-with",he="data-phx-disable-with-restore",de="hook",pt="debounce",gt="throttle",ue="update",mt="key",H="phxPrivate",We="auto-recover",Ie="phx:live-socket:debug",ke="phx:live-socket:profiling",Le="phx:live-socket:latency-sim",vt="progress",bt=1,_t=200,St="phx-",Et=3e4;var te="debounce-trigger",ce="throttled",Ge="debounce-prev-key",At={debounce:300,throttle:300},ze="d",O="s",T="c",qe="e",Ye="r",Qe="t";var xe=class{constructor(e,t,i){this.liveSocket=i,this.entry=e,this.offset=0,this.chunkSize=t,this.chunkTimer=null,this.uploadChannel=i.channel(`lvu:${e.ref}`,{token:e.metadata()})}error(e){clearTimeout(this.chunkTimer),this.uploadChannel.leave(),this.entry.error(e)}upload(){this.uploadChannel.onError(e=>this.error(e)),this.uploadChannel.join().receive("ok",e=>this.readNextChunk()).receive("error",e=>this.error(e))}isDone(){return this.offset>=this.entry.file.size}readNextChunk(){let e=new window.FileReader,t=this.entry.file.slice(this.offset,this.chunkSize+this.offset);e.onload=i=>{if(i.target.error===null)this.offset+=i.target.result.byteLength,this.pushChunk(i.target.result);else return y("Read error: "+i.target.error)},e.readAsArrayBuffer(t)}pushChunk(e){!this.uploadChannel.isJoined()||this.uploadChannel.push("chunk",e).receive("ok",()=>{this.entry.progress(this.offset/this.entry.file.size*100),this.isDone()||(this.chunkTimer=setTimeout(()=>this.readNextChunk(),this.liveSocket.getLatencySim()||0))})}};var y=(n,e)=>console.error&&console.error(n,e);function Pt(){let n=new Set,e=document.querySelectorAll("*[id]");for(let t=0,i=e.length;t<i;t++)n.has(e[t].id)?console.error(`Multiple IDs detected: ${e[t].id}. Ensure unique element ids.`):n.add(e[t].id)}var yt=(n,e,t,i)=>{n.liveSocket.isDebugEnabled()&&console.log(`${n.id} ${e}: ${t} - `,i)},De=n=>typeof n=="function"?n:function(){return n},J=n=>JSON.parse(JSON.stringify(n)),G=(n,e,t)=>{do{if(n.matches(`[${e}]`))return n;n=n.parentElement||n.parentNode}while(n!==null&&n.nodeType===1&&!(t&&t.isSameNode(n)||n.matches(N)));return null},ie=n=>n!==null&&typeof n=="object"&&!(n instanceof Array),wt=(n,e)=>JSON.stringify(n)===JSON.stringify(e),Ze=n=>{for(let e in n)return!1;return!0},x=(n,e)=>n&&e(n),Ct=function(n,e,t,i){n.forEach(r=>{new xe(r,t.config.chunk_size,i).upload()})};var Tt={canPushState(){return typeof history.pushState!="undefined"},dropLocal(n,e,t){return n.removeItem(this.localKey(e,t))},updateLocal(n,e,t,i,r){let s=this.getLocal(n,e,t),o=this.localKey(e,t),l=s===null?i:r(s);return n.setItem(o,JSON.stringify(l)),l},getLocal(n,e,t){return JSON.parse(n.getItem(this.localKey(e,t)))},updateCurrentState(n){!this.canPushState()||history.replaceState(n(history.state||{}),"",window.location.href)},pushState(n,e,t){if(this.canPushState()){if(t!==window.location.href){if(e.type=="redirect"&&e.scroll){let r=history.state||{};r.scroll=e.scroll,history.replaceState(r,"",window.location.href)}delete e.scroll,history[n+"State"](e,"",t||null);let i=this.getHashTargetEl(window.location.hash);i?i.scrollIntoView():e.type==="redirect"&&window.scroll(0,0)}}else this.redirect(t)},setCookie(n,e){document.cookie=`${n}=${e}`},getCookie(n){return document.cookie.replace(new RegExp(`(?:(?:^|.*;s*)${n}s*=s*([^;]*).*$)|^.*$`),"$1")},redirect(n,e){e&&Tt.setCookie("__phoenix_flash__",e+"; max-age=60000; path=/"),window.location=n},localKey(n,e){return`${n}-${e}`},getHashTargetEl(n){let e=n.toString().substring(1);if(e!=="")return document.getElementById(e)||document.querySelector(`a[name="${e}"]`)}},F=Tt;var X={byId(n){return document.getElementById(n)||y(`no id found for ${n}`)},removeClass(n,e){n.classList.remove(e),n.classList.length===0&&n.removeAttribute("class")},all(n,e,t){let i=Array.from(n.querySelectorAll(e));return t?i.forEach(t):i},childNodeLength(n){let e=document.createElement("template");return e.innerHTML=n,e.content.childElementCount},isUploadInput(n){return n.type==="file"&&n.getAttribute(R)!==null},findUploadInputs(n){return this.all(n,`input[type="file"][${R}]`)},findComponentNodeList(n,e){return this.filterWithinSameLiveView(this.all(n,`[${C}="${e}"]`),n)},isPhxDestroyed(n){return!!(n.id&&X.private(n,"destroyed"))},markPhxChildDestroyed(n){n.setAttribute(L,""),this.putPrivate(n,"destroyed",!0)},findPhxChildrenInFragment(n,e){let t=document.createElement("template");return t.innerHTML=n,this.findPhxChildren(t.content,e)},isIgnored(n,e){return(n.getAttribute(e)||n.getAttribute("data-phx-update"))==="ignore"},isPhxUpdate(n,e,t){return n.getAttribute&&t.indexOf(n.getAttribute(e))>=0},findPhxChildren(n,e){return this.all(n,`${N}[${V}="${e}"]`)},findParentCIDs(n,e){let t=new Set(e);return e.reduce((i,r)=>{let s=`[${C}="${r}"] [${C}]`;return this.filterWithinSameLiveView(this.all(n,s),n).map(o=>parseInt(o.getAttribute(C))).forEach(o=>i.delete(o)),i},t)},filterWithinSameLiveView(n,e){return e.querySelector(N)?n.filter(t=>this.withinSameLiveView(t,e)):n},withinSameLiveView(n,e){for(;n=n.parentNode;){if(n.isSameNode(e))return!0;if(n.getAttribute(L)!==null)return!1}},private(n,e){return n[H]&&n[H][e]},deletePrivate(n,e){n[H]&&delete n[H][e]},putPrivate(n,e,t){n[H]||(n[H]={}),n[H][e]=t},copyPrivates(n,e){e[H]&&(n[H]=J(e[H]))},putTitle(n){let e=document.querySelector("title"),{prefix:t,suffix:i}=e.dataset;document.title=`${t||""}${n}${i||""}`},debounce(n,e,t,i,r,s,o){let l=n.getAttribute(t),a=n.getAttribute(r);l===""&&(l=i),a===""&&(a=s);let u=l||a;switch(u){case null:return o();case"blur":this.once(n,"debounce-blur")&&n.addEventListener("blur",()=>o());return;default:let v=parseInt(u),c=()=>a?this.deletePrivate(n,ce):o(),p=this.incCycle(n,te,c);if(isNaN(v))return y(`invalid throttle/debounce value: ${u}`);if(a){let S=!1;if(e.type==="keydown"){let b=this.private(n,Ge);this.putPrivate(n,Ge,e.key),S=b!==e.key}if(!S&&this.private(n,ce))return!1;o(),this.putPrivate(n,ce,!0),setTimeout(()=>this.triggerCycle(n,te),v)}else setTimeout(()=>this.triggerCycle(n,te,p),v);let A=n.form;A&&this.once(A,"bind-debounce")&&A.addEventListener("submit",()=>{Array.from(new FormData(A).entries(),([S])=>{let b=A.querySelector(`[name="${S}"]`);this.incCycle(b,te),this.deletePrivate(b,ce)})}),this.once(n,"bind-debounce")&&n.addEventListener("blur",()=>this.triggerCycle(n,te))}},triggerCycle(n,e,t){let[i,r]=this.private(n,e);t||(t=i),t===i&&(this.incCycle(n,e),r())},once(n,e){return this.private(n,e)===!0?!1:(this.putPrivate(n,e,!0),!0)},incCycle(n,e,t=function(){}){let[i]=this.private(n,e)||[0,t];return i++,this.putPrivate(n,e,[i,t]),i},discardError(n,e,t){let i=e.getAttribute&&e.getAttribute(t),r=i&&n.querySelector(`[id="${i}"], [name="${i}"]`);!r||this.private(r,ye)||this.private(r.form,Ce)||e.classList.add(Je)},showError(n,e){(n.id||n.name)&&this.all(n.form,`[${e}="${n.id}"], [${e}="${n.name}"]`,t=>{this.removeClass(t,Je)})},isPhxChild(n){return n.getAttribute&&n.getAttribute(V)},dispatchEvent(n,e,t={}){let i=new CustomEvent(e,{bubbles:!0,cancelable:!0,detail:t});n.dispatchEvent(i)},cloneNode(n,e){if(typeof e=="undefined")return n.cloneNode(!0);{let t=n.cloneNode(!1);return t.innerHTML=e,t}},mergeAttrs(n,e,t={}){let i=t.exclude||[],r=t.isIgnored,s=e.attributes;for(let l=s.length-1;l>=0;l--){let a=s[l].name;i.indexOf(a)<0&&n.setAttribute(a,e.getAttribute(a))}let o=n.attributes;for(let l=o.length-1;l>=0;l--){let a=o[l].name;r?a.startsWith("data-")&&!e.hasAttribute(a)&&n.removeAttribute(a):e.hasAttribute(a)||n.removeAttribute(a)}},mergeFocusedInput(n,e){n instanceof HTMLSelectElement||X.mergeAttrs(n,e,{except:["value"]}),e.readOnly?n.setAttribute("readonly",!0):n.removeAttribute("readonly")},hasSelectionRange(n){return n.setSelectionRange&&(n.type==="text"||n.type==="textarea")},restoreFocus(n,e,t){if(!X.isTextualInput(n))return;let i=n.matches(":focus");n.readOnly&&n.blur(),i||n.focus(),this.hasSelectionRange(n)&&n.setSelectionRange(e,t)},isFormInput(n){return/^(?:input|select|textarea)$/i.test(n.tagName)&&n.type!=="button"},syncAttrsToProps(n){n instanceof HTMLInputElement&&we.indexOf(n.type.toLocaleLowerCase())>=0&&(n.checked=n.getAttribute("checked")!==null)},isTextualInput(n){return ft.indexOf(n.type)>=0},isNowTriggerFormExternal(n,e){return n.getAttribute&&n.getAttribute(e)!==null},syncPendingRef(n,e,t){let i=n.getAttribute(k);return i===null?!0:X.isFormInput(n)||n.getAttribute(t)!==null?(X.isUploadInput(n)&&X.mergeAttrs(n,e,{isIgnored:!0}),X.putPrivate(n,k,e),!1):(Se.forEach(r=>{n.classList.contains(r)&&e.classList.add(r)}),e.setAttribute(k,i),!0)},cleanChildNodes(n,e){if(X.isPhxUpdate(n,e,["append","prepend"])){let t=[];n.childNodes.forEach(i=>{i.id||(i.nodeType===Node.TEXT_NODE&&i.nodeValue.trim()===""||y(`only HTML element tags with an id are allowed inside containers with phx-update.
+var Phoenix = (() => {
+  var __defProp = Object.defineProperty;
+  var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
+  var __export = (target, all) => {
+    __markAsModule(target);
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
 
-removing illegal node: "${(i.outerHTML||i.nodeValue).trim()}"
+  // js/phoenix_live_view/index.js
+  var phoenix_live_view_exports = {};
+  __export(phoenix_live_view_exports, {
+    LiveSocket: () => LiveSocket
+  });
 
-`),t.push(i))}),t.forEach(i=>i.remove())}},replaceRootContainer(n,e,t){let i=new Set(["id",L,j,Ae]),r=s=>!i.has(s.name.toLowerCase());if(n.tagName.toLowerCase()===e.toLowerCase())return Array.from(n.attributes).filter(r).forEach(s=>n.removeAttribute(s.name)),Object.keys(t).filter(r).forEach(s=>n.setAttribute(s,t[s])),n;{let s=document.createElement(e);return Object.keys(t).forEach(o=>s.setAttribute(o,t[o])),i.forEach(o=>s.setAttribute(o,n.getAttribute(o))),s.innerHTML=n.innerHTML,n.replaceWith(s),s}}},h=X;var re=class{static isActive(e,t){let i=t._phxRef===void 0,s=e.getAttribute(ut).split(",").indexOf(P.genFileRef(t))>=0;return t.size>0&&(i||s)}static isPreflighted(e,t){return e.getAttribute(ee).split(",").indexOf(P.genFileRef(t))>=0&&this.isActive(e,t)}constructor(e,t,i){this.ref=P.genFileRef(t),this.fileEl=e,this.file=t,this.view=i,this.meta=null,this._isCancelled=!1,this._isDone=!1,this._progress=0,this._lastProgressSent=-1,this._onDone=function(){}}metadata(){return this.meta}progress(e){this._progress=Math.floor(e),this._progress>this._lastProgressSent&&(this._progress>=100?(this._progress=100,this._lastProgressSent=100,this._isDone=!0,this.view.pushFileProgress(this.fileEl,this.ref,100,()=>{P.untrackFile(this.fileEl,this.file),this._onDone()})):(this._lastProgressSent=this._progress,this.view.pushFileProgress(this.fileEl,this.ref,this._progress)))}cancel(){this._isCancelled=!0,this._isDone=!0,this._onDone()}isDone(){return this._isDone}error(e="failed"){this.view.pushFileProgress(this.fileEl,this.ref,{error:e}),P.clearFiles(this.fileEl)}onDone(e){this._onDone=e}toPreflightPayload(){return{last_modified:this.file.lastModified,name:this.file.name,size:this.file.size,type:this.file.type,ref:this.ref}}uploader(e){if(this.meta.uploader){let t=e[this.meta.uploader]||y(`no uploader configured for ${this.meta.uploader}`);return{name:this.meta.uploader,callback:t}}else return{name:"channel",callback:Ct}}zipPostFlight(e){this.meta=e.entries[this.ref],this.meta||y(`no preflight upload response returned with ref ${this.ref}`,{input:this.fileEl,response:e})}};var Nt=0,P=class{static genFileRef(e){let t=e._phxRef;return t!==void 0?t:(e._phxRef=(Nt++).toString(),e._phxRef)}static getEntryDataURL(e,t,i){let r=this.activeFiles(e).find(o=>this.genFileRef(o)===t),s=new FileReader;s.onload=o=>i(o.target.result),s.readAsDataURL(r)}static hasUploadsInProgress(e){let t=0;return h.findUploadInputs(e).forEach(i=>{i.getAttribute(ee)!==i.getAttribute(dt)&&t++}),t>0}static serializeUploads(e){let t=this.activeFiles(e,"serialize"),i={};return t.forEach(r=>{let s={path:e.name},o=e.getAttribute(R);i[o]=i[o]||[],s.ref=this.genFileRef(r),s.name=r.name,s.type=r.type,s.size=r.size,i[o].push(s)}),i}static clearFiles(e){e.value=null,e.removeAttribute(R),h.putPrivate(e,"files",[])}static untrackFile(e,t){h.putPrivate(e,"files",h.private(e,"files").filter(i=>!Object.is(i,t)))}static trackFiles(e,t){if(e.getAttribute("multiple")!==null){let i=t.filter(r=>!this.activeFiles(e).find(s=>Object.is(s,r)));h.putPrivate(e,"files",this.activeFiles(e).concat(i)),e.value=null}else h.putPrivate(e,"files",t)}static activeFileInputs(e){let t=h.findUploadInputs(e);return Array.from(t).filter(i=>i.files&&this.activeFiles(i).length>0)}static activeFiles(e){return(h.private(e,"files")||[]).filter(t=>re.isActive(e,t))}static inputsAwaitingPreflight(e){let t=h.findUploadInputs(e);return Array.from(t).filter(i=>this.filesAwaitingPreflight(i).length>0)}static filesAwaitingPreflight(e){return this.activeFiles(e).filter(t=>!re.isPreflighted(e,t))}constructor(e,t,i){this.view=t,this.onComplete=i,this._entries=Array.from(P.filesAwaitingPreflight(e)||[]).map(r=>new re(e,r,t)),this.numEntriesInProgress=this._entries.length}entries(){return this._entries}initAdapterUpload(e,t,i){this._entries=this._entries.map(s=>(s.zipPostFlight(e),s.onDone(()=>{this.numEntriesInProgress--,this.numEntriesInProgress===0&&this.onComplete()}),s));let r=this._entries.reduce((s,o)=>{let{name:l,callback:a}=o.uploader(i.uploaders);return s[l]=s[l]||{callback:a,entries:[]},s[l].entries.push(o),s},{});for(let s in r){let{callback:o,entries:l}=r[s];o(l,t,e,i)}}};var Ft={LiveFileUpload:{preflightedRefs(){return this.el.getAttribute(ee)},mounted(){this.preflightedWas=this.preflightedRefs()},updated(){let n=this.preflightedRefs();this.preflightedWas!==n&&(this.preflightedWas=n,n===""&&this.__view.cancelSubmit(this.el.form))}},LiveImgPreview:{mounted(){this.ref=this.el.getAttribute("data-phx-entry-ref"),this.inputEl=document.getElementById(this.el.getAttribute(R)),P.getEntryDataURL(this.inputEl,this.ref,n=>this.el.src=n)}}},It=Ft;var Re=class{constructor(e,t,i){let r=new Set,s=new Set([...t.children].map(l=>l.id)),o=[];Array.from(e.children).forEach(l=>{if(l.id&&(r.add(l.id),s.has(l.id))){let a=l.previousElementSibling&&l.previousElementSibling.id;o.push({elementId:l.id,previousElementId:a})}}),this.containerId=t.id,this.updateType=i,this.elementsToModify=o,this.elementIdsToAdd=[...s].filter(l=>!r.has(l))}perform(){let e=h.byId(this.containerId);this.elementsToModify.forEach(t=>{t.previousElementId?x(document.getElementById(t.previousElementId),i=>{x(document.getElementById(t.elementId),r=>{r.previousElementSibling&&r.previousElementSibling.id==i.id||i.insertAdjacentElement("afterend",r)})}):x(document.getElementById(t.elementId),i=>{i.previousElementSibling==null||e.insertAdjacentElement("afterbegin",i)})}),this.updateType=="prepend"&&this.elementIdsToAdd.reverse().forEach(t=>{x(document.getElementById(t),i=>e.insertAdjacentElement("afterbegin",i))})}};var kt=11;function Ut(n,e){var t=e.attributes,i,r,s,o,l;if(!(e.nodeType===kt||n.nodeType===kt)){for(var a=t.length-1;a>=0;a--)i=t[a],r=i.name,s=i.namespaceURI,o=i.value,s?(r=i.localName||r,l=n.getAttributeNS(s,r),l!==o&&(i.prefix==="xmlns"&&(r=i.name),n.setAttributeNS(s,r,o))):(l=n.getAttribute(r),l!==o&&n.setAttribute(r,o));for(var u=n.attributes,v=u.length-1;v>=0;v--)i=u[v],r=i.name,s=i.namespaceURI,s?(r=i.localName||r,e.hasAttributeNS(s,r)||n.removeAttributeNS(s,r)):e.hasAttribute(r)||n.removeAttribute(r)}}var He,Xt="http://www.w3.org/1999/xhtml",I=typeof document=="undefined"?void 0:document,Mt=!!I&&"content"in I.createElement("template"),Bt=!!I&&I.createRange&&"createContextualFragment"in I.createRange();function $t(n){var e=I.createElement("template");return e.innerHTML=n,e.content.childNodes[0]}function Vt(n){He||(He=I.createRange(),He.selectNode(I.body));var e=He.createContextualFragment(n);return e.childNodes[0]}function jt(n){var e=I.createElement("body");return e.innerHTML=n,e.childNodes[0]}function Jt(n){return n=n.trim(),Mt?$t(n):Bt?Vt(n):jt(n)}function Oe(n,e){var t=n.nodeName,i=e.nodeName,r,s;return t===i?!0:(r=t.charCodeAt(0),s=i.charCodeAt(0),r<=90&&s>=97?t===i.toUpperCase():s<=90&&r>=97?i===t.toUpperCase():!1)}function Kt(n,e){return!e||e===Xt?I.createElement(n):I.createElementNS(e,n)}function Wt(n,e){for(var t=n.firstChild;t;){var i=t.nextSibling;e.appendChild(t),t=i}return e}function et(n,e,t){n[t]!==e[t]&&(n[t]=e[t],n[t]?n.setAttribute(t,""):n.removeAttribute(t))}var Lt={OPTION:function(n,e){var t=n.parentNode;if(t){var i=t.nodeName.toUpperCase();i==="OPTGROUP"&&(t=t.parentNode,i=t&&t.nodeName.toUpperCase()),i==="SELECT"&&!t.hasAttribute("multiple")&&(n.hasAttribute("selected")&&!e.selected&&(n.setAttribute("selected","selected"),n.removeAttribute("selected")),t.selectedIndex=-1)}et(n,e,"selected")},INPUT:function(n,e){et(n,e,"checked"),et(n,e,"disabled"),n.value!==e.value&&(n.value=e.value),e.hasAttribute("value")||n.removeAttribute("value")},TEXTAREA:function(n,e){var t=e.value;n.value!==t&&(n.value=t);var i=n.firstChild;if(i){var r=i.nodeValue;if(r==t||!t&&r==n.placeholder)return;i.nodeValue=t}},SELECT:function(n,e){if(!e.hasAttribute("multiple")){for(var t=-1,i=0,r=n.firstChild,s,o;r;)if(o=r.nodeName&&r.nodeName.toUpperCase(),o==="OPTGROUP")s=r,r=s.firstChild;else{if(o==="OPTION"){if(r.hasAttribute("selected")){t=i;break}i++}r=r.nextSibling,!r&&s&&(r=s.nextSibling,s=null)}n.selectedIndex=t}}},fe=1,Gt=11,xt=3,Dt=8;function z(){}function zt(n){if(n)return n.getAttribute&&n.getAttribute("id")||n.id}function qt(n){return function(t,i,r){if(r||(r={}),typeof i=="string")if(t.nodeName==="#document"||t.nodeName==="HTML"||t.nodeName==="BODY"){var s=i;i=I.createElement("html"),i.innerHTML=s}else i=Jt(i);var o=r.getNodeKey||zt,l=r.onBeforeNodeAdded||z,a=r.onNodeAdded||z,u=r.onBeforeElUpdated||z,v=r.onElUpdated||z,c=r.onBeforeNodeDiscarded||z,p=r.onNodeDiscarded||z,A=r.onBeforeElChildrenUpdated||z,S=r.childrenOnly===!0,b=Object.create(null),U=[];function Y(m){U.push(m)}function d(m,g){if(m.nodeType===fe)for(var f=m.firstChild;f;){var _=void 0;g&&(_=o(f))?Y(_):(p(f),f.firstChild&&d(f,g)),f=f.nextSibling}}function E(m,g,f){c(m)!==!1&&(g&&g.removeChild(m),p(m),d(m,f))}function Ne(m){if(m.nodeType===fe||m.nodeType===Gt)for(var g=m.firstChild;g;){var f=o(g);f&&(b[f]=g),Ne(g),g=g.nextSibling}}Ne(t);function Q(m){a(m);for(var g=m.firstChild;g;){var f=g.nextSibling,_=o(g);if(_){var D=b[_];D&&Oe(g,D)?(g.parentNode.replaceChild(D,g),ge(D,g)):Q(g)}else Q(g);g=f}}function Rt(m,g,f){for(;g;){var _=g.nextSibling;(f=o(g))?Y(f):E(g,m,!0),g=_}}function ge(m,g,f){var _=o(g);_&&delete b[_],!(!f&&(u(m,g)===!1||(n(m,g),v(m),A(m,g)===!1)))&&(m.nodeName!=="TEXTAREA"?Ht(m,g):Lt.TEXTAREA(m,g))}function Ht(m,g){var f=g.firstChild,_=m.firstChild,D,M,Z,ve,B;e:for(;f;){for(ve=f.nextSibling,D=o(f);_;){if(Z=_.nextSibling,f.isSameNode&&f.isSameNode(_)){f=ve,_=Z;continue e}M=o(_);var be=_.nodeType,$=void 0;if(be===f.nodeType&&(be===fe?(D?D!==M&&((B=b[D])?Z===B?$=!1:(m.insertBefore(B,_),M?Y(M):E(_,m,!0),_=B):$=!1):M&&($=!1),$=$!==!1&&Oe(_,f),$&&ge(_,f)):(be===xt||be==Dt)&&($=!0,_.nodeValue!==f.nodeValue&&(_.nodeValue=f.nodeValue))),$){f=ve,_=Z;continue e}M?Y(M):E(_,m,!0),_=Z}if(D&&(B=b[D])&&Oe(B,f))m.appendChild(B),ge(B,f);else{var Xe=l(f);Xe!==!1&&(Xe&&(f=Xe),f.actualize&&(f=f.actualize(m.ownerDocument||I)),m.appendChild(f),Q(f))}f=ve,_=Z}Rt(m,_,M);var st=Lt[m.nodeName];st&&st(m,g)}var w=t,me=w.nodeType,nt=i.nodeType;if(!S){if(me===fe)nt===fe?Oe(t,i)||(p(t),w=Wt(t,Kt(i.nodeName,i.namespaceURI))):w=i;else if(me===xt||me===Dt){if(nt===me)return w.nodeValue!==i.nodeValue&&(w.nodeValue=i.nodeValue),w;w=i}}if(w===i)p(t);else{if(i.isSameNode&&i.isSameNode(w))return;if(ge(w,i,S),U)for(var Fe=0,Ot=U.length;Fe<Ot;Fe++){var Ue=b[U[Fe]];Ue&&E(Ue,Ue.parentNode,!1)}}return!S&&w!==t&&t.parentNode&&(w.actualize&&(w=w.actualize(t.ownerDocument||I)),t.parentNode.replaceChild(w,t)),w}}var Yt=qt(Ut),tt=Yt;var q=class{static patchEl(e,t,i){tt(e,t,{childrenOnly:!1,onBeforeElUpdated:(r,s)=>{if(i&&i.isSameNode(r)&&h.isFormInput(r))return h.mergeFocusedInput(r,s),!1}})}constructor(e,t,i,r,s){this.view=e,this.liveSocket=e.liveSocket,this.container=t,this.id=i,this.rootID=e.root.id,this.html=r,this.targetCID=s,this.cidPatch=typeof this.targetCID=="number",this.callbacks={beforeadded:[],beforeupdated:[],beforephxChildAdded:[],afteradded:[],afterupdated:[],afterdiscarded:[],afterphxChildAdded:[]}}before(e,t){this.callbacks[`before${e}`].push(t)}after(e,t){this.callbacks[`after${e}`].push(t)}trackBefore(e,...t){this.callbacks[`before${e}`].forEach(i=>i(...t))}trackAfter(e,...t){this.callbacks[`after${e}`].forEach(i=>i(...t))}markPrunableContentForRemoval(){h.all(this.container,"[phx-update=append] > *, [phx-update=prepend] > *",e=>{e.setAttribute($e,"")})}perform(){let{view:e,liveSocket:t,container:i,html:r}=this,s=this.isCIDPatch()?this.targetCIDContainer(r):i;if(this.isCIDPatch()&&!s)return;let o=t.getActiveElement(),{selectionStart:l,selectionEnd:a}=o&&h.hasSelectionRange(o)?o:{},u=t.binding(ue),v=t.binding(Pe),c=t.binding(ae),p=t.binding(ct),A=[],S=[],b=[],U=null,Y=t.time("premorph container prep",()=>this.buildDiffHTML(i,r,u,s));return this.trackBefore("added",i),this.trackBefore("updated",i,i),t.time("morphdom",()=>{tt(s,Y,{childrenOnly:s.getAttribute(C)===null,getNodeKey:d=>h.isPhxDestroyed(d)?null:d.id,onBeforeNodeAdded:d=>(h.discardError(s,d,v),this.trackBefore("added",d),d),onNodeAdded:d=>{h.isNowTriggerFormExternal(d,p)&&(U=d),h.isPhxChild(d)&&e.ownsElement(d)&&this.trackAfter("phxChildAdded",d),A.push(d)},onNodeDiscarded:d=>{h.isPhxChild(d)&&t.destroyViewByEl(d),this.trackAfter("discarded",d)},onBeforeNodeDiscarded:d=>d.getAttribute&&d.getAttribute($e)!==null?!0:!(d.parentNode!==null&&h.isPhxUpdate(d.parentNode,u,["append","prepend"])&&d.id||this.skipCIDSibling(d)),onElUpdated:d=>{h.isNowTriggerFormExternal(d,p)&&(U=d),S.push(d)},onBeforeElUpdated:(d,E)=>{if(h.cleanChildNodes(E,u),this.skipCIDSibling(E))return!1;if(h.isIgnored(d,u))return this.trackBefore("updated",d,E),h.mergeAttrs(d,E,{isIgnored:!0}),S.push(d),!1;if(d.type==="number"&&d.validity&&d.validity.badInput)return!1;if(!h.syncPendingRef(d,E,c))return h.isUploadInput(d)&&(this.trackBefore("updated",d,E),S.push(d)),!1;if(h.isPhxChild(E)){let Q=d.getAttribute(L);return h.mergeAttrs(d,E,{exclude:[j]}),Q!==""&&d.setAttribute(L,Q),d.setAttribute(W,this.rootID),!1}return h.copyPrivates(E,d),h.discardError(s,E,v),o&&d.isSameNode(o)&&h.isFormInput(d)&&!this.forceFocusedSelectUpdate(d,E)?(this.trackBefore("updated",d,E),h.mergeFocusedInput(d,E),h.syncAttrsToProps(d),S.push(d),!1):(h.isPhxUpdate(E,u,["append","prepend"])&&b.push(new Re(d,E,E.getAttribute(u))),h.syncAttrsToProps(E),this.trackBefore("updated",d,E),!0)}})}),t.isDebugEnabled()&&Pt(),b.length>0&&t.time("post-morph append/prepend restoration",()=>{b.forEach(d=>d.perform())}),t.silenceEvents(()=>h.restoreFocus(o,l,a)),h.dispatchEvent(document,"phx:update"),A.forEach(d=>this.trackAfter("added",d)),S.forEach(d=>this.trackAfter("updated",d)),U&&(t.disconnect(),U.submit()),!0}forceFocusedSelectUpdate(e,t){let i=["select","select-one","select-multiple"].find(r=>r===e.type);return e.multiple===!0||i&&e.innerHTML!=t.innerHTML}isCIDPatch(){return this.cidPatch}skipCIDSibling(e){return e.nodeType===Node.ELEMENT_NODE&&e.getAttribute(se)!==null}targetCIDContainer(e){if(!this.isCIDPatch())return;let[t,...i]=h.findComponentNodeList(this.container,this.targetCID);return i.length===0&&h.childNodeLength(e)===1?t:t&&t.parentNode}buildDiffHTML(e,t,i,r){let s=this.isCIDPatch(),o=s&&r.getAttribute(C)===this.targetCID.toString();if(!s||o)return t;{let l=null,a=document.createElement("template");l=h.cloneNode(r);let[u,...v]=h.findComponentNodeList(l,this.targetCID);return a.innerHTML=t,v.forEach(c=>c.remove()),Array.from(l.childNodes).forEach(c=>{c.id&&c.nodeType===Node.ELEMENT_NODE&&c.getAttribute(C)!==this.targetCID.toString()&&(c.setAttribute(se,""),c.innerHTML="")}),Array.from(a.content.childNodes).forEach(c=>l.insertBefore(c,u)),u.remove(),l.outerHTML}}};var pe=class{static extract(e){let{[Ye]:t,[qe]:i,[Qe]:r}=e;return delete e[Ye],delete e[qe],delete e[Qe],{diff:e,title:r,reply:t||null,events:i||[]}}constructor(e,t){this.viewId=e,this.rendered={},this.mergeDiff(t)}parentViewId(){return this.viewId}toString(e){return this.recursiveToString(this.rendered,this.rendered[T],e)}recursiveToString(e,t=e[T],i){i=i?new Set(i):null;let r={buffer:"",components:t,onlyCids:i};return this.toOutputBuffer(e,r),r.buffer}componentCIDs(e){return Object.keys(e[T]||{}).map(t=>parseInt(t))}isComponentOnlyDiff(e){return e[T]?Object.keys(e).length===1:!1}getComponent(e,t){return e[T][t]}mergeDiff(e){let t=e[T],i={};if(delete e[T],this.rendered=this.mutableMerge(this.rendered,e),this.rendered[T]=this.rendered[T]||{},t){let s=this.rendered[T];for(let o in t)t[o]=this.cachedFindComponent(o,t[o],s,t,i);for(var r in t)s[r]=t[r];e[T]=t}}cachedFindComponent(e,t,i,r,s){if(s[e])return s[e];{let o,l,a=t[O];if(typeof a=="number"){let u;a>0?u=this.cachedFindComponent(a,r[a],i,r,s):u=i[-a],l=u[O],o=this.cloneMerge(u,t),o[O]=l}else o=t[O]!==void 0?t:this.cloneMerge(i[e]||{},t);return s[e]=o,o}}mutableMerge(e,t){return t[O]!==void 0?t:(this.doMutableMerge(e,t),e)}doMutableMerge(e,t){for(let i in t){let r=t[i],s=e[i];ie(r)&&r[O]===void 0&&ie(s)?this.doMutableMerge(s,r):e[i]=r}}cloneMerge(e,t){let i={...e,...t};for(let r in i){let s=t[r],o=e[r];ie(s)&&s[O]===void 0&&ie(o)&&(i[r]=this.cloneMerge(o,s))}return i}componentToString(e){return this.recursiveCIDToString(this.rendered[T],e)}pruneCIDs(e){e.forEach(t=>delete this.rendered[T][t])}get(){return this.rendered}isNewFingerprint(e={}){return!!e[O]}toOutputBuffer(e,t){if(e[ze])return this.comprehensionToBuffer(e,t);let{[O]:i}=e;t.buffer+=i[0];for(let r=1;r<i.length;r++)this.dynamicToBuffer(e[r-1],t),t.buffer+=i[r]}comprehensionToBuffer(e,t){let{[ze]:i,[O]:r}=e;for(let s=0;s<i.length;s++){let o=i[s];t.buffer+=r[0];for(let l=1;l<r.length;l++)this.dynamicToBuffer(o[l-1],t),t.buffer+=r[l]}}dynamicToBuffer(e,t){typeof e=="number"?t.buffer+=this.recursiveCIDToString(t.components,e,t.onlyCids):ie(e)?this.toOutputBuffer(e,t):t.buffer+=e}recursiveCIDToString(e,t,i){let r=e[t]||y(`no component for CID ${t}`,e),s=document.createElement("template");s.innerHTML=this.recursiveToString(r,e,i);let o=s.content,l=i&&!i.has(t),[a,u]=Array.from(o.childNodes).reduce(([v,c],p,A)=>p.nodeType===Node.ELEMENT_NODE?p.getAttribute(C)?[v,!0]:(p.setAttribute(C,t),p.id||(p.id=`${this.parentViewId()}-${t}-${A}`),l&&(p.setAttribute(se,""),p.innerHTML=""),[!0,c]):p.nodeValue.trim()!==""?(y(`only HTML element tags are allowed at the root of components.
+  // js/phoenix_live_view/constants.js
+  var CONSECUTIVE_RELOADS = "consecutive-reloads";
+  var MAX_RELOADS = 10;
+  var RELOAD_JITTER = [1e3, 3e3];
+  var FAILSAFE_JITTER = 3e4;
+  var PHX_EVENT_CLASSES = [
+    "phx-click-loading",
+    "phx-change-loading",
+    "phx-submit-loading",
+    "phx-keydown-loading",
+    "phx-keyup-loading",
+    "phx-blur-loading",
+    "phx-focus-loading"
+  ];
+  var PHX_COMPONENT = "data-phx-component";
+  var PHX_LIVE_LINK = "data-phx-link";
+  var PHX_TRACK_STATIC = "track-static";
+  var PHX_LINK_STATE = "data-phx-link-state";
+  var PHX_REF = "data-phx-ref";
+  var PHX_UPLOAD_REF = "data-phx-upload-ref";
+  var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
+  var PHX_DONE_REFS = "data-phx-done-refs";
+  var PHX_DROP_TARGET = "drop-target";
+  var PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
+  var PHX_SKIP = "data-phx-skip";
+  var PHX_REMOVE = "data-phx-remove";
+  var PHX_PAGE_LOADING = "page-loading";
+  var PHX_CONNECTED_CLASS = "phx-connected";
+  var PHX_DISCONNECTED_CLASS = "phx-disconnected";
+  var PHX_NO_FEEDBACK_CLASS = "phx-no-feedback";
+  var PHX_ERROR_CLASS = "phx-error";
+  var PHX_PARENT_ID = "data-phx-parent-id";
+  var PHX_MAIN = "data-phx-main";
+  var PHX_ROOT_ID = "data-phx-root-id";
+  var PHX_TRIGGER_ACTION = "trigger-action";
+  var PHX_FEEDBACK_FOR = "feedback-for";
+  var PHX_HAS_FOCUSED = "phx-has-focused";
+  var FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"];
+  var CHECKABLE_INPUTS = ["checkbox", "radio"];
+  var PHX_HAS_SUBMITTED = "phx-has-submitted";
+  var PHX_SESSION = "data-phx-session";
+  var PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
+  var PHX_STATIC = "data-phx-static";
+  var PHX_READONLY = "data-phx-readonly";
+  var PHX_DISABLED = "data-phx-disabled";
+  var PHX_DISABLE_WITH = "disable-with";
+  var PHX_DISABLE_WITH_RESTORE = "data-phx-disable-with-restore";
+  var PHX_HOOK = "hook";
+  var PHX_DEBOUNCE = "debounce";
+  var PHX_THROTTLE = "throttle";
+  var PHX_UPDATE = "update";
+  var PHX_KEY = "key";
+  var PHX_PRIVATE = "phxPrivate";
+  var PHX_AUTO_RECOVER = "auto-recover";
+  var PHX_LV_DEBUG = "phx:live-socket:debug";
+  var PHX_LV_PROFILE = "phx:live-socket:profiling";
+  var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
+  var PHX_PROGRESS = "progress";
+  var LOADER_TIMEOUT = 1;
+  var BEFORE_UNLOAD_LOADER_TIMEOUT = 200;
+  var BINDING_PREFIX = "phx-";
+  var PUSH_TIMEOUT = 3e4;
+  var DEBOUNCE_TRIGGER = "debounce-trigger";
+  var THROTTLED = "throttled";
+  var DEBOUNCE_PREV_KEY = "debounce-prev-key";
+  var DEFAULTS = {
+    debounce: 300,
+    throttle: 300
+  };
+  var DYNAMICS = "d";
+  var STATIC = "s";
+  var COMPONENTS = "c";
+  var EVENTS = "e";
+  var REPLY = "r";
+  var TITLE = "t";
 
-got: "${p.nodeValue.trim()}"
+  // js/phoenix_live_view/entry_uploader.js
+  var EntryUploader = class {
+    constructor(entry, chunkSize, liveSocket) {
+      this.liveSocket = liveSocket;
+      this.entry = entry;
+      this.offset = 0;
+      this.chunkSize = chunkSize;
+      this.chunkTimer = null;
+      this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, { token: entry.metadata() });
+    }
+    error(reason) {
+      clearTimeout(this.chunkTimer);
+      this.uploadChannel.leave();
+      this.entry.error(reason);
+    }
+    upload() {
+      this.uploadChannel.onError((reason) => this.error(reason));
+      this.uploadChannel.join().receive("ok", (_data) => this.readNextChunk()).receive("error", (reason) => this.error(reason));
+    }
+    isDone() {
+      return this.offset >= this.entry.file.size;
+    }
+    readNextChunk() {
+      let reader = new window.FileReader();
+      let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset);
+      reader.onload = (e) => {
+        if (e.target.error === null) {
+          this.offset += e.target.result.byteLength;
+          this.pushChunk(e.target.result);
+        } else {
+          return logError("Read error: " + e.target.error);
+        }
+      };
+      reader.readAsArrayBuffer(blob);
+    }
+    pushChunk(chunk) {
+      if (!this.uploadChannel.isJoined()) {
+        return;
+      }
+      this.uploadChannel.push("chunk", chunk).receive("ok", () => {
+        this.entry.progress(this.offset / this.entry.file.size * 100);
+        if (!this.isDone()) {
+          this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0);
+        }
+      });
+    }
+  };
+
+  // js/phoenix_live_view/utils.js
+  var logError = (msg, obj) => console.error && console.error(msg, obj);
+  function detectDuplicateIds() {
+    let ids = new Set();
+    let elems = document.querySelectorAll("*[id]");
+    for (let i = 0, len = elems.length; i < len; i++) {
+      if (ids.has(elems[i].id)) {
+        console.error(`Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`);
+      } else {
+        ids.add(elems[i].id);
+      }
+    }
+  }
+  var debug = (view, kind, msg, obj) => {
+    if (view.liveSocket.isDebugEnabled()) {
+      console.log(`${view.id} ${kind}: ${msg} - `, obj);
+    }
+  };
+  var closure = (val) => typeof val === "function" ? val : function() {
+    return val;
+  };
+  var clone = (obj) => {
+    return JSON.parse(JSON.stringify(obj));
+  };
+  var closestPhxBinding = (el, binding, borderEl) => {
+    do {
+      if (el.matches(`[${binding}]`)) {
+        return el;
+      }
+      el = el.parentElement || el.parentNode;
+    } while (el !== null && el.nodeType === 1 && !(borderEl && borderEl.isSameNode(el) || el.matches(PHX_VIEW_SELECTOR)));
+    return null;
+  };
+  var isObject = (obj) => {
+    return obj !== null && typeof obj === "object" && !(obj instanceof Array);
+  };
+  var isEqualObj = (obj1, obj2) => JSON.stringify(obj1) === JSON.stringify(obj2);
+  var isEmpty = (obj) => {
+    for (let x in obj) {
+      return false;
+    }
+    return true;
+  };
+  var maybe = (el, callback) => el && callback(el);
+  var channelUploader = function(entries, onError, resp, liveSocket) {
+    entries.forEach((entry) => {
+      let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket);
+      entryUploader.upload();
+    });
+  };
+
+  // js/phoenix_live_view/browser.js
+  var Browser = {
+    canPushState() {
+      return typeof history.pushState !== "undefined";
+    },
+    dropLocal(localStorage, namespace, subkey) {
+      return localStorage.removeItem(this.localKey(namespace, subkey));
+    },
+    updateLocal(localStorage, namespace, subkey, initial, func) {
+      let current = this.getLocal(localStorage, namespace, subkey);
+      let key = this.localKey(namespace, subkey);
+      let newVal = current === null ? initial : func(current);
+      localStorage.setItem(key, JSON.stringify(newVal));
+      return newVal;
+    },
+    getLocal(localStorage, namespace, subkey) {
+      return JSON.parse(localStorage.getItem(this.localKey(namespace, subkey)));
+    },
+    updateCurrentState(callback) {
+      if (!this.canPushState()) {
+        return;
+      }
+      history.replaceState(callback(history.state || {}), "", window.location.href);
+    },
+    pushState(kind, meta, to) {
+      if (this.canPushState()) {
+        if (to !== window.location.href) {
+          if (meta.type == "redirect" && meta.scroll) {
+            let currentState = history.state || {};
+            currentState.scroll = meta.scroll;
+            history.replaceState(currentState, "", window.location.href);
+          }
+          delete meta.scroll;
+          history[kind + "State"](meta, "", to || null);
+          let hashEl = this.getHashTargetEl(window.location.hash);
+          if (hashEl) {
+            hashEl.scrollIntoView();
+          } else if (meta.type === "redirect") {
+            window.scroll(0, 0);
+          }
+        }
+      } else {
+        this.redirect(to);
+      }
+    },
+    setCookie(name, value) {
+      document.cookie = `${name}=${value}`;
+    },
+    getCookie(name) {
+      return document.cookie.replace(new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`), "$1");
+    },
+    redirect(toURL, flash) {
+      if (flash) {
+        Browser.setCookie("__phoenix_flash__", flash + "; max-age=60000; path=/");
+      }
+      window.location = toURL;
+    },
+    localKey(namespace, subkey) {
+      return `${namespace}-${subkey}`;
+    },
+    getHashTargetEl(maybeHash) {
+      let hash = maybeHash.toString().substring(1);
+      if (hash === "") {
+        return;
+      }
+      return document.getElementById(hash) || document.querySelector(`a[name="${hash}"]`);
+    }
+  };
+  var browser_default = Browser;
+
+  // js/phoenix_live_view/dom.js
+  var DOM = {
+    byId(id) {
+      return document.getElementById(id) || logError(`no id found for ${id}`);
+    },
+    removeClass(el, className) {
+      el.classList.remove(className);
+      if (el.classList.length === 0) {
+        el.removeAttribute("class");
+      }
+    },
+    all(node, query, callback) {
+      let array = Array.from(node.querySelectorAll(query));
+      return callback ? array.forEach(callback) : array;
+    },
+    childNodeLength(html) {
+      let template = document.createElement("template");
+      template.innerHTML = html;
+      return template.content.childElementCount;
+    },
+    isUploadInput(el) {
+      return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
+    },
+    findUploadInputs(node) {
+      return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`);
+    },
+    findComponentNodeList(node, cid) {
+      return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node);
+    },
+    isPhxDestroyed(node) {
+      return node.id && DOM.private(node, "destroyed") ? true : false;
+    },
+    markPhxChildDestroyed(el) {
+      el.setAttribute(PHX_SESSION, "");
+      this.putPrivate(el, "destroyed", true);
+    },
+    findPhxChildrenInFragment(html, parentId) {
+      let template = document.createElement("template");
+      template.innerHTML = html;
+      return this.findPhxChildren(template.content, parentId);
+    },
+    isIgnored(el, phxUpdate) {
+      return (el.getAttribute(phxUpdate) || el.getAttribute("data-phx-update")) === "ignore";
+    },
+    isPhxUpdate(el, phxUpdate, updateTypes) {
+      return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0;
+    },
+    findPhxChildren(el, parentId) {
+      return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
+    },
+    findParentCIDs(node, cids) {
+      let initial = new Set(cids);
+      return cids.reduce((acc, cid) => {
+        let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`;
+        this.filterWithinSameLiveView(this.all(node, selector), node).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => acc.delete(childCID));
+        return acc;
+      }, initial);
+    },
+    filterWithinSameLiveView(nodes, parent) {
+      if (parent.querySelector(PHX_VIEW_SELECTOR)) {
+        return nodes.filter((el) => this.withinSameLiveView(el, parent));
+      } else {
+        return nodes;
+      }
+    },
+    withinSameLiveView(node, parent) {
+      while (node = node.parentNode) {
+        if (node.isSameNode(parent)) {
+          return true;
+        }
+        if (node.getAttribute(PHX_SESSION) !== null) {
+          return false;
+        }
+      }
+    },
+    private(el, key) {
+      return el[PHX_PRIVATE] && el[PHX_PRIVATE][key];
+    },
+    deletePrivate(el, key) {
+      el[PHX_PRIVATE] && delete el[PHX_PRIVATE][key];
+    },
+    putPrivate(el, key, value) {
+      if (!el[PHX_PRIVATE]) {
+        el[PHX_PRIVATE] = {};
+      }
+      el[PHX_PRIVATE][key] = value;
+    },
+    copyPrivates(target, source) {
+      if (source[PHX_PRIVATE]) {
+        target[PHX_PRIVATE] = clone(source[PHX_PRIVATE]);
+      }
+    },
+    putTitle(str) {
+      let titleEl = document.querySelector("title");
+      let { prefix, suffix } = titleEl.dataset;
+      document.title = `${prefix || ""}${str}${suffix || ""}`;
+    },
+    debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback) {
+      let debounce = el.getAttribute(phxDebounce);
+      let throttle = el.getAttribute(phxThrottle);
+      if (debounce === "") {
+        debounce = defaultDebounce;
+      }
+      if (throttle === "") {
+        throttle = defaultThrottle;
+      }
+      let value = debounce || throttle;
+      switch (value) {
+        case null:
+          return callback();
+        case "blur":
+          if (this.once(el, "debounce-blur")) {
+            el.addEventListener("blur", () => callback());
+          }
+          return;
+        default:
+          let timeout = parseInt(value);
+          let trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback();
+          let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger);
+          if (isNaN(timeout)) {
+            return logError(`invalid throttle/debounce value: ${value}`);
+          }
+          if (throttle) {
+            let newKeyDown = false;
+            if (event.type === "keydown") {
+              let prevKey = this.private(el, DEBOUNCE_PREV_KEY);
+              this.putPrivate(el, DEBOUNCE_PREV_KEY, event.key);
+              newKeyDown = prevKey !== event.key;
+            }
+            if (!newKeyDown && this.private(el, THROTTLED)) {
+              return false;
+            } else {
+              callback();
+              this.putPrivate(el, THROTTLED, true);
+              setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout);
+            }
+          } else {
+            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout);
+          }
+          let form = el.form;
+          if (form && this.once(form, "bind-debounce")) {
+            form.addEventListener("submit", () => {
+              Array.from(new FormData(form).entries(), ([name]) => {
+                let input = form.querySelector(`[name="${name}"]`);
+                this.incCycle(input, DEBOUNCE_TRIGGER);
+                this.deletePrivate(input, THROTTLED);
+              });
+            });
+          }
+          if (this.once(el, "bind-debounce")) {
+            el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER));
+          }
+      }
+    },
+    triggerCycle(el, key, currentCycle) {
+      let [cycle, trigger] = this.private(el, key);
+      if (!currentCycle) {
+        currentCycle = cycle;
+      }
+      if (currentCycle === cycle) {
+        this.incCycle(el, key);
+        trigger();
+      }
+    },
+    once(el, key) {
+      if (this.private(el, key) === true) {
+        return false;
+      }
+      this.putPrivate(el, key, true);
+      return true;
+    },
+    incCycle(el, key, trigger = function() {
+    }) {
+      let [currentCycle] = this.private(el, key) || [0, trigger];
+      currentCycle++;
+      this.putPrivate(el, key, [currentCycle, trigger]);
+      return currentCycle;
+    },
+    discardError(container, el, phxFeedbackFor) {
+      let field = el.getAttribute && el.getAttribute(phxFeedbackFor);
+      let input = field && container.querySelector(`[id="${field}"], [name="${field}"]`);
+      if (!input) {
+        return;
+      }
+      if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))) {
+        el.classList.add(PHX_NO_FEEDBACK_CLASS);
+      }
+    },
+    showError(inputEl, phxFeedbackFor) {
+      if (inputEl.id || inputEl.name) {
+        this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
+          this.removeClass(el, PHX_NO_FEEDBACK_CLASS);
+        });
+      }
+    },
+    isPhxChild(node) {
+      return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
+    },
+    dispatchEvent(target, eventString, detail = {}) {
+      let event = new CustomEvent(eventString, { bubbles: true, cancelable: true, detail });
+      target.dispatchEvent(event);
+    },
+    cloneNode(node, html) {
+      if (typeof html === "undefined") {
+        return node.cloneNode(true);
+      } else {
+        let cloned = node.cloneNode(false);
+        cloned.innerHTML = html;
+        return cloned;
+      }
+    },
+    mergeAttrs(target, source, opts = {}) {
+      let exclude = opts.exclude || [];
+      let isIgnored = opts.isIgnored;
+      let sourceAttrs = source.attributes;
+      for (let i = sourceAttrs.length - 1; i >= 0; i--) {
+        let name = sourceAttrs[i].name;
+        if (exclude.indexOf(name) < 0) {
+          target.setAttribute(name, source.getAttribute(name));
+        }
+      }
+      let targetAttrs = target.attributes;
+      for (let i = targetAttrs.length - 1; i >= 0; i--) {
+        let name = targetAttrs[i].name;
+        if (isIgnored) {
+          if (name.startsWith("data-") && !source.hasAttribute(name)) {
+            target.removeAttribute(name);
+          }
+        } else {
+          if (!source.hasAttribute(name)) {
+            target.removeAttribute(name);
+          }
+        }
+      }
+    },
+    mergeFocusedInput(target, source) {
+      if (!(target instanceof HTMLSelectElement)) {
+        DOM.mergeAttrs(target, source, { except: ["value"] });
+      }
+      if (source.readOnly) {
+        target.setAttribute("readonly", true);
+      } else {
+        target.removeAttribute("readonly");
+      }
+    },
+    hasSelectionRange(el) {
+      return el.setSelectionRange && (el.type === "text" || el.type === "textarea");
+    },
+    restoreFocus(focused, selectionStart, selectionEnd) {
+      if (!DOM.isTextualInput(focused)) {
+        return;
+      }
+      let wasFocused = focused.matches(":focus");
+      if (focused.readOnly) {
+        focused.blur();
+      }
+      if (!wasFocused) {
+        focused.focus();
+      }
+      if (this.hasSelectionRange(focused)) {
+        focused.setSelectionRange(selectionStart, selectionEnd);
+      }
+    },
+    isFormInput(el) {
+      return /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button";
+    },
+    syncAttrsToProps(el) {
+      if (el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0) {
+        el.checked = el.getAttribute("checked") !== null;
+      }
+    },
+    isTextualInput(el) {
+      return FOCUSABLE_INPUTS.indexOf(el.type) >= 0;
+    },
+    isNowTriggerFormExternal(el, phxTriggerExternal) {
+      return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null;
+    },
+    syncPendingRef(fromEl, toEl, disableWith) {
+      let ref = fromEl.getAttribute(PHX_REF);
+      if (ref === null) {
+        return true;
+      }
+      if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
+        if (DOM.isUploadInput(fromEl)) {
+          DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
+        }
+        DOM.putPrivate(fromEl, PHX_REF, toEl);
+        return false;
+      } else {
+        PHX_EVENT_CLASSES.forEach((className) => {
+          fromEl.classList.contains(className) && toEl.classList.add(className);
+        });
+        toEl.setAttribute(PHX_REF, ref);
+        return true;
+      }
+    },
+    cleanChildNodes(container, phxUpdate) {
+      if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+        let toRemove = [];
+        container.childNodes.forEach((childNode) => {
+          if (!childNode.id) {
+            let isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === "";
+            if (!isEmptyTextNode) {
+              logError(`only HTML element tags with an id are allowed inside containers with phx-update.
+
+removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
+
+`);
+            }
+            toRemove.push(childNode);
+          }
+        });
+        toRemove.forEach((childNode) => childNode.remove());
+      }
+    },
+    replaceRootContainer(container, tagName, attrs) {
+      let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN]);
+      let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase());
+      if (container.tagName.toLowerCase() === tagName.toLowerCase()) {
+        Array.from(container.attributes).filter(notRetained).forEach((attr) => container.removeAttribute(attr.name));
+        Object.keys(attrs).filter(notRetained).forEach((attr) => container.setAttribute(attr, attrs[attr]));
+        return container;
+      } else {
+        let newContainer = document.createElement(tagName);
+        Object.keys(attrs).forEach((attr) => newContainer.setAttribute(attr, attrs[attr]));
+        retainedAttrs.forEach((attr) => newContainer.setAttribute(attr, container.getAttribute(attr)));
+        newContainer.innerHTML = container.innerHTML;
+        container.replaceWith(newContainer);
+        return newContainer;
+      }
+    }
+  };
+  var dom_default = DOM;
+
+  // js/phoenix_live_view/upload_entry.js
+  var UploadEntry = class {
+    static isActive(fileEl, file) {
+      let isNew = file._phxRef === void 0;
+      let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
+      let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
+      return file.size > 0 && (isNew || isActive);
+    }
+    static isPreflighted(fileEl, file) {
+      let preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",");
+      let isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
+      return isPreflighted && this.isActive(fileEl, file);
+    }
+    constructor(fileEl, file, view) {
+      this.ref = LiveUploader.genFileRef(file);
+      this.fileEl = fileEl;
+      this.file = file;
+      this.view = view;
+      this.meta = null;
+      this._isCancelled = false;
+      this._isDone = false;
+      this._progress = 0;
+      this._lastProgressSent = -1;
+      this._onDone = function() {
+      };
+    }
+    metadata() {
+      return this.meta;
+    }
+    progress(progress) {
+      this._progress = Math.floor(progress);
+      if (this._progress > this._lastProgressSent) {
+        if (this._progress >= 100) {
+          this._progress = 100;
+          this._lastProgressSent = 100;
+          this._isDone = true;
+          this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
+            LiveUploader.untrackFile(this.fileEl, this.file);
+            this._onDone();
+          });
+        } else {
+          this._lastProgressSent = this._progress;
+          this.view.pushFileProgress(this.fileEl, this.ref, this._progress);
+        }
+      }
+    }
+    cancel() {
+      this._isCancelled = true;
+      this._isDone = true;
+      this._onDone();
+    }
+    isDone() {
+      return this._isDone;
+    }
+    error(reason = "failed") {
+      this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
+      LiveUploader.clearFiles(this.fileEl);
+    }
+    onDone(callback) {
+      this._onDone = callback;
+    }
+    toPreflightPayload() {
+      return {
+        last_modified: this.file.lastModified,
+        name: this.file.name,
+        size: this.file.size,
+        type: this.file.type,
+        ref: this.ref
+      };
+    }
+    uploader(uploaders) {
+      if (this.meta.uploader) {
+        let callback = uploaders[this.meta.uploader] || logError(`no uploader configured for ${this.meta.uploader}`);
+        return { name: this.meta.uploader, callback };
+      } else {
+        return { name: "channel", callback: channelUploader };
+      }
+    }
+    zipPostFlight(resp) {
+      this.meta = resp.entries[this.ref];
+      if (!this.meta) {
+        logError(`no preflight upload response returned with ref ${this.ref}`, { input: this.fileEl, response: resp });
+      }
+    }
+  };
+
+  // js/phoenix_live_view/live_uploader.js
+  var liveUploaderFileRef = 0;
+  var LiveUploader = class {
+    static genFileRef(file) {
+      let ref = file._phxRef;
+      if (ref !== void 0) {
+        return ref;
+      } else {
+        file._phxRef = (liveUploaderFileRef++).toString();
+        return file._phxRef;
+      }
+    }
+    static getEntryDataURL(inputEl, ref, callback) {
+      let file = this.activeFiles(inputEl).find((file2) => this.genFileRef(file2) === ref);
+      let reader = new FileReader();
+      reader.onload = (e) => callback(e.target.result);
+      reader.readAsDataURL(file);
+    }
+    static hasUploadsInProgress(formEl) {
+      let active = 0;
+      dom_default.findUploadInputs(formEl).forEach((input) => {
+        if (input.getAttribute(PHX_PREFLIGHTED_REFS) !== input.getAttribute(PHX_DONE_REFS)) {
+          active++;
+        }
+      });
+      return active > 0;
+    }
+    static serializeUploads(inputEl) {
+      let files = this.activeFiles(inputEl, "serialize");
+      let fileData = {};
+      files.forEach((file) => {
+        let entry = { path: inputEl.name };
+        let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF);
+        fileData[uploadRef] = fileData[uploadRef] || [];
+        entry.ref = this.genFileRef(file);
+        entry.name = file.name;
+        entry.type = file.type;
+        entry.size = file.size;
+        fileData[uploadRef].push(entry);
+      });
+      return fileData;
+    }
+    static clearFiles(inputEl) {
+      inputEl.value = null;
+      inputEl.removeAttribute(PHX_UPLOAD_REF);
+      dom_default.putPrivate(inputEl, "files", []);
+    }
+    static untrackFile(inputEl, file) {
+      dom_default.putPrivate(inputEl, "files", dom_default.private(inputEl, "files").filter((f) => !Object.is(f, file)));
+    }
+    static trackFiles(inputEl, files) {
+      if (inputEl.getAttribute("multiple") !== null) {
+        let newFiles = files.filter((file) => !this.activeFiles(inputEl).find((f) => Object.is(f, file)));
+        dom_default.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles));
+        inputEl.value = null;
+      } else {
+        dom_default.putPrivate(inputEl, "files", files);
+      }
+    }
+    static activeFileInputs(formEl) {
+      let fileInputs = dom_default.findUploadInputs(formEl);
+      return Array.from(fileInputs).filter((el) => el.files && this.activeFiles(el).length > 0);
+    }
+    static activeFiles(input) {
+      return (dom_default.private(input, "files") || []).filter((f) => UploadEntry.isActive(input, f));
+    }
+    static inputsAwaitingPreflight(formEl) {
+      let fileInputs = dom_default.findUploadInputs(formEl);
+      return Array.from(fileInputs).filter((input) => this.filesAwaitingPreflight(input).length > 0);
+    }
+    static filesAwaitingPreflight(input) {
+      return this.activeFiles(input).filter((f) => !UploadEntry.isPreflighted(input, f));
+    }
+    constructor(inputEl, view, onComplete) {
+      this.view = view;
+      this.onComplete = onComplete;
+      this._entries = Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view));
+      this.numEntriesInProgress = this._entries.length;
+    }
+    entries() {
+      return this._entries;
+    }
+    initAdapterUpload(resp, onError, liveSocket) {
+      this._entries = this._entries.map((entry) => {
+        entry.zipPostFlight(resp);
+        entry.onDone(() => {
+          this.numEntriesInProgress--;
+          if (this.numEntriesInProgress === 0) {
+            this.onComplete();
+          }
+        });
+        return entry;
+      });
+      let groupedEntries = this._entries.reduce((acc, entry) => {
+        let { name, callback } = entry.uploader(liveSocket.uploaders);
+        acc[name] = acc[name] || { callback, entries: [] };
+        acc[name].entries.push(entry);
+        return acc;
+      }, {});
+      for (let name in groupedEntries) {
+        let { callback, entries } = groupedEntries[name];
+        callback(entries, onError, resp, liveSocket);
+      }
+    }
+  };
+
+  // js/phoenix_live_view/hooks.js
+  var Hooks = {
+    LiveFileUpload: {
+      preflightedRefs() {
+        return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
+      },
+      mounted() {
+        this.preflightedWas = this.preflightedRefs();
+      },
+      updated() {
+        let newPreflights = this.preflightedRefs();
+        if (this.preflightedWas !== newPreflights) {
+          this.preflightedWas = newPreflights;
+          if (newPreflights === "") {
+            this.__view.cancelSubmit(this.el.form);
+          }
+        }
+      }
+    },
+    LiveImgPreview: {
+      mounted() {
+        this.ref = this.el.getAttribute("data-phx-entry-ref");
+        this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF));
+        LiveUploader.getEntryDataURL(this.inputEl, this.ref, (url) => this.el.src = url);
+      }
+    }
+  };
+  var hooks_default = Hooks;
+
+  // js/phoenix_live_view/dom_post_morph_restorer.js
+  var DOMPostMorphRestorer = class {
+    constructor(containerBefore, containerAfter, updateType) {
+      let idsBefore = new Set();
+      let idsAfter = new Set([...containerAfter.children].map((child) => child.id));
+      let elementsToModify = [];
+      Array.from(containerBefore.children).forEach((child) => {
+        if (child.id) {
+          idsBefore.add(child.id);
+          if (idsAfter.has(child.id)) {
+            let previousElementId = child.previousElementSibling && child.previousElementSibling.id;
+            elementsToModify.push({ elementId: child.id, previousElementId });
+          }
+        }
+      });
+      this.containerId = containerAfter.id;
+      this.updateType = updateType;
+      this.elementsToModify = elementsToModify;
+      this.elementIdsToAdd = [...idsAfter].filter((id) => !idsBefore.has(id));
+    }
+    perform() {
+      let container = dom_default.byId(this.containerId);
+      this.elementsToModify.forEach((elementToModify) => {
+        if (elementToModify.previousElementId) {
+          maybe(document.getElementById(elementToModify.previousElementId), (previousElem) => {
+            maybe(document.getElementById(elementToModify.elementId), (elem) => {
+              let isInRightPlace = elem.previousElementSibling && elem.previousElementSibling.id == previousElem.id;
+              if (!isInRightPlace) {
+                previousElem.insertAdjacentElement("afterend", elem);
+              }
+            });
+          });
+        } else {
+          maybe(document.getElementById(elementToModify.elementId), (elem) => {
+            let isInRightPlace = elem.previousElementSibling == null;
+            if (!isInRightPlace) {
+              container.insertAdjacentElement("afterbegin", elem);
+            }
+          });
+        }
+      });
+      if (this.updateType == "prepend") {
+        this.elementIdsToAdd.reverse().forEach((elemId) => {
+          maybe(document.getElementById(elemId), (elem) => container.insertAdjacentElement("afterbegin", elem));
+        });
+      }
+    }
+  };
+
+  // node_modules/morphdom/dist/morphdom-esm.js
+  var DOCUMENT_FRAGMENT_NODE = 11;
+  function morphAttrs(fromNode, toNode) {
+    var toNodeAttrs = toNode.attributes;
+    var attr;
+    var attrName;
+    var attrNamespaceURI;
+    var attrValue;
+    var fromValue;
+    if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE || fromNode.nodeType === DOCUMENT_FRAGMENT_NODE) {
+      return;
+    }
+    for (var i = toNodeAttrs.length - 1; i >= 0; i--) {
+      attr = toNodeAttrs[i];
+      attrName = attr.name;
+      attrNamespaceURI = attr.namespaceURI;
+      attrValue = attr.value;
+      if (attrNamespaceURI) {
+        attrName = attr.localName || attrName;
+        fromValue = fromNode.getAttributeNS(attrNamespaceURI, attrName);
+        if (fromValue !== attrValue) {
+          if (attr.prefix === "xmlns") {
+            attrName = attr.name;
+          }
+          fromNode.setAttributeNS(attrNamespaceURI, attrName, attrValue);
+        }
+      } else {
+        fromValue = fromNode.getAttribute(attrName);
+        if (fromValue !== attrValue) {
+          fromNode.setAttribute(attrName, attrValue);
+        }
+      }
+    }
+    var fromNodeAttrs = fromNode.attributes;
+    for (var d = fromNodeAttrs.length - 1; d >= 0; d--) {
+      attr = fromNodeAttrs[d];
+      attrName = attr.name;
+      attrNamespaceURI = attr.namespaceURI;
+      if (attrNamespaceURI) {
+        attrName = attr.localName || attrName;
+        if (!toNode.hasAttributeNS(attrNamespaceURI, attrName)) {
+          fromNode.removeAttributeNS(attrNamespaceURI, attrName);
+        }
+      } else {
+        if (!toNode.hasAttribute(attrName)) {
+          fromNode.removeAttribute(attrName);
+        }
+      }
+    }
+  }
+  var range;
+  var NS_XHTML = "http://www.w3.org/1999/xhtml";
+  var doc = typeof document === "undefined" ? void 0 : document;
+  var HAS_TEMPLATE_SUPPORT = !!doc && "content" in doc.createElement("template");
+  var HAS_RANGE_SUPPORT = !!doc && doc.createRange && "createContextualFragment" in doc.createRange();
+  function createFragmentFromTemplate(str) {
+    var template = doc.createElement("template");
+    template.innerHTML = str;
+    return template.content.childNodes[0];
+  }
+  function createFragmentFromRange(str) {
+    if (!range) {
+      range = doc.createRange();
+      range.selectNode(doc.body);
+    }
+    var fragment = range.createContextualFragment(str);
+    return fragment.childNodes[0];
+  }
+  function createFragmentFromWrap(str) {
+    var fragment = doc.createElement("body");
+    fragment.innerHTML = str;
+    return fragment.childNodes[0];
+  }
+  function toElement(str) {
+    str = str.trim();
+    if (HAS_TEMPLATE_SUPPORT) {
+      return createFragmentFromTemplate(str);
+    } else if (HAS_RANGE_SUPPORT) {
+      return createFragmentFromRange(str);
+    }
+    return createFragmentFromWrap(str);
+  }
+  function compareNodeNames(fromEl, toEl) {
+    var fromNodeName = fromEl.nodeName;
+    var toNodeName = toEl.nodeName;
+    var fromCodeStart, toCodeStart;
+    if (fromNodeName === toNodeName) {
+      return true;
+    }
+    fromCodeStart = fromNodeName.charCodeAt(0);
+    toCodeStart = toNodeName.charCodeAt(0);
+    if (fromCodeStart <= 90 && toCodeStart >= 97) {
+      return fromNodeName === toNodeName.toUpperCase();
+    } else if (toCodeStart <= 90 && fromCodeStart >= 97) {
+      return toNodeName === fromNodeName.toUpperCase();
+    } else {
+      return false;
+    }
+  }
+  function createElementNS(name, namespaceURI) {
+    return !namespaceURI || namespaceURI === NS_XHTML ? doc.createElement(name) : doc.createElementNS(namespaceURI, name);
+  }
+  function moveChildren(fromEl, toEl) {
+    var curChild = fromEl.firstChild;
+    while (curChild) {
+      var nextChild = curChild.nextSibling;
+      toEl.appendChild(curChild);
+      curChild = nextChild;
+    }
+    return toEl;
+  }
+  function syncBooleanAttrProp(fromEl, toEl, name) {
+    if (fromEl[name] !== toEl[name]) {
+      fromEl[name] = toEl[name];
+      if (fromEl[name]) {
+        fromEl.setAttribute(name, "");
+      } else {
+        fromEl.removeAttribute(name);
+      }
+    }
+  }
+  var specialElHandlers = {
+    OPTION: function(fromEl, toEl) {
+      var parentNode = fromEl.parentNode;
+      if (parentNode) {
+        var parentName = parentNode.nodeName.toUpperCase();
+        if (parentName === "OPTGROUP") {
+          parentNode = parentNode.parentNode;
+          parentName = parentNode && parentNode.nodeName.toUpperCase();
+        }
+        if (parentName === "SELECT" && !parentNode.hasAttribute("multiple")) {
+          if (fromEl.hasAttribute("selected") && !toEl.selected) {
+            fromEl.setAttribute("selected", "selected");
+            fromEl.removeAttribute("selected");
+          }
+          parentNode.selectedIndex = -1;
+        }
+      }
+      syncBooleanAttrProp(fromEl, toEl, "selected");
+    },
+    INPUT: function(fromEl, toEl) {
+      syncBooleanAttrProp(fromEl, toEl, "checked");
+      syncBooleanAttrProp(fromEl, toEl, "disabled");
+      if (fromEl.value !== toEl.value) {
+        fromEl.value = toEl.value;
+      }
+      if (!toEl.hasAttribute("value")) {
+        fromEl.removeAttribute("value");
+      }
+    },
+    TEXTAREA: function(fromEl, toEl) {
+      var newValue = toEl.value;
+      if (fromEl.value !== newValue) {
+        fromEl.value = newValue;
+      }
+      var firstChild = fromEl.firstChild;
+      if (firstChild) {
+        var oldValue = firstChild.nodeValue;
+        if (oldValue == newValue || !newValue && oldValue == fromEl.placeholder) {
+          return;
+        }
+        firstChild.nodeValue = newValue;
+      }
+    },
+    SELECT: function(fromEl, toEl) {
+      if (!toEl.hasAttribute("multiple")) {
+        var selectedIndex = -1;
+        var i = 0;
+        var curChild = fromEl.firstChild;
+        var optgroup;
+        var nodeName;
+        while (curChild) {
+          nodeName = curChild.nodeName && curChild.nodeName.toUpperCase();
+          if (nodeName === "OPTGROUP") {
+            optgroup = curChild;
+            curChild = optgroup.firstChild;
+          } else {
+            if (nodeName === "OPTION") {
+              if (curChild.hasAttribute("selected")) {
+                selectedIndex = i;
+                break;
+              }
+              i++;
+            }
+            curChild = curChild.nextSibling;
+            if (!curChild && optgroup) {
+              curChild = optgroup.nextSibling;
+              optgroup = null;
+            }
+          }
+        }
+        fromEl.selectedIndex = selectedIndex;
+      }
+    }
+  };
+  var ELEMENT_NODE = 1;
+  var DOCUMENT_FRAGMENT_NODE$1 = 11;
+  var TEXT_NODE = 3;
+  var COMMENT_NODE = 8;
+  function noop() {
+  }
+  function defaultGetNodeKey(node) {
+    if (node) {
+      return node.getAttribute && node.getAttribute("id") || node.id;
+    }
+  }
+  function morphdomFactory(morphAttrs2) {
+    return function morphdom2(fromNode, toNode, options) {
+      if (!options) {
+        options = {};
+      }
+      if (typeof toNode === "string") {
+        if (fromNode.nodeName === "#document" || fromNode.nodeName === "HTML" || fromNode.nodeName === "BODY") {
+          var toNodeHtml = toNode;
+          toNode = doc.createElement("html");
+          toNode.innerHTML = toNodeHtml;
+        } else {
+          toNode = toElement(toNode);
+        }
+      }
+      var getNodeKey = options.getNodeKey || defaultGetNodeKey;
+      var onBeforeNodeAdded = options.onBeforeNodeAdded || noop;
+      var onNodeAdded = options.onNodeAdded || noop;
+      var onBeforeElUpdated = options.onBeforeElUpdated || noop;
+      var onElUpdated = options.onElUpdated || noop;
+      var onBeforeNodeDiscarded = options.onBeforeNodeDiscarded || noop;
+      var onNodeDiscarded = options.onNodeDiscarded || noop;
+      var onBeforeElChildrenUpdated = options.onBeforeElChildrenUpdated || noop;
+      var childrenOnly = options.childrenOnly === true;
+      var fromNodesLookup = Object.create(null);
+      var keyedRemovalList = [];
+      function addKeyedRemoval(key) {
+        keyedRemovalList.push(key);
+      }
+      function walkDiscardedChildNodes(node, skipKeyedNodes) {
+        if (node.nodeType === ELEMENT_NODE) {
+          var curChild = node.firstChild;
+          while (curChild) {
+            var key = void 0;
+            if (skipKeyedNodes && (key = getNodeKey(curChild))) {
+              addKeyedRemoval(key);
+            } else {
+              onNodeDiscarded(curChild);
+              if (curChild.firstChild) {
+                walkDiscardedChildNodes(curChild, skipKeyedNodes);
+              }
+            }
+            curChild = curChild.nextSibling;
+          }
+        }
+      }
+      function removeNode(node, parentNode, skipKeyedNodes) {
+        if (onBeforeNodeDiscarded(node) === false) {
+          return;
+        }
+        if (parentNode) {
+          parentNode.removeChild(node);
+        }
+        onNodeDiscarded(node);
+        walkDiscardedChildNodes(node, skipKeyedNodes);
+      }
+      function indexTree(node) {
+        if (node.nodeType === ELEMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+          var curChild = node.firstChild;
+          while (curChild) {
+            var key = getNodeKey(curChild);
+            if (key) {
+              fromNodesLookup[key] = curChild;
+            }
+            indexTree(curChild);
+            curChild = curChild.nextSibling;
+          }
+        }
+      }
+      indexTree(fromNode);
+      function handleNodeAdded(el) {
+        onNodeAdded(el);
+        var curChild = el.firstChild;
+        while (curChild) {
+          var nextSibling = curChild.nextSibling;
+          var key = getNodeKey(curChild);
+          if (key) {
+            var unmatchedFromEl = fromNodesLookup[key];
+            if (unmatchedFromEl && compareNodeNames(curChild, unmatchedFromEl)) {
+              curChild.parentNode.replaceChild(unmatchedFromEl, curChild);
+              morphEl(unmatchedFromEl, curChild);
+            } else {
+              handleNodeAdded(curChild);
+            }
+          } else {
+            handleNodeAdded(curChild);
+          }
+          curChild = nextSibling;
+        }
+      }
+      function cleanupFromEl(fromEl, curFromNodeChild, curFromNodeKey) {
+        while (curFromNodeChild) {
+          var fromNextSibling = curFromNodeChild.nextSibling;
+          if (curFromNodeKey = getNodeKey(curFromNodeChild)) {
+            addKeyedRemoval(curFromNodeKey);
+          } else {
+            removeNode(curFromNodeChild, fromEl, true);
+          }
+          curFromNodeChild = fromNextSibling;
+        }
+      }
+      function morphEl(fromEl, toEl, childrenOnly2) {
+        var toElKey = getNodeKey(toEl);
+        if (toElKey) {
+          delete fromNodesLookup[toElKey];
+        }
+        if (!childrenOnly2) {
+          if (onBeforeElUpdated(fromEl, toEl) === false) {
+            return;
+          }
+          morphAttrs2(fromEl, toEl);
+          onElUpdated(fromEl);
+          if (onBeforeElChildrenUpdated(fromEl, toEl) === false) {
+            return;
+          }
+        }
+        if (fromEl.nodeName !== "TEXTAREA") {
+          morphChildren(fromEl, toEl);
+        } else {
+          specialElHandlers.TEXTAREA(fromEl, toEl);
+        }
+      }
+      function morphChildren(fromEl, toEl) {
+        var curToNodeChild = toEl.firstChild;
+        var curFromNodeChild = fromEl.firstChild;
+        var curToNodeKey;
+        var curFromNodeKey;
+        var fromNextSibling;
+        var toNextSibling;
+        var matchingFromEl;
+        outer:
+          while (curToNodeChild) {
+            toNextSibling = curToNodeChild.nextSibling;
+            curToNodeKey = getNodeKey(curToNodeChild);
+            while (curFromNodeChild) {
+              fromNextSibling = curFromNodeChild.nextSibling;
+              if (curToNodeChild.isSameNode && curToNodeChild.isSameNode(curFromNodeChild)) {
+                curToNodeChild = toNextSibling;
+                curFromNodeChild = fromNextSibling;
+                continue outer;
+              }
+              curFromNodeKey = getNodeKey(curFromNodeChild);
+              var curFromNodeType = curFromNodeChild.nodeType;
+              var isCompatible = void 0;
+              if (curFromNodeType === curToNodeChild.nodeType) {
+                if (curFromNodeType === ELEMENT_NODE) {
+                  if (curToNodeKey) {
+                    if (curToNodeKey !== curFromNodeKey) {
+                      if (matchingFromEl = fromNodesLookup[curToNodeKey]) {
+                        if (fromNextSibling === matchingFromEl) {
+                          isCompatible = false;
+                        } else {
+                          fromEl.insertBefore(matchingFromEl, curFromNodeChild);
+                          if (curFromNodeKey) {
+                            addKeyedRemoval(curFromNodeKey);
+                          } else {
+                            removeNode(curFromNodeChild, fromEl, true);
+                          }
+                          curFromNodeChild = matchingFromEl;
+                        }
+                      } else {
+                        isCompatible = false;
+                      }
+                    }
+                  } else if (curFromNodeKey) {
+                    isCompatible = false;
+                  }
+                  isCompatible = isCompatible !== false && compareNodeNames(curFromNodeChild, curToNodeChild);
+                  if (isCompatible) {
+                    morphEl(curFromNodeChild, curToNodeChild);
+                  }
+                } else if (curFromNodeType === TEXT_NODE || curFromNodeType == COMMENT_NODE) {
+                  isCompatible = true;
+                  if (curFromNodeChild.nodeValue !== curToNodeChild.nodeValue) {
+                    curFromNodeChild.nodeValue = curToNodeChild.nodeValue;
+                  }
+                }
+              }
+              if (isCompatible) {
+                curToNodeChild = toNextSibling;
+                curFromNodeChild = fromNextSibling;
+                continue outer;
+              }
+              if (curFromNodeKey) {
+                addKeyedRemoval(curFromNodeKey);
+              } else {
+                removeNode(curFromNodeChild, fromEl, true);
+              }
+              curFromNodeChild = fromNextSibling;
+            }
+            if (curToNodeKey && (matchingFromEl = fromNodesLookup[curToNodeKey]) && compareNodeNames(matchingFromEl, curToNodeChild)) {
+              fromEl.appendChild(matchingFromEl);
+              morphEl(matchingFromEl, curToNodeChild);
+            } else {
+              var onBeforeNodeAddedResult = onBeforeNodeAdded(curToNodeChild);
+              if (onBeforeNodeAddedResult !== false) {
+                if (onBeforeNodeAddedResult) {
+                  curToNodeChild = onBeforeNodeAddedResult;
+                }
+                if (curToNodeChild.actualize) {
+                  curToNodeChild = curToNodeChild.actualize(fromEl.ownerDocument || doc);
+                }
+                fromEl.appendChild(curToNodeChild);
+                handleNodeAdded(curToNodeChild);
+              }
+            }
+            curToNodeChild = toNextSibling;
+            curFromNodeChild = fromNextSibling;
+          }
+        cleanupFromEl(fromEl, curFromNodeChild, curFromNodeKey);
+        var specialElHandler = specialElHandlers[fromEl.nodeName];
+        if (specialElHandler) {
+          specialElHandler(fromEl, toEl);
+        }
+      }
+      var morphedNode = fromNode;
+      var morphedNodeType = morphedNode.nodeType;
+      var toNodeType = toNode.nodeType;
+      if (!childrenOnly) {
+        if (morphedNodeType === ELEMENT_NODE) {
+          if (toNodeType === ELEMENT_NODE) {
+            if (!compareNodeNames(fromNode, toNode)) {
+              onNodeDiscarded(fromNode);
+              morphedNode = moveChildren(fromNode, createElementNS(toNode.nodeName, toNode.namespaceURI));
+            }
+          } else {
+            morphedNode = toNode;
+          }
+        } else if (morphedNodeType === TEXT_NODE || morphedNodeType === COMMENT_NODE) {
+          if (toNodeType === morphedNodeType) {
+            if (morphedNode.nodeValue !== toNode.nodeValue) {
+              morphedNode.nodeValue = toNode.nodeValue;
+            }
+            return morphedNode;
+          } else {
+            morphedNode = toNode;
+          }
+        }
+      }
+      if (morphedNode === toNode) {
+        onNodeDiscarded(fromNode);
+      } else {
+        if (toNode.isSameNode && toNode.isSameNode(morphedNode)) {
+          return;
+        }
+        morphEl(morphedNode, toNode, childrenOnly);
+        if (keyedRemovalList) {
+          for (var i = 0, len = keyedRemovalList.length; i < len; i++) {
+            var elToRemove = fromNodesLookup[keyedRemovalList[i]];
+            if (elToRemove) {
+              removeNode(elToRemove, elToRemove.parentNode, false);
+            }
+          }
+        }
+      }
+      if (!childrenOnly && morphedNode !== fromNode && fromNode.parentNode) {
+        if (morphedNode.actualize) {
+          morphedNode = morphedNode.actualize(fromNode.ownerDocument || doc);
+        }
+        fromNode.parentNode.replaceChild(morphedNode, fromNode);
+      }
+      return morphedNode;
+    };
+  }
+  var morphdom = morphdomFactory(morphAttrs);
+  var morphdom_esm_default = morphdom;
+
+  // js/phoenix_live_view/dom_patch.js
+  var DOMPatch = class {
+    static patchEl(fromEl, toEl, activeElement) {
+      morphdom_esm_default(fromEl, toEl, {
+        childrenOnly: false,
+        onBeforeElUpdated: (fromEl2, toEl2) => {
+          if (activeElement && activeElement.isSameNode(fromEl2) && dom_default.isFormInput(fromEl2)) {
+            dom_default.mergeFocusedInput(fromEl2, toEl2);
+            return false;
+          }
+        }
+      });
+    }
+    constructor(view, container, id, html, targetCID) {
+      this.view = view;
+      this.liveSocket = view.liveSocket;
+      this.container = container;
+      this.id = id;
+      this.rootID = view.root.id;
+      this.html = html;
+      this.targetCID = targetCID;
+      this.cidPatch = typeof this.targetCID === "number";
+      this.callbacks = {
+        beforeadded: [],
+        beforeupdated: [],
+        beforephxChildAdded: [],
+        afteradded: [],
+        afterupdated: [],
+        afterdiscarded: [],
+        afterphxChildAdded: []
+      };
+    }
+    before(kind, callback) {
+      this.callbacks[`before${kind}`].push(callback);
+    }
+    after(kind, callback) {
+      this.callbacks[`after${kind}`].push(callback);
+    }
+    trackBefore(kind, ...args) {
+      this.callbacks[`before${kind}`].forEach((callback) => callback(...args));
+    }
+    trackAfter(kind, ...args) {
+      this.callbacks[`after${kind}`].forEach((callback) => callback(...args));
+    }
+    markPrunableContentForRemoval() {
+      dom_default.all(this.container, "[phx-update=append] > *, [phx-update=prepend] > *", (el) => {
+        el.setAttribute(PHX_REMOVE, "");
+      });
+    }
+    perform() {
+      let { view, liveSocket, container, html } = this;
+      let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
+      if (this.isCIDPatch() && !targetContainer) {
+        return;
+      }
+      let focused = liveSocket.getActiveElement();
+      let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
+      let phxUpdate = liveSocket.binding(PHX_UPDATE);
+      let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
+      let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
+      let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+      let added = [];
+      let updates = [];
+      let appendPrependUpdates = [];
+      let externalFormTriggered = null;
+      let diffHTML = liveSocket.time("premorph container prep", () => {
+        return this.buildDiffHTML(container, html, phxUpdate, targetContainer);
+      });
+      this.trackBefore("added", container);
+      this.trackBefore("updated", container, container);
+      liveSocket.time("morphdom", () => {
+        morphdom_esm_default(targetContainer, diffHTML, {
+          childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+          getNodeKey: (node) => {
+            return dom_default.isPhxDestroyed(node) ? null : node.id;
+          },
+          onBeforeNodeAdded: (el) => {
+            dom_default.discardError(targetContainer, el, phxFeedbackFor);
+            this.trackBefore("added", el);
+            return el;
+          },
+          onNodeAdded: (el) => {
+            if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
+              externalFormTriggered = el;
+            }
+            if (dom_default.isPhxChild(el) && view.ownsElement(el)) {
+              this.trackAfter("phxChildAdded", el);
+            }
+            added.push(el);
+          },
+          onNodeDiscarded: (el) => {
+            if (dom_default.isPhxChild(el)) {
+              liveSocket.destroyViewByEl(el);
+            }
+            this.trackAfter("discarded", el);
+          },
+          onBeforeNodeDiscarded: (el) => {
+            if (el.getAttribute && el.getAttribute(PHX_REMOVE) !== null) {
+              return true;
+            }
+            if (el.parentNode !== null && dom_default.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id) {
+              return false;
+            }
+            if (this.skipCIDSibling(el)) {
+              return false;
+            }
+            return true;
+          },
+          onElUpdated: (el) => {
+            if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
+              externalFormTriggered = el;
+            }
+            updates.push(el);
+          },
+          onBeforeElUpdated: (fromEl, toEl) => {
+            dom_default.cleanChildNodes(toEl, phxUpdate);
+            if (this.skipCIDSibling(toEl)) {
+              return false;
+            }
+            if (dom_default.isIgnored(fromEl, phxUpdate)) {
+              this.trackBefore("updated", fromEl, toEl);
+              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
+              updates.push(fromEl);
+              return false;
+            }
+            if (fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)) {
+              return false;
+            }
+            if (!dom_default.syncPendingRef(fromEl, toEl, disableWith)) {
+              if (dom_default.isUploadInput(fromEl)) {
+                this.trackBefore("updated", fromEl, toEl);
+                updates.push(fromEl);
+              }
+              return false;
+            }
+            if (dom_default.isPhxChild(toEl)) {
+              let prevSession = fromEl.getAttribute(PHX_SESSION);
+              dom_default.mergeAttrs(fromEl, toEl, { exclude: [PHX_STATIC] });
+              if (prevSession !== "") {
+                fromEl.setAttribute(PHX_SESSION, prevSession);
+              }
+              fromEl.setAttribute(PHX_ROOT_ID, this.rootID);
+              return false;
+            }
+            dom_default.copyPrivates(toEl, fromEl);
+            dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
+            let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
+            if (isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)) {
+              this.trackBefore("updated", fromEl, toEl);
+              dom_default.mergeFocusedInput(fromEl, toEl);
+              dom_default.syncAttrsToProps(fromEl);
+              updates.push(fromEl);
+              return false;
+            } else {
+              if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
+                appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)));
+              }
+              dom_default.syncAttrsToProps(toEl);
+              this.trackBefore("updated", fromEl, toEl);
+              return true;
+            }
+          }
+        });
+      });
+      if (liveSocket.isDebugEnabled()) {
+        detectDuplicateIds();
+      }
+      if (appendPrependUpdates.length > 0) {
+        liveSocket.time("post-morph append/prepend restoration", () => {
+          appendPrependUpdates.forEach((update) => update.perform());
+        });
+      }
+      liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
+      dom_default.dispatchEvent(document, "phx:update");
+      added.forEach((el) => this.trackAfter("added", el));
+      updates.forEach((el) => this.trackAfter("updated", el));
+      if (externalFormTriggered) {
+        liveSocket.disconnect();
+        externalFormTriggered.submit();
+      }
+      return true;
+    }
+    forceFocusedSelectUpdate(fromEl, toEl) {
+      let isSelect = ["select", "select-one", "select-multiple"].find((t) => t === fromEl.type);
+      return fromEl.multiple === true || isSelect && fromEl.innerHTML != toEl.innerHTML;
+    }
+    isCIDPatch() {
+      return this.cidPatch;
+    }
+    skipCIDSibling(el) {
+      return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null;
+    }
+    targetCIDContainer(html) {
+      if (!this.isCIDPatch()) {
+        return;
+      }
+      let [first, ...rest] = dom_default.findComponentNodeList(this.container, this.targetCID);
+      if (rest.length === 0 && dom_default.childNodeLength(html) === 1) {
+        return first;
+      } else {
+        return first && first.parentNode;
+      }
+    }
+    buildDiffHTML(container, html, phxUpdate, targetContainer) {
+      let isCIDPatch = this.isCIDPatch();
+      let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString();
+      if (!isCIDPatch || isCIDWithSingleRoot) {
+        return html;
+      } else {
+        let diffContainer = null;
+        let template = document.createElement("template");
+        diffContainer = dom_default.cloneNode(targetContainer);
+        let [firstComponent, ...rest] = dom_default.findComponentNodeList(diffContainer, this.targetCID);
+        template.innerHTML = html;
+        rest.forEach((el) => el.remove());
+        Array.from(diffContainer.childNodes).forEach((child) => {
+          if (child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()) {
+            child.setAttribute(PHX_SKIP, "");
+            child.innerHTML = "";
+          }
+        });
+        Array.from(template.content.childNodes).forEach((el) => diffContainer.insertBefore(el, firstComponent));
+        firstComponent.remove();
+        return diffContainer.outerHTML;
+      }
+    }
+  };
+
+  // js/phoenix_live_view/rendered.js
+  var Rendered = class {
+    static extract(diff) {
+      let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
+      delete diff[REPLY];
+      delete diff[EVENTS];
+      delete diff[TITLE];
+      return { diff, title, reply: reply || null, events: events || [] };
+    }
+    constructor(viewId, rendered) {
+      this.viewId = viewId;
+      this.rendered = {};
+      this.mergeDiff(rendered);
+    }
+    parentViewId() {
+      return this.viewId;
+    }
+    toString(onlyCids) {
+      return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids);
+    }
+    recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids) {
+      onlyCids = onlyCids ? new Set(onlyCids) : null;
+      let output = { buffer: "", components, onlyCids };
+      this.toOutputBuffer(rendered, output);
+      return output.buffer;
+    }
+    componentCIDs(diff) {
+      return Object.keys(diff[COMPONENTS] || {}).map((i) => parseInt(i));
+    }
+    isComponentOnlyDiff(diff) {
+      if (!diff[COMPONENTS]) {
+        return false;
+      }
+      return Object.keys(diff).length === 1;
+    }
+    getComponent(diff, cid) {
+      return diff[COMPONENTS][cid];
+    }
+    mergeDiff(diff) {
+      let newc = diff[COMPONENTS];
+      let cache = {};
+      delete diff[COMPONENTS];
+      this.rendered = this.mutableMerge(this.rendered, diff);
+      this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
+      if (newc) {
+        let oldc = this.rendered[COMPONENTS];
+        for (let cid in newc) {
+          newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache);
+        }
+        for (var key in newc) {
+          oldc[key] = newc[key];
+        }
+        diff[COMPONENTS] = newc;
+      }
+    }
+    cachedFindComponent(cid, cdiff, oldc, newc, cache) {
+      if (cache[cid]) {
+        return cache[cid];
+      } else {
+        let ndiff, stat, scid = cdiff[STATIC];
+        if (typeof scid === "number") {
+          let tdiff;
+          if (scid > 0) {
+            tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache);
+          } else {
+            tdiff = oldc[-scid];
+          }
+          stat = tdiff[STATIC];
+          ndiff = this.cloneMerge(tdiff, cdiff);
+          ndiff[STATIC] = stat;
+        } else {
+          ndiff = cdiff[STATIC] !== void 0 ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff);
+        }
+        cache[cid] = ndiff;
+        return ndiff;
+      }
+    }
+    mutableMerge(target, source) {
+      if (source[STATIC] !== void 0) {
+        return source;
+      } else {
+        this.doMutableMerge(target, source);
+        return target;
+      }
+    }
+    doMutableMerge(target, source) {
+      for (let key in source) {
+        let val = source[key];
+        let targetVal = target[key];
+        if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
+          this.doMutableMerge(targetVal, val);
+        } else {
+          target[key] = val;
+        }
+      }
+    }
+    cloneMerge(target, source) {
+      let merged = { ...target, ...source };
+      for (let key in merged) {
+        let val = source[key];
+        let targetVal = target[key];
+        if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
+          merged[key] = this.cloneMerge(targetVal, val);
+        }
+      }
+      return merged;
+    }
+    componentToString(cid) {
+      return this.recursiveCIDToString(this.rendered[COMPONENTS], cid);
+    }
+    pruneCIDs(cids) {
+      cids.forEach((cid) => delete this.rendered[COMPONENTS][cid]);
+    }
+    get() {
+      return this.rendered;
+    }
+    isNewFingerprint(diff = {}) {
+      return !!diff[STATIC];
+    }
+    toOutputBuffer(rendered, output) {
+      if (rendered[DYNAMICS]) {
+        return this.comprehensionToBuffer(rendered, output);
+      }
+      let { [STATIC]: statics } = rendered;
+      output.buffer += statics[0];
+      for (let i = 1; i < statics.length; i++) {
+        this.dynamicToBuffer(rendered[i - 1], output);
+        output.buffer += statics[i];
+      }
+    }
+    comprehensionToBuffer(rendered, output) {
+      let { [DYNAMICS]: dynamics, [STATIC]: statics } = rendered;
+      for (let d = 0; d < dynamics.length; d++) {
+        let dynamic = dynamics[d];
+        output.buffer += statics[0];
+        for (let i = 1; i < statics.length; i++) {
+          this.dynamicToBuffer(dynamic[i - 1], output);
+          output.buffer += statics[i];
+        }
+      }
+    }
+    dynamicToBuffer(rendered, output) {
+      if (typeof rendered === "number") {
+        output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids);
+      } else if (isObject(rendered)) {
+        this.toOutputBuffer(rendered, output);
+      } else {
+        output.buffer += rendered;
+      }
+    }
+    recursiveCIDToString(components, cid, onlyCids) {
+      let component = components[cid] || logError(`no component for CID ${cid}`, components);
+      let template = document.createElement("template");
+      template.innerHTML = this.recursiveToString(component, components, onlyCids);
+      let container = template.content;
+      let skip = onlyCids && !onlyCids.has(cid);
+      let [hasChildNodes, hasChildComponents] = Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          if (child.getAttribute(PHX_COMPONENT)) {
+            return [hasNodes, true];
+          }
+          child.setAttribute(PHX_COMPONENT, cid);
+          if (!child.id) {
+            child.id = `${this.parentViewId()}-${cid}-${i}`;
+          }
+          if (skip) {
+            child.setAttribute(PHX_SKIP, "");
+            child.innerHTML = "";
+          }
+          return [true, hasComponents];
+        } else {
+          if (child.nodeValue.trim() !== "") {
+            logError(`only HTML element tags are allowed at the root of components.
+
+got: "${child.nodeValue.trim()}"
 
 within:
-`,s.innerHTML.trim()),p.replaceWith(this.createSpan(p.nodeValue,t)),[!0,c]):(p.remove(),[v,c]),[!1,!1]);return!a&&!u?(y(`expected at least one HTML element tag inside a component, but the component is empty:
-`,s.innerHTML.trim()),this.createSpan("",t).outerHTML):(!a&&u&&y("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.",s.innerHTML.trim()),s.innerHTML)}createSpan(e,t){let i=document.createElement("span");return i.innerText=e,i.setAttribute(C,t),i}};var Qt=1,K=class{static makeID(){return Qt++}static elementID(e){return e.phxHookId}constructor(e,t,i){this.__view=e,this.__liveSocket=e.liveSocket,this.__callbacks=i,this.__listeners=new Set,this.__isDisconnected=!1,this.el=t,this.el.phxHookId=this.constructor.makeID();for(let r in this.__callbacks)this[r]=this.__callbacks[r]}__mounted(){this.mounted&&this.mounted()}__updated(){this.updated&&this.updated()}__beforeUpdate(){this.beforeUpdate&&this.beforeUpdate()}__destroyed(){this.destroyed&&this.destroyed()}__reconnected(){this.__isDisconnected&&(this.__isDisconnected=!1,this.reconnected&&this.reconnected())}__disconnected(){this.__isDisconnected=!0,this.disconnected&&this.disconnected()}pushEvent(e,t={},i=function(){}){return this.__view.pushHookEvent(null,e,t,i)}pushEventTo(e,t,i={},r=function(){}){return this.__view.withinTargets(e,(s,o)=>s.pushHookEvent(o,t,i,r))}handleEvent(e,t){let i=(r,s)=>s?e:t(r.detail);return window.addEventListener(`phx:hook:${e}`,i),this.__listeners.add(i),i}removeHandleEvent(e){let t=e(null,!0);window.removeEventListener(`phx:hook:${t}`,e),this.__listeners.delete(e)}__cleanup__(){this.__listeners.forEach(e=>this.removeHandleEvent(e))}};var it=(n,e={})=>{let t=new FormData(n),i=[];t.forEach((s,o,l)=>{s instanceof File&&i.push(o)}),i.forEach(s=>t.delete(s));let r=new URLSearchParams;for(let[s,o]of t.entries())r.append(s,o);for(let s in e)r.append(s,e[s]);return r.toString()},ne=class{constructor(e,t,i,r){this.liveSocket=t,this.flash=r,this.parent=i,this.root=i?i.root:this,this.el=e,this.id=this.el.id,this.ref=0,this.childJoins=0,this.loaderTimer=null,this.pendingDiffs=[],this.pruningCIDs=[],this.redirect=!1,this.href=null,this.joinCount=this.parent?this.parent.joinCount-1:0,this.joinPending=!0,this.destroyed=!1,this.joinCallback=function(){},this.stopCallback=function(){},this.pendingJoinOps=this.parent?null:[],this.viewHooks={},this.uploaders={},this.formSubmits=[],this.children=this.parent?null:{},this.root.children[this.id]={},this.channel=this.liveSocket.channel(`lv:${this.id}`,()=>({redirect:this.redirect?this.href:void 0,url:this.redirect?void 0:this.href||void 0,params:this.connectParams(),session:this.getSession(),static:this.getStatic(),flash:this.flash})),this.showLoader(this.liveSocket.loaderTimeout),this.bindChannel()}setHref(e){this.href=e}setRedirect(e){this.redirect=!0,this.href=e}isMain(){return this.liveSocket.main===this}connectParams(){let e=this.liveSocket.params(this.el),t=h.all(document,`[${this.binding(at)}]`).map(i=>i.src||i.href).filter(i=>typeof i=="string");return t.length>0&&(e._track_static=t),e._mounts=this.joinCount,e}isConnected(){return this.channel.canPush()}getSession(){return this.el.getAttribute(L)}getStatic(){let e=this.el.getAttribute(j);return e===""?null:e}destroy(e=function(){}){this.destroyAllChildren(),this.destroyed=!0,delete this.root.children[this.id],this.parent&&delete this.root.children[this.parent.id][this.id],clearTimeout(this.loaderTimer);let t=()=>{e();for(let i in this.viewHooks)this.destroyHook(this.viewHooks[i])};h.markPhxChildDestroyed(this.el),this.log("destroyed",()=>["the child has been removed from the parent"]),this.channel.leave().receive("ok",t).receive("error",t).receive("timeout",t)}setContainerClasses(...e){this.el.classList.remove(je,oe,Ke),this.el.classList.add(...e)}isLoading(){return this.el.classList.contains(oe)}showLoader(e){if(clearTimeout(this.loaderTimer),e)this.loaderTimer=setTimeout(()=>this.showLoader(),e);else{for(let t in this.viewHooks)this.viewHooks[t].__disconnected();this.setContainerClasses(oe)}}hideLoader(){clearTimeout(this.loaderTimer),this.setContainerClasses(je)}triggerReconnected(){for(let e in this.viewHooks)this.viewHooks[e].__reconnected()}log(e,t){this.liveSocket.log(this,e,t)}withinTargets(e,t){if(e instanceof HTMLElement)return this.liveSocket.owner(e,i=>t(i,e));if(/^(0|[1-9]\d*)$/.test(e)){let i=h.findComponentNodeList(this.el,e);i.length===0?y(`no component found matching phx-target of ${e}`):t(this,i[0])}else{let i=Array.from(document.querySelectorAll(e));i.length===0&&y(`nothing found matching the phx-target selector "${e}"`),i.forEach(r=>this.liveSocket.owner(r,s=>t(s,r)))}}applyDiff(e,t,i){this.log(e,()=>["",J(t)]);let{diff:r,reply:s,events:o,title:l}=pe.extract(t);return l&&h.putTitle(l),i({diff:r,reply:s,events:o}),s}onJoin(e){let{rendered:t,container:i}=e;if(i){let[r,s]=i;this.el=h.replaceRootContainer(this.el,r,s)}this.childJoins=0,this.joinPending=!0,this.flash=null,F.dropLocal(this.liveSocket.localStorage,window.location.pathname,_e),this.applyDiff("mount",t,({diff:r,events:s})=>{this.rendered=new pe(this.id,r);let o=this.renderContainer(null,"join");this.dropPendingRefs();let l=this.formsForRecovery(o);this.joinCount++,l.length>0?l.forEach((a,u)=>{this.pushFormRecovery(a,v=>{u===l.length-1&&this.onJoinComplete(v,o,s)})}):this.onJoinComplete(e,o,s)})}dropPendingRefs(){h.all(this.el,`[${k}]`,e=>e.removeAttribute(k))}onJoinComplete({live_patch:e},t,i){if(this.joinCount>1||this.parent&&!this.parent.isJoinPending())return this.applyJoinPatch(e,t,i);h.findPhxChildrenInFragment(t,this.id).filter(s=>{let o=s.id&&this.el.querySelector(`#${s.id}`),l=o&&o.getAttribute(j);return l&&s.setAttribute(j,l),this.joinChild(s)}).length===0?this.parent?(this.root.pendingJoinOps.push([this,()=>this.applyJoinPatch(e,t,i)]),this.parent.ackJoin(this)):(this.onAllChildJoinsComplete(),this.applyJoinPatch(e,t,i)):this.root.pendingJoinOps.push([this,()=>this.applyJoinPatch(e,t,i)])}attachTrueDocEl(){this.el=h.byId(this.id),this.el.setAttribute(W,this.root.id)}dispatchEvents(e){e.forEach(([t,i])=>{window.dispatchEvent(new CustomEvent(`phx:hook:${t}`,{detail:i}))})}applyJoinPatch(e,t,i){this.attachTrueDocEl();let r=new q(this,this.el,this.id,t,null);if(r.markPrunableContentForRemoval(),this.performPatch(r,!1),this.joinNewChildren(),h.all(this.el,`[${this.binding(de)}], [data-phx-${de}]`,s=>{let o=this.addHook(s);o&&o.__mounted()}),this.joinPending=!1,this.dispatchEvents(i),this.applyPendingUpdates(),e){let{kind:s,to:o}=e;this.liveSocket.historyPatch(o,s)}this.hideLoader(),this.joinCount>1&&this.triggerReconnected(),this.stopCallback()}triggerBeforeUpdateHook(e,t){this.liveSocket.triggerDOM("onBeforeElUpdated",[e,t]);let i=this.getHook(e),r=i&&h.isIgnored(e,this.binding(ue));if(i&&!e.isEqualNode(t)&&!(r&&wt(e.dataset,t.dataset)))return i.__beforeUpdate(),i}performPatch(e,t){let i=[],r=!1,s=new Set;return e.after("added",o=>{this.liveSocket.triggerDOM("onNodeAdded",[o]);let l=this.addHook(o);l&&l.__mounted()}),e.after("phxChildAdded",o=>r=!0),e.before("updated",(o,l)=>{this.triggerBeforeUpdateHook(o,l)&&s.add(o.id)}),e.after("updated",o=>{s.has(o.id)&&this.getHook(o).__updated()}),e.after("discarded",o=>{let l=this.componentID(o);typeof l=="number"&&i.indexOf(l)===-1&&i.push(l);let a=this.getHook(o);a&&this.destroyHook(a)}),e.perform(),t&&this.maybePushComponentsDestroyed(i),r}joinNewChildren(){h.findPhxChildren(this.el,this.id).forEach(e=>this.joinChild(e))}getChildById(e){return this.root.children[this.id][e]}getDescendentByEl(e){return e.id===this.id?this:this.children[e.getAttribute(V)][e.id]}destroyDescendent(e){for(let t in this.root.children)for(let i in this.root.children[t])if(i===e)return this.root.children[t][i].destroy()}joinChild(e){if(!this.getChildById(e.id)){let i=new ne(e,this.liveSocket,this);return this.root.children[this.id][i.id]=i,i.join(),this.childJoins++,!0}}isJoinPending(){return this.joinPending}ackJoin(e){this.childJoins--,this.childJoins===0&&(this.parent?this.parent.ackJoin(this):this.onAllChildJoinsComplete())}onAllChildJoinsComplete(){this.joinCallback(),this.pendingJoinOps.forEach(([e,t])=>{e.isDestroyed()||t()}),this.pendingJoinOps=[]}update(e,t){if(this.isJoinPending()||this.liveSocket.hasPendingLink())return this.pendingDiffs.push({diff:e,events:t});this.rendered.mergeDiff(e);let i=!1;this.rendered.isComponentOnlyDiff(e)?this.liveSocket.time("component patch complete",()=>{h.findParentCIDs(this.el,this.rendered.componentCIDs(e)).forEach(s=>{this.componentPatch(this.rendered.getComponent(e,s),s)&&(i=!0)})}):Ze(e)||this.liveSocket.time("full patch complete",()=>{let r=this.renderContainer(e,"update"),s=new q(this,this.el,this.id,r,null);i=this.performPatch(s,!0)}),this.dispatchEvents(t),i&&this.joinNewChildren()}renderContainer(e,t){return this.liveSocket.time(`toString diff (${t})`,()=>{let i=this.el.tagName,r=e?this.rendered.componentCIDs(e).concat(this.pruningCIDs):null,s=this.rendered.toString(r);return`<${i}>${s}</${i}>`})}componentPatch(e,t){if(Ze(e))return!1;let i=this.rendered.componentToString(t),r=new q(this,this.el,this.id,i,t);return this.performPatch(r,!0)}getHook(e){return this.viewHooks[K.elementID(e)]}addHook(e){if(K.elementID(e)||!e.getAttribute)return;let t=e.getAttribute(`data-phx-${de}`)||e.getAttribute(this.binding(de));if(t&&!this.ownsElement(e))return;let i=this.liveSocket.getHookCallbacks(t);if(i){e.id||y(`no DOM ID for hook "${t}". Hooks require a unique ID on each element.`,e);let r=new K(this,e,i);return this.viewHooks[K.elementID(r.el)]=r,r}else t!==null&&y(`unknown hook found for "${t}"`,e)}destroyHook(e){e.__destroyed(),e.__cleanup__(),delete this.viewHooks[K.elementID(e.el)]}applyPendingUpdates(){this.pendingDiffs.forEach(({diff:e,events:t})=>this.update(e,t)),this.pendingDiffs=[]}onChannel(e,t){this.liveSocket.onChannel(this.channel,e,i=>{this.isJoinPending()?this.root.pendingJoinOps.push([this,()=>t(i)]):t(i)})}bindChannel(){this.liveSocket.onChannel(this.channel,"diff",e=>{this.applyDiff("update",e,({diff:t,events:i})=>this.update(t,i))}),this.onChannel("redirect",({to:e,flash:t})=>this.onRedirect({to:e,flash:t})),this.onChannel("live_patch",e=>this.onLivePatch(e)),this.onChannel("live_redirect",e=>this.onLiveRedirect(e)),this.channel.onError(e=>this.onError(e)),this.channel.onClose(e=>this.onClose(e))}destroyAllChildren(){for(let e in this.root.children[this.id])this.getChildById(e).destroy()}onLiveRedirect(e){let{to:t,kind:i,flash:r}=e,s=this.expandURL(t);this.liveSocket.historyRedirect(s,i,r)}onLivePatch(e){let{to:t,kind:i}=e;this.href=this.expandURL(t),this.liveSocket.historyPatch(t,i)}expandURL(e){return e.startsWith("/")?`${window.location.protocol}//${window.location.host}${e}`:e}onRedirect({to:e,flash:t}){this.liveSocket.redirect(e,t)}isDestroyed(){return this.destroyed}join(e){this.parent||(this.stopCallback=this.liveSocket.withPageLoading({to:this.href,kind:"initial"})),this.joinCallback=()=>e&&e(this.joinCount),this.liveSocket.wrapPush(this,{timeout:!1},()=>this.channel.join().receive("ok",t=>!this.isDestroyed()&&this.onJoin(t)).receive("error",t=>!this.isDestroyed()&&this.onJoinError(t)).receive("timeout",()=>!this.isDestroyed()&&this.onJoinError({reason:"timeout"})))}onJoinError(e){return e.reason==="unauthorized"||e.reason==="stale"?(this.log("error",()=>["unauthorized live_redirect. Falling back to page request",e]),this.onRedirect({to:this.href})):((e.redirect||e.live_redirect)&&(this.joinPending=!1,this.channel.leave()),e.redirect?this.onRedirect(e.redirect):e.live_redirect?this.onLiveRedirect(e.live_redirect):(this.log("error",()=>["unable to join",e]),this.liveSocket.reloadWithJitter(this)))}onClose(e){if(!this.isDestroyed()){if(this.isJoinPending()&&document.visibilityState!=="hidden"||this.liveSocket.hasPendingLink()&&e!=="leave")return this.liveSocket.reloadWithJitter(this);this.destroyAllChildren(),this.liveSocket.dropActiveElement(this),document.activeElement&&document.activeElement.blur(),this.liveSocket.isUnloaded()&&this.showLoader(_t)}}onError(e){this.onClose(e),this.log("error",()=>["view crashed",e]),this.liveSocket.isUnloaded()||this.displayError()}displayError(){this.isMain()&&h.dispatchEvent(window,"phx:page-loading-start",{to:this.href,kind:"error"}),this.showLoader(),this.setContainerClasses(oe,Ke)}pushWithReply(e,t,i,r=function(){}){if(!this.isConnected())return;let[s,[o]]=e?e():[null,[]],l=function(){};return o&&o.getAttribute(this.binding(Ve))!==null&&(l=this.liveSocket.withPageLoading({kind:"element",target:o})),typeof i.cid!="number"&&delete i.cid,this.liveSocket.wrapPush(this,{timeout:!0},()=>this.channel.push(t,i,Et).receive("ok",a=>{let u=null;s!==null&&this.undoRefs(s),a.diff&&(u=this.applyDiff("update",a.diff,({diff:v,events:c})=>{this.update(v,c)})),a.redirect&&this.onRedirect(a.redirect),a.live_patch&&this.onLivePatch(a.live_patch),a.live_redirect&&this.onLiveRedirect(a.live_redirect),l(),r(a,u)}))}undoRefs(e){h.all(this.el,`[${k}="${e}"]`,t=>{t.removeAttribute(k),t.getAttribute(Te)!==null&&(t.readOnly=!1,t.removeAttribute(Te)),t.getAttribute(le)!==null&&(t.disabled=!1,t.removeAttribute(le)),Se.forEach(s=>h.removeClass(t,s));let i=t.getAttribute(he);i!==null&&(t.innerText=i,t.removeAttribute(he));let r=h.private(t,k);if(r){let s=this.triggerBeforeUpdateHook(t,r);q.patchEl(t,r,this.liveSocket.getActiveElement()),s&&s.__updated(),h.deletePrivate(t,k)}})}putRef(e,t){let i=this.ref++,r=this.binding(ae);return e.forEach(s=>{s.classList.add(`phx-${t}-loading`),s.setAttribute(k,i);let o=s.getAttribute(r);o!==null&&(s.getAttribute(he)||s.setAttribute(he,s.innerText),s.innerText=o)}),[i,e]}componentID(e){let t=e.getAttribute&&e.getAttribute(C);return t?parseInt(t):null}targetComponentID(e,t){return e.getAttribute(this.binding("target"))?this.closestComponentID(t):null}closestComponentID(e){return e?x(e.closest(`[${C}]`),t=>this.ownsElement(t)&&this.componentID(t)):null}pushHookEvent(e,t,i,r){if(!this.isConnected())return this.log("hook",()=>["unable to push hook event. LiveView not connected",t,i]),!1;let[s,o]=this.putRef([],"hook");return this.pushWithReply(()=>[s,o],"event",{type:"hook",event:t,value:i,cid:this.closestComponentID(e)},(l,a)=>r(a,s)),s}extractMeta(e,t){let i=this.binding("value-");for(let r=0;r<e.attributes.length;r++){let s=e.attributes[r].name;s.startsWith(i)&&(t[s.replace(i,"")]=e.getAttribute(s))}return e.value!==void 0&&(t.value=e.value,e.tagName==="INPUT"&&we.indexOf(e.type)>=0&&!e.checked&&delete t.value),t}pushEvent(e,t,i,r,s){this.pushWithReply(()=>this.putRef([t],e),"event",{type:e,event:r,value:this.extractMeta(t,s),cid:this.targetComponentID(t,i)})}pushKey(e,t,i,r,s){this.pushWithReply(()=>this.putRef([e],i),"event",{type:i,event:r,value:this.extractMeta(e,s),cid:this.targetComponentID(e,t)})}pushFileProgress(e,t,i,r=function(){}){this.liveSocket.withinOwners(e.form,(s,o)=>{s.pushWithReply(null,"progress",{event:e.getAttribute(s.binding(vt)),ref:e.getAttribute(R),entry_ref:t,progress:i,cid:s.targetComponentID(e.form,o)},r)})}pushInput(e,t,i,r,s){let o,l=this.targetComponentID(e.form,t),a=()=>this.putRef([e,e.form],"change"),u=it(e.form,{_target:r.name});e.files&&e.files.length>0&&P.trackFiles(e,Array.from(e.files)),o=P.serializeUploads(e);let v={type:"form",event:i,value:u,uploads:o,cid:l};this.pushWithReply(a,"event",v,c=>{if(h.showError(e,this.liveSocket.binding(Pe)),h.isUploadInput(e)&&e.getAttribute("data-phx-auto-upload")!==null){if(P.filesAwaitingPreflight(e).length>0){let[p,A]=a();this.uploadFiles(e.form,t,p,l,S=>{s&&s(c),this.triggerAwaitingSubmit(e.form)})}}else s&&s(c)})}triggerAwaitingSubmit(e){let t=this.getScheduledSubmit(e);if(t){let[i,r,s]=t;this.cancelSubmit(e),s()}}getScheduledSubmit(e){return this.formSubmits.find(([t,i])=>t.isSameNode(e))}scheduleSubmit(e,t,i){if(this.getScheduledSubmit(e))return!0;this.formSubmits.push([e,t,i])}cancelSubmit(e){this.formSubmits=this.formSubmits.filter(([t,i,r])=>t.isSameNode(e)?(this.undoRefs(i),!1):!0)}pushFormSubmit(e,t,i,r){let s=c=>!(G(c,`${this.binding(ue)}=ignore`,c.form)||G(c,"data-phx-update=ignore",c.form)),o=c=>c.hasAttribute(this.binding(ae)),l=c=>c.tagName=="BUTTON",a=c=>["INPUT","TEXTAREA","SELECT"].includes(c.tagName),u=()=>{let c=Array.from(e.elements),p=c.filter(o),A=c.filter(l).filter(s),S=c.filter(a).filter(s);return A.forEach(b=>{b.setAttribute(le,b.disabled),b.disabled=!0}),S.forEach(b=>{b.setAttribute(Te,b.readOnly),b.readOnly=!0,b.files&&(b.setAttribute(le,b.disabled),b.disabled=!0)}),e.setAttribute(this.binding(Ve),""),this.putRef([e].concat(p).concat(A).concat(S),"submit")},v=this.targetComponentID(e,t);if(P.hasUploadsInProgress(e)){let[c,p]=u();return this.scheduleSubmit(e,c,()=>this.pushFormSubmit(e,t,i,r))}else if(P.inputsAwaitingPreflight(e).length>0){let[c,p]=u(),A=()=>[c,p];this.uploadFiles(e,t,c,v,S=>{let b=it(e,{});this.pushWithReply(A,"event",{type:"form",event:i,value:b,cid:v},r)})}else{let c=it(e);this.pushWithReply(u,"event",{type:"form",event:i,value:c,cid:v},r)}}uploadFiles(e,t,i,r,s){let o=this.joinCount;P.activeFileInputs(e).forEach(a=>{let u=new P(a,this,s);this.uploaders[a]=u;let v=u.entries().map(p=>p.toPreflightPayload()),c={ref:a.getAttribute(R),entries:v,cid:this.targetComponentID(a.form,t)};this.log("upload",()=>["sending preflight request",c]),this.pushWithReply(null,"allow_upload",c,p=>{if(this.log("upload",()=>["got preflight response",p]),p.error){this.undoRefs(i);let[A,S]=p.error;this.log("upload",()=>[`error for entry ${A}`,S])}else{let A=S=>{this.channel.onError(()=>{this.joinCount===o&&S()})};u.initAdapterUpload(p,A,this.liveSocket)}})})}pushFormRecovery(e,t){this.liveSocket.withinOwners(e,(i,r)=>{let s=e.elements[0],o=e.getAttribute(this.binding(We))||e.getAttribute(this.binding("change"));i.pushInput(s,r,o,s,t)})}pushLinkPatch(e,t,i){let r=this.liveSocket.setPendingLink(e),s=t?()=>this.putRef([t],"click"):null;this.pushWithReply(s,"live_patch",{url:e},o=>{o.link_redirect?this.liveSocket.replaceMain(e,null,i,r):(this.liveSocket.commitPendingLink(r)&&(this.href=e),this.applyPendingUpdates(),i&&i(r))}).receive("timeout",()=>this.liveSocket.redirect(window.location.href))}formsForRecovery(e){if(this.joinCount===0)return[];let t=this.binding("change"),i=document.createElement("template");return i.innerHTML=e,h.all(this.el,`form[${t}]`).filter(r=>this.ownsElement(r)).filter(r=>r.elements.length>0).filter(r=>r.getAttribute(this.binding(We))!=="ignore").filter(r=>i.content.querySelector(`form[${t}="${r.getAttribute(t)}"]`))}maybePushComponentsDestroyed(e){let t=e.filter(i=>h.findComponentNodeList(this.el,i).length===0);t.length>0&&(this.pruningCIDs.push(...t),this.pushWithReply(null,"cids_will_destroy",{cids:t},()=>{this.pruningCIDs=this.pruningCIDs.filter(r=>t.indexOf(r)!==-1);let i=t.filter(r=>h.findComponentNodeList(this.el,r).length===0);i.length>0&&this.pushWithReply(null,"cids_destroyed",{cids:i},r=>{this.rendered.pruneCIDs(r.cids)})}))}ownsElement(e){return e.getAttribute(V)===this.id||x(e.closest(N),t=>t.id)===this.id}submitForm(e,t,i){h.putPrivate(e,Ce,!0),this.liveSocket.blurActiveElement(this),this.pushFormSubmit(e,t,i,()=>{this.liveSocket.restorePreviouslyActiveFocus()})}binding(e){return this.liveSocket.binding(e)}};var rt=class{constructor(e,t,i={}){if(this.unloaded=!1,!t||t.constructor.name==="Object")throw new Error(`
+`, template.innerHTML.trim());
+            child.replaceWith(this.createSpan(child.nodeValue, cid));
+            return [true, hasComponents];
+          } else {
+            child.remove();
+            return [hasNodes, hasComponents];
+          }
+        }
+      }, [false, false]);
+      if (!hasChildNodes && !hasChildComponents) {
+        logError("expected at least one HTML element tag inside a component, but the component is empty:\n", template.innerHTML.trim());
+        return this.createSpan("", cid).outerHTML;
+      } else if (!hasChildNodes && hasChildComponents) {
+        logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.", template.innerHTML.trim());
+        return template.innerHTML;
+      } else {
+        return template.innerHTML;
+      }
+    }
+    createSpan(text, cid) {
+      let span = document.createElement("span");
+      span.innerText = text;
+      span.setAttribute(PHX_COMPONENT, cid);
+      return span;
+    }
+  };
+
+  // js/phoenix_live_view/view_hook.js
+  var viewHookID = 1;
+  var ViewHook = class {
+    static makeID() {
+      return viewHookID++;
+    }
+    static elementID(el) {
+      return el.phxHookId;
+    }
+    constructor(view, el, callbacks) {
+      this.__view = view;
+      this.__liveSocket = view.liveSocket;
+      this.__callbacks = callbacks;
+      this.__listeners = new Set();
+      this.__isDisconnected = false;
+      this.el = el;
+      this.el.phxHookId = this.constructor.makeID();
+      for (let key in this.__callbacks) {
+        this[key] = this.__callbacks[key];
+      }
+    }
+    __mounted() {
+      this.mounted && this.mounted();
+    }
+    __updated() {
+      this.updated && this.updated();
+    }
+    __beforeUpdate() {
+      this.beforeUpdate && this.beforeUpdate();
+    }
+    __destroyed() {
+      this.destroyed && this.destroyed();
+    }
+    __reconnected() {
+      if (this.__isDisconnected) {
+        this.__isDisconnected = false;
+        this.reconnected && this.reconnected();
+      }
+    }
+    __disconnected() {
+      this.__isDisconnected = true;
+      this.disconnected && this.disconnected();
+    }
+    pushEvent(event, payload = {}, onReply = function() {
+    }) {
+      return this.__view.pushHookEvent(null, event, payload, onReply);
+    }
+    pushEventTo(phxTarget, event, payload = {}, onReply = function() {
+    }) {
+      return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+        return view.pushHookEvent(targetCtx, event, payload, onReply);
+      });
+    }
+    handleEvent(event, callback) {
+      let callbackRef = (customEvent, bypass) => bypass ? event : callback(customEvent.detail);
+      window.addEventListener(`phx:hook:${event}`, callbackRef);
+      this.__listeners.add(callbackRef);
+      return callbackRef;
+    }
+    removeHandleEvent(callbackRef) {
+      let event = callbackRef(null, true);
+      window.removeEventListener(`phx:hook:${event}`, callbackRef);
+      this.__listeners.delete(callbackRef);
+    }
+    __cleanup__() {
+      this.__listeners.forEach((callbackRef) => this.removeHandleEvent(callbackRef));
+    }
+  };
+
+  // js/phoenix_live_view/view.js
+  var serializeForm = (form, meta = {}) => {
+    let formData = new FormData(form);
+    let toRemove = [];
+    formData.forEach((val, key, _index) => {
+      if (val instanceof File) {
+        toRemove.push(key);
+      }
+    });
+    toRemove.forEach((key) => formData.delete(key));
+    let params = new URLSearchParams();
+    for (let [key, val] of formData.entries()) {
+      params.append(key, val);
+    }
+    for (let metaKey in meta) {
+      params.append(metaKey, meta[metaKey]);
+    }
+    return params.toString();
+  };
+  var View = class {
+    constructor(el, liveSocket, parentView, flash) {
+      this.liveSocket = liveSocket;
+      this.flash = flash;
+      this.parent = parentView;
+      this.root = parentView ? parentView.root : this;
+      this.el = el;
+      this.id = this.el.id;
+      this.ref = 0;
+      this.childJoins = 0;
+      this.loaderTimer = null;
+      this.pendingDiffs = [];
+      this.pruningCIDs = [];
+      this.redirect = false;
+      this.href = null;
+      this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
+      this.joinPending = true;
+      this.destroyed = false;
+      this.joinCallback = function() {
+      };
+      this.stopCallback = function() {
+      };
+      this.pendingJoinOps = this.parent ? null : [];
+      this.viewHooks = {};
+      this.uploaders = {};
+      this.formSubmits = [];
+      this.children = this.parent ? null : {};
+      this.root.children[this.id] = {};
+      this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+        return {
+          redirect: this.redirect ? this.href : void 0,
+          url: this.redirect ? void 0 : this.href || void 0,
+          params: this.connectParams(),
+          session: this.getSession(),
+          static: this.getStatic(),
+          flash: this.flash
+        };
+      });
+      this.showLoader(this.liveSocket.loaderTimeout);
+      this.bindChannel();
+    }
+    setHref(href) {
+      this.href = href;
+    }
+    setRedirect(href) {
+      this.redirect = true;
+      this.href = href;
+    }
+    isMain() {
+      return this.liveSocket.main === this;
+    }
+    connectParams() {
+      let params = this.liveSocket.params(this.el);
+      let manifest = dom_default.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`).map((node) => node.src || node.href).filter((url) => typeof url === "string");
+      if (manifest.length > 0) {
+        params["_track_static"] = manifest;
+      }
+      params["_mounts"] = this.joinCount;
+      return params;
+    }
+    isConnected() {
+      return this.channel.canPush();
+    }
+    getSession() {
+      return this.el.getAttribute(PHX_SESSION);
+    }
+    getStatic() {
+      let val = this.el.getAttribute(PHX_STATIC);
+      return val === "" ? null : val;
+    }
+    destroy(callback = function() {
+    }) {
+      this.destroyAllChildren();
+      this.destroyed = true;
+      delete this.root.children[this.id];
+      if (this.parent) {
+        delete this.root.children[this.parent.id][this.id];
+      }
+      clearTimeout(this.loaderTimer);
+      let onFinished = () => {
+        callback();
+        for (let id in this.viewHooks) {
+          this.destroyHook(this.viewHooks[id]);
+        }
+      };
+      dom_default.markPhxChildDestroyed(this.el);
+      this.log("destroyed", () => ["the child has been removed from the parent"]);
+      this.channel.leave().receive("ok", onFinished).receive("error", onFinished).receive("timeout", onFinished);
+    }
+    setContainerClasses(...classes) {
+      this.el.classList.remove(PHX_CONNECTED_CLASS, PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS);
+      this.el.classList.add(...classes);
+    }
+    isLoading() {
+      return this.el.classList.contains(PHX_DISCONNECTED_CLASS);
+    }
+    showLoader(timeout) {
+      clearTimeout(this.loaderTimer);
+      if (timeout) {
+        this.loaderTimer = setTimeout(() => this.showLoader(), timeout);
+      } else {
+        for (let id in this.viewHooks) {
+          this.viewHooks[id].__disconnected();
+        }
+        this.setContainerClasses(PHX_DISCONNECTED_CLASS);
+      }
+    }
+    hideLoader() {
+      clearTimeout(this.loaderTimer);
+      this.setContainerClasses(PHX_CONNECTED_CLASS);
+    }
+    triggerReconnected() {
+      for (let id in this.viewHooks) {
+        this.viewHooks[id].__reconnected();
+      }
+    }
+    log(kind, msgCallback) {
+      this.liveSocket.log(this, kind, msgCallback);
+    }
+    withinTargets(phxTarget, callback) {
+      if (phxTarget instanceof HTMLElement) {
+        return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
+      }
+      if (/^(0|[1-9]\d*)$/.test(phxTarget)) {
+        let targets = dom_default.findComponentNodeList(this.el, phxTarget);
+        if (targets.length === 0) {
+          logError(`no component found matching phx-target of ${phxTarget}`);
+        } else {
+          callback(this, targets[0]);
+        }
+      } else {
+        let targets = Array.from(document.querySelectorAll(phxTarget));
+        if (targets.length === 0) {
+          logError(`nothing found matching the phx-target selector "${phxTarget}"`);
+        }
+        targets.forEach((target) => this.liveSocket.owner(target, (view) => callback(view, target)));
+      }
+    }
+    applyDiff(type, rawDiff, callback) {
+      this.log(type, () => ["", clone(rawDiff)]);
+      let { diff, reply, events, title } = Rendered.extract(rawDiff);
+      if (title) {
+        dom_default.putTitle(title);
+      }
+      callback({ diff, reply, events });
+      return reply;
+    }
+    onJoin(resp) {
+      let { rendered, container } = resp;
+      if (container) {
+        let [tag, attrs] = container;
+        this.el = dom_default.replaceRootContainer(this.el, tag, attrs);
+      }
+      this.childJoins = 0;
+      this.joinPending = true;
+      this.flash = null;
+      browser_default.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS);
+      this.applyDiff("mount", rendered, ({ diff, events }) => {
+        this.rendered = new Rendered(this.id, diff);
+        let html = this.renderContainer(null, "join");
+        this.dropPendingRefs();
+        let forms = this.formsForRecovery(html);
+        this.joinCount++;
+        if (forms.length > 0) {
+          forms.forEach((form, i) => {
+            this.pushFormRecovery(form, (resp2) => {
+              if (i === forms.length - 1) {
+                this.onJoinComplete(resp2, html, events);
+              }
+            });
+          });
+        } else {
+          this.onJoinComplete(resp, html, events);
+        }
+      });
+    }
+    dropPendingRefs() {
+      dom_default.all(this.el, `[${PHX_REF}]`, (el) => el.removeAttribute(PHX_REF));
+    }
+    onJoinComplete({ live_patch }, html, events) {
+      if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
+        return this.applyJoinPatch(live_patch, html, events);
+      }
+      let newChildren = dom_default.findPhxChildrenInFragment(html, this.id).filter((toEl) => {
+        let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`);
+        let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC);
+        if (phxStatic) {
+          toEl.setAttribute(PHX_STATIC, phxStatic);
+        }
+        return this.joinChild(toEl);
+      });
+      if (newChildren.length === 0) {
+        if (this.parent) {
+          this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)]);
+          this.parent.ackJoin(this);
+        } else {
+          this.onAllChildJoinsComplete();
+          this.applyJoinPatch(live_patch, html, events);
+        }
+      } else {
+        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)]);
+      }
+    }
+    attachTrueDocEl() {
+      this.el = dom_default.byId(this.id);
+      this.el.setAttribute(PHX_ROOT_ID, this.root.id);
+    }
+    dispatchEvents(events) {
+      events.forEach(([event, payload]) => {
+        window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, { detail: payload }));
+      });
+    }
+    applyJoinPatch(live_patch, html, events) {
+      this.attachTrueDocEl();
+      let patch = new DOMPatch(this, this.el, this.id, html, null);
+      patch.markPrunableContentForRemoval();
+      this.performPatch(patch, false);
+      this.joinNewChildren();
+      dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
+        let hook = this.addHook(hookEl);
+        if (hook) {
+          hook.__mounted();
+        }
+      });
+      this.joinPending = false;
+      this.dispatchEvents(events);
+      this.applyPendingUpdates();
+      if (live_patch) {
+        let { kind, to } = live_patch;
+        this.liveSocket.historyPatch(to, kind);
+      }
+      this.hideLoader();
+      if (this.joinCount > 1) {
+        this.triggerReconnected();
+      }
+      this.stopCallback();
+    }
+    triggerBeforeUpdateHook(fromEl, toEl) {
+      this.liveSocket.triggerDOM("onBeforeElUpdated", [fromEl, toEl]);
+      let hook = this.getHook(fromEl);
+      let isIgnored = hook && dom_default.isIgnored(fromEl, this.binding(PHX_UPDATE));
+      if (hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))) {
+        hook.__beforeUpdate();
+        return hook;
+      }
+    }
+    performPatch(patch, pruneCids) {
+      let destroyedCIDs = [];
+      let phxChildrenAdded = false;
+      let updatedHookIds = new Set();
+      patch.after("added", (el) => {
+        this.liveSocket.triggerDOM("onNodeAdded", [el]);
+        let newHook = this.addHook(el);
+        if (newHook) {
+          newHook.__mounted();
+        }
+      });
+      patch.after("phxChildAdded", (_el) => phxChildrenAdded = true);
+      patch.before("updated", (fromEl, toEl) => {
+        let hook = this.triggerBeforeUpdateHook(fromEl, toEl);
+        if (hook) {
+          updatedHookIds.add(fromEl.id);
+        }
+      });
+      patch.after("updated", (el) => {
+        if (updatedHookIds.has(el.id)) {
+          this.getHook(el).__updated();
+        }
+      });
+      patch.after("discarded", (el) => {
+        let cid = this.componentID(el);
+        if (typeof cid === "number" && destroyedCIDs.indexOf(cid) === -1) {
+          destroyedCIDs.push(cid);
+        }
+        let hook = this.getHook(el);
+        hook && this.destroyHook(hook);
+      });
+      patch.perform();
+      if (pruneCids) {
+        this.maybePushComponentsDestroyed(destroyedCIDs);
+      }
+      return phxChildrenAdded;
+    }
+    joinNewChildren() {
+      dom_default.findPhxChildren(this.el, this.id).forEach((el) => this.joinChild(el));
+    }
+    getChildById(id) {
+      return this.root.children[this.id][id];
+    }
+    getDescendentByEl(el) {
+      if (el.id === this.id) {
+        return this;
+      } else {
+        return this.children[el.getAttribute(PHX_PARENT_ID)][el.id];
+      }
+    }
+    destroyDescendent(id) {
+      for (let parentId in this.root.children) {
+        for (let childId in this.root.children[parentId]) {
+          if (childId === id) {
+            return this.root.children[parentId][childId].destroy();
+          }
+        }
+      }
+    }
+    joinChild(el) {
+      let child = this.getChildById(el.id);
+      if (!child) {
+        let view = new View(el, this.liveSocket, this);
+        this.root.children[this.id][view.id] = view;
+        view.join();
+        this.childJoins++;
+        return true;
+      }
+    }
+    isJoinPending() {
+      return this.joinPending;
+    }
+    ackJoin(_child) {
+      this.childJoins--;
+      if (this.childJoins === 0) {
+        if (this.parent) {
+          this.parent.ackJoin(this);
+        } else {
+          this.onAllChildJoinsComplete();
+        }
+      }
+    }
+    onAllChildJoinsComplete() {
+      this.joinCallback();
+      this.pendingJoinOps.forEach(([view, op]) => {
+        if (!view.isDestroyed()) {
+          op();
+        }
+      });
+      this.pendingJoinOps = [];
+    }
+    update(diff, events) {
+      if (this.isJoinPending() || this.liveSocket.hasPendingLink()) {
+        return this.pendingDiffs.push({ diff, events });
+      }
+      this.rendered.mergeDiff(diff);
+      let phxChildrenAdded = false;
+      if (this.rendered.isComponentOnlyDiff(diff)) {
+        this.liveSocket.time("component patch complete", () => {
+          let parentCids = dom_default.findParentCIDs(this.el, this.rendered.componentCIDs(diff));
+          parentCids.forEach((parentCID) => {
+            if (this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)) {
+              phxChildrenAdded = true;
+            }
+          });
+        });
+      } else if (!isEmpty(diff)) {
+        this.liveSocket.time("full patch complete", () => {
+          let html = this.renderContainer(diff, "update");
+          let patch = new DOMPatch(this, this.el, this.id, html, null);
+          phxChildrenAdded = this.performPatch(patch, true);
+        });
+      }
+      this.dispatchEvents(events);
+      if (phxChildrenAdded) {
+        this.joinNewChildren();
+      }
+    }
+    renderContainer(diff, kind) {
+      return this.liveSocket.time(`toString diff (${kind})`, () => {
+        let tag = this.el.tagName;
+        let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null;
+        let html = this.rendered.toString(cids);
+        return `<${tag}>${html}</${tag}>`;
+      });
+    }
+    componentPatch(diff, cid) {
+      if (isEmpty(diff))
+        return false;
+      let html = this.rendered.componentToString(cid);
+      let patch = new DOMPatch(this, this.el, this.id, html, cid);
+      let childrenAdded = this.performPatch(patch, true);
+      return childrenAdded;
+    }
+    getHook(el) {
+      return this.viewHooks[ViewHook.elementID(el)];
+    }
+    addHook(el) {
+      if (ViewHook.elementID(el) || !el.getAttribute) {
+        return;
+      }
+      let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK));
+      if (hookName && !this.ownsElement(el)) {
+        return;
+      }
+      let callbacks = this.liveSocket.getHookCallbacks(hookName);
+      if (callbacks) {
+        if (!el.id) {
+          logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el);
+        }
+        let hook = new ViewHook(this, el, callbacks);
+        this.viewHooks[ViewHook.elementID(hook.el)] = hook;
+        return hook;
+      } else if (hookName !== null) {
+        logError(`unknown hook found for "${hookName}"`, el);
+      }
+    }
+    destroyHook(hook) {
+      hook.__destroyed();
+      hook.__cleanup__();
+      delete this.viewHooks[ViewHook.elementID(hook.el)];
+    }
+    applyPendingUpdates() {
+      this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
+      this.pendingDiffs = [];
+    }
+    onChannel(event, cb) {
+      this.liveSocket.onChannel(this.channel, event, (resp) => {
+        if (this.isJoinPending()) {
+          this.root.pendingJoinOps.push([this, () => cb(resp)]);
+        } else {
+          cb(resp);
+        }
+      });
+    }
+    bindChannel() {
+      this.liveSocket.onChannel(this.channel, "diff", (rawDiff) => {
+        this.applyDiff("update", rawDiff, ({ diff, events }) => this.update(diff, events));
+      });
+      this.onChannel("redirect", ({ to, flash }) => this.onRedirect({ to, flash }));
+      this.onChannel("live_patch", (redir) => this.onLivePatch(redir));
+      this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir));
+      this.channel.onError((reason) => this.onError(reason));
+      this.channel.onClose((reason) => this.onClose(reason));
+    }
+    destroyAllChildren() {
+      for (let id in this.root.children[this.id]) {
+        this.getChildById(id).destroy();
+      }
+    }
+    onLiveRedirect(redir) {
+      let { to, kind, flash } = redir;
+      let url = this.expandURL(to);
+      this.liveSocket.historyRedirect(url, kind, flash);
+    }
+    onLivePatch(redir) {
+      let { to, kind } = redir;
+      this.href = this.expandURL(to);
+      this.liveSocket.historyPatch(to, kind);
+    }
+    expandURL(to) {
+      return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to;
+    }
+    onRedirect({ to, flash }) {
+      this.liveSocket.redirect(to, flash);
+    }
+    isDestroyed() {
+      return this.destroyed;
+    }
+    join(callback) {
+      if (!this.parent) {
+        this.stopCallback = this.liveSocket.withPageLoading({ to: this.href, kind: "initial" });
+      }
+      this.joinCallback = () => callback && callback(this.joinCount);
+      this.liveSocket.wrapPush(this, { timeout: false }, () => {
+        return this.channel.join().receive("ok", (data) => !this.isDestroyed() && this.onJoin(data)).receive("error", (resp) => !this.isDestroyed() && this.onJoinError(resp)).receive("timeout", () => !this.isDestroyed() && this.onJoinError({ reason: "timeout" }));
+      });
+    }
+    onJoinError(resp) {
+      if (resp.reason === "unauthorized" || resp.reason === "stale") {
+        this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp]);
+        return this.onRedirect({ to: this.href });
+      }
+      if (resp.redirect || resp.live_redirect) {
+        this.joinPending = false;
+        this.channel.leave();
+      }
+      if (resp.redirect) {
+        return this.onRedirect(resp.redirect);
+      }
+      if (resp.live_redirect) {
+        return this.onLiveRedirect(resp.live_redirect);
+      }
+      this.log("error", () => ["unable to join", resp]);
+      return this.liveSocket.reloadWithJitter(this);
+    }
+    onClose(reason) {
+      if (this.isDestroyed()) {
+        return;
+      }
+      if (this.isJoinPending() && document.visibilityState !== "hidden" || this.liveSocket.hasPendingLink() && reason !== "leave") {
+        return this.liveSocket.reloadWithJitter(this);
+      }
+      this.destroyAllChildren();
+      this.liveSocket.dropActiveElement(this);
+      if (document.activeElement) {
+        document.activeElement.blur();
+      }
+      if (this.liveSocket.isUnloaded()) {
+        this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT);
+      }
+    }
+    onError(reason) {
+      this.onClose(reason);
+      this.log("error", () => ["view crashed", reason]);
+      if (!this.liveSocket.isUnloaded()) {
+        this.displayError();
+      }
+    }
+    displayError() {
+      if (this.isMain()) {
+        dom_default.dispatchEvent(window, "phx:page-loading-start", { to: this.href, kind: "error" });
+      }
+      this.showLoader();
+      this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS);
+    }
+    pushWithReply(refGenerator, event, payload, onReply = function() {
+    }) {
+      if (!this.isConnected()) {
+        return;
+      }
+      let [ref, [el]] = refGenerator ? refGenerator() : [null, []];
+      let onLoadingDone = function() {
+      };
+      if (el && el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null) {
+        onLoadingDone = this.liveSocket.withPageLoading({ kind: "element", target: el });
+      }
+      if (typeof payload.cid !== "number") {
+        delete payload.cid;
+      }
+      return this.liveSocket.wrapPush(this, { timeout: true }, () => {
+        return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
+          let hookReply = null;
+          if (ref !== null) {
+            this.undoRefs(ref);
+          }
+          if (resp.diff) {
+            hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
+              this.update(diff, events);
+            });
+          }
+          if (resp.redirect) {
+            this.onRedirect(resp.redirect);
+          }
+          if (resp.live_patch) {
+            this.onLivePatch(resp.live_patch);
+          }
+          if (resp.live_redirect) {
+            this.onLiveRedirect(resp.live_redirect);
+          }
+          onLoadingDone();
+          onReply(resp, hookReply);
+        });
+      });
+    }
+    undoRefs(ref) {
+      dom_default.all(this.el, `[${PHX_REF}="${ref}"]`, (el) => {
+        el.removeAttribute(PHX_REF);
+        if (el.getAttribute(PHX_READONLY) !== null) {
+          el.readOnly = false;
+          el.removeAttribute(PHX_READONLY);
+        }
+        if (el.getAttribute(PHX_DISABLED) !== null) {
+          el.disabled = false;
+          el.removeAttribute(PHX_DISABLED);
+        }
+        PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
+        let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
+        if (disableRestore !== null) {
+          el.innerText = disableRestore;
+          el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
+        }
+        let toEl = dom_default.private(el, PHX_REF);
+        if (toEl) {
+          let hook = this.triggerBeforeUpdateHook(el, toEl);
+          DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement());
+          if (hook) {
+            hook.__updated();
+          }
+          dom_default.deletePrivate(el, PHX_REF);
+        }
+      });
+    }
+    putRef(elements, event) {
+      let newRef = this.ref++;
+      let disableWith = this.binding(PHX_DISABLE_WITH);
+      elements.forEach((el) => {
+        el.classList.add(`phx-${event}-loading`);
+        el.setAttribute(PHX_REF, newRef);
+        let disableText = el.getAttribute(disableWith);
+        if (disableText !== null) {
+          if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
+            el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
+          }
+          el.innerText = disableText;
+        }
+      });
+      return [newRef, elements];
+    }
+    componentID(el) {
+      let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT);
+      return cid ? parseInt(cid) : null;
+    }
+    targetComponentID(target, targetCtx) {
+      if (target.getAttribute(this.binding("target"))) {
+        return this.closestComponentID(targetCtx);
+      } else {
+        return null;
+      }
+    }
+    closestComponentID(targetCtx) {
+      if (targetCtx) {
+        return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), (el) => this.ownsElement(el) && this.componentID(el));
+      } else {
+        return null;
+      }
+    }
+    pushHookEvent(targetCtx, event, payload, onReply) {
+      if (!this.isConnected()) {
+        this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload]);
+        return false;
+      }
+      let [ref, els] = this.putRef([], "hook");
+      this.pushWithReply(() => [ref, els], "event", {
+        type: "hook",
+        event,
+        value: payload,
+        cid: this.closestComponentID(targetCtx)
+      }, (resp, reply) => onReply(reply, ref));
+      return ref;
+    }
+    extractMeta(el, meta) {
+      let prefix = this.binding("value-");
+      for (let i = 0; i < el.attributes.length; i++) {
+        let name = el.attributes[i].name;
+        if (name.startsWith(prefix)) {
+          meta[name.replace(prefix, "")] = el.getAttribute(name);
+        }
+      }
+      if (el.value !== void 0) {
+        meta.value = el.value;
+        if (el.tagName === "INPUT" && CHECKABLE_INPUTS.indexOf(el.type) >= 0 && !el.checked) {
+          delete meta.value;
+        }
+      }
+      return meta;
+    }
+    pushEvent(type, el, targetCtx, phxEvent, meta) {
+      this.pushWithReply(() => this.putRef([el], type), "event", {
+        type,
+        event: phxEvent,
+        value: this.extractMeta(el, meta),
+        cid: this.targetComponentID(el, targetCtx)
+      });
+    }
+    pushKey(keyElement, targetCtx, kind, phxEvent, meta) {
+      this.pushWithReply(() => this.putRef([keyElement], kind), "event", {
+        type: kind,
+        event: phxEvent,
+        value: this.extractMeta(keyElement, meta),
+        cid: this.targetComponentID(keyElement, targetCtx)
+      });
+    }
+    pushFileProgress(fileEl, entryRef, progress, onReply = function() {
+    }) {
+      this.liveSocket.withinOwners(fileEl.form, (view, targetCtx) => {
+        view.pushWithReply(null, "progress", {
+          event: fileEl.getAttribute(view.binding(PHX_PROGRESS)),
+          ref: fileEl.getAttribute(PHX_UPLOAD_REF),
+          entry_ref: entryRef,
+          progress,
+          cid: view.targetComponentID(fileEl.form, targetCtx)
+        }, onReply);
+      });
+    }
+    pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback) {
+      let uploads;
+      let cid = this.targetComponentID(inputEl.form, targetCtx);
+      let refGenerator = () => this.putRef([inputEl, inputEl.form], "change");
+      let formData = serializeForm(inputEl.form, { _target: eventTarget.name });
+      if (inputEl.files && inputEl.files.length > 0) {
+        LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
+      }
+      uploads = LiveUploader.serializeUploads(inputEl);
+      let event = {
+        type: "form",
+        event: phxEvent,
+        value: formData,
+        uploads,
+        cid
+      };
+      this.pushWithReply(refGenerator, "event", event, (resp) => {
+        dom_default.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR));
+        if (dom_default.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null) {
+          if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
+            let [ref, _els] = refGenerator();
+            this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
+              callback && callback(resp);
+              this.triggerAwaitingSubmit(inputEl.form);
+            });
+          }
+        } else {
+          callback && callback(resp);
+        }
+      });
+    }
+    triggerAwaitingSubmit(formEl) {
+      let awaitingSubmit = this.getScheduledSubmit(formEl);
+      if (awaitingSubmit) {
+        let [_el, _ref, callback] = awaitingSubmit;
+        this.cancelSubmit(formEl);
+        callback();
+      }
+    }
+    getScheduledSubmit(formEl) {
+      return this.formSubmits.find(([el, _callback]) => el.isSameNode(formEl));
+    }
+    scheduleSubmit(formEl, ref, callback) {
+      if (this.getScheduledSubmit(formEl)) {
+        return true;
+      }
+      this.formSubmits.push([formEl, ref, callback]);
+    }
+    cancelSubmit(formEl) {
+      this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
+        if (el.isSameNode(formEl)) {
+          this.undoRefs(ref);
+          return false;
+        } else {
+          return true;
+        }
+      });
+    }
+    pushFormSubmit(formEl, targetCtx, phxEvent, onReply) {
+      let filterIgnored = (el) => {
+        let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form);
+        return !(userIgnored || closestPhxBinding(el, "data-phx-update=ignore", el.form));
+      };
+      let filterDisables = (el) => {
+        return el.hasAttribute(this.binding(PHX_DISABLE_WITH));
+      };
+      let filterButton = (el) => el.tagName == "BUTTON";
+      let filterInput = (el) => ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+      let refGenerator = () => {
+        let formElements = Array.from(formEl.elements);
+        let disables = formElements.filter(filterDisables);
+        let buttons = formElements.filter(filterButton).filter(filterIgnored);
+        let inputs = formElements.filter(filterInput).filter(filterIgnored);
+        buttons.forEach((button) => {
+          button.setAttribute(PHX_DISABLED, button.disabled);
+          button.disabled = true;
+        });
+        inputs.forEach((input) => {
+          input.setAttribute(PHX_READONLY, input.readOnly);
+          input.readOnly = true;
+          if (input.files) {
+            input.setAttribute(PHX_DISABLED, input.disabled);
+            input.disabled = true;
+          }
+        });
+        formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
+        return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit");
+      };
+      let cid = this.targetComponentID(formEl, targetCtx);
+      if (LiveUploader.hasUploadsInProgress(formEl)) {
+        let [ref, _els] = refGenerator();
+        return this.scheduleSubmit(formEl, ref, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply));
+      } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
+        let [ref, els] = refGenerator();
+        let proxyRefGen = () => [ref, els];
+        this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
+          let formData = serializeForm(formEl, {});
+          this.pushWithReply(proxyRefGen, "event", {
+            type: "form",
+            event: phxEvent,
+            value: formData,
+            cid
+          }, onReply);
+        });
+      } else {
+        let formData = serializeForm(formEl);
+        this.pushWithReply(refGenerator, "event", {
+          type: "form",
+          event: phxEvent,
+          value: formData,
+          cid
+        }, onReply);
+      }
+    }
+    uploadFiles(formEl, targetCtx, ref, cid, onComplete) {
+      let joinCountAtUpload = this.joinCount;
+      let inputEls = LiveUploader.activeFileInputs(formEl);
+      inputEls.forEach((inputEl) => {
+        let uploader = new LiveUploader(inputEl, this, onComplete);
+        this.uploaders[inputEl] = uploader;
+        let entries = uploader.entries().map((entry) => entry.toPreflightPayload());
+        let payload = {
+          ref: inputEl.getAttribute(PHX_UPLOAD_REF),
+          entries,
+          cid: this.targetComponentID(inputEl.form, targetCtx)
+        };
+        this.log("upload", () => ["sending preflight request", payload]);
+        this.pushWithReply(null, "allow_upload", payload, (resp) => {
+          this.log("upload", () => ["got preflight response", resp]);
+          if (resp.error) {
+            this.undoRefs(ref);
+            let [entry_ref, reason] = resp.error;
+            this.log("upload", () => [`error for entry ${entry_ref}`, reason]);
+          } else {
+            let onError = (callback) => {
+              this.channel.onError(() => {
+                if (this.joinCount === joinCountAtUpload) {
+                  callback();
+                }
+              });
+            };
+            uploader.initAdapterUpload(resp, onError, this.liveSocket);
+          }
+        });
+      });
+    }
+    pushFormRecovery(form, callback) {
+      this.liveSocket.withinOwners(form, (view, targetCtx) => {
+        let input = form.elements[0];
+        let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
+        view.pushInput(input, targetCtx, phxEvent, input, callback);
+      });
+    }
+    pushLinkPatch(href, targetEl, callback) {
+      let linkRef = this.liveSocket.setPendingLink(href);
+      let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
+      this.pushWithReply(refGen, "live_patch", { url: href }, (resp) => {
+        if (resp.link_redirect) {
+          this.liveSocket.replaceMain(href, null, callback, linkRef);
+        } else {
+          if (this.liveSocket.commitPendingLink(linkRef)) {
+            this.href = href;
+          }
+          this.applyPendingUpdates();
+          callback && callback(linkRef);
+        }
+      }).receive("timeout", () => this.liveSocket.redirect(window.location.href));
+    }
+    formsForRecovery(html) {
+      if (this.joinCount === 0) {
+        return [];
+      }
+      let phxChange = this.binding("change");
+      let template = document.createElement("template");
+      template.innerHTML = html;
+      return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").filter((form) => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`));
+    }
+    maybePushComponentsDestroyed(destroyedCIDs) {
+      let willDestroyCIDs = destroyedCIDs.filter((cid) => {
+        return dom_default.findComponentNodeList(this.el, cid).length === 0;
+      });
+      if (willDestroyCIDs.length > 0) {
+        this.pruningCIDs.push(...willDestroyCIDs);
+        this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
+          this.pruningCIDs = this.pruningCIDs.filter((cid) => willDestroyCIDs.indexOf(cid) !== -1);
+          let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
+            return dom_default.findComponentNodeList(this.el, cid).length === 0;
+          });
+          if (completelyDestroyCIDs.length > 0) {
+            this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
+              this.rendered.pruneCIDs(resp.cids);
+            });
+          }
+        });
+      }
+    }
+    ownsElement(el) {
+      return el.getAttribute(PHX_PARENT_ID) === this.id || maybe(el.closest(PHX_VIEW_SELECTOR), (node) => node.id) === this.id;
+    }
+    submitForm(form, targetCtx, phxEvent) {
+      dom_default.putPrivate(form, PHX_HAS_SUBMITTED, true);
+      this.liveSocket.blurActiveElement(this);
+      this.pushFormSubmit(form, targetCtx, phxEvent, () => {
+        this.liveSocket.restorePreviouslyActiveFocus();
+      });
+    }
+    binding(kind) {
+      return this.liveSocket.binding(kind);
+    }
+  };
+
+  // js/phoenix_live_view/live_socket.js
+  var LiveSocket = class {
+    constructor(url, phxSocket, opts = {}) {
+      this.unloaded = false;
+      if (!phxSocket || phxSocket.constructor.name === "Object") {
+        throw new Error(`
       a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
 
           import {Socket} from "phoenix"
           import LiveSocket from "phoenix_live_view"
           let liveSocket = new LiveSocket("/live", Socket, {...})
-      `);this.socket=new t(e,i),this.bindingPrefix=i.bindingPrefix||St,this.opts=i,this.params=De(i.params||{}),this.viewLogger=i.viewLogger,this.metadataCallbacks=i.metadata||{},this.defaults=Object.assign(J(At),i.defaults||{}),this.activeElement=null,this.prevActive=null,this.silenced=!1,this.main=null,this.linkRef=1,this.roots={},this.href=window.location.href,this.pendingLink=null,this.currentLocation=J(window.location),this.hooks=i.hooks||{},this.uploaders=i.uploaders||{},this.loaderTimeout=i.loaderTimeout||bt,this.localStorage=i.localStorage||window.localStorage,this.sessionStorage=i.sessionStorage||window.sessionStorage,this.boundTopLevelEvents=!1,this.domCallbacks=Object.assign({onNodeAdded:De(),onBeforeElUpdated:De()},i.dom||{}),window.addEventListener("pagehide",r=>{this.unloaded=!0}),this.socket.onOpen(()=>{this.isUnloaded()&&window.location.reload()})}isProfileEnabled(){return this.sessionStorage.getItem(ke)==="true"}isDebugEnabled(){return this.sessionStorage.getItem(Ie)==="true"}enableDebug(){this.sessionStorage.setItem(Ie,"true")}enableProfiling(){this.sessionStorage.setItem(ke,"true")}disableDebug(){this.sessionStorage.removeItem(Ie)}disableProfiling(){this.sessionStorage.removeItem(ke)}enableLatencySim(e){this.enableDebug(),console.log("latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable"),this.sessionStorage.setItem(Le,e)}disableLatencySim(){this.sessionStorage.removeItem(Le)}getLatencySim(){let e=this.sessionStorage.getItem(Le);return e?parseInt(e):null}getSocket(){return this.socket}connect(){let e=()=>{this.joinRootViews()&&(this.bindTopLevelEvents(),this.socket.connect())};["complete","loaded","interactive"].indexOf(document.readyState)>=0?e():document.addEventListener("DOMContentLoaded",()=>e())}disconnect(e){this.socket.disconnect(e)}triggerDOM(e,t){this.domCallbacks[e](...t)}time(e,t){if(!this.isProfileEnabled()||!console.time)return t();console.time(e);let i=t();return console.timeEnd(e),i}log(e,t,i){if(this.viewLogger){let[r,s]=i();this.viewLogger(e,t,r,s)}else if(this.isDebugEnabled()){let[r,s]=i();yt(e,t,r,s)}}onChannel(e,t,i){e.on(t,r=>{let s=this.getLatencySim();s?(console.log(`simulating ${s}ms of latency from server to client`),setTimeout(()=>i(r),s)):i(r)})}wrapPush(e,t,i){let r=this.getLatencySim(),s=e.joinCount;if(!r)return t.timeout?i().receive("timeout",()=>{e.joinCount===s&&!e.isDestroyed()&&this.reloadWithJitter(e,()=>{this.log(e,"timeout",()=>["received timeout while communicating with server. Falling back to hard refresh for recovery"])})}):i();console.log(`simulating ${r}ms of latency from client to server`);let o={receives:[],receive(l,a){this.receives.push([l,a])}};return setTimeout(()=>{e.isDestroyed()||o.receives.reduce((l,[a,u])=>l.receive(a,u),i())},r),o}reloadWithJitter(e,t){e.destroy(),this.disconnect();let[i,r]=ot,s=Math.floor(Math.random()*(r-i+1))+i,o=F.updateLocal(this.localStorage,window.location.pathname,_e,0,l=>l+1);t?t():this.log(e,"join",()=>[`encountered ${o} consecutive reloads`]),o>Me&&(this.log(e,"join",()=>[`exceeded ${Me} consecutive reloads. Entering failsafe mode`]),s=lt),setTimeout(()=>{this.hasPendingLink()?window.location=this.pendingLink:window.location.reload()},s)}getHookCallbacks(e){return e&&e.startsWith("Phoenix.")?It[e.split(".")[1]]:this.hooks[e]}isUnloaded(){return this.unloaded}isConnected(){return this.socket.isConnected()}getBindingPrefix(){return this.bindingPrefix}binding(e){return`${this.getBindingPrefix()}${e}`}channel(e,t){return this.socket.channel(e,t)}joinRootViews(){let e=!1;return h.all(document,`${N}:not([${V}])`,t=>{if(!this.getRootById(t.id)){let i=this.newRootView(t);i.setHref(this.getHref()),i.join(),t.getAttribute(Ae)&&(this.main=i)}e=!0}),e}redirect(e,t){this.disconnect(),F.redirect(e,t)}replaceMain(e,t,i=null,r=this.setPendingLink(e)){let s=this.main.el,o=h.cloneNode(s);this.main.showLoader(this.loaderTimeout),this.main.destroy(),s.replaceWith(o),this.main=this.newRootView(o,t),this.main.setRedirect(e),this.main.join(l=>{l===1&&this.commitPendingLink(r)&&i&&i()})}isPhxView(e){return e.getAttribute&&e.getAttribute(L)!==null}newRootView(e,t){let i=new ne(e,this,null,t);return this.roots[i.id]=i,i}owner(e,t){let i=x(e.closest(N),r=>this.getViewByEl(r));i&&t(i)}withinOwners(e,t){this.owner(e,i=>{let r=e.getAttribute(this.binding("target"));r===null?t(i,e):i.withinTargets(r,t)})}getViewByEl(e){let t=e.getAttribute(W);return x(this.getRootById(t),i=>i.getDescendentByEl(e))}getRootById(e){return this.roots[e]}destroyAllViews(){for(let e in this.roots)this.roots[e].destroy(),delete this.roots[e]}destroyViewByEl(e){let t=this.getRootById(e.getAttribute(W));t&&t.destroyDescendent(e.id)}setActiveElement(e){if(this.activeElement===e)return;this.activeElement=e;let t=()=>{e===this.activeElement&&(this.activeElement=null),e.removeEventListener("mouseup",this),e.removeEventListener("touchend",this)};e.addEventListener("mouseup",t),e.addEventListener("touchend",t)}getActiveElement(){return document.activeElement===document.body?this.activeElement||document.activeElement:document.activeElement||document.body}dropActiveElement(e){this.prevActive&&e.ownsElement(this.prevActive)&&(this.prevActive=null)}restorePreviouslyActiveFocus(){this.prevActive&&this.prevActive!==document.body&&this.prevActive.focus()}blurActiveElement(){this.prevActive=this.getActiveElement(),this.prevActive!==document.body&&this.prevActive.blur()}bindTopLevelEvents(){this.boundTopLevelEvents||(this.boundTopLevelEvents=!0,document.body.addEventListener("click",function(){}),window.addEventListener("pageshow",e=>{e.persisted&&(this.getSocket().disconnect(),this.withPageLoading({to:window.location.href,kind:"redirect"}),window.location.reload())},!0),this.bindNav(),this.bindClicks(),this.bindForms(),this.bind({keyup:"keyup",keydown:"keydown"},(e,t,i,r,s,o,l)=>{let a=r.getAttribute(this.binding(mt)),u=e.key&&e.key.toLowerCase();a&&a.toLowerCase()!==u||i.pushKey(r,s,t,o,{key:e.key,...this.eventMeta(t,e,r)})}),this.bind({blur:"focusout",focus:"focusin"},(e,t,i,r,s,o,l)=>{l||i.pushEvent(t,r,s,o,this.eventMeta(t,e,r))}),this.bind({blur:"blur",focus:"focus"},(e,t,i,r,s,o,l)=>{l&&!l!=="window"&&i.pushEvent(t,r,s,o,this.eventMeta(t,e,r))}),window.addEventListener("dragover",e=>e.preventDefault()),window.addEventListener("drop",e=>{e.preventDefault();let t=x(G(e.target,this.binding(Be)),s=>s.getAttribute(this.binding(Be))),i=t&&document.getElementById(t),r=Array.from(e.dataTransfer.files||[]);!i||i.disabled||r.length===0||!(i.files instanceof FileList)||(P.trackFiles(i,r),i.dispatchEvent(new Event("input",{bubbles:!0})))}))}eventMeta(e,t,i){let r=this.metadataCallbacks[e];return r?r(t,i):{}}setPendingLink(e){return this.linkRef++,this.pendingLink=e,this.linkRef}commitPendingLink(e){return this.linkRef!==e?!1:(this.href=this.pendingLink,this.pendingLink=null,!0)}getHref(){return this.href}hasPendingLink(){return!!this.pendingLink}bind(e,t){for(let i in e){let r=e[i];this.on(r,s=>{let o=this.binding(i),l=this.binding(`window-${i}`),a=s.target.getAttribute&&s.target.getAttribute(o);a?this.debounce(s.target,s,()=>{this.withinOwners(s.target,(u,v)=>{t(s,i,u,s.target,v,a,null)})}):h.all(document,`[${l}]`,u=>{let v=u.getAttribute(l);this.debounce(u,s,()=>{this.withinOwners(u,(c,p)=>{t(s,i,c,u,p,v,"window")})})})})}}bindClicks(){this.bindClick("click","click",!1),this.bindClick("mousedown","capture-click",!0)}bindClick(e,t,i){let r=this.binding(t);window.addEventListener(e,s=>{if(!this.isConnected())return;let o=null;i?o=s.target.matches(`[${r}]`)?s.target:s.target.querySelector(`[${r}]`):o=G(s.target,r);let l=o&&o.getAttribute(r);!l||(o.getAttribute("href")==="#"&&s.preventDefault(),this.debounce(o,s,()=>{this.withinOwners(o,(a,u)=>{a.pushEvent("click",o,u,l,this.eventMeta("click",s,o))})}))},i)}bindNav(){if(!F.canPushState())return;history.scrollRestoration&&(history.scrollRestoration="manual");let e=null;window.addEventListener("scroll",t=>{clearTimeout(e),e=setTimeout(()=>{F.updateCurrentState(i=>Object.assign(i,{scroll:window.scrollY}))},100)}),window.addEventListener("popstate",t=>{if(!this.registerNewLocation(window.location))return;let{type:i,id:r,root:s,scroll:o}=t.state||{},l=window.location.href;this.main.isConnected()&&i==="patch"&&r===this.main.id?this.main.pushLinkPatch(l,null):this.replaceMain(l,null,()=>{s&&this.replaceRootHistory(),typeof o=="number"&&setTimeout(()=>{window.scrollTo(0,o)},0)})},!1),window.addEventListener("click",t=>{let i=G(t.target,Ee),r=i&&i.getAttribute(Ee),s=t.metaKey||t.ctrlKey||t.button===1;if(!r||!this.isConnected()||!this.main||s)return;let o=i.href,l=i.getAttribute(ht);if(t.preventDefault(),this.pendingLink!==o)if(r==="patch")this.pushHistoryPatch(o,l,i);else if(r==="redirect")this.historyRedirect(o,l);else throw new Error(`expected ${Ee} to be "patch" or "redirect", got: ${r}`)},!1)}withPageLoading(e,t){h.dispatchEvent(window,"phx:page-loading-start",e);let i=()=>h.dispatchEvent(window,"phx:page-loading-stop",e);return t?t(i):i}pushHistoryPatch(e,t,i){this.withPageLoading({to:e,kind:"patch"},r=>{this.main.pushLinkPatch(e,i,s=>{this.historyPatch(e,t,s),r()})})}historyPatch(e,t,i=this.setPendingLink(e)){!this.commitPendingLink(i)||(F.pushState(t,{type:"patch",id:this.main.id},e),this.registerNewLocation(window.location))}historyRedirect(e,t,i){let r=window.scrollY;this.withPageLoading({to:e,kind:"redirect"},s=>{this.replaceMain(e,i,()=>{F.pushState(t,{type:"redirect",id:this.main.id,scroll:r},e),this.registerNewLocation(window.location),s()})})}replaceRootHistory(){F.pushState("replace",{root:!0,type:"patch",id:this.main.id})}registerNewLocation(e){let{pathname:t,search:i}=this.currentLocation;return t+i===e.pathname+e.search?!1:(this.currentLocation=J(e),!0)}bindForms(){let e=0;this.on("submit",t=>{let i=t.target.getAttribute(this.binding("submit"));!i||(t.preventDefault(),t.target.disabled=!0,this.withinOwners(t.target,(r,s)=>r.submitForm(t.target,s,i)))},!1);for(let t of["change","input"])this.on(t,i=>{let r=i.target,s=r.form&&r.form.getAttribute(this.binding("change"));if(!s||r.type==="number"&&r.validity&&r.validity.badInput)return;let o=e;e++;let{at:l,type:a}=h.private(r,"prev-iteration")||{};l===o-1&&t!==a||(h.putPrivate(r,"prev-iteration",{at:o,type:t}),this.debounce(r,i,()=>{this.withinOwners(r.form,(u,v)=>{h.putPrivate(r,ye,!0),h.isTextualInput(r)||this.setActiveElement(r),u.pushInput(r,v,s,i.target)})}))},!1)}debounce(e,t,i){let r=this.binding(pt),s=this.binding(gt),o=this.defaults.debounce.toString(),l=this.defaults.throttle.toString();h.debounce(e,t,r,o,s,l,i)}silenceEvents(e){this.silenced=!0,e(),this.silenced=!1}on(e,t){window.addEventListener(e,i=>{this.silenced||t(i)})}};export{rt as LiveSocket};
-//# sourceMappingURL=phoenix_live_view.js.map
+      `);
+      }
+      this.socket = new phxSocket(url, opts);
+      this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
+      this.opts = opts;
+      this.params = closure(opts.params || {});
+      this.viewLogger = opts.viewLogger;
+      this.metadataCallbacks = opts.metadata || {};
+      this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {});
+      this.activeElement = null;
+      this.prevActive = null;
+      this.silenced = false;
+      this.main = null;
+      this.linkRef = 1;
+      this.roots = {};
+      this.href = window.location.href;
+      this.pendingLink = null;
+      this.currentLocation = clone(window.location);
+      this.hooks = opts.hooks || {};
+      this.uploaders = opts.uploaders || {};
+      this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
+      this.localStorage = opts.localStorage || window.localStorage;
+      this.sessionStorage = opts.sessionStorage || window.sessionStorage;
+      this.boundTopLevelEvents = false;
+      this.domCallbacks = Object.assign({ onNodeAdded: closure(), onBeforeElUpdated: closure() }, opts.dom || {});
+      window.addEventListener("pagehide", (_e) => {
+        this.unloaded = true;
+      });
+      this.socket.onOpen(() => {
+        if (this.isUnloaded()) {
+          window.location.reload();
+        }
+      });
+    }
+    isProfileEnabled() {
+      return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
+    }
+    isDebugEnabled() {
+      return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
+    }
+    enableDebug() {
+      this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
+    }
+    enableProfiling() {
+      this.sessionStorage.setItem(PHX_LV_PROFILE, "true");
+    }
+    disableDebug() {
+      this.sessionStorage.removeItem(PHX_LV_DEBUG);
+    }
+    disableProfiling() {
+      this.sessionStorage.removeItem(PHX_LV_PROFILE);
+    }
+    enableLatencySim(upperBoundMs) {
+      this.enableDebug();
+      console.log("latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable");
+      this.sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs);
+    }
+    disableLatencySim() {
+      this.sessionStorage.removeItem(PHX_LV_LATENCY_SIM);
+    }
+    getLatencySim() {
+      let str = this.sessionStorage.getItem(PHX_LV_LATENCY_SIM);
+      return str ? parseInt(str) : null;
+    }
+    getSocket() {
+      return this.socket;
+    }
+    connect() {
+      let doConnect = () => {
+        if (this.joinRootViews()) {
+          this.bindTopLevelEvents();
+          this.socket.connect();
+        }
+      };
+      if (["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0) {
+        doConnect();
+      } else {
+        document.addEventListener("DOMContentLoaded", () => doConnect());
+      }
+    }
+    disconnect(callback) {
+      this.socket.disconnect(callback);
+    }
+    triggerDOM(kind, args) {
+      this.domCallbacks[kind](...args);
+    }
+    time(name, func) {
+      if (!this.isProfileEnabled() || !console.time) {
+        return func();
+      }
+      console.time(name);
+      let result = func();
+      console.timeEnd(name);
+      return result;
+    }
+    log(view, kind, msgCallback) {
+      if (this.viewLogger) {
+        let [msg, obj] = msgCallback();
+        this.viewLogger(view, kind, msg, obj);
+      } else if (this.isDebugEnabled()) {
+        let [msg, obj] = msgCallback();
+        debug(view, kind, msg, obj);
+      }
+    }
+    onChannel(channel, event, cb) {
+      channel.on(event, (data) => {
+        let latency = this.getLatencySim();
+        if (!latency) {
+          cb(data);
+        } else {
+          console.log(`simulating ${latency}ms of latency from server to client`);
+          setTimeout(() => cb(data), latency);
+        }
+      });
+    }
+    wrapPush(view, opts, push) {
+      let latency = this.getLatencySim();
+      let oldJoinCount = view.joinCount;
+      if (!latency) {
+        if (opts.timeout) {
+          return push().receive("timeout", () => {
+            if (view.joinCount === oldJoinCount && !view.isDestroyed()) {
+              this.reloadWithJitter(view, () => {
+                this.log(view, "timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"]);
+              });
+            }
+          });
+        } else {
+          return push();
+        }
+      }
+      console.log(`simulating ${latency}ms of latency from client to server`);
+      let fakePush = {
+        receives: [],
+        receive(kind, cb) {
+          this.receives.push([kind, cb]);
+        }
+      };
+      setTimeout(() => {
+        if (view.isDestroyed()) {
+          return;
+        }
+        fakePush.receives.reduce((acc, [kind, cb]) => acc.receive(kind, cb), push());
+      }, latency);
+      return fakePush;
+    }
+    reloadWithJitter(view, log) {
+      view.destroy();
+      this.disconnect();
+      let [minMs, maxMs] = RELOAD_JITTER;
+      let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+      let tries = browser_default.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, (count) => count + 1);
+      log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
+      if (tries > MAX_RELOADS) {
+        this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`]);
+        afterMs = FAILSAFE_JITTER;
+      }
+      setTimeout(() => {
+        if (this.hasPendingLink()) {
+          window.location = this.pendingLink;
+        } else {
+          window.location.reload();
+        }
+      }, afterMs);
+    }
+    getHookCallbacks(name) {
+      return name && name.startsWith("Phoenix.") ? hooks_default[name.split(".")[1]] : this.hooks[name];
+    }
+    isUnloaded() {
+      return this.unloaded;
+    }
+    isConnected() {
+      return this.socket.isConnected();
+    }
+    getBindingPrefix() {
+      return this.bindingPrefix;
+    }
+    binding(kind) {
+      return `${this.getBindingPrefix()}${kind}`;
+    }
+    channel(topic, params) {
+      return this.socket.channel(topic, params);
+    }
+    joinRootViews() {
+      let rootsFound = false;
+      dom_default.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, (rootEl) => {
+        if (!this.getRootById(rootEl.id)) {
+          let view = this.newRootView(rootEl);
+          view.setHref(this.getHref());
+          view.join();
+          if (rootEl.getAttribute(PHX_MAIN)) {
+            this.main = view;
+          }
+        }
+        rootsFound = true;
+      });
+      return rootsFound;
+    }
+    redirect(to, flash) {
+      this.disconnect();
+      browser_default.redirect(to, flash);
+    }
+    replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
+      let oldMainEl = this.main.el;
+      let newMainEl = dom_default.cloneNode(oldMainEl);
+      this.main.showLoader(this.loaderTimeout);
+      this.main.destroy();
+      oldMainEl.replaceWith(newMainEl);
+      this.main = this.newRootView(newMainEl, flash);
+      this.main.setRedirect(href);
+      this.main.join((joinCount) => {
+        if (joinCount === 1 && this.commitPendingLink(linkRef)) {
+          callback && callback();
+        }
+      });
+    }
+    isPhxView(el) {
+      return el.getAttribute && el.getAttribute(PHX_SESSION) !== null;
+    }
+    newRootView(el, flash) {
+      let view = new View(el, this, null, flash);
+      this.roots[view.id] = view;
+      return view;
+    }
+    owner(childEl, callback) {
+      let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), (el) => this.getViewByEl(el));
+      if (view) {
+        callback(view);
+      }
+    }
+    withinOwners(childEl, callback) {
+      this.owner(childEl, (view) => {
+        let phxTarget = childEl.getAttribute(this.binding("target"));
+        if (phxTarget === null) {
+          callback(view, childEl);
+        } else {
+          view.withinTargets(phxTarget, callback);
+        }
+      });
+    }
+    getViewByEl(el) {
+      let rootId = el.getAttribute(PHX_ROOT_ID);
+      return maybe(this.getRootById(rootId), (root) => root.getDescendentByEl(el));
+    }
+    getRootById(id) {
+      return this.roots[id];
+    }
+    destroyAllViews() {
+      for (let id in this.roots) {
+        this.roots[id].destroy();
+        delete this.roots[id];
+      }
+    }
+    destroyViewByEl(el) {
+      let root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
+      if (root) {
+        root.destroyDescendent(el.id);
+      }
+    }
+    setActiveElement(target) {
+      if (this.activeElement === target) {
+        return;
+      }
+      this.activeElement = target;
+      let cancel = () => {
+        if (target === this.activeElement) {
+          this.activeElement = null;
+        }
+        target.removeEventListener("mouseup", this);
+        target.removeEventListener("touchend", this);
+      };
+      target.addEventListener("mouseup", cancel);
+      target.addEventListener("touchend", cancel);
+    }
+    getActiveElement() {
+      if (document.activeElement === document.body) {
+        return this.activeElement || document.activeElement;
+      } else {
+        return document.activeElement || document.body;
+      }
+    }
+    dropActiveElement(view) {
+      if (this.prevActive && view.ownsElement(this.prevActive)) {
+        this.prevActive = null;
+      }
+    }
+    restorePreviouslyActiveFocus() {
+      if (this.prevActive && this.prevActive !== document.body) {
+        this.prevActive.focus();
+      }
+    }
+    blurActiveElement() {
+      this.prevActive = this.getActiveElement();
+      if (this.prevActive !== document.body) {
+        this.prevActive.blur();
+      }
+    }
+    bindTopLevelEvents() {
+      if (this.boundTopLevelEvents) {
+        return;
+      }
+      this.boundTopLevelEvents = true;
+      document.body.addEventListener("click", function() {
+      });
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted) {
+          this.getSocket().disconnect();
+          this.withPageLoading({ to: window.location.href, kind: "redirect" });
+          window.location.reload();
+        }
+      }, true);
+      this.bindNav();
+      this.bindClicks();
+      this.bindForms();
+      this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, target, targetCtx, phxEvent, _phxTarget) => {
+        let matchKey = target.getAttribute(this.binding(PHX_KEY));
+        let pressedKey = e.key && e.key.toLowerCase();
+        if (matchKey && matchKey.toLowerCase() !== pressedKey) {
+          return;
+        }
+        view.pushKey(target, targetCtx, type, phxEvent, { key: e.key, ...this.eventMeta(type, e, target) });
+      });
+      this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+        if (!phxTarget) {
+          view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl));
+        }
+      });
+      this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+        if (phxTarget && !phxTarget !== "window") {
+          view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl));
+        }
+      });
+      window.addEventListener("dragover", (e) => e.preventDefault());
+      window.addEventListener("drop", (e) => {
+        e.preventDefault();
+        let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), (trueTarget) => {
+          return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
+        });
+        let dropTarget = dropTargetId && document.getElementById(dropTargetId);
+        let files = Array.from(e.dataTransfer.files || []);
+        if (!dropTarget || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)) {
+          return;
+        }
+        LiveUploader.trackFiles(dropTarget, files);
+        dropTarget.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+    eventMeta(eventName, e, targetEl) {
+      let callback = this.metadataCallbacks[eventName];
+      return callback ? callback(e, targetEl) : {};
+    }
+    setPendingLink(href) {
+      this.linkRef++;
+      this.pendingLink = href;
+      return this.linkRef;
+    }
+    commitPendingLink(linkRef) {
+      if (this.linkRef !== linkRef) {
+        return false;
+      } else {
+        this.href = this.pendingLink;
+        this.pendingLink = null;
+        return true;
+      }
+    }
+    getHref() {
+      return this.href;
+    }
+    hasPendingLink() {
+      return !!this.pendingLink;
+    }
+    bind(events, callback) {
+      for (let event in events) {
+        let browserEventName = events[event];
+        this.on(browserEventName, (e) => {
+          let binding = this.binding(event);
+          let windowBinding = this.binding(`window-${event}`);
+          let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding);
+          if (targetPhxEvent) {
+            this.debounce(e.target, e, () => {
+              this.withinOwners(e.target, (view, targetCtx) => {
+                callback(e, event, view, e.target, targetCtx, targetPhxEvent, null);
+              });
+            });
+          } else {
+            dom_default.all(document, `[${windowBinding}]`, (el) => {
+              let phxEvent = el.getAttribute(windowBinding);
+              this.debounce(el, e, () => {
+                this.withinOwners(el, (view, targetCtx) => {
+                  callback(e, event, view, el, targetCtx, phxEvent, "window");
+                });
+              });
+            });
+          }
+        });
+      }
+    }
+    bindClicks() {
+      this.bindClick("click", "click", false);
+      this.bindClick("mousedown", "capture-click", true);
+    }
+    bindClick(eventName, bindingName, capture) {
+      let click = this.binding(bindingName);
+      window.addEventListener(eventName, (e) => {
+        if (!this.isConnected()) {
+          return;
+        }
+        let target = null;
+        if (capture) {
+          target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`);
+        } else {
+          target = closestPhxBinding(e.target, click);
+        }
+        let phxEvent = target && target.getAttribute(click);
+        if (!phxEvent) {
+          return;
+        }
+        if (target.getAttribute("href") === "#") {
+          e.preventDefault();
+        }
+        this.debounce(target, e, () => {
+          this.withinOwners(target, (view, targetCtx) => {
+            view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target));
+          });
+        });
+      }, capture);
+    }
+    bindNav() {
+      if (!browser_default.canPushState()) {
+        return;
+      }
+      if (history.scrollRestoration) {
+        history.scrollRestoration = "manual";
+      }
+      let scrollTimer = null;
+      window.addEventListener("scroll", (_e) => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          browser_default.updateCurrentState((state) => Object.assign(state, { scroll: window.scrollY }));
+        }, 100);
+      });
+      window.addEventListener("popstate", (event) => {
+        if (!this.registerNewLocation(window.location)) {
+          return;
+        }
+        let { type, id, root, scroll } = event.state || {};
+        let href = window.location.href;
+        if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
+          this.main.pushLinkPatch(href, null);
+        } else {
+          this.replaceMain(href, null, () => {
+            if (root) {
+              this.replaceRootHistory();
+            }
+            if (typeof scroll === "number") {
+              setTimeout(() => {
+                window.scrollTo(0, scroll);
+              }, 0);
+            }
+          });
+        }
+      }, false);
+      window.addEventListener("click", (e) => {
+        let target = closestPhxBinding(e.target, PHX_LIVE_LINK);
+        let type = target && target.getAttribute(PHX_LIVE_LINK);
+        let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1;
+        if (!type || !this.isConnected() || !this.main || wantsNewTab) {
+          return;
+        }
+        let href = target.href;
+        let linkState = target.getAttribute(PHX_LINK_STATE);
+        e.preventDefault();
+        if (this.pendingLink === href) {
+          return;
+        }
+        if (type === "patch") {
+          this.pushHistoryPatch(href, linkState, target);
+        } else if (type === "redirect") {
+          this.historyRedirect(href, linkState);
+        } else {
+          throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`);
+        }
+      }, false);
+    }
+    withPageLoading(info, callback) {
+      dom_default.dispatchEvent(window, "phx:page-loading-start", info);
+      let done = () => dom_default.dispatchEvent(window, "phx:page-loading-stop", info);
+      return callback ? callback(done) : done;
+    }
+    pushHistoryPatch(href, linkState, targetEl) {
+      this.withPageLoading({ to: href, kind: "patch" }, (done) => {
+        this.main.pushLinkPatch(href, targetEl, (linkRef) => {
+          this.historyPatch(href, linkState, linkRef);
+          done();
+        });
+      });
+    }
+    historyPatch(href, linkState, linkRef = this.setPendingLink(href)) {
+      if (!this.commitPendingLink(linkRef)) {
+        return;
+      }
+      browser_default.pushState(linkState, { type: "patch", id: this.main.id }, href);
+      this.registerNewLocation(window.location);
+    }
+    historyRedirect(href, linkState, flash) {
+      let scroll = window.scrollY;
+      this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
+        this.replaceMain(href, flash, () => {
+          browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
+          this.registerNewLocation(window.location);
+          done();
+        });
+      });
+    }
+    replaceRootHistory() {
+      browser_default.pushState("replace", { root: true, type: "patch", id: this.main.id });
+    }
+    registerNewLocation(newLocation) {
+      let { pathname, search } = this.currentLocation;
+      if (pathname + search === newLocation.pathname + newLocation.search) {
+        return false;
+      } else {
+        this.currentLocation = clone(newLocation);
+        return true;
+      }
+    }
+    bindForms() {
+      let iterations = 0;
+      this.on("submit", (e) => {
+        let phxEvent = e.target.getAttribute(this.binding("submit"));
+        if (!phxEvent) {
+          return;
+        }
+        e.preventDefault();
+        e.target.disabled = true;
+        this.withinOwners(e.target, (view, targetCtx) => view.submitForm(e.target, targetCtx, phxEvent));
+      }, false);
+      for (let type of ["change", "input"]) {
+        this.on(type, (e) => {
+          let input = e.target;
+          let phxEvent = input.form && input.form.getAttribute(this.binding("change"));
+          if (!phxEvent) {
+            return;
+          }
+          if (input.type === "number" && input.validity && input.validity.badInput) {
+            return;
+          }
+          let currentIterations = iterations;
+          iterations++;
+          let { at, type: lastType } = dom_default.private(input, "prev-iteration") || {};
+          if (at === currentIterations - 1 && type !== lastType) {
+            return;
+          }
+          dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });
+          this.debounce(input, e, () => {
+            this.withinOwners(input.form, (view, targetCtx) => {
+              dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
+              if (!dom_default.isTextualInput(input)) {
+                this.setActiveElement(input);
+              }
+              view.pushInput(input, targetCtx, phxEvent, e.target);
+            });
+          });
+        }, false);
+      }
+    }
+    debounce(el, event, callback) {
+      let phxDebounce = this.binding(PHX_DEBOUNCE);
+      let phxThrottle = this.binding(PHX_THROTTLE);
+      let defaultDebounce = this.defaults.debounce.toString();
+      let defaultThrottle = this.defaults.throttle.toString();
+      dom_default.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback);
+    }
+    silenceEvents(callback) {
+      this.silenced = true;
+      callback();
+      this.silenced = false;
+    }
+    on(event, callback) {
+      window.addEventListener(event, (e) => {
+        if (!this.silenced) {
+          callback(e);
+        }
+      });
+    }
+  };
+  return phoenix_live_view_exports;
+})();
