@@ -19,13 +19,11 @@ element with the new content instead appending or prepending a new
 element.
 
 The "ignore" behaviour is frequently used when you need to integrate
-with another JS library. The "append" and "prepend" feature is often
-used with "Temporary assigns" to work with large amounts of data. Let's
-learn more.
+with another JS library. Note only the element contents are ignored,
+its attributes can still be updated.
 
-*Note*: "ignore" behaviour ignores changes to content of the element.
-If your JS library changes attributes of the element (e.g. adds classes)
-, you should add another element inside "ignore"d element and use that one.
+The "append" and "prepend" feature is often used with "Temporary assigns"
+to work with large amounts of data. Let's learn more.
 
 ## Temporary assigns
 
