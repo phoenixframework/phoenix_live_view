@@ -139,8 +139,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
           """)
         end)
 
-      assert output =~ ~r"expected tag name containing only lowercase chars, got: sPan\n  .+ nofile:2:"
-      assert output =~ ~r"expected tag name containing only lowercase chars, got: diV\n  .+ nofile:5:"
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: sPan\n\s*+nofile:2:"
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: diV\n\s*nofile:5:"
     end
   end
 
