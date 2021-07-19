@@ -33,6 +33,7 @@ let DOM = {
   },
 
   all(node, query, callback){
+    if(!node){ return [] }
     let array = Array.from(node.querySelectorAll(query))
     return callback ? array.forEach(callback) : array
   },
