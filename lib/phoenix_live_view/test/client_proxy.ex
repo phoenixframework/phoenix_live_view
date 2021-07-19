@@ -308,15 +308,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
-               {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cids} <- __maybe_cids__(root, node) do
+               {:ok, extra} <- maybe_values(type, node, element) do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
                 other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
               end
 
-            {view, cids, event, values, uploads}
+            {view, DOM.targets_from_node(root, node), event, values, uploads}
           end
       end
 
@@ -866,41 +865,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp select_node(root, _topic) do
     {:ok, root}
-  end
-
-  def __maybe_cids__(_tree, nil) do
-    {:ok, [nil]}
-  end
-
-  def __maybe_cids__(tree, node) do
-    case DOM.all_attributes(node, "phx-target") do
-      [] ->
-        {:ok, [nil]}
-
-      [selector] ->
-        case Integer.parse(selector) do
-          {cid, ""} ->
-            {:ok, [cid]}
-
-          _ ->
-            case DOM.all(tree, selector) do
-              [] ->
-                {:ok, [nil]}
-
-              elements ->
-                cids =
-                  Enum.reduce(elements, [], fn element, acc ->
-                    if cid = DOM.component_id(element) do
-                      [String.to_integer(cid) | acc]
-                    else
-                      [nil | acc]
-                    end
-                  end)
-
-                {:ok, cids}
-            end
-        end
-    end
   end
 
   defp maybe_event(:upload_progress, node, %Element{} = element) do

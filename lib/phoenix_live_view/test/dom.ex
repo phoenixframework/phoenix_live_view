@@ -46,6 +46,34 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
+  def targets_from_node(tree, node) do
+    case node && all_attributes(node, "phx-target") do
+      nil -> [nil]
+      [] -> [nil]
+      [selector] -> targets_from_selector(tree, selector)
+    end
+  end
+
+  def targets_from_selector(tree, selector) do
+    case Integer.parse(selector) do
+      {cid, ""} ->
+        [cid]
+
+      _ ->
+        case all(tree, selector) do
+          [] ->
+            [nil]
+
+          elements ->
+            for element <- elements do
+              if cid = component_id(element) do
+                String.to_integer(cid)
+              end
+            end
+        end
+    end
+  end
+
   def all_attributes(html_tree, name), do: Floki.attribute(html_tree, name)
 
   def all_values({_, attributes, _}) do

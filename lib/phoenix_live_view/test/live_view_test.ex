@@ -996,49 +996,40 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
-      cid = Phoenix.LiveViewTest.__find_cid__!(view, selector)
-
-      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
-        {:ok, %{external: false}} ->
-          require Phoenix.ChannelTest
-          builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-
-          Phoenix.LiveViewTest.__start_upload_client__(
-            builder,
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        :error ->
-          raise "no uploads allowed for #{name}"
-      end
+      require Phoenix.ChannelTest
+      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      Phoenix.LiveViewTest.__file_input__(view, selector, name, entries, builder)
     end
   end
 
-  def __find_cid__!(view, selector) do
+  @doc false
+  def __file_input__(view, selector, name, entries, builder) do
+    cid = find_cid!(view, selector)
+
+    case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
+      {:ok, %{external: false}} ->
+        start_upload_client(builder, view, selector, name, entries, cid)
+
+      {:ok, %{external: func}} when is_function(func) ->
+        start_external_upload_client(view, selector, name, entries, cid)
+
+      :error ->
+        raise "no uploads allowed for #{name}"
+    end
+  end
+
+  defp find_cid!(view, selector) do
     html_tree = view |> render() |> DOM.parse()
 
-    with {:ok, form} <- DOM.maybe_one(html_tree, selector),
-         {:ok, [cid | _]} <- ClientProxy.__maybe_cids__(html_tree, form) do
+    with {:ok, form} <- DOM.maybe_one(html_tree, selector) do
+      [cid | _] = DOM.targets_from_node(html_tree, form)
       cid
     else
       {:error, _reason, msg} -> raise ArgumentError, msg
     end
   end
 
-  def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
+  defp start_upload_client(socket_builder, view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[socket_builder: socket_builder, cid: cid]]},
@@ -1050,7 +1041,7 @@ defmodule Phoenix.LiveViewTest do
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
-  def __start_external_upload_client__(view, form_selector, name, entries, cid) do
+  defp start_external_upload_client(view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[cid: cid]]},
