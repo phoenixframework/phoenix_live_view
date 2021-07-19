@@ -119,7 +119,7 @@ anywhere else:
 All current Chrome, Safari, Firefox, and MS Edge are supported.
 IE11 support is available with the following polyfills:
 
-```console
+```shell
 $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill new-event-polyfill @webcomponents/template shim-keyboard-event-key core-js
 ```
 

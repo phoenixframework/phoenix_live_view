@@ -116,43 +116,6 @@ Where `@session_options` are the options given to `plug Plug.Session` by using a
   plug Plug.Session, @session_options
 ```
 
-Add LiveView NPM dependencies to your `assets/package.json`. For a regular project, do:
-
-```json
-{
-  "dependencies": {
-    "phoenix": "file:../deps/phoenix",
-    "phoenix_html": "file:../deps/phoenix_html",
-    "phoenix_live_view": "file:../deps/phoenix_live_view"
-  }
-}
-```
-
-However, if you're adding `phoenix_live_view` to an umbrella project, the dependency paths should be modified appropriately:
-
-```json
-{
-  "dependencies": {
-    "phoenix": "file:../../../deps/phoenix",
-    "phoenix_html": "file:../../../deps/phoenix_html",
-    "phoenix_live_view": "file:../../../deps/phoenix_live_view"
-  }
-}
-```
-
-Then install the new NPM dependency:
-
-```bash
-npm install --prefix assets
-```
-
-If you had previously installed `phoenix_live_view` and want to get the
-latest javascript, then force an install with:
-
-```bash
-npm install --force phoenix_live_view --prefix assets
-```
-
 Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
 
 ```html
@@ -180,6 +143,47 @@ liveSocket.connect()
 // Call disableLatencySim() to disable:
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
+```
+
+The JavaScript above expects `phoenix_live_view` to be available as a JavaScript dependency. Let's do that.
+
+## npm dependencies
+
+If using `npm`, you need to add LiveView to your `assets/package.json`. For a regular project, do:
+
+```json
+{
+  "dependencies": {
+    "phoenix": "file:../deps/phoenix",
+    "phoenix_html": "file:../deps/phoenix_html",
+    "phoenix_live_view": "file:../deps/phoenix_live_view"
+  }
+}
+```
+
+However, if you're adding `phoenix_live_view` to an umbrella project, the dependency paths should be modified appropriately:
+
+```json
+{
+  "dependencies": {
+    "phoenix": "file:../../../deps/phoenix",
+    "phoenix_html": "file:../../../deps/phoenix_html",
+    "phoenix_live_view": "file:../../../deps/phoenix_live_view"
+  }
+}
+```
+
+Now run the next commands from your web app root:
+
+```bash
+npm install --prefix assets
+```
+
+If you had previously installed `phoenix_live_view` and want to get the
+latest javascript, then force an install with:
+
+```bash
+npm install --force phoenix_live_view --prefix assets
 ```
 
 ## Layouts
@@ -291,9 +295,9 @@ use Phoenix.LiveView,
 
 If you want to show a progress bar as users perform live actions, we recommend using [`topbar`](https://github.com/buunguyen/topbar).
 
-First add `topbar` as a dependency:
+You can either add a copy of `topbar` to `assets/vendor/topbar.js` or add it as a npm dependency by calling:
 
-```console
+```shell
 $ npm install --prefix assets --save topbar
 ```
 
