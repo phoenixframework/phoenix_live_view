@@ -486,7 +486,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp downcase?(<<>>), do: true
 
   defp warn(message, file, line) do
-    stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line})
+    stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line, module: nil})
     IO.warn(message, stacktrace)
   end
 end
