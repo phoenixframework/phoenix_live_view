@@ -14,5 +14,5 @@ esbuild_base =  [
 config :esbuild,
   version: "0.12.15",
   module: esbuild_base ++ [args: ~w(./js/phoenix_live_view --bundle --format=esm --sourcemap --outfile=../priv/static/phoenix_live_view.esm.js)],
-  cdn: esbuild_base ++ [args: ~w(./js/phoenix_live_view --bundle --format=iife --global-name=Phoenix --outfile=../priv/static/phoenix_live_view.js)],
-  cdn_min: esbuild_base ++ [args: ~w(./js/phoenix_live_view --bundle --format=iife --global-name=Phoenix --minify --outfile=../priv/static/phoenix_live_view.min.js)]
+  cdn: esbuild_base ++ [args: ~w(./js/phoenix_live_view --bundle --format=iife --global-name=LiveView --outfile=../priv/static/phoenix_live_view.js)],
+  cdn_min: esbuild_base ++ [args: ~w(./js/phoenix_live_view --bundle --format=iife --global-name=LiveView --minify --outfile=../priv/static/phoenix_live_view.min.js)]
