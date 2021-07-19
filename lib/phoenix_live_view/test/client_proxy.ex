@@ -322,8 +322,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     case result do
       {view, cids, event, values, upload} when is_list(cids) ->
+        last = length(cids) - 1
+
         diffs =
-          Enum.reduce(cids, state, fn cid, acc ->
+          cids
+          |> Enum.with_index()
+          |> Enum.reduce(state, fn {cid, index}, acc ->
             {type, encoded_value} = encode_event_type(type, values)
 
             payload =
@@ -339,7 +343,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                 upload
               )
 
-            push_with_reply(acc, from, view, "event", payload)
+            push_with_callback(acc, view, "event", payload, fn reply, state ->
+              if index == last do
+                {:noreply, render_reply(reply, from, state)}
+              else
+                {:noreply, state}
+              end
+            end)
           end)
 
         {:noreply, diffs}
