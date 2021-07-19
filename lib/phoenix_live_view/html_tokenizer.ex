@@ -131,6 +131,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
+      {:warn, name, new_column, rest, message} ->
+        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
+        warn(message, state.file, line)
+        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
+
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, message: message
     end
@@ -143,6 +148,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, name, new_column, rest} ->
         acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
         handle_tag_close_end(rest, line, new_column, acc, state)
+
+      {:warn, name, new_column, rest, message} ->
+        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
+        warn(message, state.file, line)
+        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, message: message
@@ -167,7 +177,20 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
        when c in @name_stop_chars do
-    {:ok, buffer_to_string(buffer), column, text}
+    tag_name = buffer_to_string(buffer)
+
+    case tag_name do
+      <<first::utf8, rest::binary>> when first in ?a..?z ->
+        if downcase?(rest) do
+          {:ok, tag_name, column, text}
+        else
+          message = "expected tag name containing only lowercase chars, got: #{tag_name}"
+          {:warn, tag_name, column, text, message}
+        end
+
+      _ ->
+        {:ok, tag_name, column, text}
+    end
   end
 
   defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
@@ -456,5 +479,14 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp pop_brace(%{braces: [pos | braces]} = state) do
     {pos, %{state | braces: braces}}
+  end
+
+  defp downcase?(<<c, _::binary>>) when c in ?A..?Z, do: false
+  defp downcase?(<<_, rest::binary>>), do: downcase?(rest)
+  defp downcase?(<<>>), do: true
+
+  defp warn(message, file, line) do
+    stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line, module: nil})
+    IO.warn(message, stacktrace)
   end
 end
