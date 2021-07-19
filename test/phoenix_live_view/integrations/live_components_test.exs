@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
                 ["\n  jose says hi\n" <> _]}
              ] = DOM.parse(html)
 
-      html = view |> element("#jose") |> render_click(%{"op" => "title-case"})
+      html = view |> with_target("#jose") |> render_click("transform", %{"op" => "title-case"})
 
       assert [
                _,
@@ -183,6 +183,20 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert view |> element("#jose #Jose-dup") |> render() ==
                "<div data-phx-component=\"3\" phx-click=\"transform\" id=\"Jose-dup\" phx-target=\"#Jose-dup\">\n  JOSE-DUP says hi\n  \n</div>"
+    end
+
+    test "works with_target to component", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      html = view |> with_target("#chris") |> render_click("transform", %{"op" => "upcase"})
+
+      assert [
+               _,
+               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                ["\n  CHRIS says hi\n" <> _]},
+               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                ["\n  jose says hi\n" <> _]}
+             ] = DOM.parse(html)
     end
 
     test "works with multiple phx-targets", %{conn: conn} do

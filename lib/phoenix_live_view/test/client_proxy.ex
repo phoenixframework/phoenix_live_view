@@ -290,15 +290,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_info({:sync_render_event, topic_or_element, type, value, from}, state) do
     result =
       case topic_or_element do
-        {topic, event} ->
+        {topic, event, selector} ->
           view = fetch_view_by_topic!(state, topic)
+
+          cids =
+            if selector, do: DOM.targets_from_selector(root(state, view), selector), else: [nil]
 
           case value do
             %Upload{} = upload ->
-              {view, [nil], event, %{}, upload}
+              {view, cids, event, %{}, upload}
 
             other ->
-              {view, [nil], event, stringify(other, & &1), nil}
+              {view, cids, event, stringify(other, & &1), nil}
           end
 
         %Element{} = element ->
@@ -816,7 +819,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp encode_event_type(type, value),
     do: {Atom.to_string(type), value}
 
-  defp proxy_topic({topic, _}) when is_binary(topic), do: topic
+  defp proxy_topic({topic, _, _}) when is_binary(topic), do: topic
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   defp root(state, view), do: DOM.by_id!(state.html, view.id)
@@ -863,8 +866,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp select_node(root, _topic) do
-    {:ok, root}
+  defp select_node(root, {_, _, selector}) do
+    if selector do
+      root |> DOM.child_nodes() |> DOM.maybe_one(selector)
+    else
+      {:ok, root}
+    end
   end
 
   defp maybe_event(:upload_progress, node, %Element{} = element) do

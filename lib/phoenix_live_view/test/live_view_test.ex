@@ -800,7 +800,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(%View{} = view, type, event, value) when is_map(value) or is_list(value) do
-    call(view, {:render_event, {proxy_topic(view), to_string(event)}, type, value})
+    call(view, {:render_event, {proxy_topic(view), to_string(event), view.target}, type, value})
   end
 
   @doc """
@@ -887,8 +887,25 @@ defmodule Phoenix.LiveViewTest do
     |> DOM.to_html()
   end
 
+  @doc """
+  Sets the target of the view for events.
+
+  This emulates `phx-target` directly in tests, without
+  having to dispatch the event to a specific element.
+  This can be useful for invoking events to one or
+  multiple components at the same time:
+
+      view
+      |> with_target("#user-1,#user-2")
+      |> render_click("Hide", %{})
+
+  """
+  def with_target(%View{} = view, target) do
+    %{view | target: target}
+  end
+
   defp render_tree(%View{} = view) do
-    render_tree(view, {proxy_topic(view), "render"})
+    render_tree(view, {proxy_topic(view), "render", view.target})
   end
 
   defp render_tree(%Element{} = element) do
@@ -1037,7 +1054,6 @@ defmodule Phoenix.LiveViewTest do
     }
 
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
-
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 

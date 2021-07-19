@@ -8,6 +8,7 @@ defmodule Phoenix.LiveViewTest.View do
     * `module` - The module of the running LiveView
     * `pid` - The Pid of the running LiveView
     * `endpoint` - The endpoint for the LiveView
+    * `target` - The target to scope events to
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
@@ -19,7 +20,8 @@ defmodule Phoenix.LiveViewTest.View do
             module: nil,
             pid: nil,
             proxy: nil,
-            endpoint: nil
+            endpoint: nil,
+            target: nil
 end
 
 defmodule Phoenix.LiveViewTest.Element do
