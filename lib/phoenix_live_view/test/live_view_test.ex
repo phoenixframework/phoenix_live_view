@@ -869,8 +869,9 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Returns the HTML string of the rendered view or element.
 
-  If a view is provided, the entire LiveView is rendered. If an
-  element is provided, only that element is rendered.
+  If a view is provided, the entire LiveView is rendered.
+  If a view after calling `with_target/2` or an element
+  are given, only that particular context is returned.
 
   ## Examples
 
