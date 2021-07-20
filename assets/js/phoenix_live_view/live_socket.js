@@ -80,6 +80,7 @@ import {
   PHX_HAS_FOCUSED,
   PHX_KEY,
   PHX_LINK_STATE,
+  PHX_LIVE_FILE_UPLOADS,
   PHX_LIVE_LINK,
   PHX_LV_DEBUG,
   PHX_LV_LATENCY_SIM,
@@ -670,6 +671,15 @@ export default class LiveSocket {
         })
       }, false)
     }
+
+    this.on(PHX_LIVE_FILE_UPLOADS, e => {
+      let input = e.target
+      let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
+      if(!phxEvent){ return }
+      this.withinOwners(input.form, (view, targetCtx) => {
+        view.pushUploads(input, targetCtx, phxEvent, e.detail)
+      })
+    })
   }
 
   debounce(el, event, callback){
