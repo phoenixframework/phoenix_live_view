@@ -894,10 +894,15 @@ export default class View {
   uploadFiles(formEl, targetCtx, ref, cid, onComplete){
     let joinCountAtUpload = this.joinCount
     let inputEls = LiveUploader.activeFileInputs(formEl)
+    let numFileInputsInProgress = inputEls.length
 
     // get each file input
     inputEls.forEach(inputEl => {
-      let uploader = new LiveUploader(inputEl, this, onComplete)
+      let uploader = new LiveUploader(inputEl, this, () => {
+        numFileInputsInProgress--
+        if(numFileInputsInProgress === 0){ onComplete() }
+      });
+
       this.uploaders[inputEl] = uploader
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
