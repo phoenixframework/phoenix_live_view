@@ -802,7 +802,8 @@ export default class View {
     })
   }
 
-  pushUploads(inputEl, targetCtx, phxEvent, files, callback){
+  pushUploads(inputEl, targetCtx, phxEvent, eventDetail, callback){
+    let { files } = eventDetail
     if(!files || files.length < 1){ return }
     if(!DOM.isUploadInput(inputEl)){ return }
 
@@ -971,7 +972,7 @@ export default class View {
     let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
-    else { DOM.dispatchEvent(inputs[0], PHX_LIVE_FILE_UPLOADS, filesOrBlobs) }
+    else { DOM.dispatchEvent(inputs[0], PHX_LIVE_FILE_UPLOADS, {files: filesOrBlobs}) }
   }
 
   pushFormRecovery(form, callback){
