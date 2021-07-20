@@ -339,14 +339,13 @@ let DOM = {
 
   replaceRootContainer(container, tagName, attrs){
     let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN])
-    let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase())
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)
-        .filter(notRetained)
+        .filter(attr => !retainedAttrs.has(attr.name.toLowerCase()))
         .forEach(attr => container.removeAttribute(attr.name))
 
       Object.keys(attrs)
-        .filter(notRetained)
+        .filter(name => !retainedAttrs.has(name.toLowerCase()))
         .forEach(attr => container.setAttribute(attr, attrs[attr]))
 
       return container
