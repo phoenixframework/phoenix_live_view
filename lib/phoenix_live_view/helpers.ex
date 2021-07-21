@@ -767,7 +767,7 @@ defmodule Phoenix.LiveView.Helpers do
   ## Examples
 
       <%= for entry <- @uploads.avatar.entries do %>
-        <%= live_img_preview entry, class: "figure" %>
+        <%= live_img_preview entry, width: 75 %>
       <% end %>
   """
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
@@ -781,7 +781,7 @@ defmodule Phoenix.LiveView.Helpers do
 
     assigns = LiveView.assign(%{__changed__: nil}, attrs: attrs)
 
-    ~H"<figure {@attrs}></figure>"
+    ~H"<img {@attrs}/>"
   end
 
   @doc """
