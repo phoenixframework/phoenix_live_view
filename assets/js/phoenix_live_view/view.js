@@ -14,7 +14,6 @@ import {
   PHX_FEEDBACK_FOR,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
-  PHX_LIVE_FILE_UPLOADS,
   PHX_PAGE_LOADING,
   PHX_PARENT_ID,
   PHX_PROGRESS,
@@ -24,6 +23,7 @@ import {
   PHX_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
+  PHX_TRACK_UPLOADS,
   PHX_UPDATE,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
@@ -802,41 +802,6 @@ export default class View {
     })
   }
 
-  pushUploads(inputEl, targetCtx, phxEvent, eventDetail, callback){
-    let { files } = eventDetail
-    if(!files || files.length < 1){ return }
-    if(!DOM.isUploadInput(inputEl)){ return }
-
-    let uploads
-    let cid = this.targetComponentID(inputEl.form, targetCtx)
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let formData = serializeForm(inputEl.form, {_target: inputEl.name})
-
-    LiveUploader.trackFiles(inputEl, files)
-    uploads = LiveUploader.serializeFiles(inputEl, files)
-    let event = {
-      type: "form",
-      event: phxEvent,
-      value: formData,
-      uploads: uploads,
-      cid: cid
-    }
-    this.pushWithReply(refGenerator, "event", event, resp => {
-      DOM.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR))
-      if(DOM.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null){
-        if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
-          let [ref, _els] = refGenerator()
-          this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
-            callback && callback(resp)
-            this.triggerAwaitingSubmit(inputEl.form)
-          })
-        }
-      } else {
-        callback && callback(resp)
-      }
-    })
-  }
-
   triggerAwaitingSubmit(formEl){
     let awaitingSubmit = this.getScheduledSubmit(formEl)
     if(awaitingSubmit){
@@ -972,7 +937,7 @@ export default class View {
     let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
-    else { DOM.dispatchEvent(inputs[0], PHX_LIVE_FILE_UPLOADS, {files: filesOrBlobs}) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
   }
 
   pushFormRecovery(form, callback){

@@ -814,7 +814,7 @@ describe("View Hooks", function (){
     let blob = new Blob([JSON.stringify(contents, null, 2)], {type : "application/json"})
     recorderHook.upload("doc", [blob])
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(new CustomEvent("phx:live-file:uploads", {
+    expect(dispatchEventSpy).toHaveBeenCalledWith(new CustomEvent("track-uploads", {
       bubbles: true,
       cancelable: true,
       detail: {files: [blob]}

@@ -80,7 +80,6 @@ import {
   PHX_HAS_FOCUSED,
   PHX_KEY,
   PHX_LINK_STATE,
-  PHX_LIVE_FILE_UPLOADS,
   PHX_LIVE_LINK,
   PHX_LV_DEBUG,
   PHX_LV_LATENCY_SIM,
@@ -90,6 +89,7 @@ import {
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
   PHX_THROTTLE,
+  PHX_TRACK_UPLOADS,
   RELOAD_JITTER
 
 } from "./constants"
@@ -459,6 +459,13 @@ export default class LiveSocket {
       LiveUploader.trackFiles(dropTarget, files)
       dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
     })
+    this.on(PHX_TRACK_UPLOADS, e => {
+      let uploadTarget = e.target
+      if(!DOM.isUploadInput(uploadTarget)){ return }
+      let files = Array.from(e.detail.files || []).filter(f => f instanceof File || f instanceof Blob)
+      LiveUploader.trackFiles(uploadTarget, files)
+      uploadTarget.dispatchEvent(new Event("input", {bubbles: true}))
+    })
   }
 
   eventMeta(eventName, e, targetEl){
@@ -671,15 +678,6 @@ export default class LiveSocket {
         })
       }, false)
     }
-
-    this.on(PHX_LIVE_FILE_UPLOADS, e => {
-      let input = e.target
-      let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
-      if(!phxEvent){ return }
-      this.withinOwners(input.form, (view, targetCtx) => {
-        view.pushUploads(input, targetCtx, phxEvent, e.detail)
-      })
-    })
   }
 
   debounce(el, event, callback){
