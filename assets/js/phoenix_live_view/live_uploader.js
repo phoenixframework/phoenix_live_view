@@ -42,12 +42,8 @@ export default class LiveUploader {
 
   static serializeUploads(inputEl){
     let files = this.activeFiles(inputEl)
-    return this.serializeFiles(inputEl, files)
-  }
-
-  static serializeFiles(inputEl, filesOrBlobs){
     let fileData = {}
-    filesOrBlobs.forEach(file => {
+    files.forEach(file => {
       let entry = {path: inputEl.name}
       let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF)
       fileData[uploadRef] = fileData[uploadRef] || []
