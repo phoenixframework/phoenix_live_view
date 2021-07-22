@@ -771,16 +771,17 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
   """
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
-    opts =
-      Keyword.merge(opts,
-        id: "phx-preview-#{ref}",
-        data_phx_upload_ref: entry.upload_ref,
-        data_phx_entry_ref: ref,
-        data_phx_hook: "Phoenix.LiveImgPreview",
-        data_phx_update: "ignore"
-      )
+    attrs = Keyword.merge(opts, [
+      id: "phx-preview-#{ref}",
+      data_phx_upload_ref: entry.upload_ref,
+      data_phx_entry_ref: ref,
+      data_phx_hook: "Phoenix.LiveImgPreview",
+      data_phx_update: "ignore"
+    ])
 
-    Phoenix.HTML.Tag.content_tag(:img, "", opts)
+    assigns = LiveView.assign(%{__changed__: nil}, attrs: attrs)
+
+    ~H"<img {@attrs}/>"
   end
 
   @doc """
