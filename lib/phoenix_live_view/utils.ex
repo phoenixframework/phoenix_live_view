@@ -104,7 +104,7 @@ defmodule Phoenix.LiveView.Utils do
       raise "client did not send full URL, missing host in #{url}"
     end
 
-    uri
+    %{uri | path: nil}
   end
 
   @doc """
