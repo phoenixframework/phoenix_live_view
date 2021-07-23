@@ -98,13 +98,13 @@ defmodule Phoenix.LiveView.Utils do
   defp prune_uri(:not_mounted_at_router), do: :not_mounted_at_router
 
   defp prune_uri(url) do
-    %URI{host: host, port: port, scheme: scheme} = url
+    uri = URI.parse(url)
 
-    if host == nil do
+    if uri.host == nil do
       raise "client did not send full URL, missing host in #{url}"
     end
 
-    %URI{host: host, port: port, scheme: scheme}
+    uri
   end
 
   @doc """
