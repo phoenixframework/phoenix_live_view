@@ -753,8 +753,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       clock_view = find_live_child(thermo_view, "clock")
 
-      refute_redirect(thermo_view)
-
       send(
         clock_view.pid,
         {:run,
@@ -763,7 +761,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
          end}
       )
 
-      refute_redirect(thermo_view, "/not_going_here")
+      refute_redirected(thermo_view, "/not_going_here")
 
       send(
         clock_view.pid,
@@ -774,7 +772,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       )
 
       try do
-        refute_redirect(thermo_view, "/another_url")
+        refute_redirected(thermo_view, "/another_url")
       rescue
         e ->
           assert %ArgumentError{message: message} = e

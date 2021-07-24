@@ -1238,43 +1238,20 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Refutes a redirect will happen within `timeout` milliseconds.
-  The default `timeout` is 100.
+  Refutes a redirect to a given path was performed.
 
-  It returns :ok if there was no redirect.
-
-  ## Examples
-
-      render_click(view, :event_that_does_not_triggers_redirect)
-      :ok = refute_redirect view
-  """
-  def refute_redirect(view, timeout \\ 100)
-
-  def refute_redirect(view, timeout) when is_integer(timeout) do
-    refute_navigation(view, :redirect, nil, timeout)
-  end
-
-  def refute_redirect(view, to) when is_binary(to), do: refute_redirect(view, to, 100)
-
-  @doc """
-  Refutes a redirect will happen to a given path within `timeout` milliseconds.
-  The default `timeout` is 100.
-
-  It returns :ok if the specified redirect didn't happen before timeout.
+  It returns :ok if the specified redirect isn't already in the mailbox.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect_to_path)
       :ok = refute_redirect view, "/wrong_path"
   """
-  def refute_redirect(view, to, timeout)
-      when is_binary(to) and is_integer(timeout) do
-    refute_navigation(view, :redirect, to, timeout)
+  def refute_redirected(view, to) when is_binary(to) do
+    refute_navigation(view, :redirect, to)
   end
 
-  defp refute_navigation(view, kind, to, timeout) do
-    %{proxy: {ref, topic, _}} = view
-
+  defp refute_navigation(view = %{proxy: {ref, topic, _}}, kind, to) do
     receive do
       {^ref, {^kind, ^topic, %{to: new_to}}} when new_to == to or to == nil ->
         message =
@@ -1286,8 +1263,7 @@ defmodule Phoenix.LiveViewTest do
 
         raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
     after
-      timeout ->
-        :ok
+      0 -> :ok
     end
   end
 
