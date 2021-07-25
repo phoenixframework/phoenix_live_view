@@ -1245,6 +1245,36 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
+  @doc """
+  Refutes a redirect to a given path was performed.
+
+  It returns :ok if the specified redirect isn't already in the mailbox.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_redirect_to_path)
+      :ok = refute_redirect view, "/wrong_path"
+  """
+  def refute_redirected(view, to) when is_binary(to) do
+    refute_navigation(view, :redirect, to)
+  end
+
+  defp refute_navigation(view = %{proxy: {ref, topic, _}}, kind, to) do
+    receive do
+      {^ref, {^kind, ^topic, %{to: new_to}}} when new_to == to or to == nil ->
+        message =
+          if to do
+            "expected #{inspect(view.module)} not to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} not to #{kind}, "
+          end
+
+        raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+    after
+      0 -> :ok
+    end
+  end
+
   defp flush_navigation(ref, topic, last) do
     receive do
       {^ref, {kind, ^topic, %{to: to}}} when kind in [:patch, :redirect] ->
