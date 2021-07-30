@@ -23,6 +23,7 @@ import {
   PHX_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
+  PHX_TRACK_UPLOADS,
   PHX_UPDATE,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
@@ -930,6 +931,13 @@ export default class View {
         }
       })
     })
+  }
+
+  dispatchUploads(name, filesOrBlobs){
+    let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
+    if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
+    else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
   }
 
   pushFormRecovery(form, callback){

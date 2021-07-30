@@ -788,6 +788,39 @@ describe("View Hooks", function (){
     expect(values).toEqual(["mounted", "disconnected", "reconnected"])
   })
 
+  test("dispatches uploads", async () => {
+    let hooks = { Recorder: {} }
+    let liveSocket = new LiveSocket("/live", Socket, { hooks })
+    let el = liveViewDOM()
+    let view = simulateJoinedView(el, liveSocket)
+
+    let template = `
+    <form id="rec" phx-hook="Recorder" phx-change="change">
+    <input accept="*" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-update="ignore" data-phx-upload-ref="0" id="uploads0" name="doc" phx-hook="Phoenix.LiveFileUpload" type="file">
+    </form>
+    `
+    view.onJoin({
+      rendered: {
+        s: [template],
+        fingerprint: 123
+      }
+    })
+
+    let recorderHook = view.getHook(view.el.querySelector("#rec"))
+    let fileEl = view.el.querySelector("#uploads0")
+    let dispatchEventSpy = jest.spyOn(fileEl, "dispatchEvent")
+
+    let contents = {hello: "world"}
+    let blob = new Blob([JSON.stringify(contents, null, 2)], {type : "application/json"})
+    recorderHook.upload("doc", [blob])
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(new CustomEvent("track-uploads", {
+      bubbles: true,
+      cancelable: true,
+      detail: {files: [blob]}
+    }))
+  })
+
   test("dom hooks", async () => {
     let fromHTML, toHTML = null
     let liveSocket = new LiveSocket("/live", Socket, {

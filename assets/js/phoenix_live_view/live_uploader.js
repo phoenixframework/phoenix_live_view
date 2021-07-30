@@ -39,14 +39,14 @@ export default class LiveUploader {
   }
 
   static serializeUploads(inputEl){
-    let files = this.activeFiles(inputEl, "serialize")
+    let files = this.activeFiles(inputEl)
     let fileData = {}
     files.forEach(file => {
       let entry = {path: inputEl.name}
       let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF)
       fileData[uploadRef] = fileData[uploadRef] || []
       entry.ref = this.genFileRef(file)
-      entry.name = file.name
+      entry.name = file.name || entry.ref
       entry.type = file.type
       entry.size = file.size
       fileData[uploadRef].push(entry)
