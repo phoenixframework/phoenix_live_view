@@ -882,7 +882,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   The `:for` assign is the form's source data and the optional `:action`
   assign can be provided for the form's action. Additionally accepts
-  the same options as `Phoenix.HTML.form_for/4` as optional assigns:
+  the same options as `Phoenix.HTML.Form.form_for/4` as optional assigns:
 
     * `:as` - the server side parameter in which all params for this
       form will be collected (i.e. `as: :user_params` would mean all fields
