@@ -96,7 +96,10 @@ defmodule Phoenix.LiveView.MixProject do
     # Ungrouped Modules:
     #
     # Phoenix.LiveView
+    # Phoenix.LiveView.Controller
     # Phoenix.LiveView.Helpers
+    # Phoenix.LiveView.Router
+    # Phoenix.LiveView.Socket
 
     [
       "Components": [
@@ -108,11 +111,6 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveViewTest.Element,
         Phoenix.LiveViewTest.Upload,
         Phoenix.LiveViewTest.View
-      ],
-      "Socket and Plugs": [
-        Phoenix.LiveView.Controller,
-        Phoenix.LiveView.Router,
-        Phoenix.LiveView.Socket
       ],
       "Upload structures": [
         Phoenix.LiveView.UploadConfig,
