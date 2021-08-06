@@ -597,7 +597,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       String.starts_with?(client_type, "video/") and "video/*" in acceptable_types -> true
       # strict
       client_type in acceptable_types -> true
-      Path.extname(entry.client_name) in conf.acceptable_exts -> true
+      String.downcase(Path.extname(entry.client_name), :ascii) in conf.acceptable_exts -> true
       true -> false
     end
   end

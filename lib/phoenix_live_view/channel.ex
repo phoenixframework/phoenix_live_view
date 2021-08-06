@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.Channel do
     %{socket: socket, components: components} = state
 
     result =
-      Diff.write_component(socket, cid, %{}, components, fn component_socket, component ->
+      Diff.write_component(socket, cid, components, fn component_socket, component ->
         component_socket
         |> maybe_update_uploads(payload)
         |> inner_component_handle_event(component, event, val)
@@ -1100,7 +1100,7 @@ defmodule Phoenix.LiveView.Channel do
     %{socket: socket, components: components} = state
 
     {diff, new_components, return} =
-      case Diff.write_component(socket, cid, %{}, components, fun) do
+      case Diff.write_component(socket, cid, components, fun) do
         {_diff, _new_components, _return} = triplet -> triplet
         :error -> {%{}, components, :error}
       end

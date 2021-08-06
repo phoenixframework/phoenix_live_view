@@ -290,15 +290,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_info({:sync_render_event, topic_or_element, type, value, from}, state) do
     result =
       case topic_or_element do
-        {topic, event} ->
+        {topic, event, selector} ->
           view = fetch_view_by_topic!(state, topic)
+
+          cids =
+            if selector, do: DOM.targets_from_selector(root(state, view), selector), else: [nil]
 
           case value do
             %Upload{} = upload ->
-              {view, nil, event, %{}, upload}
+              {view, cids, event, %{}, upload}
 
             other ->
-              {view, nil, event, stringify(other, & &1), nil}
+              {view, cids, event, stringify(other, & &1), nil}
           end
 
         %Element{} = element ->
@@ -308,36 +311,50 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event} <- maybe_event(type, node, element),
-               {:ok, extra} <- maybe_values(type, node, element),
-               {:ok, cid} <- __maybe_cid__(root, node) do
+               {:ok, extra} <- maybe_values(type, node, element) do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
                 other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
               end
 
-            {view, cid, event, values, uploads}
+            {view, DOM.targets_from_node(root, node), event, values, uploads}
           end
       end
 
     case result do
-      {view, cid, event, values, upload} ->
-        {type, encoded_value} = encode_event_type(type, values)
+      {view, cids, event, values, upload} when is_list(cids) ->
+        last = length(cids) - 1
 
-        payload =
-          maybe_put_uploads(
-            state,
-            view,
-            %{
-              "cid" => cid,
-              "type" => type,
-              "event" => event,
-              "value" => encoded_value
-            },
-            upload
-          )
+        diffs =
+          cids
+          |> Enum.with_index()
+          |> Enum.reduce(state, fn {cid, index}, acc ->
+            {type, encoded_value} = encode_event_type(type, values)
 
-        {:noreply, push_with_reply(state, from, view, "event", payload)}
+            payload =
+              maybe_put_uploads(
+                state,
+                view,
+                %{
+                  "cid" => cid,
+                  "type" => type,
+                  "event" => event,
+                  "value" => encoded_value
+                },
+                upload
+              )
+
+            push_with_callback(acc, view, "event", payload, fn reply, state ->
+              if index == last do
+                {:noreply, render_reply(reply, from, state)}
+              else
+                {:noreply, state}
+              end
+            end)
+          end)
+
+        {:noreply, diffs}
 
       {:allow_upload, topic, ref} ->
         handle_call({:render_allow_upload, topic, ref, value}, from, state)
@@ -802,7 +819,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp encode_event_type(type, value),
     do: {Atom.to_string(type), value}
 
-  defp proxy_topic({topic, _}) when is_binary(topic), do: topic
+  defp proxy_topic({topic, _, _}) when is_binary(topic), do: topic
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
 
   defp root(state, view), do: DOM.by_id!(state.html, view.id)
@@ -849,37 +866,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp select_node(root, _topic) do
-    {:ok, root}
-  end
-
-  def __maybe_cid__(_tree, nil) do
-    {:ok, nil}
-  end
-
-  def __maybe_cid__(tree, node) do
-    case DOM.all_attributes(node, "phx-target") do
-      [] ->
-        {:ok, nil}
-
-      ["#" <> _ = target] ->
-        with {:ok, target} <- DOM.maybe_one(tree, target, "phx-target") do
-          if cid = DOM.component_id(target) do
-            {:ok, String.to_integer(cid)}
-          else
-            {:ok, nil}
-          end
-        end
-
-      [maybe_integer] ->
-        case Integer.parse(maybe_integer) do
-          {cid, ""} ->
-            {:ok, cid}
-
-          _ ->
-            {:error, :invalid,
-             "expected phx-target to be either an ID or a CID, got: #{inspect(maybe_integer)}"}
-        end
+  defp select_node(root, {_, _, selector}) do
+    if selector do
+      root |> DOM.child_nodes() |> DOM.maybe_one(selector)
+    else
+      {:ok, root}
     end
   end
 

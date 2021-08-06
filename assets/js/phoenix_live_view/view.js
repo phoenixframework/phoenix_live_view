@@ -23,6 +23,7 @@ import {
   PHX_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
+  PHX_TRACK_UPLOADS,
   PHX_UPDATE,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
@@ -263,7 +264,7 @@ export default class View {
     // also does not include PHX_STATIC, so we need to copy it over from
     // the DOM.
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
-      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
+      let fromEl = toEl.id && this.el.querySelector(`[id="${toEl.id}"]`)
       let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
       if(phxStatic){ toEl.setAttribute(PHX_STATIC, phxStatic) }
       return this.joinChild(toEl)
@@ -894,10 +895,15 @@ export default class View {
   uploadFiles(formEl, targetCtx, ref, cid, onComplete){
     let joinCountAtUpload = this.joinCount
     let inputEls = LiveUploader.activeFileInputs(formEl)
+    let numFileInputsInProgress = inputEls.length
 
     // get each file input
     inputEls.forEach(inputEl => {
-      let uploader = new LiveUploader(inputEl, this, onComplete)
+      let uploader = new LiveUploader(inputEl, this, () => {
+        numFileInputsInProgress--
+        if(numFileInputsInProgress === 0){ onComplete() }
+      });
+
       this.uploaders[inputEl] = uploader
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
@@ -925,6 +931,13 @@ export default class View {
         }
       })
     })
+  }
+
+  dispatchUploads(name, filesOrBlobs){
+    let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
+    if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
+    else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
   }
 
   pushFormRecovery(form, callback){

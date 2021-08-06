@@ -126,6 +126,22 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
       end
     end
+
+    test "warn if a tag starting with a lowercase char is not all lowercase" do
+      output =
+        ExUnit.CaptureIO.capture_io(:standard_error, fn ->
+          tokenize("""
+          <div>
+            <sPan>
+              <div></div>
+            </span>
+          <diV>\
+          """)
+        end)
+
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: sPan\n\s*+nofile:2:"
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: diV\n\s*nofile:5:"
+    end
   end
 
   describe "attributes" do

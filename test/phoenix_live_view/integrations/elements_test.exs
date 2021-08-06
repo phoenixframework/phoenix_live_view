@@ -81,6 +81,17 @@ defmodule Phoenix.LiveView.ElementsTest do
                    ~r/selector "div" returned 3 elements and 2 of them matched the text filter "This"/,
                    fn -> view |> element("div", "This") |> render() end
     end
+
+    test "renders a given element via target", %{live: view} do
+      assert view |> with_target("#scoped-render") |> render() ==
+               ~s|<div id="scoped-render"><span>This</span> is a div</div>|
+    end
+
+    test "raises on bad selector via target", %{live: view} do
+      assert_raise ArgumentError,
+                   ~r/expected selector "div" to return a single element, but got 3/,
+                   fn -> view |> with_target("div") |> render() end
+    end
   end
 
   describe "render_click" do

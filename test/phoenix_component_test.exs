@@ -227,5 +227,57 @@ defmodule Phoenix.ComponentTest do
       assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
                [["%{a: true, b: true, bar: true}"]]
     end
+
+    defp inner_changed(assigns) do
+      ~H"""
+      <%= inspect(assigns.__changed__) %>
+      <%= render_block(@inner_block, "var") %>
+      """
+    end
+
+    test "with let" do
+      assigns = %{foo: 1, __changed__: %{}}
+      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) == [nil]
+
+      assigns = %{foo: 1, __changed__: %{foo: true}}
+
+      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) ==
+               [["%{foo: true, inner_block: true}", []]]
+
+      assert eval(
+               ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
+             ) ==
+               [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
+
+      assert eval(
+               ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed>|
+             ) ==
+               [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
+
+      assert eval(
+               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
+             ) ==
+               [
+                 [
+                   "%{foo: true, inner_block: true}",
+                   [["%{bar: true, inner_block: true}", [nil, "%{foo: true}"]]]
+                 ]
+               ]
+
+      assert eval(
+               ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(assigns.__changed__) %></.inner_changed>|
+             ) ==
+               [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
+
+      assert eval(
+               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
+             ) ==
+               [
+                 [
+                   "%{foo: true, inner_block: true}",
+                   [["%{bar: true, inner_block: true}", ["var", "%{foo: true}"]]]
+                 ]
+               ]
+    end
   end
 end

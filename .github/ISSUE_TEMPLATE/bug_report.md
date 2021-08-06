@@ -12,8 +12,6 @@ assignees: ''
 * Elixir version (elixir -v):
 * Phoenix version (mix deps):
 * Phoenix LiveView version (mix deps):
-* NodeJS version (node -v):
-* NPM version (npm -v):
 * Operating system:
 * Browsers you attempted to reproduce this bug on (the more the merrier): 
 * Does the problem persist after removing "assets/node_modules" and trying again? Yes/no:

@@ -126,6 +126,7 @@ your application.
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`
   - Introduce `Phoenix.Router.live_session/3` for optimized live redirects
+  - Add upload methods to client-side hooks
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked

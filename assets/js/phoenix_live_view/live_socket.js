@@ -89,6 +89,7 @@ import {
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
   PHX_THROTTLE,
+  PHX_TRACK_UPLOADS,
   RELOAD_JITTER
 
 } from "./constants"
@@ -457,6 +458,13 @@ export default class LiveSocket {
 
       LiveUploader.trackFiles(dropTarget, files)
       dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
+    })
+    this.on(PHX_TRACK_UPLOADS, e => {
+      let uploadTarget = e.target
+      if(!DOM.isUploadInput(uploadTarget)){ return }
+      let files = Array.from(e.detail.files || []).filter(f => f instanceof File || f instanceof Blob)
+      LiveUploader.trackFiles(uploadTarget, files)
+      uploadTarget.dispatchEvent(new Event("input", {bubbles: true}))
     })
   }
 

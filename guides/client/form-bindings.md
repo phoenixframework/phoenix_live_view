@@ -40,7 +40,7 @@ where all form fields are passed to the LiveView's callback given any
 single input change. For example, to handle real-time form validation and
 saving, your template would use both `phx_change` and `phx_submit` bindings:
 
-    <.form let={f} for={@changeset} phx-change="validate" phx-submit="save".
+    <.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
       <%= label f, :username %>
       <%= text_input f, :username %>
       <%= error_tag f, :username %>

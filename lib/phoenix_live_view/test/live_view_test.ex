@@ -800,7 +800,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(%View{} = view, type, event, value) when is_map(value) or is_list(value) do
-    call(view, {:render_event, {proxy_topic(view), to_string(event)}, type, value})
+    call(view, {:render_event, {proxy_topic(view), to_string(event), view.target}, type, value})
   end
 
   @doc """
@@ -869,8 +869,9 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Returns the HTML string of the rendered view or element.
 
-  If a view is provided, the entire LiveView is rendered. If an
-  element is provided, only that element is rendered.
+  If a view is provided, the entire LiveView is rendered.
+  If a view after calling `with_target/2` or an element
+  are given, only that particular context is returned.
 
   ## Examples
 
@@ -887,8 +888,25 @@ defmodule Phoenix.LiveViewTest do
     |> DOM.to_html()
   end
 
+  @doc """
+  Sets the target of the view for events.
+
+  This emulates `phx-target` directly in tests, without
+  having to dispatch the event to a specific element.
+  This can be useful for invoking events to one or
+  multiple components at the same time:
+
+      view
+      |> with_target("#user-1,#user-2")
+      |> render_click("Hide", %{})
+
+  """
+  def with_target(%View{} = view, target) do
+    %{view | target: target}
+  end
+
   defp render_tree(%View{} = view) do
-    render_tree(view, {proxy_topic(view), "render"})
+    render_tree(view, {proxy_topic(view), "render", view.target})
   end
 
   defp render_tree(%Element{} = element) do
@@ -996,49 +1014,40 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
-      cid = Phoenix.LiveViewTest.__find_cid__!(view, selector)
-
-      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
-        {:ok, %{external: false}} ->
-          require Phoenix.ChannelTest
-          builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-
-          Phoenix.LiveViewTest.__start_upload_client__(
-            builder,
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        :error ->
-          raise "no uploads allowed for #{name}"
-      end
+      require Phoenix.ChannelTest
+      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      Phoenix.LiveViewTest.__file_input__(view, selector, name, entries, builder)
     end
   end
 
-  def __find_cid__!(view, selector) do
+  @doc false
+  def __file_input__(view, selector, name, entries, builder) do
+    cid = find_cid!(view, selector)
+
+    case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
+      {:ok, %{external: false}} ->
+        start_upload_client(builder, view, selector, name, entries, cid)
+
+      {:ok, %{external: func}} when is_function(func) ->
+        start_external_upload_client(view, selector, name, entries, cid)
+
+      :error ->
+        raise "no uploads allowed for #{name}"
+    end
+  end
+
+  defp find_cid!(view, selector) do
     html_tree = view |> render() |> DOM.parse()
 
-    with {:ok, form} <- DOM.maybe_one(html_tree, selector),
-         {:ok, cid} <- ClientProxy.__maybe_cid__(html_tree, form) do
+    with {:ok, form} <- DOM.maybe_one(html_tree, selector) do
+      [cid | _] = DOM.targets_from_node(html_tree, form)
       cid
     else
       {:error, _reason, msg} -> raise ArgumentError, msg
     end
   end
 
-  def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
+  defp start_upload_client(socket_builder, view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[socket_builder: socket_builder, cid: cid]]},
@@ -1046,11 +1055,10 @@ defmodule Phoenix.LiveViewTest do
     }
 
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
-
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
-  def __start_external_upload_client__(view, form_selector, name, entries, cid) do
+  defp start_external_upload_client(view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[cid: cid]]},
@@ -1234,6 +1242,36 @@ defmodule Phoenix.LiveViewTest do
           nil -> raise ArgumentError, message <> "but got none"
           {kind, to} -> raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
         end
+    end
+  end
+
+  @doc """
+  Refutes a redirect to a given path was performed.
+
+  It returns :ok if the specified redirect isn't already in the mailbox.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_redirect_to_path)
+      :ok = refute_redirect view, "/wrong_path"
+  """
+  def refute_redirected(view, to) when is_binary(to) do
+    refute_navigation(view, :redirect, to)
+  end
+
+  defp refute_navigation(view = %{proxy: {ref, topic, _}}, kind, to) do
+    receive do
+      {^ref, {^kind, ^topic, %{to: new_to}}} when new_to == to or to == nil ->
+        message =
+          if to do
+            "expected #{inspect(view.module)} not to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} not to #{kind}, "
+          end
+
+        raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+    after
+      0 -> :ok
     end
   end
 

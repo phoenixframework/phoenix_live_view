@@ -17,11 +17,13 @@ var PHX_LIVE_LINK = "data-phx-link";
 var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
 var PHX_REF = "data-phx-ref";
+var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
 var PHX_DONE_REFS = "data-phx-done-refs";
 var PHX_DROP_TARGET = "drop-target";
 var PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
+var PHX_LIVE_FILE_UPDATED = "phx:live-file:updated";
 var PHX_SKIP = "data-phx-skip";
 var PHX_REMOVE = "data-phx-remove";
 var PHX_PAGE_LOADING = "page-loading";
@@ -255,6 +257,9 @@ var DOM = {
     }
   },
   all(node, query, callback) {
+    if (!node) {
+      return [];
+    }
     let array = Array.from(node.querySelectorAll(query));
     return callback ? array.forEach(callback) : array;
   },
@@ -514,6 +519,14 @@ var DOM = {
       el.checked = el.getAttribute("checked") !== null;
     }
   },
+  syncPropsToAttrs(el) {
+    if (el instanceof HTMLSelectElement) {
+      let selectedItem = el.options.item(el.selectedIndex);
+      if (selectedItem && selectedItem.getAttribute("selected") === null) {
+        selectedItem.setAttribute("selected", "");
+      }
+    }
+  },
   isTextualInput(el) {
     return FOCUSABLE_INPUTS.indexOf(el.type) >= 0;
   },
@@ -560,10 +573,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   },
   replaceRootContainer(container, tagName, attrs) {
     let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN]);
-    let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase());
     if (container.tagName.toLowerCase() === tagName.toLowerCase()) {
-      Array.from(container.attributes).filter(notRetained).forEach((attr) => container.removeAttribute(attr.name));
-      Object.keys(attrs).filter(notRetained).forEach((attr) => container.setAttribute(attr, attrs[attr]));
+      Array.from(container.attributes).filter((attr) => !retainedAttrs.has(attr.name.toLowerCase())).forEach((attr) => container.removeAttribute(attr.name));
+      Object.keys(attrs).filter((name) => !retainedAttrs.has(name.toLowerCase())).forEach((attr) => container.setAttribute(attr, attrs[attr]));
       return container;
     } else {
       let newContainer = document.createElement(tagName);
@@ -602,6 +614,8 @@ var UploadEntry = class {
     this._lastProgressSent = -1;
     this._onDone = function() {
     };
+    this._onElUpdated = this.onElUpdated.bind(this);
+    this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
   }
   metadata() {
     return this.meta;
@@ -636,7 +650,16 @@ var UploadEntry = class {
     LiveUploader.clearFiles(this.fileEl);
   }
   onDone(callback) {
-    this._onDone = callback;
+    this._onDone = () => {
+      this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+      callback();
+    };
+  }
+  onElUpdated() {
+    let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
+    if (activeRefs.indexOf(this.ref) === -1) {
+      this.cancel();
+    }
   }
   toPreflightPayload() {
     return {
@@ -677,9 +700,7 @@ var LiveUploader = class {
   }
   static getEntryDataURL(inputEl, ref, callback) {
     let file = this.activeFiles(inputEl).find((file2) => this.genFileRef(file2) === ref);
-    let reader = new FileReader();
-    reader.onload = (e) => callback(e.target.result);
-    reader.readAsDataURL(file);
+    callback(URL.createObjectURL(file));
   }
   static hasUploadsInProgress(formEl) {
     let active = 0;
@@ -691,14 +712,14 @@ var LiveUploader = class {
     return active > 0;
   }
   static serializeUploads(inputEl) {
-    let files = this.activeFiles(inputEl, "serialize");
+    let files = this.activeFiles(inputEl);
     let fileData = {};
     files.forEach((file) => {
       let entry = { path: inputEl.name };
       let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF);
       fileData[uploadRef] = fileData[uploadRef] || [];
       entry.ref = this.genFileRef(file);
-      entry.name = file.name;
+      entry.name = file.name || entry.ref;
       entry.type = file.type;
       entry.size = file.size;
       fileData[uploadRef].push(entry);
@@ -772,6 +793,9 @@ var LiveUploader = class {
 // js/phoenix_live_view/hooks.js
 var Hooks = {
   LiveFileUpload: {
+    activeRefs() {
+      return this.el.getAttribute(PHX_ACTIVE_ENTRY_REFS);
+    },
     preflightedRefs() {
       return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
     },
@@ -786,13 +810,23 @@ var Hooks = {
           this.__view.cancelSubmit(this.el.form);
         }
       }
+      if (this.activeRefs() === "") {
+        this.el.value = null;
+      }
+      this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
     }
   },
   LiveImgPreview: {
     mounted() {
       this.ref = this.el.getAttribute("data-phx-entry-ref");
       this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF));
-      LiveUploader.getEntryDataURL(this.inputEl, this.ref, (url) => this.el.src = url);
+      LiveUploader.getEntryDataURL(this.inputEl, this.ref, (url) => {
+        this.url = url;
+        this.el.src = url;
+      });
+    },
+    destroyed() {
+      URL.revokeObjectURL(this.url);
     }
   }
 };
@@ -1396,7 +1430,6 @@ var DOMPatch = class {
           return dom_default.isPhxDestroyed(node) ? null : node.id;
         },
         onBeforeNodeAdded: (el) => {
-          dom_default.discardError(targetContainer, el, phxFeedbackFor);
           this.trackBefore("added", el);
           return el;
         },
@@ -1404,6 +1437,7 @@ var DOMPatch = class {
           if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
             externalFormTriggered = el;
           }
+          dom_default.discardError(targetContainer, el, phxFeedbackFor);
           if (dom_default.isPhxChild(el) && view.ownsElement(el)) {
             this.trackAfter("phxChildAdded", el);
           }
@@ -1465,6 +1499,7 @@ var DOMPatch = class {
           }
           dom_default.copyPrivates(toEl, fromEl);
           dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
+          dom_default.syncPropsToAttrs(toEl);
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
           if (isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)) {
             this.trackBefore("updated", fromEl, toEl);
@@ -1815,6 +1850,12 @@ var ViewHook = class {
     window.removeEventListener(`phx:hook:${event}`, callbackRef);
     this.__listeners.delete(callbackRef);
   }
+  upload(name, files) {
+    return this.__view.dispatchUploads(name, files);
+  }
+  uploadTo(phxTarget, name, files) {
+    return this.__view.withinTargets(phxTarget, (view) => view.dispatchUploads(name, files));
+  }
   __cleanup__() {
     this.__listeners.forEach((callbackRef) => this.removeHandleEvent(callbackRef));
   }
@@ -2023,7 +2064,7 @@ var View = class {
       return this.applyJoinPatch(live_patch, html, events);
     }
     let newChildren = dom_default.findPhxChildrenInFragment(html, this.id).filter((toEl) => {
-      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`);
+      let fromEl = toEl.id && this.el.querySelector(`[id="${toEl.id}"]`);
       let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC);
       if (phxStatic) {
         toEl.setAttribute(PHX_STATIC, phxStatic);
@@ -2627,8 +2668,14 @@ var View = class {
   uploadFiles(formEl, targetCtx, ref, cid, onComplete) {
     let joinCountAtUpload = this.joinCount;
     let inputEls = LiveUploader.activeFileInputs(formEl);
+    let numFileInputsInProgress = inputEls.length;
     inputEls.forEach((inputEl) => {
-      let uploader = new LiveUploader(inputEl, this, onComplete);
+      let uploader = new LiveUploader(inputEl, this, () => {
+        numFileInputsInProgress--;
+        if (numFileInputsInProgress === 0) {
+          onComplete();
+        }
+      });
       this.uploaders[inputEl] = uploader;
       let entries = uploader.entries().map((entry) => entry.toPreflightPayload());
       let payload = {
@@ -2655,6 +2702,16 @@ var View = class {
         }
       });
     });
+  }
+  dispatchUploads(name, filesOrBlobs) {
+    let inputs = dom_default.findUploadInputs(this.el).filter((el) => el.name === name);
+    if (inputs.length === 0) {
+      logError(`no live file inputs found matching the name "${name}"`);
+    } else if (inputs.length > 1) {
+      logError(`duplicate live file inputs found matching the name "${name}"`);
+    } else {
+      dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { files: filesOrBlobs });
+    }
   }
   pushFormRecovery(form, callback) {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
@@ -3077,6 +3134,15 @@ var LiveSocket = class {
       }
       LiveUploader.trackFiles(dropTarget, files);
       dropTarget.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    this.on(PHX_TRACK_UPLOADS, (e) => {
+      let uploadTarget = e.target;
+      if (!dom_default.isUploadInput(uploadTarget)) {
+        return;
+      }
+      let files = Array.from(e.detail.files || []).filter((f) => f instanceof File || f instanceof Blob);
+      LiveUploader.trackFiles(uploadTarget, files);
+      uploadTarget.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
   eventMeta(eventName, e, targetEl) {

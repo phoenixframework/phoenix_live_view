@@ -94,8 +94,6 @@ export default class DOMPatch {
           return DOM.isPhxDestroyed(node) ? null : node.id
         },
         onBeforeNodeAdded: (el) => {
-          //input handling
-          DOM.discardError(targetContainer, el, phxFeedbackFor)
           this.trackBefore("added", el)
           return el
         },
@@ -103,6 +101,8 @@ export default class DOMPatch {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
+          //input handling
+          DOM.discardError(targetContainer, el, phxFeedbackFor)
           // nested view handling
           if(DOM.isPhxChild(el) && view.ownsElement(el)){
             this.trackAfter("phxChildAdded", el)
@@ -156,6 +156,7 @@ export default class DOMPatch {
           // input handling
           DOM.copyPrivates(toEl, fromEl)
           DOM.discardError(targetContainer, toEl, phxFeedbackFor)
+          DOM.syncPropsToAttrs(toEl)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){

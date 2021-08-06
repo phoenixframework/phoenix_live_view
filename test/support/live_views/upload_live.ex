@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   use Phoenix.LiveView
 
   def render(%{uploads: _} = assigns) do
-    ~L"""
+    ~H"""
     <%= for preflight <- @preflights do %>
       preflight:<%= inspect(preflight) %>
     <% end %>
@@ -24,8 +24,10 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   end
 
   def render(assigns) do
-    ~L"""
-    loading...
+    ~H"""
+    <div>
+      loading...
+    </div>
     """
   end
 
@@ -74,9 +76,8 @@ end
 defmodule Phoenix.LiveViewTest.UploadComponent do
   use Phoenix.LiveComponent
 
-
   def render(%{uploads: _} = assigns) do
-    ~L"""
+    ~H"""
     <div>
       <%= for preflight <- @preflights do %>
         preflight:<%= inspect(preflight) %>
@@ -84,7 +85,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
       <%= for name <- @consumed do %>
         consumed:<%= name %>
       <% end %>
-      <form phx-change="validate" id="<%= @id %>" phx-submit="save" phx-target="<%= @myself %>">
+      <form phx-change="validate" id={@id} phx-submit="save" phx-target={@myself}>
         <%= for entry <- @uploads.avatar.entries do %>
           component:<%= entry.client_name %>:<%= entry.progress %>%
           channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
@@ -100,8 +101,10 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
   end
 
   def render(assigns) do
-    ~L"""
-    loading...
+    ~H"""
+    <div>
+      loading...
+    </div>
     """
   end
 
@@ -135,7 +138,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <div>
       <%= if @uploads_count > 0 do %>
         <%= for i <- 0..@uploads_count do %>

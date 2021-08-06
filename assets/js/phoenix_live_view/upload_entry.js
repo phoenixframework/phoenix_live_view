@@ -1,5 +1,6 @@
 import {
   PHX_ACTIVE_ENTRY_REFS,
+  PHX_LIVE_FILE_UPDATED,
   PHX_PREFLIGHTED_REFS
 } from "./constants"
 
@@ -35,6 +36,8 @@ export default class UploadEntry {
     this._progress = 0
     this._lastProgressSent = -1
     this._onDone = function (){ }
+    this._onElUpdated = this.onElUpdated.bind(this)
+    this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
   }
 
   metadata(){ return this.meta }
@@ -72,7 +75,17 @@ export default class UploadEntry {
 
   //private
 
-  onDone(callback){ this._onDone = callback }
+  onDone(callback){
+    this._onDone = () => {
+      this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
+      callback()
+    }
+  }
+
+  onElUpdated(){
+    let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
+    if(activeRefs.indexOf(this.ref) === -1){ this.cancel() }
+  }
 
   toPreflightPayload(){
     return {

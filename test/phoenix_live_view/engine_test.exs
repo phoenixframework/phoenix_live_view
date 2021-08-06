@@ -188,6 +188,11 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, false) == ["3"]
     end
 
+    test "renders dynamic does not change track underscore" do
+      assert changed("<%= _ = 123 %>", %{}, nil) == ["123"]
+      assert changed("<%= _ = 123 %>", %{}, %{}) == [nil]
+    end
+
     test "renders dynamic with dot tracking" do
       template = "<%= @map.foo + @map.bar %>"
       old = %{map: %{foo: 123, bar: 456}}
