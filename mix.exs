@@ -92,15 +92,30 @@ defmodule Phoenix.LiveView.MixProject do
   end
 
   defp groups_for_modules do
+    # Ungrouped Modules:
+    #
+    # Phoenix.LiveView
+    # Phoenix.LiveView.Helpers
+
     [
-      "Upload structures": [
-        Phoenix.LiveView.UploadConfig,
-        Phoenix.LiveView.UploadEntry
+      "Components": [
+        Phoenix.Component,
+        Phoenix.LiveComponent
       ],
-      "Testing structures": [
+      "Testing": [
+        Phoenix.LiveViewTest,
         Phoenix.LiveViewTest.Element,
         Phoenix.LiveViewTest.Upload,
         Phoenix.LiveViewTest.View
+      ],
+      "Socket and Plugs": [
+        Phoenix.LiveView.Controller,
+        Phoenix.LiveView.Router,
+        Phoenix.LiveView.Socket
+      ],
+      "Upload structures": [
+        Phoenix.LiveView.UploadConfig,
+        Phoenix.LiveView.UploadEntry
       ],
       "Live EEx Engine": [
         Phoenix.LiveComponent.CID,
