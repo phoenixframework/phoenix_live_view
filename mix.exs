@@ -60,7 +60,8 @@ defmodule Phoenix.LiveView.MixProject do
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      nest_modules_by_prefix: [Phoenix.LiveViewTest]
     ]
   end
 
