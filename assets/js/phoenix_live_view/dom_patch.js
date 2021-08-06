@@ -156,6 +156,7 @@ export default class DOMPatch {
           // input handling
           DOM.copyPrivates(toEl, fromEl)
           DOM.discardError(targetContainer, toEl, phxFeedbackFor)
+          DOM.syncPropsToAttrs(toEl)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
