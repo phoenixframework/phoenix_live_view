@@ -1508,6 +1508,59 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Returns the matched params from the URL the connection was redirected to.
+
+  Uses the provided `%Plug.Conn{}`s router matched in the previous request.
+  Raises if the `%Plug.Conn{}` does not have a :phoenix_router set.
+
+  See `redirected_params/3`
+  """
+
+  def redirected_params(to_or_reason, %Plug.Conn{private: %{phoenix_router: router}} = conn) do
+    redirected_params(to_or_reason, router, conn)
+  end
+
+  def redirected_params(_to_or_reason, %Plug.Conn{}) do
+    raise ArgumentError, """
+    Plug.Conn does not have Router set. Pass in a Router explicity
+
+    redirected_params(to, Router, conn)
+
+    """
+  end
+
+  @doc """
+  Returns the matched params from either the URL the connection was redirected to or the `{:error, redirect}` tuple.
+
+  Uses the provided router.
+
+  ## Examples
+
+  assert {:error, {:redirect, %{to: "/posts/123" = to}}} = result = live(conn, "my-path")
+  assert %{id: "123"} = redirected_params(result, Router, conn)
+  assert %{id: "123"} = redirected_params(to, Router, conn)
+  """
+  def redirected_params(to, router, %Plug.Conn{} = conn) when is_binary(to) and is_atom(router) do
+    case Phoenix.Router.route_info(router, "GET", to, conn.host) do
+      %{path_params: path_params} ->
+        Enum.into(path_params, %{}, fn {key, val} -> {String.to_atom(key), val} end)
+
+      :error ->
+        raise Phoenix.Router.NoRouteError, conn: conn, router: router
+    end
+  end
+
+  def redirected_params(reason, router, %Plug.Conn{} = conn) when is_atom(router) do
+    case reason do
+      {:error, {_redirect_or_live_redirect, %{to: to}}} ->
+        redirected_params(to, router, conn)
+
+      _ ->
+        raise "LiveView did not redirect"
+    end
+  end
+
+  @doc """
   Performs a live redirect from one LiveView to another.
 
   When redirecting between two LiveViews of the same `live_session`,
