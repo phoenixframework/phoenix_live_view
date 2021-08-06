@@ -264,7 +264,7 @@ export default class View {
     // also does not include PHX_STATIC, so we need to copy it over from
     // the DOM.
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
-      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
+      let fromEl = toEl.id && this.el.querySelector(`[id="${toEl.id}"]`)
       let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
       if(phxStatic){ toEl.setAttribute(PHX_STATIC, phxStatic) }
       return this.joinChild(toEl)
