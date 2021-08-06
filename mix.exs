@@ -14,6 +14,7 @@ defmodule Phoenix.LiveView.MixProject do
       package: package(),
       xref: [exclude: [Floki]],
       deps: deps(),
+      aliases: aliases(),
       docs: docs(),
       name: "Phoenix LiveView",
       homepage_url: "http://www.phoenixframework.org",
@@ -42,11 +43,12 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.5.9"},
       # TODO bump before release
       {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
+      {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
       {:floki, "~> 0.30.0", only: :test},
-      {:html_entities, ">= 0.0.0", only: :test}
+      {:html_entities, ">= 0.0.0", only: :test},
     ]
   end
 
@@ -119,6 +121,13 @@ defmodule Phoenix.LiveView.MixProject do
       files:
         ~w(assets/js lib priv) ++
           ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
+    ]
+  end
+
+  defp aliases do
+    [
+      "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min"],
+      "assets.watch": ["esbuild module --watch"]
     ]
   end
 end
