@@ -362,15 +362,18 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns)
 
+      changed =
+        quote generated: true do
+          case unquote(@assigns_var) do
+            %{__changed__: changed} when track_changes? -> changed
+            _ -> nil
+          end
+        end
+
       {:ok,
        quote do
          dynamic = fn track_changes? ->
-           changed =
-             case unquote(@assigns_var) do
-               %{__changed__: changed} when track_changes? -> changed
-               _ -> nil
-             end
-
+           changed = unquote(changed)
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
