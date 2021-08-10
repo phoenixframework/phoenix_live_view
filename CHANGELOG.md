@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.16.0-dev
+## 0.16.0 (2021-08-10)
 
 ### Security Considerations Upgrading from 0.15
 

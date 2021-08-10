@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.16.0-dev"
+  @version "0.16.0"
 
   def project do
     [
@@ -39,10 +39,8 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      # TODO bump before release (or ~> 1.6.0)
-      {:phoenix, "~> 1.5.9"},
-      # TODO bump before release
-      {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
+      {:phoenix, "~> 1.5.9 or ~> 1.6.0"},
+      {:phoenix_html, "~> 3.0.0"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
