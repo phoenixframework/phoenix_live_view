@@ -2463,13 +2463,14 @@ within:
     }
     undoRefs(ref) {
       dom_default.all(this.el, `[${PHX_REF}="${ref}"]`, (el) => {
+        let disabledVal = el.getAttribute(PHX_DISABLED);
         el.removeAttribute(PHX_REF);
         if (el.getAttribute(PHX_READONLY) !== null) {
           el.readOnly = false;
           el.removeAttribute(PHX_READONLY);
         }
-        if (el.getAttribute(PHX_DISABLED) !== null) {
-          el.disabled = el.getAttribute(PHX_DISABLED);
+        if (disabledVal !== null) {
+          el.disabled = disabledVal === "true" ? true : false;
           el.removeAttribute(PHX_DISABLED);
         }
         PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));

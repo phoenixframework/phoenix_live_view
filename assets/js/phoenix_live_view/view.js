@@ -640,6 +640,7 @@ export default class View {
 
   undoRefs(ref){
     DOM.all(this.el, `[${PHX_REF}="${ref}"]`, el => {
+      let disabledVal = el.getAttribute(PHX_DISABLED)
       // remove refs
       el.removeAttribute(PHX_REF)
       // restore inputs
@@ -647,8 +648,8 @@ export default class View {
         el.readOnly = false
         el.removeAttribute(PHX_READONLY)
       }
-      if(el.getAttribute(PHX_DISABLED) !== null){
-        el.disabled = el.getAttribute(PHX_DISABLED)
+      if(disabledVal !== null){
+        el.disabled = disabledVal === "true" ? true : false
         el.removeAttribute(PHX_DISABLED)
       }
       // remove classes
