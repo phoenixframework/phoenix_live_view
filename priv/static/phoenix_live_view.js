@@ -2469,7 +2469,7 @@ within:
           el.removeAttribute(PHX_READONLY);
         }
         if (el.getAttribute(PHX_DISABLED) !== null) {
-          el.disabled = false;
+          el.disabled = el.getAttribute(PHX_DISABLED);
           el.removeAttribute(PHX_DISABLED);
         }
         PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
