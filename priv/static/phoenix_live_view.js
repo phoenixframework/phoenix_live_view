@@ -3027,11 +3027,11 @@ within:
       let newMainEl = dom_default.cloneNode(oldMainEl, "");
       this.main.showLoader(this.loaderTimeout);
       this.main.destroy();
-      oldMainEl.replaceWith(newMainEl);
       this.main = this.newRootView(newMainEl, flash);
       this.main.setRedirect(href);
       this.main.join((joinCount) => {
         if (joinCount === 1 && this.commitPendingLink(linkRef)) {
+          oldMainEl.replaceWith(newMainEl);
           callback && callback();
         }
       });
