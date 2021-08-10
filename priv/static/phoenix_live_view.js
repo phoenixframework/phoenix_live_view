@@ -3024,7 +3024,7 @@ within:
     }
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
       let oldMainEl = this.main.el;
-      let newMainEl = dom_default.cloneNode(oldMainEl);
+      let newMainEl = dom_default.cloneNode(oldMainEl, "");
       this.main.showLoader(this.loaderTimeout);
       this.main.destroy();
       oldMainEl.replaceWith(newMainEl);
