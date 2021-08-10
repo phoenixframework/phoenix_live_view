@@ -126,15 +126,38 @@ your application.
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`
   - Introduce `Phoenix.Router.live_session/3` for optimized live redirects
+  - Introduce `on_mount` and `attach_hook` hooks which provide a mechanism to tap into key stages of the LiveView lifecycle
   - Add upload methods to client-side hooks
+  - [Helpers] Optimize `live_img_preview` rendering
+  - [Helpers] Introduce `form` function component which wraps `Phoenix.HTML.form_for`
+  - [LiveViewTest] Add `with_target` for scoping components directly
+  - [LiveViewTest] Add `refute_redirected`
+  - [LiveViewTest] Support multiple `phx-target` values to mirror JS client
+  - [LiveViewTest] Add `follow_trigger_action`
+  - [JavaScript Client] Add `sessionStorage` option `LiveSocket` constructor to support client storage overrides
+  - [JavaScript Client] Do not failsafe reload the page in the background when a tab is unable to connect if the page is not visible
+
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
   - Fix `Phoenix.LiveViewTest.page_title` returning nil in some cases
   - Fix buttons being re-enabled when explicitly set to disabled on server
+  - Fix live patch failing to update URL when live patch link is patched again via `handle_params` within the same callback lifecycle
+  - Fix `phx-no-feedback` class not applied when page is live-patched
+  - Fix `DOMException, querySelector, not a valid selector` when performing DOM lookups on non-stanard IDs
+  - Fix select dropdown flashing close/opened when assigns are updated on Chrome/MacOS
+  - Fix error with multiple `live_file_input` in one form
+  - Fix race condition in `showError` causing null `querySelector`
+  - Fix statics not resolving correctly across recursive diffs
+  - Fix no function clause matching in `Phoenix.LiveView.Diff.many_to_iodata`
+  - Fix upload input not being cleared after files are uploaded via a component
+  - Fix channel crash when uploading during reconnect
+  - Fix duplicate progress events being sent for large uploads
 
 ### Deprecations
   - Implicit assigns when passing a `do-end` block to `live_component` is deprecated
+  - The `~L` sigil and the `.leex` extension are now soft-deprecated in favor of `~H` and `.heex`
+  - Stateless live components (a `live_component` call without an `:id`) are deprecated in favor of the new function component feature
 
 ## 0.15.7 (2021-05-24)
 
