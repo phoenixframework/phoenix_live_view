@@ -291,7 +291,7 @@ defmodule Phoenix.LiveView do
         ~H"\""
         <div title="My div" class={@class}>
           <p>Hello <%= @name %></p>
-          <MyApp.Weather.render city="Kraków"/>
+          <MyApp.Weather.city name="Kraków"/>
         </div>
         "\""
       end

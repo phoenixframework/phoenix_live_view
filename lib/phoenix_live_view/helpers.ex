@@ -607,7 +607,7 @@ defmodule Phoenix.LiveView.Helpers do
       ~H"\""
       <div title="My div" class={@class}>
         <p>Hello <%= @name %></p>
-        <MyApp.Weather.render city="Kraków"/>
+        <MyApp.Weather.city name="Kraków"/>
       </div>
       "\""
 
@@ -674,30 +674,39 @@ defmodule Phoenix.LiveView.Helpers do
   `HEEx` allows invoking whose function components directly in the template
   using an HTML-like notation. For example, a remote function:
 
-      <MyApp.Weather.component city="Kraków"/>
+      <MyApp.Weather.city name="Kraków"/>
 
   A local function can be invoked with a leading dot:
 
-      <.component city="Kraków"/>
+      <.city name="Kraków"/>
 
   where the component could be defined as follows:
 
       defmodule MyApp.Weather do
         import Phoenix.LiveView.Helpers
 
-        def component(assigns) do
+        def city(assigns) do
           ~H"\""
           The chosen city is: <%= @city %>.
           "\""
         end
+
+        def country(assigns) do
+          ~H"\""
+          The chosen country is: <%= @country %>.
+          "\""
+        end
       end
+
+  It is typically best to group related functions into a single module, as
+  opposed to having many modules with a single `render/1` function.
 
   Function components can also receive their inner content as
   the `@inner_block` assign to be rendered with `render_block/2`:
 
-      <MyApp.Weather.render city="Kraków">
+      <MyApp.Weather.city name="Kraków">
         Some content to be assigned to @inner_block
-      </MyApp.Weather.render>
+      </MyApp.Weather.city>
 
   """
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
@@ -706,7 +715,7 @@ defmodule Phoenix.LiveView.Helpers do
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       module: __CALLER__.module,
-      indentation: meta[:indentation] || 0,
+      indentation: meta[:indentation] || 0
     ]
 
     EEx.compile_string(expr, options)
@@ -771,13 +780,14 @@ defmodule Phoenix.LiveView.Helpers do
       <% end %>
   """
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
-    attrs = Keyword.merge(opts, [
-      id: "phx-preview-#{ref}",
-      data_phx_upload_ref: entry.upload_ref,
-      data_phx_entry_ref: ref,
-      data_phx_hook: "Phoenix.LiveImgPreview",
-      data_phx_update: "ignore"
-    ])
+    attrs =
+      Keyword.merge(opts,
+        id: "phx-preview-#{ref}",
+        data_phx_upload_ref: entry.upload_ref,
+        data_phx_entry_ref: ref,
+        data_phx_hook: "Phoenix.LiveImgPreview",
+        data_phx_update: "ignore"
+      )
 
     assigns = LiveView.assign(%{__changed__: nil}, attrs: attrs)
 
@@ -927,8 +937,11 @@ defmodule Phoenix.LiveView.Helpers do
     form_options = assigns_to_attributes(assigns, [:action, :for])
 
     # Since FormData may add options, read the actual options from form
-    %{options: opts} = form =
-      %Phoenix.HTML.Form{Phoenix.HTML.FormData.to_form(form_for, form_options) | action: action}
+    %{options: opts} =
+      form = %Phoenix.HTML.Form{
+        Phoenix.HTML.FormData.to_form(form_for, form_options)
+        | action: action
+      }
 
     # And then process csrf_token, multipart, and method as in form_tag
     {csrf_token, opts} =
