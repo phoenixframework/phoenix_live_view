@@ -71,7 +71,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     invoke_subengine(state, :handle_end, [])
   end
 
-  ## These callbacks udpate the state
+  ## These callbacks update the state
 
   @doc false
   def handle_begin(state) do

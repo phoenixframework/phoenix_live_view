@@ -639,7 +639,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   ### HEEx extension: Defining attributes
 
-  Since `HEEx` must parse and validating the HTML structure, code interpolation using
+  Since `HEEx` must parse and validate the HTML structure, code interpolation using
   `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
   HTML/component nodes and it cannot be applied within tags.
 
