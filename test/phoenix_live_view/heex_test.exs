@@ -120,6 +120,22 @@ defmodule Phoenix.LiveView.HEExTest do
               |> expand_rendered(true)
   end
 
+  test "renders dynamic attributes" do
+    assigns = Map.put(@assigns, :dynamic_attrs, %{"class" => "foo"})
+
+    assert Phoenix.View.render_to_string(View, "dynamic_assigns.html", assigns) ==
+            """
+            <p class="foo"></p>
+            """
+
+    assigns = Map.put(@assigns, :dynamic_attrs, %{class: "foo"})
+
+    assert Phoenix.View.render_to_string(View, "dynamic_assigns.html", assigns) ==
+            """
+            <p class="foo"></p>
+            """
+  end
+
   defp expand_dynamic(dynamic, track_changes?) do
     Enum.map(dynamic.(track_changes?), &expand_rendered(&1, track_changes?))
   end

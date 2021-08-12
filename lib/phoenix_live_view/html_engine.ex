@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     Enum.reduce(parts, state, fn expr, state ->
       ast =
         quote do
-          Phoenix.HTML.Tag.attributes_escape(unquote(expr))
+          Phoenix.HTML.Tag.attributes_escape(Enum.into(unquote(expr), []))
         end
 
       update_subengine(state, :handle_expr, ["=", ast])
