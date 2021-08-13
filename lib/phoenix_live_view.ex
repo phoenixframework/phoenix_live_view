@@ -1277,12 +1277,14 @@ defmodule Phoenix.LiveView do
   @doc """
   Asynchronously updates a `Phoenix.LiveComponent` with new assigns.
 
-  The component that is updated must be stateful (the `:id` in the assigns must
-  match the `:id` associated with the component) and the component must be
-  mounted within the current LiveView.
+  The `:id` that identifies the component must be passed as part of the
+  assigns and it will be used to identify the live components to be updated.
 
-  If this call is executed from a process which is not a LiveView
-  nor a LiveComponent, the `pid` argument has to be specified.
+  The `pid` argument is optional and it defaults to the current process,
+  which means the update instruction will be sent to a component running
+  on the same LiveView. If the current process is not a LiveView or you
+  want to send updates to a live component running on another LiveView,
+  you should explicitly pass the LiveView's pid instead.
 
   When the component receives the update, first the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) then
@@ -1296,11 +1298,6 @@ defmodule Phoenix.LiveView do
   `send_update/3` is useful for updating a component that entirely manages its
   own state, as well as messaging between components mounted in the same
   LiveView.
-
-  **Note:** `send_update/3` cannot update a LiveComponent that is mounted in a
-  different LiveView. To update a component in a different LiveView you must
-  send a message to the LiveView process that the LiveComponent is mounted
-  within (often via `Phoenix.PubSub`).
 
   ## Examples
 
