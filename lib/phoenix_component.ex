@@ -84,7 +84,7 @@ defmodule Phoenix.Component do
   button component that is invoked like this:
 
       <.button>
-        This does render <strong>inside</strong> the button!
+        This renders <strong>inside</strong> the button!
       </.button>
 
   Where the function component would be defined as:
