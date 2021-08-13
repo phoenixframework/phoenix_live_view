@@ -124,10 +124,11 @@ your application.
 
 ### Breaking Changes
 
-LiveView 0.16 removes the `layout` option from `Phoenix.LiveView.Routing.live/4` in
-favour of the `:root_layout` option on `Phoenix.Router.live_session/3`.
+LiveView 0.16 removes the `:layout` and `:container` options from
+`Phoenix.LiveView.Routing.live/4` in favor of the `:root_layout`
+and `:container` options on `Phoenix.Router.live_session/3`.
 
-If you have the following in LiveView 0.15 and prior: 
+For instance, if you have the following in LiveView 0.15 and prior: 
 
 ```elixir
 live "/path", MyAppWeb.PageLive, layout: {MyAppWeb.LayoutView, "custom_layout.html"}
