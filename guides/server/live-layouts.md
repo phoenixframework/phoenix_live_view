@@ -46,11 +46,6 @@ in your router:
 
     plug :put_root_layout, {MyAppWeb.LayoutView, :root}
 
-Alternatively, the root layout can be passed individually to the
-`live` macro of your **live routes**:
-
-    live "/dashboard", MyAppWeb.Dashboard, layout: {MyAppWeb.LayoutView, :root}
-
 The "app" and "live" layouts are often small and similar to each
 other, but the "app" layout uses the `@conn` and is used as part
 of the regular request life-cycle. The "live" layout is part of
