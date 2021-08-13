@@ -80,7 +80,7 @@ defmodule Phoenix.Component do
   ## Blocks
 
   It is also possible to give HTML blocks to function components
-  as regular HTML tags. For example, you could create a
+  as in regular HTML tags. For example, you could create a
   button component that is invoked like this:
 
       <.button>
