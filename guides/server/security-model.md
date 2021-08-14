@@ -63,7 +63,7 @@ LiveView v0.16 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
 which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 
-    defmodule DemoWeb.UserLiveAuth do
+    defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.LiveView
 
       def mount(params, %{"user_id" => user_id} = _session, socket) do
@@ -81,9 +81,9 @@ as you would with plug:
 
 and then use it on all relevant LiveViews:
 
-    defmodule DemoWeb.PageLive do
+    defmodule MyAppWeb.PageLive do
       use Phoenix.LiveView
-      on_mount DemoWeb.UserLiveAuth
+      on_mount MyAppWeb.UserLiveAuth
 
       ...
     end
@@ -106,7 +106,7 @@ In LiveView, most actions are handled by the `handle_event` callback. Therefore,
 you typically authorize the user within those callbacks. In the scenario just
 described, one might implement this:
 
-    on_mount DemoWeb.UserLiveAuth
+    on_mount MyAppWeb.UserLiveAuth
 
     def mount(_params, session, socket) do
       {:ok, load_projects(socket)}
@@ -182,11 +182,12 @@ to group your live routes. This can be handy because you can only
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
 dashboard that uses http auth. You can specify different `live_session`s
-for them:
+for each authentication flow:
 
     live_session :default do
       scope "/" do
         pipe_through [:authenticate_user]
+        get ...
         live ...
       end
     end
@@ -194,13 +195,19 @@ for them:
     live_session :admin do
       scope "/admin" do
         pipe_through [:http_auth_admin]
+        get ...
         live ...
       end
     end
 
-Now every time you try to navigate to an admin panel, and vice-versa,
+Now every time you try to navigate to an admin panel, and out of it,
 a regular page navigation will happen and a brand new live connection
 will be established.
+
+Once again, it is worth remembering that LiveViews require their own
+security checks, so we use `pipe_through` above to protect the regular
+routes (get, post, etc.) and the LiveViews should run their own checks
+using `on_mount` hooks.
 
 `live_session` can also be used to enforce each LiveView group has
 a different root layout, since layouts are not updated between live
@@ -214,30 +221,44 @@ redirects:
       ...
     end
 
-Finally, you can even combine `live_session` with `on_mount`. For example,
-instead of declaring `on_mount` on every LiveView, you can declare it
-at the router level and it will enforce it on all LiveViews under it:
+Finally, you can even combine `live_session` with `on_mount`. Instead
+of declaring `on_mount` on every LiveView, you can declare it at the
+router level and it will enforce it on all LiveViews under it:
 
-    live_session :default, on_mount: UserLiveAuth do
+    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
       scope "/" do
         pipe_through [:authenticate_user]
         live ...
       end
     end
 
-    live_session :admin, on_mount: AdminLiveAuth do
+    live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
       scope "/admin" do
         pipe_through [:authenticate_admin]
         live ...
       end
     end
 
+Each live route under the `:default` `live_session` will invoke
+the `MyAppWeb.UserLiveAuth` hook on mount. This module was defined
+earlier in this guide. We will also pipe regular web requests through
+`:authenticate_user`, which must execute the same checks as
+`MyAppWeb.UserLiveAuth`, but tailored to plug.
+
+Similarly, the `:admin` `live_session` has its own authentication
+flow, powered by `MyAppWeb.AdminLiveAuth`. It also defines a plug
+equivalent named `:authenticate_admin`, which will be used by any
+regular request. If there are no regular web requests defined under
+a live session, then the `pipe_through` checks are not necessary.
+
 Declaring the `on_mount` on `live_session` is exactly the same as
-declaring it in each LiveView. The important to keep in mind is:
+declaring it in each LiveView inside the `live_session`. It will be
+executed every time a LiveView is mounted, even after `live_redirect`s.
+The important to keep in mind is:
 
   * If you have both LiveViews and regular web requests, then you
-    must always authorize and authenticate your LiveViews (on mount)
-    and your web requests (via plug)
+    must always authorize and authenticate your LiveViews (using
+    on mount hooks) and your web requests (using plugs)
 
   * All actions (events) must also be explicitly authorized by
     checking permissions. Those permissions are often domain/business
