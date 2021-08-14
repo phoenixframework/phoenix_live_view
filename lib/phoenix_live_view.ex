@@ -553,6 +553,13 @@ defmodule Phoenix.LiveView do
       end
   """
   defmacro on_mount(mod_or_mod_fun) do
+    mod_or_mod_fun =
+      if Macro.quoted_literal?(mod_or_mod_fun) do
+        Macro.prewalk(mod_or_mod_fun, &expand_alias(&1, __CALLER__))
+      else
+        mod_or_mod_fun
+      end
+
     quote do
       Module.put_attribute(
         __MODULE__,
@@ -561,6 +568,11 @@ defmodule Phoenix.LiveView do
       )
     end
   end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:mount, 3}})
+
+  defp expand_alias(other, _env), do: other
 
   @doc """
   Returns true if the socket is connected.
