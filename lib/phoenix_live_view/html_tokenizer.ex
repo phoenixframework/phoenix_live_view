@@ -28,12 +28,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def tokenize(text, opts \\ []) do
-    file = Keyword.get(opts, :file, "nofile")
-    line = Keyword.get(opts, :line, 1)
-    column = Keyword.get(opts, :column, 1)
-    indentation = Keyword.get(opts, :indentation, 0)
-
+  def tokenize(text, file, indentation, meta) do
+    line = Keyword.get(meta, :line, 1)
+    column = Keyword.get(meta, :column, 1)
     state = %{file: file, column_offset: indentation + 1, braces: []}
     handle_text(text, line, column, [], [], state)
   end

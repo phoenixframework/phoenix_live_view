@@ -1,8 +1,10 @@
 defmodule Phoenix.LiveView.HTMLTokenizerTest do
   use ExUnit.Case, async: true
-
-  import Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
+
+  defp tokenize(text) do
+    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [])
+  end
 
   describe "text" do
     test "represented as {:text, value}" do
