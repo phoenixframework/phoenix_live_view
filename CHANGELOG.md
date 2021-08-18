@@ -142,6 +142,10 @@ live_session :session_name, root_layout: {MyAppWeb.LayoutView, "custom_layout.ht
 end
 ```
 
+Additionally, if you were relying on the default export for the `LiveSocket` JavaScript class,
+e.g. `import LiveSocket from "phoenix_live_view";` this has been removed and you must import it
+explicitly e.g. `import { LiveSocket } from "phoenix_live_view";`.
+
 ### Enhancements
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`
