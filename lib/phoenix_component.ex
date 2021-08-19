@@ -121,7 +121,7 @@ defmodule Phoenix.Component do
         I like <%= entry %>
       </.unordered_list>
 
-  You can also pattern match the arguments provided to render block. Let's
+  You can also pattern match the arguments provided to the render block. Let's
   make our `unordered_list` component fancier:
 
       def unordered_list(assigns) do
