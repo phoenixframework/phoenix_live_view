@@ -226,14 +226,16 @@ defmodule Phoenix.LiveViewTest do
 
   """
   defmacro live_isolated(conn, live_view, opts \\ []) do
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
+
     quote bind_quoted: binding(), unquote: true do
-      unquote(__MODULE__).__isolated__(conn, @endpoint, live_view, opts)
+      unquote(__MODULE__).__isolated__(conn, endpoint, live_view, opts)
     end
   end
 
   @doc false
   def __isolated__(conn, endpoint, live_view, opts) do
-    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test module"))
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, opts)
@@ -395,30 +397,36 @@ defmodule Phoenix.LiveViewTest do
     do: request_path <> "?" <> query_string
 
   @doc """
-  Mounts, updates, and renders a component.
+  Renders a component.
 
-  If the component uses the `@myself` assigns, then an `id` must
-  be given to it is marked as stateful.
+  The first argument may either be a function component, as an
+  anonymous function:
 
-  ## Examples
+      assert render_component(&Weather.city/1, name: "Kraków") =~
+               "some markup in component"
+
+  Or a stateful component as a module. In this case, this function
+  will mount, update, and render the component. The `:id` option is
+  a required argument:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
+
+  If your component is using the router, you can pass it as argument:
 
       assert render_component(MyComponent, %{id: 123, user: %User{}}, router: SomeRouter) =~
                "some markup in component"
 
   """
   defmacro render_component(component, assigns, opts \\ []) do
-    endpoint =
-      Module.get_attribute(__CALLER__.module, :endpoint) ||
-        raise ArgumentError,
-              "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
 
     quote do
+      component = unquote(component)
+
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
-        unquote(component).__live__(),
+        if(is_atom(component), do: component.__live__(), else: component),
         unquote(assigns),
         unquote(opts)
       )
@@ -429,9 +437,25 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
+
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
-    rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
+
+    socket
+    |> Diff.component_to_rendered(component, assigns, mount_assigns)
+    |> rendered_to_iodata(socket)
+  end
+
+  def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
+    socket = %Socket{endpoint: endpoint, router: opts[:router]}
+
+    assigns
+    |> Map.new()
+    |> function.()
+    |> rendered_to_iodata(socket)
+  end
+
+  defp rendered_to_iodata(rendered, socket) do
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
@@ -1232,11 +1256,12 @@ defmodule Phoenix.LiveViewTest do
         {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
     after
       timeout ->
-        message = if to do
-          "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
-        else
-          "expected #{inspect(view.module)} to #{kind}, "
-        end
+        message =
+          if to do
+            "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} to #{kind}, "
+          end
 
         case flush_navigation(ref, topic, nil) do
           nil -> raise ArgumentError, message <> "but got none"
@@ -1505,7 +1530,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __live_redirect__(%View{} = view, opts, token_func \\ &(&1)) do
+  def __live_redirect__(%View{} = view, opts, token_func \\ & &1) do
     {session, %ClientProxy{} = root} = ClientProxy.root_view(proxy_pid(view))
 
     url =

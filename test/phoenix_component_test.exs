@@ -280,4 +280,12 @@ defmodule Phoenix.ComponentTest do
                ]
     end
   end
+
+  describe "testing" do
+    import Phoenix.LiveViewTest
+
+    test "render_component/1" do
+      assert render_component(&hello/1, name: "World!") == "Hello World!\n"
+    end
+  end
 end
