@@ -3,11 +3,7 @@ defmodule Phoenix.ComponentTest do
 
   use Phoenix.Component
 
-  defp h2s(template) do
-    template
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-  end
+  import Phoenix.LiveViewTest, only: [render_heex: 1]
 
   describe "rendering" do
     defp hello(assigns) do
@@ -19,7 +15,7 @@ defmodule Phoenix.ComponentTest do
     test "renders component" do
       assigns = %{}
 
-      assert h2s(~H"""
+      assert render_heex(~H"""
              <%= component &hello/1, name: "WORLD" %>
              """) == """
              Hello WORLD
@@ -37,7 +33,7 @@ defmodule Phoenix.ComponentTest do
     test "renders component with block" do
       assigns = %{}
 
-      assert h2s(~H"""
+      assert render_heex(~H"""
              <%= component &hello_with_block/1, name: "WORLD" do %>
              THE INNER BLOCK
              <% end %>
@@ -53,7 +49,7 @@ defmodule Phoenix.ComponentTest do
     test "renders component with block from content_tag" do
       assigns = %{}
 
-      assert h2s(~H"""
+      assert render_heex(~H"""
              <%= Phoenix.HTML.Tag.content_tag :div do %>
              <%= component &hello_with_block/1, name: "WORLD" do %>
              THE INNER BLOCK
@@ -80,7 +76,7 @@ defmodule Phoenix.ComponentTest do
     test "render component with block passing args" do
       assigns = %{}
 
-      assert h2s(~H"""
+      assert render_heex(~H"""
              <%= component &hello_with_block_args/1, name: "WORLD" do %>
              <% [arg1: arg1, arg2: arg2] -> %>
              THE INNER BLOCK

@@ -112,8 +112,8 @@ defmodule Phoenix.LiveViewTest do
 
   ## Testing components
 
-  There are two main mechanisms for testing components. To test stateless
-  components or just a regular rendering of a component, one can use
+  There are three main mechanisms for testing components. To test leex
+  stateless components or just a regular rendering of a component, one can use
   `render_component/2`:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
@@ -133,6 +133,13 @@ defmodule Phoenix.LiveViewTest do
   ID=user-13 and retrieve its `phx-target`. If `phx-target` points
   to a component, that will be the component used, otherwise it will
   fallback to the view.
+
+  If you want to test heex functional components, you can pass the
+  result of your function call to `render_heex/1` which will turn
+  the resulting struct into some HTML for you to introspect:
+
+    html = render_heex(MyComponent.call(assigns))
+
   """
 
   @flash_cookie "__phoenix_flash__"
@@ -435,6 +442,17 @@ defmodule Phoenix.LiveViewTest do
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
+
+  @doc """
+  Turns the output of a functional component into a HTML string that can be
+  introspected.
+
+  ## Examples
+
+      assert render_heex(MyComponent.display_user(%{user: %User{name: "Chris"}})) =~ "<h3>Chris</h3>"
+
+  """
+  def render_heex(rendered_struct), do: rendered_struct |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
 
   @doc """
   Sends a click event given by `element` and returns the rendered result.
