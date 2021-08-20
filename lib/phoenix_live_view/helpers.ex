@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.Helpers do
   to pass a `new_window` assign, along with any other attributes they
   would like to add to the element, such as class, data attributes, etc:
 
-      <.my_link id={@id} new_window={true} class="my-class">Home</a>
+      <.my_link href="/" id={@id} new_window={true} class="my-class">Home</.my_link>
 
   We could support the dynamic attributes with the following component:
 
@@ -31,7 +31,7 @@ defmodule Phoenix.LiveView.Helpers do
           |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
 
         ~H"\""
-        <a href={@href} target={@target}>
+        <a href={@href} target={@target} {@extra}>
           <%= render_block(@inner_block) %>
         </a>
         "\""
