@@ -1170,10 +1170,6 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_patched view, "/path"
 
-      render_click(view, :event_that_triggers_redirect)
-      path = assert_patched view
-      assert path =~ ~r/path/\d+/
-
   """
   def assert_patched(view, to) do
     assert_patch(view, to, 0)
@@ -1238,13 +1234,8 @@ defmodule Phoenix.LiveViewTest do
       {_path, flash} = assert_redirected view, "/path"
       assert flash["info"] == "Welcome"
 
-      render_click(view, :event_that_triggers_redirect)
-      {path, flash} = assert_redirected view
-      assert flash["info"] == "Welcome"
-      assert path =~ ~r/path\/\d+/
-
   """
-  def assert_redirected(view, to \\ nil) do
+  def assert_redirected(view, to) do
     assert_redirect(view, to, 0)
   end
 
