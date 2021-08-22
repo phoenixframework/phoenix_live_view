@@ -1170,10 +1170,6 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_patched view, "/path"
 
-      render_click(view, :event_that_triggers_redirect)
-      path = assert_patched view
-      assert path =~ ~r/path/\d+/
-
   """
   def assert_patched(view, to) do
     assert_patch(view, to, 0)
