@@ -1034,7 +1034,7 @@ defmodule Phoenix.LiveViewTest do
         type: "image/jpeg"
       }])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
@@ -1635,13 +1635,13 @@ defmodule Phoenix.LiveViewTest do
         }
       ])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
 
   By default, the entire file is chunked to the server, but an optional
   percentage to chunk can be passed to test chunk-by-chunk uploads:
 
-      assert render_upload(avatar, "foo.jpeg", 49) =~ "49%"
-      assert render_upload(avatar, "foo.jpeg", 51) =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
+      assert render_upload(avatar, "myfile.jpeg", 51) =~ "51%"
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do
