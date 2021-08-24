@@ -1641,7 +1641,7 @@ defmodule Phoenix.LiveViewTest do
   percentage to chunk can be passed to test chunk-by-chunk uploads:
 
       assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
-      assert render_upload(avatar, "myfile.jpeg", 51) =~ "51%"
+      assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do
