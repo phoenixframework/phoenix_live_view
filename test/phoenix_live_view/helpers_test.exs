@@ -156,6 +156,24 @@ defmodule Phoenix.LiveView.HelpersTest do
              ] = html
     end
 
+    test "does not generate csrf_token if method is not post" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+          <.form let={f} for={:myform} method="get">
+            <%= text_input f, :foo %>
+          </.form>
+        """)
+
+      assert [
+               {"form", [{"action", "#"}, {"method", "get"}],
+                [
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
     test "geneates form with available options and custom attributes" do
       assigns = %{}
 

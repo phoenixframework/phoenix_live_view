@@ -936,18 +936,20 @@ defmodule Phoenix.LiveView.Helpers do
         | action: action
       }
 
-    # And then process csrf_token, multipart, and method as in form_tag
+    # And then process method, csrf_token, and multipart as in form_tag
+    {method, opts} = Keyword.pop(opts, :method, "post")
+    {method, hidden_method} = form_method(method)
+
     {csrf_token, opts} =
-      Keyword.pop_lazy(opts, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
+      Keyword.pop_lazy(opts, :csrf_token, fn ->
+        if method == "post", do: Phoenix.HTML.Tag.csrf_token_value(action)
+      end)
 
     opts =
       case Keyword.pop(opts, :multipart, false) do
         {false, opts} -> opts
         {true, opts} -> Keyword.put(opts, :enctype, "multipart/form-data")
       end
-
-    {method, opts} = Keyword.pop(opts, :method, "post")
-    {method, hidden_method} = form_method(method)
 
     # Finally we can render the form
     assigns =
