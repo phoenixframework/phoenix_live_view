@@ -1,8 +1,13 @@
 # Changelog
 
+## 0.16.1 (2021-08-26)
+
+### Enhancements
+  - Relax `phoenix_html` dependency requirement
+
 ## 0.16.0 (2021-08-10)
 
-### Security Considerations Upgrading from 0.15
+## # Security Considerations Upgrading from 0.15
 
 LiveView v0.16 optimizes live redirects by supporting navigation purely
 over the existing WebSocket connection. This is accomplished by the new
