@@ -687,13 +687,13 @@ defmodule Phoenix.LiveView.Helpers do
 
         def city(assigns) do
           ~H"\""
-          The chosen city is: <%= @city %>.
+          The chosen city is: <%= @name %>.
           "\""
         end
 
         def country(assigns) do
           ~H"\""
-          The chosen country is: <%= @country %>.
+          The chosen country is: <%= @name %>.
           "\""
         end
       end
