@@ -1089,13 +1089,31 @@ defmodule Phoenix.LiveView.Engine do
       %{^key => val} ->
         val
 
+      %{} when key == :inner_block ->
+        raise ArgumentError, """
+        assign @#{key} not available in template.
+
+        This means a component requires a do-block or HTML children to
+        be given as argument but none were given. For example, instead of:
+
+            <.component />
+
+        You must do:
+
+            <.component>
+              more content
+            </.component>
+
+        Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
+        """
+
       %{} ->
         raise ArgumentError, """
-        assign @#{key} not available in eex template.
+        assign @#{key} not available in template.
 
-        Please make sure all proper assigns have been set. If this
-        is a child template, ensure assigns are given explicitly by
-        the parent template as they are not automatically forwarded.
+        Please make sure all proper assigns have been set. If you are
+        calling a component, make sure you are passing all required
+        assigns as arguments.
 
         Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
         """
