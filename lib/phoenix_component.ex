@@ -4,7 +4,7 @@ defmodule Phoenix.Component do
 
   A function component is any function that receives
   an assigns map as argument and returns a rendered
-  struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`)..
+  struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`).
 
   Here is an example:
 
