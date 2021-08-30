@@ -4,7 +4,7 @@ As seen earlier, you start by instantiating a single LiveSocket to enable LiveVi
 client/server interaction, for example:
 
     import {Socket} from "phoenix"
-    import LiveSocket from "phoenix_live_view"
+    import {LiveSocket} from "phoenix_live_view"
 
     let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
     let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
