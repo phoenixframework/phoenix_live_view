@@ -98,7 +98,7 @@ Every time the user performs an action on your system, you should verify if the 
 is authorized to do so, regardless if you are using LiveViews or not. For example,
 imagine a user can see all projects in a web application, but they may not have
 permission to delete any of them. At the UI level, you handle this accordingly
-by not showing the delete button in the projects listing, but a savy user can
+by not showing the delete button in the projects listing, but a savvy user can
 directly talk to the server and request a deletion anyway. For this reason, **you
 must always verify permissions on the server**.
 
