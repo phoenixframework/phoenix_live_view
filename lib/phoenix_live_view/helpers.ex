@@ -671,7 +671,7 @@ defmodule Phoenix.LiveView.Helpers do
   with the help of the `Phoenix.Component` module. They can be either local
   (same module) or remote (external module).
 
-  `HEEx` allows invoking whose function components directly in the template
+  `HEEx` allows invoking these function components directly in the template
   using an HTML-like notation. For example, a remote function:
 
       <MyApp.Weather.city name="Kraków"/>
