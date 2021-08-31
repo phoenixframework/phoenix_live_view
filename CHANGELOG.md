@@ -4,6 +4,8 @@
 
 ### Enhancements
   - Relax `phoenix_html` dependency requirement
+  - Allow testing functional components by passing a function reference
+    to `Phoenix.LiveViewTest.render_component/3`.
 
 ## 0.16.0 (2021-08-10)
 
