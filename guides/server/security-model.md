@@ -30,10 +30,10 @@ authorization and the specific rules often change per application.
 
 In a regular web application, we perform authentication and authorization
 checks on every request. In LiveView, we should also run those exact same
-checks, always. Authentication typically happens on the `mount` callback.
-Authorization rules may happen on `mount` (for instance, is the user allowed
-to see this page?) and also on `handle_event` (is the user allowed
-to delete this item?).
+checks, always. Once the user is authenticated, we typically validate the
+sessions on the `mount` callback. Authorization rules generally happen on
+`mount` (for instance, is the user allowed to see this page?) and also on
+`handle_event` (is the user allowed to delete this item?).
 
 ## Mounting considerations
 
