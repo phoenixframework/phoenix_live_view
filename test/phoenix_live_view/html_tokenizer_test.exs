@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete attribute value (EOF)" do
-      assert_raise ParseError, "nofile:2:15: expected closing `\"` for attribute value", fn ->
+      assert_raise ParseError, ~r"nofile:2:15: expected closing `\"` for attribute value", fn ->
         tokenize("""
         <div
           class="panel\
@@ -345,7 +345,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete attribute value (EOF)" do
-      assert_raise ParseError, "nofile:2:15: expected closing `\'` for attribute value", fn ->
+      assert_raise ParseError, ~r"nofile:2:15: expected closing `\'` for attribute value", fn ->
         tokenize("""
         <div
           class='panel\

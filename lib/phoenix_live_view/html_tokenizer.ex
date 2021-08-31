@@ -224,7 +224,20 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end(<<>>, line, column, _acc, state) do
-    message = "expected closing `>` or `/>`"
+    message = """
+    expected closing `>` or `/>`
+
+    This may happen if there is an EEx interpolation inside a tag,
+    which is not supported. Instead of
+
+        <a href="<%= @url %>">Text</a>
+
+    do
+
+        <a href={@url}>Text</a>
+
+    """
+
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
@@ -313,11 +326,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_value_begin("\"" <> rest, line, column, acc, state) do
-    handle_attr_value_double_quote(rest, line, column + 1, [], acc, state)
+    handle_attr_value_quote(rest, ?", line, column + 1, [], acc, state)
   end
 
   defp handle_attr_value_begin("'" <> rest, line, column, acc, state) do
-    handle_attr_value_single_quote(rest, line, column + 1, [], acc, state)
+    handle_attr_value_quote(rest, ?', line, column + 1, [], acc, state)
   end
 
   defp handle_attr_value_begin("{" <> rest, line, column, acc, state) do
@@ -329,59 +342,46 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
-  ## handle_attr_value_double_quote
+  ## handle_attr_value_quote
 
-  defp handle_attr_value_double_quote("\r\n" <> rest, line, _column, buffer, acc, state) do
+  defp handle_attr_value_quote("\r\n" <> rest, delim, line, _column, buffer, acc, state) do
     column = state.column_offset
-    handle_attr_value_double_quote(rest, line + 1, column, ["\r\n" | buffer], acc, state)
+    handle_attr_value_quote(rest, delim, line + 1, column, ["\r\n" | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote("\n" <> rest, line, _column, buffer, acc, state) do
+  defp handle_attr_value_quote("\n" <> rest, delim, line, _column, buffer, acc, state) do
     column = state.column_offset
-    handle_attr_value_double_quote(rest, line + 1, column, ["\n" | buffer], acc, state)
+    handle_attr_value_quote(rest, delim, line + 1, column, ["\n" | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote("\"" <> rest, line, column, buffer, acc, state) do
+  defp handle_attr_value_quote(<<delim, rest::binary>>, delim, line, column, buffer, acc, state) do
     value = buffer_to_string(buffer)
-    acc = put_attr_value(acc, {:string, value, %{delimiter: ?"}})
-
+    acc = put_attr_value(acc, {:string, value, %{delimiter: delim}})
     handle_maybe_tag_open_end(rest, line, column + 1, acc, state)
   end
 
-  defp handle_attr_value_double_quote(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_attr_value_double_quote(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+  defp handle_attr_value_quote(<<c::utf8, rest::binary>>, delim, line, column, buffer, acc, state) do
+    handle_attr_value_quote(rest, delim, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote(<<>>, line, column, _buffer, _acc, state) do
-    message = "expected closing `\"` for attribute value"
-    raise ParseError, file: state.file, line: line, column: column, message: message
-  end
+  defp handle_attr_value_quote(<<>>, delim, line, column, _buffer, _acc, state) do
+    message = """
+    expected closing `#{<<delim>>}` for attribute value
 
-  ## handle_attr_value_single_quote
+    This may happen if there is an EEx interpolation inside a tag,
+    which is not supported. Instead of
 
-  defp handle_attr_value_single_quote("\r\n" <> rest, line, _column, buffer, acc, state) do
-    column = state.column_offset
-    handle_attr_value_single_quote(rest, line + 1, column, ["\r\n" | buffer], acc, state)
-  end
+        <div <%= @some_attributes %>>
+        </div>
 
-  defp handle_attr_value_single_quote("\n" <> rest, line, _column, buffer, acc, state) do
-    column = state.column_offset
-    handle_attr_value_single_quote(rest, line + 1, column, ["\n" | buffer], acc, state)
-  end
+    do
 
-  defp handle_attr_value_single_quote("'" <> rest, line, column, buffer, acc, state) do
-    value = buffer_to_string(buffer)
-    acc = put_attr_value(acc, {:string, value, %{delimiter: ?'}})
+        <div {@some_attributes}>
+        </div>
 
-    handle_maybe_tag_open_end(rest, line, column + 1, acc, state)
-  end
+    Where @some_attributes must be a keyword list or a map.
+    """
 
-  defp handle_attr_value_single_quote(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_attr_value_single_quote(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
-  end
-
-  defp handle_attr_value_single_quote(<<>>, line, column, _buffer, _acc, state) do
-    message = "expected closing `'` for attribute value"
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
