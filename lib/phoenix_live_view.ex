@@ -288,12 +288,12 @@ defmodule Phoenix.LiveView do
   to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
 
       def weather_greeting(assigns) do
-        ~H"\""
+        ~H"""
         <div title="My div" class={@class}>
           <p>Hello <%= @name %></p>
           <MyApp.Weather.city name="Kraków"/>
         </div>
-        "\""
+        """
       end
 
   You can learn more about function components in the `Phoenix.Component`
