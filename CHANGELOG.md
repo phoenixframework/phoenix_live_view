@@ -110,7 +110,7 @@ component named `form`:
 
 ```elixir
 ~H"""
-<.form let={f} for={@changeset} action="#">
+<.form let={f} for={@changeset}>
   <%= input f, :foo %>
 </.form>
 """
