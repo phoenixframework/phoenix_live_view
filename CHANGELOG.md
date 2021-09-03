@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.2
+
+### Bug fixes
+  - Fix phx-change form recovery event being sent to wrong component on reconnect when component order changes
+
 ## 0.16.1 (2021-08-26)
 
 ### Enhancements
