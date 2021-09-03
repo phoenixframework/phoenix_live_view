@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.3 (2021-09-03)
+
+### Bug fixes
+  - Fix `on_mount` hooks calling view mount before redirecting when the hook issues a halt redirect.
+
 ## 0.16.2 (2021-09-03)
 
 ### Enhancements
