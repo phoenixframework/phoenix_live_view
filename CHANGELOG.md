@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.16.2
+## 0.16.2 (2021-09-03)
+
+### Enhancements
+  - Improve error messages on tokenization
+  - Improve error message if inner_block is missing
 
 ### Bug fixes
   - Fix phx-change form recovery event being sent to wrong component on reconnect when component order changes
