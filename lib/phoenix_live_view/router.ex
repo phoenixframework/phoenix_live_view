@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Router do
       override any existing root layout set in the router.
 
     * `:on_mount` - The optional list of hooks to attach to the mount lifecycle _of
-      each LiveView in the session_. See `Phoenix.LiveView.on_mount/3`. Passing a
+      each LiveView in the session_. See `Phoenix.LiveView.on_mount/1`. Passing a
       single value is also accepted.
 
   ## Examples
