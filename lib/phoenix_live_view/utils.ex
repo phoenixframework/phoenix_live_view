@@ -288,7 +288,7 @@ defmodule Phoenix.LiveView.Utils do
   Calls the `c:Phoenix.LiveView.mount/3` callback, otherwise returns the socket as is.
   """
   def maybe_call_live_view_mount!(%Socket{} = socket, view, params, session) do
-    {_, %Socket{} = socket} = Lifecycle.mount(params, session, socket)
+    {cont_or_halt, %Socket{} = socket} = Lifecycle.mount(params, session, socket)
 
     if function_exported?(view, :mount, 3) do
       :telemetry.span(
@@ -296,8 +296,10 @@ defmodule Phoenix.LiveView.Utils do
         %{socket: socket, params: params, session: session},
         fn ->
           socket =
-            params
-            |> view.mount(session, socket)
+            case cont_or_halt do
+              :cont -> view.mount(params, session, socket)
+              :halt -> {:ok, socket}
+            end
             |> handle_mount_result!({:mount, 3, view})
 
           {socket, %{socket: socket, params: params, session: session}}
