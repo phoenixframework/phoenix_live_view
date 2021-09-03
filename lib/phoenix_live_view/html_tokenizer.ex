@@ -227,8 +227,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     message = """
     expected closing `>` or `/>`
 
-    This may happen if there is an EEx interpolation inside a tag,
-    which is not supported. Instead of
+    Make sure the tag is properly closed. This may also happen if
+    there is an EEx interpolation inside a tag, which is not supported.
+    Instead of
 
         <a href="<%= @url %>">Text</a>
 
@@ -368,8 +369,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     message = """
     expected closing `#{<<delim>>}` for attribute value
 
-    This may happen if there is an EEx interpolation inside a tag,
-    which is not supported. Instead of
+    Make sure the attribute is properly closed. This may also happen if
+    there is an EEx interpolation inside a tag, which is not supported.
+    Instead of
 
         <div <%= @some_attributes %>>
         </div>

@@ -402,17 +402,17 @@ defmodule Phoenix.LiveView.Engine do
 
   defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns) do
     {block, _} =
-      Enum.map_reduce(dynamic, {0, initial_vars}, fn
-        to_safe_match(var, ast), {counter, vars} ->
+      Enum.map_reduce(dynamic, initial_vars, fn
+        to_safe_match(var, ast), vars ->
           vars = set_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns)
           live_struct = to_live_struct(ast, vars, assigns)
-          {to_conditional_var(keys, var, live_struct), {counter + 1, vars}}
+          {to_conditional_var(keys, var, live_struct), vars}
 
-        ast, {counter, vars} ->
+        ast, vars ->
           vars = set_vars(initial_vars, vars)
           {ast, vars, _} = analyze(ast, vars, assigns)
-          {ast, {counter, vars}}
+          {ast, vars}
       end)
 
     {static, dynamic} = bins_and_vars(static)
