@@ -125,6 +125,13 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
+  def mount(_, _, socket) do
+    case socket.assigns.live_action do
+      :halt -> raise "mount should not have been called"
+      _ -> {:ok, socket}
+    end
+  end
+
   on_mount {__MODULE__, :hook}
 
   def hook(_, _, %{assigns: %{live_action: action}} = socket) do

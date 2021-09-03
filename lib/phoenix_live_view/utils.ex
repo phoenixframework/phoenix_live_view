@@ -298,7 +298,7 @@ defmodule Phoenix.LiveView.Utils do
           socket =
             case cont_or_halt do
               :cont -> view.mount(params, session, socket)
-              :halt -> socket
+              :halt -> {:ok, socket}
             end
             |> handle_mount_result!({:mount, 3, view})
 
