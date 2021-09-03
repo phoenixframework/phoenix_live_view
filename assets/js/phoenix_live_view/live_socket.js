@@ -568,7 +568,7 @@ export default class LiveSocket {
       } else {
         this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
-          if(typeof (scroll) === "number"){
+          if(typeof(scroll) === "number"){
             setTimeout(() => {
               window.scrollTo(0, scroll)
             }, 0) // the body needs to render before we scroll.
@@ -673,7 +673,7 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, phxEvent, e.target)
+            view.pushInput(input, targetCtx, null, phxEvent, e.target)
           })
         })
       }, false)

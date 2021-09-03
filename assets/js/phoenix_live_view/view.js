@@ -36,7 +36,8 @@ import {
   isEmpty,
   isEqualObj,
   logError,
-  maybe
+  maybe,
+  isCid,
 } from "./utils"
 
 import Browser from "./browser"
@@ -237,8 +238,8 @@ export default class View {
       this.joinCount++
 
       if(forms.length > 0){
-        forms.forEach((form, i) => {
-          this.pushFormRecovery(form, resp => {
+        forms.forEach(([form, newForm, newCid], i) => {
+          this.pushFormRecovery(form, newCid, resp => {
             if(i === forms.length - 1){
               this.onJoinComplete(resp, html, events)
             }
@@ -353,7 +354,7 @@ export default class View {
 
     patch.after("discarded", (el) => {
       let cid = this.componentID(el)
-      if(typeof (cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
+      if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
@@ -771,9 +772,9 @@ export default class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, eventTarget, callback){
     let uploads
-    let cid = this.targetComponentID(inputEl.form, targetCtx)
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
     let formData = serializeForm(inputEl.form, {_target: eventTarget.name})
     if(inputEl.files && inputEl.files.length > 0){
@@ -941,11 +942,11 @@ export default class View {
     else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
   }
 
-  pushFormRecovery(form, callback){
+  pushFormRecovery(form, newCid, callback){
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
-      view.pushInput(input, targetCtx, phxEvent, input, callback)
+      view.pushInput(input, targetCtx, newCid, phxEvent, input, callback)
     })
   }
 
@@ -975,10 +976,18 @@ export default class View {
 
     return (
       DOM.all(this.el, `form[${phxChange}]`)
-        .filter(form => this.ownsElement(form))
+        .filter(form => form.id && this.ownsElement(form))
         .filter(form => form.elements.length > 0)
         .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
-        .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+        .map(form => {
+          let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`)
+          if(newForm){
+            return [form, newForm, this.componentID(newForm)]
+          } else {
+            return [form, null, null]
+          }
+        })
+        .filter(([form, newForm, newCid]) => newForm)
     )
   }
 

@@ -12,7 +12,8 @@ import {
 } from "./constants"
 
 import {
-  detectDuplicateIds
+  detectDuplicateIds,
+  isCid
 } from "./utils"
 
 import DOM from "./dom"
@@ -40,7 +41,7 @@ export default class DOMPatch {
     this.rootID = view.root.id
     this.html = html
     this.targetCID = targetCID
-    this.cidPatch = typeof (this.targetCID) === "number"
+    this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
