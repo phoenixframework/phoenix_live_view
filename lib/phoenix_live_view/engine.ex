@@ -993,6 +993,18 @@ defmodule Phoenix.LiveView.Engine do
     quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
   end
 
+  # Calls to attributes escape is always safe
+  defp to_safe(
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML, :Tag]}, :attributes_escape]}, _, [_]} =
+           safe,
+         line,
+         _extra_clauses?
+       ) do
+    quote line: line do
+      elem(unquote(safe), 1)
+    end
+  end
+
   defp to_safe(expr, line, false) do
     quote line: line, do: unquote(__MODULE__).safe_to_iodata(unquote(expr))
   end

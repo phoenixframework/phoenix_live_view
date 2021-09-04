@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.UpdateTest do
                {"div", _,
                 [
                   "time: 12:00 NestedAppend\n",
-                  {"div", [{"phx-update", "append"}, {"id", "append-NestedAppend"}], []}
+                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}], []}
                 ]}
              ] = find_time_zones(html, ["nested-append", "tokyo"])
 
@@ -84,7 +84,7 @@ defmodule Phoenix.LiveView.UpdateTest do
                {"div", _,
                 [
                   "time: 12:00 NestedAppend\n",
-                  {"div", [{"phx-update", "append"}, {"id", "append-NestedAppend"}],
+                  {"div", [{"id", "append-NestedAppend"}, {"phx-update", "append"}],
                    [
                      {:comment, " example "},
                      {"div", [{"id", "item-item1"}], ["item1"]},
