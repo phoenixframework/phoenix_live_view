@@ -77,10 +77,10 @@ Generally speaking, **data loading should never happen inside the template**,
 regardless if you are using LiveView or not. The difference is that LiveView
 enforces this best practice.
 
-## HEEx pitfalls
+## Pitfalls
 
 There are two common pitfalls to keep in mind when using the `~H` sigil
-or `.heex` templates.
+or `.heex` templates inside LiveViews.
 
 When it comes to `do/end` blocks, change tracking is supported only on blocks
 given to Elixir's basic constructs, such as `if`, `case`, `for`, and similar.
@@ -103,11 +103,11 @@ inside `.heex` templates:
       <%= @description %>
     </div>
 
-Another pitfall of `.heex` templates is related to variables. Due to the scope
-of variables, LiveView has to disable change tracking whenever variables are
-used in the template, with the exception of variables introduced by Elixir
-basic `case`, `for`, and other block constructs. Therefore, you **must avoid**
-code like this in your LiveEEx:
+The next pitfall is related to variables. Due to the scope of variables,
+LiveView has to disable change tracking whenever variables are used in the
+template, with the exception of variables introduced by Elixir basic `case`,
+`for`, and other block constructs. Therefore, you **must avoid** code like
+this in your LiveView templates:
 
     <% some_var = @x + @y %>
     <%= some_var %>
