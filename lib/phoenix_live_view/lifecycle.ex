@@ -110,6 +110,14 @@ defmodule Phoenix.LiveView.Lifecycle do
     %{id: id, stage: stage, function: fun}
   end
 
+  @doc """
+  Returns whether any hooks have been attached to the given `stage`.
+  """
+  def callbacks?(%Socket{private: %{@lifecycle => lifecycle}}, stage)
+      when stage in [:handle_event, :handle_info, :handle_params, :mount] do
+    lifecycle |> Map.fetch!(stage) |> Enum.any?()
+  end
+
   # Lifecycle Event API
 
   @doc false

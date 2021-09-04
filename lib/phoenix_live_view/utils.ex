@@ -285,22 +285,39 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Returns a map of infos about the lifecycle stage for the given `view`.
+  """
+  def lifecycle(%Socket{} = socket, view, stage, arity) do
+    info = %{
+      callbacks?: Lifecycle.callbacks?(socket, stage),
+      exported?: function_exported?(view, stage, arity),
+      ref: {stage, arity, view},
+      view: view
+    }
+
+    Map.put(info, :any?, info.callbacks? or info.exported?)
+  end
+
+  @doc """
   Calls the `c:Phoenix.LiveView.mount/3` callback, otherwise returns the socket as is.
   """
   def maybe_call_live_view_mount!(%Socket{} = socket, view, params, session) do
-    {cont_or_halt, %Socket{} = socket} = Lifecycle.mount(params, session, socket)
+    lifecycle = lifecycle(socket, view, :mount, 3)
 
-    if function_exported?(view, :mount, 3) do
+    if lifecycle.any? do
       :telemetry.span(
         [:phoenix, :live_view, :mount],
         %{socket: socket, params: params, session: session},
         fn ->
           socket =
-            case cont_or_halt do
-              :cont -> view.mount(params, session, socket)
-              :halt -> {:ok, socket}
+            case {Lifecycle.mount(params, session, socket), lifecycle} do
+              {{:cont, %Socket{} = socket}, %{exported?: true}} ->
+                lifecycle.view.mount(params, session, socket)
+
+              {{_, %Socket{} = socket}, _} ->
+                {:ok, socket}
             end
-            |> handle_mount_result!({:mount, 3, view})
+            |> handle_mount_result!(lifecycle.ref)
 
           {socket, %{socket: socket, params: params, session: session}}
         end
@@ -346,6 +363,17 @@ defmodule Phoenix.LiveView.Utils do
 
   defp validate_mount_redirect!({:live, {_, _}, _}), do: raise_bad_mount_and_live_patch!()
   defp validate_mount_redirect!(_), do: :ok
+
+  @doc """
+  Calls the `handle_params/3` callback if it has been exported by the given `view`.
+  """
+  def maybe_call_handle_params(%Socket{} = socket, %{exported?: true} = lifecycle, params, uri) do
+    call_handle_params!(socket, lifecycle.view, params, uri)
+  end
+
+  def maybe_call_handle_params(%Socket{} = socket, _lifecycle, _params, _uri) do
+    socket
+  end
 
   @doc """
   Calls the `handle_params/3` callback, and returns the result.

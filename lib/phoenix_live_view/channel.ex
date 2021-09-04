@@ -370,12 +370,13 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
     %{view: view, redirected: mount_redirect} = socket
+    lifecycle = Utils.lifecycle(socket, view, :handle_params, 3)
 
     cond do
       mount_redirect ->
         mount_handle_params_result({:noreply, socket}, state, :mount)
 
-      not function_exported?(view, :handle_params, 3) ->
+      not lifecycle.any? ->
         {:diff, diff, new_state} = render_diff(state, socket, true)
         {:ok, diff, :mount, new_state}
 
@@ -389,7 +390,7 @@ defmodule Phoenix.LiveView.Channel do
 
       true ->
         socket
-        |> Utils.call_handle_params!(view, params, url)
+        |> Utils.maybe_call_handle_params(lifecycle, params, url)
         |> mount_handle_params_result(state, :mount)
     end
   end

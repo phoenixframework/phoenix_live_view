@@ -128,6 +128,32 @@ defmodule Phoenix.LiveView.HookTest do
     end
   end
 
+  test "callbacks?/2" do
+    socket = build_socket()
+    refute Lifecycle.callbacks?(socket, :mount)
+    refute Lifecycle.callbacks?(socket, :handle_event)
+    refute Lifecycle.callbacks?(socket, :handle_info)
+    refute Lifecycle.callbacks?(socket, :handle_params)
+
+    # In lieu of calling the on_mount macro, we can do a gnarly
+    # update to get a mount hook inside the Lifecycle (:
+    socket = update_in(socket.private.lifecycle, fn lifecycle ->
+      hook = Lifecycle.on_mount(Phoenix.LiveViewTest.HooksLive, {__MODULE__, :noop})
+      %{lifecycle | mount: [hook]}
+    end)
+
+    assert Lifecycle.callbacks?(socket, :mount)
+
+    socket = LiveView.attach_hook(socket, :foo, :handle_event, &noop/3)
+    assert Lifecycle.callbacks?(socket, :handle_event)
+
+    socket = LiveView.attach_hook(socket, :foo, :handle_info, &noop/2)
+    assert Lifecycle.callbacks?(socket, :handle_info)
+
+    socket = LiveView.attach_hook(socket, :foo, :handle_params, &noop/3)
+    assert Lifecycle.callbacks?(socket, :handle_params)
+  end
+
   defp lifecycle(%LiveView.Socket{private: %{lifecycle: struct}}), do: struct
   defp lifecycle(%LiveView.Socket{}), do: nil
 

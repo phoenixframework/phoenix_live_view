@@ -199,7 +199,7 @@ defmodule Phoenix.LiveView.Static do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
     end
 
-    if exports_handle_params?(view) do
+    if Utils.lifecycle(socket, view, :handle_params, 3).any? do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
     end
 
@@ -272,12 +272,13 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
+    lifecycle = Utils.lifecycle(socket, view, :handle_params, 3)
+
     cond do
       mount_redir ->
         {:noreply, socket}
 
-      not exports_handle_params?(view) ->
-        {_, socket} = Lifecycle.handle_params(params, uri, socket)
+      not lifecycle.any? ->
         {:noreply, socket}
 
       is_nil(socket.router) ->
@@ -285,11 +286,9 @@ defmodule Phoenix.LiveView.Static do
         Route.live_link_info!(socket, view, uri)
 
       true ->
-        Utils.call_handle_params!(socket, view, params, uri)
+        Utils.maybe_call_handle_params(socket, lifecycle, params, uri)
     end
   end
-
-  defp exports_handle_params?(view), do: function_exported?(view, :handle_params, 3)
 
   defp sign_root_session(%Socket{} = socket, router, view, session, live_session) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
