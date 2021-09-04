@@ -123,18 +123,13 @@ describe("Rendered", () => {
         "0": "",
         "1": "",
         "2": {
-          "0": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/new\">New Post</a>",
+          "0": "new post",
           "1": "",
           "2": {
             "d": [[1], [2]],
             "s": ["", ""]
           },
-          "s": [
-            "<h1>Timeline</h1>\n\n<span>",
-            "</span>\n\n",
-            "\n<div id=\"posts\" phx-update=\"prepend\">\n",
-            "</div>\n\n"
-          ]
+          "s": ["h1", "h2", "h3", "h4"]
         },
         "c": {
           "1": {
@@ -145,20 +140,9 @@ describe("Rendered", () => {
             "4": "0",
             "5": "1",
             "6": "0",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1008/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1008\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
-            "s": [
-              "<div id=\"post-",
-              "\" class=\"post\">\n  <div class=\"row\">\n    <div class=\"column column-10\">\n      <div class=\"post-avatar\"></div>\n    </div>\n    <div class=\"column column-90 post-body\">\n      <b>@",
-              "</b>\n      <br/>\n      ",
-              "\n    </div>\n  </div>\n\n  <div class=\"row\">\n    <div class=\"column\">\n      <a href=\"#\" phx-click=\"like\" phx-target=\"",
-              "\">\n        <i class=\"far fa-heart\"></i> ",
-              "\n      </a>\n    </div>\n    <div class=\"column\">\n      <a href=\"#\" phx-click=\"repost\" phx-target=\"",
-              "\">\n        <i class=\"far fa-retweet\"></i> ",
-              "\n      </a>\n    </div>\n    <div class=\"column\">\n      ",
-              "\n      ",
-              "\n    </div>\n  </div>\n</div>\n"
-            ]
+            "7": "edit",
+            "8": "delete",
+            "s": ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"]
           },
           "2": {
             "0": "1007",
@@ -168,17 +152,12 @@ describe("Rendered", () => {
             "4": "0",
             "5": "2",
             "6": "0",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1007/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1007\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "7": "edit",
+            "8": "delete",
             "s": 1
           }
         },
-        "s": [
-          "<main role=\"main\" class=\"container\">\n  <p class=\"alert alert-info\" role=\"alert\"\n    phx-click=\"lv:clear-flash\"\n    phx-value-key=\"info\">",
-          "</p>\n\n  <p class=\"alert alert-danger\" role=\"alert\"\n    phx-click=\"lv:clear-flash\"\n    phx-value-key=\"error\">",
-          "</p>\n\n",
-          "</main>\n"
-        ],
+        "s": ["f1", "f2", "f3", "f4"],
         "title": "Listing Posts"
       }
 
@@ -197,8 +176,8 @@ describe("Rendered", () => {
             "4": "0",
             "5": "3",
             "6": "0",
-            "7": "<a data-phx-link=\"patch\" data-phx-link-state=\"push\" href=\"/posts/1009/edit\">\n        Edit\n      </a>",
-            "8": "<a data-confirm=\"Are you sure?\" href=\"#\" phx-click=\"delete\" phx-value-id=\"1009\">\n        <i class=\"far fa-trash-alt\"></i>\n      </a>",
+            "7": "edit",
+            "8": "delete",
             "s": -2
           }
         }

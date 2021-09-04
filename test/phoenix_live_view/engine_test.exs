@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
-                   ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
+                   ~r/assign @foo not available in template.*Available assigns: \[:bar\]/s,
                    fn -> render("<%= @foo %>", %{bar: true}) end
     end
   end
@@ -188,6 +188,11 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, false) == ["3"]
     end
 
+    test "renders dynamic does not change track underscore" do
+      assert changed("<%= _ = 123 %>", %{}, nil) == ["123"]
+      assert changed("<%= _ = 123 %>", %{}, %{}) == [nil]
+    end
+
     test "renders dynamic with dot tracking" do
       template = "<%= @map.foo + @map.bar %>"
       old = %{map: %{foo: 123, bar: 456}}
@@ -244,6 +249,20 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "renders dynamic with access tracking inside comprehension" do
+      template = """
+      <%= for x <- [:a, :b, :c] do %>
+        <%= @map[x] %>
+      <% end %>
+      """
+
+      old = %{map: [a: 1, b: 2, c: 3]}
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, nil)
+      assert [nil] = changed(template, old, %{})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, %{map: true})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
     end
 
     test "renders dynamic if it has a lexical form" do

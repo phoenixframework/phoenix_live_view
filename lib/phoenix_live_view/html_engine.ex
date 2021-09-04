@@ -26,6 +26,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
+    {module, opts} = Keyword.pop(opts, :module)
 
     unless subengine do
       raise ArgumentError, ":subengine is missing for HTMLEngine"
@@ -37,7 +38,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       root: nil,
-      opts: opts
+      module: module,
+      file: Keyword.get(opts, :file, "nofile"),
+      indentation: Keyword.get(opts, :indentation, 0)
     }
 
     update_subengine(state, :init, [])
@@ -52,9 +55,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
     opts = [root: state.root || false]
     ast = invoke_subengine(state, :handle_body, [opts])
 
-    quote do
-      require Phoenix.LiveView.Helpers
-      unquote(ast)
+    # Do not require if calling module is helpers. Fix for elixir < 1.12
+    # TODO remove after Elixir >= 1.12 support
+    if state.module === Phoenix.LiveView.Helpers do
+      ast
+    else
+      quote do
+        require Phoenix.LiveView.Helpers
+        unquote(ast)
+      end
     end
   end
 
@@ -63,7 +72,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     invoke_subengine(state, :handle_end, [])
   end
 
-  ## These callbacks udpate the state
+  ## These callbacks update the state
 
   @doc false
   def handle_begin(state) do
@@ -75,11 +84,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     handle_text(state, [line: 1, column: 1, skip_metadata: true], text)
   end
 
-  def handle_text(state, meta, text) do
-    opts = Keyword.take(state.opts, [:indentation]) ++ meta
-
+  def handle_text(%{file: file, indentation: indentation} = state, meta, text) do
     text
-    |> HTMLTokenizer.tokenize(opts)
+    |> HTMLTokenizer.tokenize(file, indentation, meta)
     |> Enum.reduce(state, &handle_token(&1, &2, meta))
   end
 
@@ -89,10 +96,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
     {:tag_open, name, _attrs, %{line: line, column: column}} = tag
-    file = state.opts[:file]
-
+    file = state.file
     message = "end of file reached without closing tag for <#{name}>"
-
     raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
@@ -152,7 +157,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          {:tag_close, tag_close_name, tag_close_meta}
        ) do
     %{line: line, column: column} = tag_close_meta
-    file = state.opts[:file]
+    file = state.file
 
     message = """
     unmatched closing tag. Expected </#{tag_open_name}> for <#{tag_open_name}> \
@@ -164,10 +169,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
     %{line: line, column: column} = tag_meta
-    file = state.opts[:file]
-
+    file = state.file
     message = "missing opening tag for </#{tag_name}>"
-
     raise SyntaxError, line: line, column: column, file: file, description: message
   end
 
@@ -189,7 +192,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        )
        when first in ?A..?Z do
-    file = state.opts[:file]
+    file = state.file
     {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
 
     {let, assigns} = handle_component_attrs(attrs, file)
@@ -209,7 +212,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state, _meta)
        when first in ?A..?Z do
-    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.opts[:file])
+    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.file)
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
@@ -222,7 +225,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
        when first in ?A..?Z do
     {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
-    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
@@ -243,7 +246,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        ) do
     fun = String.to_atom(name)
-    file = state.opts[:file]
+    file = state.file
 
     {let, assigns} = handle_component_attrs(attrs, file)
     raise_if_let!(let, file)
@@ -272,7 +275,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
-    {let, assigns} = handle_component_attrs(attrs, state.opts[:file])
+    {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =

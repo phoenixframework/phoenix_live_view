@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.16.0-dev"
+  @version "0.16.3"
 
   def project do
     [
@@ -14,6 +14,7 @@ defmodule Phoenix.LiveView.MixProject do
       package: package(),
       xref: [exclude: [Floki]],
       deps: deps(),
+      aliases: aliases(),
       docs: docs(),
       name: "Phoenix LiveView",
       homepage_url: "http://www.phoenixframework.org",
@@ -38,13 +39,14 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.5.9"},
-      {:phoenix_html, github: "phoenixframework/phoenix_html", override: true},
-      {:telemetry, "~> 0.4.2 or ~> 0.5"},
+      {:phoenix, "~> 1.5.9 or ~> 1.6.0"},
+      {:phoenix_html, "~> 3.0"},
+      {:esbuild, "~> 0.2", only: :dev},
+      {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
       {:ex_doc, "~> 0.22", only: :docs},
       {:floki, "~> 0.30.0", only: :test},
-      {:html_entities, ">= 0.0.0", only: :test}
+      {:html_entities, ">= 0.0.0", only: :test},
     ]
   end
 
@@ -56,7 +58,8 @@ defmodule Phoenix.LiveView.MixProject do
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      nest_modules_by_prefix: [Phoenix.LiveViewTest]
     ]
   end
 
@@ -88,15 +91,28 @@ defmodule Phoenix.LiveView.MixProject do
   end
 
   defp groups_for_modules do
+    # Ungrouped Modules:
+    #
+    # Phoenix.LiveView
+    # Phoenix.LiveView.Controller
+    # Phoenix.LiveView.Helpers
+    # Phoenix.LiveView.Router
+    # Phoenix.LiveView.Socket
+
     [
-      "Upload structures": [
-        Phoenix.LiveView.UploadConfig,
-        Phoenix.LiveView.UploadEntry
+      "Components": [
+        Phoenix.Component,
+        Phoenix.LiveComponent
       ],
-      "Testing structures": [
+      "Testing": [
+        Phoenix.LiveViewTest,
         Phoenix.LiveViewTest.Element,
         Phoenix.LiveViewTest.Upload,
         Phoenix.LiveViewTest.View
+      ],
+      "Upload structures": [
+        Phoenix.LiveView.UploadConfig,
+        Phoenix.LiveView.UploadEntry
       ],
       "Live EEx Engine": [
         Phoenix.LiveComponent.CID,
@@ -117,6 +133,13 @@ defmodule Phoenix.LiveView.MixProject do
       files:
         ~w(assets/js lib priv) ++
           ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
+    ]
+  end
+
+  defp aliases do
+    [
+      "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min"],
+      "assets.watch": ["esbuild module --watch"]
     ]
   end
 end

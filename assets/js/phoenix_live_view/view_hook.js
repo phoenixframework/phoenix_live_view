@@ -52,6 +52,14 @@ export default class ViewHook {
     this.__listeners.delete(callbackRef)
   }
 
+  upload(name, files){
+    return this.__view.dispatchUploads(name, files)
+  }
+
+  uploadTo(phxTarget, name, files){
+    return this.__view.withinTargets(phxTarget, view => view.dispatchUploads(name, files))
+  }
+
   __cleanup__(){
     this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
   }

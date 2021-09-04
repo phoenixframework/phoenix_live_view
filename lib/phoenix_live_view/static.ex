@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Route}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
@@ -36,7 +36,7 @@ defmodule Phoenix.LiveView.Static do
 
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
-      {_view, _opts, {_name, _live_session_extra, _vsn} = lv_session} -> lv_session
+      {_view, _opts, %{name: _name, extra: _extra, vsn: _vsn} = lv_session} -> lv_session
       nil -> nil
     end
   end
@@ -81,6 +81,7 @@ defmodule Phoenix.LiveView.Static do
     {to_sign_session, mount_session} = load_session(conn_session, opts)
     live_session = live_session(conn)
     config = load_live!(view, :view)
+    lifecycle = lifecycle(config, live_session)
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
@@ -97,6 +98,7 @@ defmodule Phoenix.LiveView.Static do
           connect_params: %{},
           connect_info: %{},
           conn_session: conn_session,
+          lifecycle: lifecycle,
           root_view: view,
           __changed__: %{}
         },
@@ -166,6 +168,7 @@ defmodule Phoenix.LiveView.Static do
         },
         %{
           assign_new: {parent.assigns.__assigns__, []},
+          lifecycle: config.lifecycle,
           phoenix_live_layout: false,
           root_view: parent.private.root_view,
           __changed__: %{}
@@ -242,6 +245,14 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
+  defp lifecycle(%{lifecycle: lifecycle}, %{extra: %{on_mount: on_mount}}) do
+    %{lifecycle | mount: on_mount ++ lifecycle.mount}
+  end
+
+  defp lifecycle(%{lifecycle: lifecycle}, _) do
+    lifecycle
+  end
+
   defp call_mount_and_handle_params!(socket, view, session, params, uri) do
     mount_params = if socket.router, do: params, else: :not_mounted_at_router
 
@@ -266,6 +277,7 @@ defmodule Phoenix.LiveView.Static do
         {:noreply, socket}
 
       not exports_handle_params?(view) ->
+        {_, socket} = Lifecycle.handle_params(params, uri, socket)
         {:noreply, socket}
 
       is_nil(socket.router) ->
@@ -283,7 +295,7 @@ defmodule Phoenix.LiveView.Static do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     live_session_pair =
       case live_session do
-        {name, _extra, vsn} -> {name, vsn}
+        %{name: name, vsn: vsn} -> {name, vsn}
         nil -> nil
       end
 

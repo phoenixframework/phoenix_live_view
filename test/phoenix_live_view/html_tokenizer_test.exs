@@ -1,8 +1,10 @@
 defmodule Phoenix.LiveView.HTMLTokenizerTest do
   use ExUnit.Case, async: true
-
-  import Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
+
+  defp tokenize(text) do
+    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [])
+  end
 
   describe "text" do
     test "represented as {:text, value}" do
@@ -22,6 +24,19 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
     test "keep line breaks unchanged" do
       assert tokenize("first\nsecond\r\nthird") == [{:text, "first\nsecond\r\nthird"}]
+    end
+  end
+
+  describe "doctype" do
+    test "generated as text" do
+      assert tokenize("<!doctype html>") == [{:text, "<!doctype html>"}]
+    end
+
+    test "multiple lines" do
+      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") ==  [
+              {:text, "<!DOCTYPE\nhtml\n>  "},
+              {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
+            ]
     end
   end
 
@@ -112,6 +127,22 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
           </>\
         """)
       end
+    end
+
+    test "warn if a tag starting with a lowercase char is not all lowercase" do
+      output =
+        ExUnit.CaptureIO.capture_io(:standard_error, fn ->
+          tokenize("""
+          <div>
+            <sPan>
+              <div></div>
+            </span>
+          <diV>\
+          """)
+        end)
+
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: sPan\n\s*+nofile:2:"
+      assert output =~ ~r"expected tag name containing only lowercase chars, got: diV\n\s*nofile:5:"
     end
   end
 
@@ -268,7 +299,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete attribute value (EOF)" do
-      assert_raise ParseError, "nofile:2:15: expected closing `\"` for attribute value", fn ->
+      assert_raise ParseError, ~r"nofile:2:15: expected closing `\"` for attribute value", fn ->
         tokenize("""
         <div
           class="panel\
@@ -314,7 +345,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete attribute value (EOF)" do
-      assert_raise ParseError, "nofile:2:15: expected closing `\'` for attribute value", fn ->
+      assert_raise ParseError, ~r"nofile:2:15: expected closing `\'` for attribute value", fn ->
         tokenize("""
         <div
           class='panel\

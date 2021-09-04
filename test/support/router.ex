@@ -39,6 +39,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
+    live "/multi-targets", WithMultipleTargets
     live "/assigns-not-in-socket", AssignsNotInSocketLive
     live "/errors", ErrorsLive
 
@@ -99,6 +100,15 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/component_in_live", ComponentInLive.Root
     live "/cids_destroyed", CidsDestroyedLive
 
+    # integration lifecycle
+    live "/lifecycle", HooksLive
+    live "/lifecycle/bad-mount", HooksLive.BadMount
+    live "/lifecycle/own-mount", HooksLive.OwnMount
+    live "/lifecycle/halt-mount", HooksLive.HaltMount
+    live "/lifecycle/redirect-cont-mount", HooksLive.RedirectMount, :cont
+    live "/lifecycle/redirect-halt-mount", HooksLive.RedirectMount, :halt
+    live "/lifecycle/components", HooksLive.WithComponent
+
     # live_session
     live_session :test do
       live "/thermo-live-session", ThermostatLive
@@ -116,6 +126,10 @@ defmodule Phoenix.LiveViewTest.Router do
 
     live_session :merged, session: %{"top-level" => true} do
       live "/thermo-live-session-merged", ThermostatLive
+    end
+
+    live_session :lifecycle, on_mount: Phoenix.LiveViewTest.HaltConnectedMount do
+      live "/lifecycle/halt-connected-mount", HooksLive.Noop
     end
   end
 

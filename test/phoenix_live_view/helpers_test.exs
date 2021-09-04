@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
   import Phoenix.LiveView.Helpers
   import Phoenix.HTML
+  import Phoenix.HTML.Form
 
   describe "live_patch" do
     test "single arity" do
@@ -115,5 +116,121 @@ defmodule Phoenix.LiveView.HelpersTest do
         live_title_tag("bad", bad: :bad)
       end
     end
+  end
+
+  defp parse(template) do
+    template
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+    |> Phoenix.LiveViewTest.DOM.parse()
+  end
+
+  describe "form" do
+    test "raises when missing required assigns" do
+      assert_raise ArgumentError, ~r/missing :for assign/, fn ->
+        assigns = %{}
+        parse(~H"""
+        <.form let={f}>
+          <%= text_input f, :foo %>
+        </.form>
+        """)
+      end
+
+      assert_raise ArgumentError, ~r/This means a component requires a do-block or HTML children/, fn ->
+        assigns = %{}
+        parse(~H"""
+        <.form for={:myform} />
+        """)
+      end
+    end
+
+    test "generates form with no options" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.form let={f} for={:myform}>
+          <%= text_input f, :foo %>
+        </.form>
+        """)
+
+      assert [
+               {"form", [{"action", "#"}, {"method", "post"}],
+                [
+                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
+    test "does not generate csrf_token if method is not post" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.form let={f} for={:myform} method="get">
+          <%= text_input f, :foo %>
+        </.form>
+        """)
+
+      assert [
+               {"form", [{"action", "#"}, {"method", "get"}],
+                [
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
+    test "geneates form with available options and custom attributes" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.form let={user_form}
+          for={%Plug.Conn{}}
+          id="form"
+          action="/"
+          method="put"
+          multipart
+          csrf_token="123"
+          as="user"
+          errors={[name: "can't be blank"]}
+          data-foo="bar"
+          class="pretty"
+          phx-change="valid"
+        >
+          <%= text_input user_form, :foo %>
+          <%= inspect(user_form.errors) %>
+        </.form>
+        """)
+
+      assert [
+               {"form",
+                [
+                  {"action", "/"},
+                  {"method", "post"},
+                  {"enctype", "multipart/form-data"},
+                  {"class", "pretty"},
+                  {"data-foo", "bar"},
+                  {"id", "form"},
+                  {"phx-change", "valid"}
+                ],
+                [
+                  {"input", [{"name", "_method"}, {"type", "hidden"}, {"value", "put"}], []},
+                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", "123"}], []},
+                  {"input", [{"id", "form_foo"}, {"name", "user[foo]"}, {"type", "text"}], []},
+                  "\n  [name: \"can't be blank\"]\n\n"
+                ]}
+             ] = html
+    end
+  end
+
+  test "assigns_to_attributes/2" do
+    assert assigns_to_attributes(%{}) == []
+    assert assigns_to_attributes(%{}, [:non_exists]) == []
+    assert assigns_to_attributes(%{one: 1, two: 2}) == [one: 1, two: 2]
+    assert assigns_to_attributes(%{one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, inner_block: fn -> :ok end, a: 1}) == [a: 1]
   end
 end

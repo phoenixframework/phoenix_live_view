@@ -226,14 +226,16 @@ defmodule Phoenix.LiveViewTest do
 
   """
   defmacro live_isolated(conn, live_view, opts \\ []) do
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
+
     quote bind_quoted: binding(), unquote: true do
-      unquote(__MODULE__).__isolated__(conn, @endpoint, live_view, opts)
+      unquote(__MODULE__).__isolated__(conn, endpoint, live_view, opts)
     end
   end
 
   @doc false
   def __isolated__(conn, endpoint, live_view, opts) do
-    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test module"))
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, opts)
@@ -395,30 +397,36 @@ defmodule Phoenix.LiveViewTest do
     do: request_path <> "?" <> query_string
 
   @doc """
-  Mounts, updates, and renders a component.
+  Renders a component.
 
-  If the component uses the `@myself` assigns, then an `id` must
-  be given to it is marked as stateful.
+  The first argument may either be a function component, as an
+  anonymous function:
 
-  ## Examples
+      assert render_component(&Weather.city/1, name: "Kraków") =~
+               "some markup in component"
+
+  Or a stateful component as a module. In this case, this function
+  will mount, update, and render the component. The `:id` option is
+  a required argument:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
+
+  If your component is using the router, you can pass it as argument:
 
       assert render_component(MyComponent, %{id: 123, user: %User{}}, router: SomeRouter) =~
                "some markup in component"
 
   """
   defmacro render_component(component, assigns, opts \\ []) do
-    endpoint =
-      Module.get_attribute(__CALLER__.module, :endpoint) ||
-        raise ArgumentError,
-              "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
 
     quote do
+      component = unquote(component)
+
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
-        unquote(component).__live__(),
+        if(is_atom(component), do: component.__live__(), else: component),
         unquote(assigns),
         unquote(opts)
       )
@@ -429,9 +437,25 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
+
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
-    rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
+
+    socket
+    |> Diff.component_to_rendered(component, assigns, mount_assigns)
+    |> rendered_to_iodata(socket)
+  end
+
+  def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
+    socket = %Socket{endpoint: endpoint, router: opts[:router]}
+
+    assigns
+    |> Map.new()
+    |> function.()
+    |> rendered_to_iodata(socket)
+  end
+
+  defp rendered_to_iodata(rendered, socket) do
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
@@ -800,7 +824,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_event(%View{} = view, type, event, value) when is_map(value) or is_list(value) do
-    call(view, {:render_event, {proxy_topic(view), to_string(event)}, type, value})
+    call(view, {:render_event, {proxy_topic(view), to_string(event), view.target}, type, value})
   end
 
   @doc """
@@ -869,8 +893,9 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Returns the HTML string of the rendered view or element.
 
-  If a view is provided, the entire LiveView is rendered. If an
-  element is provided, only that element is rendered.
+  If a view is provided, the entire LiveView is rendered.
+  If a view after calling `with_target/2` or an element
+  are given, only that particular context is returned.
 
   ## Examples
 
@@ -887,8 +912,25 @@ defmodule Phoenix.LiveViewTest do
     |> DOM.to_html()
   end
 
+  @doc """
+  Sets the target of the view for events.
+
+  This emulates `phx-target` directly in tests, without
+  having to dispatch the event to a specific element.
+  This can be useful for invoking events to one or
+  multiple components at the same time:
+
+      view
+      |> with_target("#user-1,#user-2")
+      |> render_click("Hide", %{})
+
+  """
+  def with_target(%View{} = view, target) do
+    %{view | target: target}
+  end
+
   defp render_tree(%View{} = view) do
-    render_tree(view, {proxy_topic(view), "render"})
+    render_tree(view, {proxy_topic(view), "render", view.target})
   end
 
   defp render_tree(%Element{} = element) do
@@ -992,53 +1034,44 @@ defmodule Phoenix.LiveViewTest do
         type: "image/jpeg"
       }])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
-      cid = Phoenix.LiveViewTest.__find_cid__!(view, selector)
-
-      case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
-        {:ok, %{external: false}} ->
-          require Phoenix.ChannelTest
-          builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
-
-          Phoenix.LiveViewTest.__start_upload_client__(
-            builder,
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        {:ok, %{external: func}} when is_function(func) ->
-          Phoenix.LiveViewTest.__start_external_upload_client__(
-            view,
-            selector,
-            name,
-            entries,
-            cid
-          )
-
-        :error ->
-          raise "no uploads allowed for #{name}"
-      end
+      require Phoenix.ChannelTest
+      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      Phoenix.LiveViewTest.__file_input__(view, selector, name, entries, builder)
     end
   end
 
-  def __find_cid__!(view, selector) do
+  @doc false
+  def __file_input__(view, selector, name, entries, builder) do
+    cid = find_cid!(view, selector)
+
+    case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
+      {:ok, %{external: false}} ->
+        start_upload_client(builder, view, selector, name, entries, cid)
+
+      {:ok, %{external: func}} when is_function(func) ->
+        start_external_upload_client(view, selector, name, entries, cid)
+
+      :error ->
+        raise "no uploads allowed for #{name}"
+    end
+  end
+
+  defp find_cid!(view, selector) do
     html_tree = view |> render() |> DOM.parse()
 
-    with {:ok, form} <- DOM.maybe_one(html_tree, selector),
-         {:ok, cid} <- ClientProxy.__maybe_cid__(html_tree, form) do
+    with {:ok, form} <- DOM.maybe_one(html_tree, selector) do
+      [cid | _] = DOM.targets_from_node(html_tree, form)
       cid
     else
       {:error, _reason, msg} -> raise ArgumentError, msg
     end
   end
 
-  def __start_upload_client__(socket_builder, view, form_selector, name, entries, cid) do
+  defp start_upload_client(socket_builder, view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[socket_builder: socket_builder, cid: cid]]},
@@ -1046,11 +1079,10 @@ defmodule Phoenix.LiveViewTest do
     }
 
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
-
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
-  def __start_external_upload_client__(view, form_selector, name, entries, cid) do
+  defp start_external_upload_client(view, form_selector, name, entries, cid) do
     spec = %{
       id: make_ref(),
       start: {UploadClient, :start_link, [[cid: cid]]},
@@ -1138,10 +1170,6 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_patched view, "/path"
 
-      render_click(view, :event_that_triggers_redirect)
-      path = assert_patched view
-      assert path =~ ~r/path/\d+/
-
   """
   def assert_patched(view, to) do
     assert_patch(view, to, 0)
@@ -1206,13 +1234,8 @@ defmodule Phoenix.LiveViewTest do
       {_path, flash} = assert_redirected view, "/path"
       assert flash["info"] == "Welcome"
 
-      render_click(view, :event_that_triggers_redirect)
-      {path, flash} = assert_redirected view
-      assert flash["info"] == "Welcome"
-      assert path =~ ~r/path\/\d+/
-
   """
-  def assert_redirected(view, to \\ nil) do
+  def assert_redirected(view, to) do
     assert_redirect(view, to, 0)
   end
 
@@ -1224,16 +1247,47 @@ defmodule Phoenix.LiveViewTest do
         {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
     after
       timeout ->
-        message = if to do
-          "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
-        else
-          "expected #{inspect(view.module)} to #{kind}, "
-        end
+        message =
+          if to do
+            "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} to #{kind}, "
+          end
 
         case flush_navigation(ref, topic, nil) do
           nil -> raise ArgumentError, message <> "but got none"
           {kind, to} -> raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
         end
+    end
+  end
+
+  @doc """
+  Refutes a redirect to a given path was performed.
+
+  It returns :ok if the specified redirect isn't already in the mailbox.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_redirect_to_path)
+      :ok = refute_redirect view, "/wrong_path"
+  """
+  def refute_redirected(view, to) when is_binary(to) do
+    refute_navigation(view, :redirect, to)
+  end
+
+  defp refute_navigation(view = %{proxy: {ref, topic, _}}, kind, to) do
+    receive do
+      {^ref, {^kind, ^topic, %{to: new_to}}} when new_to == to or to == nil ->
+        message =
+          if to do
+            "expected #{inspect(view.module)} not to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} not to #{kind}, "
+          end
+
+        raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+    after
+      0 -> :ok
     end
   end
 
@@ -1467,7 +1521,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __live_redirect__(%View{} = view, opts, token_func \\ &(&1)) do
+  def __live_redirect__(%View{} = view, opts, token_func \\ & &1) do
     {session, %ClientProxy{} = root} = ClientProxy.root_view(proxy_pid(view))
 
     url =
@@ -1581,13 +1635,13 @@ defmodule Phoenix.LiveViewTest do
         }
       ])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
 
   By default, the entire file is chunked to the server, but an optional
   percentage to chunk can be passed to test chunk-by-chunk uploads:
 
-      assert render_upload(avatar, "foo.jpeg", 49) =~ "49%"
-      assert render_upload(avatar, "foo.jpeg", 51) =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
+      assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do

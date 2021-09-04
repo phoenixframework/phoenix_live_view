@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView do
   app.js file, you should find the following:
 
       import {Socket} from "phoenix"
-      import LiveSocket from "phoenix_live_view"
+      import {LiveSocket} from "phoenix_live_view"
 
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
       let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -251,7 +251,7 @@ defmodule Phoenix.LiveView do
       end
 
   In all cases, each assign in the template will be accessible as `@assign`.
-  You can learn more about [assigns and LiveEEx templates in their own guide](assigns-eex.md).
+  You can learn more about [assigns and HEEx templates in their own guide](assigns-eex.md).
 
   ## Bindings
 
@@ -288,12 +288,12 @@ defmodule Phoenix.LiveView do
   to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
 
       def weather_greeting(assigns) do
-        ~H"\""
+        ~H"""
         <div title="My div" class={@class}>
           <p>Hello <%= @name %></p>
-          <MyApp.Weather.render city="Kraków"/>
+          <MyApp.Weather.city name="Kraków"/>
         </div>
-        "\""
+        """
       end
 
   You can learn more about function components in the `Phoenix.Component`
@@ -473,16 +473,14 @@ defmodule Phoenix.LiveView do
       require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
-      @doc false
-      def __live__, do: unquote(Macro.escape(Phoenix.LiveView.__live__(__MODULE__, opts)))
+      @phoenix_live_opts opts
+      Module.register_attribute(__MODULE__, :phoenix_live_mount, accumulate: true)
+      @before_compile Phoenix.LiveView
     end
   end
 
-  @doc false
-  def __live__(module, opts) do
-    container = opts[:container] || {:div, []}
-    namespace = opts[:namespace] || module |> Module.split() |> Enum.take(1) |> Module.concat()
-    name = module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+  defmacro __before_compile__(env) do
+    opts = Module.get_attribute(env.module, :phoenix_live_opts)
 
     layout =
       case opts[:layout] do
@@ -498,8 +496,83 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
-    %{container: container, name: name, kind: :view, module: module, layout: layout}
+    phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
+    lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
+
+    namespace =
+      opts[:namespace] || env.module |> Module.split() |> Enum.take(1) |> Module.concat()
+
+    name = env.module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
+    container = opts[:container] || {:div, []}
+
+    live = %{
+      container: container,
+      name: name,
+      kind: :view,
+      module: env.module,
+      layout: layout,
+      lifecycle: lifecycle
+    }
+
+    quote do
+      @doc false
+      def __live__ do
+        unquote(Macro.escape(live))
+      end
+    end
   end
+
+  @doc """
+  Declares a module-function to be invoked on the LiveView's mount.
+
+  The given module-function will be invoked before both disconnected
+  and connected mounts. The hook has the option to either halt or
+  continue the mounting process as usual. If you wish to redirect the
+  LiveView, you **must** halt, otherwise an error will be raised.
+
+  Registering `on_mount` hooks can be useful to perform authentication
+  as well as add custom behaviour to other callbacks via `attach_hook/4`.
+
+  ## Examples
+
+      defmodule DemoWeb.InitAssigns do
+        import Phoenix.LiveView
+
+        # Ensures common `assigns` are applied to all LiveViews
+        # that attach this module as an `on_mount` hook
+        def mount(_params, _session, socket) do
+          {:cont, assign(socket, :page_title, "DemoWeb")}
+        end
+      end
+
+      defmodule DemoWeb.PageLive do
+        use Phoenix.LiveView
+
+        on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
+        on_mount DemoWeb.InitAssigns
+      end
+  """
+  defmacro on_mount(mod_or_mod_fun) do
+    mod_or_mod_fun =
+      if Macro.quoted_literal?(mod_or_mod_fun) do
+        Macro.prewalk(mod_or_mod_fun, &expand_alias(&1, __CALLER__))
+      else
+        mod_or_mod_fun
+      end
+
+    quote do
+      Module.put_attribute(
+        __MODULE__,
+        :phoenix_live_mount,
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun))
+      )
+    end
+  end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:mount, 3}})
+
+  defp expand_alias(other, _env), do: other
 
   @doc """
   Returns true if the socket is connected.
@@ -643,7 +716,8 @@ defmodule Phoenix.LiveView do
       iex> assign(socket, %{name: "Elixir"})
 
   """
-  def assign(socket_or_assigns, keyword_or_map) when is_map(keyword_or_map) or is_list(keyword_or_map) do
+  def assign(socket_or_assigns, keyword_or_map)
+      when is_map(keyword_or_map) or is_list(keyword_or_map) do
     Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
       assign(acc, key, value)
     end)
@@ -1217,12 +1291,14 @@ defmodule Phoenix.LiveView do
   @doc """
   Asynchronously updates a `Phoenix.LiveComponent` with new assigns.
 
-  The component that is updated must be stateful (the `:id` in the assigns must
-  match the `:id` associated with the component) and the component must be
-  mounted within the current LiveView.
+  The `:id` that identifies the component must be passed as part of the
+  assigns and it will be used to identify the live components to be updated.
 
-  If this call is executed from a process which is not a LiveView
-  nor a LiveComponent, the `pid` argument has to be specified.
+  The `pid` argument is optional and it defaults to the current process,
+  which means the update instruction will be sent to a component running
+  on the same LiveView. If the current process is not a LiveView or you
+  want to send updates to a live component running on another LiveView,
+  you should explicitly pass the LiveView's pid instead.
 
   When the component receives the update, first the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) then
@@ -1236,11 +1312,6 @@ defmodule Phoenix.LiveView do
   `send_update/3` is useful for updating a component that entirely manages its
   own state, as well as messaging between components mounted in the same
   LiveView.
-
-  **Note:** `send_update/3` cannot update a LiveComponent that is mounted in a
-  different LiveView. To update a component in a different LiveView you must
-  send a message to the LiveView process that the LiveComponent is mounted
-  within (often via `Phoenix.PubSub`).
 
   ## Examples
 
@@ -1324,4 +1395,80 @@ defmodule Phoenix.LiveView do
   end
 
   defp child?(%Socket{parent_pid: pid}), do: is_pid(pid)
+
+  @doc """
+  Attaches the given `fun` by `name` for the lifecycle `stage` into `socket`.
+
+  > Note: This function is for server-side lifecycle callbacks.
+  > For client-side hooks, see the
+  > [JS Interop guide](js-interop.html#client-hooks).
+
+  Hooks provide a mechanism to tap into key stages of the LiveView
+  lifecycle in order to bind/update assigns, intercept events,
+  patches, and regular messages when necessary, and to inject
+  common functionality. Hooks may be attached to any of the following
+  lifecycle stages: `:mount` (via `on_mount/1`), `:handle_params`,
+  `:handle_event`, and `:handle_info`.
+
+  ## Return Values
+
+  Lifecycle hooks take place immediately before a given lifecycle
+  callback is invoked on the LiveView. A hook may return `{:halt, socket}`
+  to halt the reduction, otherwise it must return `{:cont, socket}` so
+  the operation may continue until all hooks have been invoked for
+  the current stage.
+
+  ## Halting the lifecycle
+
+  Note that halting from a hook _will halt the entire lifecycle stage_.
+  This means that when a hook returns `{:halt, socket}` then the
+  LiveView callback will **not** be invoked. This has some
+  implications.
+
+  ### Implications for plugin authors
+
+  When defining a plugin that matches on specific callbacks, you **must**
+  define a catch-all clause, as your hook will be invoked even for events
+  you may not be interested on.
+
+  ### Implications for end-users
+
+  Allowing a hook to halt the invocation of the callback means that you can
+  attach hooks to intercept specific events before detaching themselves,
+  while allowing other events to continue normally.
+
+  ## Examples
+
+      def mount(_params, _session, socket) do
+        socket =
+          attach_hook(socket, :my_hook, :handle_event, fn
+            "very-special-event", _params, socket ->
+              # Handle the very special event and then detach the hook
+              {:halt, detach_hook(socket, :my_hook, :handle_event)}
+
+            _event, _params, socket ->
+              {:cont, socket}
+          end)
+
+        {:ok, socket}
+      end
+  """
+  defdelegate attach_hook(socket, name, stage, fun), to: Phoenix.LiveView.Lifecycle
+
+  @doc """
+  Detaches a hook with the given `name` from the lifecycle `stage`.
+
+  > Note: This function is for server-side lifecycle callbacks.
+  > For client-side hooks, see the
+  > [JS Interop guide](js-interop.html#client-hooks).
+
+  If no hook is found, this function is a no-op.
+
+  ## Examples
+
+      def handle_event(_, socket) do
+        {:noreply, detach_hook(socket, :hook_that_was_attached, :handle_event)}
+      end
+  """
+  defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
 end

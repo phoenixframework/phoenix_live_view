@@ -26,9 +26,13 @@ the hard work of uploading the file.
 You only need to wire the UpChunk instance to the LiveView
 UploadEntry callbacks, and LiveView will take care of the rest.
 
-Install [UpChunk](https://github.com/muxinc/upchunk):
+Install [UpChunk](https://github.com/muxinc/upchunk) by
+saving [its contents](https://unpkg.com/@mux/upchunk@2)
+to `assets/vendor/upchunk.js` or by installing it with `npm`:
 
-    npm install --prefix assets --save @mux/upchunk
+```shell
+$ npm install --prefix assets --save @mux/upchunk
+```
 
 Configure your uploader on `c:Phoenix.LiveView.mount/3`:
 

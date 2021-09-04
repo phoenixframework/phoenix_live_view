@@ -2,7 +2,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <%# lookups %>
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
@@ -106,11 +106,11 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     </form>
 
     <form id="trigger-form-default" phx-submit="form-submit-trigger"
-          <%= @trigger_action && "phx-trigger-action" %>>
+          phx-trigger-action={@trigger_action}>
     </form>
 
     <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
-          <%= @trigger_action && "phx-trigger-action" %>>
+          phx-trigger-action={@trigger_action}>
     </form>
     """
   end

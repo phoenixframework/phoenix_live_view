@@ -23,6 +23,7 @@ import {
   PHX_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
+  PHX_TRACK_UPLOADS,
   PHX_UPDATE,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
@@ -35,7 +36,8 @@ import {
   isEmpty,
   isEqualObj,
   logError,
-  maybe
+  maybe,
+  isCid,
 } from "./utils"
 
 import Browser from "./browser"
@@ -236,8 +238,8 @@ export default class View {
       this.joinCount++
 
       if(forms.length > 0){
-        forms.forEach((form, i) => {
-          this.pushFormRecovery(form, resp => {
+        forms.forEach(([form, newForm, newCid], i) => {
+          this.pushFormRecovery(form, newCid, resp => {
             if(i === forms.length - 1){
               this.onJoinComplete(resp, html, events)
             }
@@ -263,7 +265,7 @@ export default class View {
     // also does not include PHX_STATIC, so we need to copy it over from
     // the DOM.
     let newChildren = DOM.findPhxChildrenInFragment(html, this.id).filter(toEl => {
-      let fromEl = toEl.id && this.el.querySelector(`#${toEl.id}`)
+      let fromEl = toEl.id && this.el.querySelector(`[id="${toEl.id}"]`)
       let phxStatic = fromEl && fromEl.getAttribute(PHX_STATIC)
       if(phxStatic){ toEl.setAttribute(PHX_STATIC, phxStatic) }
       return this.joinChild(toEl)
@@ -352,7 +354,7 @@ export default class View {
 
     patch.after("discarded", (el) => {
       let cid = this.componentID(el)
-      if(typeof (cid) === "number" && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
+      if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
@@ -639,6 +641,7 @@ export default class View {
 
   undoRefs(ref){
     DOM.all(this.el, `[${PHX_REF}="${ref}"]`, el => {
+      let disabledVal = el.getAttribute(PHX_DISABLED)
       // remove refs
       el.removeAttribute(PHX_REF)
       // restore inputs
@@ -646,8 +649,8 @@ export default class View {
         el.readOnly = false
         el.removeAttribute(PHX_READONLY)
       }
-      if(el.getAttribute(PHX_DISABLED) !== null){
-        el.disabled = false
+      if(disabledVal !== null){
+        el.disabled = disabledVal === "true" ? true : false
         el.removeAttribute(PHX_DISABLED)
       }
       // remove classes
@@ -769,9 +772,9 @@ export default class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback){
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, eventTarget, callback){
     let uploads
-    let cid = this.targetComponentID(inputEl.form, targetCtx)
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
     let formData = serializeForm(inputEl.form, {_target: eventTarget.name})
     if(inputEl.files && inputEl.files.length > 0){
@@ -894,10 +897,15 @@ export default class View {
   uploadFiles(formEl, targetCtx, ref, cid, onComplete){
     let joinCountAtUpload = this.joinCount
     let inputEls = LiveUploader.activeFileInputs(formEl)
+    let numFileInputsInProgress = inputEls.length
 
     // get each file input
     inputEls.forEach(inputEl => {
-      let uploader = new LiveUploader(inputEl, this, onComplete)
+      let uploader = new LiveUploader(inputEl, this, () => {
+        numFileInputsInProgress--
+        if(numFileInputsInProgress === 0){ onComplete() }
+      });
+
       this.uploaders[inputEl] = uploader
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
@@ -927,11 +935,18 @@ export default class View {
     })
   }
 
-  pushFormRecovery(form, callback){
+  dispatchUploads(name, filesOrBlobs){
+    let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
+    if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
+    else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
+  }
+
+  pushFormRecovery(form, newCid, callback){
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
-      view.pushInput(input, targetCtx, phxEvent, input, callback)
+      view.pushInput(input, targetCtx, newCid, phxEvent, input, callback)
     })
   }
 
@@ -961,10 +976,18 @@ export default class View {
 
     return (
       DOM.all(this.el, `form[${phxChange}]`)
-        .filter(form => this.ownsElement(form))
+        .filter(form => form.id && this.ownsElement(form))
         .filter(form => form.elements.length > 0)
         .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
-        .filter(form => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`))
+        .map(form => {
+          let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`)
+          if(newForm){
+            return [form, newForm, this.componentID(newForm)]
+          } else {
+            return [form, null, null]
+          }
+        })
+        .filter(([form, newForm, newCid]) => newForm)
     )
   }
 

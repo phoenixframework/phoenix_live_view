@@ -237,13 +237,13 @@ describe("View + DOM", function (){
     }
     view.channel = channelStub
 
-    view.pushInput(input, el, "validate", input)
+    view.pushInput(input, el, null, "validate", input)
   })
 
   test("formsForRecovery", function (){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
-    html = "<form phx-change=\"cg\"><input name=\"foo\"></form>"
+    html = "<form id=\"my-form\" phx-change=\"cg\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     expect(view.joinCount).toBe(0)
     expect(view.formsForRecovery(html).length).toBe(0)
@@ -788,6 +788,39 @@ describe("View Hooks", function (){
     expect(values).toEqual(["mounted", "disconnected", "reconnected"])
   })
 
+  test("dispatches uploads", async () => {
+    let hooks = { Recorder: {} }
+    let liveSocket = new LiveSocket("/live", Socket, { hooks })
+    let el = liveViewDOM()
+    let view = simulateJoinedView(el, liveSocket)
+
+    let template = `
+    <form id="rec" phx-hook="Recorder" phx-change="change">
+    <input accept="*" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-update="ignore" data-phx-upload-ref="0" id="uploads0" name="doc" phx-hook="Phoenix.LiveFileUpload" type="file">
+    </form>
+    `
+    view.onJoin({
+      rendered: {
+        s: [template],
+        fingerprint: 123
+      }
+    })
+
+    let recorderHook = view.getHook(view.el.querySelector("#rec"))
+    let fileEl = view.el.querySelector("#uploads0")
+    let dispatchEventSpy = jest.spyOn(fileEl, "dispatchEvent")
+
+    let contents = {hello: "world"}
+    let blob = new Blob([JSON.stringify(contents, null, 2)], {type : "application/json"})
+    recorderHook.upload("doc", [blob])
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(new CustomEvent("track-uploads", {
+      bubbles: true,
+      cancelable: true,
+      detail: {files: [blob]}
+    }))
+  })
+
   test("dom hooks", async () => {
     let fromHTML, toHTML = null
     let liveSocket = new LiveSocket("/live", Socket, {
@@ -927,13 +960,13 @@ describe("View + Component", function (){
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
-    view.pushInput(first_name, el, "validate", first_name)
+    view.pushInput(first_name, el, null, "validate", first_name)
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
 
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
     DOM.putPrivate(last_name, "phx-has-focused", true)
-    view.pushInput(last_name, el, "validate", last_name)
+    view.pushInput(last_name, el, null, "validate", last_name)
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })

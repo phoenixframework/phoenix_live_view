@@ -13,7 +13,7 @@ If installing from Hex, use the latest version from there:
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.15.4"},
+    {:phoenix_live_view, "~> 0.16.3"},
     {:floki, ">= 0.30.0", only: :test}
   ]
 end
@@ -116,7 +116,40 @@ Where `@session_options` are the options given to `plug Plug.Session` by using a
   plug Plug.Session, @session_options
 ```
 
-Add LiveView NPM dependencies to your `assets/package.json`. For a regular project, do:
+Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
+
+```html
+<%= csrf_meta_tag() %>
+<script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+```
+
+and enable connecting to a LiveView socket in your `app.js` file.
+
+```javascript
+// assets/js/app.js
+import {Socket} from "phoenix"
+import {LiveSocket} from "phoenix_live_view"
+
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+
+// Connect if there are any LiveViews on the page
+liveSocket.connect()
+
+// Expose liveSocket on window for web console debug logs and latency simulation:
+// >> liveSocket.enableDebug()
+// >> liveSocket.enableLatencySim(1000)
+// The latency simulator is enabled for the duration of the browser session.
+// Call disableLatencySim() to disable:
+// >> liveSocket.disableLatencySim()
+window.liveSocket = liveSocket
+```
+
+The JavaScript above expects `phoenix_live_view` to be available as a JavaScript dependency. Let's do that.
+
+## npm dependencies
+
+If using `npm`, you need to add LiveView to your `assets/package.json`. For a regular project, do:
 
 ```json
 {
@@ -140,7 +173,7 @@ However, if you're adding `phoenix_live_view` to an umbrella project, the depend
 }
 ```
 
-Then install the new NPM dependency:
+Now run the next commands from your web app root:
 
 ```bash
 npm install --prefix assets
@@ -151,35 +184,6 @@ latest javascript, then force an install with:
 
 ```bash
 npm install --force phoenix_live_view --prefix assets
-```
-
-Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
-
-```html
-<%= csrf_meta_tag() %>
-<script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
-```
-
-and enable connecting to a LiveView socket in your `app.js` file.
-
-```javascript
-// assets/js/app.js
-import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view"
-
-let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
-
-// Connect if there are any LiveViews on the page
-liveSocket.connect()
-
-// Expose liveSocket on window for web console debug logs and latency simulation:
-// >> liveSocket.enableDebug()
-// >> liveSocket.enableLatencySim(1000)
-// The latency simulator is enabled for the duration of the browser session.
-// Call disableLatencySim() to disable:
-// >> liveSocket.disableLatencySim()
-window.liveSocket = liveSocket
 ```
 
 ## Layouts
@@ -291,9 +295,9 @@ use Phoenix.LiveView,
 
 If you want to show a progress bar as users perform live actions, we recommend using [`topbar`](https://github.com/buunguyen/topbar).
 
-First add `topbar` as a dependency:
+You can either add a copy of `topbar` to `assets/vendor/topbar.js` or add it as a npm dependency by calling:
 
-```console
+```shell
 $ npm install --prefix assets --save topbar
 ```
 

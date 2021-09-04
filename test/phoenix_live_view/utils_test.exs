@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.FlashTest do
+defmodule Phoenix.LiveView.UtilsTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.Utils

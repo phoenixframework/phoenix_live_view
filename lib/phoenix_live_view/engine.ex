@@ -362,15 +362,18 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns)
 
+      changed =
+        quote generated: true do
+          case unquote(@assigns_var) do
+            %{__changed__: changed} when track_changes? -> changed
+            _ -> nil
+          end
+        end
+
       {:ok,
        quote do
          dynamic = fn track_changes? ->
-           changed =
-             case unquote(@assigns_var) do
-               %{__changed__: changed} when track_changes? -> changed
-               _ -> nil
-             end
-
+           changed = unquote(changed)
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
@@ -399,17 +402,17 @@ defmodule Phoenix.LiveView.Engine do
 
   defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns) do
     {block, _} =
-      Enum.map_reduce(dynamic, {0, initial_vars}, fn
-        to_safe_match(var, ast), {counter, vars} ->
-          vars = reset_vars(initial_vars, vars)
+      Enum.map_reduce(dynamic, initial_vars, fn
+        to_safe_match(var, ast), vars ->
+          vars = set_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns)
           live_struct = to_live_struct(ast, vars, assigns)
-          {to_conditional_var(keys, var, live_struct), {counter + 1, vars}}
+          {to_conditional_var(keys, var, live_struct), vars}
 
-        ast, {counter, vars} ->
-          vars = reset_vars(initial_vars, vars)
+        ast, vars ->
+          vars = set_vars(initial_vars, vars)
           {ast, vars, _} = analyze(ast, vars, assigns)
-          {ast, {counter, vars}}
+          {ast, vars}
       end)
 
     {static, dynamic} = bins_and_vars(static)
@@ -453,11 +456,11 @@ defmodule Phoenix.LiveView.Engine do
         #
         # For example, take this code:
         #
-        #   <%= if @foo do %>
-        #     <%= @bar %>
-        #   <% else %>
-        #     <%= @baz %>
-        #   <% end %>
+        #     <%= if @foo do %>
+        #       <%= @bar %>
+        #     <% else %>
+        #       <%= @baz %>
+        #     <% end %>
         #
         # In theory, @bar and @baz should be recomputed whenever
         # @foo changes, because changing @foo may require a value
@@ -465,6 +468,11 @@ defmodule Phoenix.LiveView.Engine do
         # given the branches have different fingerprints, the
         # diff mechanism takes care of forcing all assigns to
         # be rendered without us needing to handle it here.
+        #
+        # Similarly, when expanding the blocks, we can remove all
+        # untainting, as the parent untainting is already causing
+        # the block to be rendered and then we can proceed with
+        # its own tainting.
         {args, vars, _} = analyze_list(args, vars, assigns, [])
 
         opts =
@@ -508,14 +516,9 @@ defmodule Phoenix.LiveView.Engine do
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars) do
     for {:->, meta, [args, block]} <- blocks do
-      # Variables defined in the head should not taint the whole body,
-      # only their usage within the body.
-      {args, match_vars, assigns} = analyze_list(args, vars, %{}, [])
+      {args, vars, assigns} = analyze_list(args, vars, %{}, [])
 
-      # So we collect them as usual but keep the original tainting.
-      vars = reset_vars(vars, match_vars)
-
-      case to_rendered_struct(block, vars, assigns, []) do
+      case to_rendered_struct(block, untaint_vars(vars), assigns, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}
       end
@@ -523,7 +526,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_block_to_rendered(block, vars) do
-    case to_rendered_struct(block, vars, %{}, []) do
+    case to_rendered_struct(block, untaint_vars(vars), %{}, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -679,9 +682,9 @@ defmodule Phoenix.LiveView.Engine do
 
   def to_component_static(keys, assigns, changed) do
     for {assign, entries} <- keys,
-        component_changed?(entries, assigns, changed),
+        changed = component_changed(entries, assigns, changed),
         into: %{},
-        do: {assign, true}
+        do: {assign, changed}
   end
 
   @doc false
@@ -691,7 +694,7 @@ defmodule Phoenix.LiveView.Engine do
 
   def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed) do
     component_changed =
-      if component_changed?(keys, assigns, changed) do
+      if component_changed(keys, assigns, changed) do
         Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
       else
         static_changed
@@ -704,9 +707,16 @@ defmodule Phoenix.LiveView.Engine do
     dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
   end
 
-  defp component_changed?(:all, _assigns, _changed), do: true
+  defp component_changed(:all, _assigns, _changed), do: true
 
-  defp component_changed?(entries, assigns, changed) do
+  defp component_changed([path], assigns, changed) do
+    case path do
+      [key] -> changed_assign(changed, key)
+      [key | tail] -> nested_changed_assign(assigns, changed, key, tail)
+    end
+  end
+
+  defp component_changed(entries, assigns, changed) do
     Enum.any?(entries, fn
       [key] -> changed_assign?(changed, key)
       [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
@@ -760,8 +770,17 @@ defmodule Phoenix.LiveView.Engine do
 
   # Nested assign
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
-    {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
-    {{{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns}
+    {args, vars, assigns} =
+      if Macro.quoted_literal?(right) do
+        {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:access, right} | nest])
+        {[left, right], vars, assigns}
+      else
+        {left, vars, assigns} = analyze(left, vars, assigns)
+        {right, vars, assigns} = analyze(right, vars, assigns)
+        {[left, right], vars, assigns}
+      end
+
+    {{{:., dot_meta, [Access, :get]}, meta, args}, vars, assigns}
   end
 
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
@@ -826,6 +845,11 @@ defmodule Phoenix.LiveView.Engine do
 
   # Our own vars are ignored. They appear from nested do/end in EEx templates.
   defp analyze({_, _, __MODULE__} = expr, vars, assigns) do
+    {expr, vars, assigns}
+  end
+
+  # Ignore underscore
+  defp analyze({:_, _, context} = expr, vars, assigns) when is_atom(context) do
     {expr, vars, assigns}
   end
 
@@ -926,12 +950,14 @@ defmodule Phoenix.LiveView.Engine do
     {ast, {unless_tainted(new_kind, kind), map}, assigns}
   end
 
-  defp reset_vars({kind, _}, {_, map}), do: {kind, map}
+  defp set_vars({kind, _}, {_, map}), do: {kind, map}
   defp taint_vars({_, map}), do: {:tainted, map}
-  defp taint_assigns(assigns), do: Map.put(assigns, __MODULE__, true)
+  defp untaint_vars({_, map}), do: {:untainted, map}
 
   defp unless_tainted(:tainted, _), do: :tainted
   defp unless_tainted(_, kind), do: kind
+
+  defp taint_assigns(assigns), do: Map.put(assigns, __MODULE__, true)
 
   ## Callbacks
 
@@ -997,20 +1023,25 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def changed_assign?(changed, name) do
+  def changed_assign?(changed, name), do: changed_assign(changed, name) != false
+
+  defp changed_assign(changed, name) do
     case changed do
-      %{^name => _} -> true
+      %{^name => value} -> value
       %{} -> false
       nil -> true
     end
   end
 
   @doc false
-  def nested_changed_assign?(assigns, changed, head, tail) do
+  def nested_changed_assign?(assigns, changed, head, tail),
+    do: nested_changed_assign(assigns, changed, head, tail) != false
+
+  defp nested_changed_assign(assigns, changed, head, tail) do
     case changed do
       %{^head => changed} ->
         case assigns do
-          %{^head => assigns} -> recur_changed_assign?(assigns, changed, tail)
+          %{^head => assigns} -> recur_changed_assign(assigns, changed, tail)
           %{} -> true
         end
 
@@ -1022,29 +1053,30 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp recur_changed_assign?(assigns, changed, [{:struct, head} | tail]) do
-    recur_changed_assign?(assigns, changed, head, tail)
+  defp recur_changed_assign(assigns, changed, [{:struct, head} | tail]) do
+    recur_changed_assign(assigns, changed, head, tail)
   end
 
-  defp recur_changed_assign?(assigns, changed, [{:access, head} | tail]) do
+  defp recur_changed_assign(assigns, changed, [{:access, head} | tail]) do
     if match?(%_{}, assigns) or match?(%_{}, changed) do
       true
     else
-      recur_changed_assign?(assigns, changed, head, tail)
+      recur_changed_assign(assigns, changed, head, tail)
     end
   end
 
-  defp recur_changed_assign?(assigns, changed, head, []) do
+  defp recur_changed_assign(assigns, changed, head, []) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
+      {_, %{^head => value}} when is_map(value) -> value
       {_, _} -> true
     end
   end
 
-  defp recur_changed_assign?(assigns, changed, head, tail) do
+  defp recur_changed_assign(assigns, changed, head, tail) do
     case {assigns, changed} do
       {%{^head => assigns_value}, %{^head => changed_value}} ->
-        recur_changed_assign?(assigns_value, changed_value, tail)
+        recur_changed_assign(assigns_value, changed_value, tail)
 
       {_, _} ->
         true
@@ -1057,13 +1089,31 @@ defmodule Phoenix.LiveView.Engine do
       %{^key => val} ->
         val
 
+      %{} when key == :inner_block ->
+        raise ArgumentError, """
+        assign @#{key} not available in template.
+
+        This means a component requires a do-block or HTML children to
+        be given as argument but none were given. For example, instead of:
+
+            <.component />
+
+        You must do:
+
+            <.component>
+              more content
+            </.component>
+
+        Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
+        """
+
       %{} ->
         raise ArgumentError, """
-        assign @#{key} not available in eex template.
+        assign @#{key} not available in template.
 
-        Please make sure all proper assigns have been set. If this
-        is a child template, ensure assigns are given explicitly by
-        the parent template as they are not automatically forwarded.
+        Please make sure all proper assigns have been set. If you are
+        calling a component, make sure you are passing all required
+        assigns as arguments.
 
         Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
         """

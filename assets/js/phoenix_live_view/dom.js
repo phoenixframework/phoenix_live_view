@@ -33,6 +33,7 @@ let DOM = {
   },
 
   all(node, query, callback){
+    if(!node){ return [] }
     let array = Array.from(node.querySelectorAll(query))
     return callback ? array.forEach(callback) : array
   },
@@ -295,6 +296,15 @@ let DOM = {
     }
   },
 
+  syncPropsToAttrs(el){
+    if(el instanceof HTMLSelectElement){
+      let selectedItem = el.options.item(el.selectedIndex)
+      if(selectedItem && selectedItem.getAttribute("selected") === null){
+        selectedItem.setAttribute("selected", "")
+      }
+    }
+  },
+
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
@@ -338,14 +348,13 @@ let DOM = {
 
   replaceRootContainer(container, tagName, attrs){
     let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN])
-    let notRetained = (attr) => !retainedAttrs.has(attr.name.toLowerCase())
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)
-        .filter(notRetained)
+        .filter(attr => !retainedAttrs.has(attr.name.toLowerCase()))
         .forEach(attr => container.removeAttribute(attr.name))
 
       Object.keys(attrs)
-        .filter(notRetained)
+        .filter(name => !retainedAttrs.has(name.toLowerCase()))
         .forEach(attr => container.setAttribute(attr, attrs[attr]))
 
       return container

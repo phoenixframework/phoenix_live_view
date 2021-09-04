@@ -28,12 +28,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def tokenize(text, opts \\ []) do
-    file = Keyword.get(opts, :file, "nofile")
-    line = Keyword.get(opts, :line, 1)
-    column = Keyword.get(opts, :column, 1)
-    indentation = Keyword.get(opts, :indentation, 0)
-
+  def tokenize(text, file, indentation, meta) do
+    line = Keyword.get(meta, :line, 1)
+    column = Keyword.get(meta, :column, 1)
     state = %{file: file, column_offset: indentation + 1, braces: []}
     handle_text(text, line, column, [], [], state)
   end
@@ -46,6 +43,14 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_text("\n" <> rest, line, _column, buffer, acc, state) do
     handle_text(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_text("<!doctype" <> rest, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 9, ["<!doctype" | buffer], acc, state)
+  end
+
+  defp handle_text("<!DOCTYPE" <> rest, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 9, ["<!DOCTYPE" | buffer], acc, state)
   end
 
   defp handle_text("<!--" <> rest, line, column, buffer, acc, state) do
@@ -72,6 +77,24 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_text(<<>>, _line, _column, buffer, acc, _state) do
     ok(text_to_acc(buffer, acc))
+  end
+
+  ## handle_doctype
+
+  defp handle_doctype(<<?>, rest::binary>>, line, column, buffer, acc, state) do
+    handle_text(rest, line, column + 1, [?> | buffer], acc, state)
+  end
+
+  defp handle_doctype("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_doctype(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_doctype("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_doctype(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_doctype(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_doctype(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
   ## handle_comment
@@ -105,6 +128,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
+      {:warn, name, new_column, rest, message} ->
+        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
+        warn(message, state.file, line)
+        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
+
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, message: message
     end
@@ -117,6 +145,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, name, new_column, rest} ->
         acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
         handle_tag_close_end(rest, line, new_column, acc, state)
+
+      {:warn, name, new_column, rest, message} ->
+        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
+        warn(message, state.file, line)
+        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, message: message
@@ -141,7 +174,20 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
        when c in @name_stop_chars do
-    {:ok, buffer_to_string(buffer), column, text}
+    tag_name = buffer_to_string(buffer)
+
+    case tag_name do
+      <<first::utf8, rest::binary>> when first in ?a..?z ->
+        if downcase?(rest) do
+          {:ok, tag_name, column, text}
+        else
+          message = "expected tag name containing only lowercase chars, got: #{tag_name}"
+          {:warn, tag_name, column, text, message}
+        end
+
+      _ ->
+        {:ok, tag_name, column, text}
+    end
   end
 
   defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
@@ -178,7 +224,21 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end(<<>>, line, column, _acc, state) do
-    message = "expected closing `>` or `/>`"
+    message = """
+    expected closing `>` or `/>`
+
+    Make sure the tag is properly closed. This may also happen if
+    there is an EEx interpolation inside a tag, which is not supported.
+    Instead of
+
+        <a href="<%= @url %>">Text</a>
+
+    do
+
+        <a href={@url}>Text</a>
+
+    """
+
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
@@ -267,11 +327,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_value_begin("\"" <> rest, line, column, acc, state) do
-    handle_attr_value_double_quote(rest, line, column + 1, [], acc, state)
+    handle_attr_value_quote(rest, ?", line, column + 1, [], acc, state)
   end
 
   defp handle_attr_value_begin("'" <> rest, line, column, acc, state) do
-    handle_attr_value_single_quote(rest, line, column + 1, [], acc, state)
+    handle_attr_value_quote(rest, ?', line, column + 1, [], acc, state)
   end
 
   defp handle_attr_value_begin("{" <> rest, line, column, acc, state) do
@@ -283,59 +343,47 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
-  ## handle_attr_value_double_quote
+  ## handle_attr_value_quote
 
-  defp handle_attr_value_double_quote("\r\n" <> rest, line, _column, buffer, acc, state) do
+  defp handle_attr_value_quote("\r\n" <> rest, delim, line, _column, buffer, acc, state) do
     column = state.column_offset
-    handle_attr_value_double_quote(rest, line + 1, column, ["\r\n" | buffer], acc, state)
+    handle_attr_value_quote(rest, delim, line + 1, column, ["\r\n" | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote("\n" <> rest, line, _column, buffer, acc, state) do
+  defp handle_attr_value_quote("\n" <> rest, delim, line, _column, buffer, acc, state) do
     column = state.column_offset
-    handle_attr_value_double_quote(rest, line + 1, column, ["\n" | buffer], acc, state)
+    handle_attr_value_quote(rest, delim, line + 1, column, ["\n" | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote("\"" <> rest, line, column, buffer, acc, state) do
+  defp handle_attr_value_quote(<<delim, rest::binary>>, delim, line, column, buffer, acc, state) do
     value = buffer_to_string(buffer)
-    acc = put_attr_value(acc, {:string, value, %{delimiter: ?"}})
-
+    acc = put_attr_value(acc, {:string, value, %{delimiter: delim}})
     handle_maybe_tag_open_end(rest, line, column + 1, acc, state)
   end
 
-  defp handle_attr_value_double_quote(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_attr_value_double_quote(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+  defp handle_attr_value_quote(<<c::utf8, rest::binary>>, delim, line, column, buffer, acc, state) do
+    handle_attr_value_quote(rest, delim, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
-  defp handle_attr_value_double_quote(<<>>, line, column, _buffer, _acc, state) do
-    message = "expected closing `\"` for attribute value"
-    raise ParseError, file: state.file, line: line, column: column, message: message
-  end
+  defp handle_attr_value_quote(<<>>, delim, line, column, _buffer, _acc, state) do
+    message = """
+    expected closing `#{<<delim>>}` for attribute value
 
-  ## handle_attr_value_single_quote
+    Make sure the attribute is properly closed. This may also happen if
+    there is an EEx interpolation inside a tag, which is not supported.
+    Instead of
 
-  defp handle_attr_value_single_quote("\r\n" <> rest, line, _column, buffer, acc, state) do
-    column = state.column_offset
-    handle_attr_value_single_quote(rest, line + 1, column, ["\r\n" | buffer], acc, state)
-  end
+        <div <%= @some_attributes %>>
+        </div>
 
-  defp handle_attr_value_single_quote("\n" <> rest, line, _column, buffer, acc, state) do
-    column = state.column_offset
-    handle_attr_value_single_quote(rest, line + 1, column, ["\n" | buffer], acc, state)
-  end
+    do
 
-  defp handle_attr_value_single_quote("'" <> rest, line, column, buffer, acc, state) do
-    value = buffer_to_string(buffer)
-    acc = put_attr_value(acc, {:string, value, %{delimiter: ?'}})
+        <div {@some_attributes}>
+        </div>
 
-    handle_maybe_tag_open_end(rest, line, column + 1, acc, state)
-  end
+    Where @some_attributes must be a keyword list or a map.
+    """
 
-  defp handle_attr_value_single_quote(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_attr_value_single_quote(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
-  end
-
-  defp handle_attr_value_single_quote(<<>>, line, column, _buffer, _acc, state) do
-    message = "expected closing `'` for attribute value"
     raise ParseError, file: state.file, line: line, column: column, message: message
   end
 
@@ -430,5 +478,14 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp pop_brace(%{braces: [pos | braces]} = state) do
     {pos, %{state | braces: braces}}
+  end
+
+  defp downcase?(<<c, _::binary>>) when c in ?A..?Z, do: false
+  defp downcase?(<<_, rest::binary>>), do: downcase?(rest)
+  defp downcase?(<<>>), do: true
+
+  defp warn(message, file, line) do
+    stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line, module: nil})
+    IO.warn(message, stacktrace)
   end
 end

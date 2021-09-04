@@ -2,7 +2,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1, render_block: 2]
+
   alias Phoenix.LiveView.HTMLEngine
+  alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =
@@ -467,10 +469,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
     end
+
+    test "invalid tag" do
+      message = ~r/.exs:1:(11:)? expected closing `}` for expression/
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div foo={<%= @foo %>}>bar</div>
+        """)
+      end)
+    end
   end
 
   describe "handle errors in expressions" do
-    if Version.match?(System.version(), ">= 1.12.0-rc.0") do
+    if Version.match?(System.version(), ">= 1.12.0") do
       test "inside attribute values" do
         assert_raise(SyntaxError, "nofile:12:22: syntax error before: ','", fn ->
           opts = [line: 10, indentation: 8]

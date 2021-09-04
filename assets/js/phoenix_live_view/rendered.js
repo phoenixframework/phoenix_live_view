@@ -11,7 +11,8 @@ import {
 
 import {
   isObject,
-  logError
+  logError,
+  isCid,
 } from "./utils"
 
 export default class Rendered {
@@ -76,7 +77,7 @@ export default class Rendered {
     } else {
       let ndiff, stat, scid = cdiff[STATIC]
 
-      if(typeof (scid) === "number"){
+      if(isCid(scid)){
         let tdiff
 
         if(scid > 0){

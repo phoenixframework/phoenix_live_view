@@ -4,7 +4,7 @@ As seen earlier, you start by instantiating a single LiveSocket to enable LiveVi
 client/server interaction, for example:
 
     import {Socket} from "phoenix"
-    import LiveSocket from "phoenix_live_view"
+    import {LiveSocket} from "phoenix_live_view"
 
     let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
     let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -145,11 +145,17 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `viewName` - attribute matching the DOM node's phx-view value
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
-    to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is 
+    to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
     defined in, where it's value can be either a query selector or an actual DOM element. If the query selector returns
     more than one element it will send the event to all of them, even if all the elements are in the same LiveComponent
     or LiveView.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
+  * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
+  * `uploadTo(selectorOrTarget, name, files)` - method to inject a list of file-like objects into an uploader.
+    The hook will send the files to the uploader with `name` defined by [`allow_upload/3`](`Phoenix.LiveView.allow_upload/3`)
+    on the server-side. Dispatching new uploads triggers an input change event which will be sent to the
+    LiveComponent or LiveView the `selectorOrTarget` is defined in, where it's value can be either a query selector or an
+    actual DOM element. If the query selector returns more than one live file input, an error will be logged.
 
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
@@ -188,7 +194,7 @@ and the return value is ignored. For example, the following option could be used
       ...,
       dom: {
         onBeforeElUpdated(from, to){
-          if(from.__x){ window.Alpine.clone(from.__x, to) }
+          if(from._x_dataStack){ window.Alpine.clone(from, to) }
         }
       },
     })
@@ -238,4 +244,4 @@ And then on the client:
 *Note*: events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event.
 
-*Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked.
+*Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.

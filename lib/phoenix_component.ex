@@ -4,7 +4,7 @@ defmodule Phoenix.Component do
 
   A function component is any function that receives
   an assigns map as argument and returns a rendered
-  struct built with the `~H` sigil.
+  struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`).
 
   Here is an example:
 
@@ -79,15 +79,9 @@ defmodule Phoenix.Component do
 
   ## Blocks
 
-  It is also possible to HTML blocks to function components,
-  as to regular HTML tags. For example, you could create a
-  button component that is invoked like this:
-
-      <.button>
-        This does <strong>inside</strong> the button!
-      </.button>
-
-  Where the function component would be defined as:
+  It is also possible to give HTML blocks to function components
+  as in regular HTML tags. For example, you could create a
+  button component that looks like this:
 
       def button(assigns) do
         ~H"\""
@@ -97,8 +91,36 @@ defmodule Phoenix.Component do
         "\""
       end
 
-  Where `render_block` is defined at
-  `Phoenix.LiveView.Helpers.render_block/2`.
+  and now you can invoke it as:
+
+      <.button>
+        This renders <strong>inside</strong> the button!
+      </.button>
+
+  In a nutshell, the block given to the component is
+  assigned to `@inner_block` and then we use
+  [`render_block`](`Phoenix.LiveView.Helpers.render_block/2`)
+  to render it.
+
+  You can even have the component give a value back to
+  the caller, by using `let`. Imagine this component:
+
+      def unordered_list(assigns) do
+        ~H"\""
+        <ul>
+          <%= for entry <- @entries do %>
+            <li><%= render_block(@inner_block, entry) %></li>
+          <% end %>
+        </ul>
+        "\""
+      end
+
+  And now you can invoke it as:
+
+      <.unordered_list let={entry} entries={~w(apple banana cherry)}>
+        I like <%= entry %>
+      </.unordered_list>
+
   """
 
   @doc false

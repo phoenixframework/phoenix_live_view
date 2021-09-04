@@ -89,6 +89,7 @@ import {
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
   PHX_THROTTLE,
+  PHX_TRACK_UPLOADS,
   RELOAD_JITTER
 
 } from "./constants"
@@ -239,7 +240,7 @@ export default class LiveSocket {
     if(!latency){
       if(opts.timeout){
         return push().receive("timeout", () => {
-          if(view.joinCount === oldJoinCount){
+          if(view.joinCount === oldJoinCount && !view.isDestroyed()){
             this.reloadWithJitter(view, () => {
               this.log(view, "timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
             })
@@ -317,15 +318,15 @@ export default class LiveSocket {
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let oldMainEl = this.main.el
-    let newMainEl = DOM.cloneNode(oldMainEl)
+    let newMainEl = DOM.cloneNode(oldMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
-    oldMainEl.replaceWith(newMainEl)
 
     this.main = this.newRootView(newMainEl, flash)
     this.main.setRedirect(href)
     this.main.join(joinCount => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
+        oldMainEl.replaceWith(newMainEl)
         callback && callback()
       }
     })
@@ -333,7 +334,7 @@ export default class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
-  newRootView(el, href, flash){
+  newRootView(el, flash){
     let view = new View(el, this, null, flash)
     this.roots[view.id] = view
     return view
@@ -424,8 +425,8 @@ export default class LiveSocket {
         window.location.reload()
       }
     }, true)
-    this.bindClicks()
     this.bindNav()
+    this.bindClicks()
     this.bindForms()
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, _phxTarget) => {
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
@@ -457,6 +458,13 @@ export default class LiveSocket {
 
       LiveUploader.trackFiles(dropTarget, files)
       dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
+    })
+    this.on(PHX_TRACK_UPLOADS, e => {
+      let uploadTarget = e.target
+      if(!DOM.isUploadInput(uploadTarget)){ return }
+      let files = Array.from(e.detail.files || []).filter(f => f instanceof File || f instanceof Blob)
+      LiveUploader.trackFiles(uploadTarget, files)
+      uploadTarget.dispatchEvent(new Event("input", {bubbles: true}))
     })
   }
 
@@ -560,7 +568,7 @@ export default class LiveSocket {
       } else {
         this.replaceMain(href, null, () => {
           if(root){ this.replaceRootHistory() }
-          if(typeof (scroll) === "number"){
+          if(typeof(scroll) === "number"){
             setTimeout(() => {
               window.scrollTo(0, scroll)
             }, 0) // the body needs to render before we scroll.
@@ -665,7 +673,7 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, phxEvent, e.target)
+            view.pushInput(input, targetCtx, null, phxEvent, e.target)
           })
         })
       }, false)

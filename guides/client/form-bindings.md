@@ -3,9 +3,8 @@
 ## A note about form helpers
 
 LiveView works with the existing `Phoenix.HTML` form helpers.
-If you want to use helpers such as [`form_for/3`](`Phoenix.HTML.Form.form_for/3`),
-[`text_input/2`](`Phoenix.HTML.Form.text_input/2`), etc. be sure to
-`use Phoenix.HTML` at the top of your LiveView.
+If you want to use helpers such as [`text_input/2`](`Phoenix.HTML.Form.text_input/2`),
+etc. be sure to `use Phoenix.HTML` at the top of your LiveView.
 
 #### Using `mix phx.new --live`
 
@@ -41,7 +40,7 @@ where all form fields are passed to the LiveView's callback given any
 single input change. For example, to handle real-time form validation and
 saving, your template would use both `phx_change` and `phx_submit` bindings:
 
-    <%= f = form_for @changeset, "#", [phx_change: :validate, phx_submit: :save] %>
+    <.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
       <%= label f, :username %>
       <%= text_input f, :username %>
       <%= error_tag f, :username %>
@@ -51,7 +50,7 @@ saving, your template would use both `phx_change` and `phx_submit` bindings:
       <%= error_tag f, :email %>
 
       <%= submit "Save" %>
-    </form>
+    </.form>
 
 Next, your LiveView picks up the events in `handle_event` callbacks:
 
@@ -178,9 +177,10 @@ submit before posting to a controller route for operations that require
 Plug session mutation. For example, in your LiveView template you can
 annotate the `phx-trigger-action` with a boolean assign:
 
-    <%= f = form_for @changeset, Routes.reset_password_path(@socket, :create),
-      phx_submit: :save,
-      phx_trigger_action: @trigger_submit %>
+    <.form let={f} for={@changeset}
+      action={Routes.reset_password_path(@socket, :create)}
+      phx-submit="save",
+      phx-trigger-action={@trigger_submit}>
 
 Then in your LiveView, you can toggle the assign to trigger the form with the current
 fields on next render:

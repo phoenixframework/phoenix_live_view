@@ -1,16 +1,10 @@
 {
   "name": "phoenix_live_view",
-  "version": "0.15.5",
+  "version": "0.16.3",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
   "repository": {},
-  "exports": {
-    ".": "./js/phoenix_live_view/index.js",
-    "./": "./js/phoenix_live_view/"
-  },
   "scripts": {
-    "build": "webpack --mode production",
-    "watch": "webpack --mode development --watch",
     "test": "jest",
     "test.coverage": "jest --coverage",
     "test.watch": "jest --watch"
@@ -22,17 +16,9 @@
     "@babel/cli": "7.14.3",
     "@babel/core": "7.14.3",
     "@babel/preset-env": "7.14.2",
-    "copy-webpack-plugin": "^4.5.0",
-    "css-loader": "^0.28.10",
     "eslint": "7.27.0",
     "eslint-plugin-jest": "24.3.6",
-    "expose-loader": "^3.0.0",
     "jest": "^27.0.1",
-    "mini-css-extract-plugin": "1.6.0",
-    "phoenix": "1.5.9",
-    "style-loader": "^0.20.2",
-    "wait-for-expect": "^1.1.0",
-    "webpack": "5.37.1",
-    "webpack-cli": "^4.7.0"
+    "phoenix": "1.5.9"
   }
 }
