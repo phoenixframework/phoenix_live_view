@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns))
+        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
       end
 
     state
@@ -230,7 +230,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(mod).unquote(fun)/1, unquote(assigns), do: unquote(clauses))
+        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns),
+          do: unquote(clauses)
+        )
       end
 
     state
@@ -253,7 +255,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns))
+        Phoenix.LiveView.Helpers.component(
+          &(unquote(Macro.var(fun, __MODULE__)) / 1),
+          unquote(assigns)
+        )
       end
 
     state
@@ -280,7 +285,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote do
-        Phoenix.LiveView.Helpers.component(&unquote(Macro.var(fun, __MODULE__))/1, unquote(assigns), do: unquote(clauses))
+        Phoenix.LiveView.Helpers.component(
+          &(unquote(Macro.var(fun, __MODULE__)) / 1),
+          unquote(assigns),
+          do: unquote(clauses)
+        )
       end
 
     state
@@ -293,7 +302,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
     state
     |> set_root_on_tag()
-    |> handle_tag_attrs(name, attrs, "/>", meta)
+    |> handle_tag_and_attrs(name, attrs, "/>", meta)
   end
 
   # HTML element
@@ -302,7 +311,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
     |> set_root_on_tag()
     |> push_tag(token)
-    |> handle_tag_attrs(name, attrs, ">", meta)
+    |> handle_tag_and_attrs(name, attrs, ">", meta)
   end
 
   defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
@@ -336,61 +345,51 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  ## handle_tag_attrs
+  ## handle_tag_and_attrs
 
-  defp handle_tag_attrs(state, name, attrs, suffix, meta) do
-    {static, dynamic} = group_attrs(attrs)
-    prefix = "<#{name}#{static}"
-
-    # We want to reduce the number of handle_text calls, because each
-    # call is an individual entry in LiveEngine's static buffer.
-    if dynamic == [] do
-      update_subengine(state, :handle_text, [meta, "#{prefix}#{suffix}"])
-    else
-      state
-      |> update_subengine(:handle_text, [meta, prefix])
-      |> handle_dynamic_attrs(dynamic)
-      |> update_subengine(:handle_text, [meta, suffix])
-    end
+  defp handle_tag_and_attrs(state, name, attrs, suffix, meta) do
+    state
+    |> update_subengine(:handle_text, [meta, "<#{name}"])
+    |> handle_tag_attrs(meta, attrs)
+    |> update_subengine(:handle_text, [meta, suffix])
   end
 
-  defp handle_dynamic_attrs(state, parts) do
-    Enum.reduce(parts, state, fn expr, state ->
-      ast =
-        quote do
-          Phoenix.HTML.Tag.attributes_escape(unquote(expr))
-        end
+  defp handle_tag_attrs(state, meta, attrs) do
+    Enum.reduce(attrs, state, fn
+      {:root, {:expr, value, %{line: line, column: col}}}, state ->
+        attrs = Code.string_to_quoted!(value, line: line, column: col)
+        handle_attr_escape(state, attrs)
 
-      update_subengine(state, :handle_expr, ["=", ast])
+      {name, {:expr, value, %{line: line, column: col}}}, state ->
+        attr = Code.string_to_quoted!(value, line: line, column: col)
+        handle_attr_escape(state, [{safe_unless_special(name), attr}])
+
+      {name, {:string, value, %{delimiter: ?"}}}, state ->
+        update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
+
+      {name, {:string, value, %{delimiter: ?'}}}, state ->
+        update_subengine(state, :handle_text, [meta, ~s( #{name}='#{value}')])
+
+      {name, nil}, state ->
+        update_subengine(state, :handle_text, [meta, " #{name}"])
     end)
   end
 
-  defp group_attrs(attrs), do: group_attrs(attrs, {[], [], []})
+  defp handle_attr_escape(state, attrs) do
+    ast =
+      quote do
+        Phoenix.HTML.Tag.attributes_escape(unquote(attrs))
+      end
 
-  defp group_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {s, sd, d}) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    group_attrs(attrs, {s, sd, [quoted_value | d]})
+    update_subengine(state, :handle_expr, ["=", ast])
   end
 
-  defp group_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {s, sd, d}) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    group_attrs(attrs, {s, [{name, quoted_value} | sd], d})
-  end
+  defp safe_unless_special("aria"), do: "aria"
+  defp safe_unless_special("class"), do: "class"
+  defp safe_unless_special("data"), do: "data"
+  defp safe_unless_special(name), do: {:safe, name}
 
-  defp group_attrs([{name, {:string, value, %{delimiter: ?"}}} | attrs], {s, sd, d}) do
-    group_attrs(attrs, {[~s( #{name}="#{value}") | s], sd, d})
-  end
-
-  defp group_attrs([{name, {:string, value, %{delimiter: ?'}}} | attrs], {s, sd, d}) do
-    group_attrs(attrs, {[~s( #{name}='#{value}') | s], sd, d})
-  end
-
-  defp group_attrs([{name, nil} | attrs], {s, sd, d}) do
-    group_attrs(attrs, {[" #{name}" | s], sd, d})
-  end
-
-  defp group_attrs([], {s, [], d}), do: {Enum.reverse(s), Enum.reverse(d)}
-  defp group_attrs([], {s, sd, d}), do: {Enum.reverse(s), [Enum.reverse(sd) | Enum.reverse(d)]}
+  ## handle_component_attrs
 
   defp handle_component_attrs(attrs, file) do
     {lets, entries} =
@@ -413,7 +412,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
           cannot define multiple `let` attributes. \
           Another `let` has already been defined at line #{previous_meta.line}\
           """
-          raise SyntaxError, line: meta.line, column: meta.column, file: file, description: message
+
+          raise SyntaxError,
+            line: meta.line,
+            column: meta.column,
+            file: file,
+            description: message
       end
 
     assigns =
@@ -432,18 +436,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {lets, Enum.reverse(r), Enum.reverse(d)}
   end
 
-  defp build_component_attrs([{:root, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
+  defp build_component_attrs(
+         [{:root, {:expr, value, %{line: line, column: col}}} | attrs],
+         {lets, r, d}
+       ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     quoted_value = quote do: Map.new(unquote(quoted_value))
     build_component_attrs(attrs, {lets, [quoted_value | r], d})
   end
 
-  defp build_component_attrs([{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs], {lets, r, d}) do
+  defp build_component_attrs(
+         [{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs],
+         {lets, r, d}
+       ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     build_component_attrs(attrs, {[{quoted_value, meta} | lets], r, d})
   end
 
-  defp build_component_attrs([{name, {:expr, value, %{line: line, column: col}}} | attrs], {lets, r, d}) do
+  defp build_component_attrs(
+         [{name, {:expr, value, %{line: line, column: col}}} | attrs],
+         {lets, r, d}
+       ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     build_component_attrs(attrs, {lets, r, [{String.to_atom(name), quoted_value} | d]})
   end
@@ -500,12 +513,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
         quote line: line do
           unquote(pattern) ->
             unquote(invoke_subengine(state, :handle_end, []))
-        end
-        ++
-        quote line: line, generated: true do
-          other ->
-            Phoenix.LiveView.HTMLEngine.__unmatched_let__!(unquote(Macro.to_string(pattern)), other)
-        end
+        end ++
+          quote line: line, generated: true do
+            other ->
+              Phoenix.LiveView.HTMLEngine.__unmatched_let__!(
+                unquote(Macro.to_string(pattern)),
+                other
+              )
+          end
 
       _ ->
         quote do
