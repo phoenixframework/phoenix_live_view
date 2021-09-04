@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Route}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
