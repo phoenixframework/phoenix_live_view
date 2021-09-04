@@ -291,7 +291,6 @@ defmodule Phoenix.LiveView.Utils do
     info = %{
       callbacks?: Lifecycle.callbacks?(socket, stage),
       exported?: function_exported?(view, stage, arity),
-      ref: {stage, arity, view},
       view: view
     }
 
@@ -317,7 +316,7 @@ defmodule Phoenix.LiveView.Utils do
               {{_, %Socket{} = socket}, _} ->
                 {:ok, socket}
             end
-            |> handle_mount_result!(lifecycle.ref)
+            |> handle_mount_result!({:mount, 3, view})
 
           {socket, %{socket: socket, params: params, session: session}}
         end
