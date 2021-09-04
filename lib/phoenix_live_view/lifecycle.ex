@@ -120,7 +120,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   """
   def callbacks?(%Socket{private: %{@lifecycle => lifecycle}}, stage)
       when stage in [:handle_event, :handle_info, :handle_params, :mount] do
-    lifecycle |> Map.fetch!(stage) |> Enum.any?()
+    lifecycle |> Map.fetch!(stage) |> Kernel.!=([])
   end
 
   # Lifecycle Event API

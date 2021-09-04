@@ -288,13 +288,15 @@ defmodule Phoenix.LiveView.Utils do
   Returns a map of infos about the lifecycle stage for the given `view`.
   """
   def lifecycle(%Socket{} = socket, view, stage, arity) do
-    info = %{
-      callbacks?: Lifecycle.callbacks?(socket, stage),
-      exported?: function_exported?(view, stage, arity),
+    callbacks? = Lifecycle.callbacks?(socket, stage)
+    exported? = function_exported?(view, stage, arity)
+
+    %{
+      any?: callbacks? or exported?,
+      callbacks?: callbacks?,
+      exported?: exported?,
       view: view
     }
-
-    Map.put(info, :any?, info.callbacks? or info.exported?)
   end
 
   @doc """
