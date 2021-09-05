@@ -135,12 +135,12 @@ submit events will be sent normally.
     <input type="number">
 
 This is known to have a plethora of problems including accessibility, large numbers
-are converted to exponential notation and scrolling can accidentally increase or
+are converted to exponential notation, and scrolling can accidentally increase or
 decrease the number.
 
-As of early 2020, the following avoids these pitfalls and will likely serve your
-application's needs and users much better. According to https://caniuse.com/#search=inputmode,
-the following is supported by 90% of the global mobile market with Firefox yet to implement.
+One alternative is the `inputmode` attribute, which may serve your application's needs
+and users much better. According to [Can I Use?](https://caniuse.com/#search=inputmode),
+the following is supported by 86% of the global market (as of Sep 2021):
 
     <input type="text" inputmode="numeric" pattern="[0-9]*">
 
