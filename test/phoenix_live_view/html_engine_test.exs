@@ -325,7 +325,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       message =
         ~r".exs:4:(8:)? cannot define multiple `let` attributes. Another `let` has already been defined at line 3"
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
         <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
@@ -335,7 +335,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
         <.local_function_component value='1'
@@ -405,7 +405,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       message =
         ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
         <div>
@@ -419,7 +419,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       message =
         ~r".exs:6:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
         <div>
@@ -434,7 +434,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "missing open tag" do
       message = ~r".exs:2:(3:)? missing opening tag for </span>"
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         text
           </span>
@@ -445,7 +445,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "missing closing tag" do
       message = ~r/.exs:2:(1:)? end of file reached without closing tag for <div>/
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
         <div foo={@foo}>
@@ -454,7 +454,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       message = ~r/.exs:2:(3:)? end of file reached without closing tag for <span>/
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         text
           <span foo={@foo}>
@@ -466,7 +466,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "invalid tag name" do
       message = ~r/.exs:2:(3:)? invalid tag <Oops>/
 
-      assert_raise(SyntaxError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <br>
           <Oops foo={@foo}>

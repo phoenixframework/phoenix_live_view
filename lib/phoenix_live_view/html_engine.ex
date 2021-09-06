@@ -4,6 +4,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   """
 
   alias Phoenix.LiveView.HTMLTokenizer
+  alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   @behaviour Phoenix.Template.Engine
 
@@ -98,7 +99,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {:tag_open, name, _attrs, %{line: line, column: column}} = tag
     file = state.file
     message = "end of file reached without closing tag for <#{name}>"
-    raise SyntaxError, line: line, column: column, file: file, description: message
+    raise ParseError, line: line, column: column, file: file, description: message
   end
 
   @doc false
@@ -164,14 +165,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
     """
 
-    raise SyntaxError, line: line, column: column, file: file, description: message
+    raise ParseError, line: line, column: column, file: file, description: message
   end
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
     %{line: line, column: column} = tag_meta
     file = state.file
     message = "missing opening tag for </#{tag_name}>"
-    raise SyntaxError, line: line, column: column, file: file, description: message
+    raise ParseError, line: line, column: column, file: file, description: message
   end
 
   ## handle_token
@@ -413,7 +414,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           Another `let` has already been defined at line #{previous_meta.line}\
           """
 
-          raise SyntaxError,
+          raise ParseError,
             line: meta.line,
             column: meta.column,
             file: file,
@@ -479,7 +480,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       _ ->
         %{line: line, column: column} = tag_meta
         message = "invalid tag <#{tag_name}>"
-        raise SyntaxError, line: line, column: column, file: file, description: message
+        raise ParseError, line: line, column: column, file: file, description: message
     end
   end
 
