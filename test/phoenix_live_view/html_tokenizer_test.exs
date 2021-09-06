@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
              ] = tokens
     end
 
-    test "raise on missing tag name" do
+    test "raise on missing/incomplete tag name" do
       assert_raise ParseError, "nofile:2:4: expected tag name", fn ->
         tokenize("""
         <div>
@@ -121,11 +121,12 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
       end
 
-      assert_raise ParseError, "nofile:2:5: expected tag name", fn ->
-        tokenize("""
-        <div>
-          </>\
-        """)
+      assert_raise ParseError, "nofile:1:2: expected tag name", fn ->
+        tokenize("<")
+      end
+
+      assert_raise ParseError, ~r"nofile:1:5: expected closing `>` or `/>`", fn ->
+        tokenize("<foo")
       end
     end
 
@@ -518,6 +519,15 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         tokenize("""
         <div>
         </div text\
+        """)
+      end
+    end
+
+    test "raise on missing tag name" do
+      assert_raise ParseError, "nofile:2:5: expected tag name", fn ->
+        tokenize("""
+        <div>
+          </>\
         """)
       end
     end
