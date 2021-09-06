@@ -167,13 +167,24 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## handle_tag_name
 
-  defp handle_tag_name(<<c::utf8, _rest::binary>>, _column, _buffer = [])
+  defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
        when c in @name_stop_chars do
+    done_tag_name(text, column, buffer)
+  end
+
+  defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
+    handle_tag_name(rest, column + 1, [<<c::utf8>> | buffer])
+  end
+
+  defp handle_tag_name(<<>>, column, buffer) do
+    done_tag_name(<<>>, column, buffer)
+  end
+
+  defp done_tag_name(_text, _column, []) do
     {:error, "expected tag name"}
   end
 
-  defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
-       when c in @name_stop_chars do
+  defp done_tag_name(text, column, buffer) do
     tag_name = buffer_to_string(buffer)
 
     case tag_name do
@@ -188,10 +199,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       _ ->
         {:ok, tag_name, column, text}
     end
-  end
-
-  defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
-    handle_tag_name(rest, column + 1, [<<c::utf8>> | buffer])
   end
 
   ## handle_maybe_tag_open_end
