@@ -175,7 +175,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing value" do
-      message = "nofile:2:9: expected attribute value or expression after `=`"
+      message = ~r"nofile:2:9: invalid attribute value after `=`"
 
       assert_raise ParseError, message, fn ->
         tokenize("""
@@ -184,13 +184,13 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
       end
 
-      message = "nofile:1:13: expected attribute value or expression after `=`"
+      message = ~r"nofile:1:13: invalid attribute value after `=`"
 
       assert_raise ParseError, message, fn ->
         tokenize(~S(<div class= >))
       end
 
-      message = "nofile:1:12: expected attribute value or expression after `=`"
+      message = ~r"nofile:1:12: invalid attribute value after `=`"
 
       assert_raise ParseError, message, fn ->
         tokenize("<div class=")
