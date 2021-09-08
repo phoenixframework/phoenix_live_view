@@ -15,6 +15,20 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   defstruct handle_event: [], handle_info: [], handle_params: [], mount: []
 
+  @doc """
+  Returns a map of infos about the lifecycle stage for the given `view`.
+  """
+  def stage_info(%Socket{} = socket, view, stage, arity) do
+    callbacks? = callbacks?(socket, stage)
+    exported? = function_exported?(view, stage, arity)
+
+    %{
+      any?: callbacks? or exported?,
+      callbacks?: callbacks?,
+      exported?: exported?
+    }
+  end
+
   def attach_hook(%Socket{router: nil}, id, :handle_params, _fun) do
     raise "cannot attach hook with id #{inspect(id)} on :handle_params because" <>
             " the view was not mounted at the router with the live/3 macro"

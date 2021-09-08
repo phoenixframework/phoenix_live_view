@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Route}
+  alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
@@ -199,7 +199,7 @@ defmodule Phoenix.LiveView.Static do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
     end
 
-    if Utils.lifecycle(socket, view, :handle_params, 3).any? do
+    if Lifecycle.stage_info(socket, view, :handle_params, 3).any? do
       raise ArgumentError, "handle_params/3 is not allowed on child LiveViews, only at the root"
     end
 
@@ -272,7 +272,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp mount_handle_params(%Socket{redirected: mount_redir} = socket, view, params, uri) do
-    lifecycle = Utils.lifecycle(socket, view, :handle_params, 3)
+    lifecycle = Lifecycle.stage_info(socket, view, :handle_params, 3)
 
     cond do
       mount_redir ->

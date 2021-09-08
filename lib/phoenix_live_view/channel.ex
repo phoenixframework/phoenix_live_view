@@ -370,7 +370,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
     %{view: view, redirected: mount_redirect} = socket
-    lifecycle = Utils.lifecycle(socket, view, :handle_params, 3)
+    lifecycle = Lifecycle.stage_info(socket, view, :handle_params, 3)
 
     cond do
       mount_redirect ->

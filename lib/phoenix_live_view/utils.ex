@@ -285,24 +285,10 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Returns a map of infos about the lifecycle stage for the given `view`.
-  """
-  def lifecycle(%Socket{} = socket, view, stage, arity) do
-    callbacks? = Lifecycle.callbacks?(socket, stage)
-    exported? = function_exported?(view, stage, arity)
-
-    %{
-      any?: callbacks? or exported?,
-      callbacks?: callbacks?,
-      exported?: exported?
-    }
-  end
-
-  @doc """
   Calls the `c:Phoenix.LiveView.mount/3` callback, otherwise returns the socket as is.
   """
   def maybe_call_live_view_mount!(%Socket{} = socket, view, params, session) do
-    lifecycle = lifecycle(socket, view, :mount, 3)
+    lifecycle = Lifecycle.stage_info(socket, view, :mount, 3)
 
     if lifecycle.any? do
       :telemetry.span(
