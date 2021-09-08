@@ -29,6 +29,11 @@ defmodule Phoenix.LiveView.Lifecycle do
     }
   end
 
+  defp callbacks?(%Socket{private: %{@lifecycle => lifecycle}}, stage)
+       when stage in [:handle_event, :handle_info, :handle_params, :mount] do
+    lifecycle |> Map.fetch!(stage) |> Kernel.!=([])
+  end
+
   def attach_hook(%Socket{router: nil}, id, :handle_params, _fun) do
     raise "cannot attach hook with id #{inspect(id)} on :handle_params because" <>
             " the view was not mounted at the router with the live/3 macro"
@@ -127,14 +132,6 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
     %{id: id, stage: stage, function: fun}
-  end
-
-  @doc """
-  Returns whether any hooks have been attached to the given `stage`.
-  """
-  def callbacks?(%Socket{private: %{@lifecycle => lifecycle}}, stage)
-      when stage in [:handle_event, :handle_info, :handle_params, :mount] do
-    lifecycle |> Map.fetch!(stage) |> Kernel.!=([])
   end
 
   # Lifecycle Event API
