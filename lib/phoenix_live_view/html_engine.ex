@@ -301,9 +301,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element (self close)
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
+    suffix = if void?(name), do: ">", else: "></#{name}>"
+
     state
     |> set_root_on_tag()
-    |> handle_tag_and_attrs(name, attrs, "/>", meta)
+    |> handle_tag_and_attrs(name, attrs, suffix, meta)
   end
 
   # HTML element
