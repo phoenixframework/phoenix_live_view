@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.Router do
       For MFA, the function is invoked, passing the `Plug.Conn` struct is prepended
       to the arguments list.
 
-    * `:root_layout` - The optional root layout tuple for the intial HTTP render to
+    * `:root_layout` - The optional root layout tuple for the initial HTTP render to
       override any existing root layout set in the router.
 
     * `:on_mount` - The optional list of hooks to attach to the mount lifecycle _of
@@ -273,7 +273,7 @@ defmodule Phoenix.LiveView.Router do
         expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
         """
 
-      {:on_mount, on_mount}, acc  ->
+      {:on_mount, on_mount}, acc ->
         hooks = Enum.map(List.wrap(on_mount), &Phoenix.LiveView.Lifecycle.on_mount(module, &1))
         Map.put(acc, :on_mount, hooks)
 

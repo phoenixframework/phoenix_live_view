@@ -181,7 +181,7 @@ defmodule Phoenix.LiveView.HelpersTest do
              ] = html
     end
 
-    test "geneates form with available options and custom attributes" do
+    test "generates form with available options and custom attributes" do
       assigns = %{}
 
       html =

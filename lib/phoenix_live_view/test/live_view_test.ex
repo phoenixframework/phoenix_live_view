@@ -1503,7 +1503,7 @@ defmodule Phoenix.LiveViewTest do
 
   When redirecting between two LiveViews of the same `live_session`,
   mounts the new LiveView and shutsdown the previous one, which
-  mimicks general browser live navigation behaviour.
+  mimics general browser live navigation behaviour.
 
   When attempting to navigate from a LiveView of a different
   `live_session`, an error redirect condition is returned indicating
