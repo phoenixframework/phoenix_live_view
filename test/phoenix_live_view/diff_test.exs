@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => "Users",
                :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>\n"],
                1 => %{
-                 s: ["\n    <br/>", "\n  "],
+                 s: ["\n    <br>", "\n  "],
                  d: [["phoenix"], ["elixir"]]
                }
              }
@@ -211,7 +211,7 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => "Users",
                1 => %{
                  d: [["phoenix"], ["elixir"]],
-                 s: ["\n    <br/>", "\n  "]
+                 s: ["\n    <br>", "\n  "]
                }
              }
 

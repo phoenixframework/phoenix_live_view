@@ -95,7 +95,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   test "handles string attribute value keeping special chars unchanged" do
-    assert render("<omg name='1 < 2'/>") == "<omg name='1 < 2'/>"
+    assert render("<omg name='1 < 2'/>") == "<omg name='1 < 2'></omg>"
   end
 
   test "handles boolean attributes" do
@@ -111,7 +111,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   test "handles interpolated attribute value containing special chars" do
-    assert render("<omg name={@val}/>", %{val: "1 < 2"}) == "<omg name=\"1 &lt; 2\"/>"
+    assert render("<omg name={@val}/>", %{val: "1 < 2"}) == "<omg name=\"1 &lt; 2\"></omg>"
   end
 
   test "handles interpolated attributes with strings" do
@@ -136,9 +136,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     template = ~S(<omg {@attrs1} sd1={1} s1="1" {@attrs2} s2="2" sd2={2} />)
 
     assert render(template, assigns) ==
-             ~S(<omg d1="1" sd1="1" s1="1" d2="2" s2="2" sd2="2"/>)
+             ~S(<omg d1="1" sd1="1" s1="1" d2="2" s2="2" sd2="2"></omg>)
 
-    assert %Phoenix.LiveView.Rendered{static: ["<omg", "", " s1=\"1\"", " s2=\"2\"", "/>"]} =
+    assert %Phoenix.LiveView.Rendered{static: ["<omg", "", " s1=\"1\"", " s2=\"2\"", "></omg>"]} =
              eval(template, assigns)
   end
 
@@ -154,12 +154,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
            """) == "<omg><br attr='1'></omg>"
   end
 
+  test "handle self close void elements" do
+    assert render("<hr/>") == "<hr>"
+  end
+
+  test "handle self close void elements with attributes" do
+    assert render(~S(<hr id="1"/>)) == ~S(<hr id="1">)
+  end
+
   test "handle self close elements" do
-    assert render("<omg/>") == "<omg/>"
+    assert render("<omg/>") == "<omg></omg>"
   end
 
   test "handle self close elements with attributes" do
-    assert render("<omg attr='1'/>") == "<omg attr='1'/>"
+    assert render("<omg attr='1'/>") == "<omg attr='1'></omg>"
   end
 
   describe "handle function components" do
