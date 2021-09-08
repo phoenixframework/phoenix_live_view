@@ -390,7 +390,7 @@ defmodule Phoenix.LiveView.Channel do
 
       true ->
         socket
-        |> Utils.maybe_call_handle_params(lifecycle, params, url)
+        |> Utils.call_handle_params!(view, lifecycle.exported?, params, url)
         |> mount_handle_params_result(state, :mount)
     end
   end

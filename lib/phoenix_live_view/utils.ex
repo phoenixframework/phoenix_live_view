@@ -294,8 +294,7 @@ defmodule Phoenix.LiveView.Utils do
     %{
       any?: callbacks? or exported?,
       callbacks?: callbacks?,
-      exported?: exported?,
-      view: view
+      exported?: exported?
     }
   end
 
@@ -313,7 +312,7 @@ defmodule Phoenix.LiveView.Utils do
           socket =
             case {Lifecycle.mount(params, session, socket), lifecycle} do
               {{:cont, %Socket{} = socket}, %{exported?: true}} ->
-                lifecycle.view.mount(params, session, socket)
+                view.mount(params, session, socket)
 
               {{_, %Socket{} = socket}, _} ->
                 {:ok, socket}
@@ -366,32 +365,21 @@ defmodule Phoenix.LiveView.Utils do
   defp validate_mount_redirect!(_), do: :ok
 
   @doc """
-  Calls the `handle_params/3` callback if it has been exported by the given `view`.
-  """
-  def maybe_call_handle_params(%Socket{} = socket, %{exported?: true} = lifecycle, params, uri) do
-    call_handle_params!(socket, lifecycle.view, params, uri)
-  end
-
-  def maybe_call_handle_params(%Socket{} = socket, _lifecycle, _params, _uri) do
-    socket
-  end
-
-  @doc """
   Calls the `handle_params/3` callback, and returns the result.
 
   This function expects the calling code has checked to see if this function has
-  been exported. Raises an `ArgumentError` on unexpected return types.
+  been exported, otherwise it assumes the function has been exported.
+
+  Raises an `ArgumentError` on unexpected return types.
   """
-  def call_handle_params!(%Socket{} = socket, view, params, uri) do
+  def call_handle_params!(%Socket{} = socket, view, exported? \\ true, params, uri)
+      when is_boolean(exported?) do
     :telemetry.span(
       [:phoenix, :live_view, :handle_params],
       %{socket: socket, params: params, uri: uri},
       fn ->
-        case Lifecycle.handle_params(params, uri, socket) do
-          {:halt, %Socket{} = socket} ->
-            {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
-
-          {:cont, %Socket{} = socket} ->
+        case {Lifecycle.handle_params(params, uri, socket), exported?} do
+          {{:cont, %Socket{} = socket}, _exported? = true} ->
             case view.handle_params(params, uri, socket) do
               {:noreply, %Socket{} = socket} ->
                 {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
@@ -403,6 +391,9 @@ defmodule Phoenix.LiveView.Utils do
                 Expected {:noreply, socket}, got: #{inspect(other)}
                 """
             end
+
+          {{_, %Socket{} = socket}, _exported?} ->
+            {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
         end
       end
     )

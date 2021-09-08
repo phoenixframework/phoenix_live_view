@@ -223,3 +223,15 @@ defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
     """
   end
 end
+
+defmodule Phoenix.LiveViewTest.HooksLive.HandleParamsNotDefined do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  def mount(_, _, socket) do
+    {:ok, attach_hook(socket, :assign_url, :handle_params, fn _, url, socket ->
+      {:cont, assign(socket, :url, url)}
+    end)}
+  end
+
+  def render(assigns), do: ~H"url=<%= assigns[:url] %>"
+end

@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView.Static do
         Route.live_link_info!(socket, view, uri)
 
       true ->
-        Utils.maybe_call_handle_params(socket, lifecycle, params, uri)
+        Utils.call_handle_params!(socket, view, lifecycle.exported?, params, uri)
     end
   end
 

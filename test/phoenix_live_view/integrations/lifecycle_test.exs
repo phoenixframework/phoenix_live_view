@@ -118,6 +118,11 @@ defmodule Phoenix.LiveView.LifecycleTest do
     assert render(lv) =~ "params_hook:1"
   end
 
+  test "handle_params/3 without module callback", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/handle-params-not-defined")
+    assert render(lv) =~ "url=http://www.example.com/lifecycle/handle-params-not-defined"
+  end
+
   test "handle_params/3 when callback is not exported raises without halt", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
     assert html =~ "params_hook:\n"
