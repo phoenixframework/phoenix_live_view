@@ -333,7 +333,10 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_value_begin(_text, line, column, _acc, state) do
-    message = "expected attribute value or expression after `=`"
+    message =
+      "invalid attribute value after `=`. Expected either a value between quotes " <>
+        "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
+
     raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
