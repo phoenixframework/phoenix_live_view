@@ -364,8 +364,8 @@ defmodule Phoenix.LiveView.Utils do
       [:phoenix, :live_view, :handle_params],
       %{socket: socket, params: params, uri: uri},
       fn ->
-        case {Lifecycle.handle_params(params, uri, socket), exported?} do
-          {{:cont, %Socket{} = socket}, _exported? = true} ->
+        case Lifecycle.handle_params(params, uri, socket) do
+          {:cont, %Socket{} = socket} when exported? ->
             case view.handle_params(params, uri, socket) do
               {:noreply, %Socket{} = socket} ->
                 {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
@@ -378,7 +378,7 @@ defmodule Phoenix.LiveView.Utils do
                 """
             end
 
-          {{_, %Socket{} = socket}, _exported?} ->
+          {_, %Socket{} = socket} ->
             {{:noreply, socket}, %{socket: socket, params: params, uri: uri}}
         end
       end
