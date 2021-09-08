@@ -213,7 +213,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       end
     end
 
-    test "raise on missing attribure name" do
+    test "raise on missing attribute name" do
       assert_raise ParseError, "nofile:2:8: expected attribute name", fn ->
         tokenize("""
         <div>
