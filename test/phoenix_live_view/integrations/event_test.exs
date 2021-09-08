@@ -81,6 +81,12 @@ defmodule Phoenix.LiveView.EventTest do
                "count: 456"
 
       assert_reply(view, %{"val" => "my-reply"})
+
+      # Check type is preserved
+      assert render_hook(view, :reply, %{count: 456, reply: %{"val" => 123}}) =~
+               "count: 456"
+
+      assert_reply(view, %{"val" => 123})
     end
 
     test "sends reply from handle_event with no assigns diff", %{conn: conn} do
