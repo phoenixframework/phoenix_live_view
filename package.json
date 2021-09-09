@@ -3,6 +3,7 @@
   "version": "0.16.4",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
+  "main": "./priv/static/phoenix_live_view.esm.js",
   "module": "./priv/static/phoenix_live_view.esm.js",
   "unpkg": "./priv/static/phoenix_live_view.min.js",
   "jsdelivr": "./priv/static/phoenix_live_view.min.js",
