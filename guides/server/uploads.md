@@ -14,7 +14,7 @@ both direct to server uploads as well as direct-to-cloud
 
   * Reactive entries - Uploads are populated in an
     `@uploads` assign in the socket. Entries automatically
-    respond to progress, errors, cancelation, etc.
+    respond to progress, errors, cancellation, etc.
 
   * Drag and drop - Use the `phx-drop-target` attribute to
     enable. See `Phoenix.LiveView.Helpers.live_file_input/2`.

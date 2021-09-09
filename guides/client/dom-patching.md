@@ -72,7 +72,7 @@ to the container as well as to each child:
 
     <div id="chat-messages" phx-update="append">
       <%= for message <- @messages do %>
-        <p id="<%= message.id %>">
+        <p id={message.id}>
           <span><%= message.username %>:</span> <%= message.text %>
         </p>
       <% end %>

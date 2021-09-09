@@ -126,6 +126,7 @@ var EntryUploader = class {
 
 // js/phoenix_live_view/utils.js
 var logError = (msg, obj) => console.error && console.error(msg, obj);
+var isCid = (cid) => typeof cid === "number";
 function detectDuplicateIds() {
   let ids = new Set();
   let elems = document.querySelectorAll("*[id]");
@@ -1374,7 +1375,7 @@ var DOMPatch = class {
     this.rootID = view.root.id;
     this.html = html;
     this.targetCID = targetCID;
-    this.cidPatch = typeof this.targetCID === "number";
+    this.cidPatch = isCid(this.targetCID);
     this.callbacks = {
       beforeadded: [],
       beforeupdated: [],
@@ -1642,7 +1643,7 @@ var Rendered = class {
       return cache[cid];
     } else {
       let ndiff, stat, scid = cdiff[STATIC];
-      if (typeof scid === "number") {
+      if (isCid(scid)) {
         let tdiff;
         if (scid > 0) {
           tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache);
@@ -2044,8 +2045,8 @@ var View = class {
       let forms = this.formsForRecovery(html);
       this.joinCount++;
       if (forms.length > 0) {
-        forms.forEach((form, i) => {
-          this.pushFormRecovery(form, (resp2) => {
+        forms.forEach(([form, newForm, newCid], i) => {
+          this.pushFormRecovery(form, newCid, (resp2) => {
             if (i === forms.length - 1) {
               this.onJoinComplete(resp2, html, events);
             }
@@ -2151,7 +2152,7 @@ var View = class {
     });
     patch.after("discarded", (el) => {
       let cid = this.componentID(el);
-      if (typeof cid === "number" && destroyedCIDs.indexOf(cid) === -1) {
+      if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
         destroyedCIDs.push(cid);
       }
       let hook = this.getHook(el);
@@ -2552,9 +2553,9 @@ var View = class {
       }, onReply);
     });
   }
-  pushInput(inputEl, targetCtx, phxEvent, eventTarget, callback) {
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, eventTarget, callback) {
     let uploads;
-    let cid = this.targetComponentID(inputEl.form, targetCtx);
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx);
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change");
     let formData = serializeForm(inputEl.form, { _target: eventTarget.name });
     if (inputEl.files && inputEl.files.length > 0) {
@@ -2714,11 +2715,11 @@ var View = class {
       dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { files: filesOrBlobs });
     }
   }
-  pushFormRecovery(form, callback) {
+  pushFormRecovery(form, newCid, callback) {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0];
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
-      view.pushInput(input, targetCtx, phxEvent, input, callback);
+      view.pushInput(input, targetCtx, newCid, phxEvent, input, callback);
     });
   }
   pushLinkPatch(href, targetEl, callback) {
@@ -2743,7 +2744,14 @@ var View = class {
     let phxChange = this.binding("change");
     let template = document.createElement("template");
     template.innerHTML = html;
-    return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").filter((form) => template.content.querySelector(`form[${phxChange}="${form.getAttribute(phxChange)}"]`));
+    return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
+      let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`);
+      if (newForm) {
+        return [form, newForm, this.componentID(newForm)];
+      } else {
+        return [form, null, null];
+      }
+    }).filter(([form, newForm, newCid]) => newForm);
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
@@ -3359,7 +3367,7 @@ var LiveSocket = class {
             if (!dom_default.isTextualInput(input)) {
               this.setActiveElement(input);
             }
-            view.pushInput(input, targetCtx, phxEvent, e.target);
+            view.pushInput(input, targetCtx, null, phxEvent, e.target);
           });
         });
       }, false);

@@ -315,7 +315,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
-                other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
+                other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
               end
 
             {view, DOM.targets_from_node(root, node), event, values, uploads}
@@ -1192,9 +1192,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
-
-  defp stringify_type(:hook, value), do: stringify(value, & &1)
-  defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
   defp stringify(%Upload{}, _fun), do: %{}
 

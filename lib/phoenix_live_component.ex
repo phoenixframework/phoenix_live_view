@@ -409,7 +409,7 @@ defmodule Phoenix.LiveComponent do
         assigns = %{text: text, click: click}
 
         ~H"\""
-        <button class="css-framework-class" phx-click="<%= @click %>">
+        <button class="css-framework-class" phx-click={@click}>
             <%= @text %>
         </button>
         "\""
