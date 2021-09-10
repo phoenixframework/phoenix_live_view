@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   @name_stop_chars @space_chars ++ '>/=\r\n'
 
   defmodule ParseError do
-    defexception [:file, :line, :column, :message]
+    defexception [:file, :line, :column, :description]
 
     @impl true
     def message(exception) do
@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         |> Path.relative_to_cwd()
         |> format_file_line_column(exception.line, exception.column)
 
-      "#{location} #{exception.message}"
+      "#{location} #{exception.description}"
     end
 
     # Use Exception.format_file_line_column/4 instead when support
@@ -59,7 +59,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_text(new_rest, new_live, new_column, new_buffer, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -117,7 +117,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_comment(<<>>, line, column, _buffer, state) do
     message = "expected closing `-->` for comment"
-    raise ParseError, file: state.file, line: line, column: column, message: message
+    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   ## handle_tag_open
@@ -134,7 +134,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -152,7 +152,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -162,36 +162,30 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_tag_close_end(_text, line, column, _acc, state) do
     message = "expected closing `>`"
-    raise ParseError, file: state.file, line: line, column: column, message: message
+    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   ## handle_tag_name
 
-  defp handle_tag_name(<<c::utf8, _rest::binary>>, _column, _buffer = [])
-       when c in @name_stop_chars do
-    {:error, "expected tag name"}
-  end
-
   defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
        when c in @name_stop_chars do
-    tag_name = buffer_to_string(buffer)
-
-    case tag_name do
-      <<first::utf8, rest::binary>> when first in ?a..?z ->
-        if downcase?(rest) do
-          {:ok, tag_name, column, text}
-        else
-          message = "expected tag name containing only lowercase chars, got: #{tag_name}"
-          {:warn, tag_name, column, text, message}
-        end
-
-      _ ->
-        {:ok, tag_name, column, text}
-    end
+    done_tag_name(text, column, buffer)
   end
 
   defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
     handle_tag_name(rest, column + 1, [<<c::utf8>> | buffer])
+  end
+
+  defp handle_tag_name(<<>>, column, buffer) do
+    done_tag_name(<<>>, column, buffer)
+  end
+
+  defp done_tag_name(_text, _column, []) do
+    {:error, "expected tag name"}
+  end
+
+  defp done_tag_name(text, column, buffer) do
+    {:ok, buffer_to_string(buffer), column, text}
   end
 
   ## handle_maybe_tag_open_end
@@ -239,7 +233,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
     """
 
-    raise ParseError, file: state.file, line: line, column: column, message: message
+    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   defp handle_maybe_tag_open_end(text, line, column, acc, state) do
@@ -255,7 +249,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -268,7 +262,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -339,8 +333,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_value_begin(_text, line, column, _acc, state) do
-    message = "expected attribute value or expression after `=`"
-    raise ParseError, file: state.file, line: line, column: column, message: message
+    message =
+      "invalid attribute value after `=`. Expected either a value between quotes " <>
+        "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
+
+    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   ## handle_attr_value_quote
@@ -384,7 +381,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     Where @some_attributes must be a keyword list or a map.
     """
 
-    raise ParseError, file: state.file, line: line, column: column, message: message
+    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   ## handle_attr_value_as_expr
@@ -396,7 +393,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
-        raise ParseError, file: state.file, line: line, column: column, message: message
+        raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
 
@@ -479,10 +476,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp pop_brace(%{braces: [pos | braces]} = state) do
     {pos, %{state | braces: braces}}
   end
-
-  defp downcase?(<<c, _::binary>>) when c in ?A..?Z, do: false
-  defp downcase?(<<_, rest::binary>>), do: downcase?(rest)
-  defp downcase?(<<>>), do: true
 
   defp warn(message, file, line) do
     stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line, module: nil})

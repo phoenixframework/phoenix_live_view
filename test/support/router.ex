@@ -108,6 +108,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/redirect-cont-mount", HooksLive.RedirectMount, :cont
     live "/lifecycle/redirect-halt-mount", HooksLive.RedirectMount, :halt
     live "/lifecycle/components", HooksLive.WithComponent
+    live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
 
     # live_session
     live_session :test do

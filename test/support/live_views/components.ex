@@ -47,7 +47,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def render(%{socket: _} = assigns) do
     ~H"""
-    <div id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)} phx-click="transform">
+    <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
       <%= @name %> says hi
       <%= if @dup_name, do: live_component __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
