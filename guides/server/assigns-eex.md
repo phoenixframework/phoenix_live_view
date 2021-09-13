@@ -57,7 +57,7 @@ long as they are also `.heex` templates:
 
 Or when using function components:
 
-    <.show_name name={@user.name} %>
+    <.show_name name={@user.name} />
 
 The assign tracking feature also implies that you MUST avoid performing
 direct operations in the template. For example, if you perform a database
