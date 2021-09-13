@@ -161,7 +161,7 @@ LiveView forms support [reactive file inputs](uploads.md),
 including drag and drop support via the `phx-drop-target`
 attribute:
 
-    <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+    <div class="container" phx-drop-target={@uploads.avatar.ref}>
         ...
         <%= live_file_input @uploads.avatar %>
     </div>
@@ -268,15 +268,15 @@ service, or redirecting to a new page.
 
 On submission of a form bound with a `phx-submit` event:
 
-  1. The form's inputs are set to `readonly`
-  2. Any submit button on the form is disabled
-  3. The form receives the `"phx-submit-loading"` class
+1. The form's inputs are set to `readonly`
+2. Any submit button on the form is disabled
+3. The form receives the `"phx-submit-loading"` class
 
 On completion of server processing of the `phx-submit` event:
 
-  1. The submitted form is reactivated and loses the `"phx-submit-loading"` class
-  2. The last input with focus is restored (unless another input has received focus)
-  3. Updates are patched to the DOM as usual
+1. The submitted form is reactivated and loses the `"phx-submit-loading"` class
+2. The last input with focus is restored (unless another input has received focus)
+3. Updates are patched to the DOM as usual
 
 To handle latent events, any HTML tag can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
