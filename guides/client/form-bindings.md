@@ -5,32 +5,18 @@
 LiveView works with the existing `Phoenix.HTML` form helpers.
 If you want to use helpers such as [`text_input/2`](`Phoenix.HTML.Form.text_input/2`),
 etc. be sure to `use Phoenix.HTML` at the top of your LiveView.
+If your application was generated with Phoenix v1.6, then `mix phx.new`
+automatically uses `Phoenix.HTML` when you `use MyAppWeb, :live_view` or
+`use MyAppWeb, :live_component` in your modules.
 
-#### Using `mix phx.new --live`
-
-When you create your app using with `mix phx.new --live`,
-`Phoenix.HTML` is included automatically when you
-`use MyAppWeb, :live_view` or `use MyAppWeb, :live_component`
-in your modules.
-
-Using the generated `:live_view` and `:live_component` helpers
-will also `import MyAppWeb.ErrorHelpers`, a generated module
-where `error_tag/2` resides (usually located at
-`lib/my_app_web/views/error_helpers.ex`).
+Using the generated `:live_view` and `:live_component` helpers will also
+`import MyAppWeb.ErrorHelpers`, a generated module where `error_tag/2`
+resides (usually located at `lib/my_app_web/views/error_helpers.ex`).
 
 Since `ErrorHelpers` is generated into your app, it is yours
-to modify– you may add additional helper functions here, such
+to modify – you may add additional helper functions here, such
 as those recommended when rendering feedback for
 [`upload_errors/1,2`](`Phoenix.LiveView.Helpers.upload_errors/2`).
-
-### Pitfalls with input names
-
-Naming things is hard. It can be especially painful when the
-name you choose creates problems in your code. HTML forms
-suffer from this issue. The names applied to form elements
-_will shadow any of the form's built-in properties_, so
-avoid choosing a name like `id` for one of your form fields,
-as it will lead unexpected behaviour with form events.
 
 ## Form Events
 
