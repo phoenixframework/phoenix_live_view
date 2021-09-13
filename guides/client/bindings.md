@@ -17,12 +17,14 @@ callback, for example:
 |------------------------|------------|
 | [Params](#click-events) | `phx-value-*` |
 | [Click Events](#click-events) | `phx-click`, `phx-capture-click` |
+| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus/Blur Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
-| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
-| [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [DOM Patching](dom-patching.md) | `phx-update` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
+| [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
+| [Static tracking](`Phoenix.LiveView.static_changed?/1) | `phx-track-static` |
+| [Loading states](js-interop.md#loading-state-and-errors) | `phx-page-loading` |
 
 ## Click Events
 
