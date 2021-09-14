@@ -88,6 +88,12 @@ and then use it on all relevant LiveViews:
       ...
     end
 
+or in our [`live_session`](`Phoenix.LiveView.Router.live_session/3`)s:
+
+    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
+      ...
+    end
+
 Note in the snippet above we used [`assign_new/3`](`Phoenix.LiveView.assign_new/3`).
 This is a convenience to avoid fetching the `current_user` multiple times across
 LiveViews.
