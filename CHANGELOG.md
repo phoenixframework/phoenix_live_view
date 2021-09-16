@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0
+
+  - Rename the lifecycle default mount callback to `:on_mount`
+
 ## 0.16.3 (2021-09-03)
 
 ### Bug fixes
