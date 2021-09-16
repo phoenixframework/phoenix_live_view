@@ -181,6 +181,10 @@ Change it to:
 import { LiveSocket } from "phoenix_live_view"
 ```
 
+Additionally on the client, the root LiveView element no longer exposes the
+LiveView module name, therefore the `phx-view` attribute is never set.
+Similarly, the `viewName` property of client hooks has been removed.
+
 ### Enhancements
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`

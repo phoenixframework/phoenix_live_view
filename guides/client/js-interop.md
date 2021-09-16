@@ -16,7 +16,7 @@ except for the following LiveView specific options:
   * `bindingPrefix` - the prefix to use for phoenix bindings. Defaults `"phx-"`
   * `params` - the `connect_params` to pass to the view's mount callback. May be
     a literal object or closure returning an object. When a closure is provided,
-    the function receives the view's phx-view name.
+    the function receives the view's element.
   * `hooks` – a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the [Client hooks](#client-hooks)
     section below for details.
@@ -168,8 +168,7 @@ life-cycle callbacks:
 
 The above life-cycle callbacks have in-scope access to the following attributes:
 
-  * `el` - attribute referencing the bound DOM node,
-  * `viewName` - attribute matching the DOM node's phx-view value
+  * `el` - attribute referencing the bound DOM node
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
