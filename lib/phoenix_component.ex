@@ -89,7 +89,7 @@ defmodule Phoenix.Component do
           <%= @text %>
           
           <%= if @help do %>
-            <span class="help"><%= @help %><% end %>
+            <span class="help"><%= @help %></span>
           <% end %>
         </label>
         """
