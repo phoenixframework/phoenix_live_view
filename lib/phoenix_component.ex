@@ -52,8 +52,9 @@ defmodule Phoenix.Component do
 
   ## Assigns
 
-  While inside a function component, it is recommended to use
-  the functions in `Phoenix.LiveView` to manipulate assigns.
+  While inside a function component, you must use the `assign/3` and
+  `assign_new/3` functions in `Phoenix.LiveView` to manipulate assigns,
+  so that LiveView can track changes to the assigns values.
   For example, let's imagine a component that receives the first
   name and last name and must compute the name assign. One option
   would be:
@@ -76,6 +77,23 @@ defmodule Phoenix.Component do
       end
 
       defp full_name(first_name, last_name), do: first_name <> last_name
+      
+  Another example is making an assign optional by providing 
+  a default value:
+  
+      def field_label(assigns) do
+        assigns = assign_new(assigns, :help, fn -> nil end)
+        
+        ~H"""
+        <label>
+          <%= @text %>
+          
+          <%= if @help do %>
+            <span class="help"><%= @help %><% end %>
+          <% end %>
+        </label>
+        """
+      end
 
   ## Blocks
 
