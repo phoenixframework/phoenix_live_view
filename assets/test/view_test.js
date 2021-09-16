@@ -7,7 +7,6 @@ import {tag, simulateJoinedView, stubChannel, rootContainer} from "./test_helper
 
 function liveViewDOM(content){
   const div = document.createElement("div")
-  div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
   div.setAttribute("id", "container")
   div.setAttribute("class", "user-implemented-class")
@@ -611,7 +610,7 @@ describe("View", function (){
 
   test("showLoader and hideLoader", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
-    let el = document.querySelector("[data-phx-view]")
+    let el = document.querySelector("[data-phx-session]")
 
     let view = simulateJoinedView(el, liveSocket)
     view.showLoader()
@@ -627,9 +626,9 @@ describe("View", function (){
   test("displayError", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let loader = document.createElement("span")
-    let phxView = document.querySelector("[data-phx-view]")
+    let phxView = document.querySelector("[data-phx-session]")
     phxView.parentNode.insertBefore(loader, phxView.nextSibling)
-    let el = document.querySelector("[data-phx-view]")
+    let el = document.querySelector("[data-phx-session]")
 
     let view = simulateJoinedView(el, liveSocket)
     view.displayError()
@@ -843,7 +842,6 @@ describe("View Hooks", function (){
 
 function liveViewComponent(){
   const div = document.createElement("div")
-  div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
   div.setAttribute("id", "container")
   div.setAttribute("class", "user-implemented-class")
@@ -1057,10 +1055,9 @@ describe("View + Component", function (){
 
   test("destroys children when they are removed by an update", () => {
     let id = "root"
-    let childHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BarLive" id="bar" data-phx-root-id="${id}"></div>`
-    let newChildHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" data-phx-view="BazLive" id="baz" data-phx-root-id="${id}"></div>`
+    let childHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" id="bar" data-phx-root-id="${id}"></div>`
+    let newChildHTML = `<div data-phx-parent-id="${id}" data-phx-session="" data-phx-static="" id="baz" data-phx-root-id="${id}"></div>`
     let el = document.createElement("div")
-    el.setAttribute("data-phx-view", "Root")
     el.setAttribute("data-phx-session", "abc123")
     el.setAttribute("id", id)
     document.body.appendChild(el)
