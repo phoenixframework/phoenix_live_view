@@ -84,7 +84,7 @@ defmodule Phoenix.Component do
       def field_label(assigns) do
         assigns = assign_new(assigns, :help, fn -> nil end)
         
-        ~H"""
+        ~H"\""
         <label>
           <%= @text %>
           
@@ -92,7 +92,7 @@ defmodule Phoenix.Component do
             <span class="help"><%= @help %></span>
           <% end %>
         </label>
-        """
+        "\""
       end
 
   ## Blocks
