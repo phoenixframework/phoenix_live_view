@@ -16,6 +16,15 @@ defmodule Phoenix.LiveViewTest.InitAssigns do
   end
 end
 
+defmodule Phoenix.LiveViewTest.MountArgs do
+  use Phoenix.Component
+
+  def on_mount(_params, _session, socket, redirect_params) do
+    qs = URI.encode_query(redirect_params)
+    {:halt, push_redirect(socket, to: "/lifecycle?#{qs}")}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.HooksLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.InitAssigns

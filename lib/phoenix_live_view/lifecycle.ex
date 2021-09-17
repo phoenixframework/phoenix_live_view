@@ -2,6 +2,8 @@ defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
   alias Phoenix.LiveView.{Socket, Utils}
 
+  @default_on_mount :on_mount
+
   @lifecycle :lifecycle
 
   @type hook :: map()
@@ -109,12 +111,16 @@ defmodule Phoenix.LiveView.Lifecycle do
   def on_mount(view, view), do: raise_own_mount_hook!(view, view)
   def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
 
+  def on_mount(_view, {module, fun, arg}) when is_atom(module) and is_atom(fun) do
+    mount_hook!({module, fun}, arg)
+  end
+
   def on_mount(_view, {module, fun} = id) when is_atom(module) and is_atom(fun) do
-    hook!(id, :mount, Function.capture(module, fun, 3))
+    mount_hook!(id, [])
   end
 
   def on_mount(_view, module) when is_atom(module) do
-    hook!(module, :mount, Function.capture(module, :on_mount, 3))
+    mount_hook!({module, @default_on_mount}, [])
   end
 
   def on_mount(view, result) do
@@ -125,9 +131,24 @@ defmodule Phoenix.LiveView.Lifecycle do
 
         Module
         {Module, Function}
+        {Module, Function, Arg}
 
     Got: #{inspect(result)}
     """
+  end
+
+  defp mount_hook!({mod, fun} = id, arg) do
+    args =
+      cond do
+        [] == arg -> arg
+        Keyword.keyword?(arg) -> [arg]
+        is_list(arg) -> arg
+        true -> List.wrap(arg)
+      end
+
+    captured_fun = Function.capture(mod, fun, 3 + length(args))
+
+    id |> hook!(:mount, captured_fun) |> Map.put(:args, args)
   end
 
   defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
@@ -144,7 +165,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn hook, acc ->
-      case hook.function.(params, session, acc) do
+      case apply(hook.function, [params, session, acc] ++ hook.args) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
 

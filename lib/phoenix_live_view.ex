@@ -530,6 +530,11 @@ defmodule Phoenix.LiveView do
   continue the mounting process as usual. If you wish to redirect the
   LiveView, you **must** halt, otherwise an error will be raised.
 
+  You may pass additional data to the callback by using a
+  module-function-arg triple. For convenience, Keywords and singular
+  arguments will be wrapped in a list and treated as the 4th argument
+  to the callback, lists will be treated as a list of arguments.
+
   Registering `on_mount` hooks can be useful to perform authentication
   as well as add custom behaviour to other callbacks via `attach_hook/4`.
 
@@ -540,8 +545,23 @@ defmodule Phoenix.LiveView do
 
         # Ensures common `assigns` are applied to all LiveViews
         # that attach this module as an `on_mount` hook
-        def mount(_params, _session, socket) do
+        def on_mount(_params, _session, socket) do
           {:cont, assign(socket, :page_title, "DemoWeb")}
+        end
+
+        # The following are all examples of passing additional
+        # arguments into a on_mount callback.
+
+        def on_mount_too(_, _, socket, :extra) do
+          {:cont, socket}
+        end
+
+        def on_mount_three(_, _, socket, role: :admin) do
+          {:cont, socket}
+        end
+
+        def on_mount_args(_, _, socket, :foo, :bar, :etc) do
+          {:cont, socket}
         end
       end
 
@@ -550,21 +570,24 @@ defmodule Phoenix.LiveView do
 
         on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
         on_mount DemoWeb.InitAssigns
+        on_mount {DemoWeb.InitAssigns, :on_mount_too, :extra}
+        on_mount {DemoWeb.InitAssigns, :on_mount_three, role: :admin}
+        on_mount {DemoWeb.InitAssigns, :on_mount_args, [:foo, :bar, :etc]}
       end
   """
-  defmacro on_mount(mod_or_mod_fun) do
-    mod_or_mod_fun =
-      if Macro.quoted_literal?(mod_or_mod_fun) do
-        Macro.prewalk(mod_or_mod_fun, &expand_alias(&1, __CALLER__))
+  defmacro on_mount(mod_or_mod_fun_or_mfa) do
+    mod_or_mod_fun_or_mfa =
+      if Macro.quoted_literal?(mod_or_mod_fun_or_mfa) do
+        Macro.prewalk(mod_or_mod_fun_or_mfa, &expand_alias(&1, __CALLER__))
       else
-        mod_or_mod_fun
+        mod_or_mod_fun_or_mfa
       end
 
     quote do
       Module.put_attribute(
         __MODULE__,
         :phoenix_live_mount,
-        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun))
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun_or_mfa))
       )
     end
   end

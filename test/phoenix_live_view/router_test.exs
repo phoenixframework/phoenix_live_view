@@ -112,9 +112,10 @@ defmodule Phoenix.LiveView.RouterTest do
       assert route.live_session.extra == %{
         on_mount: [
           %{
-            id: Phoenix.LiveViewTest.HaltConnectedMount,
+            id: {Phoenix.LiveViewTest.HaltConnectedMount, :on_mount},
             stage: :mount,
-            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 3)
+            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 3),
+            args: []
           }
         ],
         session: %{}
@@ -124,6 +125,27 @@ defmodule Phoenix.LiveView.RouterTest do
                "last_on_mount:Phoenix.LiveViewTest.HaltConnectedMount"
 
       assert {:error, {:live_redirect, %{to: "/lifecycle"}}} = live(conn, path)
+    end
+
+    test "with on_mount hook+args", %{conn: conn} do
+      path = "/lifecycle/mount-args"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert route.live_session.extra == %{
+        on_mount: [
+          %{
+            id: {Phoenix.LiveViewTest.MountArgs, :on_mount},
+            stage: :mount,
+            function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4),
+            args: [[{:q, "search"}]]
+          }
+        ],
+        session: %{}
+      }
+
+      assert {:error, {:live_redirect, %{to: "/lifecycle?q=search"}}} = live(conn, path)
     end
 
     test "raises when nesting" do
