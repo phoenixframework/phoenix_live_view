@@ -531,7 +531,7 @@ defmodule Phoenix.LiveView do
   LiveView, you **must** halt, otherwise an error will be raised.
 
   You may pass additional data to the callback by using a
-  module-function-arg triple. For convenience, Keywords and singular
+  module-function-args triple. For convenience, Keywords and singular
   arguments will be wrapped in a list and treated as the 4th argument
   to the callback, lists will be treated as a list of arguments.
 

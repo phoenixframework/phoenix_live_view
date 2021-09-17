@@ -130,8 +130,8 @@ defmodule Phoenix.LiveView.Lifecycle do
     Expected one of:
 
         Module
-        {Module, Function}
-        {Module, Function, Arg}
+        {Module, :function}
+        {Module, :function, [arg1, arg2, ...]}
 
     Got: #{inspect(result)}
     """
