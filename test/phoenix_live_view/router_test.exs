@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.RouterTest do
           %{
             id: Phoenix.LiveViewTest.HaltConnectedMount,
             stage: :mount,
-            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :mount, 3)
+            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 3)
           }
         ],
         session: %{}

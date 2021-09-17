@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:mount, 3}})
+    do: Macro.expand(alias, %{env | function: {:on_mount, 3}})
 
   defp expand_alias(other, _env), do: other
 

@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   def on_mount(_view, module) when is_atom(module) do
-    hook!(module, :mount, Function.capture(module, :mount, 3))
+    hook!(module, :mount, Function.capture(module, :on_mount, 3))
   end
 
   def on_mount(view, result) do
