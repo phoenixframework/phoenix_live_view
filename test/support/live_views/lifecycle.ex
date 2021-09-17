@@ -19,8 +19,8 @@ end
 defmodule Phoenix.LiveViewTest.MountArgs do
   use Phoenix.Component
 
-  def on_mount(_params, _session, socket, redirect_params) do
-    qs = URI.encode_query(redirect_params)
+  def on_mount(%{inlined: true}, _params, _session, socket) do
+    qs = URI.encode_query(%{called: true, inlined: true})
     {:halt, push_redirect(socket, to: "/lifecycle?#{qs}")}
   end
 end

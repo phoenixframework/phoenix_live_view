@@ -135,7 +135,7 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/lifecycle/halt-connected-mount", HooksLive.Noop
     end
 
-    live_session :mount_args, on_mount: {Phoenix.LiveViewTest.MountArgs, :on_mount, q: "search"} do
+    live_session :mount_mfa, on_mount: {Phoenix.LiveViewTest.MountArgs, :on_mount, [%{inlined: true}]} do
       live "/lifecycle/mount-args", HooksLive.Noop
     end
   end

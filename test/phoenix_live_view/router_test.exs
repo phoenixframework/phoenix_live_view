@@ -139,13 +139,13 @@ defmodule Phoenix.LiveView.RouterTest do
             id: {Phoenix.LiveViewTest.MountArgs, :on_mount},
             stage: :mount,
             function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4),
-            args: [[{:q, "search"}]]
+            args: [%{inlined: true}]
           }
         ],
         session: %{}
       }
 
-      assert {:error, {:live_redirect, %{to: "/lifecycle?q=search"}}} = live(conn, path)
+      assert {:error, {:live_redirect, %{to: "/lifecycle?called=true&inlined=true"}}} = live(conn, path)
     end
 
     test "raises when nesting" do

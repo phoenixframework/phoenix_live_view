@@ -2,6 +2,7 @@
 
 ## 0.17.0
 
+  - Allow `MFArgs` on the `on_mount/1` macro and as the `:on_mount` option in the `live_session` router macro.
   - Rename the lifecycle default mount callback to `:on_mount`
 
 ## 0.16.3 (2021-09-03)

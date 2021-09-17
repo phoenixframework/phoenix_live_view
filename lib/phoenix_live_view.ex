@@ -531,9 +531,8 @@ defmodule Phoenix.LiveView do
   LiveView, you **must** halt, otherwise an error will be raised.
 
   You may pass additional data to the callback by using a
-  module-function-args triple. For convenience, Keywords and singular
-  arguments will be wrapped in a list and treated as the 4th argument
-  to the callback, lists will be treated as a list of arguments.
+  module-function-args triple. The list of args will be prepended to the
+  default `c:mount/3` arguments.
 
   Registering `on_mount` hooks can be useful to perform authentication
   as well as add custom behaviour to other callbacks via `attach_hook/4`.
@@ -549,18 +548,8 @@ defmodule Phoenix.LiveView do
           {:cont, assign(socket, :page_title, "DemoWeb")}
         end
 
-        # The following are all examples of passing additional
-        # arguments into a on_mount callback.
-
-        def on_mount_too(_, _, socket, :extra) do
-          {:cont, socket}
-        end
-
-        def on_mount_three(_, _, socket, role: :admin) do
-          {:cont, socket}
-        end
-
-        def on_mount_args(_, _, socket, :foo, :bar, :etc) do
+        # An example receiving additional arguments from `on_mount/1`.
+        def on_mount_args(:extra, :args, _params, _session, socket) do
           {:cont, socket}
         end
       end
@@ -569,10 +558,11 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
-        on_mount DemoWeb.InitAssigns
-        on_mount {DemoWeb.InitAssigns, :on_mount_too, :extra}
-        on_mount {DemoWeb.InitAssigns, :on_mount_three, role: :admin}
-        on_mount {DemoWeb.InitAssigns, :on_mount_args, [:foo, :bar, :etc]}
+
+        on_mount DemoWeb.InitAssigns # expands to {DemoWeb.InitAssigns, :on_mount}
+
+        # An example passing additional arguments to DemoWeb.InitAssigns.on_mount_args/5.
+        on_mount {DemoWeb.InitAssigns, :on_mount_args, [:extra, :args]}
       end
   """
   defmacro on_mount(mod_or_mod_fun_or_mfa) do

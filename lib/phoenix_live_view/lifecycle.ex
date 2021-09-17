@@ -137,15 +137,7 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
-  defp mount_hook!({mod, fun} = id, arg) do
-    args =
-      cond do
-        [] == arg -> arg
-        Keyword.keyword?(arg) -> [arg]
-        is_list(arg) -> arg
-        true -> List.wrap(arg)
-      end
-
+  defp mount_hook!({mod, fun} = id, args) when is_list(args) do
     captured_fun = Function.capture(mod, fun, 3 + length(args))
 
     id |> hook!(:mount, captured_fun) |> Map.put(:args, args)
@@ -165,7 +157,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn hook, acc ->
-      case apply(hook.function, [params, session, acc] ++ hook.args) do
+      case apply(hook.function, hook.args ++ [params, session, acc]) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
 
