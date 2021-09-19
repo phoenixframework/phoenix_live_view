@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveViewTest.InitAssigns do
   alias Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def on_mount(_params, _session, socket) do
     {:cont,
      socket
      |> LiveView.assign(:init_assigns_mount, true)
@@ -155,7 +155,7 @@ end
 defmodule Phoenix.LiveViewTest.HaltConnectedMount do
   alias Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def on_mount(_params, _session, socket) do
     if LiveView.connected?(socket) do
       {:halt, LiveView.push_redirect(socket, to: "/lifecycle")}
     else

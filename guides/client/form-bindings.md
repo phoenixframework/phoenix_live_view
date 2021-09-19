@@ -5,32 +5,18 @@
 LiveView works with the existing `Phoenix.HTML` form helpers.
 If you want to use helpers such as [`text_input/2`](`Phoenix.HTML.Form.text_input/2`),
 etc. be sure to `use Phoenix.HTML` at the top of your LiveView.
+If your application was generated with Phoenix v1.6, then `mix phx.new`
+automatically uses `Phoenix.HTML` when you `use MyAppWeb, :live_view` or
+`use MyAppWeb, :live_component` in your modules.
 
-#### Using `mix phx.new --live`
-
-When you create your app using with `mix phx.new --live`,
-`Phoenix.HTML` is included automatically when you
-`use MyAppWeb, :live_view` or `use MyAppWeb, :live_component`
-in your modules.
-
-Using the generated `:live_view` and `:live_component` helpers
-will also `import MyAppWeb.ErrorHelpers`, a generated module
-where `error_tag/2` resides (usually located at
-`lib/my_app_web/views/error_helpers.ex`).
+Using the generated `:live_view` and `:live_component` helpers will also
+`import MyAppWeb.ErrorHelpers`, a generated module where `error_tag/2`
+resides (usually located at `lib/my_app_web/views/error_helpers.ex`).
 
 Since `ErrorHelpers` is generated into your app, it is yours
-to modify– you may add additional helper functions here, such
+to modify – you may add additional helper functions here, such
 as those recommended when rendering feedback for
 [`upload_errors/1,2`](`Phoenix.LiveView.Helpers.upload_errors/2`).
-
-### Pitfalls with input names
-
-Naming things is hard. It can be especially painful when the
-name you choose creates problems in your code. HTML forms
-suffer from this issue. The names applied to form elements
-_will shadow any of the form's built-in properties_, so
-avoid choosing a name like `id` for one of your form fields,
-as it will lead unexpected behaviour with form events.
 
 ## Form Events
 
@@ -161,7 +147,7 @@ LiveView forms support [reactive file inputs](uploads.md),
 including drag and drop support via the `phx-drop-target`
 attribute:
 
-    <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+    <div class="container" phx-drop-target={@uploads.avatar.ref}>
         ...
         <%= live_file_input @uploads.avatar %>
     </div>
@@ -268,15 +254,15 @@ service, or redirecting to a new page.
 
 On submission of a form bound with a `phx-submit` event:
 
-  1. The form's inputs are set to `readonly`
-  2. Any submit button on the form is disabled
-  3. The form receives the `"phx-submit-loading"` class
+1. The form's inputs are set to `readonly`
+2. Any submit button on the form is disabled
+3. The form receives the `"phx-submit-loading"` class
 
 On completion of server processing of the `phx-submit` event:
 
-  1. The submitted form is reactivated and loses the `"phx-submit-loading"` class
-  2. The last input with focus is restored (unless another input has received focus)
-  3. Updates are patched to the DOM as usual
+1. The submitted form is reactivated and loses the `"phx-submit-loading"` class
+2. The last input with focus is restored (unless another input has received focus)
+3. Updates are patched to the DOM as usual
 
 To handle latent events, any HTML tag can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
