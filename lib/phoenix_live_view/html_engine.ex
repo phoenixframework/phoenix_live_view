@@ -33,28 +33,28 @@ defmodule Phoenix.LiveView.HTMLEngine do
       raise ArgumentError, ":subengine is missing for HTMLEngine"
     end
 
-    state = %{
+    %{
+      tokens: [],
       subengine: subengine,
-      substate: nil,
-      stack: [],
-      tags: [],
-      root: nil,
+      substate: subengine.init([]),
       module: module,
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0)
     }
-
-    update_subengine(state, :init, [])
   end
 
   ## These callbacks return AST
 
   @doc false
   def handle_body(state) do
-    validate_unclosed_tags!(state)
+    token_state =
+      state
+      |> token_state()
+      |> handle_tokens(state.tokens)
 
-    opts = [root: state.root || false]
-    ast = invoke_subengine(state, :handle_body, [opts])
+    validate_unclosed_tags!(token_state)
+    opts = [root: token_state.root || false]
+    ast = invoke_subengine(token_state, :handle_body, [opts])
 
     # Do not require if calling module is helpers. Fix for elixir < 1.12
     # TODO remove after Elixir >= 1.12 support
@@ -66,29 +66,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
         unquote(ast)
       end
     end
-  end
-
-  @doc false
-  def handle_end(state) do
-    invoke_subengine(state, :handle_end, [])
-  end
-
-  ## These callbacks update the state
-
-  @doc false
-  def handle_begin(state) do
-    update_subengine(state, :handle_begin, [])
-  end
-
-  @doc false
-  def handle_text(state, text) do
-    handle_text(state, [line: 1, column: 1, skip_metadata: true], text)
-  end
-
-  def handle_text(%{file: file, indentation: indentation} = state, meta, text) do
-    text
-    |> HTMLTokenizer.tokenize(file, indentation, meta)
-    |> Enum.reduce(state, &handle_token(&1, &2, meta))
   end
 
   defp validate_unclosed_tags!(%{tags: []} = state) do
@@ -103,10 +80,51 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @doc false
-  def handle_expr(state, marker, expr) do
+  def handle_end(state) do
     state
-    |> set_root_on_dynamic()
-    |> update_subengine(:handle_expr, [marker, expr])
+    |> token_state()
+    |> update_subengine(:handle_begin, [])
+    |> handle_tokens(state.tokens)
+    |> invoke_subengine(:handle_end, [])
+  end
+
+  defp token_state(%{subengine: subengine, substate: substate, file: file}) do
+    %{
+      subengine: subengine,
+      substate: substate,
+      file: file,
+      stack: [],
+      tags: [],
+      root: nil
+    }
+  end
+
+  defp handle_tokens(token_state, tokens) do
+    tokens
+    |> Enum.reverse()
+    |> Enum.reduce(token_state, &handle_token/2)
+  end
+
+  ## These callbacks update the state
+
+  @doc false
+  def handle_begin(state) do
+    %{state | tokens: []}
+  end
+
+  @doc false
+  def handle_text(state, text) do
+    handle_text(state, [], text)
+  end
+
+  def handle_text(%{file: file, indentation: indentation, tokens: tokens} = state, meta, text) do
+    tokens = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens)
+    %{state | tokens: tokens}
+  end
+
+  @doc false
+  def handle_expr(%{tokens: tokens} = state, marker, expr) do
+    %{state | tokens: [{:expr, marker, expr} | tokens]}
   end
 
   ## Helpers
@@ -177,20 +195,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## handle_token
 
+  # Expr
+
+  defp handle_token({:expr, marker, expr}, state) do
+    state
+    |> set_root_on_dynamic()
+    |> update_subengine(:handle_expr, [marker, expr])
+  end
+
   # Text
 
-  defp handle_token({:text, text}, state, meta) do
+  defp handle_token({:text, text, meta}, state) do
     state
     |> set_root_on_text(text)
-    |> update_subengine(:handle_text, [meta, text])
+    |> update_subengine(:handle_text, [to_location(meta), text])
   end
 
   # Remote function component (self close)
 
   defp handle_token(
          {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}} = tag_meta,
-         state,
-         _meta
+         state
        )
        when first in ?A..?Z do
     file = state.file
@@ -211,7 +236,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Remote function component (with inner content)
 
-  defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state, _meta)
+  defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state)
        when first in ?A..?Z do
     mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.file)
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
@@ -223,7 +248,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
+  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
        when first in ?A..?Z do
     {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
     {let, assigns} = handle_component_attrs(attrs, state.file)
@@ -245,8 +270,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token(
          {:tag_open, "." <> name, attrs, %{self_close: true}},
-         state,
-         _meta
+         state
        ) do
     fun = String.to_atom(name)
     file = state.file
@@ -269,7 +293,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Local function component (with inner content)
 
-  defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state, _meta) do
+  defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state) do
     state
     |> set_root_on_dynamic()
     |> push_tag(token)
@@ -277,7 +301,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state, _meta) do
+  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
@@ -300,26 +324,26 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # HTML element (self close)
 
-  defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
+  defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
 
     state
     |> set_root_on_tag()
-    |> handle_tag_and_attrs(name, attrs, suffix, meta)
+    |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
   end
 
   # HTML element
 
-  defp handle_token({:tag_open, name, attrs, _tag_meta} = token, state, meta) do
+  defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
     state
     |> set_root_on_tag()
     |> push_tag(token)
-    |> handle_tag_and_attrs(name, attrs, ">", meta)
+    |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
   end
 
-  defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
+  defp handle_token({:tag_close, name, tag_meta} = token, state) do
     {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
-    update_subengine(state, :handle_text, [meta, "</#{name}>"])
+    update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
   end
 
   # Root tracking
@@ -531,4 +555,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
     end
   end
+
+  defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 end

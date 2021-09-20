@@ -3,7 +3,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   defp tokenize(text) do
-    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [])
+    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [], []) 
+    |> Enum.reverse()
   end
 
   describe "text" do
