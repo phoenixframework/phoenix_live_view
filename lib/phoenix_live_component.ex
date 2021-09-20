@@ -5,9 +5,10 @@ defmodule Phoenix.LiveComponent do
 
   Components are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.LiveView.Helpers.live_component/3` in a parent LiveView.
-  Components run inside the LiveView process, but they have their own
-  state, event handling and life-cycle. That's why they are also called
-  stateful components.
+  Components run inside the LiveView process but have their own life-cycle.
+
+  Components which are rendered with an `:id` are stateful, and those rendered
+  without an `:id` are stateless. Stateful components can also receive events.
 
   The simplest component only needs to define a `c:render/1` function:
 
@@ -90,7 +91,7 @@ defmodule Phoenix.LiveComponent do
         Say hello!
       </a>
 
-  Note `@myself` is not set for stateless components, as they cannot
+  Note that `@myself` is not set for stateless components, as they cannot
   receive events.
 
   If you want to target another component, you can also pass an ID
