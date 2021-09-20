@@ -9,6 +9,8 @@ defmodule Phoenix.LiveComponent do
 
   Components which are rendered with an `:id` are stateful, and those rendered
   without an `:id` are stateless. Stateful components can also receive events.
+  Note stateless LiveComponents are deprecated. Please use `Phoenix.Component`
+  instead.
 
   The simplest component only needs to define a `c:render/1` function:
 
