@@ -2,7 +2,47 @@
 
 ## 0.17.0
 
-  - Rename the lifecycle default mount callback to `:on_mount`
+### Breaking Changes
+
+LiveView 0.17 removes the custom module-function callbacks for the
+`Phoenix.LiveView.on_mount/1` macro and the `:on_mount` option for
+`Phoenix.LiveView.Router.live_session/3` in favor of supporting a custom
+argument. For clarity, the module function to be invoked during the mount
+lifecycle stage will always be named `on_mount/4`.
+
+For example, if you had invoked `on_mount/1` like so:
+
+```elixir
+on_mount MyAppWeb.MyHook
+on_mount {MyAppWeb.MyHook, :assign_current_user}
+```
+
+and defined your callbacks as:
+
+```elixir
+# my_hook.ex
+
+def mount(_params, _session, _socket) do
+end
+
+def assign_current_user(_params, _session, _socket) do
+end
+```
+
+Change it to:
+
+```elixir
+# my_hook.ex
+
+def on_mount(:default, _params, _session, _socket) do
+end
+
+def on_mount(:assign_current_user, _params, _session, _socket) do
+end
+```
+
+When given only a module name, the first argument to `on_mount/4` will be the
+atom `:default`.
 
 ## 0.16.3 (2021-09-03)
 
