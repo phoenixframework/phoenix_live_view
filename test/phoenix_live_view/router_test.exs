@@ -112,10 +112,9 @@ defmodule Phoenix.LiveView.RouterTest do
       assert route.live_session.extra == %{
         on_mount: [
           %{
-            id: {Phoenix.LiveViewTest.HaltConnectedMount, :on_mount},
+            id: {Phoenix.LiveViewTest.HaltConnectedMount, :default},
             stage: :mount,
-            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 3),
-            args: []
+            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 4)
           }
         ],
         session: %{}
@@ -127,7 +126,7 @@ defmodule Phoenix.LiveView.RouterTest do
       assert {:error, {:live_redirect, %{to: "/lifecycle"}}} = live(conn, path)
     end
 
-    test "with on_mount hook+args", %{conn: conn} do
+    test "with on_mount {Module, arg}", %{conn: conn} do
       path = "/lifecycle/mount-args"
 
       assert {:internal, route} =
@@ -136,10 +135,9 @@ defmodule Phoenix.LiveView.RouterTest do
       assert route.live_session.extra == %{
         on_mount: [
           %{
-            id: {Phoenix.LiveViewTest.MountArgs, :on_mount},
+            id: {Phoenix.LiveViewTest.MountArgs, :inlined},
             stage: :mount,
             function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4),
-            args: [%{inlined: true}]
           }
         ],
         session: %{}

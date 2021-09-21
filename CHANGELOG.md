@@ -2,8 +2,8 @@
 
 ## 0.17.0
 
-  - Allow `MFArgs` on the `on_mount/1` macro and as the `:on_mount` option in the `live_session` router macro.
-  - Rename the lifecycle default mount callback to `:on_mount`
+  - Allow a custom argument to `on_mount/1` e.g. `on_mount {MyHook, :admin}`
+  - Remove custom callback names for `on_mount/1` hooks (now it is always e.g. `MyHook.on_mount/4`)
 
 ## 0.16.3 (2021-09-03)
 

@@ -565,25 +565,25 @@ defmodule Phoenix.LiveView do
         on_mount {DemoWeb.InitAssigns, :on_mount_args, [:extra, :args]}
       end
   """
-  defmacro on_mount(mod_or_mod_fun_or_mfa) do
-    mod_or_mod_fun_or_mfa =
-      if Macro.quoted_literal?(mod_or_mod_fun_or_mfa) do
-        Macro.prewalk(mod_or_mod_fun_or_mfa, &expand_alias(&1, __CALLER__))
+  defmacro on_mount(mod_or_mod_arg) do
+    mod_or_mod_arg =
+      if Macro.quoted_literal?(mod_or_mod_arg) do
+        Macro.prewalk(mod_or_mod_arg, &expand_alias(&1, __CALLER__))
       else
-        mod_or_mod_fun_or_mfa
+        mod_or_mod_arg
       end
 
     quote do
       Module.put_attribute(
         __MODULE__,
         :phoenix_live_mount,
-        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun_or_mfa))
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_arg))
       )
     end
   end
 
   defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:on_mount, 3}})
+    do: Macro.expand(alias, %{env | function: {:on_mount, 4}})
 
   defp expand_alias(other, _env), do: other
 

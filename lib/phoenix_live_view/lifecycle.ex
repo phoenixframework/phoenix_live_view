@@ -2,8 +2,6 @@ defmodule Phoenix.LiveView.Lifecycle do
   @moduledoc false
   alias Phoenix.LiveView.{Socket, Utils}
 
-  @default_on_mount :on_mount
-
   @lifecycle :lifecycle
 
   @type hook :: map()
@@ -111,16 +109,12 @@ defmodule Phoenix.LiveView.Lifecycle do
   def on_mount(view, view), do: raise_own_mount_hook!(view, view)
   def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
 
-  def on_mount(_view, {module, fun, arg}) when is_atom(module) and is_atom(fun) do
-    mount_hook!({module, fun}, arg)
-  end
-
-  def on_mount(_view, {module, fun} = id) when is_atom(module) and is_atom(fun) do
-    mount_hook!(id, [])
+  def on_mount(_view, {module, arg}) when is_atom(module) do
+    mount_hook!({module, arg})
   end
 
   def on_mount(_view, module) when is_atom(module) do
-    mount_hook!({module, @default_on_mount}, [])
+    mount_hook!({module, :default})
   end
 
   def on_mount(view, result) do
@@ -130,17 +124,14 @@ defmodule Phoenix.LiveView.Lifecycle do
     Expected one of:
 
         Module
-        {Module, :function}
-        {Module, :function, [arg1, arg2, ...]}
+        {Module, arg}
 
     Got: #{inspect(result)}
     """
   end
 
-  defp mount_hook!({mod, fun} = id, args) when is_list(args) do
-    captured_fun = Function.capture(mod, fun, 3 + length(args))
-
-    id |> hook!(:mount, captured_fun) |> Map.put(:args, args)
+  defp mount_hook!({mod, _arg} = id) do
+    hook!(id, :mount, Function.capture(mod, :on_mount, 4))
   end
 
   defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
@@ -156,8 +147,8 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.mount, socket, fn hook, acc ->
-      case apply(hook.function, hook.args ++ [params, session, acc]) do
+    reduce_socket(lifecycle.mount, socket, fn %{id: {_mod, arg}} = hook, acc ->
+      case hook.function.(arg, params, session, acc) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
 
