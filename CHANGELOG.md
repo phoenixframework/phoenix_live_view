@@ -2,8 +2,38 @@
 
 ## 0.17.0
 
-  - Allow a custom argument to `on_mount/1` e.g. `on_mount {MyHook, :admin}`
-  - Remove custom callback names for `on_mount/1` hooks (now it is always e.g. `MyHook.on_mount/4`)
+### Breaking Changes
+
+LiveView 0.17 removes the custom callback function names for the
+`Phoenix.LiveView.on_mount/1` macro and the `:on_mount` option for
+`Phoenix.LiveView.Router.live_session/3` in favor of supporting a custom
+argument. The function to be invoked within a hook module will always be
+`on_mount/4`.
+
+For example, if you had invoked `on_mount/1` like so:
+
+```elixir
+on_mount {MyAppWeb.MyHook, :assign_current_user}
+```
+
+and defined your callback as:
+
+```elixir
+# my_hook.ex
+def assign_current_user(_params, _session, _socket) do
+end
+```
+
+Change it to:
+
+```elixir
+# my_hook.ex
+def on_mount(:assign_current_user, _params, _session, socket) do
+end
+```
+
+When given only a module name, the first argument to `on_mount/4` will be the
+atom `:default`.
 
 ## 0.16.3 (2021-09-03)
 
