@@ -111,9 +111,9 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  on_mount {__MODULE__, :bad_mount}
+  on_mount __MODULE__
 
-  def on_mount(:bad_mount, _params, _session, _socket), do: :boom
+  def on_mount(:default, _params, _session, _socket), do: :boom
 
   def mount(_params, _session, _socket) do
     raise "expected to exit before #{__MODULE__}.mount/3"
@@ -141,9 +141,9 @@ defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
     end
   end
 
-  on_mount {__MODULE__, :hook}
+  on_mount __MODULE__
 
-  def on_mount(:hook, _, _, %{assigns: %{live_action: action}} = socket) do
+  def on_mount(:default, _, _, %{assigns: %{live_action: action}} = socket) do
     {action, push_redirect(socket, to: "/lifecycle")}
   end
 

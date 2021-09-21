@@ -106,9 +106,6 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   @doc false
-  def on_mount(view, view), do: raise_own_mount_hook!(view, view)
-  def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
-
   def on_mount(_view, {module, arg}) when is_atom(module) do
     mount_hook!({module, arg})
   end
@@ -213,21 +210,5 @@ defmodule Phoenix.LiveView.Lifecycle do
   defp raise_continue_with_redirect!(hook) do
     raise ArgumentError,
           "the hook #{inspect(hook.id)} for lifecycle event :mount attempted to redirect without halting."
-  end
-
-  defp raise_own_mount_hook!(view, result) do
-    raise ArgumentError, """
-    cannot attach the mount/3 callback to its own lifecycle.
-
-    The LiveView module #{inspect(view)}
-    attempted to attach its own mount/3 function via the
-    on_mount macro. Doing so will lead to the mount function
-    being invoked multiple times per disconnected and connected
-    render of the LiveView and is therefore prohibited.
-
-    To silence this error, please remove the following declaration:
-
-        on_mount #{inspect(result)}
-    """
   end
 end
