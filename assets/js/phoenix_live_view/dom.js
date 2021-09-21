@@ -116,6 +116,15 @@ let DOM = {
     el[PHX_PRIVATE][key] = value
   },
 
+  updatePrivate(el, key, defaultVal, updateFunc){
+    let existing = this.private(el, key) !== undefined
+    if(existing === undefined){
+      this.putPrivate(el, key, updateFunc(defaultVal))
+    } else {
+      this.putPrivate(el, key, updateFunc(existing))
+    }
+  },
+
   copyPrivates(target, source){
     if(source[PHX_PRIVATE]){
       target[PHX_PRIVATE] = clone(source[PHX_PRIVATE])
@@ -367,6 +376,34 @@ let DOM = {
       container.replaceWith(newContainer)
       return newContainer
     }
+  },
+
+  getSticky(el, name, defaultVal){
+    let op = (DOM.private(el, "sticky") || []).find(([existingName, ]) => name === existingName)
+    if(op){
+      return
+    }
+    return val !== undefined ? val : defaultVal
+  },
+
+  putSticky(el, name, op){
+    let stashedResult = op(el)
+    this.updatePrivate(el, "sticky", [], ops => {
+      let existingIndex = ops.findIndex(([existingName, ]) => name === existingName)
+      if(existingIndex >= 0){
+        ops[existingIndex] = [name, op, stashedResult]
+      } else {
+        ops.push([name, op, stashedResult])
+      }
+      return ops
+    })
+  },
+
+  applyStickyOperations(el){
+    let ops = DOM.private("sticky")
+    if(!ops){ return }
+
+    ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))
   }
 }
 

@@ -90,8 +90,8 @@ import {
   PHX_ROOT_ID,
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
-  RELOAD_JITTER
-
+  PHX_SESSION,
+  RELOAD_JITTER,
 } from "./constants"
 
 import {
@@ -107,7 +107,7 @@ import DOM from "./dom"
 import Hooks from "./hooks"
 import LiveUploader from "./live_uploader"
 import View from "./view"
-import {PHX_SESSION} from "./constants"
+import Cmd from "./cmd"
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -346,14 +346,7 @@ export default class LiveSocket {
   }
 
   withinOwners(childEl, callback){
-    this.owner(childEl, view => {
-      let phxTarget = childEl.getAttribute(this.binding("target"))
-      if(phxTarget === null){
-        callback(view, childEl)
-      } else {
-        view.withinTargets(phxTarget, callback)
-      }
-    })
+    this.owner(childEl, view => callback(view, childEl))
   }
 
   getViewByEl(el){
@@ -428,22 +421,25 @@ export default class LiveSocket {
     this.bindNav()
     this.bindClicks()
     this.bindForms()
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, target, targetCtx, phxEvent, _phxTarget) => {
-      let matchKey = target.getAttribute(this.binding(PHX_KEY))
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
+      let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
 
-      view.pushKey(target, targetCtx, type, phxEvent, {key: e.key, ...this.eventMeta(type, e, target)})
+      let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
+      Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
     })
-    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
-      if(!phxTarget){
-        view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
+    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
+      if(!eventTarget){
+        let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
+        Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
     this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
-      if(phxTarget && !phxTarget !== "window"){
-        view.pushEvent(type, targetEl, targetCtx, phxEvent, this.eventMeta(type, e, targetEl))
+      if(phxTarget === "window"){
+        let data = this.eventMeta(type, e, targetEl)
+        Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
     window.addEventListener("dragover", e => e.preventDefault())
@@ -503,16 +499,16 @@ export default class LiveSocket {
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent){
           this.debounce(e.target, e, () => {
-            this.withinOwners(e.target, (view, targetCtx) => {
-              callback(e, event, view, e.target, targetCtx, targetPhxEvent, null)
+            this.withinOwners(e.target, view => {
+              callback(e, event, view, e.target, targetPhxEvent, null)
             })
           })
         } else {
           DOM.all(document, `[${windowBinding}]`, el => {
             let phxEvent = el.getAttribute(windowBinding)
             this.debounce(el, e, () => {
-              this.withinOwners(el, (view, targetCtx) => {
-                callback(e, event, view, el, targetCtx, phxEvent, "window")
+              this.withinOwners(el, view => {
+                callback(e, event, view, el, phxEvent, "window")
               })
             })
           })
@@ -535,17 +531,30 @@ export default class LiveSocket {
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
       } else {
         target = closestPhxBinding(e.target, click)
+        this.dispatchClickAway(e)
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       this.debounce(target, e, () => {
-        this.withinOwners(target, (view, targetCtx) => {
-          view.pushEvent("click", target, targetCtx, phxEvent, this.eventMeta("click", e, target))
+        this.withinOwners(target, view => {
+          Cmd.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
     }, capture)
+  }
+
+  dispatchClickAway(e){
+    let binding = this.binding("click-away")
+    DOM.all(document, `[${binding}]`, el => {
+      if(!(el.isSameNode(e.target) || el.contains(e.target))){
+        this.withinOwners(e.target, view => {
+          let phxEvent = el.getAttribute(binding)
+          Cmd.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
+        })
+      }
+    })
   }
 
   bindNav(){
@@ -650,7 +659,9 @@ export default class LiveSocket {
       if(!phxEvent){ return }
       e.preventDefault()
       e.target.disabled = true
-      this.withinOwners(e.target, (view, targetCtx) => view.submitForm(e.target, targetCtx, phxEvent))
+      this.withinOwners(e.target, view => {
+        Cmd.exec("submit", phxEvent, view, e.target, ["push", {}])
+      })
     }, false)
 
     for(let type of ["change", "input"]){
@@ -668,12 +679,12 @@ export default class LiveSocket {
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
         this.debounce(input, e, () => {
-          this.withinOwners(input.form, (view, targetCtx) => {
+          this.withinOwners(input.form, view => {
             DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            view.pushInput(input, targetCtx, null, phxEvent, e.target)
+            Cmd.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
           })
         })
       }, false)

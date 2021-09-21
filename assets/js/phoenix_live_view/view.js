@@ -196,7 +196,7 @@ export default class View {
       return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
     }
 
-    if(/^(0|[1-9]\d*)$/.test(phxTarget)){
+    if(typeof(phxTarget) === "number" || /^(0|[1-9]\d*)$/.test(phxTarget)){
       let targets = DOM.findComponentNodeList(this.el, phxTarget)
       if(targets.length === 0){
         logError(`no component found matching phx-target of ${phxTarget}`)
@@ -742,6 +742,10 @@ export default class View {
     return meta
   }
 
+  pushClick(target, phxEvent, targetCtx, meta){
+    this.pushEvent("click", target, targetCtx, phxEvent, meta)
+  }
+
   pushEvent(type, el, targetCtx, phxEvent, meta){
     this.pushWithReply(() => this.putRef([el], type), "event", {
       type: type,
@@ -772,11 +776,11 @@ export default class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, forceCid, phxEvent, eventTarget, callback){
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, _target, callback){
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let formData = serializeForm(inputEl.form, {_target: eventTarget.name})
+    let formData = serializeForm(inputEl.form, {_target: _target})
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
     }
@@ -946,7 +950,8 @@ export default class View {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
-      view.pushInput(input, targetCtx, newCid, phxEvent, input, callback)
+
+      Cmd.exec(view, input, phxEvent, ["push_change", {newCid: newCid, _target: input.name, callback: callback}])
     })
   }
 
