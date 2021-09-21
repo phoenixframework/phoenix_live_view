@@ -523,47 +523,84 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Declares a module-function to be invoked on the LiveView's mount.
+  Declares a module callback to be invoked on the LiveView's mount.
 
-  The given module-function will be invoked before both disconnected
-  and connected mounts. The hook has the option to either halt or
-  continue the mounting process as usual. If you wish to redirect the
-  LiveView, you **must** halt, otherwise an error will be raised.
+  The function within the given module, which must be named `on_mount`,
+  will be invoked before both disconnected and connected mounts. The hook
+  has the option to either halt or continue the mounting process as usual.
+  If you wish to redirect the LiveView, you **must** halt, otherwise an error
+  will be raised.
 
-  You may pass additional data to the callback by using a
-  module-function-args triple. The list of args will be prepended to the
-  default `c:mount/3` arguments.
+  Tip: if you need to define multiple `on_mount` callbacks, avoid defining
+  multiple modules. Instead, pass a tuple and use pattern matching to handle
+  different cases:
+
+      def on_mount(:admin, _params, _session, _socket) do
+        {:cont, socket}
+      end
+
+      def on_mount(:user, _params, _session, _socket) do
+        {:cont, socket}
+      end
+
+  And then invoke it as:
+
+      on_mount {MyAppWeb.SomeHook, :admin}
+      on_mount {MyAppWeb.SomeHook, :user}
 
   Registering `on_mount` hooks can be useful to perform authentication
   as well as add custom behaviour to other callbacks via `attach_hook/4`.
 
   ## Examples
 
-      defmodule DemoWeb.InitAssigns do
+  The following is an example of attaching a hook via
+  `Phoenix.LiveView.Router.live_session/3`:
+
+      # lib/my_app_web/live/init_assigns.ex
+      defmodule MyAppWeb.InitAssigns do
+        @moduledoc "\""
+        Ensures common `assigns` are applied to all LiveViews attaching this hook.
+        "\""
         import Phoenix.LiveView
 
-        # Ensures common `assigns` are applied to all LiveViews
-        # that attach this module as an `on_mount` hook
-        def on_mount(_params, _session, socket) do
+        def on_mount(:default, _params, _session, socket) do
           {:cont, assign(socket, :page_title, "DemoWeb")}
         end
 
-        # An example receiving additional arguments from `on_mount/1`.
-        def on_mount_args(:extra, :args, _params, _session, socket) do
-          {:cont, socket}
+        def on_mount(:user, _params, _session, socket) do
+        end
+
+        def on_mount(:admin, _params, _session, socket) do
         end
       end
 
-      defmodule DemoWeb.PageLive do
-        use Phoenix.LiveView
+      # lib/my_app_web/router.ex
+      defmodule MyAppWeb.Router do
+        use MyAppWeb, :router
 
-        on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
+        # pipelines, plugs, etc.
 
-        on_mount DemoWeb.InitAssigns # expands to {DemoWeb.InitAssigns, :on_mount}
+        live_session :default, on_mount: MyAppWeb.InitAssigns do
+          scope "/", MyAppWeb do
+            pipe_through :browser
+            live "/", PageLive, :index
+          end
 
-        # An example passing additional arguments to DemoWeb.InitAssigns.on_mount_args/5.
-        on_mount {DemoWeb.InitAssigns, :on_mount_args, [:extra, :args]}
+        live_session :authenticated, on_mount: {MyAppWeb.InitAssigns, :user} do
+          scope "/", MyAppWeb do
+            pipe_through [:browser, :require_user]
+            live "/profile", UserLive.Profile, :index
+          end
+        end
+
+        live_session :admins, on_mount: {MyAppWeb.InitAssigns, :admin} do
+          scope "/admin", MyAppWeb.Admin do
+            pipe_through [:browser, :require_user, :require_admin]
+            live "/", AdminLive.Index, :index
+          end
+        end
       end
+
   """
   defmacro on_mount(mod_or_mod_arg) do
     mod_or_mod_arg =
