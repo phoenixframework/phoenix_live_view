@@ -450,7 +450,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     do: acc
 
   defp text_to_acc(buffer, acc, line, column),
-    do: [{:text, buffer_to_string(buffer), %{line: line, column: column}} | acc]
+    do: [{:text, buffer_to_string(buffer), %{line_end: line, column_end: column}} | acc]
 
   defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, value \\ nil) do
     attrs = [{attr, value} | attrs]

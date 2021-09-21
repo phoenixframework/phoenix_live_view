@@ -205,10 +205,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Text
 
-  defp handle_token({:text, text, meta}, state) do
+  defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
     state
     |> set_root_on_text(text)
-    |> update_subengine(:handle_text, [to_location(meta), text])
+    |> update_subengine(:handle_text, [[line: line, column: column], text])
   end
 
   # Remote function component (self close)
