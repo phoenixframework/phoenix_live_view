@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Helpers do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
 
-  @doc ~S"""
+  @doc ~S'''
   Filters the assigns as a list of keywords for use in dynamic tag attributes.
 
   Useful for transforming caller assigns into dynamic attributes while
@@ -30,17 +30,17 @@ defmodule Phoenix.LiveView.Helpers do
           |> Phoenix.LiveView.assign(:target, target)
           |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
 
-        ~H"\""
+        ~H"""
         <a href={@href} target={@target} {@extra}>
           <%= render_block(@inner_block) %>
         </a>
-        "\""
+        """
       end
 
   The optional second argument to `assigns_to_attributes` takes a list of keys to exclude
   which will typically be the keys reserved by the component itself which either
   do not belong in the markup, or are already handled explicitly by the component.
-  """
+  '''
   def assigns_to_attributes(assigns, exclude \\ []) do
     excluded_keys = [:__changed__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
