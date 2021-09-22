@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.4 (2021-09-22)
+
+### Bug fixes
+  - Fix pushes failing to include channel `join_ref` on messages
+
 ## 0.16.3 (2021-09-03)
 
 ### Bug fixes
