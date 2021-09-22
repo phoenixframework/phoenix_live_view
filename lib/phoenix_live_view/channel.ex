@@ -755,7 +755,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push(state, event, payload) do
-    message = %Message{topic: state.topic, event: event, payload: payload}
+    message = %Message{topic: state.topic, event: event, payload: payload, join_ref: state.join_ref}
     send(state.socket.transport_pid, state.serializer.encode!(message))
     state
   end
