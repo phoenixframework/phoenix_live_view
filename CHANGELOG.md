@@ -44,6 +44,17 @@ end
 When given only a module name, the first argument to `on_mount/4` will be the
 atom `:default`.
 
+## 0.16.4 (2021-09-22)
+
+### Enhancements
+  - Improve HEEx error messages
+  - Relax HTML tag validation to support mixed case tags
+  - Support self closing HTML tags
+  - Remove requirement for handle_params to be defined for lifecycle hooks
+
+### Bug fixes
+  - Fix pushes failing to include channel `join_ref` on messages
+
 ## 0.16.3 (2021-09-03)
 
 ### Bug fixes
