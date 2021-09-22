@@ -47,10 +47,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
+    tokens =
+      state.tokens
+      |> strip_text_space()
+      |> Enum.reverse()
+      |> strip_text_space()
+
     token_state =
       state
       |> token_state()
-      |> handle_tokens(state.tokens)
+      |> handle_tokens(tokens)
 
     validate_unclosed_tags!(token_state)
     opts = [root: token_state.root || false]
@@ -84,7 +90,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
     |> token_state()
     |> update_subengine(:handle_begin, [])
-    |> handle_tokens(state.tokens)
+    |> handle_tokens(Enum.reverse(state.tokens))
     |> invoke_subengine(:handle_end, [])
   end
 
@@ -100,9 +106,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp handle_tokens(token_state, tokens) do
-    tokens
-    |> Enum.reverse()
-    |> Enum.reduce(token_state, &handle_token/2)
+    Enum.reduce(tokens, token_state, &handle_token/2)
   end
 
   ## These callbacks update the state
@@ -199,7 +203,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:expr, marker, expr}, state) do
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, [marker, expr])
   end
 
@@ -207,7 +211,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
     state
-    |> set_root_on_text(text)
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_text, [[line: line, column: column], text])
   end
 
@@ -230,7 +234,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
@@ -242,7 +246,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
@@ -287,7 +291,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
@@ -295,7 +299,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state) do
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
@@ -348,16 +352,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Root tracking
 
-  defp set_root_on_dynamic(%{root: root, tags: tags} = state) do
-    if tags == [] and root != false do
-      %{state | root: false}
+  defp strip_text_space(tokens) do
+    with [{:text, text, _} | rest] <- tokens,
+         "" <- String.trim_leading(text) do
+      strip_text_space(rest)
     else
-      state
+      _ -> tokens
     end
   end
 
-  defp set_root_on_text(%{root: root, tags: tags} = state, text) do
-    if tags == [] and root != false and String.trim_leading(text) != "" do
+  defp set_root_on_not_tag(%{root: root, tags: tags} = state) do
+    if tags == [] and root != false do
       %{state | root: false}
     else
       state

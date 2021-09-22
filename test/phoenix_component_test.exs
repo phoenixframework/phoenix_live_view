@@ -22,8 +22,7 @@ defmodule Phoenix.ComponentTest do
       assert h2s(~H"""
              <%= component &hello/1, name: "WORLD" %>
              """) == """
-             Hello WORLD
-
+             Hello WORLD\
              """
     end
 
@@ -45,8 +44,6 @@ defmodule Phoenix.ComponentTest do
              Hello WORLD
 
              THE INNER BLOCK
-
-
              """
     end
 
@@ -65,8 +62,7 @@ defmodule Phoenix.ComponentTest do
 
              THE INNER BLOCK
 
-
-             </div>
+             </div>\
              """
     end
 
@@ -93,8 +89,6 @@ defmodule Phoenix.ComponentTest do
              THE INNER BLOCK
              ARG1: 1
              ARG2: 2
-
-
              """
     end
   end
@@ -285,7 +279,7 @@ defmodule Phoenix.ComponentTest do
     import Phoenix.LiveViewTest
 
     test "render_component/1" do
-      assert render_component(&hello/1, name: "World!") == "Hello World!\n"
+      assert render_component(&hello/1, name: "World!") == "Hello World!"
     end
   end
 end

@@ -79,19 +79,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   test "handles regular blocks" do
     assert render("""
            Hello <%= if true do %>world!<% end %>
-           """) == "Hello world!\n"
+           """) == "Hello world!"
   end
 
   test "handles html blocks with regular blocks" do
     assert render("""
            Hello <omg>w<%= if true do %>orld<% end %>!</omg>
-           """) == "Hello <omg>world!</omg>\n"
+           """) == "Hello <omg>world!</omg>"
   end
 
   test "handles string attributes" do
     assert render("""
            Hello <omg name="my name" phone="111">text</omg>
-           """) == "Hello <omg name=\"my name\" phone=\"111\">text</omg>\n"
+           """) == "Hello <omg name=\"my name\" phone=\"111\">text</omg>"
   end
 
   test "handles string attribute value keeping special chars unchanged" do
@@ -101,13 +101,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   test "handles boolean attributes" do
     assert render("""
            Hello <omg hidden>text</omg>
-           """) == "Hello <omg hidden>text</omg>\n"
+           """) == "Hello <omg hidden>text</omg>"
   end
 
   test "handles interpolated attributes" do
     assert render("""
            Hello <omg name={to_string(123)} phone={to_string(456)}>text</omg>
-           """) == "Hello <omg name=\"123\" phone=\"456\">text</omg>\n"
+           """) == "Hello <omg name=\"123\" phone=\"456\">text</omg>"
   end
 
   test "handles interpolated attribute value containing special chars" do
@@ -117,13 +117,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   test "handles interpolated attributes with strings" do
     assert render("""
            <omg name={String.upcase("abc")}>text</omg>
-           """) == "<omg name=\"ABC\">text</omg>\n"
+           """) == "<omg name=\"ABC\">text</omg>"
   end
 
   test "handles interpolated attributes with curly braces" do
     assert render("""
            <omg name={elem({"abc"}, 0)}>text</omg>
-           """) == "<omg name=\"abc\">text</omg>\n"
+           """) == "<omg name=\"abc\">text</omg>"
   end
 
   test "handles dynamic attributes" do
@@ -193,7 +193,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
                The inner content
              </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
-             """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+             """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
     test "remote call with inner content with args" do
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              <.local_function_component_with_inner_content value='1'>
                The inner content
              </.local_function_component_with_inner_content>
-             """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n\n"
+             """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
     test "local call with inner content with args" do
@@ -388,7 +388,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<br>").root == true
 
       assert eval("  <foo></foo>  ").root == true
-      assert eval("\n\n<foo></foo>\n\n").root == true
+      assert eval("\n\n<foo></foo>\n").root == true
     end
 
     test "invalid cases" do
