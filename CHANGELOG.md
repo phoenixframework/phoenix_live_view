@@ -4,6 +4,9 @@
 
 ### Breaking Changes
 
+#### on_mount changes
+
+The hook API introduced in LiveView 0.16 has been improved based on feedback.
 LiveView 0.17 removes the custom module-function callbacks for the
 `Phoenix.LiveView.on_mount/1` macro and the `:on_mount` option for
 `Phoenix.LiveView.Router.live_session/3` in favor of supporting a custom
@@ -29,7 +32,7 @@ def assign_current_user(_params, _session, _socket) do
 end
 ```
 
-Change it to:
+Change the callback to:
 
 ```elixir
 # my_hook.ex
@@ -43,6 +46,17 @@ end
 
 When given only a module name, the first argument to `on_mount/4` will be the
 atom `:default`.
+
+#### LEEx templates in stateful LiveComponent
+
+Stateful LiveComponent (where an ID is given) must now return HEEx templates
+(`~H` sigil or `.heex` extension). LEEx temlates (`~L` sigil or `.leex` extension)
+are no longer supported. This addresses bugs and allows stateful components
+to be rendered more efficiently client-side.
+
+### Enhancements
+
+### Bug fixes
 
 ## 0.16.4 (2021-09-22)
 
