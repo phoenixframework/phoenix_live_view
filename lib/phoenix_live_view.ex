@@ -300,7 +300,7 @@ defmodule Phoenix.LiveView do
   module. At the end of the day, they are useful mechanism to reuse markup
   in your LiveViews.
 
-  However, sometimes you need to compartmentlize or reuse more than markup.
+  However, sometimes you need to compartmentalize or reuse more than markup.
   Perhaps you want to move part of the state or part of the events in your
   LiveView to a separate module. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using
