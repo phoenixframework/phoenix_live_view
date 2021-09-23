@@ -3,12 +3,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
   The HTMLEngine that powers `.heex` templates and the `~H` sigil.
   """
 
+  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
   alias Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   @behaviour Phoenix.Template.Engine
-
-  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
 
   @doc false
   def compile(path, _name) do
@@ -17,12 +16,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @behaviour EEx.Engine
-
-  for void <- ~w(area base br col hr img input link meta param command keygen source) do
-    defp void?(unquote(void)), do: true
-  end
-
-  defp void?(_), do: false
 
   @doc false
   def init(opts) do
@@ -254,13 +247,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
+    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}, line: line}}, state} =
+      pop_tag!(state, token)
+
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
-      quote do
-        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns),
+      quote line: line do
+        Phoenix.LiveView.Helpers.component(
+          &(unquote(mod).unquote(fun) / 1),
+          unquote(assigns),
           do: unquote(clauses)
         )
       end
@@ -273,7 +270,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Local function component (self close)
 
   defp handle_token(
-         {:tag_open, "." <> name, attrs, %{self_close: true}},
+         {:tag_open, "." <> name, attrs, %{self_close: true, line: line}},
          state
        ) do
     fun = String.to_atom(name)
@@ -283,7 +280,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise_if_let!(let, file)
 
     ast =
-      quote do
+      quote line: line do
         Phoenix.LiveView.Helpers.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
           unquote(assigns)
@@ -306,14 +303,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
-    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
+    {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
 
     fun = String.to_atom(fun_name)
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
-      quote do
+      quote line: line do
         Phoenix.LiveView.Helpers.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
           unquote(assigns),
@@ -390,11 +387,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     Enum.reduce(attrs, state, fn
       {:root, {:expr, value, %{line: line, column: col}}}, state ->
         attrs = Code.string_to_quoted!(value, line: line, column: col)
-        handle_attr_escape(state, attrs)
+        handle_attrs_escape(state, meta, attrs)
 
       {name, {:expr, value, %{line: line, column: col}}}, state ->
         attr = Code.string_to_quoted!(value, line: line, column: col)
-        handle_attr_escape(state, [{safe_unless_special(name), attr}])
+        handle_attr_escape(state, meta, name, attr)
 
       {name, {:string, value, %{delimiter: ?"}}}, state ->
         update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
@@ -407,13 +404,106 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp handle_attr_escape(state, attrs) do
+  defp handle_attrs_escape(state, meta, attrs) do
     ast =
-      quote do
+      quote line: meta[:line] do
         Phoenix.HTML.Tag.attributes_escape(unquote(attrs))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
+  end
+
+  defp handle_attr_escape(state, meta, name, value) do
+    case extract_binaries(value, true, []) do
+      :error ->
+        if fun = empty_attribute_encoder(name) do
+          ast =
+            quote line: meta[:line] do
+              {:safe, unquote(__MODULE__).unquote(fun)(unquote(value))}
+            end
+
+          state
+          |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
+          |> update_subengine(:handle_expr, ["=", ast])
+          |> update_subengine(:handle_text, [meta, ~s(")])
+        else
+          handle_attrs_escape(state, meta, [{safe_unless_special(name), value}])
+        end
+
+      binaries ->
+        state
+        |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
+        |> handle_binaries(meta, binaries)
+        |> update_subengine(:handle_text, [meta, ~s(")])
+    end
+  end
+
+  defp handle_binaries(state, meta, binaries) do
+    binaries
+    |> Enum.reverse()
+    |> Enum.reduce(state, fn
+      {:text, value}, state ->
+        update_subengine(state, :handle_text, [meta, binary_encode(value)])
+
+      {:binary, value}, state ->
+        ast =
+          quote line: meta[:line] do
+            {:safe, unquote(__MODULE__).binary_encode(unquote(value))}
+          end
+
+        update_subengine(state, :handle_expr, ["=", ast])
+    end)
+  end
+
+  defp extract_binaries({:<>, _, [left, right]}, _root?, acc) do
+    extract_binaries(right, false, extract_binaries(left, false, acc))
+  end
+
+  defp extract_binaries({:<<>>, _, parts} = bin, _root?, acc) do
+    Enum.reduce(parts, acc, fn
+      part, acc when is_binary(part) ->
+        [{:text, part} | acc]
+
+      {:"::", _, [binary, {:binary, _, _}]}, acc ->
+        [{:binary, binary} | acc]
+
+      _, _ ->
+        throw(:unknown_part)
+    end)
+  catch
+    :unknown_part -> [{:binary, bin} | acc]
+  end
+
+  defp extract_binaries(binary, _root?, acc) when is_binary(binary), do: [{:text, binary} | acc]
+  defp extract_binaries(value, false, acc), do: [{:binary, value} | acc]
+  defp extract_binaries(_value, true, _acc), do: :error
+
+  defp empty_attribute_encoder("class"), do: :class_attribute_encode
+  defp empty_attribute_encoder("style"), do: :empty_attribute_encoder
+  defp empty_attribute_encoder(_), do: nil
+
+  @doc false
+  def class_attribute_encode([_ | _] = list),
+    do: list |> Enum.filter(& &1) |> Enum.join(" ") |> Phoenix.HTML.Engine.encode_to_iodata!()
+
+  def class_attribute_encode(other),
+    do: empty_attribute_encode(other)
+
+  @doc false
+  def empty_attribute_encode(nil), do: ""
+  def empty_attribute_encode(false), do: ""
+  def empty_attribute_encode(true), do: ""
+  def empty_attribute_encode(value), do: Phoenix.HTML.Engine.encode_to_iodata!(value)
+
+  @doc false
+  def binary_encode(value) when is_binary(value) do
+    value
+    |> Phoenix.HTML.Engine.encode_to_iodata!()
+    |> IO.iodata_to_binary()
+  end
+
+  def binary_encode(value) do
+    raise ArgumentError, "expected a binary in <>, got: #{inspect(value)}"
   end
 
   defp safe_unless_special("aria"), do: "aria"
@@ -560,6 +650,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
     end
   end
+
+  ## Helpers
+
+  for void <- ~w(area base br col hr img input link meta param command keygen source) do
+    defp void?(unquote(void)), do: true
+  end
+
+  defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 end

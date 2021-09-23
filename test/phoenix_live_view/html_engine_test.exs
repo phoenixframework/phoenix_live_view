@@ -84,74 +84,149 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   test "handles html blocks with regular blocks" do
     assert render("""
-           Hello <omg>w<%= if true do %>orld<% end %>!</omg>
-           """) == "Hello <omg>world!</omg>"
+           Hello <div>w<%= if true do %>orld<% end %>!</div>
+           """) == "Hello <div>world!</div>"
   end
 
   test "handles string attributes" do
     assert render("""
-           Hello <omg name="my name" phone="111">text</omg>
-           """) == "Hello <omg name=\"my name\" phone=\"111\">text</omg>"
+           Hello <div name="my name" phone="111">text</div>
+           """) == "Hello <div name=\"my name\" phone=\"111\">text</div>"
   end
 
   test "handles string attribute value keeping special chars unchanged" do
-    assert render("<omg name='1 < 2'/>") == "<omg name='1 < 2'></omg>"
+    assert render("<div name='1 < 2'/>") == "<div name='1 < 2'></div>"
   end
 
   test "handles boolean attributes" do
     assert render("""
-           Hello <omg hidden>text</omg>
-           """) == "Hello <omg hidden>text</omg>"
+           Hello <div hidden>text</div>
+           """) == "Hello <div hidden>text</div>"
   end
 
   test "handles interpolated attributes" do
     assert render("""
-           Hello <omg name={to_string(123)} phone={to_string(456)}>text</omg>
-           """) == "Hello <omg name=\"123\" phone=\"456\">text</omg>"
+           Hello <div name={to_string(123)} phone={to_string(456)}>text</div>
+           """) == "Hello <div name=\"123\" phone=\"456\">text</div>"
   end
 
   test "handles interpolated attribute value containing special chars" do
-    assert render("<omg name={@val}/>", %{val: "1 < 2"}) == "<omg name=\"1 &lt; 2\"></omg>"
+    assert render("<div name={@val}/>", %{val: "1 < 2"}) == "<div name=\"1 &lt; 2\"></div>"
   end
 
   test "handles interpolated attributes with strings" do
     assert render("""
-           <omg name={String.upcase("abc")}>text</omg>
-           """) == "<omg name=\"ABC\">text</omg>"
+           <div name={String.upcase("abc")}>text</div>
+           """) == "<div name=\"ABC\">text</div>"
   end
 
   test "handles interpolated attributes with curly braces" do
     assert render("""
-           <omg name={elem({"abc"}, 0)}>text</omg>
-           """) == "<omg name=\"abc\">text</omg>"
+           <div name={elem({"abc"}, 0)}>text</div>
+           """) == "<div name=\"abc\">text</div>"
   end
 
   test "handles dynamic attributes" do
-    assert render("Hello <omg {@attrs}>text</omg>", %{attrs: [name: "1", phone: to_string(2)]}) ==
-             "Hello <omg name=\"1\" phone=\"2\">text</omg>"
+    assert render("Hello <div {@attrs}>text</div>", %{attrs: [name: "1", phone: to_string(2)]}) ==
+             "Hello <div name=\"1\" phone=\"2\">text</div>"
   end
 
   test "keeps attribute ordering" do
     assigns = %{attrs1: [d1: "1"], attrs2: [d2: "2"]}
-    template = ~S(<omg {@attrs1} sd1={1} s1="1" {@attrs2} s2="2" sd2={2} />)
+    template = ~S(<div {@attrs1} sd1={1} s1="1" {@attrs2} s2="2" sd2={2} />)
 
     assert render(template, assigns) ==
-             ~S(<omg d1="1" sd1="1" s1="1" d2="2" s2="2" sd2="2"></omg>)
+             ~S(<div d1="1" sd1="1" s1="1" d2="2" s2="2" sd2="2"></div>)
 
-    assert %Phoenix.LiveView.Rendered{static: ["<omg", "", " s1=\"1\"", " s2=\"2\"", "></omg>"]} =
+    assert %Phoenix.LiveView.Rendered{static: ["<div", "", " s1=\"1\"", " s2=\"2\"", "></div>"]} =
              eval(template, assigns)
+  end
+
+  test "optimizes attributes with literal string values" do
+    assigns = %{unsafe: "<foo>", safe: {:safe, "<foo>"}}
+
+    # binaries are extracted out
+    template = ~S(<div id={"<foo>"} />)
+    assert render(template, assigns) == ~S(<div id="&lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div id=\"&lt;foo&gt;\"></div>"]} =
+             eval(template, assigns)
+
+    # binary concatenation is extracted out
+    template = ~S(<div id={"pre-" <> @unsafe} />)
+    assert render(template, assigns) == ~S(<div id="pre-&lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "\"></div>"]} =
+             eval(template, assigns)
+
+    template = ~S(<div id={"pre-" <> @unsafe <> "-pos"} />)
+    assert render(template, assigns) == ~S(<div id="pre-&lt;foo&gt;-pos"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "-pos\"></div>"]} =
+             eval(template, assigns)
+
+    # interpolation is extracted out
+    template = ~S(<div id={"pre-#{@unsafe}-pos"} />)
+    assert render(template, assigns) == ~S(<div id="pre-&lt;foo&gt;-pos"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "-pos\"></div>"]} =
+             eval(template, assigns)
+
+    # mixture of interpolation and binary concatenation is extracted out
+    template = ~S(<div id={"pre-" <> "#{@unsafe}-pos"} />)
+    assert render(template, assigns) == ~S(<div id="pre-&lt;foo&gt;-pos"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "-pos\"></div>"]} =
+             eval(template, assigns)
+
+    # raises if not a binary
+    assert_raise ArgumentError, "expected a binary in <>, got: {:safe, \"<foo>\"}", fn ->
+      render(~S(<div id={"pre-" <> @safe} />), assigns)
+    end
+  end
+
+  test "optimizes attributes that can be empty" do
+    assigns = %{
+      nil_assign: nil,
+      true_assign: true,
+      false_assign: false,
+      unsafe: "<foo>",
+      safe: {:safe, "<foo>"},
+      list: ["safe", false, nil, "<unsafe>"]
+    }
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div class=\"", "\"></div>"]} =
+             eval(~S(<div class={@safe} />), assigns)
+
+    template = ~S(<div class={@nil_assign} />)
+    assert render(template, assigns) == ~S(<div class=""></div>)
+
+    template = ~S(<div class={@false_assign} />)
+    assert render(template, assigns) == ~S(<div class=""></div>)
+
+    template = ~S(<div class={@true_assign} />)
+    assert render(template, assigns) == ~S(<div class=""></div>)
+
+    template = ~S(<div class={@unsafe} />)
+    assert render(template, assigns) == ~S(<div class="&lt;foo&gt;"></div>)
+
+    template = ~S(<div class={@safe} />)
+    assert render(template, assigns) == ~S(<div class="<foo>"></div>)
+
+    template = ~S(<div class={@list} />)
+    assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
   end
 
   test "handle void elements" do
     assert render("""
-           <omg><br></omg>\
-           """) == "<omg><br></omg>"
+           <div><br></div>\
+           """) == "<div><br></div>"
   end
 
   test "handle void elements with attributes" do
     assert render("""
-           <omg><br attr='1'></omg>\
-           """) == "<omg><br attr='1'></omg>"
+           <div><br attr='1'></div>\
+           """) == "<div><br attr='1'></div>"
   end
 
   test "handle self close void elements" do
@@ -163,11 +238,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   test "handle self close elements" do
-    assert render("<omg/>") == "<omg></omg>"
+    assert render("<div/>") == "<div></div>"
   end
 
   test "handle self close elements with attributes" do
-    assert render("<omg attr='1'/>") == "<omg attr='1'></omg>"
+    assert render("<div attr='1'/>") == "<div attr='1'></div>"
   end
 
   describe "handle function components" do
