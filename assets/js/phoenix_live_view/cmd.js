@@ -71,8 +71,8 @@ let Cmd = {
 
   addOrRemoveClasses(el, addClasses, removeClasses){
     let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
-    let newAdds = prevAdds.filter(name => removeClasses.indexOf(name) >= 0).concat(addClasses)
-    let newRemoves = prevRemoves.filter(name => addClasses.indexOf(name) >= 0).concat(removeClasses)
+    let newAdds = prevAdds.filter(name => removeClasses.indexOf(name) < 0).concat(addClasses)
+    let newRemoves = prevRemoves.filter(name => addClasses.indexOf(name) < 0).concat(removeClasses)
 
     DOM.putSticky(el, "classes", currentEl => {
       newAdds.forEach(name => currentEl.classList.add(name))

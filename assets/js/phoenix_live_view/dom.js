@@ -20,7 +20,6 @@ import {
 } from "./constants"
 
 import {
-  clone,
   logError
 } from "./utils"
 
@@ -127,7 +126,7 @@ let DOM = {
 
   copyPrivates(target, source){
     if(source[PHX_PRIVATE]){
-      target[PHX_PRIVATE] = clone(source[PHX_PRIVATE])
+      target[PHX_PRIVATE] = source[PHX_PRIVATE]
     }
   },
 
@@ -381,9 +380,11 @@ let DOM = {
   getSticky(el, name, defaultVal){
     let op = (DOM.private(el, "sticky") || []).find(([existingName, ]) => name === existingName)
     if(op){
-      return
+      let [_name, _op, stashedResult] = op
+      return stashedResult
+    } else {
+      return defaultVal
     }
-    return val !== undefined ? val : defaultVal
   },
 
   putSticky(el, name, op){
@@ -402,7 +403,6 @@ let DOM = {
   applyStickyOperations(el){
     let ops = DOM.private(el, "sticky")
     if(!ops){ return }
-    console.log(ops)
 
     ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))
   }

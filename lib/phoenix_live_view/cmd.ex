@@ -12,12 +12,8 @@ defmodule Phoenix.LiveView.CMD do
     end
   end
 
-  def put_op(%CMD{ops: ops} = cmd, kind, %{} = args) do
-    %CMD{cmd | ops: ops ++ [[kind, args]]}
-  end
-
-  def toggle(cmd \\ %CMD{}, to) do
-    CMD.put_op(cmd, "toggle", %{to: to})
+  def push(cmd \\ %CMD{}, event, opts \\ []) do
+    put_op(cmd, "push", Enum.into(opts, %{event: event}))
   end
 
   def dispatch(cmd \\ %CMD{}, event, opts) do
@@ -28,10 +24,22 @@ defmodule Phoenix.LiveView.CMD do
         :error -> args
       end
 
-    CMD.put_op(cmd, "dispatch", args)
+    put_op(cmd, "dispatch", args)
   end
 
-  def push(cmd \\ %CMD{}, event, opts \\ []) do
-    CMD.put_op(cmd, "push", Enum.into(opts, %{event: event}))
+  def toggle(cmd \\ %CMD{}, to) do
+    put_op(cmd, "toggle", %{to: to})
+  end
+
+  def add_class(cmd \\ %CMD{}, names, opts) do
+    put_op(cmd, "add_class", %{to: Keyword.fetch!(opts, :to), names: List.wrap(names)})
+  end
+
+  def remove_class(cmd \\ %CMD{}, names, opts) do
+    put_op(cmd, "remove_class", %{to: Keyword.fetch!(opts, :to), names: List.wrap(names)})
+  end
+
+  defp put_op(%CMD{ops: ops} = cmd, kind, %{} = args) do
+    %CMD{cmd | ops: ops ++ [[kind, args]]}
   end
 end
