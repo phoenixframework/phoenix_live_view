@@ -2,7 +2,7 @@ import DOM from "./dom"
 
 let Cmd = {
   exec(eventType, phxEvent, view, el, [defaultKind, defaultArgs]){
-    let commands = phxEvent.charAt(0) === "{" ?
+    let commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
     commands.forEach(([kind, args]) => {
@@ -21,13 +21,14 @@ let Cmd = {
     DOM.all(document, to, el => DOM.dispatchEvent(el, event, detail))
   },
 
-  exec_push(eventType, phxEvent, view, sourceEl, {event, data, target} = meta){
+  exec_push(eventType, phxEvent, view, sourceEl, args){
+    let {event, data, target} = args
     let phxTarget = target || sourceEl.getAttribute(view.binding("target")) || sourceEl
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "click"){
         targetView.pushClick(sourceEl, event || phxEvent, targetCtx, data)
       } else if(eventType === "change"){
-        let {newCid, _target} = meta
+        let {newCid, _target} = args
         targetView.pushInput(sourceEl, targetCtx, newCid, phxEvent || event, _target)
       } else if(eventType === "submit"){
         targetView.submitForm(sourceEl, targetCtx, phxEvent || event)

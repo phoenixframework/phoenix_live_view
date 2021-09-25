@@ -117,7 +117,7 @@ let DOM = {
   },
 
   updatePrivate(el, key, defaultVal, updateFunc){
-    let existing = this.private(el, key) !== undefined
+    let existing = this.private(el, key)
     if(existing === undefined){
       this.putPrivate(el, key, updateFunc(defaultVal))
     } else {
@@ -400,8 +400,9 @@ let DOM = {
   },
 
   applyStickyOperations(el){
-    let ops = DOM.private("sticky")
+    let ops = DOM.private(el, "sticky")
     if(!ops){ return }
+    console.log(ops)
 
     ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))
   }
