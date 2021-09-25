@@ -218,19 +218,29 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end(<<>>, line, column, _acc, state) do
-    message = """
+    message = ~S"""
     expected closing `>` or `/>`
 
-    Make sure the tag is properly closed. This may also happen if
-    there is an EEx interpolation inside a tag, which is not supported.
-    Instead of
+    Make sure the tag is properly closed. This may happen if there
+    is an EEx interpolation inside a tag, which is not supported.
+    For instance, instead of
 
-        <a href="<%= @url %>">Text</a>
+        <div id="<%= @id %>">Content</div>
 
     do
 
-        <a href={@url}>Text</a>
+        <div id={@id}>Content</div>
 
+    If @id is nil or false, then no attribute is sent at all.
+
+    Inside {...} you can place any Elixir expression. If you want
+    to interpolate in the middle of an attribute value, instead of
+
+        <a class="foo bar <%= @class %>">Text</a>
+
+    you can pass an Elixir string with interpolation:
+
+        <a class={"foo bar #{@class}"}>Text</a>
     """
 
     raise ParseError, file: state.file, line: line, column: column, description: message
