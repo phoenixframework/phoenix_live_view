@@ -67,6 +67,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, "styled.html"} do
       live "/styled-elements", ElementsLive
     end
+
     live_session :app_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, :app} do
       live "/layout", LayoutLive
     end
@@ -76,6 +77,7 @@ defmodule Phoenix.LiveViewTest.Router do
 
       # The layout option needs to have higher precedence than bad layout
       live "/bad_layout", LayoutLive
+
       live_session :parent_layout, root_layout: false do
         live "/parent_layout", ParentLayoutLive
       end
@@ -131,6 +133,10 @@ defmodule Phoenix.LiveViewTest.Router do
 
     live_session :lifecycle, on_mount: Phoenix.LiveViewTest.HaltConnectedMount do
       live "/lifecycle/halt-connected-mount", HooksLive.Noop
+    end
+
+    live_session :mount_mfa, on_mount: {Phoenix.LiveViewTest.MountArgs, :inlined} do
+      live "/lifecycle/mount-args", HooksLive.Noop
     end
   end
 

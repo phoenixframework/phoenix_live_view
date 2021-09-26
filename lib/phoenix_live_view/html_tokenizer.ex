@@ -28,11 +28,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def tokenize(text, file, indentation, meta) do
+  def tokenize(text, file, indentation, meta, tokens) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
     state = %{file: file, column_offset: indentation + 1, braces: []}
-    handle_text(text, line, column, [], [], state)
+    handle_text(text, line, column, [], tokens, state)
   end
 
   ## handle_text
@@ -64,19 +64,19 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text("</" <> rest, line, column, buffer, acc, state) do
-    handle_tag_close(rest, line, column + 2, text_to_acc(buffer, acc), state)
+    handle_tag_close(rest, line, column + 2, text_to_acc(buffer, acc, line, column), state)
   end
 
   defp handle_text("<" <> rest, line, column, buffer, acc, state) do
-    handle_tag_open(rest, line, column + 1, text_to_acc(buffer, acc), state)
+    handle_tag_open(rest, line, column + 1, text_to_acc(buffer, acc, line, column), state)
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
     handle_text(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
-  defp handle_text(<<>>, _line, _column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc))
+  defp handle_text(<<>>, line, column, buffer, acc, _state) do
+    ok(text_to_acc(buffer, acc, line, column))
   end
 
   ## handle_doctype
@@ -218,19 +218,29 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end(<<>>, line, column, _acc, state) do
-    message = """
+    message = ~S"""
     expected closing `>` or `/>`
 
-    Make sure the tag is properly closed. This may also happen if
-    there is an EEx interpolation inside a tag, which is not supported.
-    Instead of
+    Make sure the tag is properly closed. This may happen if there
+    is an EEx interpolation inside a tag, which is not supported.
+    For instance, instead of
 
-        <a href="<%= @url %>">Text</a>
+        <div id="<%= @id %>">Content</div>
 
     do
 
-        <a href={@url}>Text</a>
+        <div id={@id}>Content</div>
 
+    If @id is nil or false, then no attribute is sent at all.
+
+    Inside {...} you can place any Elixir expression. If you want
+    to interpolate in the middle of an attribute value, instead of
+
+        <a class="foo bar <%= @class %>">Text</a>
+
+    you can pass an Elixir string with interpolation:
+
+        <a class={"foo bar #{@class}"}>Text</a>
     """
 
     raise ParseError, file: state.file, line: line, column: column, description: message
@@ -440,14 +450,17 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## helpers
 
-  defp ok(acc), do: Enum.reverse(acc)
+  defp ok(acc), do: acc
 
   defp buffer_to_string(buffer) do
     IO.iodata_to_binary(Enum.reverse(buffer))
   end
 
-  defp text_to_acc([], acc), do: acc
-  defp text_to_acc(buffer, acc), do: [{:text, buffer_to_string(buffer)} | acc]
+  defp text_to_acc([], acc, _line, _column),
+    do: acc
+
+  defp text_to_acc(buffer, acc, line, column),
+    do: [{:text, buffer_to_string(buffer), %{line_end: line, column_end: column}} | acc]
 
   defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, value \\ nil) do
     attrs = [{attr, value} | attrs]

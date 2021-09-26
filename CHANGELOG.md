@@ -2,7 +2,72 @@
 
 ## 0.17.0
 
-  - Rename the lifecycle default mount callback to `:on_mount`
+### Breaking Changes
+
+#### on_mount changes
+
+The hook API introduced in LiveView 0.16 has been improved based on feedback.
+LiveView 0.17 removes the custom module-function callbacks for the
+`Phoenix.LiveView.on_mount/1` macro and the `:on_mount` option for
+`Phoenix.LiveView.Router.live_session/3` in favor of supporting a custom
+argument. For clarity, the module function to be invoked during the mount
+lifecycle stage will always be named `on_mount/4`.
+
+For example, if you had invoked `on_mount/1` like so:
+
+```elixir
+on_mount MyAppWeb.MyHook
+on_mount {MyAppWeb.MyHook, :assign_current_user}
+```
+
+and defined your callbacks as:
+
+```elixir
+# my_hook.ex
+
+def mount(_params, _session, _socket) do
+end
+
+def assign_current_user(_params, _session, _socket) do
+end
+```
+
+Change the callback to:
+
+```elixir
+# my_hook.ex
+
+def on_mount(:default, _params, _session, _socket) do
+end
+
+def on_mount(:assign_current_user, _params, _session, _socket) do
+end
+```
+
+When given only a module name, the first argument to `on_mount/4` will be the
+atom `:default`.
+
+#### LEEx templates in stateful LiveComponent
+
+Stateful LiveComponent (where an ID is given) must now return HEEx templates
+(`~H` sigil or `.heex` extension). LEEx temlates (`~L` sigil or `.leex` extension)
+are no longer supported. This addresses bugs and allows stateful components
+to be rendered more efficiently client-side.
+
+### Enhancements
+
+### Bug fixes
+
+## 0.16.4 (2021-09-22)
+
+### Enhancements
+  - Improve HEEx error messages
+  - Relax HTML tag validation to support mixed case tags
+  - Support self closing HTML tags
+  - Remove requirement for handle_params to be defined for lifecycle hooks
+
+### Bug fixes
+  - Fix pushes failing to include channel `join_ref` on messages
 
 ## 0.16.3 (2021-09-03)
 
