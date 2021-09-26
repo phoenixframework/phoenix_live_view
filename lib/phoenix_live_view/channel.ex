@@ -1059,7 +1059,7 @@ defmodule Phoenix.LiveView.Channel do
     write_socket(state, cid, nil, fn socket, _ ->
       conf = Upload.get_upload_by_ref!(socket, ref)
 
-      if length(Map.keys(state.upload_pids)) <= conf.max_concurrency do
+      if length(Map.keys(state.upload_pids)) < conf.max_concurrency do
         case Upload.register_entry_upload(socket, conf, pid, entry_ref) do
           {:ok, new_socket, entry} ->
             reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}

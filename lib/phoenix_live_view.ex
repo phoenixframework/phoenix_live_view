@@ -871,7 +871,7 @@ defmodule Phoenix.LiveView do
     * `:chunk_timeout` - The time in milliseconds to wait before closing the
       upload channel when a new chunk has not been received. Defaults `10_000`.
 
-    * `:max_concurrency` - The amount of entries in to upload at the same time. Defaults to 10.
+    * `:max_concurrency` - The amount of entries to upload at the same time. Defaults to 10.
 
     * `:external` - The 2-arity function for generating metadata for external
       client uploaders. See the Uploads section for example usage.

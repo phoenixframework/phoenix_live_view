@@ -63,7 +63,15 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call(:channel_pids, _from, state) do
-    pids = Enum.into(state.entries, %{}, fn {name, entry} -> {name, entry.socket.channel_pid} end)
+    pids =
+      Enum.into(state.entries, %{}, fn
+        {name, %{socket: socket}} ->
+          {name, socket.channel_pid}
+
+        {name, %{error: reason}} ->
+          {name, {:error, reason}}
+      end)
+
     {:reply, pids, state}
   end
 
@@ -113,19 +121,22 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       "ref" => ref
     } = client_entry
 
-    {:ok, _resp, entry_socket} =
-      Phoenix.ChannelTest.subscribe_and_join(state.socket, "lvu:123", %{"token" => token})
+    case Phoenix.ChannelTest.subscribe_and_join(state.socket, "lvu:123", %{"token" => token}) do
+      {:ok, _resp, entry_socket} ->
+        %{
+          name: name,
+          content: content,
+          size: byte_size(content),
+          type: type,
+          socket: entry_socket,
+          ref: ref,
+          token: token,
+          chunk_start: 0
+        }
 
-    %{
-      name: name,
-      content: content,
-      size: byte_size(content),
-      type: type,
-      socket: entry_socket,
-      ref: ref,
-      token: token,
-      chunk_start: 0
-    }
+      {:error, reason} ->
+        %{ref: ref, error: reason}
+    end
   end
 
   defp progress_stats(entry, percent) do
@@ -140,16 +151,31 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
     entry = get_entry!(state, entry_name)
 
-    if entry.chunk_start >= entry.size do
-      state
-    else
-      do_chunk(state, from, entry, proxy_pid, element, percent)
+    case entry do
+      %{chunk_start: chunk_start, size: size} when chunk_start >= size ->
+        state
+
+      {:error, _reason} ->
+        do_chunk(state, from, entry, proxy_pid, element, 0)
+
+      _ ->
+        do_chunk(state, from, entry, proxy_pid, element, percent)
     end
   end
 
   defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
     stats = progress_stats(entry, percent)
-    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, cid)
+
+    :ok =
+      ClientProxy.report_upload_progress(
+        proxy_pid,
+        from,
+        element,
+        entry.ref,
+        stats.new_percent,
+        cid
+      )
+
     update_entry_start(state, entry, stats.new_start)
   end
 
@@ -167,7 +193,16 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
     receive do
       %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
-        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, state.cid)
+        :ok =
+          ClientProxy.report_upload_progress(
+            proxy_pid,
+            from,
+            element,
+            entry.ref,
+            stats.new_percent,
+            state.cid
+          )
+
         update_entry_start(state, entry, stats.new_start)
     after
       1000 -> exit(:timeout)
@@ -175,14 +210,16 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   defp update_entry_start(state, entry, new_start) do
-    new_entries = Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)
+    new_entries =
+      Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)
+
     %{state | entries: new_entries}
   end
 
   defp get_entry!(state, name) do
     case Map.fetch(state.entries, name) do
       {:ok, entry} -> entry
-      :error ->  raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
+      :error -> raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
     end
   end
 

@@ -9,16 +9,22 @@ export default class EntryUploader {
     this.offset = 0
     this.chunkSize = chunkSize
     this.chunkTimer = null
-    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
+    this._started = false
+    this._onDone = undefined
   }
 
   error(reason){
+    this._started = false
     clearTimeout(this.chunkTimer)
     this.uploadChannel.leave()
     this.entry.error(reason)
+    this.onDone()
   }
 
-  upload(){
+  upload(onDone){
+    this._onDone = onDone
+    this.uploadChannel = this.liveSocket.channel(`lvu:${this.entry.ref}`, {token: this.entry.metadata()})
+    this._started = true
     this.uploadChannel.onError(reason => this.error(reason))
     this.uploadChannel.join()
       .receive("ok", _data => this.readNextChunk())
@@ -26,6 +32,8 @@ export default class EntryUploader {
   }
 
   isDone(){ return this.offset >= this.entry.file.size }
+  onDone() { typeof this._onDone === "function" && this._onDone() }
+  hasStarted() { return this._started }
 
   readNextChunk(){
     let reader = new window.FileReader()
@@ -48,6 +56,8 @@ export default class EntryUploader {
         this.entry.progress((this.offset / this.entry.file.size) * 100)
         if(!this.isDone()){
           this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
+        } else {
+          this.onDone()
         }
       })
   }
