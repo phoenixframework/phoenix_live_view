@@ -94,6 +94,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       file: file,
       stack: [],
       tags: [],
+      slots: [],
       root: nil
     }
   end
@@ -149,6 +150,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp update_subengine(state, fun, args) do
     %{state | substate: invoke_subengine(state, fun, args)}
+  end
+
+  defp init_slots(state) do
+    %{state | slots: [[] | state.slots]}
+  end
+
+  defp add_slot(%{slots: [slots | other_slots]} = state, slot) do
+    %{state | slots: [[slot | slots] | other_slots]}
+  end
+
+  defp pop_slots(%{slots: [slots | other_slots]} = state) do
+    {slots, %{state | slots: other_slots}}
   end
 
   defp push_tag(state, token) do
@@ -292,12 +305,39 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
+  # Slot
+
+  defp handle_token({:tag_open, ":" <> _, _attrs, _tag_meta} = token, state) do
+    state
+    |> push_tag(token)
+    |> push_substate_to_stack()
+  end
+
+  defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
+    {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
+
+    {let, assigns} = handle_component_attrs(attrs, state.file)
+    clauses = build_component_clauses(let, state)
+
+    ast =
+      quote line: line do
+        Phoenix.LiveView.Helpers.slot(:inner_block, unquote(assigns), do: unquote(clauses))
+      end
+
+    slot = {String.to_atom(slot_name), ast}
+
+    state
+    |> add_slot(slot)
+    |> pop_substate_from_stack()
+  end
+
   # Local function component (with inner content)
 
   defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state) do
     state
     |> set_root_on_not_tag()
     |> push_tag(token)
+    |> init_slots()
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
@@ -308,6 +348,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     fun = String.to_atom(fun_name)
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
+    {slots, state} = pop_slots(state)
+    assigns = merge_slots_to_assigns(assigns, slots)
 
     ast =
       quote line: line do
@@ -648,6 +690,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
         quote do
           _ -> unquote(invoke_subengine(state, :handle_end, []))
         end
+    end
+  end
+
+  def merge_slots_to_assigns(assigns, slots) do
+    case assigns do
+      {:%{}, [], assigns_kw} ->
+        slots_kw =
+          slots
+          |> Enum.reverse()
+          |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
+          |> Map.to_list()
+
+        {:%{}, [], assigns_kw ++ slots_kw}
+
+      _ ->
+        assigns
     end
   end
 

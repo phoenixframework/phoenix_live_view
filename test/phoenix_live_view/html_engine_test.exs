@@ -1,7 +1,13 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1, render_block: 2]
+  import Phoenix.LiveView.Helpers, only: [
+    sigil_H: 2,
+    render_block: 1,
+    render_block: 2,
+    render_slot: 1,
+    render_slot: 2
+  ]
 
   alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
@@ -69,6 +75,50 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
+    """
+  end
+
+  defp local_function_component_with_single_slot(assigns) do
+    ~H"""
+    BEFORE SLOT
+    <%= render_slot(@default) %>
+    AFTER SLOT
+    """
+  end
+
+  defp local_function_component_with_slots(assigns) do
+    ~H"""
+    BEFORE HEADER
+    <%= render_slot(@header) %>
+    TEXT
+    <%= render_slot(@footer) %>
+    AFTER FOOTER
+    """
+  end
+
+  defp local_function_component_with_slots_and_args(assigns) do
+    ~H"""
+    BEFORE SLOT
+    <%= render_slot(@default, 1) %>
+    AFTER SLOT
+    """
+  end
+
+  defp local_function_component_with_slot_props(assigns) do
+    ~H"""
+    <%= for entry <- @default do %>
+    <%= entry.a %>
+    <%= render_slot(entry) %>
+    <%= entry.b %>
+    <% end %>
+    """
+  end
+
+  defp local_function_component_with_multiple_slots_entries(assigns) do
+    ~H"""
+    <%= for entry <- @default do %>
+      <%= entry.id %>: <%= render_block(entry.inner_block, %{}) %>
+    <% end %>
     """
   end
 
@@ -448,6 +498,201 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                "<.assigns_component d1=\"one\" {@attrs1} d=\"middle\" {@attrs2} d2=\"two\" />"
              ) ==
                "%{d: &quot;middle&quot;, d1: &quot;one&quot;, d2: &quot;two&quot;, d3: &quot;3&quot;}"
+    end
+  end
+
+  describe "slots" do
+    test "local call with a single slot" do
+      assigns = %{}
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.local_function_component_with_single_slot>
+               <:default>
+                 The default slot
+               </:default>
+             </.local_function_component_with_single_slot>
+             """) == """
+             COMPONENT WITH SLOTS:
+             BEFORE SLOT
+
+               \
+
+                 The default slot
+               \
+
+             AFTER SLOT
+             """
+    end
+
+    test "local call with multiple slot entries randered by a single rende_slot/2 call" do
+      assigns = %{}
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.local_function_component_with_single_slot>
+               <:default>
+                 entry 1
+               </:default>
+               <:default>
+                 entry 2
+               </:default>
+             </.local_function_component_with_single_slot>
+             """) == """
+             COMPONENT WITH SLOTS:
+             BEFORE SLOT
+
+               \
+
+                 entry 1
+               \
+
+               \
+
+               \
+
+                 entry 2
+               \
+
+             AFTER SLOT
+             """
+    end
+
+    test "local call with multiple slot entries handled by an explicit for comprehension" do
+      assigns = %{a: "A"}
+
+      assert compile("""
+             <.local_function_component_with_multiple_slots_entries>
+               <:default id="1">one</:default>
+               <:default id="2">two</:default>
+             </.local_function_component_with_multiple_slots_entries>
+             """) == """
+
+               1: \
+
+               one
+
+               2: \
+
+               \
+
+               two
+             """
+    end
+
+    test "local call with slot props" do
+      assigns = %{a: "A"}
+
+      assert compile("""
+             <.local_function_component_with_slot_props>
+               <:default a={@a} b="B"> and </:default>
+             </.local_function_component_with_slot_props>
+             """) == """
+
+             A
+
+                and \
+
+             B
+             """
+    end
+
+    test "local call with multiple slots" do
+      assigns = %{}
+
+      assert compile("""
+             BEFORE COMPONENT
+             <.local_function_component_with_slots>
+               <:header>
+                 The header content
+               </:header>
+               <:footer>
+                 The footer content
+               </:footer>
+             </.local_function_component_with_slots>
+             AFTER COMPONENT
+             """) == """
+             BEFORE COMPONENT
+             BEFORE HEADER
+
+               \
+
+                 The header content
+               \
+
+             TEXT
+
+               \
+
+               \
+
+                 The footer content
+               \
+
+             AFTER FOOTER
+
+             AFTER COMPONENT
+             """
+    end
+
+    test "local call with slots and args" do
+      assigns = %{}
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.local_function_component_with_slots_and_args>
+               <:default let={arg}>
+                 The default slot
+                 Arg: <%= arg %>
+               </:default>
+             </.local_function_component_with_slots_and_args>
+             """) == """
+             COMPONENT WITH SLOTS:
+             BEFORE SLOT
+
+               \
+
+                 The default slot
+                 Arg: 1
+               \
+
+             AFTER SLOT
+             """
+    end
+
+    test "nested calls with slot" do
+      assigns = %{}
+
+      assert compile("""
+             <.local_function_component_with_single_slot>
+               <:default>
+                The outer slot
+                 <.local_function_component_with_single_slot>
+                   <:default>
+                   The inner slot
+                   </:default>
+                 </.local_function_component_with_single_slot>
+               </:default>
+             </.local_function_component_with_single_slot>
+             """) == """
+             BEFORE SLOT
+
+               \
+
+                The outer slot
+                 BEFORE SLOT
+
+                   \
+
+                   The inner slot
+                   \
+
+             AFTER SLOT
+
+               \
+
+             AFTER SLOT
+             """
     end
   end
 

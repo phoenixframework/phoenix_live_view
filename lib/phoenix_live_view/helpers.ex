@@ -671,6 +671,48 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc false
+  defmacro slot(name, attrs, do: do_block) do
+    name_var = quote(do: name)
+    do_block = rewrite_do!(do_block, name_var, __CALLER__)
+
+    quote do
+      name = unquote(name)
+      attrs = unquote(attrs)
+      Phoenix.LiveView.Helpers.__slot__(name, attrs, unquote(do_block))
+    end
+  end
+
+  @doc false
+  def __slot__(name, attrs, fun) do
+    Map.put(attrs, name, fun)
+  end
+
+  defmacro render_slot(slot, argument \\ nil) do
+    quote do
+      unquote(__MODULE__).__render_slot__(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(slot),
+        unquote(argument)
+      )
+    end
+  end
+
+  def __render_slot__(_, [], _), do: ""
+
+  def __render_slot__(changed, [entry], argument), do: entry.inner_block.(changed, argument)
+
+  def __render_slot__(changed, entries, argument) when is_list(entries) do
+    assigns = %{}
+    ~H"""
+    <%= for entry <- entries do %><%= entry.inner_block.(changed, argument) %><% end %>
+    """
+  end
+
+  def __render_slot__(changed, entry, argument) when is_map(entry) do
+    entry.inner_block.(changed, argument)
+  end
+
   @doc """
   Returns the flash message from the LiveView flash assign.
 
