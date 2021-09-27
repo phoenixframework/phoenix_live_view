@@ -304,9 +304,9 @@ defmodule Phoenix.LiveView do
   Perhaps you want to move part of the state or part of the events in your
   LiveView to a separate module. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using
-  [`live_component/2`](`Phoenix.LiveView.Helpers.live_component/2`):
+  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`):
 
-      <%= live_component(UserComponent, id: user.id, user: user) %>
+      <.live_component module={UserComponent} id={user.id} user={user} />
 
   Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as
   well as their own state with change tracking support. Components are also

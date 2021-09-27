@@ -234,29 +234,69 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a `Phoenix.LiveComponent` within a parent LiveView.
+  A function component for rendering `Phoenix.LiveComponent`
+  within a parent LiveView.
 
   While `LiveView`s can be nested, each LiveView starts its
-  own process. A LiveComponent provides similar functionality
-  to LiveView, except they run in the same process as the
-  `LiveView`, with its own encapsulated state.
+  own process. A `LiveComponent` provides similar functionality
+  to `LiveView`, except they run in the same process as the
+  `LiveView`, with its own encapsulated state. That's why they
+  are called stateful components.
 
-  LiveComponent comes in two shapes, stateful and stateless.
   See `Phoenix.LiveComponent` for more information.
 
   ## Examples
 
-  All of the `assigns` given are forwarded directly to the
-  `live_component`:
+  `.live_component` requires the component `:module` and its
+  `:id` to be given:
 
-      <%= live_component(MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+      <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
 
-  Note the `:id` won't necessarily be used as the DOM ID.
-  That's up to the component. However, note that the `:id` has
-  a special meaning: whenever an `:id` is given, the component
-  becomes stateful. Otherwise, `:id` is always set to `nil`.
+  The `:id` is used to identify this `LiveComponent` throughout the
+  LiveView lifecycle. Note the `:id` won't necessarily be used as the
+  DOM ID. That's up to the component.
   """
-  defmacro live_component(component, assigns \\ [], do_block \\ []) do
+  def live_component(assigns) when is_map(assigns) do
+    id = assigns[:id]
+
+    {module, assigns} =
+      assigns
+      |> Map.delete(:__changed__)
+      |> Map.pop(:module)
+
+    if module == nil or not is_atom(module) do
+      raise ArgumentError,
+            ".live_component expects module={...} to be given and to be an atom, " <>
+              "got: #{inspect(module)}"
+    end
+
+    if id == nil do
+      raise ArgumentError, ".live_component expects id={...} to be given, got: nil"
+    end
+
+    case module.__live__() do
+      %{kind: :component} ->
+        %Component{id: id, assigns: assigns, component: module}
+
+      %{kind: kind} ->
+        raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
+    end
+  end
+
+  def live_component(component) when is_atom(component) do
+    IO.warn(
+      "<%= live_component Component %> is deprecated, " <>
+        "please use <.live_component module={Component} /> inside HEEx templates instead"
+    )
+
+    Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
+  end
+
+  @doc """
+  Deprecated API for rendering `LiveComponent`.
+  """
+  @doc deprecated: "Use .live_component as a function component instead"
+  defmacro live_component(component, assigns, do_block \\ []) do
     if match?({:@, _, [{:socket, _, _}]}, component) or match?({:socket, _, _}, component) do
       IO.warn(
         "passing the @socket to live_component is no longer necessary, " <>
@@ -299,32 +339,6 @@ defmodule Phoenix.LiveView.Helpers do
             )
         end
       end
-    end
-  end
-
-  defmacro live_component(socket, component, assigns, do_block) do
-    IO.warn(
-      "passing the @socket to live_component is no longer necessary, " <>
-        "please remove the socket argument",
-      Macro.Env.stacktrace(__CALLER__)
-    )
-
-    {inner_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), []}
-        {_, _} -> {nil, assigns}
-      end
-
-    quote do
-      # Fixes unused variable compilation warning
-      _ = unquote(socket)
-
-      Phoenix.LiveView.Helpers.__live_component__(
-        unquote(component).__live__(),
-        unquote(assigns),
-        unquote(inner_block)
-      )
     end
   end
 
@@ -429,7 +443,8 @@ defmodule Phoenix.LiveView.Helpers do
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
     id = assigns[:id]
 
-    # TODO: Deprecate stateless live component
+    # TODO: Remove logic from Diff once stateless components are removed.
+    # TODO: Remove live_component arity checks from Engine
     if is_nil(id) and
          (function_exported?(component, :handle_event, 3) or
             function_exported?(component, :preload, 1)) do
@@ -440,7 +455,7 @@ defmodule Phoenix.LiveView.Helpers do
     %Component{id: id, assigns: assigns, component: component}
   end
 
-  def __live_component__(%{kind: kind, module: module}, assigns)
+  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
@@ -459,6 +474,9 @@ defmodule Phoenix.LiveView.Helpers do
     case func.(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
         rendered
+
+      %Phoenix.LiveView.Component{} = component ->
+        component
 
       other ->
         raise RuntimeError, """

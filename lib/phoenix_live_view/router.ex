@@ -49,7 +49,7 @@ defmodule Phoenix.LiveView.Router do
   the `@live_action` assign, that can be used to render a LiveComponent:
 
       <%= if @live_action == :new do %>
-        <%= live_component MyAppWeb.ArticleLive.FormComponent %>
+        <.live_component module={MyAppWeb.ArticleLive.FormComponent} id="form" />
       <% end %>
 
   Or can be used to show or hide parts of the template:

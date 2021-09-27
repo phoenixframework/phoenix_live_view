@@ -343,7 +343,7 @@ defmodule Phoenix.LiveView.DiffTest do
       <div>
         ID: <%= @id %>
         <%= for {id, children} <- @children do %>
-          <%= live_component __MODULE__, id: id, children: children %>
+          <.live_component module={__MODULE__} id={id} children={children} />
         <% end %>
       </div>
       """
@@ -443,10 +443,9 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <%= live_component BlockComponent, id: "WORLD" do %>
-        <% %{value: value } -> %>
+      <.live_component module={BlockComponent} let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
-      <% end %>
+      </.live_component>
       """
     end
   end
@@ -503,7 +502,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
         :c ->
           ~H"""
-          <%= live_component __MODULE__, id: make_ref(), key: :a %>
+          <.live_component module={__MODULE__} id={make_ref()} key={:a} />
           """
       end
     end
@@ -598,26 +597,29 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= live_component BlockNoArgsComponent do %>
+      <.live_component module={BlockNoArgsComponent} id="block">
         INSIDE BLOCK
-      <% end %>
+      </.live_component>
       """
 
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
-               0 => %{
-                 0 => "",
-                 1 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 2 => "",
-                 3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
-               },
-               :s => ["", ""]
+               0 => 1,
+               :s => ["", ""],
+               :c => %{
+                 1 => %{
+                   0 => "block",
+                   1 => %{s: ["\n  INSIDE BLOCK\n"]},
+                   2 => "block",
+                   3 => %{s: ["\n  INSIDE BLOCK\n"]},
+                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+                 }
+               }
              }
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => %{0 => "", 2 => ""}}
+      assert full_render == %{0 => 1}
     end
   end
 
@@ -844,8 +846,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
-      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <.live_component module={RenderOnlyComponent} id="SAME" from="SAME" />
+      <.live_component module={RenderOnlyComponent} id="SAME" from="SAME" />
       """
 
       assert_raise RuntimeError,
@@ -1272,7 +1274,7 @@ defmodule Phoenix.LiveView.DiffTest do
         assigns = %{id: id, children: children}
 
         ~H"""
-        <%= live_component RecurComponent, id: @id, children: @children %>
+        <.live_component module={RecurComponent} id={@id} children={@children} />
         """
       end
 
@@ -1326,7 +1328,7 @@ defmodule Phoenix.LiveView.DiffTest do
         assigns = %{id: id, children: children}
 
         ~H"""
-        <%= live_component RecurComponent, id: @id, children: @children %>
+        <.live_component module={RecurComponent} id={@id} children={@children} />
         """
       end
 
@@ -1455,7 +1457,7 @@ defmodule Phoenix.LiveView.DiffTest do
       %{fingerprint: _fingerprint} =
         rendered = ~H"""
         <%= for key <- [:b, :c, :a] do %>
-          <%= live_component(NestedDynamicComponent, id: key, key: key) %>
+          <.live_component module={NestedDynamicComponent} id={key} key={key} />
         <% end %>
         """
 
@@ -1483,11 +1485,10 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <%= live_component BlockComponent, %{id: "TRACKING"} do %>
-        <% %{value: value} -> %>
-          WITH PARENT VALUE <%= @parent_value %>
-          WITH VALUE <%= value %>
-      <% end %>
+      <.live_component module={BlockComponent} let={%{value: value}} id="TRACKING">
+        WITH PARENT VALUE <%= @parent_value %>
+        WITH VALUE <%= value %>
+      </.live_component>
       """
     end
 
@@ -1503,13 +1504,13 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{
                      0 => "123",
                      1 => "1",
-                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
                    },
                    2 => "TRACKING",
                    3 => %{
                      0 => "123",
                      1 => "2",
-                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
                    },
                    :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                  }

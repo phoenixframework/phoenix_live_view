@@ -30,7 +30,7 @@ defmodule Phoenix.LiveComponent do
   `Phoenix.LiveView` and `Phoenix.LiveView.Helpers` are imported.
   A component can be invoked as:
 
-      <%= live_component HeroComponent, id: :hero, content: @content %>
+      <.live_component module={HeroComponent} id="hero" content={@content} />
 
   A component must receive the `:id` assign as argument, which is
   used to uniquely identify the component. A component will be treated
@@ -47,7 +47,7 @@ defmodule Phoenix.LiveComponent do
   components. This means we can often tie the component ID to some application
   based ID:
 
-      <%= live_component UserComponent, id: @user.id, user: @user %>
+      <.live_component module={UserComponent} id={@user.id} user={@user} />
 
   When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called,
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveComponent do
   let's see an example. Imagine you are implementing a component and the component
   needs to load some state from the database. For example:
 
-      <%= live_component UserComponent, id: user_id %>
+      <.live_component module={UserComponent} id={user_id} />
 
   A possible implementation would be to load the user on the `c:update/2`
   callback:
@@ -217,7 +217,7 @@ defmodule Phoenix.LiveComponent do
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
-        <%= live_component CardComponent, card: card, id: card.id, board_id: @id %>
+        <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
       <% end %>
 
   Now, when the user submits the form, `CardComponent.handle_event/3`
@@ -284,7 +284,7 @@ defmodule Phoenix.LiveComponent do
   passing an ID:
 
       <%= for card_id <- @card_ids do %>
-        <%= live_component CardComponent, id: card_id, board_id: @id %>
+        <.live_component module={CardComponent} id={card_id} board_id={@id} />
       <% end %>
 
   Now, each CardComponent will load its own card. Of course, doing so
@@ -316,9 +316,9 @@ defmodule Phoenix.LiveComponent do
   When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked,
   it is also possible to pass a `do/end` block:
 
-      <%= live_component GridComponent, entries: @entries do %>
-        <% entry -> %>New entry: <%= entry %>
-      <% end %>
+      <.live_component module={GridComponent} let={entry} entries={@entries}>
+        New entry: <%= entry %>
+      </.live_component?
 
   The `do/end` will be available in an assign named `@inner_block`.
   You can render its contents by calling `render_block` with the
@@ -369,11 +369,11 @@ defmodule Phoenix.LiveComponent do
   in each component. For example, avoid passing all of LiveView's assigns
   when rendering a component:
 
-      <%= live_component MyComponent, assigns %>
+      <.live_component module={MyComponent} {assigns} />
 
   Instead pass only the keys that you need:
 
-      <%= live_component MyComponent, user: @user, org: @org %>
+      <.live_component module={MyComponent} user={@user} org={@org} />
 
   Luckily, because LiveViews and LiveComponents are in the same process,
   they share the data structure representations in memory. For example,
@@ -453,7 +453,7 @@ defmodule Phoenix.LiveComponent do
         <%= live_component SomeComponent, id: :example %>
       </div>
 
-  Similarly, they also work inside any function component, such as `form`:
+  They also work inside any function component, such as `form`:
 
       <.form let={f} for={@changeset} url="#">
         <%= live_component FormComponent, id: :form %>
