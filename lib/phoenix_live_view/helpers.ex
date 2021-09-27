@@ -3,8 +3,157 @@ defmodule Phoenix.LiveView.Helpers do
   A collection of helpers to be imported into your views.
   """
 
+  # TODO: Convert all functions with the `live_` prefix to function components?
+
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
+
+  @doc """
+  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
+
+      iex> ~L"\""
+      ...> Hello <%= "world" %>
+      ...> "\""
+      {:safe, ["Hello ", "world", "\\n"]}
+
+  """
+  @doc deprecated: "Use ~H instead"
+  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
+
+  @doc """
+  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
+
+  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
+  > file:line:column information in error messages. Earlier Elixir versions will
+  > work but will show inaccurate error messages.
+
+  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
+
+    * Built-in handling of HTML attributes
+    * An HTML-like notation for injecting function components
+    * Compile-time validation of the structure of the template
+    * The ability to minimize the amount of data sent over the wire
+
+  ## Example
+
+      ~H"\""
+      <div title="My div" class={@class}>
+        <p>Hello <%= @name %></p>
+        <MyApp.Weather.city name="Kraków"/>
+      </div>
+      "\""
+
+  ## Syntax
+
+  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
+  `<%= ... %>` for interpolating results. In this section, we are going to cover the
+  basic constructs in `HEEx` templates as well as its syntax extensions.
+
+  ### Interpolation
+
+  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
+  of HTML tags:
+
+      <p>Hello, <%= @name %></p>
+
+  Similarly, conditionals and other block Elixir constructs are supported:
+
+      <%= if @show_greeting? do %>
+        <p>Hello, <%= @name %></p>
+      <% end %>
+
+  Note we don't include the equal sign `=` in the closing tag (because the closing
+  tag does not output anything).
+
+  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
+  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
+  Let's check it out.
+
+  ### HEEx extension: Defining attributes
+
+  Since `HEEx` must parse and validate the HTML structure, code interpolation using
+  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
+  HTML/component nodes and it cannot be applied within tags.
+
+  For instance, the following syntax is invalid:
+
+      <div class="<%= @class %>">
+        ...
+      </div>
+
+  Instead do:
+
+      <div class={@class}>
+        ...
+      </div>
+
+  For multiple dynamic attributes, you can use the same notation but without
+  assigning the expression to any specific attribute.
+
+      <div {@dynamic_attrs}>
+        ...
+      </div>
+
+  The expression inside `{ ... }` must be either a keyword list or a map containing
+  the key-value pairs representing the dynamic attributes.
+
+  ### HEEx extension: Defining function components
+
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
+
+  `HEEx` allows invoking these function components directly in the template
+  using an HTML-like notation. For example, a remote function:
+
+      <MyApp.Weather.city name="Kraków"/>
+
+  A local function can be invoked with a leading dot:
+
+      <.city name="Kraków"/>
+
+  where the component could be defined as follows:
+
+      defmodule MyApp.Weather do
+        use Phoenix.Component
+
+        def city(assigns) do
+          ~H"\""
+          The chosen city is: <%= @name %>.
+          "\""
+        end
+
+        def country(assigns) do
+          ~H"\""
+          The chosen country is: <%= @name %>.
+          "\""
+        end
+      end
+
+  It is typically best to group related functions into a single module, as
+  opposed to having many modules with a single `render/1` function. You can
+  learn more about components in `Phoenix.Component`.
+  """
+  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.HTMLEngine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      module: __CALLER__.module,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
 
   @doc ~S'''
   Filters the assigns as a list of keywords for use in dynamic tag attributes.
@@ -535,153 +684,6 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
-
-  @doc """
-  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
-
-      iex> ~L"\""
-      ...> Hello <%= "world" %>
-      ...> "\""
-      {:safe, ["Hello ", "world", "\\n"]}
-
-  """
-  @doc deprecated: "Use ~H instead"
-  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
-    options = [
-      engine: Phoenix.LiveView.Engine,
-      file: __CALLER__.file,
-      line: __CALLER__.line + 1,
-      indentation: meta[:indentation] || 0
-    ]
-
-    EEx.compile_string(expr, options)
-  end
-
-  @doc """
-  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
-
-  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
-  > file:line:column information in error messages. Earlier Elixir versions will
-  > work but will show inaccurate error messages.
-
-  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
-
-    * Built-in handling of HTML attributes
-    * An HTML-like notation for injecting function components
-    * Compile-time validation of the structure of the template
-    * The ability to minimize the amount of data sent over the wire
-
-  ## Example
-
-      ~H"\""
-      <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
-        <MyApp.Weather.city name="Kraków"/>
-      </div>
-      "\""
-
-  ## Syntax
-
-  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
-  `<%= ... %>` for interpolating results. In this section, we are going to cover the
-  basic constructs in `HEEx` templates as well as its syntax extensions.
-
-  ### Interpolation
-
-  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
-  of HTML tags:
-
-      <p>Hello, <%= @name %></p>
-
-  Similarly, conditionals and other block Elixir constructs are supported:
-
-      <%= if @show_greeting? do %>
-        <p>Hello, <%= @name %></p>
-      <% end %>
-
-  Note we don't include the equal sign `=` in the closing tag (because the closing
-  tag does not output anything).
-
-  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
-  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
-  Let's check it out.
-
-  ### HEEx extension: Defining attributes
-
-  Since `HEEx` must parse and validate the HTML structure, code interpolation using
-  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
-  HTML/component nodes and it cannot be applied within tags.
-
-  For instance, the following syntax is invalid:
-
-      <div class="<%= @class %>">
-        ...
-      </div>
-
-  Instead do:
-
-      <div class={@class}>
-        ...
-      </div>
-
-  For multiple dynamic attributes, you can use the same notation but without
-  assigning the expression to any specific attribute.
-
-      <div {@dynamic_attrs}>
-        ...
-      </div>
-
-  The expression inside `{ ... }` must be either a keyword list or a map containing
-  the key-value pairs representing the dynamic attributes.
-
-  ### HEEx extension: Defining function components
-
-  Function components are stateless components implemented as pure functions
-  with the help of the `Phoenix.Component` module. They can be either local
-  (same module) or remote (external module).
-
-  `HEEx` allows invoking these function components directly in the template
-  using an HTML-like notation. For example, a remote function:
-
-      <MyApp.Weather.city name="Kraków"/>
-
-  A local function can be invoked with a leading dot:
-
-      <.city name="Kraków"/>
-
-  where the component could be defined as follows:
-
-      defmodule MyApp.Weather do
-        use Phoenix.Component
-
-        def city(assigns) do
-          ~H"\""
-          The chosen city is: <%= @name %>.
-          "\""
-        end
-
-        def country(assigns) do
-          ~H"\""
-          The chosen country is: <%= @name %>.
-          "\""
-        end
-      end
-
-  It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. You can
-  learn more about components in `Phoenix.Component`.
-  """
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
-    options = [
-      engine: Phoenix.LiveView.HTMLEngine,
-      file: __CALLER__.file,
-      line: __CALLER__.line + 1,
-      module: __CALLER__.module,
-      indentation: meta[:indentation] || 0
-    ]
-
-    EEx.compile_string(expr, options)
-  end
 
   @doc """
   Returns the entry errors for an upload.
