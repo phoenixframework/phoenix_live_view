@@ -439,6 +439,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "invalid remote tag" do
+      message = ~r".exs:1:(1:)? invalid tag <Foo>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <Foo foo="bar" />
+        """)
+      end)
+    end
+
     test "missing open tag" do
       message = ~r".exs:2:(3:)? missing opening tag for </span>"
 
