@@ -211,7 +211,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}} = tag_meta,
+         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true} = tag_meta},
          state
        )
        when first in ?A..?Z do
