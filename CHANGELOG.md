@@ -47,12 +47,18 @@ end
 When given only a module name, the first argument to `on_mount/4` will be the
 atom `:default`.
 
-#### LEEx templates in stateful LiveComponent
+#### LEEx templates in stateful LiveComponents
 
-Stateful LiveComponent (where an ID is given) must now return HEEx templates
+Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
 (`~H` sigil or `.heex` extension). LEEx temlates (`~L` sigil or `.leex` extension)
 are no longer supported. This addresses bugs and allows stateful components
 to be rendered more efficiently client-side.
+
+#### Previously deprecated functionality
+
+Some functionality that was previously deprecated has been removed:
+
+  * Implicit assigns in `live_component` do-blocks is no longer supported
 
 ### Enhancements
 

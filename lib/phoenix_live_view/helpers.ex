@@ -267,8 +267,8 @@ defmodule Phoenix.LiveView.Helpers do
 
     {inner_block, do_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), [], assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), [], []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], []}
         {_, _} -> {nil, do_block, assigns}
       end
 
@@ -355,8 +355,8 @@ defmodule Phoenix.LiveView.Helpers do
   defmacro component(func, assigns \\ [], do_block \\ []) do
     {inner_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, false), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, false), []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), []}
         {_, _} -> {nil, assigns}
       end
 
@@ -369,48 +369,35 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  defp rewrite_do!(do_block, caller, implicit?) do
+  defp rewrite_do!(do_block, key, caller) do
     if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, implicit?)
+      rewrite_do(do_block, key)
     else
       raise ArgumentError,
             "cannot use component/live_component because the assigns var is unbound/unset"
     end
   end
 
-  defp rewrite_do([{:->, meta, _} | _] = do_block, _implicit?) do
+  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
     inner_fun = {:fn, meta, do_block}
 
     quote do
       fn parent_changed, arg ->
-        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
         _ = var!(assigns)
         unquote(inner_fun).(arg)
       end
     end
   end
 
-  defp rewrite_do(do_block, true) do
-    quote do
-      fn changed, extra_assigns ->
-        var!(assigns) =
-          unquote(__MODULE__).__render_inner_do__(
-            __ENV__.line,
-            __ENV__.file,
-            var!(assigns),
-            changed,
-            extra_assigns
-          )
-
-        unquote(do_block)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, false) do
+  defp rewrite_do(do_block, key) do
     quote do
       fn parent_changed, arg ->
-        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
         _ = var!(assigns)
         unquote(do_block)
       end
@@ -418,57 +405,21 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
-  def __render_inner__(assigns, parent_changed) do
-    # If the inner_block is precisely the same
-    # (i.e. the same function and the same bindings),
-    # then the outer bindings have not changed.
-    if is_nil(parent_changed) or parent_changed[:inner_block] == true do
+  def __assigns__(assigns, key, parent_changed) do
+    # If the component is in its initial render (parent_changed == nil)
+    # or the slot/block key in the parent_changed is true, then we render
+    # the function with the assigns as is.
+    #
+    # Otherwise, we will set changed to an empty list, which is the same
+    # as marking everything as not changed. This is correct because
+    # parent_changed will always be marked as changed whenever any of the
+    # assigns it references inside is changed. It will also be marked as
+    # changed if it has any variable (such as the ones coming from let).
+    if is_nil(parent_changed) or parent_changed[key] == true do
       assigns
     else
       Map.put(assigns, :__changed__, %{})
     end
-  end
-
-  @doc false
-  def __render_inner_do__(line, file, assigns, parent_changed, extra_assigns) do
-    # If the parent is tracking changes or the inner content changed,
-    # we will keep the current __changed__ values
-    changed =
-      if is_nil(parent_changed) or parent_changed[:inner_block] == true do
-        Map.get(assigns, :__changed__)
-      else
-        %{}
-      end
-
-    if extra_assigns != [] and extra_assigns != %{} do
-      message = """
-      implicit assigns in live_component do-blocks is deprecated. Instead of:
-
-          <%= live_component WillInjectUserAssign do %>
-            <%= @user.name %>
-          <% end %>
-
-      You should do:
-
-          <%= live_component WillInjectUserAssign do %>
-            <% user -> %>
-              <%= user.name %>
-          <% end %>
-      """
-
-      IO.warn(message, [{__MODULE__, :live_component, 2, [file: to_charlist(file), line: line]}])
-    end
-
-    assigns = Enum.into(extra_assigns, assigns)
-
-    changed =
-      changed &&
-        for {key, _} <- extra_assigns,
-            key != :socket,
-            into: changed,
-            do: {key, true}
-
-    Map.put(assigns, :__changed__, changed)
   end
 
   @doc false
