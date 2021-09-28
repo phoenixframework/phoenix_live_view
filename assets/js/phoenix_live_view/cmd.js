@@ -1,7 +1,8 @@
 import DOM from "./dom"
 
 let Cmd = {
-  exec(eventType, phxEvent, view, el, [defaultKind, defaultArgs]){
+  exec(eventType, phxEvent, view, el, defaults){
+    let [defaultKind, defaultArgs] = defaults || [null, {}]
     let commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
@@ -28,8 +29,8 @@ let Cmd = {
       if(eventType === "click"){
         targetView.pushClick(sourceEl, event || phxEvent, targetCtx, data)
       } else if(eventType === "change"){
-        let {newCid, _target} = args
-        targetView.pushInput(sourceEl, targetCtx, newCid, phxEvent || event, _target)
+        let {newCid, _target, callback} = args
+        targetView.pushInput(sourceEl, targetCtx, newCid, phxEvent || event, _target, callback)
       } else if(eventType === "submit"){
         targetView.submitForm(sourceEl, targetCtx, phxEvent || event)
       } else {
@@ -54,30 +55,52 @@ let Cmd = {
     }
   },
 
-  exec_toggle(eventType, phxEvent, view, sourceEl, {to}){
+  exec_transition(eventType, phxEvent, view, sourceEl, {time, to, names}){
+    let els = to ? DOM.all(document, to) : [sourceEl]
+    els.forEach(el => {
+      this.addOrRemoveClasses(el, names, [])
+      view.transition(time, () => this.addOrRemoveClasses(el, [], names))
+    })
+  },
+
+  exec_toggle(eventType, phxEvent, view, sourceEl, {to, in_classes, out_classes, time}){
     if(to){
-      DOM.all(document, to, el => this.toggle(el, "inline-block"))
+      DOM.all(document, to, el => this.toggle(view, el, in_classes, out_classes, time))
     } else {
-      this.toggle(sourceEl, "inline-block")
+      this.toggle(view, sourceEl, in_classes, out_classes, time)
     }
   },
 
   // utils for commands
 
-  toggle(el, defaultDisplay){
-    let newDisplay = el.style.display === "none" ? defaultDisplay : "none"
-    DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
+  toggle(view, el, in_classes, out_classes, time){
+    if(in_classes && out_classes){
+      if(window.getComputedStyle(el).opacity === "0"){
+        this.addOrRemoveClasses(el, in_classes, out_classes)
+        view.transition(time)
+      } else {
+        this.addOrRemoveClasses(el, out_classes, in_classes)
+        view.transition(time)
+      }
+    } else {
+      let newDisplay = el.style.display === "none" ? "inline-block" : "none"
+      DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
+    }
   },
 
-  addOrRemoveClasses(el, addClasses, removeClasses){
-    let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
-    let newAdds = prevAdds.filter(name => removeClasses.indexOf(name) < 0).concat(addClasses)
-    let newRemoves = prevRemoves.filter(name => addClasses.indexOf(name) < 0).concat(removeClasses)
+  addOrRemoveClasses(el, adds, removes){
+    window.requestAnimationFrame(() => {
+      let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
+      let keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
+      let keepRemoves = removes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
+      let newAdds = prevAdds.filter(name => removes.indexOf(name) < 0).concat(keepAdds)
+      let newRemoves = prevRemoves.filter(name => adds.indexOf(name) < 0).concat(keepRemoves)
 
-    DOM.putSticky(el, "classes", currentEl => {
-      newAdds.forEach(name => currentEl.classList.add(name))
-      newRemoves.forEach(name => currentEl.classList.remove(name))
-      return [newAdds, newRemoves]
+      DOM.putSticky(el, "classes", currentEl => {
+        newRemoves.forEach(name => currentEl.classList.remove(name))
+        newAdds.forEach(name => currentEl.classList.add(name))
+        return [newAdds, newRemoves]
+      })
     })
   }
 }

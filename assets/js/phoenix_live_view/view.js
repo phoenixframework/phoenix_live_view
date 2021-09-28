@@ -46,6 +46,7 @@ import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
 import ViewHook from "./view_hook"
+import Cmd from "./cmd"
 
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
@@ -189,6 +190,10 @@ export default class View {
 
   log(kind, msgCallback){
     this.liveSocket.log(this, kind, msgCallback)
+  }
+
+  transition(time, onDone = function(){}){
+    this.liveSocket.transition(time, onDone)
   }
 
   withinTargets(phxTarget, callback){
@@ -509,7 +514,7 @@ export default class View {
       if(this.isJoinPending()){
         this.root.pendingJoinOps.push([this, () => cb(resp)])
       } else {
-        cb(resp)
+        this.liveSocket.requestDOMUpdate(() => cb(resp))
       }
     })
   }
@@ -518,7 +523,9 @@ export default class View {
     // The diff event should be handled by the regular update operations.
     // All other operations are queued to be applied only after join.
     this.liveSocket.onChannel(this.channel, "diff", (rawDiff) => {
-      this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, events))
+      this.liveSocket.requestDOMUpdate(() => {
+        this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, events))
+      })
     })
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
@@ -560,7 +567,11 @@ export default class View {
     this.joinCallback = () => callback && callback(this.joinCount)
     this.liveSocket.wrapPush(this, {timeout: false}, () => {
       return this.channel.join()
-        .receive("ok", data => !this.isDestroyed() && this.onJoin(data))
+        .receive("ok", data => {
+          if(!this.isDestroyed()){
+            this.liveSocket.requestDOMUpdate(() => this.onJoin(data))
+          }
+        })
         .receive("error", resp => !this.isDestroyed() && this.onJoinError(resp))
         .receive("timeout", () => !this.isDestroyed() && this.onJoinError({reason: "timeout"}))
     })
@@ -951,7 +962,7 @@ export default class View {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
 
-      Cmd.exec(view, input, phxEvent, ["push_change", {newCid: newCid, _target: input.name, callback: callback}])
+      Cmd.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
     })
   }
 
@@ -960,15 +971,17 @@ export default class View {
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
 
     this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
-      if(resp.link_redirect){
-        this.liveSocket.replaceMain(href, null, callback, linkRef)
-      } else {
-        if(this.liveSocket.commitPendingLink(linkRef)){
-          this.href = href
+      this.liveSocket.requestDOMUpdate(() => {
+        if(resp.link_redirect){
+          this.liveSocket.replaceMain(href, null, callback, linkRef)
+        } else {
+          if(this.liveSocket.commitPendingLink(linkRef)){
+            this.href = href
+          }
+          this.applyPendingUpdates()
+          callback && callback(linkRef)
         }
-        this.applyPendingUpdates()
-        callback && callback(linkRef)
-      }
+      })
     }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
   }
 

@@ -99,6 +99,7 @@ import {
   closestPhxBinding,
   closure,
   debug,
+  isObject,
   maybe
 } from "./utils"
 
@@ -144,6 +145,7 @@ export default class LiveSocket {
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
     this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
+    this.transitions = new TransitionSet()
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
     })
@@ -220,6 +222,14 @@ export default class LiveSocket {
       let [msg, obj] = msgCallback()
       debug(view, kind, msg, obj)
     }
+  }
+
+  requestDOMUpdate(callback){
+    this.transitions.after(callback)
+  }
+
+  transition(time, onDone = function(){}){
+    this.transitions.addTransition(time, onDone)
   }
 
   onChannel(channel, event, cb){
@@ -709,5 +719,48 @@ export default class LiveSocket {
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
     })
+  }
+}
+
+class TransitionSet {
+  constructor(){
+    this.transitions = new Set()
+    this.pendingOps = []
+    this.reset()
+  }
+
+  reset(){
+    this.transitions.forEach(timer => {
+      cancelTimeout(timer)
+      this.transitions.delete(timer)
+    })
+    this.flushPendingOps()
+  }
+
+  after(callback){
+    if(this.size() === 0){
+      callback()
+    } else {
+      this.pushPendingOp(callback)
+    }
+  }
+
+  addTransition(time, onDone){
+    let timer = setTimeout(() => {
+      this.transitions.delete(timer)
+      onDone()
+      if(this.size() === 0){ this.flushPendingOps() }
+    }, time)
+    this.transitions.add(timer)
+  }
+
+  pushPendingOp(op){ this.pendingOps.push(op) }
+
+  size(){ return this.transitions.size }
+
+  flushPendingOps(){
+    console.log("flush", this.pendingOps)
+    this.pendingOps.forEach(op => op())
+    this.pendingOps = []
   }
 }
