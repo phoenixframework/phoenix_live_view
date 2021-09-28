@@ -1175,7 +1175,7 @@ defmodule Phoenix.LiveViewTest do
     assert_patch(view, to, 0)
   end
 
-  @doc """
+  @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
   The default `timeout` is 100.
 
@@ -1185,7 +1185,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      {_path, flash} = assert_redirect view
+      {path, flash} = assert_redirect view
       assert flash["info"] == "Welcome"
       assert path =~ ~r/path\/\d+/
 
