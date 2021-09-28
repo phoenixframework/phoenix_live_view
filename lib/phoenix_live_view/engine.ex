@@ -486,8 +486,12 @@ defmodule Phoenix.LiveView.Engine do
       end
 
     # If we have a component, now we provide change tracking to individual keys.
+    # However, because live components have their own tracking, we skip them here.
     args =
       case {call, args} do
+        {:component, [{:&, _, [{:/, _, [{:live_component, _, _}, 1]}]} | _]} ->
+          args
+
         {:component, [fun, [do: block]]} ->
           [fun, to_component_tracking([], [inner_block: block], vars), [do: block]]
 

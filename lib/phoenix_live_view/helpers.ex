@@ -103,7 +103,7 @@ defmodule Phoenix.LiveView.Helpers do
         ...
       </div>
 
-  The expression inside `{ ... }` must be either a keyword list or a map containing
+  The expression inside `{...}` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
 
   ### HEEx extension: Defining function components
