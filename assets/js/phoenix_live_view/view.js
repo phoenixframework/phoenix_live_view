@@ -46,7 +46,7 @@ import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
 import ViewHook from "./view_hook"
-import Cmd from "./cmd"
+import JS from "./js"
 
 let serializeForm = (form, meta = {}) => {
   let formData = new FormData(form)
@@ -962,7 +962,7 @@ export default class View {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
 
-      Cmd.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
+      JS.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
     })
   }
 

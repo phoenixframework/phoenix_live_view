@@ -108,7 +108,7 @@ import DOM from "./dom"
 import Hooks from "./hooks"
 import LiveUploader from "./live_uploader"
 import View from "./view"
-import Cmd from "./cmd"
+import JS from "./js"
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -437,19 +437,19 @@ export default class LiveSocket {
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
 
       let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
-      Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
+      JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
     })
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       if(!eventTarget){
         let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
-        Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
+        JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
     this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget === "window"){
         let data = this.eventMeta(type, e, targetEl)
-        Cmd.exec(type, phxEvent, view, targetEl, ["push", {data}])
+        JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
     window.addEventListener("dragover", e => e.preventDefault())
@@ -549,7 +549,7 @@ export default class LiveSocket {
 
       this.debounce(target, e, () => {
         this.withinOwners(target, view => {
-          Cmd.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
+          JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
     }, capture)
@@ -561,7 +561,7 @@ export default class LiveSocket {
       if(!(el.isSameNode(e.target) || el.contains(e.target))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(binding)
-          Cmd.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
+          JS.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
         })
       }
     })
@@ -670,7 +670,7 @@ export default class LiveSocket {
       e.preventDefault()
       e.target.disabled = true
       this.withinOwners(e.target, view => {
-        Cmd.exec("submit", phxEvent, view, e.target, ["push", {}])
+        JS.exec("submit", phxEvent, view, e.target, ["push", {}])
       })
     }, false)
 
@@ -694,7 +694,7 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            Cmd.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
+            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
           })
         })
       }, false)

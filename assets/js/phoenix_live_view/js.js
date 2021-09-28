@@ -1,6 +1,6 @@
 import DOM from "./dom"
 
-let Cmd = {
+let JS = {
   exec(eventType, phxEvent, view, el, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {}]
     let commands = phxEvent.charAt(0) === "[" ?
@@ -63,11 +63,11 @@ let Cmd = {
     })
   },
 
-  exec_toggle(eventType, phxEvent, view, sourceEl, {to, in_classes, out_classes, time}){
+  exec_toggle(eventType, phxEvent, view, sourceEl, {to, ins, outs, time}){
     if(to){
-      DOM.all(document, to, el => this.toggle(view, el, in_classes, out_classes, time))
+      DOM.all(document, to, el => this.toggle(view, el, ins, outs, time))
     } else {
-      this.toggle(view, sourceEl, in_classes, out_classes, time)
+      this.toggle(view, sourceEl, ins, outs, time)
     }
   },
 
@@ -105,4 +105,4 @@ let Cmd = {
   }
 }
 
-export default Cmd
+export default JS
