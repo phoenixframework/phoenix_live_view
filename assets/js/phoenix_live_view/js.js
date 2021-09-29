@@ -74,7 +74,7 @@ let JS = {
   // utils for commands
 
   toggle(view, el, in_classes, out_classes, time){
-    if(in_classes && out_classes){
+    if(in_classes.length > 0 || out_classes.length > 0){
       if(window.getComputedStyle(el).opacity === "0"){
         this.addOrRemoveClasses(el, in_classes, out_classes)
         view.transition(time)
