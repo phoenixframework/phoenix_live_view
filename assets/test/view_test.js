@@ -3,27 +3,7 @@ import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
-import {tag, simulateJoinedView, stubChannel, rootContainer} from "./test_helpers"
-
-function liveViewDOM(content){
-  const div = document.createElement("div")
-  div.setAttribute("data-phx-view", "User.Form")
-  div.setAttribute("data-phx-session", "abc123")
-  div.setAttribute("id", "container")
-  div.setAttribute("class", "user-implemented-class")
-  div.innerHTML = content || `
-    <form>
-      <label for="plus">Plus</label>
-      <input id="plus" value="1" name="increment" />
-      <textarea id="note" name="note">2</textarea>
-      <input type="checkbox" phx-click="toggle_me" />
-      <button phx-click="inc_temperature">Inc Temperature</button>
-    </form>
-  `
-  document.body.innerHTML = ""
-  document.body.appendChild(div)
-  return div
-}
+import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM} from "./test_helpers"
 
 describe("View + DOM", function(){
   beforeEach(() => {

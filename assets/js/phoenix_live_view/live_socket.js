@@ -759,7 +759,6 @@ class TransitionSet {
   size(){ return this.transitions.size }
 
   flushPendingOps(){
-    console.log("flush", this.pendingOps)
     this.pendingOps.forEach(op => op())
     this.pendingOps = []
   }

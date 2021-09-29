@@ -26,9 +26,7 @@ let JS = {
     let {event, data, target} = args
     let phxTarget = target || sourceEl.getAttribute(view.binding("target")) || sourceEl
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
-      if(eventType === "click"){
-        targetView.pushClick(sourceEl, event || phxEvent, targetCtx, data)
-      } else if(eventType === "change"){
+      if(eventType === "change"){
         let {newCid, _target, callback} = args
         targetView.pushInput(sourceEl, targetCtx, newCid, phxEvent || event, _target, callback)
       } else if(eventType === "submit"){
@@ -63,19 +61,19 @@ let JS = {
     })
   },
 
-  exec_toggle(eventType, phxEvent, view, sourceEl, {to, ins, outs, time}){
+  exec_toggle(eventType, phxEvent, view, sourceEl, {to, display, ins, outs, time}){
     if(to){
-      DOM.all(document, to, el => this.toggle(view, el, ins, outs, time))
+      DOM.all(document, to, el => this.toggle(view, el, display, ins || [], outs || [], time))
     } else {
-      this.toggle(view, sourceEl, ins, outs, time)
+      this.toggle(view, sourceEl, display, ins || [], outs || [], time)
     }
   },
 
   // utils for commands
 
-  toggle(view, el, in_classes, out_classes, time){
+  toggle(view, el, display, in_classes, out_classes, time){
     if(in_classes.length > 0 || out_classes.length > 0){
-      if(window.getComputedStyle(el).opacity === "0"){
+      if(this.hasAllClasses(el, out_classes) || window.getComputedStyle(el).opacity === "0"){
         this.addOrRemoveClasses(el, in_classes, out_classes)
         view.transition(time)
       } else {
@@ -83,7 +81,7 @@ let JS = {
         view.transition(time)
       }
     } else {
-      let newDisplay = el.style.display === "none" ? "inline-block" : "none"
+      let newDisplay = el.style.display === "none" ? (display || "inline-block") : "none"
       DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
     }
   },
@@ -102,7 +100,9 @@ let JS = {
         return [newAdds, newRemoves]
       })
     })
-  }
+  },
+
+  hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) }
 }
 
 export default JS

@@ -753,10 +753,6 @@ export default class View {
     return meta
   }
 
-  pushClick(target, phxEvent, targetCtx, meta){
-    this.pushEvent("click", target, targetCtx, phxEvent, meta)
-  }
-
   pushEvent(type, el, targetCtx, phxEvent, meta){
     this.pushWithReply(() => this.putRef([el], type), "event", {
       type: type,
