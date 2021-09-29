@@ -446,7 +446,7 @@ defmodule Phoenix.LiveView.Helpers do
   """
   @doc deprecated: "Use .live_component as a function component instead"
   defmacro live_component(component, assigns, do_block \\ []) do
-    if match?({:@, _, [{:socket, _, _}]}, component) or match?({:socket, _, _}, component) do
+    if is_assign?(:socket, component) do
       IO.warn(
         "passing the @socket to live_component is no longer necessary, " <>
           "please remove the socket argument",
@@ -946,4 +946,10 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
+
+  defp is_assign?(assign_name, expression) do
+    match?({:@, _, [{^assign_name, _, _}]}, expression) or
+    match?({^assign_name, _, _}, expression) or
+    match?({{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]}, expression)
+  end
 end
