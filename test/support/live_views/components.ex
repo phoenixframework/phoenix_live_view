@@ -151,7 +151,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
     <div id="parent_id" class="parent">
       <%= @message %>
       <%= for name <- @names do %>
-        <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent,
+        <%= live_component Phoenix.LiveViewTest.StatefulComponent,
               id: name, name: name, from: @from, disabled: name in @disabled, parent_id: @parent_selector %>
       <% end %>
     </div>
