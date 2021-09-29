@@ -21,7 +21,19 @@ defmodule Phoenix.LiveView.JS do
   #   value: map (value merges on top of phx-value)
   #   target: ...,
   #   disable_with:
-  def push(cmd \\ %JS{}, event, opts \\ []) do
+  def push(event) when is_binary(event) do
+    push(%JS{}, event, [])
+  end
+
+  def push(event, opts) when is_binary(event) and is_list(opts) do
+    push(%JS{}, event, opts)
+  end
+
+  def push(%JS{} = cmd, event) when is_binary(event) do
+    push(cmd, event, [])
+  end
+
+  def push(%JS{} = cmd, event, opts) when is_binary(event) and is_list(opts) do
     put_op(cmd, "push", Enum.into(opts, %{event: event}))
   end
 

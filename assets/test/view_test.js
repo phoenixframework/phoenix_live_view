@@ -217,7 +217,7 @@ describe("View + DOM", function(){
     }
     view.channel = channelStub
 
-    view.pushInput(input, el, null, "validate", input.name)
+    view.pushInput(input, el, null, "validate", {_target: input.name})
   })
 
   test("formsForRecovery", function(){
@@ -940,13 +940,13 @@ describe("View + Component", function(){
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
-    view.pushInput(first_name, el, null, "validate", first_name.name)
+    view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
 
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
     DOM.putPrivate(last_name, "phx-has-focused", true)
-    view.pushInput(last_name, el, null, "validate", last_name.name)
+    view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })

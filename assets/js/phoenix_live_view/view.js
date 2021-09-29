@@ -623,9 +623,9 @@ export default class View {
   pushWithReply(refGenerator, event, payload, onReply = function (){ }){
     if(!this.isConnected()){ return }
 
-    let [ref, [el]] = refGenerator ? refGenerator() : [null, []]
-    let onLoadingDone = function (){ }
-    if(el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null)){
+    let [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}]
+    let onLoadingDone = function(){ }
+    if(opts.page_loading || (el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null))){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
@@ -682,7 +682,7 @@ export default class View {
     })
   }
 
-  putRef(elements, event){
+  putRef(elements, event, opts = {}){
     let newRef = this.ref++
     let disableWith = this.binding(PHX_DISABLE_WITH)
 
@@ -697,7 +697,7 @@ export default class View {
         el.innerText = disableText
       }
     })
-    return [newRef, elements]
+    return [newRef, elements, opts]
   }
 
   componentID(el){
@@ -726,8 +726,8 @@ export default class View {
       this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload])
       return false
     }
-    let [ref, els] = this.putRef([], "hook")
-    this.pushWithReply(() => [ref, els], "event", {
+    let [ref, els, opts] = this.putRef([], "hook")
+    this.pushWithReply(() => [ref, els, opts], "event", {
       type: "hook",
       event: event,
       value: payload,
@@ -753,8 +753,8 @@ export default class View {
     return meta
   }
 
-  pushEvent(type, el, targetCtx, phxEvent, meta){
-    this.pushWithReply(() => this.putRef([el], type), "event", {
+  pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}){
+    this.pushWithReply(() => this.putRef([el], type, opts), "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta),
@@ -783,11 +783,11 @@ export default class View {
     })
   }
 
-  pushInput(inputEl, targetCtx, forceCid, phxEvent, _target, callback){
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change")
-    let formData = serializeForm(inputEl.form, {_target: _target})
+    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
+    let formData = serializeForm(inputEl.form, {_target: opts._target})
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
     }
@@ -844,7 +844,7 @@ export default class View {
     })
   }
 
-  pushFormSubmit(formEl, targetCtx, phxEvent, onReply){
+  pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply){
     let filterIgnored = el => {
       let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form)
       return !(userIgnored || closestPhxBinding(el, "data-phx-update=ignore", el.form))
@@ -875,13 +875,13 @@ export default class View {
         }
       })
       formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
-      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit")
+      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts)
     }
 
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()
-      return this.scheduleSubmit(formEl, ref, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
+      return this.scheduleSubmit(formEl, ref, opts, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els]
@@ -1037,10 +1037,10 @@ export default class View {
       maybe(el.closest(PHX_VIEW_SELECTOR), node => node.id) === this.id
   }
 
-  submitForm(form, targetCtx, phxEvent){
+  submitForm(form, targetCtx, phxEvent, opts = {}){
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     this.liveSocket.blurActiveElement(this)
-    this.pushFormSubmit(form, targetCtx, phxEvent, () => {
+    this.pushFormSubmit(form, targetCtx, phxEvent, opts, () => {
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }
