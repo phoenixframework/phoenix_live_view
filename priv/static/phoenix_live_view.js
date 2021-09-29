@@ -2588,7 +2588,7 @@ within:
       let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx);
       let refGenerator = () => this.putRef([inputEl, inputEl.form], "change");
       let formData = serializeForm(inputEl.form, { _target: eventTarget.name });
-      if (inputEl.files && inputEl.files.length > 0) {
+      if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
         LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
       }
       uploads = LiveUploader.serializeUploads(inputEl);
