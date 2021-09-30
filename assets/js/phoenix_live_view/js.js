@@ -29,12 +29,11 @@ let JS = {
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "change"){
         let {newCid, _target, callback, page_loading} = args
-        if(_target){ opts._target = _target }
+        if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
         targetView.submitForm(sourceEl, targetCtx, event || phxEvent, pushOpts)
       } else {
-        console.log(targetCtx)
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts)
       }
     })
