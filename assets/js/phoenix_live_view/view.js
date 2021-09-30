@@ -206,7 +206,7 @@ export default class View {
       if(targets.length === 0){
         logError(`no component found matching phx-target of ${phxTarget}`)
       } else {
-        callback(this, targets[0])
+        callback(this, parseInt(phxTarget))
       }
     } else {
       let targets = Array.from(document.querySelectorAll(phxTarget))
@@ -706,7 +706,9 @@ export default class View {
   }
 
   targetComponentID(target, targetCtx){
-    if(target.getAttribute(this.binding("target"))){
+    if(isCid(targetCtx)){
+      return targetCtx
+    } else if(target.getAttribute(this.binding("target"))){
       return this.closestComponentID(targetCtx)
     } else {
       return null
@@ -714,7 +716,9 @@ export default class View {
   }
 
   closestComponentID(targetCtx){
-    if(targetCtx){
+    if(isCid(targetCtx)){
+      return targetCtx
+    } else if(targetCtx){
       return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), el => this.ownsElement(el) && this.componentID(el))
     } else {
       return null

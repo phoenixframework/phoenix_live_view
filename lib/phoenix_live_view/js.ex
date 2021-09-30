@@ -16,11 +16,11 @@ defmodule Phoenix.LiveView.JS do
   end
 
   # TODO
-  #   page_loading: boolean,
-  #   loading: dom_selector,
-  #   value: map (value merges on top of phx-value)
-  #   target: ...,
-  #   disable_with:
+  # [x] page_loading: boolean,
+  # [ ] loading: dom_selector,
+  # [ ] value: map (value merges on top of phx-value)
+  # [ ] target: ...,
+  # [ ] disable_with:
   def push(event) when is_binary(event) do
     push(%JS{}, event, [])
   end
@@ -34,7 +34,16 @@ defmodule Phoenix.LiveView.JS do
   end
 
   def push(%JS{} = cmd, event, opts) when is_binary(event) and is_list(opts) do
+    opts = put_target(opts)
     put_op(cmd, "push", Enum.into(opts, %{event: event}))
+  end
+
+  defp put_target(opts) do
+    case Keyword.fetch(opts, :target) do
+      {:ok, %Phoenix.LiveComponent.CID{cid: cid}} -> Keyword.put(opts, :target, cid)
+      {:ok, selector} -> Keyword.put(opts, :target, selector)
+      :error -> opts
+    end
   end
 
   def dispatch(cmd \\ %JS{}, event, opts) do
