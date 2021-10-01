@@ -535,6 +535,31 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
   end
 
+  describe "script" do
+    test "self-closing" do
+      assert tokenize("""
+             <script src="foo.js" />
+             """) == [
+               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}}],
+                %{column: 1, line: 1, self_close: true}},
+               {:text, "\n"}
+             ]
+    end
+
+    test "traverses until </script>" do
+      assert tokenize("""
+             <script>
+               a = "<a>Link</a>"
+             </script>
+             """) == [
+               {:tag_open, "script", [], %{column: 1, line: 1}},
+               {:text, "\n  a = \"<a>Link</a>\"\n"},
+               {:tag_close, "script", %{column: 1, line: 3}},
+               {:text, "\n"}
+             ]
+    end
+  end
+
   test "mixing text and tags" do
     tokens =
       tokenize("""
