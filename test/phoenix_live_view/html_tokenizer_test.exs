@@ -213,6 +213,24 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         tokenize(~S(<div / >))
       end
     end
+
+    test "raise on attribute names with quotes" do
+      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: '", fn ->
+        tokenize(~S(<div'>))
+      end
+
+      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: \"", fn ->
+        tokenize(~S(<div">))
+      end
+
+      assert_raise ParseError, "nofile:1:10: invalid character in attribute name: '", fn ->
+        tokenize(~S(<div attr'>))
+      end
+
+      assert_raise ParseError, "nofile:1:20: invalid character in attribute name: \"", fn ->
+        tokenize(~S(<div class={"test"}">))
+      end
+    end
   end
 
   describe "boolean attributes" do

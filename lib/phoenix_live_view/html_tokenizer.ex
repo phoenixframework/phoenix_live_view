@@ -1,7 +1,8 @@
 defmodule Phoenix.LiveView.HTMLTokenizer do
   @moduledoc false
   @space_chars '\s\t\f'
-  @name_stop_chars @space_chars ++ '>/=\r\n'
+  @quote_chars '"\''
+  @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
 
   defmodule ParseError do
     defexception [:file, :line, :column, :description]
@@ -168,7 +169,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   ## handle_tag_name
 
   defp handle_tag_name(<<c::utf8, _rest::binary>> = text, column, buffer)
-       when c in @name_stop_chars do
+       when c in @stop_chars do
     done_tag_name(text, column, buffer)
   end
 
@@ -258,7 +259,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         acc = put_attr(acc, name)
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
-      {:error, message} ->
+      {:error, message, column} ->
         raise ParseError, file: state.file, line: line, column: column, description: message
     end
   end
@@ -278,13 +279,18 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## handle_attr_name
 
-  defp handle_attr_name(<<c::utf8, _rest::binary>>, _column, [])
-       when c in @name_stop_chars do
-    {:error, "expected attribute name"}
+  defp handle_attr_name(<<c::utf8, _rest::binary>>, column, _buffer)
+       when c in @quote_chars do
+    {:error, "invalid character in attribute name: #{<<c>>}", column}
+  end
+
+  defp handle_attr_name(<<c::utf8, _rest::binary>>, column, [])
+       when c in @stop_chars do
+    {:error, "expected attribute name", column}
   end
 
   defp handle_attr_name(<<c::utf8, _rest::binary>> = text, column, buffer)
-       when c in @name_stop_chars do
+       when c in @stop_chars do
     {:ok, buffer_to_string(buffer), column, text}
   end
 
