@@ -203,7 +203,7 @@ export default class LiveSocket {
   disconnect(callback){ this.socket.disconnect(callback) }
 
   execJS(el, encodedJS){
-    this.owner(el, view => JS.exec("nav", encodedJS, view, el))
+    this.owner(el, view => JS.exec("exec", encodedJS, view, el))
   }
 
   // private
@@ -338,10 +338,23 @@ export default class LiveSocket {
 
     this.main = this.newRootView(newMainEl, flash)
     this.main.setRedirect(href)
-    this.main.join(joinCount => {
+    this.transitionRemoves()
+    this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
-        oldMainEl.replaceWith(newMainEl)
-        callback && callback()
+        this.requestDOMUpdate(() => {
+          oldMainEl.replaceWith(newMainEl)
+          callback && callback()
+          onDone()
+        })
+      }
+    })
+  }
+
+  transitionRemoves(callback){
+    let removeAttr = this.binding("remove")
+    DOM.all(document, `[${removeAttr}]`, el => {
+      if(document.body.contains(el)){ // skip children already removed
+        this.execJS(el, el.getAttribute(removeAttr))
       }
     })
   }

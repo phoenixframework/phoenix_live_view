@@ -2,7 +2,7 @@ import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
   PHX_FEEDBACK_FOR,
-  PHX_REMOVE,
+  PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_SKIP,
@@ -44,7 +44,8 @@ export default class DOMPatch {
     this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
-      afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
+      afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
+      aftertransitionsDiscarded: []
     }
   }
 
@@ -61,7 +62,7 @@ export default class DOMPatch {
 
   markPrunableContentForRemoval(){
     DOM.all(this.container, "[phx-update=append] > *, [phx-update=prepend] > *", el => {
-      el.setAttribute(PHX_REMOVE, "")
+      el.setAttribute(PHX_PRUNE, "")
     })
   }
 
@@ -79,6 +80,7 @@ export default class DOMPatch {
     let added = []
     let updates = []
     let appendPrependUpdates = []
+    let pendingRemoves = []
     let externalFormTriggered = null
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
@@ -122,8 +124,12 @@ export default class DOMPatch {
           this.trackAfter("discarded", el)
         },
         onBeforeNodeDiscarded: (el) => {
-          if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
+          if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.getAttribute && el.getAttribute(liveSocket.binding("remove"))){
+            pendingRemoves.push(el)
+            return false
+          }
           if(this.skipCIDSibling(el)){ return false }
           return true
         },
@@ -201,6 +207,16 @@ export default class DOMPatch {
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
+
+    if(pendingRemoves.length > 0){
+      pendingRemoves.forEach(el => {
+        liveSocket.execJS(el, el.getAttribute(liveSocket.binding("remove")))
+      })
+      liveSocket.requestDOMUpdate(() => {
+        pendingRemoves.forEach(el => el.remove())
+        this.trackAfter("transitionsDiscarded", pendingRemoves)
+      })
+    }
 
     if(externalFormTriggered){
       liveSocket.disconnect()

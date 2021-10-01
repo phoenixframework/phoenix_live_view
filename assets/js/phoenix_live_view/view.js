@@ -84,8 +84,8 @@ export default class View {
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
     this.destroyed = false
-    this.joinCallback = function (){ }
-    this.stopCallback = function (){ }
+    this.joinCallback = function(onDone){ onDone && onDone() }
+    this.stopCallback = function(){ }
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
     this.uploaders = {}
@@ -329,7 +329,7 @@ export default class View {
   }
 
   performPatch(patch, pruneCids){
-    let destroyedCIDs = []
+    let removedEls = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
 
@@ -351,23 +351,29 @@ export default class View {
       if(updatedHookIds.has(el.id)){ this.getHook(el).__updated() }
     })
 
-    patch.after("discarded", (el) => {
+    patch.after("discarded", (el) => removedEls.push(el))
+
+    patch.after("transitionsDiscarded", els => this.afterElementsRemoved(els, pruneCids))
+    patch.perform()
+    this.afterElementsRemoved(removedEls, pruneCids)
+
+    return phxChildrenAdded
+  }
+
+  afterElementsRemoved(elements, pruneCids){
+    let destroyedCIDs = []
+    elements.forEach(el => {
       let cid = this.componentID(el)
       if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
       let hook = this.getHook(el)
       hook && this.destroyHook(hook)
     })
-
-    patch.perform()
-
     // We should not pruneCids on joins. Otherwise, in case of
     // rejoins, we may notify cids that no longer belong to the
     // current LiveView to be removed.
     if(pruneCids){
       this.maybePushComponentsDestroyed(destroyedCIDs)
     }
-
-    return phxChildrenAdded
   }
 
   joinNewChildren(){
@@ -418,11 +424,13 @@ export default class View {
   }
 
   onAllChildJoinsComplete(){
-    this.joinCallback()
-    this.pendingJoinOps.forEach(([view, op]) => {
-      if(!view.isDestroyed()){ op() }
+    this.joinCallback(() => {
+      console.log("unroll pending")
+      this.pendingJoinOps.forEach(([view, op]) => {
+        if(!view.isDestroyed()){ op() }
+      })
+      this.pendingJoinOps = []
     })
-    this.pendingJoinOps = []
   }
 
   update(diff, events){
@@ -558,7 +566,10 @@ export default class View {
     if(!this.parent){
       this.stopCallback = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
-    this.joinCallback = () => callback && callback(this.joinCount)
+    this.joinCallback = (onDone) => {
+      onDone = onDone || function(){}
+      callback ? callback(this.joinCount, onDone) : onDone()
+    }
     this.liveSocket.wrapPush(this, {timeout: false}, () => {
       return this.channel.join()
         .receive("ok", data => {

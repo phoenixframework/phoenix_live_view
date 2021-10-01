@@ -69,8 +69,8 @@ defmodule Phoenix.LiveView.JS do
   end
 
   def toggle(cmd \\ %JS{}, opts) when is_list(opts) do
-    in_classes = class_names(opts[:in] || [])
-    out_classes = class_names(opts[:out] || [])
+    in_classes = class_names(opts[:in] || "")
+    out_classes = class_names(opts[:out] || "")
     time = opts[:time] || @default_transition_time
 
     put_op(cmd, "toggle", %{
