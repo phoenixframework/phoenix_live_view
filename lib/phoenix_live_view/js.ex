@@ -15,12 +15,22 @@ defmodule Phoenix.LiveView.JS do
     end
   end
 
-  # TODO
-  # [x] page_loading: boolean,
-  # [ ] loading: dom_selector,
-  # [ ] value: map (value merges on top of phx-value)
-  # [x] target: ...,
-  # [ ] disable_with:
+  @doc """
+  ## TODO
+  [ ] documnet all JS interfaces
+  [ ] document phx-click-away
+  [ ] documnet phx-handle-nav (going away)
+  [ ] document custom execJS dispatch on push_event
+  [ ] figure out what to deprecate (phx-page-loading binding?)
+  [ ] phx-remove
+  [ ] phx-updated
+
+  ## push
+  [x] page_loading: boolean,
+  [ ] loading: dom_selector,
+  [ ] value: map (value merges on top of phx-value)
+  [x] target: ...,
+  """
   def push(event) when is_binary(event) do
     push(%JS{}, event, [])
   end
