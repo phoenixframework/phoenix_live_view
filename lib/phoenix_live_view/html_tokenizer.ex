@@ -73,7 +73,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_text(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+    handle_text(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
   defp handle_text(<<>>, line, column, buffer, acc, _state) do
@@ -95,7 +95,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_doctype(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_doctype(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+    handle_doctype(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
   ## handle_script
@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_script(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_script(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+    handle_script(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
   ## handle_comment
@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_comment(<<c::utf8, rest::binary>>, line, column, buffer, state) do
-    handle_comment(rest, line, column + 1, [<<c::utf8>> | buffer], state)
+    handle_comment(rest, line, column + 1, [char_or_bin(c) | buffer], state)
   end
 
   defp handle_comment(<<>>, line, column, _buffer, state) do
@@ -187,7 +187,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_tag_name(<<c::utf8, rest::binary>>, column, buffer) do
-    handle_tag_name(rest, column + 1, [<<c::utf8>> | buffer])
+    handle_tag_name(rest, column + 1, [char_or_bin(c) | buffer])
   end
 
   defp handle_tag_name(<<>>, column, buffer) do
@@ -313,7 +313,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_name(<<c::utf8, rest::binary>>, column, buffer) do
-    handle_attr_name(rest, column + 1, [<<c::utf8>> | buffer])
+    handle_attr_name(rest, column + 1, [char_or_bin(c) | buffer])
   end
 
   ## handle_maybe_attr_value
@@ -393,7 +393,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_attr_value_quote(<<c::utf8, rest::binary>>, delim, line, column, buffer, acc, state) do
-    handle_attr_value_quote(rest, delim, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+    handle_attr_value_quote(rest, delim, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
   defp handle_attr_value_quote(<<>>, delim, line, column, _buffer, _acc, state) do
@@ -465,7 +465,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_interpolation(<<c::utf8, rest::binary>>, line, column, buffer, state) do
-    handle_interpolation(rest, line, column + 1, [<<c::utf8>> | buffer], state)
+    handle_interpolation(rest, line, column + 1, [char_or_bin(c) | buffer], state)
   end
 
   defp handle_interpolation(<<>>, line, column, _buffer, _state) do
@@ -474,7 +474,11 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## helpers
 
+  @compile {:inline, ok: 1, char_or_bin: 1}
   defp ok(acc), do: acc
+
+  defp char_or_bin(c) when c <= 127, do: c
+  defp char_or_bin(c), do: <<c::utf8>>
 
   defp buffer_to_string(buffer) do
     IO.iodata_to_binary(Enum.reverse(buffer))
