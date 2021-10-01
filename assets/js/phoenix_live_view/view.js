@@ -294,12 +294,6 @@ export default class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
-  dispatchEvents(events){
-    events.forEach(([event, payload]) => {
-      window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, {detail: payload}))
-    })
-  }
-
   applyJoinPatch(live_patch, html, events){
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, null)
@@ -312,7 +306,7 @@ export default class View {
     })
 
     this.joinPending = false
-    this.dispatchEvents(events)
+    this.liveSocket.dispatchEvents(events)
     this.applyPendingUpdates()
 
     if(live_patch){
@@ -457,7 +451,7 @@ export default class View {
       })
     }
 
-    this.dispatchEvents(events)
+    this.liveSocket.dispatchEvents(events)
     if(phxChildrenAdded){ this.joinNewChildren() }
   }
 
@@ -633,18 +627,23 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-          let hookReply = null
-          if(ref !== null){ this.undoRefs(ref) }
-          if(resp.diff){
-            hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
-              this.update(diff, events)
-            })
+          if(resp.redirect || resp.live_redirect || resp.live_patch){
+            this.liveSocket.dispatchNav()
           }
-          if(resp.redirect){ this.onRedirect(resp.redirect) }
-          if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
-          if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
-          onLoadingDone()
-          onReply(resp, hookReply)
+          this.liveSocket.requestDOMUpdate(() => {
+            let hookReply = null
+            if(ref !== null){ this.undoRefs(ref) }
+            if(resp.diff){
+              hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
+                this.update(diff, events)
+              })
+            }
+            if(resp.redirect){ this.onRedirect(resp.redirect) }
+            if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
+            if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
+            onLoadingDone()
+            onReply(resp, hookReply)
+          })
         })
       })
     )
@@ -822,19 +821,19 @@ export default class View {
   triggerAwaitingSubmit(formEl){
     let awaitingSubmit = this.getScheduledSubmit(formEl)
     if(awaitingSubmit){
-      let [_el, _ref, callback] = awaitingSubmit
+      let [_el, _ref, _opts, callback] = awaitingSubmit
       this.cancelSubmit(formEl)
       callback()
     }
   }
 
   getScheduledSubmit(formEl){
-    return this.formSubmits.find(([el, _callback]) => el.isSameNode(formEl))
+    return this.formSubmits.find(([el, _ref, _opts, _callback]) => el.isSameNode(formEl))
   }
 
-  scheduleSubmit(formEl, ref, callback){
+  scheduleSubmit(formEl, ref, opts, callback){
     if(this.getScheduledSubmit(formEl)){ return true }
-    this.formSubmits.push([formEl, ref, callback])
+    this.formSubmits.push([formEl, ref, opts, callback])
   }
 
   cancelSubmit(formEl){
@@ -885,10 +884,11 @@ export default class View {
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()
-      return this.scheduleSubmit(formEl, ref, opts, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply))
+      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply)
+      return this.scheduleSubmit(formEl, ref, opts, push)
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
-      let proxyRefGen = () => [ref, els]
+      let proxyRefGen = () => [ref, els, opts]
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
         let formData = serializeForm(formEl, {})
         this.pushWithReply(proxyRefGen, "event", {

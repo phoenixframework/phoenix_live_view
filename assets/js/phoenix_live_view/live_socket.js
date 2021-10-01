@@ -202,6 +202,10 @@ export default class LiveSocket {
 
   disconnect(callback){ this.socket.disconnect(callback) }
 
+  execJS(el, encodedJS){
+    this.owner(el, view => JS.exec("nav", encodedJS, view, el))
+  }
+
   // private
 
   triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
@@ -582,18 +586,21 @@ export default class LiveSocket {
       let {type, id, root, scroll} = event.state || {}
       let href = window.location.href
 
-      if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
-        this.main.pushLinkPatch(href, null)
-      } else {
-        this.replaceMain(href, null, () => {
-          if(root){ this.replaceRootHistory() }
-          if(typeof(scroll) === "number"){
-            setTimeout(() => {
-              window.scrollTo(0, scroll)
-            }, 0) // the body needs to render before we scroll.
-          }
-        })
-      }
+      this.dispatchNav()
+      this.requestDOMUpdate(() => {
+        if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
+          this.main.pushLinkPatch(href, null)
+        } else {
+          this.replaceMain(href, null, () => {
+            if(root){ this.replaceRootHistory() }
+            if(typeof(scroll) === "number"){
+              setTimeout(() => {
+                window.scrollTo(0, scroll)
+              }, 0) // the body needs to render before we scroll.
+            }
+          })
+        }
+      })
     }, false)
     window.addEventListener("click", e => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK)
@@ -605,14 +612,32 @@ export default class LiveSocket {
       e.preventDefault()
       if(this.pendingLink === href){ return }
 
-      if(type === "patch"){
-        this.pushHistoryPatch(href, linkState, target)
-      } else if(type === "redirect"){
-        this.historyRedirect(href, linkState)
-      } else {
-        throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`)
-      }
+      this.dispatchNav()
+      this.requestDOMUpdate(() => {
+        if(type === "patch"){
+          this.pushHistoryPatch(href, linkState, target)
+        } else if(type === "redirect"){
+          this.historyRedirect(href, linkState)
+        } else {
+          throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`)
+        }
+      })
     }, false)
+
+    let navAttr = this.binding("handle-nav")
+    window.addEventListener("phx:nav", () => {
+      DOM.all(document, `[${navAttr}]`, el => this.execJS(el, el.getAttribute(navAttr)))
+    })
+  }
+
+  dispatchNav(){ this.dispatchEvent("nav") }
+
+  dispatchEvent(event, payload = {}){
+    DOM.dispatchEvent(window, `phx:${event}`, payload)
+  }
+
+  dispatchEvents(events){
+    events.forEach(([event, payload]) => this.dispatchEvent(event, payload))
   }
 
   withPageLoading(info, callback){

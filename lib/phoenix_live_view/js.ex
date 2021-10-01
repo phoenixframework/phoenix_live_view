@@ -19,7 +19,7 @@ defmodule Phoenix.LiveView.JS do
   # [x] page_loading: boolean,
   # [ ] loading: dom_selector,
   # [ ] value: map (value merges on top of phx-value)
-  # [ ] target: ...,
+  # [x] target: ...,
   # [ ] disable_with:
   def push(event) when is_binary(event) do
     push(%JS{}, event, [])
@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView.JS do
     })
   end
 
-  def add_class(cmd \\ %JS{}, names, opts) when is_binary(names) or is_list(names) do
+  def add_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
     put_op(cmd, "add_class", %{to: Keyword.fetch!(opts, :to), names: class_names(names)})
   end
 
@@ -80,8 +80,19 @@ defmodule Phoenix.LiveView.JS do
     put_op(cmd, "remove_class", %{to: opts[:to], names: class_names(names)})
   end
 
-  def transition(cmd \\ %JS{}, names, opts)
-      when is_list(opts) and (is_binary(names) or is_list(names)) do
+  def transition(names) when is_binary(names) do
+    transition(%JS{}, names, [])
+  end
+
+  def transition(names, opts) when is_binary(names) and is_list(opts) do
+    transition(%JS{}, names, opts)
+  end
+
+  def transition(%JS{} = cmd, names) when is_binary(names) do
+    transition(cmd, names, [])
+  end
+
+  def transition(%JS{} = cmd, names, opts) when is_binary(names) and is_list(opts) do
     time = opts[:time] || @default_transition_time
     put_op(cmd, "transition", %{time: time, to: opts[:to], names: class_names(names)})
   end
@@ -91,8 +102,6 @@ defmodule Phoenix.LiveView.JS do
   end
 
   defp class_names(names) do
-    names
-    |> List.wrap()
-    |> Enum.flat_map(&String.split(&1, " "))
+    String.split(names, " ")
   end
 end

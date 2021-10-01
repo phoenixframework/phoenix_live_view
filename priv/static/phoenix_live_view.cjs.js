@@ -1901,13 +1901,13 @@ var ViewHook = class {
   }
   handleEvent(event, callback) {
     let callbackRef = (customEvent, bypass) => bypass ? event : callback(customEvent.detail);
-    window.addEventListener(`phx:hook:${event}`, callbackRef);
+    window.addEventListener(`phx:${event}`, callbackRef);
     this.__listeners.add(callbackRef);
     return callbackRef;
   }
   removeHandleEvent(callbackRef) {
     let event = callbackRef(null, true);
-    window.removeEventListener(`phx:hook:${event}`, callbackRef);
+    window.removeEventListener(`phx:${event}`, callbackRef);
     this.__listeners.delete(callbackRef);
   }
   upload(name, files) {
@@ -1938,17 +1938,19 @@ var JS = {
   },
   exec_push(eventType, phxEvent, view, sourceEl, args) {
     let { event, data, target, page_loading } = args;
-    let opts = { page_loading: !!page_loading };
+    let pushOpts = { page_loading: !!page_loading };
     let phxTarget = target || sourceEl.getAttribute(view.binding("target")) || sourceEl;
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if (eventType === "change") {
         let { newCid, _target, callback, page_loading: page_loading2 } = args;
-        opts._target = _target;
-        targetView.pushInput(sourceEl, targetCtx, newCid, phxEvent || event, opts, callback);
+        if (_target) {
+          pushOpts._target = _target;
+        }
+        targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback);
       } else if (eventType === "submit") {
-        targetView.submitForm(sourceEl, targetCtx, phxEvent || event, opts);
+        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, pushOpts);
       } else {
-        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, opts);
+        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts);
       }
     });
   },
@@ -2165,7 +2167,7 @@ var View = class {
       if (targets.length === 0) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
-        callback(this, targets[0]);
+        callback(this, parseInt(phxTarget));
       }
     } else {
       let targets = Array.from(document.querySelectorAll(phxTarget));
@@ -2244,11 +2246,6 @@ var View = class {
     this.el = dom_default.byId(this.id);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
-  dispatchEvents(events) {
-    events.forEach(([event, payload]) => {
-      window.dispatchEvent(new CustomEvent(`phx:hook:${event}`, { detail: payload }));
-    });
-  }
   applyJoinPatch(live_patch, html, events) {
     this.attachTrueDocEl();
     let patch = new DOMPatch(this, this.el, this.id, html, null);
@@ -2262,7 +2259,7 @@ var View = class {
       }
     });
     this.joinPending = false;
-    this.dispatchEvents(events);
+    this.liveSocket.dispatchEvents(events);
     this.applyPendingUpdates();
     if (live_patch) {
       let { kind, to } = live_patch;
@@ -2396,7 +2393,7 @@ var View = class {
         phxChildrenAdded = this.performPatch(patch, true);
       });
     }
-    this.dispatchEvents(events);
+    this.liveSocket.dispatchEvents(events);
     if (phxChildrenAdded) {
       this.joinNewChildren();
     }
@@ -2571,26 +2568,31 @@ var View = class {
     }
     return this.liveSocket.wrapPush(this, { timeout: true }, () => {
       return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
-        let hookReply = null;
-        if (ref !== null) {
-          this.undoRefs(ref);
+        if (resp.redirect || resp.live_redirect || resp.live_patch) {
+          this.liveSocket.dispatchNav();
         }
-        if (resp.diff) {
-          hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
-            this.update(diff, events);
-          });
-        }
-        if (resp.redirect) {
-          this.onRedirect(resp.redirect);
-        }
-        if (resp.live_patch) {
-          this.onLivePatch(resp.live_patch);
-        }
-        if (resp.live_redirect) {
-          this.onLiveRedirect(resp.live_redirect);
-        }
-        onLoadingDone();
-        onReply(resp, hookReply);
+        this.liveSocket.requestDOMUpdate(() => {
+          let hookReply = null;
+          if (ref !== null) {
+            this.undoRefs(ref);
+          }
+          if (resp.diff) {
+            hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
+              this.update(diff, events);
+            });
+          }
+          if (resp.redirect) {
+            this.onRedirect(resp.redirect);
+          }
+          if (resp.live_patch) {
+            this.onLivePatch(resp.live_patch);
+          }
+          if (resp.live_redirect) {
+            this.onLiveRedirect(resp.live_redirect);
+          }
+          onLoadingDone();
+          onReply(resp, hookReply);
+        });
       });
     });
   }
@@ -2644,14 +2646,18 @@ var View = class {
     return cid ? parseInt(cid) : null;
   }
   targetComponentID(target, targetCtx) {
-    if (target.getAttribute(this.binding("target"))) {
+    if (isCid(targetCtx)) {
+      return targetCtx;
+    } else if (target.getAttribute(this.binding("target"))) {
       return this.closestComponentID(targetCtx);
     } else {
       return null;
     }
   }
   closestComponentID(targetCtx) {
-    if (targetCtx) {
+    if (isCid(targetCtx)) {
+      return targetCtx;
+    } else if (targetCtx) {
       return maybe(targetCtx.closest(`[${PHX_COMPONENT}]`), (el) => this.ownsElement(el) && this.componentID(el));
     } else {
       return null;
@@ -2749,19 +2755,19 @@ var View = class {
   triggerAwaitingSubmit(formEl) {
     let awaitingSubmit = this.getScheduledSubmit(formEl);
     if (awaitingSubmit) {
-      let [_el, _ref, callback] = awaitingSubmit;
+      let [_el, _ref, _opts, callback] = awaitingSubmit;
       this.cancelSubmit(formEl);
       callback();
     }
   }
   getScheduledSubmit(formEl) {
-    return this.formSubmits.find(([el, _callback]) => el.isSameNode(formEl));
+    return this.formSubmits.find(([el, _ref, _opts, _callback]) => el.isSameNode(formEl));
   }
-  scheduleSubmit(formEl, ref, callback) {
+  scheduleSubmit(formEl, ref, opts, callback) {
     if (this.getScheduledSubmit(formEl)) {
       return true;
     }
-    this.formSubmits.push([formEl, ref, callback]);
+    this.formSubmits.push([formEl, ref, opts, callback]);
   }
   cancelSubmit(formEl) {
     this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
@@ -2806,10 +2812,11 @@ var View = class {
     let cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       let [ref, _els] = refGenerator();
-      return this.scheduleSubmit(formEl, ref, opts, () => this.pushFormSubmit(formEl, targetCtx, phxEvent, onReply));
+      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply);
+      return this.scheduleSubmit(formEl, ref, opts, push);
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator();
-      let proxyRefGen = () => [ref, els];
+      let proxyRefGen = () => [ref, els, opts];
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
         let formData = serializeForm(formEl, {});
         this.pushWithReply(proxyRefGen, "event", {
@@ -3045,6 +3052,9 @@ var LiveSocket = class {
   }
   disconnect(callback) {
     this.socket.disconnect(callback);
+  }
+  execJS(el, encodedJS) {
+    this.owner(el, (view) => js_default.exec("nav", encodedJS, view, el));
   }
   triggerDOM(kind, args) {
     this.domCallbacks[kind](...args);
@@ -3434,20 +3444,23 @@ var LiveSocket = class {
       }
       let { type, id, root, scroll } = event.state || {};
       let href = window.location.href;
-      if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
-        this.main.pushLinkPatch(href, null);
-      } else {
-        this.replaceMain(href, null, () => {
-          if (root) {
-            this.replaceRootHistory();
-          }
-          if (typeof scroll === "number") {
-            setTimeout(() => {
-              window.scrollTo(0, scroll);
-            }, 0);
-          }
-        });
-      }
+      this.dispatchNav();
+      this.requestDOMUpdate(() => {
+        if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
+          this.main.pushLinkPatch(href, null);
+        } else {
+          this.replaceMain(href, null, () => {
+            if (root) {
+              this.replaceRootHistory();
+            }
+            if (typeof scroll === "number") {
+              setTimeout(() => {
+                window.scrollTo(0, scroll);
+              }, 0);
+            }
+          });
+        }
+      });
     }, false);
     window.addEventListener("click", (e) => {
       let target = closestPhxBinding(e.target, PHX_LIVE_LINK);
@@ -3462,14 +3475,30 @@ var LiveSocket = class {
       if (this.pendingLink === href) {
         return;
       }
-      if (type === "patch") {
-        this.pushHistoryPatch(href, linkState, target);
-      } else if (type === "redirect") {
-        this.historyRedirect(href, linkState);
-      } else {
-        throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`);
-      }
+      this.dispatchNav();
+      this.requestDOMUpdate(() => {
+        if (type === "patch") {
+          this.pushHistoryPatch(href, linkState, target);
+        } else if (type === "redirect") {
+          this.historyRedirect(href, linkState);
+        } else {
+          throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`);
+        }
+      });
     }, false);
+    let navAttr = this.binding("handle-nav");
+    window.addEventListener("phx:nav", () => {
+      dom_default.all(document, `[${navAttr}]`, (el) => this.execJS(el, el.getAttribute(navAttr)));
+    });
+  }
+  dispatchNav() {
+    this.dispatchEvent("nav");
+  }
+  dispatchEvent(event, payload = {}) {
+    dom_default.dispatchEvent(window, `phx:${event}`, payload);
+  }
+  dispatchEvents(events) {
+    events.forEach(([event, payload]) => this.dispatchEvent(event, payload));
   }
   withPageLoading(info, callback) {
     dom_default.dispatchEvent(window, "phx:page-loading-start", info);
