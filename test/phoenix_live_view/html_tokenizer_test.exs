@@ -24,26 +24,32 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "keep line breaks unchanged" do
-      assert tokenize("first\nsecond\r\nthird") == [{:text, "first\nsecond\r\nthird", %{line_end: 3, column_end: 6}}]
+      assert tokenize("first\nsecond\r\nthird") == [
+               {:text, "first\nsecond\r\nthird", %{line_end: 3, column_end: 6}}
+             ]
     end
   end
 
   describe "doctype" do
     test "generated as text" do
-      assert tokenize("<!doctype html>") == [{:text, "<!doctype html>", %{line_end: 1, column_end: 16}}]
+      assert tokenize("<!doctype html>") == [
+               {:text, "<!doctype html>", %{line_end: 1, column_end: 16}}
+             ]
     end
 
     test "multiple lines" do
-      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") ==  [
-              {:text, "<!DOCTYPE\nhtml\n>  ", %{line_end: 3, column_end: 4}},
-              {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
-            ]
+      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") == [
+               {:text, "<!DOCTYPE\nhtml\n>  ", %{line_end: 3, column_end: 4}},
+               {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
+             ]
     end
   end
 
   describe "comment" do
     test "generated as text" do
-      assert tokenize("Begin<!-- comment -->End") == [{:text, "Begin<!-- comment -->End", %{line_end: 1, column_end: 25}}]
+      assert tokenize("Begin<!-- comment -->End") == [
+               {:text, "Begin<!-- comment -->End", %{line_end: 1, column_end: 25}}
+             ]
     end
 
     test "multiple lines and wrapped by tags" do
@@ -533,6 +539,31 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
           </>\
         """)
       end
+    end
+  end
+
+  describe "script" do
+    test "self-closing" do
+      assert tokenize("""
+             <script src="foo.js" />
+             """) == [
+               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}}],
+                %{column: 1, line: 1, self_close: true}},
+               {:text, "\n", %{column_end: 1, line_end: 2}}
+             ]
+    end
+
+    test "traverses until </script>" do
+      assert tokenize("""
+             <script>
+               a = "<a>Link</a>"
+             </script>
+             """) == [
+               {:tag_open, "script", [], %{column: 1, line: 1}},
+               {:text, "\n  a = \"<a>Link</a>\"\n", %{column_end: 1, line_end: 3}},
+               {:tag_close, "script", %{column: 1, line: 3}},
+               {:text, "\n", %{column_end: 1, line_end: 4}}
+             ]
     end
   end
 

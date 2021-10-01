@@ -98,6 +98,29 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     handle_doctype(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
   end
 
+  ## handle_script
+
+  defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
+    acc = [
+      {:tag_close, "script", %{line: line, column: column}}
+      | text_to_acc(buffer, acc, line, column)
+    ]
+
+    handle_text(rest, line, column + 9, [], acc, state)
+  end
+
+  defp handle_script("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_script(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_script("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_script(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_script(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_script(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+  end
+
   ## handle_comment
 
   defp handle_comment("\r\n" <> rest, line, _column, buffer, state) do
@@ -200,8 +223,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
-    acc = reverse_attrs(acc)
-    handle_text(rest, line, column + 1, [], acc, state)
+    case reverse_attrs(acc) do
+      [{:tag_open, "script", _, _} | _] = acc ->
+        handle_script(rest, line, column + 1, [], acc, state)
+
+      acc ->
+        handle_text(rest, line, column + 1, [], acc, state)
+    end
   end
 
   defp handle_maybe_tag_open_end("{" <> rest, line, column, acc, state) do
