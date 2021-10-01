@@ -129,11 +129,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
-      {:warn, name, new_column, rest, message} ->
-        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
-        warn(message, state.file, line)
-        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
-
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, description: message
     end
@@ -146,11 +141,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, name, new_column, rest} ->
         acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
         handle_tag_close_end(rest, line, new_column, acc, state)
-
-      {:warn, name, new_column, rest, message} ->
-        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
-        warn(message, state.file, line)
-        handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, description: message
@@ -494,10 +484,5 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp pop_brace(%{braces: [pos | braces]} = state) do
     {pos, %{state | braces: braces}}
-  end
-
-  defp warn(message, file, line) do
-    stacktrace = Macro.Env.stacktrace(%{__ENV__ | file: file, line: line, module: nil})
-    IO.warn(message, stacktrace)
   end
 end
