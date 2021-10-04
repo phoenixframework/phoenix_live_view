@@ -202,8 +202,9 @@ export default class LiveSocket {
 
   disconnect(callback){ this.socket.disconnect(callback) }
 
-  execJS(el, encodedJS){
-    this.owner(el, view => JS.exec("exec", encodedJS, view, el))
+  execJS(el, eventType, encodedJS){
+    encodedJS = encodedJS || el.getAttribute(eventType)
+    this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
 
   // private
@@ -354,7 +355,7 @@ export default class LiveSocket {
     let removeAttr = this.binding("remove")
     DOM.all(document, `[${removeAttr}]`, el => {
       if(document.body.contains(el)){ // skip children already removed
-        this.execJS(el, el.getAttribute(removeAttr))
+        this.execJS(el, removeAttr)
       }
     })
   }
@@ -639,7 +640,7 @@ export default class LiveSocket {
 
     let navAttr = this.binding("handle-nav")
     window.addEventListener("phx:nav", () => {
-      DOM.all(document, `[${navAttr}]`, el => this.execJS(el, el.getAttribute(navAttr)))
+      DOM.all(document, `[${navAttr}]`, el => this.execJS(el, navAttr))
     })
   }
 

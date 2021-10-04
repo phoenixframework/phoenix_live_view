@@ -210,7 +210,7 @@ export default class DOMPatch {
 
     if(pendingRemoves.length > 0){
       pendingRemoves.forEach(el => {
-        liveSocket.execJS(el, el.getAttribute(liveSocket.binding("remove")))
+        liveSocket.execJS(el, "phx-remove", el.getAttribute(liveSocket.binding("remove")))
       })
       liveSocket.requestDOMUpdate(() => {
         pendingRemoves.forEach(el => el.remove())

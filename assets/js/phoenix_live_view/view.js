@@ -425,7 +425,6 @@ export default class View {
 
   onAllChildJoinsComplete(){
     this.joinCallback(() => {
-      console.log("unroll pending")
       this.pendingJoinOps.forEach(([view, op]) => {
         if(!view.isDestroyed()){ op() }
       })

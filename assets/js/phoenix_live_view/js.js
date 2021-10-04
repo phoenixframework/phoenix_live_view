@@ -65,17 +65,20 @@ let JS = {
 
   exec_toggle(eventType, phxEvent, view, sourceEl, {to, display, ins, outs, time}){
     if(to){
-      DOM.all(document, to, el => this.toggle(view, el, display, ins || [], outs || [], time))
+      DOM.all(document, to, el => this.toggle(eventType, view, el, display, ins || [], outs || [], time))
     } else {
-      this.toggle(view, sourceEl, display, ins || [], outs || [], time)
+      this.toggle(eventType, view, sourceEl, display, ins || [], outs || [], time)
     }
   },
 
   // utils for commands
 
-  toggle(view, el, display, in_classes, out_classes, time){
+  toggle(eventType, view, el, display, in_classes, out_classes, time){
     if(in_classes.length > 0 || out_classes.length > 0){
-      if(this.hasAllClasses(el, out_classes) || window.getComputedStyle(el).opacity === "0"){
+      let isToggledOut = this.hasAllClasses(el, out_classes) || window.getComputedStyle(el).opacity === "0"
+      if(isToggledOut && eventType === "phx-remove"){
+        return
+      } else if(isToggledOut){
         this.addOrRemoveClasses(el, in_classes, out_classes)
         view.transition(time)
       } else {
