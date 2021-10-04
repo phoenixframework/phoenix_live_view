@@ -27,6 +27,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
 
     %{
+      cont: :text,
       tokens: [],
       subengine: subengine,
       substate: subengine.init([]),
@@ -114,9 +115,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     handle_text(state, [], text)
   end
 
-  def handle_text(%{file: file, indentation: indentation, tokens: tokens} = state, meta, text) do
-    tokens = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens)
-    %{state | tokens: tokens}
+  def handle_text(state, meta, text) do
+    %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
+    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
+    %{state | tokens: tokens, cont: cont}
   end
 
   @doc false
