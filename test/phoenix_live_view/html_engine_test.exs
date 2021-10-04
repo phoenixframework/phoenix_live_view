@@ -409,6 +409,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "tag validations" do
+    test "handles script" do
+      assert render("<script>a = '<a>';<%= :b %> = '<b>';</script>") ==
+               "<script>a = '<a>';b = '<b>';</script>"
+    end
+
     test "unmatched open/close tags" do
       message =
         ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"

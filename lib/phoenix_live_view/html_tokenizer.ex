@@ -29,11 +29,15 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def tokenize(text, file, indentation, meta) do
+  def tokenize(text, file, indentation, meta, cont) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
     state = %{file: file, column_offset: indentation + 1, braces: []}
-    handle_text(text, line, column, [], [], state)
+
+    case cont do
+      :text -> handle_text(text, line, column, [], [], state)
+      :script -> handle_script(text, line, column, [], [], state)
+    end
   end
 
   ## handle_text
@@ -77,7 +81,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text(<<>>, _line, _column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc))
+    ok(text_to_acc(buffer, acc), :text)
   end
 
   ## handle_doctype
@@ -119,6 +123,10 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_script(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
     handle_script(rest, line, column + 1, [<<c::utf8>> | buffer], acc, state)
+  end
+
+  defp handle_script(<<>>, _line, _column, buffer, acc, _state) do
+    ok(text_to_acc(buffer, acc), :script)
   end
 
   ## handle_comment
@@ -484,7 +492,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## helpers
 
-  defp ok(acc), do: Enum.reverse(acc)
+  defp ok(acc, cont), do: {Enum.reverse(acc), cont}
 
   defp buffer_to_string(buffer) do
     IO.iodata_to_binary(Enum.reverse(buffer))

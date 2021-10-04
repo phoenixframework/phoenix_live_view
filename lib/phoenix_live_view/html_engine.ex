@@ -34,6 +34,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
 
     state = %{
+      cont: :text,
       subengine: subengine,
       substate: nil,
       stack: [],
@@ -85,10 +86,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     handle_text(state, [line: 1, column: 1, skip_metadata: true], text)
   end
 
-  def handle_text(%{file: file, indentation: indentation} = state, meta, text) do
-    text
-    |> HTMLTokenizer.tokenize(file, indentation, meta)
-    |> Enum.reduce(state, &handle_token(&1, &2, meta))
+  def handle_text(%{file: file, indentation: indentation, cont: cont} = state, meta, text) do
+    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, cont)
+    Enum.reduce(tokens, %{state | cont: cont}, &handle_token(&1, &2, meta))
   end
 
   defp validate_unclosed_tags!(%{tags: []} = state) do
