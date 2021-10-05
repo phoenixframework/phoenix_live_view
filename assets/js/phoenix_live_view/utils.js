@@ -53,6 +53,29 @@ export let isEmpty = (obj) => {
 export let maybe = (el, callback) => el && callback(el)
 
 export let channelUploader = function (entries, onError, resp, liveSocket){
+  let entryUploaders = entries.map(entry => new EntryUploader(entry, resp.config.chunk_size, liveSocket))
+  if (entries.length <= resp.config.max_concurrency) {
+    entryUploaders.forEach(uploader => uploader.upload(() => null))
+  } else {
+    uploadInBatches(entryUploaders, resp.config.max_concurrency)
+  }
+}
+
+let uploadInBatches = function(entryUploaders, maxConcurrency) {
+  // Filter out the entries that have already started uploading or are done uploading or are cancelled
+  const uploadersToProcess = entryUploaders.filter((u) => !(u.isDone() || u.hasStarted()) && !u.entry._isCancelled)
+
+  if (uploadersToProcess.length === 0) return
+
+  const inProgress = entryUploaders.filter(u => u.hasStarted() && !u.isDone()).length
+
+  for (let i = 0; i < maxConcurrency - inProgress; i++) {
+    const uploader = uploadersToProcess[i]
+    if (uploader && !uploader.hasStarted() && !uploader.isDone()) {
+        // Add a callback to schedule new uploads when the upload is finished.
+        uploader.upload(() => uploadInBatches(entryUploaders, maxConcurrency))
+    }
+  }
   entries.forEach(entry => {
     let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
     entryUploader.upload()

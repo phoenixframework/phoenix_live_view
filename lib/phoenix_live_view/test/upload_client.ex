@@ -63,7 +63,15 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call(:channel_pids, _from, state) do
-    pids = Enum.into(state.entries, %{}, fn {name, entry} -> {name, entry.socket.channel_pid} end)
+    pids =
+      Enum.into(state.entries, %{}, fn
+        {name, %{socket: socket}} ->
+          {name, socket.channel_pid}
+
+        {name, %{error: reason}} ->
+          {name, {:error, reason}}
+      end)
+
     {:reply, pids, state}
   end
 
@@ -113,19 +121,22 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       "ref" => ref
     } = client_entry
 
-    {:ok, _resp, entry_socket} =
-      Phoenix.ChannelTest.subscribe_and_join(state.socket, "lvu:123", %{"token" => token})
+    case Phoenix.ChannelTest.subscribe_and_join(state.socket, "lvu:123", %{"token" => token}) do
+      {:ok, _resp, entry_socket} ->
+        %{
+          name: name,
+          content: content,
+          size: byte_size(content),
+          type: type,
+          socket: entry_socket,
+          ref: ref,
+          token: token,
+          chunk_start: 0
+        }
 
-    %{
-      name: name,
-      content: content,
-      size: byte_size(content),
-      type: type,
-      socket: entry_socket,
-      ref: ref,
-      token: token,
-      chunk_start: 0
-    }
+      {:error, reason} ->
+        %{ref: ref, error: reason}
+    end
   end
 
   defp progress_stats(entry, percent) do

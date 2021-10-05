@@ -232,6 +232,18 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert {:error, [[_ref, :too_many_files]]} = render_upload(avatar, "myfile1.jpeg", 1)
       end
 
+      @tag allow: [max_entries: 2, accept: :any, max_concurrency: 1]
+      test "too many entries at the same time", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, build_entries(2))
+        # Simulate an attacker that tries to build and join too many entries at the 
+        # same time. If we get an {:error, %{reason: :max_concurrency_reached}} then 
+        # the test should pass.
+        {:ok, %{ref: ref, config: config, entries: entries}} = Phoenix.LiveViewTest.preflight_upload(avatar)
+        UploadClient.allowed_ack(avatar, ref, config, entries)
+        %{"myfile2.jpeg" => {:error, _}} = UploadClient.channel_pids(avatar)
+      end
+
+
       @tag allow: [accept: :any]
       test "registering returns too_many_files on back-to-back entries", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, build_entries(1))
