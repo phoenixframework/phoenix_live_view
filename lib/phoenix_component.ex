@@ -1,5 +1,5 @@
 defmodule Phoenix.Component do
-  @moduledoc """
+  @moduledoc ~S'''
   API for function components.
 
   A function component is any function that receives
@@ -15,9 +15,9 @@ defmodule Phoenix.Component do
         # use Phoenix.HTML
 
         def greet(assigns) do
-          ~H"\""
+          ~H"""
           <p>Hello, <%= assigns.name %></p>
-          "\""
+          """
         end
       end
 
@@ -28,32 +28,43 @@ defmodule Phoenix.Component do
   But it is typically invoked using the function component
   syntax from the `~H` sigil:
 
-      ~H"\""
+      ~H"""
       <MyComponent.greet name="Jane" />
-      "\""
+      """
 
   If the `MyComponent` module is imported or if the function
   is defined locally, you can skip the module name:
 
-      ~H"\""
+      ~H"""
       <.greet name="Jane" />
-      "\""
+      """
 
-  Learn more about the `~H` sigil [in its documentation](`Phoenix.LiveView.Helpers.sigil_H/2`).
+  Similar to any HTML tag inside the `~H` sigil, you can
+  interpolate attributes values too:
+
+      ~H"""
+      <.greet name={@user.name} />
+      """
+
+  You can learn more about the `~H` sigil [in its documentation](`Phoenix.LiveView.Helpers.sigil_H/2`).
 
   ## `use Phoenix.Component`
 
-  Modules that have to define function components should call `use Phoenix.Component`
-  at the top. Doing so will import the functions from both `Phoenix.LiveView`
-  and `Phoenix.LiveView.Helpers` modules.
+  Modules that define function components should call
+  `use Phoenix.Component` at the top. Doing so will import
+  the functions from both `Phoenix.LiveView` and
+  `Phoenix.LiveView.Helpers` modules. `Phoenix.LiveView`
+  and `Phoenix.LiveComponent` automatically invoke
+  `use Phoenix.Component` for you.
 
-  Note it is not necessary to `use Phoenix.Component` inside `Phoenix.LiveView`
-  and `Phoenix.LiveComponent`.
+  You must avoid defining a module for each component. Instead,
+  we should use modules to group side-by-side related function
+  components.
 
   ## Assigns
 
-  While inside a function component, you must use the `assign/3` and
-  `assign_new/3` functions in `Phoenix.LiveView` to manipulate assigns,
+  While inside a function component, you must use `Phoenix.LiveView.assign/3`
+  and `Phoenix.LiveView.assign_new/3` to manipulate assigns,
   so that LiveView can track changes to the assigns values.
   For example, let's imagine a component that receives the first
   name and last name and must compute the name assign. One option
@@ -62,9 +73,9 @@ defmodule Phoenix.Component do
       def show_name(assigns) do
         assigns = assign(assigns, :name, assigns.first_name <> assigns.last_name)
 
-        ~H"\""
+        ~H"""
         <p>Your name is: <%= @name %></p>
-        "\""
+        """
       end
 
   However, when possible, it may be cleaner to break the logic over function
@@ -84,7 +95,7 @@ defmodule Phoenix.Component do
       def field_label(assigns) do
         assigns = assign_new(assigns, :help, fn -> nil end)
         
-        ~H"\""
+        ~H"""
         <label>
           <%= @text %>
           
@@ -92,7 +103,7 @@ defmodule Phoenix.Component do
             <span class="help"><%= @help %></span>
           <% end %>
         </label>
-        "\""
+        """
       end
 
   ## Blocks
@@ -102,11 +113,11 @@ defmodule Phoenix.Component do
   button component that looks like this:
 
       def button(assigns) do
-        ~H"\""
+        ~H"""
         <button class="btn">
           <%= render_block(@inner_block) %>
         </button>
-        "\""
+        """
       end
 
   and now you can invoke it as:
@@ -124,13 +135,13 @@ defmodule Phoenix.Component do
   the caller, by using `let`. Imagine this component:
 
       def unordered_list(assigns) do
-        ~H"\""
+        ~H"""
         <ul>
           <%= for entry <- @entries do %>
             <li><%= render_block(@inner_block, entry) %></li>
           <% end %>
         </ul>
-        "\""
+        """
       end
 
   And now you can invoke it as:
@@ -139,7 +150,7 @@ defmodule Phoenix.Component do
         I like <%= entry %>
       </.unordered_list>
 
-  """
+  '''
 
   @doc false
   defmacro __using__(_) do

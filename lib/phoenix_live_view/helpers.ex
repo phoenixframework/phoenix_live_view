@@ -71,8 +71,8 @@ defmodule Phoenix.LiveView.Helpers do
         <p>Hello, <%= @name %></p>
       <% end %>
 
-  Note we don't include the equal sign `=` in the closing tag (because the closing
-  tag does not output anything).
+  Note we don't include the equal sign `=` in the closing `<% end %>` tag
+  (because the closing tag does not output anything).
 
   There is one important difference between `HEEx` and Elixir's builtin `EEx`.
   `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
@@ -140,8 +140,9 @@ defmodule Phoenix.LiveView.Helpers do
       end
 
   It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. You can
-  learn more about components in `Phoenix.Component`.
+  opposed to having many modules with a single `render/1` function. Function
+  components support other important features, such as slots. You can learn
+  more about components in `Phoenix.Component`.
   """
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     options = [
@@ -494,25 +495,14 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Renders a component defined by the given function.
 
-  It takes two optional arguments, the assigns to pass to the given function
-  and a do-block - which will be converted into a `@inner_block` assign (see
-  `render_block/2` for more information).
+  This macro is rarely invoked directly by users. Instead, it is used by `~H`
+  to render `Phoenix.Component`s. For example, the following:
 
-  The given function must expect one argument, which are the `assigns` as a
-  map.
+      <MyApp.Weather.city name="Kraków" />
 
-  All of the `assigns` given are forwarded directly to the function as
-  a single argument.
+  It the same as:
 
-  ## Examples
-
-  The function can be either local:
-
-      <%= component(&weather_component/1, city: "Kraków") %>
-
-  Or remote:
-
-      <%= component(&MyApp.Weather.component/1, city: "Kraków") %>
+      <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
 
   """
   defmacro component(func, assigns \\ [], do_block \\ []) do
