@@ -696,9 +696,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "MY ID",
-                 1 => %{s: ["\n  INSIDE SLOT\n"]},
+                 1 => %{s: ["\n  \n    INSIDE SLOT\n  "]},
                  2 => "MY ID",
-                 3 => %{s: ["\n  INSIDE SLOT\n"]},
+                 3 => %{s: ["\n  \n    INSIDE SLOT\n  "]},
                  :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                },
                :s => ["", ""]

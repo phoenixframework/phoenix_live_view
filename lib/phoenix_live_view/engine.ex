@@ -486,20 +486,16 @@ defmodule Phoenix.LiveView.Engine do
       end
 
     # If we have a component, now we provide change tracking to individual keys.
-    # However, because live components have their own tracking, we skip them here.
     args =
       case {call, args} do
-        {:component, [{:&, _, [{:/, _, [{:live_component, _, _}, 1]}]} | _]} ->
-          args
-
         {:component, [fun, [do: block]]} ->
-          [fun, to_component_tracking([], [inner_block: block], vars), [do: block]]
+          [fun, to_component_tracking(fun, [], [inner_block: block], vars), [do: block]]
 
         {:component, [fun, expr]} ->
-          [fun, to_component_tracking(expr, [], vars)]
+          [fun, to_component_tracking(fun, expr, [], vars)]
 
         {:component, [fun, expr, [do: block]]} ->
-          [fun, to_component_tracking(expr, [inner_block: block], vars), [do: block]]
+          [fun, to_component_tracking(fun, expr, [inner_block: block], vars), [do: block]]
 
         {_, _} ->
           args
@@ -604,7 +600,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(expr, extra, vars) do
+  defp to_component_tracking(fun, expr, extra, vars) do
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -627,12 +623,12 @@ defmodule Phoenix.LiveView.Engine do
         {[], expr}
       end
 
-    all = extra ++ static
+    static_extra = extra ++ static
 
     static_changed =
-      if all != [] do
+      if static_extra != [] do
         keys =
-          for {key, value} <- all,
+          for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
               # it means that upstream assigns were change tracked.
               {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}),
@@ -647,10 +643,20 @@ defmodule Phoenix.LiveView.Engine do
         Macro.escape(%{})
       end
 
+    static = slots_to_rendered(static, vars)
+
     cond do
       # We can't infer anything, so return the expression as is.
-      all == [] and dynamic == %{} ->
+      static_extra == [] and dynamic == %{} ->
         expr
+
+      # Live components do not need to compute the changed because they track their own changed.
+      match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+        if dynamic == %{} do
+          quote do: %{unquote_splicing(static)}
+        else
+          quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
+        end
 
       # We were actually able to find some static bits, but no dynamic.
       # Embed the static parts alongside the computed changed.
@@ -725,6 +731,26 @@ defmodule Phoenix.LiveView.Engine do
       [key] -> changed_assign?(changed, key)
       [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
     end)
+  end
+
+  defp slots_to_rendered(static, vars) do
+    for {key, values} <- static do
+      if is_list(values) do
+        values =
+          for value <- values do
+            with {call, meta, [name, attrs, [do: block]]} <- value,
+                 :slot <- extract_call(call) do
+              {call, meta, [name, attrs, [do: maybe_block_to_rendered(block, vars)]]}
+            else
+              _ -> value
+            end
+          end
+
+        {key, values}
+      else
+        {key, values}
+      end
+    end
   end
 
   ## Extracts binaries and variable from iodata
