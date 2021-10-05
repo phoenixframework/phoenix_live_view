@@ -124,7 +124,6 @@ let JS = {
         })
       }
     } else {
-      console.log("HERE")
       let newDisplay = el.style.display === "none" ? (display || "") : "none"
       DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
     }
