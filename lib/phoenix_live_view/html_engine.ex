@@ -254,6 +254,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
     |> set_root_on_not_tag()
     |> push_tag(token)
+    |> init_slots()
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
@@ -265,6 +266,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
+    {slots, state} = pop_slots(state)
+    assigns = merge_slots_to_assigns(assigns, slots)
 
     ast =
       quote line: line do

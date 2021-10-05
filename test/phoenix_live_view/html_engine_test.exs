@@ -78,7 +78,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  defp local_function_component_with_single_slot(assigns) do
+  # Slots
+
+  def function_component_with_single_slot(assigns) do
     ~H"""
     BEFORE SLOT
     <%= render_slot(@default) %>
@@ -86,7 +88,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  defp local_function_component_with_slots(assigns) do
+  def function_component_with_slots(assigns) do
     ~H"""
     BEFORE HEADER
     <%= render_slot(@header) %>
@@ -96,7 +98,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  defp local_function_component_with_slots_and_args(assigns) do
+  def function_component_with_slots_and_args(assigns) do
     ~H"""
     BEFORE SLOT
     <%= render_slot(@default, 1) %>
@@ -104,7 +106,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  defp local_function_component_with_slot_props(assigns) do
+  def function_component_with_slot_props(assigns) do
     ~H"""
     <%= for entry <- @default do %>
     <%= entry.a %>
@@ -114,7 +116,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  defp local_function_component_with_multiple_slots_entries(assigns) do
+  def function_component_with_multiple_slots_entries(assigns) do
     ~H"""
     <%= for entry <- @default do %>
       <%= entry.id %>: <%= render_block(entry.inner_block, %{}) %>
@@ -502,197 +504,281 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "slots" do
-    test "local call with a single slot" do
+    test "single slot" do
       assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+        \
+
+          The default slot
+        \
+
+      AFTER SLOT
+      """
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <.local_function_component_with_single_slot>
+             <.function_component_with_single_slot>
                <:default>
                  The default slot
                </:default>
-             </.local_function_component_with_single_slot>
-             """) == """
-             COMPONENT WITH SLOTS:
-             BEFORE SLOT
-
-               \
-
-                 The default slot
-               \
-
-             AFTER SLOT
-             """
-    end
-
-    test "local call with multiple slot entries randered by a single rende_slot/2 call" do
-      assigns = %{}
+             </.function_component_with_single_slot>
+             """) == expected
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <.local_function_component_with_single_slot>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+               <:default>
+                 The default slot
+               </:default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
+    end
+
+    test "multiple slot entries randered by a single rende_slot/2 call" do
+      assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+        \
+
+          entry 1
+        \
+
+        \
+
+        \
+
+          entry 2
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.function_component_with_single_slot>
                <:default>
                  entry 1
                </:default>
                <:default>
                  entry 2
                </:default>
-             </.local_function_component_with_single_slot>
-             """) == """
-             COMPONENT WITH SLOTS:
-             BEFORE SLOT
-
-               \
-
-                 entry 1
-               \
-
-               \
-
-               \
-
-                 entry 2
-               \
-
-             AFTER SLOT
-             """
-    end
-
-    test "local call with multiple slot entries handled by an explicit for comprehension" do
-      assigns = %{a: "A"}
+             </.function_component_with_single_slot>
+             """) == expected
 
       assert compile("""
-             <.local_function_component_with_multiple_slots_entries>
+             COMPONENT WITH SLOTS:
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+               <:default>
+                 entry 1
+               </:default>
+               <:default>
+                 entry 2
+               </:default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
+    end
+
+    test "multiple slot entries handled by an explicit for comprehension" do
+      assigns = %{}
+
+      expected = """
+
+        1: \
+
+        one
+
+        2: \
+
+        \
+
+        two
+      """
+
+      assert compile("""
+             <.function_component_with_multiple_slots_entries>
                <:default id="1">one</:default>
                <:default id="2">two</:default>
-             </.local_function_component_with_multiple_slots_entries>
-             """) == """
-
-               1: \
-
-               one
-
-               2: \
-
-               \
-
-               two
-             """
-    end
-
-    test "local call with slot props" do
-      assigns = %{a: "A"}
+             </.function_component_with_multiple_slots_entries>
+             """) == expected
 
       assert compile("""
-             <.local_function_component_with_slot_props>
-               <:default a={@a} b="B"> and </:default>
-             </.local_function_component_with_slot_props>
-             """) == """
-
-             A
-
-                and \
-
-             B
-             """
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
+               <:default id="1">one</:default>
+               <:default id="2">two</:default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
+             """) == expected
     end
 
-    test "local call with multiple slots" do
+    test "slot props" do
+      assigns = %{a: "A"}
+
+      expected = """
+
+      A
+
+         and \
+
+      B
+      """
+
+      assert compile("""
+             <.function_component_with_slot_props>
+               <:default a={@a} b="B"> and </:default>
+             </.function_component_with_slot_props>
+             """) == expected
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+               <:default a={@a} b="B"> and </:default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+             """) == expected
+    end
+
+    test "multiple slots" do
       assigns = %{}
+
+      expected = """
+      BEFORE COMPONENT
+      BEFORE HEADER
+
+        \
+
+          The header content
+        \
+
+      TEXT
+
+        \
+
+        \
+
+          The footer content
+        \
+
+      AFTER FOOTER
+
+      AFTER COMPONENT
+      """
 
       assert compile("""
              BEFORE COMPONENT
-             <.local_function_component_with_slots>
+             <.function_component_with_slots>
                <:header>
                  The header content
                </:header>
                <:footer>
                  The footer content
                </:footer>
-             </.local_function_component_with_slots>
+             </.function_component_with_slots>
              AFTER COMPONENT
-             """) == """
+             """) == expected
+
+      assert compile("""
              BEFORE COMPONENT
-             BEFORE HEADER
-
-               \
-
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
+               <:header>
                  The header content
-               \
-
-             TEXT
-
-               \
-
-               \
-
+               </:header>
+               <:footer>
                  The footer content
-               \
-
-             AFTER FOOTER
-
+               </:footer>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
              AFTER COMPONENT
-             """
+             """) == expected
     end
 
-    test "local call with slots and args" do
+    test "slots with args" do
       assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+        \
+
+          The default slot
+          Arg: 1
+        \
+
+      AFTER SLOT
+      """
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <.local_function_component_with_slots_and_args>
+             <.function_component_with_slots_and_args>
                <:default let={arg}>
                  The default slot
                  Arg: <%= arg %>
                </:default>
-             </.local_function_component_with_slots_and_args>
-             """) == """
-             COMPONENT WITH SLOTS:
-             BEFORE SLOT
-
-               \
-
-                 The default slot
-                 Arg: 1
-               \
-
-             AFTER SLOT
-             """
-    end
-
-    test "nested calls with slot" do
-      assigns = %{}
+             </.function_component_with_slots_and_args>
+             """) == expected
 
       assert compile("""
-             <.local_function_component_with_single_slot>
+             COMPONENT WITH SLOTS:
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
+               <:default let={arg}>
+                 The default slot
+                 Arg: <%= arg %>
+               </:default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
+             """) == expected
+    end
+
+    test "nested calls with slots" do
+      assigns = %{}
+
+      expected = """
+      BEFORE SLOT
+
+        \
+
+         The outer slot
+          BEFORE SLOT
+
+            \
+
+            The inner slot
+            \
+
+      AFTER SLOT
+
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
                <:default>
                 The outer slot
-                 <.local_function_component_with_single_slot>
+                 <.function_component_with_single_slot>
                    <:default>
                    The inner slot
                    </:default>
-                 </.local_function_component_with_single_slot>
+                 </.function_component_with_single_slot>
                </:default>
-             </.local_function_component_with_single_slot>
-             """) == """
-             BEFORE SLOT
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
 
-               \
-
+      assert compile("""
+             <.function_component_with_single_slot>
+               <:default>
                 The outer slot
-                 BEFORE SLOT
-
-                   \
-
+                 <.function_component_with_single_slot>
+                   <:default>
                    The inner slot
-                   \
-
-             AFTER SLOT
-
-               \
-
-             AFTER SLOT
-             """
+                   </:default>
+                 </.function_component_with_single_slot>
+               </:default>
+             </.function_component_with_single_slot>
+             """) == expected
     end
   end
 
