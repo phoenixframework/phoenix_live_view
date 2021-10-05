@@ -671,6 +671,30 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc """
+  Renders a slot entry with the given optional `argument`.
+
+      <%= render_slot(@footer, item: @item)
+
+  If multiple slot entries are defined for the same slot, `render_slot/2` will automatically
+  render all entries, merging their contents. In case you want to use the entries' attributes,
+  you need to iterate over the list to access each one of them individually.
+
+      <%= for col <- @cols do %>
+      <%= col.label %>: <%= render_slot(col) %>
+      <% end %>
+
+  """
+  defmacro render_slot(slot, argument \\ nil) do
+    quote do
+      unquote(__MODULE__).__render_slot__(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(slot),
+        unquote(argument)
+      )
+    end
+  end
+
   @doc false
   defmacro slot(name, attrs, do: do_block) do
     name_var = quote(do: name)
@@ -688,16 +712,7 @@ defmodule Phoenix.LiveView.Helpers do
     Map.put(attrs, name, fun)
   end
 
-  defmacro render_slot(slot, argument \\ nil) do
-    quote do
-      unquote(__MODULE__).__render_slot__(
-        var!(changed, Phoenix.LiveView.Engine),
-        unquote(slot),
-        unquote(argument)
-      )
-    end
-  end
-
+  @doc false
   def __render_slot__(_, [], _), do: ""
 
   def __render_slot__(changed, [entry], argument), do: entry.inner_block.(changed, argument)
