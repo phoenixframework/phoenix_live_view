@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.HEExTest do
+defmodule Phoenix.LiveView.HEExExtensionTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.{HTMLEngine, Rendered, Component}
