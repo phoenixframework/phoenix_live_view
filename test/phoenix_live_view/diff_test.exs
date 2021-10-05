@@ -431,6 +431,15 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
+    def render_with_slot_no_args(assigns) do
+      ~H"""
+      <div>
+        HELLO <%= @id %> <%= render_slot(@default) %>
+        HELLO <%= @id %> <%= render_slot(@default) %>
+      </div>
+      """
+    end
+
     def render_with_block(assigns) do
       ~H"""
       <div>
@@ -669,6 +678,34 @@ defmodule Phoenix.LiveView.DiffTest do
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
       assert full_render == %{0 => %{0 => "DEFAULT", 2 => "DEFAULT"}}
+    end
+
+    test "slot tracking without args" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <FunctionComponent.render_with_slot_no_args id="MY ID">
+        <:default>
+          INSIDE SLOT
+        </:default>
+      </FunctionComponent.render_with_slot_no_args>
+      """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "MY ID",
+                 1 => %{s: ["\n  INSIDE SLOT\n"]},
+                 2 => "MY ID",
+                 3 => %{s: ["\n  INSIDE SLOT\n"]},
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      assert full_render == %{0 => %{0 => "MY ID", 2 => "MY ID"}}
     end
 
     defp function_tracking(assigns) do
