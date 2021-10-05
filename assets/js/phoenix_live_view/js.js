@@ -71,7 +71,47 @@ let JS = {
     }
   },
 
+  exec_show(eventType, phxEvent, view, sourceEl, {to, display, transition, time}){
+    if(to){
+      DOM.all(document, to, el => this.show(eventType, view, el, display, transition, time))
+    } else {
+      this.show(eventType, view, el, transition, time)
+    }
+  },
+
+  exec_hide(eventType, phxEvent, view, sourceEl, {to, display, transition, time}){
+    if(to){
+      DOM.all(document, to, el => this.hide(eventType, view, el, display, transition, time))
+    } else {
+      this.hide(eventType, view, el, dispaly, transition, time)
+    }
+  },
+
   // utils for commands
+
+  show(eventType, view, el, display, transition, time){
+    if(transition && this.isInvisible(el)){
+      this.addOrRemoveClasses(el, transition, [])
+      view.transition(time, () => {
+        DOM.putSticky(el, "show-hide", currentEl => currentEl.style.opacity = "1")
+        this.addOrRemoveClasses(el, [], transition)
+      })
+    } else if(el.style.display === "none"){
+      this.toggle(eventType, view, el, display, [], [], null)
+    }
+  },
+
+  hide(eventType, view, el, display, transition, time){
+    if(transition.length > 0 && !this.isInvisible(el)){
+      this.addOrRemoveClasses(el, transition, [])
+      view.transition(time, () => {
+        DOM.putSticky(el, "show-hide", currentEl => currentEl.style.opacity = "0")
+        this.addOrRemoveClasses(el, [], transition)
+      })
+    } else if(el.style.display !== "none"){
+      this.toggle(eventType, view, el, display, [], [], time)
+    }
+  },
 
   toggle(eventType, view, el, display, in_classes, out_classes, time){
     if(in_classes.length > 0 || out_classes.length > 0){
@@ -84,7 +124,7 @@ let JS = {
         view.transition(time)
       }
     } else {
-      let newDisplay = el.style.display === "none" ? (display || "inline-block") : "none"
+      let newDisplay = el.style.display === "none" ? (display || "") : "none"
       DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
     }
   },

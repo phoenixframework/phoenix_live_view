@@ -82,6 +82,30 @@ defmodule Phoenix.LiveView.JS do
     })
   end
 
+  def show(cmd \\ %JS{}, opts) when is_list(opts) do
+    names = class_names(opts[:transition])
+    time = opts[:time] || @default_transition_time
+
+    put_op(cmd, "show", %{
+      to: Keyword.fetch!(opts, :to),
+      display: opts[:display],
+      transition: names,
+      time: time
+    })
+  end
+
+  def hide(cmd \\ %JS{}, opts) when is_list(opts) do
+    names = class_names(opts[:transition])
+    time = opts[:time] || @default_transition_time
+
+    put_op(cmd, "hide", %{
+      to: Keyword.fetch!(opts, :to),
+      display: opts[:display],
+      transition: names,
+      time: time
+    })
+  end
+
   def add_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
     put_op(cmd, "add_class", %{to: Keyword.fetch!(opts, :to), names: class_names(names)})
   end
@@ -111,6 +135,7 @@ defmodule Phoenix.LiveView.JS do
     %JS{cmd | ops: ops ++ [[kind, args]]}
   end
 
+  defp class_names(nil), do: []
   defp class_names(names) do
     String.split(names, " ")
   end
