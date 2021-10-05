@@ -637,9 +637,6 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-          if(resp.redirect || resp.live_redirect || resp.live_patch){
-            this.liveSocket.dispatchNav()
-          }
           this.liveSocket.requestDOMUpdate(() => {
             let hookReply = null
             if(ref !== null){ this.undoRefs(ref) }

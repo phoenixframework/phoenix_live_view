@@ -75,10 +75,8 @@ let JS = {
 
   toggle(eventType, view, el, display, in_classes, out_classes, time){
     if(in_classes.length > 0 || out_classes.length > 0){
-      let isToggledOut = this.hasAllClasses(el, out_classes) || window.getComputedStyle(el).opacity === "0"
-      if(isToggledOut && eventType === "phx-remove"){
-        return
-      } else if(isToggledOut){
+      if(this.isToggledOut(el, out_classes)){
+        if(eventType === "remove"){ return }
         this.addOrRemoveClasses(el, in_classes, out_classes)
         view.transition(time)
       } else {
@@ -107,7 +105,13 @@ let JS = {
     })
   },
 
-  hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) }
+  hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
+
+  isInvisible(el){ return window.getComputedStyle(el).opacity === "0" },
+
+  isToggledOut(el, out_classes){
+    return el.style.display === "none" || this.isInvisible(el) || this.hasAllClasses(el, out_classes)
+  }
 }
 
 export default JS

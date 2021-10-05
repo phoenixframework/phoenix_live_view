@@ -203,7 +203,6 @@ export default class LiveSocket {
   disconnect(callback){ this.socket.disconnect(callback) }
 
   execJS(el, eventType, encodedJS){
-    encodedJS = encodedJS || el.getAttribute(eventType)
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
 
@@ -351,11 +350,12 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(callback){
+  transitionRemoves(elements){
     let removeAttr = this.binding("remove")
-    DOM.all(document, `[${removeAttr}]`, el => {
+    elements = elements || DOM.all(document, `[${removeAttr}]`)
+    elements.forEach(el => {
       if(document.body.contains(el)){ // skip children already removed
-        this.execJS(el, removeAttr)
+        this.execJS(el, "remove", el.getAttribute(removeAttr))
       }
     })
   }
@@ -600,7 +600,6 @@ export default class LiveSocket {
       let {type, id, root, scroll} = event.state || {}
       let href = window.location.href
 
-      this.dispatchNav()
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
           this.main.pushLinkPatch(href, null)
@@ -626,7 +625,6 @@ export default class LiveSocket {
       e.preventDefault()
       if(this.pendingLink === href){ return }
 
-      this.dispatchNav()
       this.requestDOMUpdate(() => {
         if(type === "patch"){
           this.pushHistoryPatch(href, linkState, target)
@@ -637,14 +635,7 @@ export default class LiveSocket {
         }
       })
     }, false)
-
-    let navAttr = this.binding("handle-nav")
-    window.addEventListener("phx:nav", () => {
-      DOM.all(document, `[${navAttr}]`, el => this.execJS(el, navAttr))
-    })
   }
-
-  dispatchNav(){ this.dispatchEvent("nav") }
 
   dispatchEvent(event, payload = {}){
     DOM.dispatchEvent(window, `phx:${event}`, payload)

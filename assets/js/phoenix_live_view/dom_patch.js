@@ -209,9 +209,7 @@ export default class DOMPatch {
     updates.forEach(el => this.trackAfter("updated", el))
 
     if(pendingRemoves.length > 0){
-      pendingRemoves.forEach(el => {
-        liveSocket.execJS(el, "phx-remove", el.getAttribute(liveSocket.binding("remove")))
-      })
+      liveSocket.transitionRemoves(pendingRemoves)
       liveSocket.requestDOMUpdate(() => {
         pendingRemoves.forEach(el => el.remove())
         this.trackAfter("transitionsDiscarded", pendingRemoves)
