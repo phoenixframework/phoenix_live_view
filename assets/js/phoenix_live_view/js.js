@@ -90,25 +90,19 @@ let JS = {
   // utils for commands
 
   show(eventType, view, el, display, transition, time){
-    if(transition && this.isInvisible(el)){
-      this.addOrRemoveClasses(el, transition, [])
-      view.transition(time, () => {
-        DOM.putSticky(el, "show-hide", currentEl => currentEl.style.opacity = "1")
-        this.addOrRemoveClasses(el, [], transition)
-      })
-    } else if(el.style.display === "none"){
+    let isVisible = this.isVisible(el)
+    if(transition && !isVisible){
+      this.toggle(eventType, view, el, display, transition, [], time)
+    } else if(!isVisible){
       this.toggle(eventType, view, el, display, [], [], null)
     }
   },
 
   hide(eventType, view, el, display, transition, time){
-    if(transition.length > 0 && !this.isInvisible(el)){
-      this.addOrRemoveClasses(el, transition, [])
-      view.transition(time, () => {
-        DOM.putSticky(el, "show-hide", currentEl => currentEl.style.opacity = "0")
-        this.addOrRemoveClasses(el, [], transition)
-      })
-    } else if(el.style.display !== "none"){
+    let isVisible = this.isVisible(el)
+    if(transition.length > 0 && isVisible){
+      this.toggle(eventType, view, el, display, [], transition, time)
+    } else if(isVisible){
       this.toggle(eventType, view, el, display, [], [], time)
     }
   },
@@ -118,12 +112,19 @@ let JS = {
       if(this.isToggledOut(el, out_classes)){
         if(eventType === "remove"){ return }
         this.addOrRemoveClasses(el, in_classes, out_classes)
-        view.transition(time)
+        view.transition(time, () => {
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.opacity = "1")
+          this.addOrRemoveClasses(el, [], in_classes)
+        })
       } else {
         this.addOrRemoveClasses(el, out_classes, in_classes)
-        view.transition(time)
+        view.transition(time, () => {
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.opacity = "0")
+          this.addOrRemoveClasses(el, [], out_classes)
+        })
       }
     } else {
+      console.log("HERE")
       let newDisplay = el.style.display === "none" ? (display || "") : "none"
       DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
     }
@@ -147,10 +148,10 @@ let JS = {
 
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
 
-  isInvisible(el){ return window.getComputedStyle(el).opacity === "0" },
+  isVisible(el){ return window.getComputedStyle(el).opacity !== "0" },
 
   isToggledOut(el, out_classes){
-    return el.style.display === "none" || this.isInvisible(el) || this.hasAllClasses(el, out_classes)
+    return el.style.display === "none" || !this.isVisible(el) || this.hasAllClasses(el, out_classes)
   }
 }
 
