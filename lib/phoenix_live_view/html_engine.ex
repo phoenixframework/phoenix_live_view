@@ -1,6 +1,10 @@
 defmodule Phoenix.LiveView.HTMLEngine do
   @moduledoc """
   The HTMLEngine that powers `.heex` templates and the `~H` sigil.
+
+  It works by adding a HTML parsing and validation layer on top
+  of EEx engine. By default it uses `Phoenix.LiveView.Engine` as
+  its "subengine".
   """
 
   # TODO: Use @impl true instead of @doc false when we require Elixir v1.12

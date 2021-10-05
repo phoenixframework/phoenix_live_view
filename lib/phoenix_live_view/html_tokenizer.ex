@@ -5,6 +5,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
 
   defmodule ParseError do
+    @moduledoc false
     defexception [:file, :line, :column, :description]
 
     @impl true
