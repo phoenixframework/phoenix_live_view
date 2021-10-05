@@ -685,15 +685,20 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  @doc false
+  @doc """
+  Defines a slot for the component.
+
+  This macro is mostly used by HTML engines that provides a `slot` implementation.
+  If you're using HEEx templates, you should use its higher level `<:slot>` notation
+  instead.
+  """
   defmacro slot(name, attrs, do: do_block) do
     name_var = quote(do: name)
     do_block = rewrite_do!(do_block, name_var, __CALLER__)
 
     quote do
       name = unquote(name)
-      attrs = unquote(attrs)
-      Phoenix.LiveView.Helpers.__slot__(name, attrs, unquote(do_block))
+      Phoenix.LiveView.Helpers.__slot__(name, unquote(attrs), unquote(do_block))
     end
   end
 

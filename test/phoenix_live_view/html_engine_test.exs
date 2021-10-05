@@ -78,52 +78,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
-  # Slots
-
-  def function_component_with_single_slot(assigns) do
-    ~H"""
-    BEFORE SLOT
-    <%= render_slot(@default) %>
-    AFTER SLOT
-    """
-  end
-
-  def function_component_with_slots(assigns) do
-    ~H"""
-    BEFORE HEADER
-    <%= render_slot(@header) %>
-    TEXT
-    <%= render_slot(@footer) %>
-    AFTER FOOTER
-    """
-  end
-
-  def function_component_with_slots_and_args(assigns) do
-    ~H"""
-    BEFORE SLOT
-    <%= render_slot(@default, 1) %>
-    AFTER SLOT
-    """
-  end
-
-  def function_component_with_slot_props(assigns) do
-    ~H"""
-    <%= for entry <- @default do %>
-    <%= entry.a %>
-    <%= render_slot(entry) %>
-    <%= entry.b %>
-    <% end %>
-    """
-  end
-
-  def function_component_with_multiple_slots_entries(assigns) do
-    ~H"""
-    <%= for entry <- @default do %>
-      <%= entry.id %>: <%= render_block(entry.inner_block, %{}) %>
-    <% end %>
-    """
-  end
-
   test "handles text" do
     assert render("Hello") == "Hello"
   end
@@ -504,6 +458,50 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "slots" do
+    def function_component_with_single_slot(assigns) do
+      ~H"""
+      BEFORE SLOT
+      <%= render_slot(@default) %>
+      AFTER SLOT
+      """
+    end
+
+    def function_component_with_slots(assigns) do
+      ~H"""
+      BEFORE HEADER
+      <%= render_slot(@header) %>
+      TEXT
+      <%= render_slot(@footer) %>
+      AFTER FOOTER
+      """
+    end
+
+    def function_component_with_slots_and_args(assigns) do
+      ~H"""
+      BEFORE SLOT
+      <%= render_slot(@default, 1) %>
+      AFTER SLOT
+      """
+    end
+
+    def function_component_with_slot_props(assigns) do
+      ~H"""
+      <%= for entry <- @default do %>
+      <%= entry.a %>
+      <%= render_slot(entry) %>
+      <%= entry.b %>
+      <% end %>
+      """
+    end
+
+    def function_component_with_multiple_slots_entries(assigns) do
+      ~H"""
+      <%= for entry <- @default do %>
+        <%= entry.id %>: <%= render_block(entry.inner_block, %{}) %>
+      <% end %>
+      """
+    end
+
     test "single slot" do
       assigns = %{}
 
