@@ -185,7 +185,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  test "optimizes attributes that can be empty" do
+  test "optimizes class attributes" do
     assigns = %{
       nil_assign: nil,
       true_assign: true,
@@ -215,6 +215,35 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     template = ~S(<div class={@list} />)
     assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
+  end
+
+  test "optimizes attributes that can be empty" do
+    assigns = %{
+      nil_assign: nil,
+      true_assign: true,
+      false_assign: false,
+      unsafe: "<foo>",
+      safe: {:safe, "<foo>"},
+      list: ["safe", false, nil, "<unsafe>"]
+    }
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div style=\"", "\"></div>"]} =
+             eval(~S(<div style={@safe} />), assigns)
+
+    template = ~S(<div style={@nil_assign} />)
+    assert render(template, assigns) == ~S(<div style=""></div>)
+
+    template = ~S(<div style={@false_assign} />)
+    assert render(template, assigns) == ~S(<div style=""></div>)
+
+    template = ~S(<div style={@true_assign} />)
+    assert render(template, assigns) == ~S(<div style=""></div>)
+
+    template = ~S(<div style={@unsafe} />)
+    assert render(template, assigns) == ~S(<div style="&lt;foo&gt;"></div>)
+
+    template = ~S(<div style={@safe} />)
+    assert render(template, assigns) == ~S(<div style="<foo>"></div>)
   end
 
   test "handle void elements" do

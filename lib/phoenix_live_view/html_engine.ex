@@ -422,15 +422,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_attr_escape(state, meta, name, value) do
     case extract_binaries(value, true, []) do
       :error ->
-        if fun = empty_attribute_encoder(name) do
-          ast =
-            quote line: meta[:line] do
-              {:safe, unquote(__MODULE__).unquote(fun)(unquote(value))}
-            end
-
+        if call = empty_attribute_encoder(name, value, meta) do
           state
           |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
-          |> update_subengine(:handle_expr, ["=", ast])
+          |> update_subengine(:handle_expr, ["=", {:safe, call}])
           |> update_subengine(:handle_text, [meta, ~s(")])
         else
           handle_attrs_escape(state, meta, [{safe_unless_special(name), value}])
@@ -484,9 +479,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp extract_binaries(value, false, acc), do: [{:binary, value} | acc]
   defp extract_binaries(_value, true, _acc), do: :error
 
-  defp empty_attribute_encoder("class"), do: :class_attribute_encode
-  defp empty_attribute_encoder("style"), do: :empty_attribute_encoder
-  defp empty_attribute_encoder(_), do: nil
+  # TODO: We can refactor the empty_attribute_encoder to simply return an atom
+  # but there is a bug in Elixir v1.12 and earlier where mixing `line: expr`
+  # with .unquote(fun) leads to bugs in line numbers.
+  defp empty_attribute_encoder("class", value, meta) do
+    quote line: meta[:line], do: unquote(__MODULE__).class_attribute_encode(unquote(value))
+  end
+
+  defp empty_attribute_encoder("style", value, meta) do
+    quote line: meta[:line], do: unquote(__MODULE__).empty_attribute_encode(unquote(value))
+  end
+
+  defp empty_attribute_encoder(_, _, _), do: nil
 
   @doc false
   def class_attribute_encode([_ | _] = list),
