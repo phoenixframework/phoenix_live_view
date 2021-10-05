@@ -780,6 +780,43 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              </.function_component_with_single_slot>
              """) == expected
     end
+
+    test "raise if the slot entry is not a direct child of a component" do
+      message = ~r".exs:2:(3:)? invalid slot entry <:default>. A slot entry must be a direct child of a component."
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>
+          <:default>
+            Content
+          </:default>
+        </div>
+        """)
+      end)
+
+      message = ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component."
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>
+          <:default>
+            <:footer>
+              Content
+            </:footer>
+          </:default>
+        </div>
+        """)
+      end)
+
+      message = ~r".exs:1:(1:)? invalid slot entry <:default>. A slot entry must be a direct child of a component."
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <:default>
+          Content
+        </:default>
+        """)
+      end)
+    end
   end
 
   describe "tracks root" do

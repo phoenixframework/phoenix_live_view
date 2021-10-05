@@ -156,8 +156,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | slots: [[] | state.slots]}
   end
 
-  defp add_slot(%{slots: [slots | other_slots]} = state, slot) do
+  defp add_slot!(%{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} = state, slot, _meta)
+       when first in ?A..?Z or first == ?. do
     %{state | slots: [[slot | slots] | other_slots]}
+  end
+
+  defp add_slot!(state, slot, meta) do
+    %{line: line, column: column} = meta
+    {slot_name, _} = slot
+    file = state.file
+
+    message = "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component."
+    raise ParseError, line: line, column: column, file: file, description: message
   end
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
@@ -317,7 +327,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
-    {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
+    {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
 
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
@@ -330,7 +340,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     slot = {String.to_atom(slot_name), ast}
 
     state
-    |> add_slot(slot)
+    |> add_slot!(slot, tag_meta)
     |> pop_substate_from_stack()
   end
 
