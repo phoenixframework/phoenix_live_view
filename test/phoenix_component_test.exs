@@ -159,11 +159,11 @@ defmodule Phoenix.ComponentTest do
     defp inner_changed(assigns) do
       ~H"""
       <%= inspect(assigns.__changed__) %>
-      <%= render_block(@inner_block, "var") %>
+      <%= render_slot(@default_slot, "var") %>
       """
     end
 
-    test "with block" do
+    test "with default slot" do
       assigns = %{foo: 1, __changed__: %{}}
       assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) == [nil]
       assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) == [nil]
@@ -171,7 +171,7 @@ defmodule Phoenix.ComponentTest do
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
       assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true, inner_block: true}", []]]
+               [["%{foo: true, inner_block: true}", nil]]
 
       assert eval(
                ~H|<.inner_changed foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
@@ -191,7 +191,7 @@ defmodule Phoenix.ComponentTest do
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
       assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true, inner_block: true}", []]]
+               [["%{foo: true, inner_block: true}", nil]]
 
       assert eval(
                ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|

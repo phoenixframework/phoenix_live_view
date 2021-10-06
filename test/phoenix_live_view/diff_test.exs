@@ -377,7 +377,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  defmodule BlockComponent do
+  defmodule SlotComponent do
     use Phoenix.LiveComponent
 
     def mount(socket) do
@@ -389,27 +389,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 1}) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 2}) %>
-      </div>
-      """
-    end
-  end
-
-  defmodule BlockNoArgsComponent do
-    use Phoenix.LiveComponent
-
-    def mount(socket) do
-      {:ok, assign(socket, id: "DEFAULT")}
-    end
-
-    def render(%{do: _}), do: raise("unexpected :do assign")
-
-    def render(assigns) do
-      ~H"""
-      <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot, %{value: 1}) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot, %{value: 2}) %>
       </div>
       """
     end
@@ -452,7 +433,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <.live_component module={BlockComponent} let={%{value: value}} id="WORLD">
+      <.live_component module={SlotComponent} let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
       </.live_component>
       """
@@ -1500,14 +1481,14 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <.live_component module={BlockComponent} let={%{value: value}} id="TRACKING">
+      <.live_component module={SlotComponent} let={%{value: value}} id="TRACKING">
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= value %>
       </.live_component>
       """
     end
 
-    test "block tracking with args and parent assigns" do
+    test "default slot tracking with args and parent assigns" do
       assigns = %{socket: %Socket{}, parent_value: 123}
       {socket, full_render, components} = render(tracking(assigns))
 
