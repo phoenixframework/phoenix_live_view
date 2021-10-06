@@ -209,6 +209,76 @@ The following specialized behavior is performed for forms and keydown bindings:
   * A `phx-keydown` binding is only throttled for key repeats. Unique keypresses
     back-to-back will dispatch the pressed key events.
 
+## JS Commands
+
+LiveView bindings support a JavaScript command interface via the `Phoenix.LiveView.JS` module, which allows you to specify operations that should execute on the client when firing `phx-` binding events, such as `phx-click`, `phx-change`, etc. Commands compose together to allow you to push events, add classes to elements, transition elements in and out, and more.
+See the `Phoenix.LiveView.JS` documentation for full usage.
+
+For a small example of what's possible, imagine you want to show and hide a modal on the page:
+
+```heex
+<div id="modal" class="modal">
+  My Modal
+</div>
+
+<button phx-click={JS.show(to: "#modal", transition: "fade-in")}>
+  show modal
+</button>
+
+<button phx-click={JS.hide(to: "#modal", transition: "fade-out")}>
+  hide modal
+</button>
+
+<button phx-click={JS.toggle(to: "#modal", in: "fade-in", out: "fade-out")}>
+  toggle modal
+</button>
+```
+
+Or if your UI library relies on classes to perform the showing or hiding:
+
+```heex
+<div id="modal" class="modal">
+  My Modal
+</div>
+
+<button phx-click={JS.add_class("show", to: "#modal", transition: "fade-in")}>
+  show modal
+</button>
+
+<button phx-click={JS.remove_class("show", to: "#modal", transition: "fade-out")}>
+  hide modal
+</button>
+```
+
+Commands compose together. For example you can push an event to the server and
+immediately hide the modal on the client:
+
+```heex
+<div id="modal" class="modal">
+  My Modal
+</div>
+
+<button phx-click={JS.push("modal-closed") |> JS.remove_class("show", to: "#modal", transition: "fade-out")}>
+  hide modal
+</button>
+```
+
+It is also useful to extract commands into their own functions:
+
+```elixir
+alias Phoenix.LiveView.JS
+def hide_modal(js \\ %JS{}, selector) do
+  js
+  |> JS.push("modal-closed")
+  |> JS.remove_class("show", to: selector, transition: "fade-out")
+end
+```
+
+```heex
+<button phx-click={hide_modal("#modal")}>hide modal</button>
+```
+
+
 ## LiveView Specific Events
 
 The `lv:` event prefix supports LiveView specific features that are handled
