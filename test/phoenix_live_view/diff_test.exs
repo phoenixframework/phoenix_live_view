@@ -422,11 +422,11 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    def render_with_block_no_args(assigns) do
+    def render_default_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@default) %>
+        HELLO <%= @id %> <%= render_slot(@default) %>
       </div>
       """
     end
@@ -434,17 +434,17 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_slot_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default) %>
-        HELLO <%= @id %> <%= render_slot(@default) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
       </div>
       """
     end
 
-    def render_with_block(assigns) do
+    def render_default(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, 1) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, 2) %>
+        HELLO <%= @id %> <%= render_slot(@default, 1) %>
+        HELLO <%= @id %> <%= render_slot(@default, 2) %>
       </div>
       """
     end
@@ -533,105 +533,6 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  describe "stateless components" do
-    test "on mount" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "on update" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {previous_socket, _, previous_components} = render(rendered)
-
-      {socket, full_render, components} =
-        render(rendered, previous_socket.fingerprints, previous_components)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world"}
-             }
-
-      assert socket.fingerprints == previous_socket.fingerprints
-      assert components == previous_components
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "render only" do
-      component = %Component{assigns: %{from: :component}, component: RenderOnlyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "component",
-                 :s => ["<div>RENDER ONLY ", "</div>"]
-               },
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-    end
-
-    test "block tracking" do
-      assigns = %{socket: %Socket{}}
-
-      rendered = ~H"""
-      <.live_component module={BlockNoArgsComponent} id="block">
-        INSIDE BLOCK
-      </.live_component>
-      """
-
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => 1,
-               :s => ["", ""],
-               :c => %{
-                 1 => %{
-                   0 => "block",
-                   1 => %{s: ["\n  INSIDE BLOCK\n"]},
-                   2 => "block",
-                   3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
-                 }
-               }
-             }
-
-      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => 1}
-    end
-  end
-
   describe "function components" do
     test "render only" do
       assigns = %{socket: %Socket{}}
@@ -654,13 +555,13 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
     end
 
-    test "block tracking without args" do
+    test "default slot without args" do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_with_block_no_args/1, id: "DEFAULT" do %>
+      <FunctionComponent.render_default_no_args id="DEFAULT">
         INSIDE BLOCK
-      <% end %>
+      </FunctionComponent.render_default_no_args>
       """
 
       {socket, full_render, components} = render(rendered)
@@ -685,9 +586,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       rendered = ~H"""
       <FunctionComponent.render_with_slot_no_args id="MY ID">
-        <:default>
+        <:sample>
           INSIDE SLOT
-        </:default>
+        </:sample>
       </FunctionComponent.render_with_slot_no_args>
       """
 
@@ -706,6 +607,74 @@ defmodule Phoenix.LiveView.DiffTest do
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
       assert full_render == %{0 => %{0 => "MY ID", 2 => "MY ID"}}
+    end
+
+    defp function_tracking(assigns) do
+      ~H"""
+      <FunctionComponent.render_default let={value} id={@id}>
+        WITH VALUE <%= value %> - <%= @value %>
+      </FunctionComponent.render_default>
+      """
+    end
+
+    test "default slot with args and parent assign" do
+      assigns = %{socket: %Socket{}, value: 123, id: "DEFAULT"}
+
+      {socket, full_render, components} = render(function_tracking(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 0 => "DEFAULT",
+                 1 => %{0 => "1", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 2 => "DEFAULT",
+                 3 => %{0 => "2", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} =
+        render(function_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "DEFAULT",
+                 1 => %{0 => "1", 1 => "123"},
+                 2 => "DEFAULT",
+                 3 => %{0 => "2", 1 => "123"}
+               }
+             }
+
+      assigns = Map.put(assigns, :__changed__, %{})
+
+      {_socket, full_render, _components} =
+        render(function_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{}
+
+      assigns = Map.put(assigns, :__changed__, %{id: true})
+
+      {_socket, full_render, _components} =
+        render(function_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "DEFAULT",
+                 2 => "DEFAULT",
+               }
+             }
+
+      assigns = Map.put(assigns, :__changed__, %{value: true})
+
+      {_socket, full_render, _components} =
+        render(function_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 1 => %{0 => "1", 1 => "123"},
+                 3 => %{0 => "2", 1 => "123"}
+               }
+             }
     end
 
     def render_multiple_slots(assigns) do
@@ -784,77 +753,6 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{
                  1 => %{1 => "B"},
                  0 => %{1 => "B"}
-               }
-             }
-    end
-
-    defp function_tracking(assigns) do
-      ~H"""
-      <%= component &FunctionComponent.render_with_block/1, id: @id do %>
-        <% value -> %>
-          WITH VALUE <%= value %> - <%= @value %>
-      <% end %>
-      """
-    end
-
-    test "block tracking with args and parent assign" do
-      assigns = %{socket: %Socket{}, value: 123, id: "DEFAULT"}
-
-      {socket, full_render, components} = render(function_tracking(assigns))
-
-      assert full_render == %{
-               0 => %{
-                 0 => "DEFAULT",
-                 1 => %{0 => "1", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
-                 2 => "DEFAULT",
-                 3 => %{0 => "2", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
-               },
-               :s => ["", ""]
-             }
-
-      {_socket, full_render, _components} =
-        render(function_tracking(assigns), socket.fingerprints, components)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "DEFAULT",
-                 1 => %{0 => "1", 1 => "123"},
-                 2 => "DEFAULT",
-                 3 => %{0 => "2", 1 => "123"}
-               }
-             }
-
-      assigns = Map.put(assigns, :__changed__, %{})
-
-      {_socket, full_render, _components} =
-        render(function_tracking(assigns), socket.fingerprints, components)
-
-      assert full_render == %{}
-
-      assigns = Map.put(assigns, :__changed__, %{id: true})
-
-      {_socket, full_render, _components} =
-        render(function_tracking(assigns), socket.fingerprints, components)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "DEFAULT",
-                 1 => %{0 => "1"},
-                 2 => "DEFAULT",
-                 3 => %{0 => "2"}
-               }
-             }
-
-      assigns = Map.put(assigns, :__changed__, %{value: true})
-
-      {_socket, full_render, _components} =
-        render(function_tracking(assigns), socket.fingerprints, components)
-
-      assert full_render == %{
-               0 => %{
-                 1 => %{0 => "1", 1 => "123"},
-                 3 => %{0 => "2", 1 => "123"}
                }
              }
     end

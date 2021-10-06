@@ -156,7 +156,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | slots: [[] | state.slots]}
   end
 
-  defp add_slot!(%{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} = state, slot, _meta)
+  defp add_slot!(
+         %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
+           state,
+         slot,
+         _meta
+       )
        when first in ?A..?Z or first == ?. do
     %{state | slots: [[slot | slots] | other_slots]}
   end
@@ -166,12 +171,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {slot_name, _} = slot
     file = state.file
 
-    message = "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component."
+    message =
+      "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component."
+
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
-    {slots, %{state | slots: other_slots}}
+    grouped =
+      slots
+      |> Enum.reverse()
+      |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
+      |> Map.to_list()
+
+    {grouped, %{state | slots: other_slots}}
   end
 
   defp push_tag(state, token) do
@@ -240,9 +253,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when first in ?A..?Z do
     file = state.file
     {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
-
-    {let, assigns} = handle_component_attrs(attrs, file)
-    raise_if_let!(let, file)
+    {assigns, state} = build_self_close_component_assigns(attrs, state)
 
     ast =
       quote do
@@ -274,18 +285,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
-    {let, assigns} = handle_component_attrs(attrs, state.file)
-    clauses = build_component_clauses(let, state)
-    {slots, state} = pop_slots(state)
-    assigns = merge_slots_to_assigns(assigns, slots)
+    {assigns, state} = build_component_assigns(attrs, line, state)
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.component(
-          &(unquote(mod).unquote(fun) / 1),
-          unquote(assigns),
-          do: unquote(clauses)
-        )
+        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
       end
 
     state
@@ -300,10 +304,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          state
        ) do
     fun = String.to_atom(name)
-    file = state.file
-
-    {let, assigns} = handle_component_attrs(attrs, file)
-    raise_if_let!(let, file)
+    {assigns, state} = build_self_close_component_assigns(attrs, state)
 
     ast =
       quote line: line do
@@ -320,6 +321,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Slot
 
+  defp handle_token({:tag_open, ":default", _attrs, meta}, state) do
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: "the slot name :default is reserved"
+  end
+
   defp handle_token({:tag_open, ":" <> _, _attrs, _tag_meta} = token, state) do
     state
     |> push_tag(token)
@@ -330,7 +339,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
     slot_key = String.to_atom(slot_name)
 
-    {let, assigns} = handle_component_attrs(attrs, state.file)
+    {let, roots, dynamics} = split_component_attrs(attrs, state.file)
+    assigns = merge_component_attrs(roots, dynamics)
     clauses = build_component_clauses(let, state)
 
     ast =
@@ -356,19 +366,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
-
     fun = String.to_atom(fun_name)
-    {let, assigns} = handle_component_attrs(attrs, state.file)
-    clauses = build_component_clauses(let, state)
-    {slots, state} = pop_slots(state)
-    assigns = merge_slots_to_assigns(assigns, slots)
+    {assigns, state} = build_component_assigns(attrs, line, state)
 
     ast =
       quote line: line do
         Phoenix.LiveView.Helpers.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns),
-          do: unquote(clauses)
+          unquote(assigns)
         )
       end
 
@@ -565,84 +570,97 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp safe_unless_special("data"), do: "data"
   defp safe_unless_special(name), do: {:safe, name}
 
-  ## handle_component_attrs
+  ## build_self_close_component_assigns/build_component_assigns
 
-  defp handle_component_attrs(attrs, file) do
-    {lets, entries} =
-      case build_component_attrs(attrs) do
-        {lets, [], []} -> {lets, [{:%{}, [], []}]}
-        {lets, r, []} -> {lets, r}
-        {lets, r, d} -> {lets, r ++ [{:%{}, [], d}]}
+  defp build_self_close_component_assigns(attrs, %{file: file} = state) do
+    {let, roots, dynamics} = split_component_attrs(attrs, file)
+    raise_if_let!(let, file)
+    {merge_component_attrs(roots, dynamics), state}
+  end
+
+  defp build_component_assigns(attrs, line, %{file: file} = state) do
+    {let, roots, dynamics} = split_component_attrs(attrs, file)
+    clauses = build_component_clauses(let, state)
+
+    default =
+      quote line: line do
+        Phoenix.LiveView.Helpers.slot(:default, %{}, do: unquote(clauses))
       end
 
-    let =
-      case lets do
-        [] ->
-          nil
-
-        [let] ->
-          let
-
-        [{_, meta}, {_, previous_meta} | _] ->
-          message = """
-          cannot define multiple `let` attributes. \
-          Another `let` has already been defined at line #{previous_meta.line}\
-          """
-
-          raise ParseError,
-            line: meta.line,
-            column: meta.column,
-            file: file,
-            description: message
-      end
-
-    assigns =
-      Enum.reduce(entries, fn expr, acc ->
-        quote do: Map.merge(unquote(acc), unquote(expr))
-      end)
-
-    {let, assigns}
+    {slots, state} = pop_slots(state)
+    {merge_component_attrs(roots, dynamics ++ [{:default, [default]} | slots]), state}
   end
 
-  defp build_component_attrs(attrs) do
-    build_component_attrs(attrs, {[], [], []})
+  defp split_component_attrs(attrs, file) do
+    attrs
+    |> Enum.reverse()
+    |> Enum.reduce({nil, [], []}, &split_component_attr(&1, &2, file))
   end
 
-  defp build_component_attrs([], {lets, r, d}) do
-    {lets, Enum.reverse(r), Enum.reverse(d)}
-  end
-
-  defp build_component_attrs(
-         [{:root, {:expr, value, %{line: line, column: col}}} | attrs],
-         {lets, r, d}
+  defp split_component_attr(
+         {:root, {:expr, value, %{line: line, column: col}}},
+         {let, r, d},
+         _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     quoted_value = quote do: Map.new(unquote(quoted_value))
-    build_component_attrs(attrs, {lets, [quoted_value | r], d})
+    {let, [quoted_value | r], d}
   end
 
-  defp build_component_attrs(
-         [{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs],
-         {lets, r, d}
+  defp split_component_attr(
+         {"let", {:expr, value, %{line: line, column: col} = meta}},
+         {nil, r, d},
+         _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {[{quoted_value, meta} | lets], r, d})
+    {{quoted_value, meta}, r, d}
   end
 
-  defp build_component_attrs(
-         [{name, {:expr, value, %{line: line, column: col}}} | attrs],
-         {lets, r, d}
+  defp split_component_attr(
+         {"let", {:expr, _value, previous_meta}},
+         {{_, meta}, _, _},
+         file
+       ) do
+    message = """
+    cannot define multiple `let` attributes. \
+    Another `let` has already been defined at line #{previous_meta.line}\
+    """
+
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: file,
+      description: message
+  end
+
+  defp split_component_attr(
+         {name, {:expr, value, %{line: line, column: col}}},
+         {let, r, d},
+         _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), quoted_value} | d]})
+    {let, r, [{String.to_atom(name), quoted_value} | d]}
   end
 
-  defp build_component_attrs([{name, {:string, value, _}} | attrs], {lets, r, d}) do
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), value} | d]})
+  defp split_component_attr({name, {:string, value, _}}, {let, r, d}, _file) do
+    {let, r, [{String.to_atom(name), value} | d]}
   end
 
-  defp build_component_attrs([{name, nil} | attrs], {lets, r, d}) do
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), true} | d]})
+  defp split_component_attr({name, nil}, {let, r, d}, _file) do
+    {let, r, [{String.to_atom(name), true} | d]}
+  end
+
+  defp merge_component_attrs(r, d) do
+    entries =
+      case {r, d} do
+        {[], []} -> [{:%{}, [], []}]
+        {r, []} -> r
+        {r, d} -> r ++ [{:%{}, [], d}]
+      end
+
+    Enum.reduce(entries, fn expr, acc ->
+      quote do: Map.merge(unquote(acc), unquote(expr))
+    end)
   end
 
   defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
@@ -662,7 +680,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def __unmatched_let__!(pattern, value) do
     message = """
-    cannot match arguments sent from `render_block/2` against the pattern in `let`.
+    cannot match arguments sent from `render_slot/2` against the pattern in `let`.
 
     Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
     """
@@ -702,22 +720,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
         quote do
           _ -> unquote(invoke_subengine(state, :handle_end, []))
         end
-    end
-  end
-
-  def merge_slots_to_assigns(assigns, slots) do
-    case assigns do
-      {:%{}, [], assigns_kw} ->
-        slots_kw =
-          slots
-          |> Enum.reverse()
-          |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
-          |> Map.to_list()
-
-        {:%{}, [], assigns_kw ++ slots_kw}
-
-      _ ->
-        assigns
     end
   end
 

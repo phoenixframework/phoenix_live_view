@@ -485,20 +485,11 @@ defmodule Phoenix.LiveView.Engine do
         args
       end
 
-    # If we have a component, now we provide change tracking to individual keys.
     args =
       case {call, args} do
-        {:component, [fun, [do: block]]} ->
-          [fun, to_component_tracking(fun, [], [inner_block: block], vars), [do: block]]
-
-        {:component, [fun, expr]} ->
-          [fun, to_component_tracking(fun, expr, [], vars)]
-
-        {:component, [fun, expr, [do: block]]} ->
-          [fun, to_component_tracking(fun, expr, [inner_block: block], vars), [do: block]]
-
-        {_, _} ->
-          args
+        # If we have a component, we provide change tracking to individual keys.
+        {:component, [fun, expr]} -> [fun, to_component_tracking(fun, expr, [], vars)]
+        {_, _} -> args
       end
 
     to_safe({left, meta, args}, true)
@@ -1131,7 +1122,7 @@ defmodule Phoenix.LiveView.Engine do
       %{^key => val} ->
         val
 
-      %{} when key == :inner_block ->
+      %{} when key == :default ->
         raise ArgumentError, """
         assign @#{key} not available in template.
 
@@ -1176,8 +1167,7 @@ defmodule Phoenix.LiveView.Engine do
   # TODO: Remove me when live_component/2/3 are removed
   defp classify_taint(:live_component, [_, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  defp classify_taint(:component, [_, [do: _]]), do: :render
-  defp classify_taint(:component, [_, _, [do: _]]), do: :render
+  defp classify_taint(:slot, [_, _, [do: _]]), do: :render
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always

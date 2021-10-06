@@ -174,15 +174,16 @@ defmodule Phoenix.LiveView.Helpers do
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
+        extra = assigns_to_attributes(assigns, [:new_window, :default])
 
         assigns =
           assigns
           |> Phoenix.LiveView.assign(:target, target)
-          |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
+          |> Phoenix.LiveView.assign(:extra, extra)
 
         ~H"""
         <a href={@href} target={@target} {@extra}>
-          <%= render_block(@inner_block) %>
+          <%= render_slot(@default) %>
         </a>
         """
       end
@@ -505,20 +506,47 @@ defmodule Phoenix.LiveView.Helpers do
       <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
 
   """
-  defmacro component(func, assigns \\ [], do_block \\ []) do
-    {inner_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), []}
-        {_, _} -> {nil, assigns}
+  def component(func, assigns \\ [])
+      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
+    assigns =
+      case assigns do
+        %{__changed__: _} -> assigns
+        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
       end
 
-    quote do
-      Phoenix.LiveView.Helpers.__component__(
-        unquote(func),
-        unquote(assigns),
-        unquote(inner_block)
-      )
+    # TODO: This is for backwards compatibility with @inner_block
+    assigns =
+      case assigns do
+        %{default: [%{inner_block: block}], __changed__: %{} = changed} ->
+          assigns
+          |> Map.put(:inner_block, block)
+          |> Map.put(:__changed__, Map.put(changed, :inner_block, true))
+
+        %{default: [%{inner_block: block}]} ->
+          Map.put(assigns, :inner_block, block)
+
+        %{} ->
+          assigns
+      end
+
+    case func.(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        rendered
+
+      %Phoenix.LiveView.Component{} = component ->
+        component
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~H to define its template.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
     end
   end
 
@@ -597,54 +625,6 @@ defmodule Phoenix.LiveView.Helpers do
   def __live_component__(%{kind: kind, module: module}, assigns, _inner)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
-  end
-
-  @doc false
-  def __component__(func, assigns, inner)
-      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
-    assigns =
-      case assigns do
-        %{__changed__: _} -> assigns
-        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
-      end
-
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-
-    case func.(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        rendered
-
-      %Phoenix.LiveView.Component{} = component ->
-        component
-
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
-
-        Ensure your render function uses ~H to define its template.
-
-        Got:
-
-            #{inspect(other)}
-
-        """
-    end
-  end
-
-  def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
-    raise ArgumentError, """
-    component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
-
-    Please call component with a 1-arity function, for example:
-
-        <%= component &example/1 %>
-
-        def example(assigns) do
-          ~H"\""
-          Hello
-          "\""
-        end
-    """
   end
 
   @doc """
@@ -950,7 +930,7 @@ defmodule Phoenix.LiveView.Helpers do
     # Extract options and then to the same call as form_for
     action = assigns[:action] || "#"
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-    form_options = assigns_to_attributes(assigns, [:action, :for])
+    form_options = assigns_to_attributes(assigns, [:action, :for, :default])
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
@@ -991,7 +971,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" value={@csrf_token}>
       <% end %>
-      <%= render_block(@inner_block, @form) %>
+      <%= render_slot(@default, @form) %>
     </form>
     """
   end
