@@ -703,8 +703,8 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
-  def __slot__(name, attrs, fun) do
-    Map.put(attrs, name, fun)
+  def __slot__(name, attrs, fun) when is_atom(name) and is_map(attrs) do
+    Map.put(attrs, :inner_block, fun)
   end
 
   @doc false

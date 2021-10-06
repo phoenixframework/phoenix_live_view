@@ -708,6 +708,86 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{0 => %{0 => "MY ID", 2 => "MY ID"}}
     end
 
+    def render_multiple_slots(assigns) do
+      ~H"""
+      <div>
+        HEADER: <%= render_slot(@header) %>
+        FOOTER: <%= render_slot(@footer) %>
+      </div>
+      """
+    end
+
+    def slot_tracking(assigns) do
+      ~H"""
+      <.render_multiple_slots>
+        <:header>
+          <%= @in_header %><%= @in_both %>
+        </:header>
+        <:footer>
+          <%= @in_footer %><%= @in_both %>
+        </:footer>
+      </.render_multiple_slots>
+      """
+    end
+
+    test "slot tracking with multiple slots" do
+      assigns = %{socket: %Socket{}, in_header: "H", in_footer: "F", in_both: "B"}
+
+      {socket, full_render, components} = render(slot_tracking(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B", :s => ["\n  \n    ", "", "\n  "]},
+                 1 => %{0 => "F", 1 => "B", :s => ["\n  \n  \n    ", "", "\n  "]},
+                 :s => ["<div>\n  HEADER: ", "\n  FOOTER: ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B"},
+                 1 => %{0 => "F", 1 => "B"}
+               }
+             }
+
+      assigns = Map.put(assigns, :__changed__, %{})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{}
+
+      assigns = Map.put(assigns, :__changed__, %{in_header: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{0 => %{0 => "H"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_footer: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{1 => %{0 => "F"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_both: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 1 => %{1 => "B"},
+                 0 => %{1 => "B"}
+               }
+             }
+    end
+
     defp function_tracking(assigns) do
       ~H"""
       <%= component &FunctionComponent.render_with_block/1, id: @id do %>

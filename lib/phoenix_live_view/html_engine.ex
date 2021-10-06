@@ -328,19 +328,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
+    slot_key = String.to_atom(slot_name)
 
     {let, assigns} = handle_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(:inner_block, unquote(assigns), do: unquote(clauses))
+        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns), do: unquote(clauses))
       end
 
-    slot = {String.to_atom(slot_name), ast}
-
     state
-    |> add_slot!(slot, tag_meta)
+    |> add_slot!({slot_key, ast}, tag_meta)
     |> pop_substate_from_stack()
   end
 
