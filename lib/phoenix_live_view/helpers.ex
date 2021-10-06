@@ -496,7 +496,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Renders a component defined by the given function.
 
-  This macro is rarely invoked directly by users. Instead, it is used by `~H`
+  This function is rarely invoked directly by users. Instead, it is used by `~H`
   to render `Phoenix.Component`s. For example, the following:
 
       <MyApp.Weather.city name="Kraków" />
@@ -632,29 +632,99 @@ defmodule Phoenix.LiveView.Helpers do
 
       <%= render_block(@inner_block, value: @value)
 
+  ## Moving to slots
+
+  `render_block` and `@inner_block` are deprecated. You can see how to move
+  to slots next.
+
+  ### Function components
+
+  If you have this code:
+
+      <%= render_block(@inner_block, value) %>
+
+  Simply change it to:
+
+      <%= render_slot(@default_slot, value) %>
+
+  If you are calling `render_block(@inner_block)`, with a single argument,
+  then change it to `render_block(@default_slot)`.
+
+  ### Live components
+
+  In order to migrate from `render_block/2` in live (stateful) components,
+  the first step is to change how you invoke `live_component`. Instead of:
+
+      <%= live_component MyModule, id: "hello" do %>
+        ...
+      <% end %>
+
+  You should do:
+
+      <.live_component module={MyModule} id="hello">
+        ...
+      </.live_component>
+
+  Now you can replace the following inside by the component:
+
+      <%= render_block(@inner_block, value) %>
+
+  by:
+
+      <%= render_slot(@default_slot, value) %>
+
   """
-  # TODO: we may want to default to nil or a map once
-  # implicit assigns are removed and slots are considered
+  @deprecated "Use render_slot/2 instead (see Phoenix.LiveView.Helpers.render_block/2 docs on how to migrate)"
   defmacro render_block(inner_block, argument \\ []) do
     quote do
       unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
     end
   end
 
-  @doc """
+  @doc ~S'''
   Renders a slot entry with the given optional `argument`.
 
-      <%= render_slot(@footer, item: @item)
+      <%= render_slot(@footer, @item) %>
 
-  If multiple slot entries are defined for the same slot, `render_slot/2` will automatically
-  render all entries, merging their contents. In case you want to use the entries' attributes,
-  you need to iterate over the list to access each one of them individually.
+  If multiple slot entries are defined for the same slot,
+  `render_slot/2` will automatically render all entries,
+  merging their contents. In case you want to use the entries'
+  attributes, you need to iterate over the list to access each
+  slot individually.
 
-      <%= for col <- @cols do %>
-      <%= col.label %>: <%= render_slot(col) %>
-      <% end %>
+  For example, imagine a table component:
 
-  """
+      <.table entries={@users}>
+        <:col let={user} label="Name">
+          <%= user.name %>
+        </:col>
+
+        <:col let={user} label="Address">
+          <%= user.address %>
+        </:col>
+      </.table>
+
+  Inside the component, you can render the table with
+  header columns and content like this:
+
+      ~H"""
+      <table>
+        <th>
+          <%= for col <- @col do %>
+            <td><%= col.label %></td>
+          <% end >
+        </th>
+        <%= for entry <- @entries do %>
+          <tr>
+            <%= for col <- @col do %>
+              <%= render_slot(col, entry) %>
+            <% end %>
+          </tr>
+        <% end %>
+      </table>
+      """
+
+  '''
   defmacro render_slot(slot, argument \\ nil) do
     quote do
       unquote(__MODULE__).__render_slot__(
@@ -668,22 +738,24 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Defines a slot for the component.
 
-  This macro is mostly used by HTML engines that provides a `slot` implementation.
-  If you're using HEEx templates, you should use its higher level `<:slot>` notation
-  instead.
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
   """
   defmacro slot(name, attrs, do: do_block) do
-    name_var = quote(do: name)
-    do_block = rewrite_do!(do_block, name_var, __CALLER__)
+    do_block = rewrite_do!(do_block, name, __CALLER__)
 
     quote do
       name = unquote(name)
-      Phoenix.LiveView.Helpers.__slot__(name, unquote(attrs), unquote(do_block))
+      Phoenix.LiveView.Helpers.__slot__(unquote(attrs), unquote(do_block))
     end
   end
 
   @doc false
-  def __slot__(name, attrs, fun) when is_atom(name) and is_map(attrs) do
+  def __slot__(attrs, fun) when is_map(attrs) do
     Map.put(attrs, :inner_block, fun)
   end
 
@@ -694,6 +766,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   def __render_slot__(changed, entries, argument) when is_list(entries) do
     assigns = %{}
+
     ~H"""
     <%= for entry <- entries do %><%= entry.inner_block.(changed, argument) %><% end %>
     """

@@ -172,7 +172,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     file = state.file
 
     message =
-      "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component."
+      "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
 
     raise ParseError, line: line, column: column, file: file, description: message
   end

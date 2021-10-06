@@ -54,7 +54,7 @@ Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
 are no longer supported. This addresses bugs and allows stateful components
 to be rendered more efficiently client-side.
 
-#### Previously deprecated functionality
+#### Removal of previously deprecated functionality
 
 Some functionality that was previously deprecated has been removed:
 
@@ -70,6 +70,7 @@ Some functionality that was previously deprecated has been removed:
 ### Deprecations
 
   - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
+  - `render_block/2` and `@inner_block` are deprecated in favor of `render_slot/2`
 
 ## 0.16.4 (2021-09-22)
 
