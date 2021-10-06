@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.Helpers do
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
-        extra = assigns_to_attributes(assigns, [:new_window, :default])
+        extra = assigns_to_attributes(assigns, [:new_window])
 
         assigns =
           assigns
@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.Helpers do
 
         ~H"""
         <a href={@href} target={@target} {@extra}>
-          <%= render_slot(@default) %>
+          <%= render_slot(@default_slot) %>
         </a>
         """
       end
@@ -193,7 +193,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    excluded_keys = [:__changed__, :default_slot, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
@@ -437,7 +437,7 @@ defmodule Phoenix.LiveView.Helpers do
   def live_component(component) when is_atom(component) do
     IO.warn(
       "<%= live_component Component %> is deprecated, " <>
-        "please use <.live_component module={Component} /> inside HEEx templates instead"
+        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
     )
 
     Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
@@ -517,12 +517,12 @@ defmodule Phoenix.LiveView.Helpers do
     # TODO: This is for backwards compatibility with @inner_block
     assigns =
       case assigns do
-        %{default: [%{inner_block: block}], __changed__: %{} = changed} ->
+        %{default_slot: [%{inner_block: block}], __changed__: %{} = changed} ->
           assigns
           |> Map.put(:inner_block, block)
           |> Map.put(:__changed__, Map.put(changed, :inner_block, true))
 
-        %{default: [%{inner_block: block}]} ->
+        %{default_slot: [%{inner_block: block}]} ->
           Map.put(assigns, :inner_block, block)
 
         %{} ->
@@ -930,7 +930,7 @@ defmodule Phoenix.LiveView.Helpers do
     # Extract options and then to the same call as form_for
     action = assigns[:action] || "#"
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-    form_options = assigns_to_attributes(assigns, [:action, :for, :default])
+    form_options = assigns_to_attributes(assigns, [:action, :for])
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
@@ -971,7 +971,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" value={@csrf_token}>
       <% end %>
-      <%= render_slot(@default, @form) %>
+      <%= render_slot(@default_slot, @form) %>
     </form>
     """
   end

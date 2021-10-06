@@ -1,11 +1,8 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers, only: [
-    sigil_H: 2,
-    render_slot: 1,
-    render_slot: 2
-  ]
+  import Phoenix.LiveView.Helpers,
+    only: [sigil_H: 2, render_slot: 1, render_slot: 2]
 
   alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
@@ -45,13 +42,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def remote_function_component_with_default_slot(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default) %>"
+    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default_slot) %>"
   end
 
   def remote_function_component_with_default_slot_args(assigns) do
     ~H"""
     REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@default, %{
+    <%= render_slot(@default_slot, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
@@ -63,13 +60,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   defp local_function_component_with_default_slot(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default) %>"
+    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default_slot) %>"
   end
 
   defp local_function_component_with_default_slot_args(assigns) do
     ~H"""
     LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@default, %{
+    <%= render_slot(@default_slot, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>

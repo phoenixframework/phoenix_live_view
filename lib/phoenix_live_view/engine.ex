@@ -1122,7 +1122,7 @@ defmodule Phoenix.LiveView.Engine do
       %{^key => val} ->
         val
 
-      %{} when key == :default ->
+      %{} when key == :default_slot ->
         raise ArgumentError, """
         assign @#{key} not available in template.
 

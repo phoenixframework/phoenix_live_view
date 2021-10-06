@@ -425,8 +425,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_default_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default) %>
-        HELLO <%= @id %> <%= render_slot(@default) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot) %>
       </div>
       """
     end
@@ -443,8 +443,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_default(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default, 1) %>
-        HELLO <%= @id %> <%= render_slot(@default, 2) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot, 1) %>
+        HELLO <%= @id %> <%= render_slot(@default_slot, 2) %>
       </div>
       """
     end
