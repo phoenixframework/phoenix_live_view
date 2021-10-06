@@ -227,10 +227,10 @@ describe("JS", () => {
       <div id="click" phx-click='[["push", {"event": "clicked"}]]'></div>
       `)
       let click = document.querySelector("#click")
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {
         expect(eventType).toBe("click")
         expect(event).toBe("clicked")
-        expect(data).toBeUndefined()
+        expect(meta).toBeUndefined()
         done()
       }
       JS.exec("click", click.getAttribute("phx-click"), view, click)
@@ -275,7 +275,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["push", {"event": "clicked", "page_loading": true}]]'></div>
       `)
       let click = document.querySelector("#click")
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, data, opts) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, meta, opts) => {
         expect(opts).toEqual({page_loading: true})
         done()
       }
@@ -292,6 +292,21 @@ describe("JS", () => {
       JS.exec("click", click.getAttribute("phx-click"), view, click)
       expect(Array.from(modal.classList)).toEqual(["modal", "phx-click-loading"])
       expect(Array.from(click.classList)).toEqual(["phx-click-loading"])
+    })
+
+    test("value", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="click" phx-value-three="3" phx-click='[["push", {"event": "clicked", "value": {"one": 1, "two": 2}}]]'></div>
+      `)
+      let click = document.querySelector("#click")
+      let modal = document.getElementById("modal")
+
+      view.pushWithReply = (refGenerator, event, payload, onReply) => {
+        expect(payload.value).toEqual({"one": 1, "two": 2, "three": "3"})
+        done()
+      }
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
   })
 

@@ -174,29 +174,6 @@ describe("View + DOM", function(){
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushKey", function(){
-    expect.assertions(3)
-
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let input = el.querySelector("input")
-
-    let view = simulateJoinedView(el, liveSocket)
-    let channelStub = {
-      push(_evt, payload, _timeout){
-        expect(payload.type).toBe("keydown")
-        expect(payload.event).toBeDefined()
-        expect(payload.value).toEqual({"key": "A", "value": "1"})
-        return {
-          receive(){ return this }
-        }
-      }
-    }
-    view.channel = channelStub
-
-    view.pushKey(input, el, "keydown", "move", {key: "A"})
-  })
-
   test("pushInput", function(){
     expect.assertions(3)
 

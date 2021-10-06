@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## push
   [x] page_loading: boolean,
-  [ ] loading: dom_selector,
+  [x] loading: dom_selector,
   [ ] value: map (value merges on top of phx-value)
   [x] target: ...,
   """

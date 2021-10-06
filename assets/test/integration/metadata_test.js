@@ -2,8 +2,8 @@ import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 
 let stubViewPushEvent = (view, callback) => {
-  view.pushEvent = (type, target, targetCtx, phxEvent, meta) => {
-    return callback(type, target, targetCtx, phxEvent, meta)
+  view.pushEvent = (type, el, targetCtx, phxEvent, meta, opts = {}) => {
+    return callback(type, el, targetCtx, phxEvent, meta, opts)
   }
 }
 
@@ -31,7 +31,7 @@ describe("metadata", () => {
     let view = liveSocket.getViewByEl(document.getElementById("root"))
     let btn = view.el.querySelector("button")
     let meta = {}
-    stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
+    stubViewPushEvent(view, (type, el, target, targetCtx, phxEvent, metadata) => {
       meta = metadata
     })
     btn.dispatchEvent(new Event("click", {bubbles: true}))
@@ -55,7 +55,7 @@ describe("metadata", () => {
     let view = liveSocket.getViewByEl(document.getElementById("root"))
     let btn = view.el.querySelector("button")
     let meta = {}
-    stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
+    stubViewPushEvent(view, (type, el, target, phxEvent, metadata, opts) => {
       meta = metadata
     })
     btn.dispatchEvent(new Event("click", {bubbles: true}))

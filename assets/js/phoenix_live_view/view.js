@@ -748,18 +748,24 @@ export default class View {
     return ref
   }
 
-  extractMeta(el, meta){
+  extractMeta(el, meta, value){
     let prefix = this.binding("value-")
     for(let i = 0; i < el.attributes.length; i++){
+      if(!meta){ meta = {} }
       let name = el.attributes[i].name
       if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
     if(el.value !== undefined){
+      if(!meta){ meta = {} }
       meta.value = el.value
 
       if(el.tagName === "INPUT" && CHECKABLE_INPUTS.indexOf(el.type) >= 0 && !el.checked){
         delete meta.value
       }
+    }
+    if(value){
+      if(!meta){ meta = {} }
+      for(let key in value){ meta[key] = value[key] }
     }
     return meta
   }
@@ -768,17 +774,8 @@ export default class View {
     this.pushWithReply(() => this.putRef([el], type, opts), "event", {
       type: type,
       event: phxEvent,
-      value: this.extractMeta(el, meta),
+      value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx)
-    })
-  }
-
-  pushKey(keyElement, targetCtx, kind, phxEvent, meta){
-    this.pushWithReply(() => this.putRef([keyElement], kind), "event", {
-      type: kind,
-      event: phxEvent,
-      value: this.extractMeta(keyElement, meta),
-      cid: this.targetComponentID(keyElement, targetCtx)
     })
   }
 
