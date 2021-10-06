@@ -25,6 +25,12 @@ its attributes can still be updated.
 The "append" and "prepend" feature is often used with "Temporary assigns"
 to work with large amounts of data. Let's learn more.
 
+To react to elements being removed from the DOM, the `phx-remove` binding
+may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
+
+*Note*: The `phx-remove` command is only executed for the removed parent element.
+It does not cascade to children.
+
 ## Temporary assigns
 
 By default, all LiveView assigns are stateful, which enables change
@@ -87,13 +93,13 @@ that is being sent to your LiveView like this:
     def handle_info({:update_message, message}, socket) do
       {:noreply, update(socket, :messages, fn messages -> [message | messages] end)}
     end
-    
+
 You can add it to the list like you do with new messages. LiveView is aware that this
-message was rendered on the client, even though the message itself is discarded on the 
+message was rendered on the client, even though the message itself is discarded on the
 server after it is rendered.
 
-LiveView uses DOM ids to check if a message is rendered before or not. If an id is 
-rendered before, the DOM element is updated rather than appending or prepending a new node. 
+LiveView uses DOM ids to check if a message is rendered before or not. If an id is
+rendered before, the DOM element is updated rather than appending or prepending a new node.
 Also, the order of elements is not changed. You can use it to show edited messages, show likes, or
 anything that would require an update to a rendered message.
 

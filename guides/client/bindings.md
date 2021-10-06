@@ -16,11 +16,11 @@ callback, for example:
 | Binding                | Attributes |
 |------------------------|------------|
 | [Params](#click-events) | `phx-value-*` |
-| [Click Events](#click-events) | `phx-click`, `phx-capture-click` |
+| [Click Events](#click-events) | `phx-click`, `phx-click-away` |
 | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus/Blur Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
-| [DOM Patching](dom-patching.md) | `phx-update` |
+| [DOM Patching](dom-patching.md) | `phx-update` | `phx-remove`
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1) | `phx-track-static` |
@@ -31,6 +31,10 @@ callback, for example:
 The `phx-click` binding is used to send click events to the server.
 When any client event, such as a `phx-click` click is pushed, the value
 sent to the server will be chosen with the following priority:
+
+  * The `:value` specified in `Phoenix.LiveView.JS.push/3`, such as:
+
+        <div phx-click={JS.push("inc", value: %{myvar1: @val1})}>
 
   * Any number of optional `phx-value-` prefixed attributes, such as:
 
@@ -60,6 +64,8 @@ sent to the server will be chosen with the following priority:
           }
         })
 
+The `phx-click-away` event is fired when a click event happens outside of the element.
+This is useful for hiding toggled containers like drop-downs.
 
 The `phx-capture-click` event is just like `phx-click`, but instead of the click event
 being dispatched to the closest `phx-click` element as it bubbles up through the DOM, the event
