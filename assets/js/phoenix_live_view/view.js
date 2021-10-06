@@ -691,6 +691,7 @@ export default class View {
   putRef(elements, event, opts = {}){
     let newRef = this.ref++
     let disableWith = this.binding(PHX_DISABLE_WITH)
+    if(opts.loading){ elements = elements.concat(DOM.all(document, opts.loading))}
 
     elements.forEach(el => {
       el.classList.add(`phx-${event}-loading`)

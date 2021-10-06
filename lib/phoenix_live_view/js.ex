@@ -19,11 +19,9 @@ defmodule Phoenix.LiveView.JS do
   ## TODO
   [ ] documnet all JS interfaces
   [ ] document phx-click-away
-  [ ] documnet phx-handle-nav (going away)
   [ ] document custom execJS dispatch on push_event
   [ ] figure out what to deprecate (phx-page-loading binding?)
-  [ ] phx-remove
-  [ ] phx-updated
+  [ ] document phx-remove
 
   ## push
   [x] page_loading: boolean,
@@ -43,6 +41,16 @@ defmodule Phoenix.LiveView.JS do
     push(cmd, event, [])
   end
 
+  @doc """
+  TODO
+
+  ## Options
+    * `target` - The selector or component ID to push to
+    * `loading` - The selector to apply the phx loading classes to
+    * `page_loading` - Boolean to trigger the phx:page-loading-start and
+      phx:page-loading-stop events for this push. Default `false`
+    * `value` - The map of values to send to the server
+  """
   def push(%JS{} = cmd, event, opts) when is_binary(event) and is_list(opts) do
     opts = put_target(opts)
     put_op(cmd, "push", Enum.into(opts, %{event: event}))
