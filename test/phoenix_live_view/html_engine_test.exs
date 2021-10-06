@@ -497,6 +497,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       """
     end
 
+    def function_component_with_self_close_slots(assigns) do
+      ~H"""
+      <%= for entry <- @sample do %>
+        <%= entry.id %>
+      <% end %>
+      """
+    end
+
     test "single slot" do
       assigns = %{}
 
@@ -772,6 +780,43 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                </:sample>
              </.function_component_with_single_slot>
              """) == expected
+    end
+
+    test "self close slots" do
+      assigns = %{}
+
+      expected = """
+
+        1
+
+        2
+      """
+
+      assert compile("""
+             <.function_component_with_self_close_slots>
+               <:sample id="1"/>
+               <:sample id="2"/>
+             </.function_component_with_self_close_slots>
+             """) == expected
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
+               <:sample id="1"/>
+               <:sample id="2"/>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
+             """) == expected
+    end
+
+    test "raise if self close slot uses let" do
+      message = ~r".exs:2:(24:)? cannot use `let` on a slot without inner content"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.function_component_with_self_close_slots>
+          <:sample id="1" let={var}/>
+        </.function_component_with_self_close_slots>
+        """)
+      end)
     end
 
     test "raise if the slot entry is not a direct child of a component" do

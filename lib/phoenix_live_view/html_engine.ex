@@ -329,6 +329,34 @@ defmodule Phoenix.LiveView.HTMLEngine do
       description: "the slot name :default_slot is reserved"
   end
 
+  # Slot (self close)
+
+  defp handle_token({:tag_open, ":" <> slot_name, attrs, %{self_close: true} = tag_meta}, state) do
+    %{line: line} = tag_meta
+    slot_key = String.to_atom(slot_name)
+
+    {let, roots, dynamics} = split_component_attrs(attrs, state.file)
+
+    with {_, let_meta} <- let do
+      raise ParseError,
+        line: let_meta.line,
+        column: let_meta.column,
+        file: state.file,
+        description: "cannot use `let` on a slot without inner content"
+    end
+
+    assigns = merge_component_attrs(roots, dynamics)
+
+    ast =
+      quote line: line do
+        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns), do: [])
+      end
+
+    add_slot!(state, {slot_key, ast}, tag_meta)
+  end
+
+  # Slot (with inner content)
+
   defp handle_token({:tag_open, ":" <> _, _attrs, _tag_meta} = token, state) do
     state
     |> push_tag(token)
