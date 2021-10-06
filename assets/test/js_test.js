@@ -29,13 +29,13 @@ describe("JS", () => {
       expect(modal.style.display).toEqual("none")
 
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("inline-block")
+      expect(modal.style.display).toEqual("block")
     })
 
     test("with display", () => {
       let view = setupView(`
       <div id="modal">modal</div>
-      <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "block"}]]'></div>
+      <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "inline-block"}]]'></div>
       `)
       let modal = document.querySelector("#modal")
       let click = document.querySelector("#click")
@@ -45,7 +45,7 @@ describe("JS", () => {
       expect(modal.style.display).toEqual("none")
 
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("block")
+      expect(modal.style.display).toEqual("inline-block")
     })
 
     test("with in and out classes", done => {
@@ -61,7 +61,6 @@ describe("JS", () => {
       expect(modal.classList.contains("fade-in")).toBe(false)
       JS.exec("click", click.getAttribute("phx-click"), view, click)
       window.requestAnimationFrame(() => {
-        expect(modal.style.display).toEqual("")
         expect(modal.classList.contains("fade-out")).toBe(true)
         expect(modal.classList.contains("fade-in")).toBe(false)
 
@@ -281,6 +280,18 @@ describe("JS", () => {
         done()
       }
       JS.exec("click", click.getAttribute("phx-click"), view, click)
+    })
+
+    test("loading", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="click" phx-click='[["push", {"event": "clicked", "loading": "#modal"}]]'></div>
+      `)
+      let click = document.querySelector("#click")
+      let modal = document.getElementById("modal")
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      expect(Array.from(modal.classList)).toEqual(["modal", "phx-click-loading"])
+      expect(Array.from(click.classList)).toEqual(["phx-click-loading"])
     })
   })
 
