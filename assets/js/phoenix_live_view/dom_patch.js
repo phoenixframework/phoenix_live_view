@@ -99,6 +99,12 @@ export default class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
+          // hack to fix Safari handling of img srcset and video tags
+          if(el instanceof HTMLImageElement && el.srcset){
+            el.srcset = el.srcset
+          } else if(el instanceof HTMLVideoElement && el.autoplay){
+            el.play()
+          }
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }

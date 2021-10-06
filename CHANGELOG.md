@@ -66,6 +66,7 @@ Some functionality that was previously deprecated has been removed:
   - Add `<.live_component module={FormComponent} id="form" />`
 
 ### Bug fixes
+  - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
 
 ### Deprecations
 
