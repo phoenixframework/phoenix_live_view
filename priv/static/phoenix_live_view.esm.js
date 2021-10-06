@@ -1942,12 +1942,12 @@ var JS = {
     dom_default.all(document, to, (el2) => dom_default.dispatchEvent(el2, event, detail));
   },
   exec_push(eventType, phxEvent, view, sourceEl, args) {
-    let { event, data, target, page_loading } = args;
-    let pushOpts = { page_loading: !!page_loading };
+    let { event, data, target, page_loading, loading, value } = args;
+    let pushOpts = { page_loading: !!page_loading, loading, value };
     let phxTarget = target || sourceEl.getAttribute(view.binding("target")) || sourceEl;
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if (eventType === "change") {
-        let { newCid, _target, callback, page_loading: page_loading2 } = args;
+        let { newCid, _target, callback } = args;
         if (_target) {
           pushOpts._target = _target;
         }
@@ -2692,6 +2692,9 @@ var View = class {
   putRef(elements, event, opts = {}) {
     let newRef = this.ref++;
     let disableWith = this.binding(PHX_DISABLE_WITH);
+    if (opts.loading) {
+      elements = elements.concat(dom_default.all(document, opts.loading));
+    }
     elements.forEach((el2) => {
       el2.classList.add(`phx-${event}-loading`);
       el2.setAttribute(PHX_REF, newRef);
@@ -2741,18 +2744,32 @@ var View = class {
     }, (resp, reply) => onReply(reply, ref));
     return ref;
   }
-  extractMeta(el2, meta) {
+  extractMeta(el2, meta, value) {
     let prefix = this.binding("value-");
     for (let i = 0; i < el2.attributes.length; i++) {
+      if (!meta) {
+        meta = {};
+      }
       let name = el2.attributes[i].name;
       if (name.startsWith(prefix)) {
         meta[name.replace(prefix, "")] = el2.getAttribute(name);
       }
     }
     if (el2.value !== void 0) {
+      if (!meta) {
+        meta = {};
+      }
       meta.value = el2.value;
       if (el2.tagName === "INPUT" && CHECKABLE_INPUTS.indexOf(el2.type) >= 0 && !el2.checked) {
         delete meta.value;
+      }
+    }
+    if (value) {
+      if (!meta) {
+        meta = {};
+      }
+      for (let key in value) {
+        meta[key] = value[key];
       }
     }
     return meta;
@@ -2761,16 +2778,8 @@ var View = class {
     this.pushWithReply(() => this.putRef([el2], type, opts), "event", {
       type,
       event: phxEvent,
-      value: this.extractMeta(el2, meta),
+      value: this.extractMeta(el2, meta, opts.value),
       cid: this.targetComponentID(el2, targetCtx)
-    });
-  }
-  pushKey(keyElement, targetCtx, kind, phxEvent, meta) {
-    this.pushWithReply(() => this.putRef([keyElement], kind), "event", {
-      type: kind,
-      event: phxEvent,
-      value: this.extractMeta(keyElement, meta),
-      cid: this.targetComponentID(keyElement, targetCtx)
     });
   }
   pushFileProgress(fileEl, entryRef, progress, onReply = function() {
