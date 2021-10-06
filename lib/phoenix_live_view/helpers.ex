@@ -684,7 +684,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc ~S'''
   Renders a slot entry with the given optional `argument`.
 
-      <%= render_slot(@footer, @item) %>
+      <%= render_slot(@default_slot, @form) %>
 
   If multiple slot entries are defined for the same slot,
   `render_slot/2` will automatically render all entries,
@@ -694,7 +694,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   For example, imagine a table component:
 
-      <.table entries={@users}>
+      <.table rows={@users}>
         <:col let={user} label="Name">
           <%= user.name %>
         </:col>
@@ -704,25 +704,32 @@ defmodule Phoenix.LiveView.Helpers do
         </:col>
       </.table>
 
-  Inside the component, you can render the table with
-  header columns and content like this:
+  At the top level, we pass the rows as an assign and we define
+  a `:col` slot for each column we want in the table. Each
+  column also has a `label`, which we are going to use in the
+  table header.
 
-      ~H"""
-      <table>
-        <th>
-          <%= for col <- @col do %>
-            <td><%= col.label %></td>
-          <% end >
-        </th>
-        <%= for entry <- @entries do %>
-          <tr>
+  Inside the component, you can render the table with headers,
+  rows, and columns:
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <th>
             <%= for col <- @col do %>
-              <%= render_slot(col, entry) %>
-            <% end %>
-          </tr>
-        <% end %>
-      </table>
-      """
+              <td><%= col.attrs.label %></td>
+            <% end >
+          </th>
+          <%= for row <- @rows do %>
+            <tr>
+              <%= for col <- @col do %>
+                <%= render_slot(col, row) %>
+              <% end %>
+            </tr>
+          <% end %>
+        </table>
+        """
+      end
 
   '''
   defmacro render_slot(slot, argument \\ nil) do
