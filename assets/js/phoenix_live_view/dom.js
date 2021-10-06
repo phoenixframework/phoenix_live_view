@@ -383,8 +383,14 @@ let DOM = {
       let [_name, _op, stashedResult] = op
       return stashedResult
     } else {
-      return defaultVal
+      return typeof(defaultVal) === "function" ? defaultVal() : defaultVal
     }
+  },
+
+  deleteSticky(el, name){
+    this.updatePrivate(el, "sticky", [], ops => {
+      return ops.filter(([existingName, _]) => existingName !== name)
+    })
   },
 
   putSticky(el, name, op){

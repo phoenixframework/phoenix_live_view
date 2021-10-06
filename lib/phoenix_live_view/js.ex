@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
-  @default_transition_time 250
+  @default_transition_time 200
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
     def to_iodata(%Phoenix.LiveView.JS{} = cmd) do
@@ -107,11 +107,25 @@ defmodule Phoenix.LiveView.JS do
   end
 
   def add_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
-    put_op(cmd, "add_class", %{to: Keyword.fetch!(opts, :to), names: class_names(names)})
+    time = opts[:time] || @default_transition_time
+
+    put_op(cmd, "add_class", %{
+      to: Keyword.fetch!(opts, :to),
+      names: class_names(names),
+      transition: class_names(opts[:transition]),
+      time: time
+    })
   end
 
   def remove_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
-    put_op(cmd, "remove_class", %{to: Keyword.fetch!(opts, :to), names: class_names(names)})
+    time = opts[:time] || @default_transition_time
+
+    put_op(cmd, "remove_class", %{
+      to: Keyword.fetch!(opts, :to),
+      names: class_names(names),
+      transition: class_names(opts[:transition]),
+      time: time
+    })
   end
 
   def transition(names) when is_binary(names) do
@@ -136,6 +150,7 @@ defmodule Phoenix.LiveView.JS do
   end
 
   defp class_names(nil), do: []
+
   defp class_names(names) do
     String.split(names, " ")
   end

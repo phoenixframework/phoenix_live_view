@@ -39,19 +39,19 @@ let JS = {
     })
   },
 
-  exec_add_class(eventType, phxEvent, view, sourceEl, {to, names}){
+  exec_add_class(eventType, phxEvent, view, sourceEl, {to, names, transition, time}){
     if(to){
-      DOM.all(document, to, el => this.addOrRemoveClasses(el, names, []))
+      DOM.all(document, to, el => this.addOrRemoveClasses(el, names, [], transition, time, view))
     } else {
-      this.addOrRemoveClasses(sourceEl, names, [])
+      this.addOrRemoveClasses(sourceEl, names, [], transition, view)
     }
   },
 
-  exec_remove_class(eventType, phxEvent, view, sourceEl, {to, names}){
+  exec_remove_class(eventType, phxEvent, view, sourceEl, {to, names, transition, time}){
     if(to){
-      DOM.all(document, to, el => this.addOrRemoveClasses(el, [], names))
+      DOM.all(document, to, el => this.addOrRemoveClasses(el, [], names, transition, time, view))
     } else {
-      this.addOrRemoveClasses(sourceEl, [], names)
+      this.addOrRemoveClasses(sourceEl, [], names, transition, time, view)
     }
   },
 
@@ -91,7 +91,7 @@ let JS = {
 
   show(eventType, view, el, display, transition, time){
     let isVisible = this.isVisible(el)
-    if(transition && !isVisible){
+    if(transition.length > 0 && !isVisible){
       this.toggle(eventType, view, el, display, transition, [], time)
     } else if(!isVisible){
       this.toggle(eventType, view, el, display, [], [], null)
@@ -109,27 +109,31 @@ let JS = {
 
   toggle(eventType, view, el, display, in_classes, out_classes, time){
     if(in_classes.length > 0 || out_classes.length > 0){
-      if(this.isToggledOut(el, out_classes)){
-        if(eventType === "remove"){ return }
-        this.addOrRemoveClasses(el, in_classes, out_classes)
-        view.transition(time, () => {
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.opacity = "1")
-          this.addOrRemoveClasses(el, [], in_classes)
-        })
-      } else {
+      if(this.isVisible(el)){
         this.addOrRemoveClasses(el, out_classes, in_classes)
         view.transition(time, () => {
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.opacity = "0")
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
           this.addOrRemoveClasses(el, [], out_classes)
+        })
+      } else {
+        if(eventType === "remove"){ return }
+        this.addOrRemoveClasses(el, in_classes, out_classes)
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "block")
+        view.transition(time, () => {
+          this.addOrRemoveClasses(el, [], in_classes)
         })
       }
     } else {
-      let newDisplay = el.style.display === "none" ? (display || "") : "none"
+      let newDisplay = this.isVisible(el) ? "none" : (display || "block")
       DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
     }
   },
 
-  addOrRemoveClasses(el, adds, removes){
+  addOrRemoveClasses(el, adds, removes, transition, time, view){
+    if(transition && transition.length > 0){
+      this.addOrRemoveClasses(el, transition, [])
+      return view.transition(time, () => this.addOrRemoveClasses(el, adds, removes.concat(transition)))
+    }
     window.requestAnimationFrame(() => {
       let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
       let keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
@@ -147,10 +151,13 @@ let JS = {
 
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
 
-  isVisible(el){ return window.getComputedStyle(el).opacity !== "0" },
+  isVisible(el){
+    let style = window.getComputedStyle(el)
+    return !(style.opacity === 0 || style.display === "none")
+  },
 
   isToggledOut(el, out_classes){
-    return el.style.display === "none" || !this.isVisible(el) || this.hasAllClasses(el, out_classes)
+    return !this.isVisible(el) || this.hasAllClasses(el, out_classes)
   }
 }
 
