@@ -3139,7 +3139,7 @@ var LiveSocket = class {
   disconnect(callback) {
     this.socket.disconnect(callback);
   }
-  execJS(el2, eventType, encodedJS) {
+  execJS(el2, encodedJS, eventType = null) {
     this.owner(el2, (view) => js_default.exec(eventType, encodedJS, view, el2));
   }
   triggerDOM(kind, args) {
@@ -3291,7 +3291,7 @@ var LiveSocket = class {
     elements = elements || dom_default.all(document, `[${removeAttr}]`);
     elements.forEach((el2) => {
       if (document.body.contains(el2)) {
-        this.execJS(el2, "remove", el2.getAttribute(removeAttr));
+        this.execJS(el2, el2.getAttribute(removeAttr), "remove");
       }
     });
   }
