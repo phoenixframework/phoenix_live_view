@@ -31,9 +31,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   def finalize(tokens) do
     tokens
-    |> strip_text_space()
+    |> strip_text_token_fully()
     |> Enum.reverse()
-    |> strip_text_space()
+    |> strip_text_token_fully()
   end
 
   def tokenize(text, file, indentation, meta, tokens) do
@@ -156,13 +156,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_open(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc =
-          # Strip space before slots
-          case name do
-            ":" <> _ -> strip_text_space(acc)
-            _ -> acc
-          end
-
+        acc = if strip_tag?(name), do: strip_text_token_partially(acc), else: acc
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
@@ -175,22 +169,18 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_tag_close(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
-      {:ok, name, new_column, rest} ->
+      {:ok, name, new_column, ">" <> rest} ->
         acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
-        handle_tag_close_end(rest, line, new_column, acc, state)
+        rest = if strip_tag?(name), do: String.trim_leading(rest), else: rest
+        handle_text(rest, line, new_column + 1, [], acc, state)
+
+      {:ok, _, new_column, _} ->
+        message = "expected closing `>`"
+        raise ParseError, file: state.file, line: line, column: new_column, description: message
 
       {:error, message} ->
         raise ParseError, file: state.file, line: line, column: column, description: message
     end
-  end
-
-  defp handle_tag_close_end(">" <> rest, line, column, acc, state) do
-    handle_text(rest, line, column + 1, [], acc, state)
-  end
-
-  defp handle_tag_close_end(_text, line, column, _acc, state) do
-    message = "expected closing `>`"
-    raise ParseError, file: state.file, line: line, column: column, description: message
   end
 
   ## handle_tag_name
@@ -532,10 +522,25 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     {pos, %{state | braces: braces}}
   end
 
-  defp strip_text_space(tokens) do
+  # Strip space before slots
+  defp strip_tag?(":" <> _), do: true
+  defp strip_tag?(_), do: false
+
+  defp strip_text_token_fully(tokens) do
     with [{:text, text, _} | rest] <- tokens,
          "" <- String.trim_leading(text) do
-      strip_text_space(rest)
+      strip_text_token_fully(rest)
+    else
+      _ -> tokens
+    end
+  end
+
+  defp strip_text_token_partially(tokens) do
+    with [{:text, text, meta} | rest] <- tokens do
+      case String.trim_leading(text) do
+        "" -> strip_text_token_partially(rest)
+        text -> [{:text, text, meta} | rest]
+      end
     else
       _ -> tokens
     end

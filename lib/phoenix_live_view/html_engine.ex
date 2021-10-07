@@ -357,6 +357,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
     |> push_tag(token)
     |> push_substate_to_stack()
+    |> update_subengine(:handle_begin, [])
   end
 
   defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do

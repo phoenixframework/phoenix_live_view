@@ -452,7 +452,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  describe "slots" do
+  describe "named slots" do
     def function_component_with_single_slot(assigns) do
       ~H"""
       BEFORE SLOT
@@ -466,6 +466,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE HEADER
       <%= render_slot(@header) %>
       TEXT
+      <%= render_slot(@footer) %>
+      AFTER FOOTER
+      """
+    end
+
+    def function_component_with_slots_and_default(assigns) do
+      ~H"""
+      BEFORE HEADER
+      <%= render_slot(@header) %>
+      TEXT:<%= render_slot(@default_slot) %>:TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
       """
@@ -663,6 +673,62 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                  The footer content
                </:footer>
              </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
+             AFTER COMPONENT
+             """) == expected
+    end
+
+    test "multiple slots with default" do
+      assigns = %{}
+
+      expected = """
+      BEFORE COMPONENT
+      BEFORE HEADER
+
+          The header content
+        \
+
+      TEXT:top
+        mid
+        bot
+      :TEXT
+
+          The footer content
+        \
+
+      AFTER FOOTER
+
+      AFTER COMPONENT
+      """
+
+      assert compile("""
+             BEFORE COMPONENT
+             <.function_component_with_slots_and_default>
+               top
+               <:header>
+                 The header content
+               </:header>
+               mid
+               <:footer>
+                 The footer content
+               </:footer>
+               bot
+             </.function_component_with_slots_and_default>
+             AFTER COMPONENT
+             """) == expected
+
+      assert compile("""
+             BEFORE COMPONENT
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
+               top
+               <:header>
+                 The header content
+               </:header>
+               mid
+               <:footer>
+                 The footer content
+               </:footer>
+               bot
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
              AFTER COMPONENT
              """) == expected
     end
