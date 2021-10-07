@@ -310,8 +310,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
-               {:ok, event} <- maybe_event(type, node, element),
+               {:ok, event_or_js} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element) do
+            {event, js_values} = maybe_js_event(event_or_js)
+            extra = Map.merge(extra, js_values)
+
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
@@ -963,6 +966,26 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
        "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end
+
+  defp maybe_js_event("[" <> _ = encoded_js) do
+    js = encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()
+    op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
+
+    case op do
+      [["push", %{"event" => event} = args] | rest] ->
+        if rest != [] do
+          raise ArgumentError,
+                "the elixir Phoenix.LiveViewTest client currently only supports a single push"
+        end
+
+        {event, args["value"] || %{}}
+
+      nil ->
+        raise ArgumentError, "no event found within JS command: #{inspect(js)}"
+    end
+  end
+
+  defp maybe_js_event(event), do: {event, _values = %{}}
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do

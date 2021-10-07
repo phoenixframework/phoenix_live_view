@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveViewTest.ElementsLive do
   use Phoenix.LiveView
 
+  alias Phoenix.LiveView.JS
+
   def render(assigns) do
     ~H"""
     <%# lookups %>
@@ -29,6 +31,8 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-keydown-phx-value" phx-keydown="span-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
     <span id="span-window-keydown-phx-value" phx-window-keydown="span-window-keydown" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
+    <button id="button-js-click" phx-click={JS.push("button-click")}>This is a JS button</button>
+    <button id="button-js-click-value" phx-click={JS.push("button-click", value: %{one: 1})}>This is a JS button with a value</button>
     <button id="button-disabled-click" phx-click="button-click" disabled>This is a button</button>
     <span id="span-click-no-value" phx-click="span-click">This is a span</span>
     <span id="span-click-value" phx-click="span-click" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>

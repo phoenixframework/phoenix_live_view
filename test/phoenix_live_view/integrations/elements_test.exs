@@ -738,4 +738,14 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert element |> open_browser(open_fun) == element
     end
   end
+
+  describe "JS commands" do
+    test "push", %{live: view} do
+      assert view |> element("#button-js-click") |> render_click()
+      assert last_event(view) == "<div id=\"last-event\">button-click: %{}</div>"
+
+      assert view |> element("#button-js-click-value") |> render_click()
+      assert last_event(view) == "<div id=\"last-event\">button-click: %{\"one\" => 1}</div>"
+    end
+  end
 end
