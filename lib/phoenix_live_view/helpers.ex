@@ -517,6 +517,30 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc false
+  def __live_component__(%{kind: :component, module: component}, assigns, inner)
+      when is_list(assigns) or is_map(assigns) do
+    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
+    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
+    id = assigns[:id]
+
+    # TODO: Remove logic from Diff once stateless components are removed.
+    # TODO: Remove live_component arity checks from Engine
+    if is_nil(id) and
+         (function_exported?(component, :handle_event, 3) or
+            function_exported?(component, :preload, 1)) do
+      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
+              "requires an :id assign to be given"
+    end
+
+    %Component{id: id, assigns: assigns, component: component}
+  end
+
+  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
+      when is_list(assigns) or is_map(assigns) do
+    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
+  end
+
   @doc """
   Renders a component defined by the given function.
 
@@ -557,83 +581,6 @@ defmodule Phoenix.LiveView.Helpers do
 
         """
     end
-  end
-
-  defp rewrite_do!(do_block, key, caller) do
-    if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, key)
-    else
-      raise ArgumentError,
-            "cannot use component/live_component because the assigns var is unbound/unset"
-    end
-  end
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
-    inner_fun = {:fn, meta, do_block}
-
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, key) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(do_block)
-      end
-    end
-  end
-
-  @doc false
-  def __assigns__(assigns, key, parent_changed) do
-    # If the component is in its initial render (parent_changed == nil)
-    # or the slot/block key in the parent_changed is true, then we render
-    # the function with the assigns as is.
-    #
-    # Otherwise, we will set changed to an empty list, which is the same
-    # as marking everything as not changed. This is correct because
-    # parent_changed will always be marked as changed whenever any of the
-    # assigns it references inside is changed. It will also be marked as
-    # changed if it has any variable (such as the ones coming from let).
-    if is_nil(parent_changed) or parent_changed[key] == true do
-      assigns
-    else
-      Map.put(assigns, :__changed__, %{})
-    end
-  end
-
-  @doc false
-  def __live_component__(%{kind: :component, module: component}, assigns, inner)
-      when is_list(assigns) or is_map(assigns) do
-    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-    id = assigns[:id]
-
-    # TODO: Remove logic from Diff once stateless components are removed.
-    # TODO: Remove live_component arity checks from Engine
-    if is_nil(id) and
-         (function_exported?(component, :handle_event, 3) or
-            function_exported?(component, :preload, 1)) do
-      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
-              "requires an :id assign to be given"
-    end
-
-    %Component{id: id, assigns: assigns, component: component}
-  end
-
-  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
-      when is_list(assigns) or is_map(assigns) do
-    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
   @doc """
@@ -719,20 +666,6 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  @doc """
-  Defines a slot's inner block.
-
-  This macro is mostly used by HTML engines that provides
-  a `slot` implementation and rarely called directly.
-
-  If you're using HEEx templates, you should use its higher
-  level `<:slot>` notation instead. See `Phoenix.Component`
-  for more information.
-  """
-  defmacro slot(name, do: do_block) do
-    rewrite_do!(do_block, name, __CALLER__)
-  end
-
   @doc false
   def __render_slot__(_, [], _), do: ""
 
@@ -758,6 +691,73 @@ defmodule Phoenix.LiveView.Helpers do
     end
 
     entry.inner_block.(changed, argument)
+  end
+
+  @doc """
+  Defines a slot's inner block.
+
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
+  """
+  defmacro slot(name, do: do_block) do
+    rewrite_do!(do_block, name, __CALLER__)
+  end
+
+  defp rewrite_do!(do_block, key, caller) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      rewrite_do(do_block, key)
+    else
+      raise ArgumentError,
+            "cannot use component/live_component because the assigns var is unbound/unset"
+    end
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
+    inner_fun = {:fn, meta, do_block}
+
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(inner_fun).(arg)
+      end
+    end
+  end
+
+  defp rewrite_do(do_block, key) do
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(do_block)
+      end
+    end
+  end
+
+  @doc false
+  def __assigns__(assigns, key, parent_changed) do
+    # If the component is in its initial render (parent_changed == nil)
+    # or the slot/block key in the parent_changed is true, then we render
+    # the function with the assigns as is.
+    #
+    # Otherwise, we will set changed to an empty list, which is the same
+    # as marking everything as not changed. This is correct because
+    # parent_changed will always be marked as changed whenever any of the
+    # assigns it references inside is changed. It will also be marked as
+    # changed if it has any variable (such as the ones coming from let).
+    if is_nil(parent_changed) or parent_changed[key] == true do
+      assigns
+    else
+      Map.put(assigns, :__changed__, %{})
+    end
   end
 
   @doc """
