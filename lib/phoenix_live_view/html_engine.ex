@@ -351,7 +351,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns), do: [])
+        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns))
       end
 
     add_slot!(state, {slot_key, ast}, tag_meta)

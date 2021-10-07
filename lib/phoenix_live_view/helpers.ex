@@ -761,6 +761,13 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  defmacro slot(name, attrs) do
+    quote do
+      name = unquote(name)
+      Phoenix.LiveView.Helpers.__slot__(unquote(attrs), nil)
+    end
+  end
+
   @doc false
   def __slot__(attrs, fun) when is_map(attrs) do
     Map.put(attrs, :inner_block, fun)
@@ -769,7 +776,13 @@ defmodule Phoenix.LiveView.Helpers do
   @doc false
   def __render_slot__(_, [], _), do: ""
 
-  def __render_slot__(changed, [entry], argument), do: entry.inner_block.(changed, argument)
+  def __render_slot__(changed, [entry], argument) do
+    if !entry.inner_block do
+      raise RuntimeError, "cannot call `render_slot/2` on a slot entry without inner content"
+    end
+
+    entry.inner_block.(changed, argument)
+  end
 
   def __render_slot__(changed, entries, argument) when is_list(entries) do
     assigns = %{}

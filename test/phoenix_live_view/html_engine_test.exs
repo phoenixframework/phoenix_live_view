@@ -576,6 +576,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == expected
     end
 
+    test "raise when calling render_slot/2 on a slot without inner content" do
+      message = ~r"cannot call `render_slot/2` on a slot entry without inner content"
+
+      assigns = %{}
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <.function_component_with_single_slot>
+          <:sample/>
+        </.function_component_with_single_slot>
+        """)
+      end)
+    end
+
     test "multiple slot entries randered by a single rende_slot/2 call" do
       assigns = %{}
 
