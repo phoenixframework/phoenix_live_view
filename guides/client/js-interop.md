@@ -269,6 +269,51 @@ And then on the client:
     }
 
 *Note*: events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event.
+to all active hooks on the client who are handling that event. Events may also be handled
+outside a hook with a window event listener, by listening to the event name prefixed by
+the `phx:` namespace. For exmaple:
+
+```javascript
+window.addEventListener("phx:my-pushed-event", e => {
+  console.log("got my-pushed-event from server with data", e.detail)
+})
+```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+## Executing JS Commands
+
+The `Phoenix.LiveView.JS` commands execute when `phx-` bindings are triggered, such as `phx-click`, or `phx-change` bindings. Custom scripts may also execute a command by using the `execJS` function of the `LiveSocket` instance. For example, imagine the following template where you want to highlight an existing element from the server to draw the user's attention:
+
+```heex
+<div id={"item-#{item.id}"} class="item" data-handle-highlight={JS.transition("highlight")}>
+  <%= item.title %>
+</div>
+```
+
+Next, the server can issue a highlight using the standard `push_event`:
+
+```elixir
+def handle_info({:item_updated, item}, socket) do
+  {:ok, push_event(socket, "highlight", %{id: item.id})}
+end
+```
+
+Finally, a window event listener can listen for the event and conditionally
+execute the highlight command if the element matches:
+
+```javascript
+let liveSocket = new LiveSocket(...)
+
+let handleCustomEvent = (name, filter) => {
+  filter = filter || function(){ return true }
+  let attr = `data-handle-${name}`
+  window.addEventListener(`phx:${name}`, (e) => {
+    document.querySelectorAll(`[${attr}]`).forEach(el => {
+      filter(el, e.detail) && liveSocket.execJS(el, el.getAttribute(attr))
+    })
+  })
+}
+
+handleCustomEvent("hightlight", (el, data) => el.id === data.id)
+```

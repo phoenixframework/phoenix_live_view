@@ -1,14 +1,81 @@
 defmodule Phoenix.LiveView.JS do
   @moduledoc """
-  TODO docs
+  Provides commands for executing JavaScript utility operations on the client.
 
-  [x] documnet all JS interfaces
-  [x] document phx-click-away
+  JS commands support a variety of utility operations for common client-side
+  needs, such as adding classing, showing or hiding content, and transitioning
+  in and out with animations. While these operations can be accomplished via
+  client-side hooks, JS commands are DOM patch aware, so operations applied
+  by the JS APIs will stick to elements across patches from the server.
+
+  In addition to purely client-side utilities, the JS command incluces a
+  rich `push` API, for extending the default `phx-` binding pushes with
+  options to customize targets, loading states, and additional payload values.
+
+  ## Enhanced Push Events
+
+  The `push/3` command allows you to extend the built-in pushed event handling
+  when a `phx-` event is pushed to the server. For example, you may wish to
+  target a specific component, specify additional payload values to include
+  with the event, apply loading states to external elements, etc. For example,
+  given this basic `phx-click` event:
+
+      <div phx-click="inc">+</div>
+
+  Imagine you need to target your current component, and apply a loading state
+  to the parent container while the client awaits the server acknowledgement:
+
+      <div phx-click={JS.push("inc", loading: ".thermo", target: @myself)}>+</div>
+
+  Push commands also compose with all other utilities. For example, to add
+  a class when pushing:
+
+      <div phx-click={
+        JS.push("inc", loading: ".thermo", target: @myself)
+        |> JS.add_class(".warmer", to: ".thermo")
+      }>+</div>
+
+  ## Client Utility Commands
+
+  The following utilities are included:
+
+    * `add_class` - Add classes to elements, with optional transitions
+    * `remove_class` - Remove classes from elements, with optional transitions
+    * `show` - Show elements, with optional transitions
+    * `hide` - Hide elements, with optional transitions
+    * `toggle` - Shows or hides elements based on visiblity, with optional transitions
+    * `transition` - Apply a temporary transition to elements for animations
+    * `dispatch` - Dispatch a DOM event to elements
+
+  For example, the following modal component can be shown or hidden on the
+  client without a trip to the server:
+
+      def hide_modal(js \\ %JS{}) do
+        js
+        |> JS.hide(transition: "fade-out", to: "#modal")
+        |> JS.hide(transition: "fade-out-scale", to: "#modal-content")
+      end
+
+      def modal(assigns) do
+        ~H\"""
+        <div id="modal" class="phx-modal" phx-remove={hide_modal()}>
+          <div
+            id="modal-content"
+            class="phx-modal-content"
+            phx-click-away={hide_modal()}
+            phx-window-keydown={hide_modal()}
+            phx-key="escape"
+          >
+            <button class="phx-modal-close" phx-click={hide_modal()}>✖</button>
+            <p><%= @text %></p>
+          </div>
+        </div>
+        \"""
+      end
+
+  TODO
   [ ] document custom execJS dispatch on push_event
   [ ] figure out what to deprecate (phx-page-loading binding?)
-  [x] document phx-remove
-
-
   """
   alias Phoenix.LiveView.JS
 

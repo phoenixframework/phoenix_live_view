@@ -202,7 +202,7 @@ export default class LiveSocket {
 
   disconnect(callback){ this.socket.disconnect(callback) }
 
-  execJS(el, eventType, encodedJS){
+  execJS(el, encodedJS, eventType = null){
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
 
@@ -355,7 +355,7 @@ export default class LiveSocket {
     elements = elements || DOM.all(document, `[${removeAttr}]`)
     elements.forEach(el => {
       if(document.body.contains(el)){ // skip children already removed
-        this.execJS(el, "remove", el.getAttribute(removeAttr))
+        this.execJS(el, el.getAttribute(removeAttr), "remove")
       }
     })
   }

@@ -211,10 +211,10 @@ The following specialized behavior is performed for forms and keydown bindings:
 
 ## JS Commands
 
-LiveView bindings support a JavaScript command interface via the `Phoenix.LiveView.JS` module, which allows you to specify operations that should execute on the client when firing `phx-` binding events, such as `phx-click`, `phx-change`, etc. Commands compose together to allow you to push events, add classes to elements, transition elements in and out, and more.
+LiveView bindings support a JavaScript command interface via the `Phoenix.LiveView.JS` module, which allows you to specify utility operations that execute on the client when firing `phx-` binding events, such as `phx-click`, `phx-change`, etc. Commands compose together to allow you to push events, add classes to elements, transition elements in and out, and more.
 See the `Phoenix.LiveView.JS` documentation for full usage.
 
-For a small example of what's possible, imagine you want to show and hide a modal on the page:
+For a small example of what's possible, imagine you want to show and hide a modal on the page without needing to make the round trip to the server to render the content:
 
 ```heex
 <div id="modal" class="modal">
@@ -250,7 +250,7 @@ Or if your UI library relies on classes to perform the showing or hiding:
 </button>
 ```
 
-Commands compose together. For example you can push an event to the server and
+Commands compose together. For example, you can push an event to the server and
 immediately hide the modal on the client:
 
 ```heex
@@ -267,6 +267,7 @@ It is also useful to extract commands into their own functions:
 
 ```elixir
 alias Phoenix.LiveView.JS
+
 def hide_modal(js \\ %JS{}, selector) do
   js
   |> JS.push("modal-closed")
@@ -278,6 +279,15 @@ end
 <button phx-click={hide_modal("#modal")}>hide modal</button>
 ```
 
+The `Phoenix.LiveView.push/3` command is particularly powerful in allowing you to customize the event being pushed to the server. For example, imagine you start with a familiar `phx-click` which pushes a mesasge to the server when clicked:
+
+    <button phx-click="clicked">click</button>
+
+Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targetted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
+
+    <button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
+
+See `Phoenix.LiveView.push/3` for all supported options.
 
 ## LiveView Specific Events
 
