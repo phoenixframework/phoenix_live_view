@@ -754,22 +754,26 @@ defmodule Phoenix.LiveView.Helpers do
   def __render_slot__(_, [], _), do: ""
 
   def __render_slot__(changed, [entry], argument) do
-    if !entry.inner_block do
-      raise RuntimeError, "cannot call `render_slot/2` on a slot entry without inner content"
-    end
-
-    entry.inner_block.(changed, argument)
+    call_inner_block!(entry, changed, argument)
   end
 
   def __render_slot__(changed, entries, argument) when is_list(entries) do
     assigns = %{}
 
     ~H"""
-    <%= for entry <- entries do %><%= entry.inner_block.(changed, argument) %><% end %>
+    <%= for entry <- entries do %><%= call_inner_block!(entry, changed, argument) %><% end %>
     """
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
+    entry.inner_block.(changed, argument)
+  end
+
+  defp call_inner_block!(entry, changed, argument) do
+    if !entry.inner_block do
+      raise RuntimeError, "cannot call `render_slot/2` on a slot entry without inner content"
+    end
+
     entry.inner_block.(changed, argument)
   end
 

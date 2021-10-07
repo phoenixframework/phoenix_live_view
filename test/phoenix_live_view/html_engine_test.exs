@@ -588,6 +588,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         </.function_component_with_single_slot>
         """)
       end)
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <.function_component_with_single_slot>
+          <:sample/>
+          <:sample/>
+        </.function_component_with_single_slot>
+        """)
+      end)
     end
 
     test "multiple slot entries randered by a single rende_slot/2 call" do
