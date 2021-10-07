@@ -1465,6 +1465,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             return el;
           },
           onNodeAdded: (el) => {
+            if (el instanceof HTMLImageElement && el.srcset) {
+              el.srcset = el.srcset;
+            } else if (el instanceof HTMLVideoElement && el.autoplay) {
+              el.play();
+            }
             if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
               externalFormTriggered = el;
             }

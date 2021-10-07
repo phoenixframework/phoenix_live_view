@@ -75,7 +75,7 @@ Uploaders.UpChunk = function(entries, onViewError){
   entries.forEach(entry => {
     // create the upload session with UpChunk
     let { file, meta: { entrypoint } } = entry
-    let upload = UpChunk.createUpload({ entrypoint, file })
+    let upload = UpChunk.createUpload({ endpoint: entrypoint, file })
 
     // stop uploading in the event of a view error
     onViewError(() => upload.pause())

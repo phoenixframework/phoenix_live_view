@@ -58,8 +58,7 @@ defmodule Phoenix.LiveView.MixProject do
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
-      groups_for_modules: groups_for_modules(),
-      nest_modules_by_prefix: [Phoenix.LiveViewTest]
+      groups_for_modules: groups_for_modules()
     ]
   end
 
@@ -98,15 +97,16 @@ defmodule Phoenix.LiveView.MixProject do
     # Phoenix.LiveView.Helpers
     # Phoenix.LiveView.Router
     # Phoenix.LiveView.Socket
+    # Phoenix.LiveViewTest
 
     [
       "Components": [
         Phoenix.Component,
         Phoenix.Component.Slot,
-        Phoenix.LiveComponent
+        Phoenix.LiveComponent,
+        Phoenix.LiveComponent.CID
       ],
-      "Testing": [
-        Phoenix.LiveViewTest,
+      "Testing structures": [
         Phoenix.LiveViewTest.Element,
         Phoenix.LiveViewTest.Upload,
         Phoenix.LiveViewTest.View
@@ -115,8 +115,7 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveView.UploadConfig,
         Phoenix.LiveView.UploadEntry
       ],
-      "Live EEx Engine": [
-        Phoenix.LiveComponent.CID,
+      "Plugin API": [
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
         Phoenix.LiveView.Component,

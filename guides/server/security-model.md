@@ -114,7 +114,7 @@ described, one might implement this:
 
     def handle_event("delete_project", %{"project_id" => project_id}, socket) do
       Project.delete!(socket.assigns.current_user, project_id)
-      {:noreply, assign(socket, post: updated_post)}
+      {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end)}
     end
 
     defp load_projects(socket) do
@@ -155,7 +155,8 @@ the topic:
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
 > Note: If you use `mix phx.gen.auth` to generate your authentication system,
-> those lines are already present in the generated code.
+> lines to that effect are already present in the generated code.  The generated
+> code uses a `user_token` instead of referring to the `user_id`.
 
 Once a LiveView is disconnected, the client will attempt to reestablish
 the connection and re-execute the [`mount/3`](`c:Phoenix.LiveView.mount/3`)
