@@ -687,7 +687,8 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp call_inner_block!(entry, changed, argument) do
     if !entry.inner_block do
-      raise RuntimeError, "cannot call `render_slot/2` on a slot entry without inner content"
+      message = "cannot call `render_slot/2` on a <:#{entry.__slot__}> entry without inner content"
+      raise RuntimeError, message
     end
 
     entry.inner_block.(changed, argument)

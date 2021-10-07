@@ -544,6 +544,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       """
     end
 
+    def render_slot_name(assigns) do
+      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"
+    end
+
+    def render_inner_block_slot_name(assigns) do
+      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"
+    end
+
     test "single slot" do
       assigns = %{}
 
@@ -577,7 +585,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise when calling render_slot/2 on a slot without inner content" do
-      message = ~r"cannot call `render_slot/2` on a slot entry without inner content"
+      message = ~r"cannot call `render_slot/2` on a <:sample> entry without inner content"
 
       assigns = %{}
 
@@ -901,6 +909,35 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         </.function_component_with_self_close_slots>
         """)
       end)
+    end
+
+    test "store the slot name in __slot__" do
+      assigns = %{}
+
+      assert compile("""
+             <.render_slot_name>
+               <:sample>
+                 The sample slot
+               </:sample>
+             </.render_slot_name>
+             """) == "[sample]"
+
+      assert compile("""
+             <.render_slot_name>
+               <:sample/>
+               <:sample/>
+             </.render_slot_name>
+             """) == "[sample][sample]"
+    end
+
+    test "store the inner_block slot name in __slot__" do
+      assigns = %{}
+
+      assert compile("""
+             <.render_inner_block_slot_name>
+                 The content
+             </.render_inner_block_slot_name>
+             """) == "[inner_block]"
     end
 
     test "raise if the slot entry is not a direct child of a component" do
