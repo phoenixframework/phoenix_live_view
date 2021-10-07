@@ -1,18 +1,16 @@
 defmodule Phoenix.LiveComponent do
   @moduledoc """
-  Components are a mechanism to compartmentalize state, markup, and
+  LiveComponents are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
   Components are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.Helpers.live_component/3` in a parent LiveView.
-  Components run inside the LiveView process but have their own life-cycle.
+  by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
+  Components run inside the LiveView process but have their own state and
+  life-cycle. For this reason, they are also often called "stateful components".
+  This is a contrast to `Phoenix.Component`, also known as "function components",
+  which are stateless.
 
-  Components which are rendered with an `:id` are stateful, and those rendered
-  without an `:id` are stateless. Stateful components can also receive events.
-  Note stateless LiveComponents are deprecated. Please use `Phoenix.Component`
-  instead.
-
-  The simplest component only needs to define a `c:render/1` function:
+  The smallest LiveComponent only needs to define a `c:render/1` function:
 
       defmodule HeroComponent do
         # If you generated an app with mix phx.new --live,
@@ -26,8 +24,6 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  When `use Phoenix.LiveComponent` is used, all functions in
-  `Phoenix.LiveView` and `Phoenix.LiveView.Helpers` are imported.
   A component can be invoked as:
 
       <.live_component module={HeroComponent} id="hero" content={@content} />
@@ -35,10 +31,6 @@ defmodule Phoenix.LiveComponent do
   A component must receive the `:id` assign as argument, which is
   used to uniquely identify the component. A component will be treated
   as the same component as long as its `:id` does not change.
-
-  > Note: previous LiveView versions allowed the `:id` to be skipped
-  > on `live_component` but those are now discouraged since the addition
-  > of function components, outlined in `Phoenix.Component`.
 
   ## Life-cycle
 
@@ -49,10 +41,10 @@ defmodule Phoenix.LiveComponent do
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called,
+  When [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`) is called,
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
+  assigns given to [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`).
   If `c:update/2` is not defined all assigns are simply merged into the socket.
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -177,6 +169,18 @@ defmodule Phoenix.LiveComponent do
   Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
   keeping the assigns in the same order as they were given.
 
+  ## Slots
+
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`.
+  See the docs for `Phoenix.Component` for more information.
+
+  ## Live patches and live redirects
+
+  A template rendered inside a component can use `Phoenix.LiveView.Helpers.live_patch/2`
+  and `Phoenix.LiveView.Helpers.live_redirect/2` calls. The
+  [`live_patch/2`](`Phoenix.LiveView.Helpers.live_patch/2`) is always handled
+  by the parent`LiveView`, as components do not provide `handle_params`.
+
   ## Managing state
 
   Now that we have learned how to define and use components, as well as
@@ -213,7 +217,8 @@ defmodule Phoenix.LiveComponent do
   ### LiveView as the source of truth
 
   If the board LiveView is the source of truth, it will be responsible
-  for fetching all of the cards in a board. Then it will call [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
+  for fetching all of the cards in a board. Then it will call
+  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
@@ -310,52 +315,6 @@ defmodule Phoenix.LiveComponent do
   With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
   will be invoked, triggering both preload and update callbacks, which will
   load the most up to date data from the database.
-
-  ## LiveComponent blocks
-
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked,
-  it is also possible to pass a `do/end` block:
-
-      <.live_component module={GridComponent} let={entry} entries={@entries}>
-        New entry: <%= entry %>
-      </.live_component?
-
-  The `do/end` will be available in an assign named `@inner_block`.
-  You can render its contents by calling `render_block` with the
-  assign itself and a keyword list of assigns to inject into the rendered
-  content. For example, the grid component above could be implemented as:
-
-      defmodule GridComponent do
-        use Phoenix.LiveComponent
-
-        def render(assigns) do
-          ~H"\""
-          <div class="grid">
-            <%= for entry <- @entries do %>
-              <div class="column">
-                <%= render_block(@inner_block, entry) %>
-              </div>
-            <% end %>
-          </div>
-          "\""
-        end
-      end
-
-  Where the `entry` variable was injected into the `do/end` block.
-
-  Note the `@inner_block` assign is also passed to `c:update/2`
-  along all other assigns. So if you have a custom `update/2`
-  implementation, make sure to assign it to the socket like so:
-
-      def update(%{inner_block: inner_block}, socket) do
-        {:ok, assign(socket, inner_block: inner_block)}
-      end
-
-  ## Live patches and live redirects
-
-  A template rendered inside a component can use `Phoenix.LiveView.Helpers.live_patch/2` and
-  `Phoenix.LiveView.Helpers.live_redirect/2` calls. The [`live_patch/2`](`Phoenix.LiveView.Helpers.live_patch/2`)
-  is always handled by the parent`LiveView`, as components do not provide `handle_params`.
 
   ## Cost of stateful components
 

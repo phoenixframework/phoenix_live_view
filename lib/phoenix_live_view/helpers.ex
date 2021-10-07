@@ -71,8 +71,8 @@ defmodule Phoenix.LiveView.Helpers do
         <p>Hello, <%= @name %></p>
       <% end %>
 
-  Note we don't include the equal sign `=` in the closing tag (because the closing
-  tag does not output anything).
+  Note we don't include the equal sign `=` in the closing `<% end %>` tag
+  (because the closing tag does not output anything).
 
   There is one important difference between `HEEx` and Elixir's builtin `EEx`.
   `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
@@ -140,8 +140,9 @@ defmodule Phoenix.LiveView.Helpers do
       end
 
   It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. You can
-  learn more about components in `Phoenix.Component`.
+  opposed to having many modules with a single `render/1` function. Function
+  components support other important features, such as slots. You can learn
+  more about components in `Phoenix.Component`.
   """
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     options = [
@@ -173,15 +174,16 @@ defmodule Phoenix.LiveView.Helpers do
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
+        extra = assigns_to_attributes(assigns, [:new_window])
 
         assigns =
           assigns
           |> Phoenix.LiveView.assign(:target, target)
-          |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
+          |> Phoenix.LiveView.assign(:extra, extra)
 
         ~H"""
         <a href={@href} target={@target} {@extra}>
-          <%= render_block(@inner_block) %>
+          <%= render_slot(@inner_block) %>
         </a>
         """
       end
@@ -191,7 +193,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    excluded_keys = [:__changed__, :__slot__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
@@ -435,7 +437,7 @@ defmodule Phoenix.LiveView.Helpers do
   def live_component(component) when is_atom(component) do
     IO.warn(
       "<%= live_component Component %> is deprecated, " <>
-        "please use <.live_component module={Component} /> inside HEEx templates instead"
+        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
     )
 
     Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
@@ -443,8 +445,32 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc """
   Deprecated API for rendering `LiveComponent`.
+
+  ## Upgrading
+
+  In order to migrate from `<%= live_component ... %>` to `<.live_component>`,
+  you must first:
+
+    1. Migrate from `~L` sigil and `.leex` templates to
+      `~H` sigil and `.heex` templates
+
+    2. Then instead of:
+
+          <%= live_component MyModule, id: "hello" do %>
+            ...
+          <% end %>
+
+       You should do:
+
+          <.live_component module={MyModule} id="hello">
+            ...
+          </.live_component>
+
+    3. If your component is using `render_block/2`, replace
+       it by `render_slot/2`
+
   """
-  @doc deprecated: "Use .live_component as a function component instead"
+  @doc deprecated: "Use .live_component (live_component/1) instead"
   defmacro live_component(component, assigns, do_block \\ []) do
     if is_assign?(:socket, component) do
       IO.warn(
@@ -491,45 +517,195 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
+  @doc false
+  def __live_component__(%{kind: :component, module: component}, assigns, inner)
+      when is_list(assigns) or is_map(assigns) do
+    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
+    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
+    id = assigns[:id]
+
+    # TODO: Remove logic from Diff once stateless components are removed.
+    # TODO: Remove live_component arity checks from Engine
+    if is_nil(id) and
+         (function_exported?(component, :handle_event, 3) or
+            function_exported?(component, :preload, 1)) do
+      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
+              "requires an :id assign to be given"
+    end
+
+    %Component{id: id, assigns: assigns, component: component}
+  end
+
+  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
+      when is_list(assigns) or is_map(assigns) do
+    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
+  end
+
   @doc """
   Renders a component defined by the given function.
 
-  It takes two optional arguments, the assigns to pass to the given function
-  and a do-block - which will be converted into a `@inner_block` assign (see
-  `render_block/2` for more information).
+  This function is rarely invoked directly by users. Instead, it is used by `~H`
+  to render `Phoenix.Component`s. For example, the following:
 
-  The given function must expect one argument, which are the `assigns` as a
-  map.
+      <MyApp.Weather.city name="Kraków" />
 
-  All of the `assigns` given are forwarded directly to the function as
-  a single argument.
+  It the same as:
 
-  ## Examples
-
-  The function can be either local:
-
-      <%= component(&weather_component/1, city: "Kraków") %>
-
-  Or remote:
-
-      <%= component(&MyApp.Weather.component/1, city: "Kraków") %>
+      <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
 
   """
-  defmacro component(func, assigns \\ [], do_block \\ []) do
-    {inner_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), []}
-        {_, _} -> {nil, assigns}
+  def component(func, assigns \\ [])
+      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
+    assigns =
+      case assigns do
+        %{__changed__: _} -> assigns
+        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
       end
 
+    case func.(assigns) do
+      %Phoenix.LiveView.Rendered{} = rendered ->
+        rendered
+
+      %Phoenix.LiveView.Component{} = component ->
+        component
+
+      other ->
+        raise RuntimeError, """
+        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
+
+        Ensure your render function uses ~H to define its template.
+
+        Got:
+
+            #{inspect(other)}
+
+        """
+    end
+  end
+
+  @doc """
+  Renders the `@inner_block` assign of a component with the given `argument`.
+
+      <%= render_block(@inner_block, value: @value)
+
+  This function is deprecated for function components. Use `render_slot/2`
+  instead.
+  """
+  @doc deprecated: "Use render_slot/2 instead"
+  defmacro render_block(inner_block, argument \\ []) do
     quote do
-      Phoenix.LiveView.Helpers.__component__(
-        unquote(func),
-        unquote(assigns),
-        unquote(inner_block)
+      unquote(__MODULE__).__render_block__(unquote(inner_block)).(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(argument)
       )
     end
+  end
+
+  @doc false
+  def __render_block__([%{inner_block: fun}]), do: fun
+  def __render_block__(fun), do: fun
+
+  @doc ~S'''
+  Renders a slot entry with the given optional `argument`.
+
+      <%= render_slot(@inner_block, @form) %>
+
+  If multiple slot entries are defined for the same slot,
+  `render_slot/2` will automatically render all entries,
+  merging their contents. In case you want to use the entries'
+  attributes, you need to iterate over the list to access each
+  slot individually.
+
+  For example, imagine a table component:
+
+      <.table rows={@users}>
+        <:col let={user} label="Name">
+          <%= user.name %>
+        </:col>
+
+        <:col let={user} label="Address">
+          <%= user.address %>
+        </:col>
+      </.table>
+
+  At the top level, we pass the rows as an assign and we define
+  a `:col` slot for each column we want in the table. Each
+  column also has a `label`, which we are going to use in the
+  table header.
+
+  Inside the component, you can render the table with headers,
+  rows, and columns:
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <th>
+            <%= for col <- @col do %>
+              <td><%= col.label %></td>
+            <% end >
+          </th>
+          <%= for row <- @rows do %>
+            <tr>
+              <%= for col <- @col do %>
+                <%= render_slot(col, row) %>
+              <% end %>
+            </tr>
+          <% end %>
+        </table>
+        """
+      end
+
+  '''
+  defmacro render_slot(slot, argument \\ nil) do
+    quote do
+      unquote(__MODULE__).__render_slot__(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(slot),
+        unquote(argument)
+      )
+    end
+  end
+
+  @doc false
+  def __render_slot__(_, [], _), do: ""
+
+  def __render_slot__(changed, [entry], argument) do
+    call_inner_block!(entry, changed, argument)
+  end
+
+  def __render_slot__(changed, entries, argument) when is_list(entries) do
+    assigns = %{}
+
+    ~H"""
+    <%= for entry <- entries do %><%= call_inner_block!(entry, changed, argument) %><% end %>
+    """
+  end
+
+  def __render_slot__(changed, entry, argument) when is_map(entry) do
+    entry.inner_block.(changed, argument)
+  end
+
+  defp call_inner_block!(entry, changed, argument) do
+    if !entry.inner_block do
+      message = "attempted to render slot <:#{entry.__slot__}> but the slot has no inner content"
+      raise RuntimeError, message
+    end
+
+    entry.inner_block.(changed, argument)
+  end
+
+  @doc """
+  Defines a slot's inner block.
+
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
+  """
+  defmacro slot(name, do: do_block) do
+    rewrite_do!(do_block, name, __CALLER__)
   end
 
   defp rewrite_do!(do_block, key, caller) do
@@ -582,92 +758,6 @@ defmodule Phoenix.LiveView.Helpers do
       assigns
     else
       Map.put(assigns, :__changed__, %{})
-    end
-  end
-
-  @doc false
-  def __live_component__(%{kind: :component, module: component}, assigns, inner)
-      when is_list(assigns) or is_map(assigns) do
-    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-    id = assigns[:id]
-
-    # TODO: Remove logic from Diff once stateless components are removed.
-    # TODO: Remove live_component arity checks from Engine
-    if is_nil(id) and
-         (function_exported?(component, :handle_event, 3) or
-            function_exported?(component, :preload, 1)) do
-      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
-              "requires an :id assign to be given"
-    end
-
-    %Component{id: id, assigns: assigns, component: component}
-  end
-
-  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
-      when is_list(assigns) or is_map(assigns) do
-    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
-  end
-
-  @doc false
-  def __component__(func, assigns, inner)
-      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
-    assigns =
-      case assigns do
-        %{__changed__: _} -> assigns
-        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
-      end
-
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-
-    case func.(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        rendered
-
-      %Phoenix.LiveView.Component{} = component ->
-        component
-
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
-
-        Ensure your render function uses ~H to define its template.
-
-        Got:
-
-            #{inspect(other)}
-
-        """
-    end
-  end
-
-  def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
-    raise ArgumentError, """
-    component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
-
-    Please call component with a 1-arity function, for example:
-
-        <%= component &example/1 %>
-
-        def example(assigns) do
-          ~H"\""
-          Hello
-          "\""
-        end
-    """
-  end
-
-  @doc """
-  Renders the `@inner_block` assign of a component with the given `argument`.
-
-      <%= render_block(@inner_block, value: @value)
-
-  """
-  # TODO: we may want to default to nil or a map once
-  # implicit assigns are removed and slots are considered
-  defmacro render_block(inner_block, argument \\ []) do
-    quote do
-      unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
     end
   end
 
@@ -939,7 +1029,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" value={@csrf_token}>
       <% end %>
-      <%= render_block(@inner_block, @form) %>
+      <%= render_slot(@inner_block, @form) %>
     </form>
     """
   end
@@ -949,7 +1039,10 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
-    match?({^assign_name, _, _}, expression) or
-    match?({{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]}, expression)
+      match?({^assign_name, _, _}, expression) or
+      match?(
+        {{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]},
+        expression
+      )
   end
 end

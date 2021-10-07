@@ -377,7 +377,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  defmodule BlockComponent do
+  defmodule SlotComponent do
     use Phoenix.LiveComponent
 
     def mount(socket) do
@@ -389,27 +389,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 1}) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 2}) %>
-      </div>
-      """
-    end
-  end
-
-  defmodule BlockNoArgsComponent do
-    use Phoenix.LiveComponent
-
-    def mount(socket) do
-      {:ok, assign(socket, id: "DEFAULT")}
-    end
-
-    def render(%{do: _}), do: raise("unexpected :do assign")
-
-    def render(assigns) do
-      ~H"""
-      <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 1}) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 2}) %>
       </div>
       """
     end
@@ -422,20 +403,29 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    def render_with_block_no_args(assigns) do
+    def render_inner_block_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
       </div>
       """
     end
 
-    def render_with_block(assigns) do
+    def render_with_slot_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, 1) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, 2) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
+      </div>
+      """
+    end
+
+    def render_inner_block(assigns) do
+      ~H"""
+      <div>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 1) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 2) %>
       </div>
       """
     end
@@ -443,7 +433,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <.live_component module={BlockComponent} let={%{value: value}} id="WORLD">
+      <.live_component module={SlotComponent} let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
       </.live_component>
       """
@@ -524,105 +514,6 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  describe "stateless components" do
-    test "on mount" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "on update" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {previous_socket, _, previous_components} = render(rendered)
-
-      {socket, full_render, components} =
-        render(rendered, previous_socket.fingerprints, previous_components)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world"}
-             }
-
-      assert socket.fingerprints == previous_socket.fingerprints
-      assert components == previous_components
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "render only" do
-      component = %Component{assigns: %{from: :component}, component: RenderOnlyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "component",
-                 :s => ["<div>RENDER ONLY ", "</div>"]
-               },
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-    end
-
-    test "block tracking" do
-      assigns = %{socket: %Socket{}}
-
-      rendered = ~H"""
-      <.live_component module={BlockNoArgsComponent} id="block">
-        INSIDE BLOCK
-      </.live_component>
-      """
-
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => 1,
-               :s => ["", ""],
-               :c => %{
-                 1 => %{
-                   0 => "block",
-                   1 => %{s: ["\n  INSIDE BLOCK\n"]},
-                   2 => "block",
-                   3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
-                 }
-               }
-             }
-
-      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => 1}
-    end
-  end
-
   describe "function components" do
     test "render only" do
       assigns = %{socket: %Socket{}}
@@ -645,13 +536,13 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
     end
 
-    test "block tracking without args" do
+    test "@inner_block without args" do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_with_block_no_args/1, id: "DEFAULT" do %>
+      <FunctionComponent.render_inner_block_no_args id="DEFAULT">
         INSIDE BLOCK
-      <% end %>
+      </FunctionComponent.render_inner_block_no_args>
       """
 
       {socket, full_render, components} = render(rendered)
@@ -671,16 +562,43 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{0 => %{0 => "DEFAULT", 2 => "DEFAULT"}}
     end
 
+    test "slot tracking without args" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <FunctionComponent.render_with_slot_no_args id="MY ID">
+        <:sample>
+          INSIDE SLOT
+        </:sample>
+      </FunctionComponent.render_with_slot_no_args>
+      """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "MY ID",
+                 1 => %{s: ["\n    INSIDE SLOT\n  "]},
+                 2 => "MY ID",
+                 3 => %{s: ["\n    INSIDE SLOT\n  "]},
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      assert full_render == %{0 => %{0 => "MY ID", 2 => "MY ID"}}
+    end
+
     defp function_tracking(assigns) do
       ~H"""
-      <%= component &FunctionComponent.render_with_block/1, id: @id do %>
-        <% value -> %>
-          WITH VALUE <%= value %> - <%= @value %>
-      <% end %>
+      <FunctionComponent.render_inner_block let={value} id={@id}>
+        WITH VALUE <%= value %> - <%= @value %>
+      </FunctionComponent.render_inner_block>
       """
     end
 
-    test "block tracking with args and parent assign" do
+    test "@inner_block with args and parent assign" do
       assigns = %{socket: %Socket{}, value: 123, id: "DEFAULT"}
 
       {socket, full_render, components} = render(function_tracking(assigns))
@@ -688,9 +606,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{0 => "1", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 1 => %{0 => "1", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
                  2 => "DEFAULT",
-                 3 => %{0 => "2", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 3 => %{0 => "2", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
                  :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                },
                :s => ["", ""]
@@ -723,9 +641,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{0 => "1"},
                  2 => "DEFAULT",
-                 3 => %{0 => "2"}
                }
              }
 
@@ -738,6 +654,86 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{
                  1 => %{0 => "1", 1 => "123"},
                  3 => %{0 => "2", 1 => "123"}
+               }
+             }
+    end
+
+    def render_multiple_slots(assigns) do
+      ~H"""
+      <div>
+        HEADER: <%= render_slot(@header) %>
+        FOOTER: <%= render_slot(@footer) %>
+      </div>
+      """
+    end
+
+    def slot_tracking(assigns) do
+      ~H"""
+      <.render_multiple_slots>
+        <:header>
+          <%= @in_header %><%= @in_both %>
+        </:header>
+        <:footer>
+          <%= @in_footer %><%= @in_both %>
+        </:footer>
+      </.render_multiple_slots>
+      """
+    end
+
+    test "slot tracking with multiple slots" do
+      assigns = %{socket: %Socket{}, in_header: "H", in_footer: "F", in_both: "B"}
+
+      {socket, full_render, components} = render(slot_tracking(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B", :s => ["\n    ", "", "\n  "]},
+                 1 => %{0 => "F", 1 => "B", :s => ["\n    ", "", "\n  "]},
+                 :s => ["<div>\n  HEADER: ", "\n  FOOTER: ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B"},
+                 1 => %{0 => "F", 1 => "B"}
+               }
+             }
+
+      assigns = Map.put(assigns, :__changed__, %{})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{}
+
+      assigns = Map.put(assigns, :__changed__, %{in_header: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{0 => %{0 => "H"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_footer: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{1 => %{0 => "F"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_both: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 1 => %{1 => "B"},
+                 0 => %{1 => "B"}
                }
              }
     end
@@ -1485,14 +1481,14 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <.live_component module={BlockComponent} let={%{value: value}} id="TRACKING">
+      <.live_component module={SlotComponent} let={%{value: value}} id="TRACKING">
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= value %>
       </.live_component>
       """
     end
 
-    test "block tracking with args and parent assigns" do
+    test "@inner_block tracking with args and parent assigns" do
       assigns = %{socket: %Socket{}, parent_value: 123}
       {socket, full_render, components} = render(tracking(assigns))
 

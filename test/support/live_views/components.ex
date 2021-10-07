@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
 
   def render_with_inner_content(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>, Content: <%= render_block(@inner_block) %>
+    COMPONENT:<%= @value %>, Content: <%= render_slot(@inner_block) %>
     """
   end
 end

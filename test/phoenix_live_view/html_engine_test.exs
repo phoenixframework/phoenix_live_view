@@ -1,7 +1,8 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers, only: [sigil_H: 2, render_block: 1, render_block: 2]
+  import Phoenix.LiveView.Helpers,
+    only: [sigil_H: 2, render_slot: 1, render_slot: 2]
 
   alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
@@ -40,14 +41,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"REMOTE COMPONENT: Value: <%= @value %>"
   end
 
-  def remote_function_component_with_inner_content(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
+  def remote_function_component_with_inner_block(assigns) do
+    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
   end
 
-  def remote_function_component_with_inner_content_args(assigns) do
+  def remote_function_component_with_inner_block_args(assigns) do
     ~H"""
     REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_block(@inner_block, %{
+    <%= render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
@@ -58,14 +59,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"LOCAL COMPONENT: Value: <%= @value %>"
   end
 
-  defp local_function_component_with_inner_content(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_block(@inner_block) %>"
+  defp local_function_component_with_inner_block(assigns) do
+    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
   end
 
-  defp local_function_component_with_inner_content_args(assigns) do
+  defp local_function_component_with_inner_block_args(assigns) do
     ~H"""
     LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_block(@inner_block, %{
+    <%= render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
@@ -294,9 +295,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content value='1'>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block value='1'>
                The inner content
-             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
@@ -311,19 +312,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
                value="aBcD"
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
              """) =~ expected
     end
 
     test "raise on remote call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_block/2` against the pattern in `let`.
+      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
 
       Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
       """
@@ -332,12 +333,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(RuntimeError, message, fn ->
         compile("""
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
           {[value: "aBcD"]}
           let={%{wrong: _}}
         >
           ...
-        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_content_args>
+        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
         """)
       end)
     end
@@ -364,9 +365,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <.local_function_component_with_inner_content value='1'>
+             <.local_function_component_with_inner_block value='1'>
                The inner content
-             </.local_function_component_with_inner_content>
+             </.local_function_component_with_inner_block>
              """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
@@ -381,29 +382,29 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <.local_function_component_with_inner_content_args
+             <.local_function_component_with_inner_block_args
                value="aBcD"
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </.local_function_component_with_inner_content_args>
+             </.local_function_component_with_inner_block_args>
              """) =~ expected
 
       assert compile("""
-             <.local_function_component_with_inner_content_args
+             <.local_function_component_with_inner_block_args
                {[value: "aBcD"]}
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </.local_function_component_with_inner_content_args>
+             </.local_function_component_with_inner_block_args>
              """) =~ expected
     end
 
     test "raise on local call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_block/2` against the pattern in `let`.
+      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
 
       Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
       """
@@ -412,12 +413,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(RuntimeError, message, fn ->
         compile("""
-        <.local_function_component_with_inner_content_args
+        <.local_function_component_with_inner_block_args
           {[value: "aBcD"]}
           let={%{wrong: _}}
         >
           ...
-        </.local_function_component_with_inner_content_args>
+        </.local_function_component_with_inner_block_args>
         """)
       end)
     end
@@ -477,6 +478,503 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                "<.assigns_component d1=\"one\" {@attrs1} d=\"middle\" {@attrs2} d2=\"two\" />"
              ) ==
                "%{d: &quot;middle&quot;, d1: &quot;one&quot;, d2: &quot;two&quot;, d3: &quot;3&quot;}"
+    end
+  end
+
+  describe "named slots" do
+    def function_component_with_single_slot(assigns) do
+      ~H"""
+      BEFORE SLOT
+      <%= render_slot(@sample) %>
+      AFTER SLOT
+      """
+    end
+
+    def function_component_with_slots(assigns) do
+      ~H"""
+      BEFORE HEADER
+      <%= render_slot(@header) %>
+      TEXT
+      <%= render_slot(@footer) %>
+      AFTER FOOTER
+      """
+    end
+
+    def function_component_with_slots_and_default(assigns) do
+      ~H"""
+      BEFORE HEADER
+      <%= render_slot(@header) %>
+      TEXT:<%= render_slot(@inner_block) %>:TEXT
+      <%= render_slot(@footer) %>
+      AFTER FOOTER
+      """
+    end
+
+    def function_component_with_slots_and_args(assigns) do
+      ~H"""
+      BEFORE SLOT
+      <%= render_slot(@sample, 1) %>
+      AFTER SLOT
+      """
+    end
+
+    def function_component_with_slot_props(assigns) do
+      ~H"""
+      <%= for entry <- @sample do %>
+      <%= entry.a %>
+      <%= render_slot(entry) %>
+      <%= entry.b %>
+      <% end %>
+      """
+    end
+
+    def function_component_with_multiple_slots_entries(assigns) do
+      ~H"""
+      <%= for entry <- @sample do %>
+        <%= entry.id %>: <%= render_slot(entry, %{}) %>
+      <% end %>
+      """
+    end
+
+    def function_component_with_self_close_slots(assigns) do
+      ~H"""
+      <%= for entry <- @sample do %>
+        <%= entry.id %>
+      <% end %>
+      """
+    end
+
+    def render_slot_name(assigns) do
+      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"
+    end
+
+    def render_inner_block_slot_name(assigns) do
+      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"
+    end
+
+    test "single slot" do
+      assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+          The sample slot
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.function_component_with_single_slot>
+               <:sample>
+                 The sample slot
+               </:sample>
+             </.function_component_with_single_slot>
+             """) == expected
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+               <:sample>
+                 The sample slot
+               </:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
+    end
+
+    test "raise when calling render_slot/2 on a slot without inner content" do
+      message = ~r"attempted to render slot <:sample> but the slot has no inner content"
+
+      assigns = %{}
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <.function_component_with_single_slot>
+          <:sample/>
+        </.function_component_with_single_slot>
+        """)
+      end)
+
+      assert_raise(RuntimeError, message, fn ->
+        compile("""
+        <.function_component_with_single_slot>
+          <:sample/>
+          <:sample/>
+        </.function_component_with_single_slot>
+        """)
+      end)
+    end
+
+    test "multiple slot entries randered by a single rende_slot/2 call" do
+      assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+          entry 1
+        \
+
+          entry 2
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.function_component_with_single_slot>
+               <:sample>
+                 entry 1
+               </:sample>
+               <:sample>
+                 entry 2
+               </:sample>
+             </.function_component_with_single_slot>
+             """) == expected
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+               <:sample>
+                 entry 1
+               </:sample>
+               <:sample>
+                 entry 2
+               </:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
+    end
+
+    test "multiple slot entries handled by an explicit for comprehension" do
+      assigns = %{}
+
+      expected = """
+
+        1: one
+
+        2: two
+      """
+
+      assert compile("""
+             <.function_component_with_multiple_slots_entries>
+               <:sample id="1">one</:sample>
+               <:sample id="2">two</:sample>
+             </.function_component_with_multiple_slots_entries>
+             """) == expected
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
+               <:sample id="1">one</:sample>
+               <:sample id="2">two</:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
+             """) == expected
+    end
+
+    test "slot props" do
+      assigns = %{a: "A"}
+      expected = "\nA\n and \nB\n"
+
+      assert compile("""
+             <.function_component_with_slot_props>
+               <:sample a={@a} b="B"> and </:sample>
+             </.function_component_with_slot_props>
+             """) == expected
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+               <:sample a={@a} b="B"> and </:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+             """) == expected
+    end
+
+    test "multiple slots" do
+      assigns = %{}
+
+      expected = """
+      BEFORE COMPONENT
+      BEFORE HEADER
+
+          The header content
+        \
+
+      TEXT
+
+          The footer content
+        \
+
+      AFTER FOOTER
+
+      AFTER COMPONENT
+      """
+
+      assert compile("""
+             BEFORE COMPONENT
+             <.function_component_with_slots>
+               <:header>
+                 The header content
+               </:header>
+               <:footer>
+                 The footer content
+               </:footer>
+             </.function_component_with_slots>
+             AFTER COMPONENT
+             """) == expected
+
+      assert compile("""
+             BEFORE COMPONENT
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
+               <:header>
+                 The header content
+               </:header>
+               <:footer>
+                 The footer content
+               </:footer>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
+             AFTER COMPONENT
+             """) == expected
+    end
+
+    test "multiple slots with default" do
+      assigns = %{}
+
+      expected = """
+      BEFORE COMPONENT
+      BEFORE HEADER
+
+          The header content
+        \
+
+      TEXT:top
+        mid
+        bot
+      :TEXT
+
+          The footer content
+        \
+
+      AFTER FOOTER
+
+      AFTER COMPONENT
+      """
+
+      assert compile("""
+             BEFORE COMPONENT
+             <.function_component_with_slots_and_default>
+               top
+               <:header>
+                 The header content
+               </:header>
+               mid
+               <:footer>
+                 The footer content
+               </:footer>
+               bot
+             </.function_component_with_slots_and_default>
+             AFTER COMPONENT
+             """) == expected
+
+      assert compile("""
+             BEFORE COMPONENT
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
+               top
+               <:header>
+                 The header content
+               </:header>
+               mid
+               <:footer>
+                 The footer content
+               </:footer>
+               bot
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
+             AFTER COMPONENT
+             """) == expected
+    end
+
+    test "slots with args" do
+      assigns = %{}
+
+      expected = """
+      COMPONENT WITH SLOTS:
+      BEFORE SLOT
+
+          The sample slot
+          Arg: 1
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <.function_component_with_slots_and_args>
+               <:sample let={arg}>
+                 The sample slot
+                 Arg: <%= arg %>
+               </:sample>
+             </.function_component_with_slots_and_args>
+             """) == expected
+
+      assert compile("""
+             COMPONENT WITH SLOTS:
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
+               <:sample let={arg}>
+                 The sample slot
+                 Arg: <%= arg %>
+               </:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
+             """) == expected
+    end
+
+    test "nested calls with slots" do
+      assigns = %{}
+
+      expected = """
+      BEFORE SLOT
+
+         The outer slot
+          BEFORE SLOT
+
+            The inner slot
+            \
+
+      AFTER SLOT
+
+        \
+
+      AFTER SLOT
+      """
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+               <:sample>
+                The outer slot
+                 <.function_component_with_single_slot>
+                   <:sample>
+                   The inner slot
+                   </:sample>
+                 </.function_component_with_single_slot>
+               </:sample>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+             """) == expected
+
+      assert compile("""
+             <.function_component_with_single_slot>
+               <:sample>
+                The outer slot
+                 <.function_component_with_single_slot>
+                   <:sample>
+                   The inner slot
+                   </:sample>
+                 </.function_component_with_single_slot>
+               </:sample>
+             </.function_component_with_single_slot>
+             """) == expected
+    end
+
+    test "self close slots" do
+      assigns = %{}
+
+      expected = """
+
+        1
+
+        2
+      """
+
+      assert compile("""
+             <.function_component_with_self_close_slots>
+               <:sample id="1"/>
+               <:sample id="2"/>
+             </.function_component_with_self_close_slots>
+             """) == expected
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
+               <:sample id="1"/>
+               <:sample id="2"/>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
+             """) == expected
+    end
+
+    test "raise if self close slot uses let" do
+      message = ~r".exs:2:(24:)? cannot use `let` on a slot without inner content"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.function_component_with_self_close_slots>
+          <:sample id="1" let={var}/>
+        </.function_component_with_self_close_slots>
+        """)
+      end)
+    end
+
+    test "store the slot name in __slot__" do
+      assigns = %{}
+
+      assert compile("""
+             <.render_slot_name>
+               <:sample>
+                 The sample slot
+               </:sample>
+             </.render_slot_name>
+             """) == "[sample]"
+
+      assert compile("""
+             <.render_slot_name>
+               <:sample/>
+               <:sample/>
+             </.render_slot_name>
+             """) == "[sample][sample]"
+    end
+
+    test "store the inner_block slot name in __slot__" do
+      assigns = %{}
+
+      assert compile("""
+             <.render_inner_block_slot_name>
+                 The content
+             </.render_inner_block_slot_name>
+             """) == "[inner_block]"
+    end
+
+    test "raise if the slot entry is not a direct child of a component" do
+      message = ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>
+          <:sample>
+            Content
+          </:sample>
+        </div>
+        """)
+      end)
+
+      message = ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>
+          <:sample>
+            <:footer>
+              Content
+            </:footer>
+          </:sample>
+        </div>
+        """)
+      end)
+
+      message = ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <:sample>
+          Content
+        </:sample>
+        """)
+      end)
     end
   end
 
