@@ -74,7 +74,6 @@ defmodule Phoenix.LiveView.JS do
       end
 
   TODO
-  [ ] document custom execJS dispatch on push_event
   [ ] figure out what to deprecate (phx-page-loading binding?)
   """
   alias Phoenix.LiveView.JS
@@ -169,7 +168,7 @@ defmodule Phoenix.LiveView.JS do
     * `:in` - The string of classes to apply when toggling in.
     * `:out` - The string of classes to apply when toggling out.
     * `:time` - The time to apply the transition `:in` and `:out` classes.
-      Defaults #{@default_transition_time }
+      Defaults #{@default_transition_time}
     * `:display` - The optional display value to set when toggling in. Defaults `"block"`.
 
   ## Examples
@@ -280,7 +279,7 @@ defmodule Phoenix.LiveView.JS do
       defaults to the interacted element.
     * `:transition` - The string of classes to apply before adding classes.
     * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time }
+      Defaults #{@default_transition_time}
 
   ## Examples
 
@@ -289,12 +288,22 @@ defmodule Phoenix.LiveView.JS do
         highlight!
       </button>
   """
-  def add_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
+  def add_class(names) when is_binary(names), do: add_class(%JS{}, names, [])
+
+  def add_class(%JS{} = js, names) when is_binary(names) do
+    add_class(js, names, [])
+  end
+
+  def add_class(names, opts) when is_binary(names) and is_list(opts) do
+    add_class(%JS{}, names, opts)
+  end
+
+  def add_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :add_class, [:to, :transition, :time])
     time = opts[:time] || @default_transition_time
 
-    put_op(cmd, "add_class", %{
-      to: Keyword.fetch!(opts, :to),
+    put_op(js, "add_class", %{
+      to: opts[:to],
       names: class_names(names),
       transition: class_names(opts[:transition]),
       time: time
@@ -310,7 +319,7 @@ defmodule Phoenix.LiveView.JS do
       defaults to the interacted element.
     * `:transition` - The string of classes to apply before removing classes.
     * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time }
+      Defaults #{@default_transition_time}
 
   ## Examples
 
@@ -319,12 +328,22 @@ defmodule Phoenix.LiveView.JS do
         remove highlight!
       </button>
   """
-  def remove_class(cmd \\ %JS{}, names, opts) when is_binary(names) do
+  def remove_class(names) when is_binary(names), do: remove_class(%JS{}, names, [])
+
+  def remove_class(%JS{} = js, names) when is_binary(names) do
+    remove_class(js, names, [])
+  end
+
+  def remove_class(names, opts) when is_binary(names) and is_list(opts) do
+    remove_class(%JS{}, names, opts)
+  end
+
+  def remove_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :remove_class, [:to, :transition, :time])
     time = opts[:time] || @default_transition_time
 
-    put_op(cmd, "remove_class", %{
-      to: Keyword.fetch!(opts, :to),
+    put_op(js, "remove_class", %{
+      to: opts[:to],
       names: class_names(names),
       transition: class_names(opts[:transition]),
       time: time
@@ -343,7 +362,7 @@ defmodule Phoenix.LiveView.JS do
       defaults to the interacted element.
     * `:transition` - The string of classes to apply before removing classes.
     * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time }
+      Defaults #{@default_transition_time}
 
   ## Examples
 
