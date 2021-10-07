@@ -41,14 +41,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"REMOTE COMPONENT: Value: <%= @value %>"
   end
 
-  def remote_function_component_with_default_slot(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default_slot) %>"
+  def remote_function_component_with_inner_block(assigns) do
+    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
   end
 
-  def remote_function_component_with_default_slot_args(assigns) do
+  def remote_function_component_with_inner_block_args(assigns) do
     ~H"""
     REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@default_slot, %{
+    <%= render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
@@ -59,14 +59,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"LOCAL COMPONENT: Value: <%= @value %>"
   end
 
-  defp local_function_component_with_default_slot(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@default_slot) %>"
+  defp local_function_component_with_inner_block(assigns) do
+    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
   end
 
-  defp local_function_component_with_default_slot_args(assigns) do
+  defp local_function_component_with_inner_block_args(assigns) do
     ~H"""
     LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@default_slot, %{
+    <%= render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
     }) %>
@@ -295,9 +295,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot value='1'>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block value='1'>
                The inner content
-             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
@@ -312,13 +312,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot_args
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
                value="aBcD"
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot_args>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
              """) =~ expected
     end
 
@@ -333,12 +333,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(RuntimeError, message, fn ->
         compile("""
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot_args
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
           {[value: "aBcD"]}
           let={%{wrong: _}}
         >
           ...
-        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_default_slot_args>
+        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
         """)
       end)
     end
@@ -365,9 +365,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <.local_function_component_with_default_slot value='1'>
+             <.local_function_component_with_inner_block value='1'>
                The inner content
-             </.local_function_component_with_default_slot>
+             </.local_function_component_with_inner_block>
              """) == "LOCAL COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
@@ -382,23 +382,23 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("""
-             <.local_function_component_with_default_slot_args
+             <.local_function_component_with_inner_block_args
                value="aBcD"
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </.local_function_component_with_default_slot_args>
+             </.local_function_component_with_inner_block_args>
              """) =~ expected
 
       assert compile("""
-             <.local_function_component_with_default_slot_args
+             <.local_function_component_with_inner_block_args
                {[value: "aBcD"]}
                let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </.local_function_component_with_default_slot_args>
+             </.local_function_component_with_inner_block_args>
              """) =~ expected
     end
 
@@ -413,12 +413,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(RuntimeError, message, fn ->
         compile("""
-        <.local_function_component_with_default_slot_args
+        <.local_function_component_with_inner_block_args
           {[value: "aBcD"]}
           let={%{wrong: _}}
         >
           ...
-        </.local_function_component_with_default_slot_args>
+        </.local_function_component_with_inner_block_args>
         """)
       end)
     end
@@ -504,7 +504,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       ~H"""
       BEFORE HEADER
       <%= render_slot(@header) %>
-      TEXT:<%= render_slot(@default_slot) %>:TEXT
+      TEXT:<%= render_slot(@inner_block) %>:TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
       """

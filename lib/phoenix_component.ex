@@ -113,26 +113,27 @@ defmodule Phoenix.Component do
 
   ### Default slots
 
-  Any content you pass inside a component is assigned to the default slot.
-  For example, imagine you want to create a button component like this:
+  Any content you pass inside a component is assigned to a default slot
+  called `@inner_block`. For example, imagine you want to create a button
+  component like this:
 
       <.button>
         This renders <strong>inside</strong> the button!
       </.button>
 
   It is quite simple to do so. Simply define your component and call
-  `render_slot(@default_slot)` where you want to inject the content:
+  `render_slot(@inner_block)` where you want to inject the content:
 
       def button(assigns) do
         ~H"""
         <button class="btn">
-          <%= render_slot(@default_slot) %>
+          <%= render_slot(@inner_block) %>
         </button>
         """
       end
 
   In a nutshell, the contents given to the component is assigned to
-  the `@default_slot` assign and then we use `Phoenix.LiveView.Helpers.render_slot/2`
+  the `@inner_block` assign and then we use `Phoenix.LiveView.Helpers.render_slot/2`
   to render it.
 
   You can even have the component give a value back to the caller,
@@ -156,7 +157,7 @@ defmodule Phoenix.Component do
 
   ### Named slots
 
-  Besides the default slot, it is also possible to pass named slots
+  Besides `@inner_block`, it is also possible to pass named slots
   to the component. For example, imagine that you want to create
   a modal component. The modal component has a header, a footer,
   and the body of the modal, which we would use like this:
@@ -167,7 +168,7 @@ defmodule Phoenix.Component do
         </:header>
 
         This is the body - everything not in a
-        named slot goes to the default slot.
+        named slot goes to @inner_block.
 
         <:footer>
           <button>Save</button>
@@ -184,7 +185,7 @@ defmodule Phoenix.Component do
           </div>
 
           <div class="modal-body">
-            <%= render_slot(@default_slot) %>
+            <%= render_slot(@inner_block) %>
           </div>
 
           <div class="modal-footer">
@@ -245,7 +246,7 @@ defmodule Phoenix.Component do
         <table>
           <th>
             <%= for col <- @col do %>
-              <td><%= col.attrs.label %></td>
+              <td><%= col.label %></td>
             <% end >
           </th>
           <%= for row <- @rows do %>
@@ -259,11 +260,10 @@ defmodule Phoenix.Component do
         """
       end
 
-  As we can see, each named slot (including the `@default_slot`)
-  is actually a list of `Phoenix.Component.Slot` structs.
-  We can traverse each slot and also access the slot attributes
-  under the `.attrs` field, having complete control over how we
-  render them.
+  Each named slot (including the `@inner_block`) is a list of maps,
+  where the map contains all slot attributes, allowing us to access
+  the label as `col.label`. This gives us complete control over how
+  we render them.
   '''
 
   @doc false

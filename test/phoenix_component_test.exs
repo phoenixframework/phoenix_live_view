@@ -159,11 +159,11 @@ defmodule Phoenix.ComponentTest do
     defp inner_changed(assigns) do
       ~H"""
       <%= inspect(assigns.__changed__) %>
-      <%= render_slot(@default_slot, "var") %>
+      <%= render_slot(@inner_block, "var") %>
       """
     end
 
-    test "with default slot" do
+    test "with @inner_block" do
       assigns = %{foo: 1, __changed__: %{}}
       assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) == [nil]
       assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) == [nil]
@@ -171,17 +171,17 @@ defmodule Phoenix.ComponentTest do
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
       assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true, inner_block: true}", nil]]
+               [["%{foo: true}", nil]]
 
       assert eval(
                ~H|<.inner_changed foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
              ) ==
-               [["%{default_slot: true, foo: true, inner_block: true}", ["%{foo: true}"]]]
+               [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
       assert eval(
                ~H|<.inner_changed><%= @foo %></.inner_changed>|
              ) ==
-               [["%{default_slot: true, inner_block: true}", ["1"]]]
+               [["%{inner_block: true}", ["1"]]]
     end
 
     test "with let" do
@@ -191,40 +191,40 @@ defmodule Phoenix.ComponentTest do
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
       assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true, inner_block: true}", nil]]
+               [["%{foo: true}", nil]]
 
       assert eval(
                ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
              ) ==
-               [["%{default_slot: true, foo: true, inner_block: true}", ["%{foo: true}"]]]
+               [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
       assert eval(
                ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed>|
              ) ==
-               [["%{default_slot: true, foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
+               [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
 
       assert eval(
                ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [
-                   "%{default_slot: true, foo: true, inner_block: true}",
-                   [["%{bar: true, default_slot: true, inner_block: true}", [nil, "%{foo: true}"]]]
+                   "%{foo: true, inner_block: true}",
+                   [["%{bar: true, inner_block: true}", [nil, "%{foo: true}"]]]
                  ]
                ]
 
       assert eval(
                ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(assigns.__changed__) %></.inner_changed>|
              ) ==
-               [["%{default_slot: true, foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
+               [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
 
       assert eval(
                ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [
-                   "%{default_slot: true, foo: true, inner_block: true}",
-                   [["%{bar: true, default_slot: true, inner_block: true}", ["var", "%{foo: true}"]]]
+                   "%{foo: true, inner_block: true}",
+                   [["%{bar: true, inner_block: true}", ["var", "%{foo: true}"]]]
                  ]
                ]
     end

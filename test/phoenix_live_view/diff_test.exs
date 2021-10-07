@@ -389,8 +389,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default_slot, %{value: 1}) %>
-        HELLO <%= @id %> <%= render_slot(@default_slot, %{value: 2}) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 1}) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 2}) %>
       </div>
       """
     end
@@ -403,11 +403,11 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    def render_default_no_args(assigns) do
+    def render_inner_block_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default_slot) %>
-        HELLO <%= @id %> <%= render_slot(@default_slot) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
       </div>
       """
     end
@@ -421,11 +421,11 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    def render_default(assigns) do
+    def render_inner_block(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@default_slot, 1) %>
-        HELLO <%= @id %> <%= render_slot(@default_slot, 2) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 1) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 2) %>
       </div>
       """
     end
@@ -536,13 +536,13 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
     end
 
-    test "default slot without args" do
+    test "@inner_block without args" do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <FunctionComponent.render_default_no_args id="DEFAULT">
+      <FunctionComponent.render_inner_block_no_args id="DEFAULT">
         INSIDE BLOCK
-      </FunctionComponent.render_default_no_args>
+      </FunctionComponent.render_inner_block_no_args>
       """
 
       {socket, full_render, components} = render(rendered)
@@ -592,13 +592,13 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp function_tracking(assigns) do
       ~H"""
-      <FunctionComponent.render_default let={value} id={@id}>
+      <FunctionComponent.render_inner_block let={value} id={@id}>
         WITH VALUE <%= value %> - <%= @value %>
-      </FunctionComponent.render_default>
+      </FunctionComponent.render_inner_block>
       """
     end
 
-    test "default slot with args and parent assign" do
+    test "@inner_block with args and parent assign" do
       assigns = %{socket: %Socket{}, value: 123, id: "DEFAULT"}
 
       {socket, full_render, components} = render(function_tracking(assigns))
@@ -1488,7 +1488,7 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    test "default slot tracking with args and parent assigns" do
+    test "@inner_block tracking with args and parent assigns" do
       assigns = %{socket: %Socket{}, parent_value: 123}
       {socket, full_render, components} = render(tracking(assigns))
 

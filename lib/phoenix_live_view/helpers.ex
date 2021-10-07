@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.Helpers do
 
         ~H"""
         <a href={@href} target={@target} {@extra}>
-          <%= render_slot(@default_slot) %>
+          <%= render_slot(@inner_block) %>
         </a>
         """
       end
@@ -193,7 +193,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :default_slot, :inner_block] ++ exclude
+    excluded_keys = [:__changed__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
@@ -445,8 +445,32 @@ defmodule Phoenix.LiveView.Helpers do
 
   @doc """
   Deprecated API for rendering `LiveComponent`.
+
+  ## Upgrading
+
+  In order to migrate from `<%= live_component ... %>` to `<.live_component>`,
+  you must first:
+
+    1. Migrate from `~L` sigil and `.leex` templates to
+      `~H` sigil and `.heex` templates
+
+    2. Then instead of:
+
+          <%= live_component MyModule, id: "hello" do %>
+            ...
+          <% end %>
+
+       You should do:
+
+          <.live_component module={MyModule} id="hello">
+            ...
+          </.live_component>
+
+    3. If your component is using `render_block/2`, replace
+       it by `render_slot/2`
+
   """
-  @doc deprecated: "Use .live_component as a function component instead"
+  @doc deprecated: "Use .live_component (live_component/1) instead"
   defmacro live_component(component, assigns, do_block \\ []) do
     if is_assign?(:socket, component) do
       IO.warn(
@@ -512,21 +536,6 @@ defmodule Phoenix.LiveView.Helpers do
       case assigns do
         %{__changed__: _} -> assigns
         _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
-      end
-
-    # TODO: This is for backwards compatibility with @inner_block
-    assigns =
-      case assigns do
-        %{default_slot: [%{inner_block: block}], __changed__: %{} = changed} ->
-          assigns
-          |> Map.put(:inner_block, block)
-          |> Map.put(:__changed__, Map.put(changed, :inner_block, true))
-
-        %{default_slot: [%{inner_block: block}]} ->
-          Map.put(assigns, :inner_block, block)
-
-        %{} ->
-          assigns
       end
 
     case func.(assigns) do
@@ -632,59 +641,27 @@ defmodule Phoenix.LiveView.Helpers do
 
       <%= render_block(@inner_block, value: @value)
 
-  ## Moving to slots
-
-  `render_block` and `@inner_block` are deprecated. You can see how to move
-  to slots next.
-
-  ### Function components
-
-  If you have this code:
-
-      <%= render_block(@inner_block, value) %>
-
-  Simply change it to:
-
-      <%= render_slot(@default_slot, value) %>
-
-  If you are calling `render_block(@inner_block)`, with a single argument,
-  then change it to `render_block(@default_slot)`.
-
-  ### Live components
-
-  In order to migrate from `render_block/2` in live (stateful) components,
-  the first step is to change how you invoke `live_component`. Instead of:
-
-      <%= live_component MyModule, id: "hello" do %>
-        ...
-      <% end %>
-
-  You should do:
-
-      <.live_component module={MyModule} id="hello">
-        ...
-      </.live_component>
-
-  Now you can replace the following inside by the component:
-
-      <%= render_block(@inner_block, value) %>
-
-  by:
-
-      <%= render_slot(@default_slot, value) %>
-
+  This function is deprecated for function components. Use `render_slot/2`
+  instead.
   """
-  @deprecated "Use render_slot/2 instead (see Phoenix.LiveView.Helpers.render_block/2 docs on how to migrate)"
+  @doc deprecated: "Use render_slot/2 instead"
   defmacro render_block(inner_block, argument \\ []) do
     quote do
-      unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
+      unquote(__MODULE__).__render_block__(unquote(inner_block)).(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(argument)
+      )
     end
   end
+
+  @doc false
+  def __render_block__([%{inner_block: fun}]), do: fun
+  def __render_block__(fun), do: fun
 
   @doc ~S'''
   Renders a slot entry with the given optional `argument`.
 
-      <%= render_slot(@default_slot, @form) %>
+      <%= render_slot(@inner_block, @form) %>
 
   If multiple slot entries are defined for the same slot,
   `render_slot/2` will automatically render all entries,
@@ -717,7 +694,7 @@ defmodule Phoenix.LiveView.Helpers do
         <table>
           <th>
             <%= for col <- @col do %>
-              <td><%= col.attrs.label %></td>
+              <td><%= col.label %></td>
             <% end >
           </th>
           <%= for row <- @rows do %>
@@ -1064,7 +1041,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" value={@csrf_token}>
       <% end %>
-      <%= render_slot(@default_slot, @form) %>
+      <%= render_slot(@inner_block, @form) %>
     </form>
     """
   end
@@ -1074,7 +1051,10 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
-    match?({^assign_name, _, _}, expression) or
-    match?({{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]}, expression)
+      match?({^assign_name, _, _}, expression) or
+      match?(
+        {{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]},
+        expression
+      )
   end
 end

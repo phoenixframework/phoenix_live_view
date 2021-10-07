@@ -323,12 +323,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Slot
 
-  defp handle_token({:tag_open, ":default_slot", _attrs, meta}, state) do
+  defp handle_token({:tag_open, ":inner_block", _attrs, meta}, state) do
     raise ParseError,
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: "the slot name :default_slot is reserved"
+      description: "the slot name :inner_block is reserved"
   end
 
   # Slot (self close)
@@ -610,11 +610,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     default =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(:default_slot, %{}, do: unquote(clauses))
+        Phoenix.LiveView.Helpers.slot(:inner_block, %{}, do: unquote(clauses))
       end
 
     {slots, state} = pop_slots(state)
-    {merge_component_attrs(roots, dynamics ++ [{:default_slot, [default]} | slots], line), state}
+    {merge_component_attrs(roots, dynamics ++ [{:inner_block, [default]} | slots], line), state}
   end
 
   defp split_component_attrs(attrs, file) do

@@ -102,7 +102,6 @@ defmodule Phoenix.LiveView.MixProject do
     [
       "Components": [
         Phoenix.Component,
-        Phoenix.Component.Slot,
         Phoenix.LiveComponent,
         Phoenix.LiveComponent.CID
       ],
