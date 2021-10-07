@@ -255,10 +255,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when first in ?A..?Z do
     file = state.file
     {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
-    {assigns, state} = build_self_close_component_assigns(attrs, state)
+    {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     ast =
-      quote do
+      quote line: tag_meta.line do
         Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
       end
 
@@ -306,7 +306,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          state
        ) do
     fun = String.to_atom(name)
-    {assigns, state} = build_self_close_component_assigns(attrs, state)
+    {assigns, state} = build_self_close_component_assigns(attrs, line, state)
 
     ast =
       quote line: line do
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         description: "cannot use `let` on a slot without inner content"
     end
 
-    assigns = merge_component_attrs(roots, dynamics)
+    assigns = merge_component_attrs(roots, dynamics, line)
 
     ast =
       quote line: line do
@@ -371,7 +371,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     slot_key = String.to_atom(slot_name)
 
     {let, roots, dynamics} = split_component_attrs(attrs, state.file)
-    assigns = merge_component_attrs(roots, dynamics)
+    assigns = merge_component_attrs(roots, dynamics, line)
     clauses = build_component_clauses(let, state)
 
     ast =
@@ -598,10 +598,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## build_self_close_component_assigns/build_component_assigns
 
-  defp build_self_close_component_assigns(attrs, %{file: file} = state) do
+  defp build_self_close_component_assigns(attrs, line, %{file: file} = state) do
     {let, roots, dynamics} = split_component_attrs(attrs, file)
     raise_if_let!(let, file)
-    {merge_component_attrs(roots, dynamics), state}
+    {merge_component_attrs(roots, dynamics, line), state}
   end
 
   defp build_component_assigns(attrs, line, %{file: file} = state) do
@@ -614,7 +614,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     {slots, state} = pop_slots(state)
-    {merge_component_attrs(roots, dynamics ++ [{:default_slot, [default]} | slots]), state}
+    {merge_component_attrs(roots, dynamics ++ [{:default_slot, [default]} | slots], line), state}
   end
 
   defp split_component_attrs(attrs, file) do
@@ -629,7 +629,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    quoted_value = quote do: Map.new(unquote(quoted_value))
+    quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
     {let, [quoted_value | r], d}
   end
 
@@ -676,7 +676,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {let, r, [{String.to_atom(name), true} | d]}
   end
 
-  defp merge_component_attrs(r, d) do
+  defp merge_component_attrs(r, d, line) do
     entries =
       case {r, d} do
         {[], []} -> [{:%{}, [], []}]
@@ -685,7 +685,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     Enum.reduce(entries, fn expr, acc ->
-      quote do: Map.merge(unquote(acc), unquote(expr))
+      quote line: line, do: Map.merge(unquote(acc), unquote(expr))
     end)
   end
 
@@ -743,7 +743,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           end
 
       _ ->
-        quote do
+        quote line: line do
           _ -> unquote(invoke_subengine(state, :handle_end, []))
         end
     end
