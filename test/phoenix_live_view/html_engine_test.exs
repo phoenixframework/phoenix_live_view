@@ -585,7 +585,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise when calling render_slot/2 on a slot without inner content" do
-      message = ~r"cannot call `render_slot/2` on a <:sample> entry without inner content"
+      message = ~r"attempted to render slot <:sample> but the slot has no inner content"
 
       assigns = %{}
 
