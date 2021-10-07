@@ -512,8 +512,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       COMPONENT WITH SLOTS:
       BEFORE SLOT
 
-        \
-
           The sample slot
         \
 
@@ -546,13 +544,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       COMPONENT WITH SLOTS:
       BEFORE SLOT
 
-        \
-
           entry 1
-        \
-
-        \
-
         \
 
           entry 2
@@ -591,15 +583,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       expected = """
 
-        1: \
+        1: one
 
-        one
-
-        2: \
-
-        \
-
-        two
+        2: two
       """
 
       assert compile("""
@@ -619,15 +605,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "slot props" do
       assigns = %{a: "A"}
-
-      expected = """
-
-      A
-
-         and \
-
-      B
-      """
+      expected = "\nA\n and \nB\n"
 
       assert compile("""
              <.function_component_with_slot_props>
@@ -649,16 +627,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE COMPONENT
       BEFORE HEADER
 
-        \
-
           The header content
         \
 
       TEXT
-
-        \
-
-        \
 
           The footer content
         \
@@ -702,8 +674,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       COMPONENT WITH SLOTS:
       BEFORE SLOT
 
-        \
-
           The sample slot
           Arg: 1
         \
@@ -738,12 +708,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       expected = """
       BEFORE SLOT
 
-        \
-
          The outer slot
           BEFORE SLOT
-
-            \
 
             The inner slot
             \

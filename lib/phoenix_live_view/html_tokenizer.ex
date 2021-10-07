@@ -29,6 +29,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
+  def finalize(tokens) do
+    tokens
+    |> strip_text_space()
+    |> Enum.reverse()
+    |> strip_text_space()
+  end
+
   def tokenize(text, file, indentation, meta, tokens) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
@@ -149,6 +156,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_open(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
+        acc =
+          # Strip space before slots
+          case name do
+            ":" <> _ -> strip_text_space(acc)
+            _ -> acc
+          end
+
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
@@ -516,5 +530,14 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp pop_brace(%{braces: [pos | braces]} = state) do
     {pos, %{state | braces: braces}}
+  end
+
+  defp strip_text_space(tokens) do
+    with [{:text, text, _} | rest] <- tokens,
+         "" <- String.trim_leading(text) do
+      strip_text_space(rest)
+    else
+      _ -> tokens
+    end
   end
 end

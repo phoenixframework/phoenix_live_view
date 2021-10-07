@@ -82,9 +82,9 @@ defmodule Phoenix.Component do
   calls instead of precomputed assigns:
 
       def show_name(assigns) do
-        ~H"\""
+        ~H"""
         <p>Your name is: <%= full_name(@first_name, @last_name) %></p>
-        "\""
+        """
       end
 
       defp full_name(first_name, last_name), do: first_name <> last_name

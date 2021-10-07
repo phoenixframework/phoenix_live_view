@@ -40,11 +40,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_body(state) do
-    tokens =
-      state.tokens
-      |> strip_text_space()
-      |> Enum.reverse()
-      |> strip_text_space()
+    tokens = HTMLTokenizer.finalize(state.tokens)
 
     token_state =
       state
@@ -435,15 +431,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   # Root tracking
-
-  defp strip_text_space(tokens) do
-    with [{:text, text, _} | rest] <- tokens,
-         "" <- String.trim_leading(text) do
-      strip_text_space(rest)
-    else
-      _ -> tokens
-    end
-  end
 
   defp set_root_on_not_tag(%{root: root, tags: tags} = state) do
     if tags == [] and root != false do
