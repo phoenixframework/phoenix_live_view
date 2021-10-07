@@ -743,7 +743,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           end
 
       _ ->
-        quote line: line do
+        quote do
           _ -> unquote(invoke_subengine(state, :handle_end, []))
         end
     end

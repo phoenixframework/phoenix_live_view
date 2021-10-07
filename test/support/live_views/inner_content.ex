@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.InnerCounter do
     ~H"""
     <div>
       <button id="inner" phx-click="inc" phx-target={@myself}>+</button>
-      <p><%= render_block(@inner_block, value: @value) %></p>
+      <p><%= render_slot(@default_slot, @value) %></p>
     </div>
     """
   end
@@ -30,11 +30,10 @@ defmodule Phoenix.LiveViewTest.InnerLive do
     ~H"""
     <button id="outer" phx-click="inc">+</button>
 
-    <%= live_component Phoenix.LiveViewTest.InnerCounter, id: "counter" do %>
-      <% [value: value] -> %>
-        Outer: <%= send(@test_process, @outer) %>
-        Inner: <%= value %>
-    <% end %>
+    <.live_component let={value} module={Phoenix.LiveViewTest.InnerCounter} id="counter">
+      Outer: <%= send(@test_process, @outer) %>
+      Inner: <%= value %>
+    </.live_component>
     """
   end
 
