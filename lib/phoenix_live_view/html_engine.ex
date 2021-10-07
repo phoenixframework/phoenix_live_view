@@ -337,7 +337,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{line: line} = tag_meta
     slot_key = String.to_atom(slot_name)
 
-    {let, roots, dynamics} = split_component_attrs(attrs, state.file)
+    {let, roots, attrs} = split_component_attrs(attrs, state.file)
 
     with {_, let_meta} <- let do
       raise ParseError,
@@ -347,14 +347,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
         description: "cannot use `let` on a slot without inner content"
     end
 
-    assigns = merge_component_attrs(roots, dynamics, line)
-
-    ast =
-      quote line: line do
-        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns))
-      end
-
-    add_slot!(state, {slot_key, ast}, tag_meta)
+    attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
+    assigns = merge_component_attrs(roots, attrs, line)
+    add_slot!(state, {slot_key, assigns}, tag_meta)
   end
 
   # Slot (with inner content)
@@ -370,17 +365,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
     slot_key = String.to_atom(slot_name)
 
-    {let, roots, dynamics} = split_component_attrs(attrs, state.file)
-    assigns = merge_component_attrs(roots, dynamics, line)
+    {let, roots, attrs} = split_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(unquote(slot_key), unquote(assigns), do: unquote(clauses))
+        Phoenix.LiveView.Helpers.slot(unquote(slot_key), do: unquote(clauses))
       end
 
+    attrs = [__slot__: slot_key, inner_block: ast] ++ attrs
+    assigns = merge_component_attrs(roots, attrs, line)
+
     state
-    |> add_slot!({slot_key, ast}, tag_meta)
+    |> add_slot!({slot_key, assigns}, tag_meta)
     |> pop_substate_from_stack()
   end
 
@@ -599,22 +596,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
   ## build_self_close_component_assigns/build_component_assigns
 
   defp build_self_close_component_assigns(attrs, line, %{file: file} = state) do
-    {let, roots, dynamics} = split_component_attrs(attrs, file)
+    {let, roots, attrs} = split_component_attrs(attrs, file)
     raise_if_let!(let, file)
-    {merge_component_attrs(roots, dynamics, line), state}
+    {merge_component_attrs(roots, attrs, line), state}
   end
 
   defp build_component_assigns(attrs, line, %{file: file} = state) do
-    {let, roots, dynamics} = split_component_attrs(attrs, file)
+    {let, roots, attrs} = split_component_attrs(attrs, file)
     clauses = build_component_clauses(let, state)
 
-    default =
+    inner_block_assigns =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(:inner_block, %{}, do: unquote(clauses))
+        %{__slot__: :inner_block,
+          inner_block: Phoenix.LiveView.Helpers.slot(:inner_block, do: unquote(clauses))}
       end
 
     {slots, state} = pop_slots(state)
-    {merge_component_attrs(roots, dynamics ++ [{:inner_block, [default]} | slots], line), state}
+    attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slots]
+    {merge_component_attrs(roots, attrs, line), state}
   end
 
   defp split_component_attrs(attrs, file) do
@@ -625,21 +624,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp split_component_attr(
          {:root, {:expr, value, %{line: line, column: col}}},
-         {let, r, d},
+         {let, r, a},
          _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
-    {let, [quoted_value | r], d}
+    {let, [quoted_value | r], a}
   end
 
   defp split_component_attr(
          {"let", {:expr, value, %{line: line, column: col} = meta}},
-         {nil, r, d},
+         {nil, r, a},
          _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    {{quoted_value, meta}, r, d}
+    {{quoted_value, meta}, r, a}
   end
 
   defp split_component_attr(
@@ -661,27 +660,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp split_component_attr(
          {name, {:expr, value, %{line: line, column: col}}},
-         {let, r, d},
+         {let, r, a},
          _file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    {let, r, [{String.to_atom(name), quoted_value} | d]}
+    {let, r, [{String.to_atom(name), quoted_value} | a]}
   end
 
-  defp split_component_attr({name, {:string, value, _}}, {let, r, d}, _file) do
-    {let, r, [{String.to_atom(name), value} | d]}
+  defp split_component_attr({name, {:string, value, _}}, {let, r, a}, _file) do
+    {let, r, [{String.to_atom(name), value} | a]}
   end
 
-  defp split_component_attr({name, nil}, {let, r, d}, _file) do
-    {let, r, [{String.to_atom(name), true} | d]}
+  defp split_component_attr({name, nil}, {let, r, a}, _file) do
+    {let, r, [{String.to_atom(name), true} | a]}
   end
 
-  defp merge_component_attrs(r, d, line) do
+  defp merge_component_attrs(roots, attrs, line) do
     entries =
-      case {r, d} do
+      case {roots, attrs} do
         {[], []} -> [{:%{}, [], []}]
-        {r, []} -> r
-        {r, d} -> r ++ [{:%{}, [], d}]
+        {_, []} -> roots
+        {_, _} -> roots ++ [{:%{}, [], attrs}]
       end
 
     Enum.reduce(entries, fn expr, acc ->

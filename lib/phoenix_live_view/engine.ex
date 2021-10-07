@@ -725,23 +725,17 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp slots_to_rendered(static, vars) do
-    for {key, values} <- static do
-      if is_list(values) do
-        values =
-          for value <- values do
-            with {call, meta, [name, attrs, [do: block]]} <- value,
-                 :slot <- extract_call(call) do
-              {call, meta, [name, attrs, [do: maybe_block_to_rendered(block, vars)]]}
-            else
-              _ -> value
-            end
-          end
+    Macro.postwalk(static, fn
+      {call, meta, [name, [do: block]]} = node ->
+        if extract_call(call) == :slot do
+          {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
+        else
+          node
+        end
 
-        {key, values}
-      else
-        {key, values}
-      end
-    end
+      node ->
+        node
+    end)
   end
 
   ## Extracts binaries and variable from iodata
@@ -1167,7 +1161,7 @@ defmodule Phoenix.LiveView.Engine do
   # TODO: Remove me when live_component/2/3 are removed
   defp classify_taint(:live_component, [_, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  defp classify_taint(:slot, [_, _, [do: _]]), do: :render
+  defp classify_taint(:slot, [_, [do: _]]), do: :render
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always

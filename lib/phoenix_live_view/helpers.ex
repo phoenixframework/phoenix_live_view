@@ -193,7 +193,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    excluded_keys = [:__changed__, :__slot__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
@@ -720,7 +720,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Defines a slot for the component.
+  Defines a slot's inner block.
 
   This macro is mostly used by HTML engines that provides
   a `slot` implementation and rarely called directly.
@@ -729,25 +729,8 @@ defmodule Phoenix.LiveView.Helpers do
   level `<:slot>` notation instead. See `Phoenix.Component`
   for more information.
   """
-  defmacro slot(name, attrs, do: do_block) do
-    do_block = rewrite_do!(do_block, name, __CALLER__)
-
-    quote do
-      name = unquote(name)
-      Phoenix.LiveView.Helpers.__slot__(unquote(attrs), unquote(do_block))
-    end
-  end
-
-  defmacro slot(name, attrs) do
-    quote do
-      name = unquote(name)
-      Phoenix.LiveView.Helpers.__slot__(unquote(attrs), nil)
-    end
-  end
-
-  @doc false
-  def __slot__(attrs, fun) when is_map(attrs) do
-    Map.put(attrs, :inner_block, fun)
+  defmacro slot(name, do: do_block) do
+    rewrite_do!(do_block, name, __CALLER__)
   end
 
   @doc false
