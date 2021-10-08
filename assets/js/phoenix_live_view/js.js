@@ -142,8 +142,8 @@ let JS = {
       let newRemoves = prevRemoves.filter(name => adds.indexOf(name) < 0).concat(keepRemoves)
 
       DOM.putSticky(el, "classes", currentEl => {
-        newRemoves.forEach(name => currentEl.classList.remove(name))
-        newAdds.forEach(name => currentEl.classList.add(name))
+        currentEl.classList.remove(...newRemoves)
+        currentEl.classList.add(...newAdds)
         return [newAdds, newRemoves]
       })
     })

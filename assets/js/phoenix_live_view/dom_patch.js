@@ -77,6 +77,7 @@ export default class DOMPatch {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
+    let phxRemove = liveSocket.binding("remove")
     let added = []
     let updates = []
     let appendPrependUpdates = []
@@ -126,7 +127,7 @@ export default class DOMPatch {
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
-          if(el.getAttribute && el.getAttribute(liveSocket.binding("remove"))){
+          if(el.getAttribute && el.getAttribute(phxRemove)){
             pendingRemoves.push(el)
             return false
           }
