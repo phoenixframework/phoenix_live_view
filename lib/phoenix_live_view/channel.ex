@@ -1154,8 +1154,8 @@ defmodule Phoenix.LiveView.Channel do
         raise RuntimeError, """
         existing upload for #{conf.name} already allowed in another component (#{existing_cid})
 
-        If you want to allow simultaneous uploads across different components, pass a
-        unique upload name to allow_upload/3
+        If you want to allow simultaneous uploads across different components,
+        pass a unique upload name to allow_upload/3
         """
     end
   end
@@ -1184,7 +1184,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp session_route(%Session{} = session, endpoint, url) do
-    case Route.live_link_info(endpoint, session.router, url) do
+    # The url should be a complete url, so no need for host fallback.
+    case Route.live_link_info(endpoint, session.router, url, nil) do
       {:internal, %Route{} = route} -> route
       _ -> nil
     end

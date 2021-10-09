@@ -76,7 +76,10 @@ defmodule Phoenix.LiveView.RouterTest do
   describe "live_session" do
     test "with defaults", %{conn: conn} do
       path = "/thermo-live-session"
-      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+
       assert route.live_session.name == :test
       assert route.live_session.vsn
 
@@ -85,7 +88,10 @@ defmodule Phoenix.LiveView.RouterTest do
 
     test "with extra session metadata", %{conn: conn} do
       path = "/thermo-live-session-admin"
-      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+
       assert route.live_session.name == :admin
       assert route.live_session.vsn
 
@@ -95,7 +101,10 @@ defmodule Phoenix.LiveView.RouterTest do
 
     test "with session MFA metadata", %{conn: conn} do
       path = "/thermo-live-session-mfa"
-      assert {:internal, route} = Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+
       assert route.live_session.name == :mfa
       assert route.live_session.vsn
 
@@ -107,18 +116,19 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/halt-connected-mount"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
 
       assert route.live_session.extra == %{
-        on_mount: [
-          %{
-            id: {Phoenix.LiveViewTest.HaltConnectedMount, :default},
-            stage: :mount,
-            function: Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 4)
-          }
-        ],
-        session: %{}
-      }
+               on_mount: [
+                 %{
+                   id: {Phoenix.LiveViewTest.HaltConnectedMount, :default},
+                   stage: :mount,
+                   function:
+                     Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 4)
+                 }
+               ],
+               session: %{}
+             }
 
       assert conn |> get(path) |> html_response(200) =~
                "last_on_mount:Phoenix.LiveViewTest.HaltConnectedMount"
@@ -130,20 +140,21 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-args"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
 
       assert route.live_session.extra == %{
-        on_mount: [
-          %{
-            id: {Phoenix.LiveViewTest.MountArgs, :inlined},
-            stage: :mount,
-            function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4),
-          }
-        ],
-        session: %{}
-      }
+               on_mount: [
+                 %{
+                   id: {Phoenix.LiveViewTest.MountArgs, :inlined},
+                   stage: :mount,
+                   function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4)
+                 }
+               ],
+               session: %{}
+             }
 
-      assert {:error, {:live_redirect, %{to: "/lifecycle?called=true&inlined=true"}}} = live(conn, path)
+      assert {:error, {:live_redirect, %{to: "/lifecycle?called=true&inlined=true"}}} =
+               live(conn, path)
     end
 
     test "raises when nesting" do

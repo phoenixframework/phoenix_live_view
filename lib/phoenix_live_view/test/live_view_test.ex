@@ -1517,7 +1517,7 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, {:redirect, _}} = live_redirect(page2_live, to: "/admin")
   """
   def live_redirect(view, opts) do
-    Phoenix.LiveViewTest.__live_redirect__(view, opts)
+    __live_redirect__(view, opts)
   end
 
   @doc false
@@ -1531,7 +1531,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     live_module =
-      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url) do
+      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url, root.uri.host) do
         {:internal, route} ->
           route.view
 

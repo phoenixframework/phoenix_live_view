@@ -26,7 +26,8 @@ defmodule Phoenix.LiveView.Route do
   end
 
   @doc """
-  Returns the internal or external matched LiveView route info for the given uri
+  Returns the internal or external matched LiveView route info for the given socket
+  and uri, raises if none is available.
   """
   def live_link_info!(%Socket{router: nil}, view, _uri) do
     raise ArgumentError,
@@ -35,7 +36,13 @@ defmodule Phoenix.LiveView.Route do
   end
 
   def live_link_info!(%Socket{} = socket, view, uri) do
-    case live_link_info(socket.endpoint, socket.router, uri) do
+    host =
+      case socket.host_uri do
+        %{host: host} -> host
+        _ -> nil
+      end
+
+    case live_link_info(socket.endpoint, socket.router, uri, host) do
       {:internal, %Route{view: ^view} = route} ->
         {:internal, route}
 
@@ -52,12 +59,18 @@ defmodule Phoenix.LiveView.Route do
     end
   end
 
-  def live_link_info(endpoint, router, uri) when is_binary(uri) do
-    live_link_info(endpoint, router, URI.parse(uri))
+  @doc """
+  Returns the internal or external matched LiveView route info for the given uri.
+  """
+  def live_link_info(endpoint, router, uri, host_callback)
+
+  def live_link_info(endpoint, router, uri, host_fallback) when is_binary(uri) do
+    live_link_info(endpoint, router, URI.parse(uri), host_fallback)
   end
 
-  def live_link_info(endpoint, router, %URI{} = uri) when is_atom(endpoint) and is_atom(router) do
-    %URI{host: host, path: path, query: query} = parsed_uri = URI.parse(uri)
+  def live_link_info(endpoint, router, %URI{} = parsed_uri, host_fallback)
+      when is_atom(endpoint) and is_atom(router) do
+    %URI{host: host, path: path, query: query} = parsed_uri
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     split_path =
@@ -65,7 +78,7 @@ defmodule Phoenix.LiveView.Route do
 
     route_path = strip_segments(endpoint.script_name(), split_path) || split_path
 
-    case Phoenix.Router.route_info(router, "GET", route_path, host) do
+    case Phoenix.Router.route_info(router, "GET", route_path, host || host_fallback) do
       %{plug: Phoenix.LiveView.Plug, phoenix_live_view: lv, path_params: path_params} ->
         {view, action, opts, live_session} = lv
 
