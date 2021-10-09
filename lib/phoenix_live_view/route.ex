@@ -35,9 +35,11 @@ defmodule Phoenix.LiveView.Route do
             "because it is not mounted nor accessed through the router live/3 macro"
   end
 
-  def live_link_info!(%Socket{} = socket, view, uri) do
+  def live_link_info!(%Socket{host_uri: host_uri} = socket, view, uri) do
+    # The URI may be a relative uri, which means its host is missing,
+    # so we get the proper host from the socket if available.
     host =
-      case socket.host_uri do
+      case host_uri do
         %{host: host} -> host
         _ -> nil
       end
