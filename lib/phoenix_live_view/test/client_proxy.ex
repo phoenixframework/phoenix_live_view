@@ -504,6 +504,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_patch, topic, path}, from, state) do
     view = fetch_view_by_topic!(state, topic)
+    path = URI.merge(state.root_view.uri, URI.parse(path)) |> to_string()
     state = push_with_reply(state, from, view, "live_patch", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
     {:noreply, state}
@@ -742,8 +743,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     send(pid, {ref, msg})
   end
 
-  defp send_patch(state, topic, %{to: _to} = opts) do
-    send_caller(state, {:patch, topic, opts})
+  defp send_patch(state, topic, %{to: to} = opts) do
+    relative =
+      case URI.parse(to) do
+        %{path: nil} -> ""
+        %{path: path, query: nil} -> path
+        %{path: path, query: query} -> path <> "?" <> query
+      end
+
+    send_caller(state, {:patch, topic, %{opts | to: relative}})
   end
 
   defp push(state, view, event, payload) do

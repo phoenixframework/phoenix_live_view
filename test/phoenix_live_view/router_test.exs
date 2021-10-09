@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.name == :test
       assert route.live_session.vsn
@@ -90,7 +90,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-admin"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.name == :admin
       assert route.live_session.vsn
@@ -103,7 +103,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-mfa"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.name == :mfa
       assert route.live_session.vsn
@@ -116,7 +116,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/halt-connected-mount"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-args"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path, nil)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [

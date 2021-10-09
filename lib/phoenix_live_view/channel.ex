@@ -1184,8 +1184,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp session_route(%Session{} = session, endpoint, url) do
-    # The url should be a complete url, so no need for host fallback.
-    case Route.live_link_info(endpoint, session.router, url, nil) do
+    case Route.live_link_info(endpoint, session.router, url) do
       {:internal, %Route{} = route} -> route
       _ -> nil
     end

@@ -1531,7 +1531,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     live_module =
-      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url, root.uri.host) do
+      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url) do
         {:internal, route} ->
           route.view
 

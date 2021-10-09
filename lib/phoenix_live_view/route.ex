@@ -35,16 +35,8 @@ defmodule Phoenix.LiveView.Route do
             "because it is not mounted nor accessed through the router live/3 macro"
   end
 
-  def live_link_info!(%Socket{host_uri: host_uri} = socket, view, uri) do
-    # The URI may be a relative uri, which means its host is missing,
-    # so we get the proper host from the socket if available.
-    host =
-      case host_uri do
-        %{host: host} -> host
-        _ -> nil
-      end
-
-    case live_link_info(socket.endpoint, socket.router, uri, host) do
+  def live_link_info!(%Socket{} = socket, view, uri) do
+    case live_link_info(socket.endpoint, socket.router, uri) do
       {:internal, %Route{view: ^view} = route} ->
         {:internal, route}
 
@@ -64,13 +56,11 @@ defmodule Phoenix.LiveView.Route do
   @doc """
   Returns the internal or external matched LiveView route info for the given uri.
   """
-  def live_link_info(endpoint, router, uri, host_callback)
-
-  def live_link_info(endpoint, router, uri, host_fallback) when is_binary(uri) do
-    live_link_info(endpoint, router, URI.parse(uri), host_fallback)
+  def live_link_info(endpoint, router, uri) when is_binary(uri) do
+    live_link_info(endpoint, router, URI.parse(uri))
   end
 
-  def live_link_info(endpoint, router, %URI{} = parsed_uri, host_fallback)
+  def live_link_info(endpoint, router, %URI{} = parsed_uri)
       when is_atom(endpoint) and is_atom(router) do
     %URI{host: host, path: path, query: query} = parsed_uri
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
@@ -80,7 +70,7 @@ defmodule Phoenix.LiveView.Route do
 
     route_path = strip_segments(endpoint.script_name(), split_path) || split_path
 
-    case Phoenix.Router.route_info(router, "GET", route_path, host || host_fallback) do
+    case Phoenix.Router.route_info(router, "GET", route_path, host) do
       %{plug: Phoenix.LiveView.Plug, phoenix_live_view: lv, path_params: path_params} ->
         {view, action, opts, live_session} = lv
 

@@ -88,7 +88,7 @@ defmodule Phoenix.LiveView.LiveNavigationTest do
       assert html =~ "LiveAction: full"
 
       html = live |> element("#path") |> render_click()
-      assert html =~ "URI: /with-host/path"
+      assert html =~ "URI: https://app.example.com/with-host/path"
       assert html =~ "LiveAction: path"
 
       html = live |> element("#full") |> render_click()
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.LiveNavigationTest do
       assert html =~ "LiveAction: full"
 
       html = live |> element("#path") |> render_click()
-      assert html =~ "URI: /with-host/path"
+      assert html =~ "URI: http://app.example.com/with-host/path"
       assert html =~ "LiveAction: path"
     end
   end
