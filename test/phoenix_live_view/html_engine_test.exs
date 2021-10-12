@@ -1016,6 +1016,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                "<script>a = '<a>';b = '<b>';</script>"
     end
 
+    test "handles comments" do
+      assert render("Begin<!-- <%= 123 %> -->End") ==
+               "Begin<!-- 123 -->End"
+    end
+
+    test "unmatched comment" do
+      message = ~r".exs:1:(11:)? expected closing `-->` for comment"
+
+      assert_raise(ParseError, message, fn ->
+        eval("Begin<!-- <%= 123 %>")
+      end)
+    end
+
     test "unmatched open/close tags" do
       message =
         ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"

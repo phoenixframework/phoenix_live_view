@@ -44,8 +44,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   ## These callbacks return AST
 
   @doc false
-  def handle_body(state) do
-    tokens = HTMLTokenizer.finalize(state.tokens)
+  def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
+    tokens = HTMLTokenizer.finalize(tokens, file, cont)
 
     token_state =
       state

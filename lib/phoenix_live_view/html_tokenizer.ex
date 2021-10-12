@@ -30,7 +30,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def finalize(tokens) do
+  def finalize(_tokens, file, {:comment, line, column}) do
+    message = "expected closing `-->` for comment"
+    raise ParseError, file: file, line: line, column: column, description: message
+  end
+
+  def finalize(tokens, _file, _cont) do
     tokens
     |> strip_text_token_fully()
     |> Enum.reverse()
@@ -45,6 +50,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
       :script -> handle_script(text, line, column, [], tokens, state)
+      {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
     end
   end
 
@@ -67,13 +73,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text("<!--" <> rest, line, column, buffer, acc, state) do
-    case handle_comment(rest, line, column + 4, ["<!--" | buffer], state) do
-      {:ok, new_rest, new_live, new_column, new_buffer} ->
-        handle_text(new_rest, new_live, new_column, new_buffer, acc, state)
-
-      {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
-    end
+    handle_comment(rest, line, column + 4, ["<!--" | buffer], acc, state)
   end
 
   defp handle_text("</" <> rest, line, column, buffer, acc, state) do
@@ -139,25 +139,24 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ## handle_comment
 
-  defp handle_comment("\r\n" <> rest, line, _column, buffer, state) do
-    handle_comment(rest, line + 1, state.column_offset, ["\r\n" | buffer], state)
+  defp handle_comment("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_comment(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
   end
 
-  defp handle_comment("\n" <> rest, line, _column, buffer, state) do
-    handle_comment(rest, line + 1, state.column_offset, ["\n" | buffer], state)
+  defp handle_comment("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_comment(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
   end
 
-  defp handle_comment("-->" <> rest, line, column, buffer, _state) do
-    {:ok, rest, line, column + 3, ["-->" | buffer]}
+  defp handle_comment("-->" <> rest, line, column, buffer, acc, state) do
+    handle_text(rest, line, column + 3, ["-->" | buffer], acc, state)
   end
 
-  defp handle_comment(<<c::utf8, rest::binary>>, line, column, buffer, state) do
-    handle_comment(rest, line, column + 1, [char_or_bin(c) | buffer], state)
+  defp handle_comment(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_comment(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_comment(<<>>, line, column, _buffer, state) do
-    message = "expected closing `-->` for comment"
-    raise ParseError, file: state.file, line: line, column: column, description: message
+  defp handle_comment(<<>>, line, column, buffer, acc, _state) do
+    ok(text_to_acc(buffer, acc, line, column), {:comment, line, column})
   end
 
   ## handle_tag_open
