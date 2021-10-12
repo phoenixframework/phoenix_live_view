@@ -62,10 +62,16 @@ Some functionality that was previously deprecated has been removed:
   - Passing a `@socket` to `live_component` will now raise if possible
 
 ### Enhancements
+  - Allow slots in function components: they are marked as `<:slot_name>` and can be rendered with `<%= render_slot @slot_name %>`
+  - Optimize string attributes:
+    - If the attribute is a string interpolation, such as `<div class={"foo bar #{@baz}"}>`, only the interpolation part is marked as dynamic
+    - If the attribute can be empty, such as "class" and "style", keep the attribute name as static
   - Add a function component for rendering `Phoenix.LiveComponent`. Instead of `<%= live_component FormComponent, id: "form" %>`, you must now do: `<.live_component module={FormComponent} id="form" />`
 
 ### Bug fixes
   - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
+  - Support EEx interpolation inside HTML comments in HEEx templates
+  - Make sure the test client always sends the full URL on `live_patch`/`live_redirect`. This mirrors the behaviour of the JavaScript client
 
 ### Deprecations
   - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
