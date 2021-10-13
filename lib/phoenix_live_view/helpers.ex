@@ -96,17 +96,13 @@ defmodule Phoenix.LiveView.Helpers do
         ...
       </div>
 
-  Let's look at a more complicated example you may stumble upon using AlpineJS:
+  You can put any Elixir expression between `{ ... }`. For example, if you want
+  to set classes, where some are static and others are dynamic, you can using
+  string interpolation:
 
-      <div x-init={"$dispatch('my-app:flash-messages', { key: '#{@level}' })"}>
+      <div class={"btn btn-#{@type}"}>
         ...
       </div>
-
-  The key take away here is that between `{...}` is just an Elixir String, thus
-  regular interpolation will work.
-
-  For multiple dynamic attributes, you can use the same notation but without
-  assigning the expression to any specific attribute.
 
   For multiple dynamic attributes, you can use the same notation but without
   assigning the expression to any specific attribute.
