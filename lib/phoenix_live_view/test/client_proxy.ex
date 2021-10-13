@@ -315,7 +315,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
-                other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
+                other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
               end
 
             {view, DOM.targets_from_node(root, node), event, values, uploads}
@@ -504,6 +504,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_patch, topic, path}, from, state) do
     view = fetch_view_by_topic!(state, topic)
+    path = URI.merge(state.root_view.uri, URI.parse(path)) |> to_string()
     state = push_with_reply(state, from, view, "live_patch", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
     {:noreply, state}
@@ -742,8 +743,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     send(pid, {ref, msg})
   end
 
-  defp send_patch(state, topic, %{to: _to} = opts) do
-    send_caller(state, {:patch, topic, opts})
+  defp send_patch(state, topic, %{to: to} = opts) do
+    relative =
+      case URI.parse(to) do
+        %{path: nil} -> ""
+        %{path: path, query: nil} -> path
+        %{path: path, query: query} -> path <> "?" <> query
+      end
+
+    send_caller(state, {:patch, topic, %{opts | to: relative}})
   end
 
   defp push(state, view, event, payload) do
@@ -1192,9 +1200,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
-
-  defp stringify_type(:hook, value), do: stringify(value, & &1)
-  defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
   defp stringify(%Upload{}, _fun), do: %{}
 

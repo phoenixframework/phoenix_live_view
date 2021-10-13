@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.HEExTest do
+defmodule Phoenix.LiveView.HEExExtensionTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.{HTMLEngine, Rendered, Component}
@@ -81,15 +81,15 @@ defmodule Phoenix.LiveView.HEExTest do
 
   test "renders dead engine with function component" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", "\n"],
-              dynamic: ["pre", %Rendered{dynamic: ["the value"], static: ["COMPONENT:", "\n"]}, "post"]
+              static: ["pre: ", "\n", "\npost: ", ""],
+              dynamic: ["pre", %Rendered{dynamic: ["the value"], static: ["COMPONENT:", ""]}, "post"]
             } =
               Phoenix.View.render(View, "dead_with_function_component.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders dead engine with function component with inner content" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", "\n"],
+              static: ["pre: ", "\n", "\npost: ", ""],
               dynamic: [
                 "pre",
                 %Rendered{
@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView.HEExTest do
                     "the value",
                     %Rendered{dynamic: [], static: ["\n  The inner content\n"]}
                   ],
-                  static: ["COMPONENT:", ", Content: ", "\n"]
+                  static: ["COMPONENT:", ", Content: ", ""]
                 },
                 "post"
               ]

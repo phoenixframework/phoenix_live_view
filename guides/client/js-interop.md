@@ -4,7 +4,7 @@ As seen earlier, you start by instantiating a single LiveSocket to enable LiveVi
 client/server interaction, for example:
 
     import {Socket} from "phoenix"
-    import LiveSocket from "phoenix_live_view"
+    import {LiveSocket} from "phoenix_live_view"
 
     let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
     let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -121,6 +121,33 @@ key in the info metadata pointing to the href associated with the page load.
 In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
+
+## Triggering phx form events with JavaScript
+
+Often it is desirable to trigger an event on a DOM element without explicit
+user interaction on the element. For example, a custom form element such as a
+date picker or custom select input which utilizes a hidden input element to
+store the selected state.
+
+In these cases, the event functions on the DOM API can be used, for example
+to trigger a `phx-change` event:
+
+```javascript
+document.getElementById("my-select").dispatchEvent(
+  new Event("input", {bubbles: true})
+)
+```
+
+When using a client hook, `this.el` can be used to determine the element as
+outlined in the "Client hooks" documentation.
+
+It is also possible to trigger a `phx-submit` using a "submit" event:
+
+```javascript
+document.getElementById("my-form").dispatchEvent(
+  new Event("submit", {bubbles: true})
+)
+```
 
 ## Client hooks
 

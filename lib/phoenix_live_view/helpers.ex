@@ -3,10 +3,172 @@ defmodule Phoenix.LiveView.Helpers do
   A collection of helpers to be imported into your views.
   """
 
+  # TODO: Convert all functions with the `live_` prefix to function components?
+
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
 
-  @doc ~S"""
+  @doc """
+  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
+
+      iex> ~L"\""
+      ...> Hello <%= "world" %>
+      ...> "\""
+      {:safe, ["Hello ", "world", "\\n"]}
+
+  """
+  @doc deprecated: "Use ~H instead"
+  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
+
+  @doc """
+  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
+
+  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
+  > file:line:column information in error messages. Earlier Elixir versions will
+  > work but will show inaccurate error messages.
+
+  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
+
+    * Built-in handling of HTML attributes
+    * An HTML-like notation for injecting function components
+    * Compile-time validation of the structure of the template
+    * The ability to minimize the amount of data sent over the wire
+
+  ## Example
+
+      ~H"\""
+      <div title="My div" class={@class}>
+        <p>Hello <%= @name %></p>
+        <MyApp.Weather.city name="Kraków"/>
+      </div>
+      "\""
+
+  ## Syntax
+
+  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
+  `<%= ... %>` for interpolating results. In this section, we are going to cover the
+  basic constructs in `HEEx` templates as well as its syntax extensions.
+
+  ### Interpolation
+
+  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
+  of HTML tags:
+
+      <p>Hello, <%= @name %></p>
+
+  Similarly, conditionals and other block Elixir constructs are supported:
+
+      <%= if @show_greeting? do %>
+        <p>Hello, <%= @name %></p>
+      <% end %>
+
+  Note we don't include the equal sign `=` in the closing `<% end %>` tag
+  (because the closing tag does not output anything).
+
+  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
+  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
+  Let's check it out.
+
+  ### HEEx extension: Defining attributes
+
+  Since `HEEx` must parse and validate the HTML structure, code interpolation using
+  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
+  HTML/component nodes and it cannot be applied within tags.
+
+  For instance, the following syntax is invalid:
+
+      <div class="<%= @class %>">
+        ...
+      </div>
+
+  Instead do:
+
+      <div class={@class}>
+        ...
+      </div>
+
+  Let's look at a more complicated example you may stumble upon using AlpineJS:
+
+      <div x-init={"$dispatch('my-app:flash-messages', { key: '#{@level}' })"}>
+        ...
+      </div>
+
+  The key take away here is that between `{...}` is just an Elixir String, thus
+  regular interpolation will work.
+
+  For multiple dynamic attributes, you can use the same notation but without
+  assigning the expression to any specific attribute.
+
+  For multiple dynamic attributes, you can use the same notation but without
+  assigning the expression to any specific attribute.
+
+      <div {@dynamic_attrs}>
+        ...
+      </div>
+
+  The expression inside `{...}` must be either a keyword list or a map containing
+  the key-value pairs representing the dynamic attributes.
+
+  ### HEEx extension: Defining function components
+
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
+
+  `HEEx` allows invoking these function components directly in the template
+  using an HTML-like notation. For example, a remote function:
+
+      <MyApp.Weather.city name="Kraków"/>
+
+  A local function can be invoked with a leading dot:
+
+      <.city name="Kraków"/>
+
+  where the component could be defined as follows:
+
+      defmodule MyApp.Weather do
+        use Phoenix.Component
+
+        def city(assigns) do
+          ~H"\""
+          The chosen city is: <%= @name %>.
+          "\""
+        end
+
+        def country(assigns) do
+          ~H"\""
+          The chosen country is: <%= @name %>.
+          "\""
+        end
+      end
+
+  It is typically best to group related functions into a single module, as
+  opposed to having many modules with a single `render/1` function. Function
+  components support other important features, such as slots. You can learn
+  more about components in `Phoenix.Component`.
+  """
+  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.HTMLEngine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      module: __CALLER__.module,
+      indentation: meta[:indentation] || 0
+    ]
+
+    EEx.compile_string(expr, options)
+  end
+
+  @doc ~S'''
   Filters the assigns as a list of keywords for use in dynamic tag attributes.
 
   Useful for transforming caller assigns into dynamic attributes while
@@ -18,31 +180,32 @@ defmodule Phoenix.LiveView.Helpers do
   to pass a `new_window` assign, along with any other attributes they
   would like to add to the element, such as class, data attributes, etc:
 
-      <.my_link id={@id} new_window={true} class="my-class">Home</a>
+      <.my_link href="/" id={@id} new_window={true} class="my-class">Home</.my_link>
 
   We could support the dynamic attributes with the following component:
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
+        extra = assigns_to_attributes(assigns, [:new_window])
 
         assigns =
           assigns
           |> Phoenix.LiveView.assign(:target, target)
-          |> Phoenix.LiveView.assign(:extra, assigns_to_attributes(assigns, [:new_window]))
+          |> Phoenix.LiveView.assign(:extra, extra)
 
-        ~H"\""
-        <a href={@href} target={@target}>
-          <%= render_block(@inner_block) %>
+        ~H"""
+        <a href={@href} target={@target} {@extra}>
+          <%= render_slot(@inner_block) %>
         </a>
-        "\""
+        """
       end
 
   The optional second argument to `assigns_to_attributes` takes a list of keys to exclude
   which will typically be the keys reserved by the component itself which either
   do not belong in the markup, or are already handled explicitly by the component.
-  """
+  '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :inner_block] ++ exclude
+    excluded_keys = [:__changed__, :__slot__, :inner_block] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
@@ -234,30 +397,94 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a `Phoenix.LiveComponent` within a parent LiveView.
+  A function component for rendering `Phoenix.LiveComponent`
+  within a parent LiveView.
 
   While `LiveView`s can be nested, each LiveView starts its
-  own process. A LiveComponent provides similar functionality
-  to LiveView, except they run in the same process as the
-  `LiveView`, with its own encapsulated state.
+  own process. A `LiveComponent` provides similar functionality
+  to `LiveView`, except they run in the same process as the
+  `LiveView`, with its own encapsulated state. That's why they
+  are called stateful components.
 
-  LiveComponent comes in two shapes, stateful and stateless.
   See `Phoenix.LiveComponent` for more information.
 
   ## Examples
 
-  All of the `assigns` given are forwarded directly to the
-  `live_component`:
+  `.live_component` requires the component `:module` and its
+  `:id` to be given:
 
-      <%= live_component(MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
+      <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
 
-  Note the `:id` won't necessarily be used as the DOM ID.
-  That's up to the component. However, note that the `:id` has
-  a special meaning: whenever an `:id` is given, the component
-  becomes stateful. Otherwise, `:id` is always set to `nil`.
+  The `:id` is used to identify this `LiveComponent` throughout the
+  LiveView lifecycle. Note the `:id` won't necessarily be used as the
+  DOM ID. That's up to the component.
   """
-  defmacro live_component(component, assigns \\ [], do_block \\ []) do
-    if match?({:@, _, [{:socket, _, _}]}, component) or match?({:socket, _, _}, component) do
+  def live_component(assigns) when is_map(assigns) do
+    id = assigns[:id]
+
+    {module, assigns} =
+      assigns
+      |> Map.delete(:__changed__)
+      |> Map.pop(:module)
+
+    if module == nil or not is_atom(module) do
+      raise ArgumentError,
+            ".live_component expects module={...} to be given and to be an atom, " <>
+              "got: #{inspect(module)}"
+    end
+
+    if id == nil do
+      raise ArgumentError, ".live_component expects id={...} to be given, got: nil"
+    end
+
+    case module.__live__() do
+      %{kind: :component} ->
+        %Component{id: id, assigns: assigns, component: module}
+
+      %{kind: kind} ->
+        raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
+    end
+  end
+
+  def live_component(component) when is_atom(component) do
+    IO.warn(
+      "<%= live_component Component %> is deprecated, " <>
+        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
+    )
+
+    Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
+  end
+
+  @doc """
+  Deprecated API for rendering `LiveComponent`.
+
+  ## Upgrading
+
+  In order to migrate from `<%= live_component ... %>` to `<.live_component>`,
+  you must first:
+
+    1. Migrate from `~L` sigil and `.leex` templates to
+      `~H` sigil and `.heex` templates
+
+    2. Then instead of:
+
+          <%= live_component MyModule, id: "hello" do %>
+            ...
+          <% end %>
+
+       You should do:
+
+          <.live_component module={MyModule} id="hello">
+            ...
+          </.live_component>
+
+    3. If your component is using `render_block/2`, replace
+       it by `render_slot/2`
+
+  """
+  @doc deprecated: "Use .live_component (live_component/1) instead"
+  defmacro live_component(component, assigns, do_block \\ []) do
+    if is_assign?(:socket, component) do
       IO.warn(
         "passing the @socket to live_component is no longer necessary, " <>
           "please remove the socket argument",
@@ -267,8 +494,8 @@ defmodule Phoenix.LiveView.Helpers do
 
     {inner_block, do_block, assigns} =
       case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), [], assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), [], []}
+        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], []}
         {_, _} -> {nil, do_block, assigns}
       end
 
@@ -302,175 +529,6 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  defmacro live_component(socket, component, assigns, do_block) do
-    IO.warn(
-      "passing the @socket to live_component is no longer necessary, " <>
-        "please remove the socket argument",
-      Macro.Env.stacktrace(__CALLER__)
-    )
-
-    {inner_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, true), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, true), []}
-        {_, _} -> {nil, assigns}
-      end
-
-    quote do
-      # Fixes unused variable compilation warning
-      _ = unquote(socket)
-
-      Phoenix.LiveView.Helpers.__live_component__(
-        unquote(component).__live__(),
-        unquote(assigns),
-        unquote(inner_block)
-      )
-    end
-  end
-
-  @doc """
-  Renders a component defined by the given function.
-
-  It takes two optional arguments, the assigns to pass to the given function
-  and a do-block - which will be converted into a `@inner_block` assign (see
-  `render_block/2` for more information).
-
-  The given function must expect one argument, which are the `assigns` as a
-  map.
-
-  All of the `assigns` given are forwarded directly to the function as
-  a single argument.
-
-  ## Examples
-
-  The function can be either local:
-
-      <%= component(&weather_component/1, city: "Kraków") %>
-
-  Or remote:
-
-      <%= component(&MyApp.Weather.component/1, city: "Kraków") %>
-
-  """
-  defmacro component(func, assigns \\ [], do_block \\ []) do
-    {inner_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, __CALLER__, false), assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, __CALLER__, false), []}
-        {_, _} -> {nil, assigns}
-      end
-
-    quote do
-      Phoenix.LiveView.Helpers.__component__(
-        unquote(func),
-        unquote(assigns),
-        unquote(inner_block)
-      )
-    end
-  end
-
-  defp rewrite_do!(do_block, caller, implicit?) do
-    if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, implicit?)
-    else
-      raise ArgumentError,
-            "cannot use component/live_component because the assigns var is unbound/unset"
-    end
-  end
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, _implicit?) do
-    inner_fun = {:fn, meta, do_block}
-
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, true) do
-    quote do
-      fn changed, extra_assigns ->
-        var!(assigns) =
-          unquote(__MODULE__).__render_inner_do__(
-            __ENV__.line,
-            __ENV__.file,
-            var!(assigns),
-            changed,
-            extra_assigns
-          )
-
-        unquote(do_block)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, false) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) = unquote(__MODULE__).__render_inner__(var!(assigns), parent_changed)
-        _ = var!(assigns)
-        unquote(do_block)
-      end
-    end
-  end
-
-  @doc false
-  def __render_inner__(assigns, parent_changed) do
-    # If the inner_block is precisely the same
-    # (i.e. the same function and the same bindings),
-    # then the outer bindings have not changed.
-    if is_nil(parent_changed) or parent_changed[:inner_block] == true do
-      assigns
-    else
-      Map.put(assigns, :__changed__, %{})
-    end
-  end
-
-  @doc false
-  def __render_inner_do__(line, file, assigns, parent_changed, extra_assigns) do
-    # If the parent is tracking changes or the inner content changed,
-    # we will keep the current __changed__ values
-    changed =
-      if is_nil(parent_changed) or parent_changed[:inner_block] == true do
-        Map.get(assigns, :__changed__)
-      else
-        %{}
-      end
-
-    if extra_assigns != [] and extra_assigns != %{} do
-      message = """
-      implicit assigns in live_component do-blocks is deprecated. Instead of:
-
-          <%= live_component WillInjectUserAssign do %>
-            <%= @user.name %>
-          <% end %>
-
-      You should do:
-
-          <%= live_component WillInjectUserAssign do %>
-            <% user -> %>
-              <%= user.name %>
-          <% end %>
-      """
-
-      IO.warn(message, [{__MODULE__, :live_component, 2, [file: to_charlist(file), line: line]}])
-    end
-
-    assigns = Enum.into(extra_assigns, assigns)
-
-    changed =
-      changed &&
-        for {key, _} <- extra_assigns,
-            key != :socket,
-            into: changed,
-            do: {key, true}
-
-    Map.put(assigns, :__changed__, changed)
-  end
-
   @doc false
   def __live_component__(%{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
@@ -478,7 +536,8 @@ defmodule Phoenix.LiveView.Helpers do
     assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
     id = assigns[:id]
 
-    # TODO: Deprecate stateless live component
+    # TODO: Remove logic from Diff once stateless components are removed.
+    # TODO: Remove live_component arity checks from Engine
     if is_nil(id) and
          (function_exported?(component, :handle_event, 3) or
             function_exported?(component, :preload, 1)) do
@@ -489,13 +548,25 @@ defmodule Phoenix.LiveView.Helpers do
     %Component{id: id, assigns: assigns, component: component}
   end
 
-  def __live_component__(%{kind: kind, module: module}, assigns)
+  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
-  @doc false
-  def __component__(func, assigns, inner)
+  @doc """
+  Renders a component defined by the given function.
+
+  This function is rarely invoked directly by users. Instead, it is used by `~H`
+  to render `Phoenix.Component`s. For example, the following:
+
+      <MyApp.Weather.city name="Kraków" />
+
+  It the same as:
+
+      <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
+
+  """
+  def component(func, assigns \\ [])
       when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
     assigns =
       case assigns do
@@ -503,11 +574,12 @@ defmodule Phoenix.LiveView.Helpers do
         _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
       end
 
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-
     case func.(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
         rendered
+
+      %Phoenix.LiveView.Component{} = component ->
+        component
 
       other ->
         raise RuntimeError, """
@@ -523,33 +595,181 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  def __component__(func, assigns, _) when is_list(assigns) or is_map(assigns) do
-    raise ArgumentError, """
-    component/3 expected an anonymous function with 1-arity, got: #{inspect(func)}
-
-    Please call component with a 1-arity function, for example:
-
-        <%= component &example/1 %>
-
-        def example(assigns) do
-          ~H"\""
-          Hello
-          "\""
-        end
-    """
-  end
-
   @doc """
   Renders the `@inner_block` assign of a component with the given `argument`.
 
       <%= render_block(@inner_block, value: @value)
 
+  This function is deprecated for function components. Use `render_slot/2`
+  instead.
   """
-  # TODO: we may want to default to nil or a map once
-  # implicit assigns are removed and slots are considered
+  @doc deprecated: "Use render_slot/2 instead"
   defmacro render_block(inner_block, argument \\ []) do
     quote do
-      unquote(inner_block).(var!(changed, Phoenix.LiveView.Engine), unquote(argument))
+      unquote(__MODULE__).__render_block__(unquote(inner_block)).(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(argument)
+      )
+    end
+  end
+
+  @doc false
+  def __render_block__([%{inner_block: fun}]), do: fun
+  def __render_block__(fun), do: fun
+
+  @doc ~S'''
+  Renders a slot entry with the given optional `argument`.
+
+      <%= render_slot(@inner_block, @form) %>
+
+  If multiple slot entries are defined for the same slot,
+  `render_slot/2` will automatically render all entries,
+  merging their contents. In case you want to use the entries'
+  attributes, you need to iterate over the list to access each
+  slot individually.
+
+  For example, imagine a table component:
+
+      <.table rows={@users}>
+        <:col let={user} label="Name">
+          <%= user.name %>
+        </:col>
+
+        <:col let={user} label="Address">
+          <%= user.address %>
+        </:col>
+      </.table>
+
+  At the top level, we pass the rows as an assign and we define
+  a `:col` slot for each column we want in the table. Each
+  column also has a `label`, which we are going to use in the
+  table header.
+
+  Inside the component, you can render the table with headers,
+  rows, and columns:
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <th>
+            <%= for col <- @col do %>
+              <td><%= col.label %></td>
+            <% end >
+          </th>
+          <%= for row <- @rows do %>
+            <tr>
+              <%= for col <- @col do %>
+                <%= render_slot(col, row) %>
+              <% end %>
+            </tr>
+          <% end %>
+        </table>
+        """
+      end
+
+  '''
+  defmacro render_slot(slot, argument \\ nil) do
+    quote do
+      unquote(__MODULE__).__render_slot__(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(slot),
+        unquote(argument)
+      )
+    end
+  end
+
+  @doc false
+  def __render_slot__(_, [], _), do: ""
+
+  def __render_slot__(changed, [entry], argument) do
+    call_inner_block!(entry, changed, argument)
+  end
+
+  def __render_slot__(changed, entries, argument) when is_list(entries) do
+    assigns = %{}
+
+    ~H"""
+    <%= for entry <- entries do %><%= call_inner_block!(entry, changed, argument) %><% end %>
+    """
+  end
+
+  def __render_slot__(changed, entry, argument) when is_map(entry) do
+    entry.inner_block.(changed, argument)
+  end
+
+  defp call_inner_block!(entry, changed, argument) do
+    if !entry.inner_block do
+      message = "attempted to render slot <:#{entry.__slot__}> but the slot has no inner content"
+      raise RuntimeError, message
+    end
+
+    entry.inner_block.(changed, argument)
+  end
+
+  @doc """
+  Defines a slot's inner block.
+
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
+  """
+  defmacro slot(name, do: do_block) do
+    rewrite_do!(do_block, name, __CALLER__)
+  end
+
+  defp rewrite_do!(do_block, key, caller) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      rewrite_do(do_block, key)
+    else
+      raise ArgumentError,
+            "cannot use component/live_component because the assigns var is unbound/unset"
+    end
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
+    inner_fun = {:fn, meta, do_block}
+
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(inner_fun).(arg)
+      end
+    end
+  end
+
+  defp rewrite_do(do_block, key) do
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(do_block)
+      end
+    end
+  end
+
+  @doc false
+  def __assigns__(assigns, key, parent_changed) do
+    # If the component is in its initial render (parent_changed == nil)
+    # or the slot/block key in the parent_changed is true, then we render
+    # the function with the assigns as is.
+    #
+    # Otherwise, we will set changed to an empty list, which is the same
+    # as marking everything as not changed. This is correct because
+    # parent_changed will always be marked as changed whenever any of the
+    # assigns it references inside is changed. It will also be marked as
+    # changed if it has any variable (such as the ones coming from let).
+    if is_nil(parent_changed) or parent_changed[key] == true do
+      assigns
+    else
+      Map.put(assigns, :__changed__, %{})
     end
   end
 
@@ -566,162 +786,6 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
-
-  @doc """
-  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
-
-      iex> ~L"\""
-      ...> Hello <%= "world" %>
-      ...> "\""
-      {:safe, ["Hello ", "world", "\\n"]}
-
-  """
-  @doc deprecated: "Use ~H instead"
-  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
-    options = [
-      engine: Phoenix.LiveView.Engine,
-      file: __CALLER__.file,
-      line: __CALLER__.line + 1,
-      indentation: meta[:indentation] || 0
-    ]
-
-    EEx.compile_string(expr, options)
-  end
-
-  @doc """
-  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
-
-  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
-  > file:line:column information in error messages. Earlier Elixir versions will
-  > work but will show inaccurate error messages.
-
-  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
-
-    * Built-in handling of HTML attributes
-    * An HTML-like notation for injecting function components
-    * Compile-time validation of the structure of the template
-    * The ability to minimize the amount of data sent over the wire
-
-  ## Example
-
-      ~H"\""
-      <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
-        <MyApp.Weather.city name="Kraków"/>
-      </div>
-      "\""
-
-  ## Syntax
-
-  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
-  `<%= ... %>` for interpolating results. In this section, we are going to cover the
-  basic constructs in `HEEx` templates as well as its syntax extensions.
-
-  ### Interpolation
-
-  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
-  of HTML tags:
-
-      <p>Hello, <%= @name %></p>
-
-  Similarly, conditionals and other block Elixir constructs are supported:
-
-      <%= if @show_greeting? do %>
-        <p>Hello, <%= @name %></p>
-      <% end %>
-
-  Note we don't include the equal sign `=` in the closing tag (because the closing
-  tag does not output anything).
-
-  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
-  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
-  Let's check it out.
-
-  ### HEEx extension: Defining attributes
-
-  Since `HEEx` must parse and validate the HTML structure, code interpolation using
-  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
-  HTML/component nodes and it cannot be applied within tags.
-
-  For instance, the following syntax is invalid:
-
-      <div class="<%= @class %>">
-        ...
-      </div>
-
-  Instead do:
-
-      <div class={@class}>
-        ...
-      </div>
-
-  Let's look at a more complicated example you may stumble upon using AlpineJS:
-
-      <div x-init={"$dispatch('my-app:flash-messages', { key: '#{@level}' })"}>
-        ...
-      </div>
-
-  The key take away here is that between `{...}` is just an Elixir String, thus
-  regular interpolation will work.
-
-  For multiple dynamic attributes, you can use the same notation but without
-  assigning the expression to any specific attribute.
-
-      <div {@dynamic_attrs}>
-        ...
-      </div>
-
-  The expression inside `{ ... }` must be either a keyword list or a map containing
-  the key-value pairs representing the dynamic attributes.
-
-  ### HEEx extension: Defining function components
-
-  Function components are stateless components implemented as pure functions
-  with the help of the `Phoenix.Component` module. They can be either local
-  (same module) or remote (external module).
-
-  `HEEx` allows invoking whose function components directly in the template
-  using an HTML-like notation. For example, a remote function:
-
-      <MyApp.Weather.city name="Kraków"/>
-
-  A local function can be invoked with a leading dot:
-
-      <.city name="Kraków"/>
-
-  where the component could be defined as follows:
-
-      defmodule MyApp.Weather do
-        use Phoenix.Component
-
-        def city(assigns) do
-          ~H"\""
-          The chosen city is: <%= @city %>.
-          "\""
-        end
-
-        def country(assigns) do
-          ~H"\""
-          The chosen country is: <%= @country %>.
-          "\""
-        end
-      end
-
-  It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. You can
-  learn more about components in `Phoenix.Component`.
-  """
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
-    options = [
-      engine: Phoenix.LiveView.HTMLEngine,
-      file: __CALLER__.file,
-      line: __CALLER__.line + 1,
-      module: __CALLER__.module,
-      indentation: meta[:indentation] || 0
-    ]
-
-    EEx.compile_string(expr, options)
-  end
 
   @doc """
   Returns the entry errors for an upload.
@@ -945,18 +1009,20 @@ defmodule Phoenix.LiveView.Helpers do
         | action: action
       }
 
-    # And then process csrf_token, multipart, and method as in form_tag
+    # And then process method, csrf_token, and multipart as in form_tag
+    {method, opts} = Keyword.pop(opts, :method, "post")
+    {method, hidden_method} = form_method(method)
+
     {csrf_token, opts} =
-      Keyword.pop_lazy(opts, :csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(action) end)
+      Keyword.pop_lazy(opts, :csrf_token, fn ->
+        if method == "post", do: Phoenix.HTML.Tag.csrf_token_value(action)
+      end)
 
     opts =
       case Keyword.pop(opts, :multipart, false) do
         {false, opts} -> opts
         {true, opts} -> Keyword.put(opts, :enctype, "multipart/form-data")
       end
-
-    {method, opts} = Keyword.pop(opts, :method, "post")
-    {method, hidden_method} = form_method(method)
 
     # Finally we can render the form
     assigns =
@@ -975,11 +1041,20 @@ defmodule Phoenix.LiveView.Helpers do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" value={@csrf_token}>
       <% end %>
-      <%= render_block(@inner_block, @form) %>
+      <%= render_slot(@inner_block, @form) %>
     </form>
     """
   end
 
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
+
+  defp is_assign?(assign_name, expression) do
+    match?({:@, _, [{^assign_name, _, _}]}, expression) or
+      match?({^assign_name, _, _}, expression) or
+      match?(
+        {{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]},
+        expression
+      )
+  end
 end

@@ -12,7 +12,8 @@ import {
 } from "./constants"
 
 import {
-  detectDuplicateIds
+  detectDuplicateIds,
+  isCid
 } from "./utils"
 
 import DOM from "./dom"
@@ -40,7 +41,7 @@ export default class DOMPatch {
     this.rootID = view.root.id
     this.html = html
     this.targetCID = targetCID
-    this.cidPatch = typeof (this.targetCID) === "number"
+    this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
@@ -98,6 +99,12 @@ export default class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
+          // hack to fix Safari handling of img srcset and video tags
+          if(el instanceof HTMLImageElement && el.srcset){
+            el.srcset = el.srcset
+          } else if(el instanceof HTMLVideoElement && el.autoplay){
+            el.play()
+          }
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }

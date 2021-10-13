@@ -15,6 +15,30 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   defstruct handle_event: [], handle_info: [], handle_params: [], mount: []
 
+  @doc """
+  Returns a map of infos about the lifecycle stage for the given `view`.
+  """
+  def stage_info(%Socket{} = socket, view, stage, arity) do
+    callbacks? = callbacks?(socket, stage)
+    exported? = function_exported?(view, stage, arity)
+
+    %{
+      any?: callbacks? or exported?,
+      callbacks?: callbacks?,
+      exported?: exported?
+    }
+  end
+
+  defp callbacks?(%Socket{private: %{@lifecycle => lifecycle}}, stage)
+       when stage in [:handle_event, :handle_info, :handle_params, :mount] do
+    lifecycle |> Map.fetch!(stage) |> Kernel.!=([])
+  end
+
+  def attach_hook(%Socket{router: nil}, id, :handle_params, _fun) do
+    raise "cannot attach hook with id #{inspect(id)} on :handle_params because" <>
+            " the view was not mounted at the router with the live/3 macro"
+  end
+
   def attach_hook(%Socket{} = socket, id, stage, fun)
       when stage in [:handle_event, :handle_info, :handle_params] do
     lifecycle = lifecycle(socket)
@@ -82,15 +106,12 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   @doc false
-  def on_mount(view, view), do: raise_own_mount_hook!(view, view)
-  def on_mount(view, {view, :mount} = id), do: raise_own_mount_hook!(view, id)
-
-  def on_mount(_view, {module, fun} = id) when is_atom(module) and is_atom(fun) do
-    hook!(id, :mount, Function.capture(module, fun, 3))
+  def on_mount(_view, {module, arg}) when is_atom(module) do
+    mount_hook!({module, arg})
   end
 
   def on_mount(_view, module) when is_atom(module) do
-    hook!(module, :mount, Function.capture(module, :mount, 3))
+    mount_hook!({module, :default})
   end
 
   def on_mount(view, result) do
@@ -100,10 +121,14 @@ defmodule Phoenix.LiveView.Lifecycle do
     Expected one of:
 
         Module
-        {Module, Function}
+        {Module, arg}
 
     Got: #{inspect(result)}
     """
+  end
+
+  defp mount_hook!({mod, _arg} = id) do
+    hook!(id, :mount, Function.capture(mod, :on_mount, 4))
   end
 
   defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
@@ -119,8 +144,8 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.mount, socket, fn hook, acc ->
-      case hook.function.(params, session, acc) do
+    reduce_socket(lifecycle.mount, socket, fn %{id: {_mod, arg}} = hook, acc ->
+      case hook.function.(arg, params, session, acc) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
 
@@ -185,21 +210,5 @@ defmodule Phoenix.LiveView.Lifecycle do
   defp raise_continue_with_redirect!(hook) do
     raise ArgumentError,
           "the hook #{inspect(hook.id)} for lifecycle event :mount attempted to redirect without halting."
-  end
-
-  defp raise_own_mount_hook!(view, result) do
-    raise ArgumentError, """
-    cannot attach the mount/3 callback to its own lifecycle.
-
-    The LiveView module #{inspect(view)}
-    attempted to attach its own mount/3 function via the
-    on_mount macro. Doing so will lead to the mount function
-    being invoked multiple times per disconnected and connected
-    render of the LiveView and is therefore prohibited.
-
-    To silence this error, please remove the following declaration:
-
-        on_mount #{inspect(result)}
-    """
   end
 end

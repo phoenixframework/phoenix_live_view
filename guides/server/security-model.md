@@ -30,10 +30,10 @@ authorization and the specific rules often change per application.
 
 In a regular web application, we perform authentication and authorization
 checks on every request. In LiveView, we should also run those exact same
-checks, always. Authentication typically happens on the `mount` callback.
-Authorization rules may happen on `mount` (for instance, is the user allowed
-to see this page?) and also on `handle_event` (is the user allowed
-to delete this item?).
+checks, always. Once the user is authenticated, we typically validate the
+sessions on the `mount` callback. Authorization rules generally happen on
+`mount` (for instance, is the user allowed to see this page?) and also on
+`handle_event` (is the user allowed to delete this item?).
 
 ## Mounting considerations
 
@@ -98,7 +98,7 @@ Every time the user performs an action on your system, you should verify if the 
 is authorized to do so, regardless if you are using LiveViews or not. For example,
 imagine a user can see all projects in a web application, but they may not have
 permission to delete any of them. At the UI level, you handle this accordingly
-by not showing the delete button in the projects listing, but a savy user can
+by not showing the delete button in the projects listing, but a savvy user can
 directly talk to the server and request a deletion anyway. For this reason, **you
 must always verify permissions on the server**.
 
@@ -114,7 +114,7 @@ described, one might implement this:
 
     def handle_event("delete_project", %{"project_id" => project_id}, socket) do
       Project.delete!(socket.assigns.current_user, project_id)
-      {:noreply, assign(socket, post: updated_post)}
+      {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end)}
     end
 
     defp load_projects(socket) do
@@ -155,7 +155,8 @@ the topic:
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
 > Note: If you use `mix phx.gen.auth` to generate your authentication system,
-> those lines are already present in the generated code.
+> lines to that effect are already present in the generated code.  The generated
+> code uses a `user_token` instead of referring to the `user_id`.
 
 Once a LiveView is disconnected, the client will attempt to reestablish
 the connection and re-execute the [`mount/3`](`c:Phoenix.LiveView.mount/3`)

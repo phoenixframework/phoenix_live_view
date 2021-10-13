@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView do
   app.js file, you should find the following:
 
       import {Socket} from "phoenix"
-      import LiveSocket from "phoenix_live_view"
+      import {LiveSocket} from "phoenix_live_view"
 
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
       let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -288,25 +288,25 @@ defmodule Phoenix.LiveView do
   to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
 
       def weather_greeting(assigns) do
-        ~H"\""
+        ~H"""
         <div title="My div" class={@class}>
           <p>Hello <%= @name %></p>
           <MyApp.Weather.city name="Kraków"/>
         </div>
-        "\""
+        """
       end
 
   You can learn more about function components in the `Phoenix.Component`
   module. At the end of the day, they are useful mechanism to reuse markup
   in your LiveViews.
 
-  However, sometimes you need to compartmentlize or reuse more than markup.
+  However, sometimes you need to compartmentalize or reuse more than markup.
   Perhaps you want to move part of the state or part of the events in your
   LiveView to a separate module. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using
-  [`live_component/2`](`Phoenix.LiveView.Helpers.live_component/2`):
+  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`):
 
-      <%= live_component(UserComponent, id: user.id, user: user) %>
+      <.live_component module={UserComponent} id={user.id} user={user} />
 
   Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as
   well as their own state with change tracking support. Components are also
@@ -523,54 +523,104 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Declares a module-function to be invoked on the LiveView's mount.
+  Declares a module callback to be invoked on the LiveView's mount.
 
-  The given module-function will be invoked before both disconnected
-  and connected mounts. The hook has the option to either halt or
-  continue the mounting process as usual. If you wish to redirect the
-  LiveView, you **must** halt, otherwise an error will be raised.
+  The function within the given module, which must be named `on_mount`,
+  will be invoked before both disconnected and connected mounts. The hook
+  has the option to either halt or continue the mounting process as usual.
+  If you wish to redirect the LiveView, you **must** halt, otherwise an error
+  will be raised.
+
+  Tip: if you need to define multiple `on_mount` callbacks, avoid defining
+  multiple modules. Instead, pass a tuple and use pattern matching to handle
+  different cases:
+
+      def on_mount(:admin, _params, _session, _socket) do
+        {:cont, socket}
+      end
+
+      def on_mount(:user, _params, _session, _socket) do
+        {:cont, socket}
+      end
+
+  And then invoke it as:
+
+      on_mount {MyAppWeb.SomeHook, :admin}
+      on_mount {MyAppWeb.SomeHook, :user}
 
   Registering `on_mount` hooks can be useful to perform authentication
   as well as add custom behaviour to other callbacks via `attach_hook/4`.
 
   ## Examples
 
-      defmodule DemoWeb.InitAssigns do
+  The following is an example of attaching a hook via
+  `Phoenix.LiveView.Router.live_session/3`:
+
+      # lib/my_app_web/live/init_assigns.ex
+      defmodule MyAppWeb.InitAssigns do
+        @moduledoc "\""
+        Ensures common `assigns` are applied to all LiveViews attaching this hook.
+        "\""
         import Phoenix.LiveView
 
-        # Ensures common `assigns` are applied to all LiveViews
-        # that attach this module as an `on_mount` hook
-        def mount(_params, _session, socket) do
+        def on_mount(:default, _params, _session, socket) do
           {:cont, assign(socket, :page_title, "DemoWeb")}
+        end
+
+        def on_mount(:user, _params, _session, socket) do
+        end
+
+        def on_mount(:admin, _params, _session, socket) do
         end
       end
 
-      defmodule DemoWeb.PageLive do
-        use Phoenix.LiveView
+      # lib/my_app_web/router.ex
+      defmodule MyAppWeb.Router do
+        use MyAppWeb, :router
 
-        on_mount {DemoWeb.LiveAuth, :ensure_mounted_current_user}
-        on_mount DemoWeb.InitAssigns
+        # pipelines, plugs, etc.
+
+        live_session :default, on_mount: MyAppWeb.InitAssigns do
+          scope "/", MyAppWeb do
+            pipe_through :browser
+            live "/", PageLive, :index
+          end
+
+        live_session :authenticated, on_mount: {MyAppWeb.InitAssigns, :user} do
+          scope "/", MyAppWeb do
+            pipe_through [:browser, :require_user]
+            live "/profile", UserLive.Profile, :index
+          end
+        end
+
+        live_session :admins, on_mount: {MyAppWeb.InitAssigns, :admin} do
+          scope "/admin", MyAppWeb.Admin do
+            pipe_through [:browser, :require_user, :require_admin]
+            live "/", AdminLive.Index, :index
+          end
+        end
       end
+
   """
-  defmacro on_mount(mod_or_mod_fun) do
-    mod_or_mod_fun =
-      if Macro.quoted_literal?(mod_or_mod_fun) do
-        Macro.prewalk(mod_or_mod_fun, &expand_alias(&1, __CALLER__))
+  defmacro on_mount(mod_or_mod_arg) do
+    mod_or_mod_arg =
+      if Macro.quoted_literal?(mod_or_mod_arg) do
+        Macro.prewalk(mod_or_mod_arg, &expand_alias(&1, __CALLER__))
       else
-        mod_or_mod_fun
+        mod_or_mod_arg
       end
 
     quote do
       Module.put_attribute(
         __MODULE__,
         :phoenix_live_mount,
-        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_fun))
+        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_arg))
       )
     end
   end
 
   defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:mount, 3}})
+    do: Macro.expand(alias, %{env | function: {:on_mount, 4}})
 
   defp expand_alias(other, _env), do: other
 

@@ -25,26 +25,26 @@ defmodule Phoenix.LiveView.Component do
       For example, this is not allowed:
 
           <%= content_tag :div do %>
-            <%= live_component SomeComponent %>
+            <.live_component module={SomeComponent} id="myid" />
           <% end %>
 
       That's because the component is inside `content_tag`. However, this works:
 
           <div>
-            <%= live_component SomeComponent %>
+            <.live_component module={SomeComponent} id="myid" />
           </div>
 
       Components are also allowed inside Elixir's special forms, such as
       `if`, `for`, `case`, and friends.
 
           <%= for item <- items do %>
-            <%= live_component SomeComponent, id: item %>
+            <.live_component module={SomeComponent} id={item} />
           <% end %>
 
       However, using other module functions such as `Enum`, will not work:
 
           <%= Enum.map(items, fn item -> %>
-            <%= live_component SomeComponent, id: item %>
+            <.live_component module={SomeComponent} id={item} />
           <% end %>
       """
     end
@@ -402,17 +402,17 @@ defmodule Phoenix.LiveView.Engine do
 
   defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns) do
     {block, _} =
-      Enum.map_reduce(dynamic, {0, initial_vars}, fn
-        to_safe_match(var, ast), {counter, vars} ->
+      Enum.map_reduce(dynamic, initial_vars, fn
+        to_safe_match(var, ast), vars ->
           vars = set_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns)
           live_struct = to_live_struct(ast, vars, assigns)
-          {to_conditional_var(keys, var, live_struct), {counter + 1, vars}}
+          {to_conditional_var(keys, var, live_struct), vars}
 
-        ast, {counter, vars} ->
+        ast, vars ->
           vars = set_vars(initial_vars, vars)
           {ast, vars, _} = analyze(ast, vars, assigns)
-          {ast, {counter, vars}}
+          {ast, vars}
       end)
 
     {static, dynamic} = bins_and_vars(static)
@@ -485,20 +485,11 @@ defmodule Phoenix.LiveView.Engine do
         args
       end
 
-    # If we have a component, now we provide change tracking to individual keys.
     args =
       case {call, args} do
-        {:component, [fun, [do: block]]} ->
-          [fun, to_component_tracking([], [inner_block: block], vars), [do: block]]
-
-        {:component, [fun, expr]} ->
-          [fun, to_component_tracking(expr, [], vars)]
-
-        {:component, [fun, expr, [do: block]]} ->
-          [fun, to_component_tracking(expr, [inner_block: block], vars), [do: block]]
-
-        {_, _} ->
-          args
+        # If we have a component, we provide change tracking to individual keys.
+        {:component, [fun, expr]} -> [fun, to_component_tracking(fun, expr, [], vars)]
+        {_, _} -> args
       end
 
     to_safe({left, meta, args}, true)
@@ -600,7 +591,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(expr, extra, vars) do
+  defp to_component_tracking(fun, expr, extra, vars) do
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -623,12 +614,12 @@ defmodule Phoenix.LiveView.Engine do
         {[], expr}
       end
 
-    all = extra ++ static
+    static_extra = extra ++ static
 
     static_changed =
-      if all != [] do
+      if static_extra != [] do
         keys =
-          for {key, value} <- all,
+          for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
               # it means that upstream assigns were change tracked.
               {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}),
@@ -643,10 +634,20 @@ defmodule Phoenix.LiveView.Engine do
         Macro.escape(%{})
       end
 
+    static = slots_to_rendered(static, vars)
+
     cond do
       # We can't infer anything, so return the expression as is.
-      all == [] and dynamic == %{} ->
+      static_extra == [] and dynamic == %{} ->
         expr
+
+      # Live components do not need to compute the changed because they track their own changed.
+      match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+        if dynamic == %{} do
+          quote do: %{unquote_splicing(static)}
+        else
+          quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
+        end
 
       # We were actually able to find some static bits, but no dynamic.
       # Embed the static parts alongside the computed changed.
@@ -720,6 +721,20 @@ defmodule Phoenix.LiveView.Engine do
     Enum.any?(entries, fn
       [key] -> changed_assign?(changed, key)
       [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
+    end)
+  end
+
+  defp slots_to_rendered(static, vars) do
+    Macro.postwalk(static, fn
+      {call, meta, [name, [do: block]]} = node ->
+        if extract_call(call) == :slot do
+          {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
+        else
+          node
+        end
+
+      node ->
+        node
     end)
   end
 
@@ -993,6 +1008,18 @@ defmodule Phoenix.LiveView.Engine do
     quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
   end
 
+  # Calls to attributes escape is always safe
+  defp to_safe(
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML, :Tag]}, :attributes_escape]}, _, [_]} =
+           safe,
+         line,
+         _extra_clauses?
+       ) do
+    quote line: line do
+      elem(unquote(safe), 1)
+    end
+  end
+
   defp to_safe(expr, line, false) do
     quote line: line, do: unquote(__MODULE__).safe_to_iodata(unquote(expr))
   end
@@ -1089,13 +1116,31 @@ defmodule Phoenix.LiveView.Engine do
       %{^key => val} ->
         val
 
+      %{} when key == :inner_block ->
+        raise ArgumentError, """
+        assign @#{key} not available in template.
+
+        This means a component requires a do-block or HTML children to
+        be given as argument but none were given. For example, instead of:
+
+            <.component />
+
+        You must do:
+
+            <.component>
+              more content
+            </.component>
+
+        Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
+        """
+
       %{} ->
         raise ArgumentError, """
-        assign @#{key} not available in eex template.
+        assign @#{key} not available in template.
 
-        Please make sure all proper assigns have been set. If this
-        is a child template, ensure assigns are given explicitly by
-        the parent template as they are not automatically forwarded.
+        Please make sure all proper assigns have been set. If you are
+        calling a component, make sure you are passing all required
+        assigns as arguments.
 
         Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
         """
@@ -1113,12 +1158,10 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:receive, [_]), do: :live
   defp classify_taint(:with, _), do: :live
 
+  # TODO: Remove me when live_component/2/3 are removed
   defp classify_taint(:live_component, [_, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  # TODO: Remove me when live_component/4 is removed
-  defp classify_taint(:live_component, [_, _, _, [do: _]]), do: :render
-  defp classify_taint(:component, [_, [do: _]]), do: :render
-  defp classify_taint(:component, [_, _, [do: _]]), do: :render
+  defp classify_taint(:slot, [_, [do: _]]), do: :render
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always
