@@ -835,13 +835,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
-    # verified_flash is fetched from the disconnected render.
-    # params["flash"] is sent on live redirects and therefore has higher priority.
-    # re-mounts and live redirects that did *not* send flash do not reload the session flash.
     cond do
-      flash_token -> Utils.verify_flash(endpoint, flash_token)
-      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash -> verified.flash
-      true -> %{}
+      # live_redirect join w/ flash has higher priority
+      flash_token ->
+        Utils.verify_flash(endpoint, flash_token)
+
+      # mount loads verified.flash from the disconnected render
+      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash ->
+        verified.flash
+
+      true ->
+        %{}
     end
   end
 
