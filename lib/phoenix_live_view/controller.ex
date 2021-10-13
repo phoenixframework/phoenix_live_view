@@ -19,7 +19,7 @@ defmodule Phoenix.LiveView.Controller do
   ## Examples
 
       defmodule ThermostatController do
-        ...
+        use AppWeb, :controller
         import Phoenix.LiveView.Controller
 
         def show(conn, %{"id" => thermostat_id}) do
