@@ -370,10 +370,16 @@ defmodule Phoenix.LiveViewUnitTest do
                      push_patch(put_in(@socket.private.root_view, __MODULE__), to: "/counter/123")
                    end
 
-      socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
-
-      assert push_patch(socket, to: "/counter/123").redirected ==
+      assert push_patch(@socket, to: "/counter/123").redirected ==
                {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
+
+      socket =
+        @socket.private.root_view
+        |> put_in(Phoenix.LiveViewTest.HostLive)
+        |> Map.put(:host_uri, URI.parse("https://app.example.com"))
+
+      assert push_patch(socket, to: "/with-host/full").redirected ==
+               {:live, {%{}, :full}, %{kind: :push, to: "/with-host/full"}}
     end
   end
 end

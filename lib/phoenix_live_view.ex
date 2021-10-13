@@ -1100,8 +1100,9 @@ defmodule Phoenix.LiveView do
   """
   def push_patch(%Socket{} = socket, opts) do
     %{to: to} = opts = push_opts!(opts, "push_patch/2")
+    full = URI.to_string(%{socket.host_uri | path: to})
 
-    case Route.live_link_info!(socket, socket.private.root_view, to) do
+    case Route.live_link_info!(socket, socket.private.root_view, full) do
       {:internal, %Route{params: params, action: action}} ->
         put_redirect(socket, {:live, {params, action}, opts})
 
