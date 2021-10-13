@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.Helpers do
     EEx.compile_string(expr, options)
   end
 
-  @doc """
+  @doc ~S'''
   Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
 
   > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
@@ -45,12 +45,12 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Example
 
-      ~H"\""
+      ~H"""
       <div title="My div" class={@class}>
         <p>Hello <%= @name %></p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
-      "\""
+      """
 
   ## Syntax
 
@@ -135,15 +135,15 @@ defmodule Phoenix.LiveView.Helpers do
         use Phoenix.Component
 
         def city(assigns) do
-          ~H"\""
+          ~H"""
           The chosen city is: <%= @name %>.
-          "\""
+          """
         end
 
         def country(assigns) do
-          ~H"\""
+          ~H"""
           The chosen country is: <%= @name %>.
-          "\""
+          """
         end
       end
 
@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.Helpers do
   opposed to having many modules with a single `render/1` function. Function
   components support other important features, such as slots. You can learn
   more about components in `Phoenix.Component`.
-  """
+  '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.HTMLEngine,
