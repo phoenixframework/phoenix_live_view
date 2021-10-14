@@ -301,7 +301,7 @@ defmodule Phoenix.LiveView.Router do
 
   ## Examples
 
-      defmodule AppWeb.Router do
+      defmodule MyAppWeb.Router do
         use LiveGenWeb, :router
         import Phoenix.LiveView.Router
 

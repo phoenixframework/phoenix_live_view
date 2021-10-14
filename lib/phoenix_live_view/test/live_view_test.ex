@@ -213,7 +213,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} =
-        live_isolated(conn, AppWeb.ClockLive, session: %{"tz" => "EST"})
+        live_isolated(conn, MyAppWeb.ClockLive, session: %{"tz" => "EST"})
 
   Use `put_connect_params/2` to put connect params for a call to
   `Phoenix.LiveView.get_connect_params/1` in `c:Phoenix.LiveView.mount/3`:
