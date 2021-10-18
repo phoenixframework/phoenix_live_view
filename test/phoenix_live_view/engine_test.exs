@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "raises ArgumentError for missing assigns" do
       assert_raise ArgumentError,
-                   ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
+                   ~r/assign @foo not available in template.*Available assigns: \[:bar\]/s,
                    fn -> render("<%= @foo %>", %{bar: true}) end
     end
   end

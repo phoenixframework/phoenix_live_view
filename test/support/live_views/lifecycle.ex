@@ -1,18 +1,27 @@
 defmodule Phoenix.LiveViewTest.InitAssigns do
   alias Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def on_mount(:default, _params, _session, socket) do
     {:cont,
      socket
      |> LiveView.assign(:init_assigns_mount, true)
      |> LiveView.assign(:last_on_mount, :init_assigns_mount)}
   end
 
-  def other_mount(_params, _session, socket) do
+  def on_mount(:other, _params, _session, socket) do
     {:cont,
      socket
      |> LiveView.assign(:init_assigns_other_mount, true)
      |> LiveView.assign(:last_on_mount, :init_assigns_other_mount)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.MountArgs do
+  use Phoenix.Component
+
+  def on_mount(:inlined, _params, _session, socket) do
+    qs = URI.encode_query(%{called: true, inlined: true})
+    {:halt, push_redirect(socket, to: "/lifecycle?#{qs}")}
   end
 end
 
@@ -21,7 +30,7 @@ defmodule Phoenix.LiveViewTest.HooksLive do
   alias Phoenix.LiveViewTest.InitAssigns
 
   on_mount InitAssigns
-  on_mount {InitAssigns, :other_mount}
+  on_mount {InitAssigns, :other}
 
   def render(assigns) do
     ~H"""
@@ -102,13 +111,13 @@ end
 defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  on_mount {__MODULE__, :bad_mount}
+  on_mount __MODULE__
+
+  def on_mount(:default, _params, _session, _socket), do: :boom
 
   def mount(_params, _session, _socket) do
     raise "expected to exit before #{__MODULE__}.mount/3"
   end
-
-  def bad_mount(_params, _session, _socket), do: :boom
 
   def render(assigns), do: ~H"<div></div>"
 end
@@ -118,16 +127,23 @@ defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
 
   on_mount {__MODULE__, :hook}
 
-  def hook(_, _, socket), do: {:halt, socket}
+  def on_mount(:hook, _, _, socket), do: {:halt, socket}
   def render(assigns), do: ~H"<div></div>"
 end
 
 defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
-  on_mount {__MODULE__, :hook}
+  def mount(_, _, socket) do
+    case socket.assigns.live_action do
+      :halt -> raise "mount should not have been called"
+      _ -> {:ok, socket}
+    end
+  end
 
-  def hook(_, _, %{assigns: %{live_action: action}} = socket) do
+  on_mount __MODULE__
+
+  def on_mount(:default, _, _, %{assigns: %{live_action: action}} = socket) do
     {action, push_redirect(socket, to: "/lifecycle")}
   end
 
@@ -148,7 +164,7 @@ end
 defmodule Phoenix.LiveViewTest.HaltConnectedMount do
   alias Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def on_mount(_arg, _params, _session, socket) do
     if LiveView.connected?(socket) do
       {:halt, LiveView.push_redirect(socket, to: "/lifecycle")}
     else
@@ -215,4 +231,16 @@ defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
     <% end %>
     """
   end
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.HandleParamsNotDefined do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  def mount(_, _, socket) do
+    {:ok, attach_hook(socket, :assign_url, :handle_params, fn _, url, socket ->
+      {:cont, assign(socket, :url, url)}
+    end)}
+  end
+
+  def render(assigns), do: ~H"url=<%= assigns[:url] %>"
 end

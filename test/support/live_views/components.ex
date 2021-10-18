@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
 
   def render_with_inner_content(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>, Content: <%= render_block(@inner_block) %>
+    COMPONENT:<%= @value %>, Content: <%= render_slot(@inner_block) %>
     """
   end
 end
@@ -47,7 +47,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def render(%{socket: _} = assigns) do
     ~H"""
-    <div id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)} phx-click="transform">
+    <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
       <%= @name %> says hi
       <%= if @dup_name, do: live_component __MODULE__, id: @dup_name, name: @dup_name %>
     </div>
@@ -151,7 +151,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
     <div id="parent_id" class="parent">
       <%= @message %>
       <%= for name <- @names do %>
-        <%= live_component @socket, Phoenix.LiveViewTest.StatefulComponent,
+        <%= live_component Phoenix.LiveViewTest.StatefulComponent,
               id: name, name: name, from: @from, disabled: name in @disabled, parent_id: @parent_selector %>
       <% end %>
     </div>

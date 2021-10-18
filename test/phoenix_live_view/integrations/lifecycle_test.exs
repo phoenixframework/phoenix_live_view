@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
   test "on_mount hook raises when hook result is invalid", %{conn: conn} do
     assert_raise Plug.Conn.WrapperError,
-                 ~r(invalid return from hook {Phoenix.LiveViewTest.HooksLive.BadMount, :bad_mount}),
+                 ~r(invalid return from hook {Phoenix.LiveViewTest.HooksLive.BadMount, :default}),
                  fn ->
                    live(conn, "/lifecycle/bad-mount")
                  end
@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.LifecycleTest do
 
   test "on_mount hook raises when :cont is returned with a redirected socket", %{conn: conn} do
     assert_raise Plug.Conn.WrapperError,
-                 ~r(the hook {Phoenix.LiveViewTest.HooksLive.RedirectMount, :hook} for lifecycle event :mount attempted to redirect without halting.),
+                 ~r(the hook {Phoenix.LiveViewTest.HooksLive.RedirectMount, :default} for lifecycle event :mount attempted to redirect without halting.),
                  fn ->
                    live(conn, "/lifecycle/redirect-cont-mount")
                  end
@@ -116,6 +116,11 @@ defmodule Phoenix.LiveView.LifecycleTest do
     HooksLive.detach_hook(lv, :hook, :handle_params)
 
     assert render(lv) =~ "params_hook:1"
+  end
+
+  test "handle_params/3 without module callback", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/handle-params-not-defined")
+    assert render(lv) =~ "url=http://www.example.com/lifecycle/handle-params-not-defined"
   end
 
   test "handle_params/3 when callback is not exported raises without halt", %{conn: conn} do
@@ -206,5 +211,48 @@ defmodule Phoenix.LiveView.LifecycleTest do
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
       lv |> element("#detach") |> render_click()
     end) =~ "lifecycle hooks are not supported on stateful components."
+  end
+
+  test "stage_info", %{conn: conn} do
+    alias Phoenix.LiveView.Lifecycle
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    socket = HooksLive.run(lv, fn socket -> {:reply, socket, socket} end)
+
+    assert Lifecycle.stage_info(socket, HooksLive, :mount, 3) == %{
+             any?: true,
+             callbacks?: true,
+             exported?: true
+           }
+
+    assert Lifecycle.stage_info(socket, HooksLive, :handle_params, 3) == %{
+             any?: false,
+             callbacks?: false,
+             exported?: false
+           }
+
+    assert Lifecycle.stage_info(socket, HooksLive, :handle_event, 3) == %{
+             any?: true,
+             callbacks?: false,
+             exported?: true
+           }
+
+    assert Lifecycle.stage_info(socket, HooksLive, :handle_info, 2) == %{
+             any?: true,
+             callbacks?: false,
+             exported?: true
+           }
+
+    HooksLive.attach_hook(lv, :ok, :handle_params, fn _, _, socket ->
+      {:cont, socket}
+    end)
+
+    socket = HooksLive.run(lv, fn socket -> {:reply, socket, socket} end)
+
+    assert Lifecycle.stage_info(socket, HooksLive, :handle_params, 3) == %{
+             any?: true,
+             callbacks?: true,
+             exported?: false
+           }
   end
 end

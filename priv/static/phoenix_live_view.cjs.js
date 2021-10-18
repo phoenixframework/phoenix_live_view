@@ -1,3 +1,16 @@
+var __defProp = Object.defineProperty;
+var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
+var __export = (target, all) => {
+  __markAsModule(target);
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// js/phoenix_live_view/index.js
+__export(exports, {
+  LiveSocket: () => LiveSocket
+});
+
 // js/phoenix_live_view/constants.js
 var CONSECUTIVE_RELOADS = "consecutive-reloads";
 var MAX_RELOADS = 10;
@@ -3730,7 +3743,4 @@ var TransitionSet = class {
     this.pendingOps = [];
   }
 };
-export {
-  LiveSocket
-};
-//# sourceMappingURL=phoenix_live_view.esm.js.map
+//# sourceMappingURL=phoenix_live_view.cjs.js.map

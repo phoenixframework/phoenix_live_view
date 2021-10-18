@@ -4,8 +4,11 @@ defmodule Phoenix.LiveView.HookTest do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Lifecycle
 
-  defp build_socket() do
-    %LiveView.Socket{private: %{lifecycle: %Lifecycle{}}}
+  defp build_socket(router \\ Phoenix.LiveViewTest.Router) do
+    %LiveView.Socket{
+      private: %{lifecycle: %Lifecycle{}},
+      router: router
+    }
   end
 
   describe "attach_hook/3" do
@@ -68,6 +71,12 @@ defmodule Phoenix.LiveView.HookTest do
                handle_event: [%{id: :noop, stage: :handle_event}],
                handle_params: [%{id: :noop, stage: :handle_params}]
              } = lifecycle(socket)
+    end
+
+    test "raises on stage :handle_params when socket is not mounted at the router" do
+      assert_raise RuntimeError, ~r/not mounted at the router/, fn ->
+        LiveView.attach_hook(build_socket(nil), :boom, :handle_params, &noop/3)
+      end
     end
   end
 

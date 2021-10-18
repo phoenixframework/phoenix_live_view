@@ -213,7 +213,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} =
-        live_isolated(conn, AppWeb.ClockLive, session: %{"tz" => "EST"})
+        live_isolated(conn, MyAppWeb.ClockLive, session: %{"tz" => "EST"})
 
   Use `put_connect_params/2` to put connect params for a call to
   `Phoenix.LiveView.get_connect_params/1` in `c:Phoenix.LiveView.mount/3`:
@@ -226,14 +226,16 @@ defmodule Phoenix.LiveViewTest do
 
   """
   defmacro live_isolated(conn, live_view, opts \\ []) do
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
+
     quote bind_quoted: binding(), unquote: true do
-      unquote(__MODULE__).__isolated__(conn, @endpoint, live_view, opts)
+      unquote(__MODULE__).__isolated__(conn, endpoint, live_view, opts)
     end
   end
 
   @doc false
   def __isolated__(conn, endpoint, live_view, opts) do
-    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test case"))
+    put_in(conn.private[:phoenix_endpoint], endpoint || raise("no @endpoint set in test module"))
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, opts)
@@ -395,30 +397,36 @@ defmodule Phoenix.LiveViewTest do
     do: request_path <> "?" <> query_string
 
   @doc """
-  Mounts, updates, and renders a component.
+  Renders a component.
 
-  If the component uses the `@myself` assigns, then an `id` must
-  be given to it is marked as stateful.
+  The first argument may either be a function component, as an
+  anonymous function:
 
-  ## Examples
+      assert render_component(&Weather.city/1, name: "Kraków") =~
+               "some markup in component"
+
+  Or a stateful component as a module. In this case, this function
+  will mount, update, and render the component. The `:id` option is
+  a required argument:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
+
+  If your component is using the router, you can pass it as argument:
 
       assert render_component(MyComponent, %{id: 123, user: %User{}}, router: SomeRouter) =~
                "some markup in component"
 
   """
   defmacro render_component(component, assigns, opts \\ []) do
-    endpoint =
-      Module.get_attribute(__CALLER__.module, :endpoint) ||
-        raise ArgumentError,
-              "the module attribute @endpoint is not set for #{inspect(__MODULE__)}"
+    endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
 
     quote do
+      component = unquote(component)
+
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
-        unquote(component).__live__(),
+        if(is_atom(component), do: component.__live__(), else: component),
         unquote(assigns),
         unquote(opts)
       )
@@ -429,9 +437,25 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
     assigns = Map.new(assigns)
+
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
-    rendered = Diff.component_to_rendered(socket, component, assigns, mount_assigns)
+
+    socket
+    |> Diff.component_to_rendered(component, assigns, mount_assigns)
+    |> rendered_to_iodata(socket)
+  end
+
+  def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
+    socket = %Socket{endpoint: endpoint, router: opts[:router]}
+
+    assigns
+    |> Map.new()
+    |> function.()
+    |> rendered_to_iodata(socket)
+  end
+
+  defp rendered_to_iodata(rendered, socket) do
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
@@ -1010,7 +1034,7 @@ defmodule Phoenix.LiveViewTest do
         type: "image/jpeg"
       }])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
   """
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
@@ -1146,16 +1170,12 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_patched view, "/path"
 
-      render_click(view, :event_that_triggers_redirect)
-      path = assert_patched view
-      assert path =~ ~r/path/\d+/
-
   """
   def assert_patched(view, to) do
     assert_patch(view, to, 0)
   end
 
-  @doc """
+  @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
   The default `timeout` is 100.
 
@@ -1165,7 +1185,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      {_path, flash} = assert_redirect view
+      {path, flash} = assert_redirect view
       assert flash["info"] == "Welcome"
       assert path =~ ~r/path\/\d+/
 
@@ -1214,13 +1234,8 @@ defmodule Phoenix.LiveViewTest do
       {_path, flash} = assert_redirected view, "/path"
       assert flash["info"] == "Welcome"
 
-      render_click(view, :event_that_triggers_redirect)
-      {path, flash} = assert_redirected view
-      assert flash["info"] == "Welcome"
-      assert path =~ ~r/path\/\d+/
-
   """
-  def assert_redirected(view, to \\ nil) do
+  def assert_redirected(view, to) do
     assert_redirect(view, to, 0)
   end
 
@@ -1232,11 +1247,12 @@ defmodule Phoenix.LiveViewTest do
         {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
     after
       timeout ->
-        message = if to do
-          "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
-        else
-          "expected #{inspect(view.module)} to #{kind}, "
-        end
+        message =
+          if to do
+            "expected #{inspect(view.module)} to #{kind} to #{inspect(to)}, "
+          else
+            "expected #{inspect(view.module)} to #{kind}, "
+          end
 
         case flush_navigation(ref, topic, nil) do
           nil -> raise ArgumentError, message <> "but got none"
@@ -1487,7 +1503,7 @@ defmodule Phoenix.LiveViewTest do
 
   When redirecting between two LiveViews of the same `live_session`,
   mounts the new LiveView and shutsdown the previous one, which
-  mimicks general browser live navigation behaviour.
+  mimics general browser live navigation behaviour.
 
   When attempting to navigate from a LiveView of a different
   `live_session`, an error redirect condition is returned indicating
@@ -1501,11 +1517,11 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, {:redirect, _}} = live_redirect(page2_live, to: "/admin")
   """
   def live_redirect(view, opts) do
-    Phoenix.LiveViewTest.__live_redirect__(view, opts)
+    __live_redirect__(view, opts)
   end
 
   @doc false
-  def __live_redirect__(%View{} = view, opts, token_func \\ &(&1)) do
+  def __live_redirect__(%View{} = view, opts, token_func \\ & &1) do
     {session, %ClientProxy{} = root} = ClientProxy.root_view(proxy_pid(view))
 
     url =
@@ -1619,13 +1635,13 @@ defmodule Phoenix.LiveViewTest do
         }
       ])
 
-      assert render_upload(avatar, "foo.jpeg") =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg") =~ "100%"
 
   By default, the entire file is chunked to the server, but an optional
   percentage to chunk can be passed to test chunk-by-chunk uploads:
 
-      assert render_upload(avatar, "foo.jpeg", 49) =~ "49%"
-      assert render_upload(avatar, "foo.jpeg", 51) =~ "100%"
+      assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
+      assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do

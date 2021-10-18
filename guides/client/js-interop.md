@@ -4,7 +4,7 @@ As seen earlier, you start by instantiating a single LiveSocket to enable LiveVi
 client/server interaction, for example:
 
     import {Socket} from "phoenix"
-    import LiveSocket from "phoenix_live_view"
+    import {LiveSocket} from "phoenix_live_view"
 
     let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
     let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
@@ -121,6 +121,33 @@ key in the info metadata pointing to the href associated with the page load.
 In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
+
+## Triggering phx form events with JavaScript
+
+Often it is desirable to trigger an event on a DOM element without explicit
+user interaction on the element. For example, a custom form element such as a
+date picker or custom select input which utilizes a hidden input element to
+store the selected state.
+
+In these cases, the event functions on the DOM API can be used, for example
+to trigger a `phx-change` event:
+
+```javascript
+document.getElementById("my-select").dispatchEvent(
+  new Event("input", {bubbles: true})
+)
+```
+
+When using a client hook, `this.el` can be used to determine the element as
+outlined in the "Client hooks" documentation.
+
+It is also possible to trigger a `phx-submit` using a "submit" event:
+
+```javascript
+document.getElementById("my-form").dispatchEvent(
+  new Event("submit", {bubbles: true})
+)
+```
 
 ## Client hooks
 
@@ -242,6 +269,46 @@ And then on the client:
     }
 
 *Note*: events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event.
+to all active hooks on the client who are handling that event. Events may also be handled
+outside a hook with a window event listener, by listening to the event name prefixed by
+the `phx:` namespace. For exmaple:
+
+```javascript
+window.addEventListener("phx:my-pushed-event", e => {
+  console.log("got my-pushed-event from server with data", e.detail)
+})
+```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+## Executing JS Commands
+
+The `Phoenix.LiveView.JS` commands execute when `phx-` bindings are triggered, such as `phx-click`, or `phx-change` bindings. Custom scripts may also execute a command by using the `execJS` function of the `LiveSocket` instance. For example, imagine the following template where you want to highlight an existing element from the server to draw the user's attention:
+
+```heex
+<div id={"item-#{item.id}"} class="item" data-handle-highlight={JS.transition("highlight")}>
+  <%= item.title %>
+</div>
+```
+
+Next, the server can issue a highlight using the standard `push_event`:
+
+```elixir
+def handle_info({:item_updated, item}, socket) do
+  {:ok, push_event(socket, "highlight", %{id: item.id})}
+end
+```
+
+Finally, a window event listener can listen for the event and conditionally
+execute the highlight command if the element matches:
+
+```javascript
+let liveSocket = new LiveSocket(...)
+window.addEventListener(`phx:highlight`, (e) => {
+  document.querySelectorAll(`[data-handle-highlight]`).forEach(el => {
+    if(el.id == e.detail.id){
+      liveSocket.execJS(el, el.getAttribute("data-handle-highlight"))
+    }
+  })
+})
+```

@@ -310,12 +310,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
-               {:ok, event} <- maybe_event(type, node, element),
+               {:ok, event_or_js} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element) do
+            {event, js_values} = maybe_js_event(event_or_js)
+            extra = Map.merge(extra, js_values)
+
             {values, uploads} =
               case value do
                 %Upload{} = upload -> {extra, upload}
-                other -> {DOM.deep_merge(extra, stringify_type(type, other)), nil}
+                other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
               end
 
             {view, DOM.targets_from_node(root, node), event, values, uploads}
@@ -504,6 +507,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_patch, topic, path}, from, state) do
     view = fetch_view_by_topic!(state, topic)
+    path = URI.merge(state.root_view.uri, URI.parse(path)) |> to_string()
     state = push_with_reply(state, from, view, "live_patch", %{"url" => path})
     send_patch(state, state.root_view.topic, %{to: path})
     {:noreply, state}
@@ -742,8 +746,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     send(pid, {ref, msg})
   end
 
-  defp send_patch(state, topic, %{to: _to} = opts) do
-    send_caller(state, {:patch, topic, opts})
+  defp send_patch(state, topic, %{to: to} = opts) do
+    relative =
+      case URI.parse(to) do
+        %{path: nil} -> ""
+        %{path: path, query: nil} -> path
+        %{path: path, query: query} -> path <> "?" <> query
+      end
+
+    send_caller(state, {:patch, topic, %{opts | to: relative}})
   end
 
   defp push(state, view, event, payload) do
@@ -955,6 +966,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
        "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end
+
+  defp maybe_js_event("[" <> _ = encoded_js) do
+    js = encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()
+    op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
+
+    case op do
+      [] ->
+        raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
+
+      [["push", %{"event" => event} = args]] ->
+        {event, args["value"] || %{}}
+
+      [_ | _] ->
+        raise ArgumentError,
+                "Phoenix.LiveViewTest currently only supports a single push within JS commands"
+    end
+  end
+
+  defp maybe_js_event(event), do: {event, _values = %{}}
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do
@@ -1192,9 +1222,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
-
-  defp stringify_type(:hook, value), do: stringify(value, & &1)
-  defp stringify_type(_, value), do: stringify(value, &to_string/1)
 
   defp stringify(%Upload{}, _fun), do: %{}
 
