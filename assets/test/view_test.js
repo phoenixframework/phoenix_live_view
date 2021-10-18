@@ -3,29 +3,9 @@ import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
-import {tag, simulateJoinedView, stubChannel, rootContainer} from "./test_helpers"
+import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM} from "./test_helpers"
 
-function liveViewDOM(content){
-  const div = document.createElement("div")
-  div.setAttribute("data-phx-view", "User.Form")
-  div.setAttribute("data-phx-session", "abc123")
-  div.setAttribute("id", "container")
-  div.setAttribute("class", "user-implemented-class")
-  div.innerHTML = content || `
-    <form>
-      <label for="plus">Plus</label>
-      <input id="plus" value="1" name="increment" />
-      <textarea id="note" name="note">2</textarea>
-      <input type="checkbox" phx-click="toggle_me" />
-      <button phx-click="inc_temperature">Inc Temperature</button>
-    </form>
-  `
-  document.body.innerHTML = ""
-  document.body.appendChild(div)
-  return div
-}
-
-describe("View + DOM", function (){
+describe("View + DOM", function(){
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit
     global.Phoenix = {Socket}
@@ -51,7 +31,7 @@ describe("View + DOM", function (){
     expect(view.rendered.get()).toEqual(updateDiff)
   })
 
-  test("pushWithReply", function (){
+  test("pushWithReply", function(){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -71,7 +51,7 @@ describe("View + DOM", function (){
     view.pushWithReply(null, {target: el.querySelector("form")}, {value: "increment=1"})
   })
 
-  test("pushWithReply with update", function (){
+  test("pushWithReply with update", function(){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
 
@@ -103,7 +83,7 @@ describe("View + DOM", function (){
     expect(view.el.querySelector("form")).toBeTruthy()
   })
 
-  test("pushEvent", function (){
+  test("pushEvent", function(){
     expect.assertions(3)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -126,7 +106,7 @@ describe("View + DOM", function (){
     view.pushEvent("keyup", input, el, "click", {})
   })
 
-  test("pushEvent as checkbox not checked", function (){
+  test("pushEvent as checkbox not checked", function(){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -147,7 +127,7 @@ describe("View + DOM", function (){
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushEvent as checkbox when checked", function (){
+  test("pushEvent as checkbox when checked", function(){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -170,7 +150,7 @@ describe("View + DOM", function (){
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushEvent as checkbox with value", function (){
+  test("pushEvent as checkbox with value", function(){
     expect.assertions(1)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -194,30 +174,7 @@ describe("View + DOM", function (){
     view.pushEvent("click", input, el, "toggle_me", {})
   })
 
-  test("pushKey", function (){
-    expect.assertions(3)
-
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let input = el.querySelector("input")
-
-    let view = simulateJoinedView(el, liveSocket)
-    let channelStub = {
-      push(_evt, payload, _timeout){
-        expect(payload.type).toBe("keydown")
-        expect(payload.event).toBeDefined()
-        expect(payload.value).toEqual({"key": "A", "value": "1"})
-        return {
-          receive(){ return this }
-        }
-      }
-    }
-    view.channel = channelStub
-
-    view.pushKey(input, el, "keydown", "move", {key: "A"})
-  })
-
-  test("pushInput", function (){
+  test("pushInput", function(){
     expect.assertions(3)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -237,10 +194,10 @@ describe("View + DOM", function (){
     }
     view.channel = channelStub
 
-    view.pushInput(input, el, null, "validate", input)
+    view.pushInput(input, el, null, "validate", {_target: input.name})
   })
 
-  test("formsForRecovery", function (){
+  test("formsForRecovery", function(){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
     html = "<form id=\"my-form\" phx-change=\"cg\"><input name=\"foo\"></form>"
@@ -270,8 +227,8 @@ describe("View + DOM", function (){
     expect(view.formsForRecovery().length).toBe(0)
   })
 
-  describe("submitForm", function (){
-    test("submits payload", function (){
+  describe("submitForm", function(){
+    test("submits payload", function(){
       expect.assertions(3)
 
       let liveSocket = new LiveSocket("/live", Socket)
@@ -293,7 +250,7 @@ describe("View + DOM", function (){
       view.submitForm(form, form, {target: form})
     })
 
-    test("disables elements after submission", function (){
+    test("disables elements after submission", function(){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let form = el.querySelector("form")
@@ -309,7 +266,7 @@ describe("View + DOM", function (){
       expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
     })
 
-    test("disables elements outside form", function (){
+    test("disables elements outside form", function(){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM(`
       <form id="my-form">
@@ -373,7 +330,7 @@ describe("View + DOM", function (){
     })
   })
 
-  describe("phx-update", function (){
+  describe("phx-update", function(){
     let childIds = () => Array.from(document.getElementById("list").children).map(child => parseInt(child.id))
     let countChildNodes = () => document.getElementById("list").childNodes.length
 
@@ -556,7 +513,7 @@ describe("View + DOM", function (){
 })
 
 let submitBefore
-describe("View", function (){
+describe("View", function(){
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit
     global.Phoenix = {Socket}
@@ -678,7 +635,7 @@ describe("View", function (){
   })
 })
 
-describe("View Hooks", function (){
+describe("View Hooks", function(){
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML
   })
@@ -860,7 +817,7 @@ function liveViewComponent(){
   return div
 }
 
-describe("View + Component", function (){
+describe("View + Component", function(){
   beforeEach(() => {
     global.Phoenix = {Socket}
     global.document.body.innerHTML = liveViewComponent().outerHTML
@@ -880,7 +837,7 @@ describe("View + Component", function (){
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", function (){
+  test("pushEvent", function(){
     expect.assertions(4)
 
     let liveSocket = new LiveSocket("/live", Socket)
@@ -905,7 +862,7 @@ describe("View + Component", function (){
     view.pushEvent("keyup", input, targetCtx, "click", {})
   })
 
-  test("pushInput", function (){
+  test("pushInput", function(){
     expect.assertions(6)
     let html =
       `<form id="form" phx-change="validate">
@@ -960,13 +917,13 @@ describe("View + Component", function (){
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
-    view.pushInput(first_name, el, null, "validate", first_name)
+    view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
 
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
     DOM.putPrivate(last_name, "phx-has-focused", true)
-    view.pushInput(last_name, el, null, "validate", last_name)
+    view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
     expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })
@@ -1165,8 +1122,8 @@ describe("View + Component", function (){
   })
 })
 
-describe("DOM", function (){
-  it("mergeAttrs attributes", function (){
+describe("DOM", function(){
+  it("mergeAttrs attributes", function(){
     const target = document.createElement("target")
     target.type = "checkbox"
     target.id = "foo"
@@ -1185,7 +1142,7 @@ describe("DOM", function (){
     expect(target.id).toEqual("bar")
   })
 
-  it("mergeAttrs with properties", function (){
+  it("mergeAttrs with properties", function(){
     const target = document.createElement("target")
     target.type = "checkbox"
     target.id = "foo"
