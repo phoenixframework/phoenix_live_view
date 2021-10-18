@@ -71,7 +71,11 @@ Some functionality that was previously deprecated has been removed:
 ### Bug fixes
   - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates
+  - Support HTML tags inside script tags (as in regular HTML)
+  - Raise if using quotes in attribute names
+  - Include the filename in error messages when it is not possible to parse interpolated attributes
   - Make sure the test client always sends the full URL on `live_patch`/`live_redirect`. This mirrors the behaviour of the JavaScript client
+  - Do not reload flash from session on `live_redirect`s
 
 ### Deprecations
   - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
