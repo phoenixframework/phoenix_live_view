@@ -72,9 +72,6 @@ defmodule Phoenix.LiveView.JS do
         </div>
         \"""
       end
-
-  TODO
-  [ ] figure out what to deprecate (phx-page-loading binding?)
   """
   alias Phoenix.LiveView.JS
 
