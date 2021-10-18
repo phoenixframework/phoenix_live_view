@@ -304,16 +304,11 @@ execute the highlight command if the element matches:
 
 ```javascript
 let liveSocket = new LiveSocket(...)
-
-let handleCustomEvent = (name, filter) => {
-  filter = filter || function(){ return true }
-  let attr = `data-handle-${name}`
-  window.addEventListener(`phx:${name}`, (e) => {
-    document.querySelectorAll(`[${attr}]`).forEach(el => {
-      filter(el, e.detail) && liveSocket.execJS(el, el.getAttribute(attr))
-    })
+window.addEventListener(`phx:highlight`, (e) => {
+  document.querySelectorAll(`[data-handle-highlight]`).forEach(el => {
+    if(el.id == e.detail.id){
+      liveSocket.execJS(el, el.getAttribute("data-handle-highlight"))
+    }
   })
-}
-
-handleCustomEvent("hightlight", (el, data) => el.id === data.id)
+})
 ```
