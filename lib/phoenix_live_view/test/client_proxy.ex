@@ -972,16 +972,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
 
     case op do
-      [["push", %{"event" => event} = args] | rest] ->
-        if rest != [] do
-          raise ArgumentError,
-                "the elixir Phoenix.LiveViewTest client currently only supports a single push"
-        end
+      [] ->
+        raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
 
+      [["push", %{"event" => event} = args]] ->
         {event, args["value"] || %{}}
 
-      nil ->
-        raise ArgumentError, "no event found within JS command: #{inspect(js)}"
+      [_ | _] ->
+        raise ArgumentError,
+                "Phoenix.LiveViewTest currently only supports a single push within JS commands"
     end
   end
 
