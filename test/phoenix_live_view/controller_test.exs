@@ -34,9 +34,7 @@ defmodule Phoenix.LiveView.ControllerTest do
     conn = get(conn, "/controller/render-layout-with-function-component")
     assert html_response(conn, 200) =~ """
     LAYOUT:COMPONENT:from layout
-
-    Hello
-
+    Hello\
     """
   end
 end

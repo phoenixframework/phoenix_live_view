@@ -1,15 +1,16 @@
 defmodule Phoenix.LiveComponent do
   @moduledoc """
-  Components are a mechanism to compartmentalize state, markup, and
+  LiveComponents are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
   Components are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.Helpers.live_component/3` in a parent LiveView.
-  Components run inside the LiveView process, but they have their own
-  state, event handling and life-cycle. That's why they are also called
-  stateful components.
+  by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
+  Components run inside the LiveView process but have their own state and
+  life-cycle. For this reason, they are also often called "stateful components".
+  This is a contrast to `Phoenix.Component`, also known as "function components",
+  which are stateless.
 
-  The simplest component only needs to define a `c:render/1` function:
+  The smallest LiveComponent only needs to define a `c:render/1` function:
 
       defmodule HeroComponent do
         # If you generated an app with mix phx.new --live,
@@ -23,19 +24,13 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  When `use Phoenix.LiveComponent` is used, all functions in
-  `Phoenix.LiveView` and `Phoenix.LiveView.Helpers` are imported.
   A component can be invoked as:
 
-      <%= live_component HeroComponent, id: :hero, content: @content %>
+      <.live_component module={HeroComponent} id="hero" content={@content} />
 
   A component must receive the `:id` assign as argument, which is
   used to uniquely identify the component. A component will be treated
   as the same component as long as its `:id` does not change.
-
-  > Note: previous LiveView versions allowed the `:id` to be skipped
-  > on `live_component` but those are now discouraged since the addition
-  > of function components, outlined in `Phoenix.Component`.
 
   ## Life-cycle
 
@@ -44,12 +39,12 @@ defmodule Phoenix.LiveComponent do
   components. This means we can often tie the component ID to some application
   based ID:
 
-      <%= live_component UserComponent, id: @user.id, user: @user %>
+      <.live_component module={UserComponent} id={@user.id} user={@user} />
 
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is called,
+  When [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`) is called,
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`).
+  assigns given to [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`).
   If `c:update/2` is not defined all assigns are simply merged into the socket.
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -90,7 +85,7 @@ defmodule Phoenix.LiveComponent do
         Say hello!
       </a>
 
-  Note `@myself` is not set for stateless components, as they cannot
+  Note that `@myself` is not set for stateless components, as they cannot
   receive events.
 
   If you want to target another component, you can also pass an ID
@@ -137,7 +132,7 @@ defmodule Phoenix.LiveComponent do
   let's see an example. Imagine you are implementing a component and the component
   needs to load some state from the database. For example:
 
-      <%= live_component UserComponent, id: user_id %>
+      <.live_component module={UserComponent} id={user_id} />
 
   A possible implementation would be to load the user on the `c:update/2`
   callback:
@@ -173,6 +168,18 @@ defmodule Phoenix.LiveComponent do
 
   Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
   keeping the assigns in the same order as they were given.
+
+  ## Slots
+
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`.
+  See the docs for `Phoenix.Component` for more information.
+
+  ## Live patches and live redirects
+
+  A template rendered inside a component can use `Phoenix.LiveView.Helpers.live_patch/2`
+  and `Phoenix.LiveView.Helpers.live_redirect/2` calls. The
+  [`live_patch/2`](`Phoenix.LiveView.Helpers.live_patch/2`) is always handled
+  by the parent`LiveView`, as components do not provide `handle_params`.
 
   ## Managing state
 
@@ -210,11 +217,12 @@ defmodule Phoenix.LiveComponent do
   ### LiveView as the source of truth
 
   If the board LiveView is the source of truth, it will be responsible
-  for fetching all of the cards in a board. Then it will call [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`)
+  for fetching all of the cards in a board. Then it will call
+  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
-        <%= live_component CardComponent, card: card, id: card.id, board_id: @id %>
+        <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
       <% end %>
 
   Now, when the user submits the form, `CardComponent.handle_event/3`
@@ -281,7 +289,7 @@ defmodule Phoenix.LiveComponent do
   passing an ID:
 
       <%= for card_id <- @card_ids do %>
-        <%= live_component CardComponent, id: card_id, board_id: @id %>
+        <.live_component module={CardComponent} id={card_id} board_id={@id} />
       <% end %>
 
   Now, each CardComponent will load its own card. Of course, doing so
@@ -308,52 +316,6 @@ defmodule Phoenix.LiveComponent do
   will be invoked, triggering both preload and update callbacks, which will
   load the most up to date data from the database.
 
-  ## LiveComponent blocks
-
-  When [`live_component/3`](`Phoenix.LiveView.Helpers.live_component/3`) is invoked,
-  it is also possible to pass a `do/end` block:
-
-      <%= live_component GridComponent, entries: @entries do %>
-        <% entry -> %>New entry: <%= entry %>
-      <% end %>
-
-  The `do/end` will be available in an assign named `@inner_block`.
-  You can render its contents by calling `render_block` with the
-  assign itself and a keyword list of assigns to inject into the rendered
-  content. For example, the grid component above could be implemented as:
-
-      defmodule GridComponent do
-        use Phoenix.LiveComponent
-
-        def render(assigns) do
-          ~H"\""
-          <div class="grid">
-            <%= for entry <- @entries do %>
-              <div class="column">
-                <%= render_block(@inner_block, entry) %>
-              </div>
-            <% end %>
-          </div>
-          "\""
-        end
-      end
-
-  Where the `entry` variable was injected into the `do/end` block.
-
-  Note the `@inner_block` assign is also passed to `c:update/2`
-  along all other assigns. So if you have a custom `update/2`
-  implementation, make sure to assign it to the socket like so:
-
-      def update(%{inner_block: inner_block}, socket) do
-        {:ok, assign(socket, inner_block: inner_block)}
-      end
-
-  ## Live patches and live redirects
-
-  A template rendered inside a component can use `Phoenix.LiveView.Helpers.live_patch/2` and
-  `Phoenix.LiveView.Helpers.live_redirect/2` calls. The [`live_patch/2`](`Phoenix.LiveView.Helpers.live_patch/2`)
-  is always handled by the parent`LiveView`, as components do not provide `handle_params`.
-
   ## Cost of stateful components
 
   The internal infrastructure LiveView uses to keep track of stateful
@@ -366,11 +328,11 @@ defmodule Phoenix.LiveComponent do
   in each component. For example, avoid passing all of LiveView's assigns
   when rendering a component:
 
-      <%= live_component MyComponent, assigns %>
+      <.live_component module={MyComponent} {assigns} />
 
   Instead pass only the keys that you need:
 
-      <%= live_component MyComponent, user: @user, org: @org %>
+      <.live_component module={MyComponent} user={@user} org={@org} />
 
   Luckily, because LiveViews and LiveComponents are in the same process,
   they share the data structure representations in memory. For example,
@@ -450,7 +412,7 @@ defmodule Phoenix.LiveComponent do
         <%= live_component SomeComponent, id: :example %>
       </div>
 
-  Similarly, they also work inside any function component, such as `form`:
+  They also work inside any function component, such as `form`:
 
       <.form let={f} for={@changeset} url="#">
         <%= live_component FormComponent, id: :form %>

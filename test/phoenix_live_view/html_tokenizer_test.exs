@@ -3,12 +3,14 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   defp tokenize(text) do
-    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [])
+    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
+    |> elem(0)
+    |> Enum.reverse()
   end
 
   describe "text" do
     test "represented as {:text, value}" do
-      assert tokenize("Hello") == [{:text, "Hello"}]
+      assert tokenize("Hello") == [{:text, "Hello", %{line_end: 1, column_end: 6}}]
     end
 
     test "with multiple lines" do
@@ -19,30 +21,36 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         third
         """)
 
-      assert tokens == [{:text, "first\nsecond\nthird\n"}]
+      assert tokens == [{:text, "first\nsecond\nthird\n", %{line_end: 4, column_end: 1}}]
     end
 
     test "keep line breaks unchanged" do
-      assert tokenize("first\nsecond\r\nthird") == [{:text, "first\nsecond\r\nthird"}]
+      assert tokenize("first\nsecond\r\nthird") == [
+               {:text, "first\nsecond\r\nthird", %{line_end: 3, column_end: 6}}
+             ]
     end
   end
 
   describe "doctype" do
     test "generated as text" do
-      assert tokenize("<!doctype html>") == [{:text, "<!doctype html>"}]
+      assert tokenize("<!doctype html>") == [
+               {:text, "<!doctype html>", %{line_end: 1, column_end: 16}}
+             ]
     end
 
     test "multiple lines" do
-      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") ==  [
-              {:text, "<!DOCTYPE\nhtml\n>  "},
-              {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
-            ]
+      assert tokenize("<!DOCTYPE\nhtml\n>  <br />") == [
+               {:text, "<!DOCTYPE\nhtml\n>  ", %{line_end: 3, column_end: 4}},
+               {:tag_open, "br", [], %{column: 4, line: 3, self_close: true}}
+             ]
     end
   end
 
   describe "comment" do
     test "generated as text" do
-      assert tokenize("Begin<!-- comment -->End") == [{:text, "Begin<!-- comment -->End"}]
+      assert tokenize("Begin<!-- comment -->End") == [
+               {:text, "Begin<!-- comment -->End", %{line_end: 1, column_end: 25}}
+             ]
     end
 
     test "multiple lines and wrapped by tags" do
@@ -56,20 +64,10 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
       assert [
                {:tag_open, "p", [], %{line: 1, column: 1}},
-               {:text, "\n<!--\n<div>\n-->\n"},
+               {:text, "\n<!--\n<div>\n-->\n", %{line_end: 5, column_end: 1}},
                {:tag_close, "p", %{line: 5, column: 1}},
                {:tag_open, "br", [], %{line: 5, column: 5}}
              ] = tokenize(code)
-    end
-
-    test "raise on incomplete comment (EOF)" do
-      assert_raise ParseError, "nofile:3:7: expected closing `-->` for comment", fn ->
-        tokenize("""
-        <div>
-        <!-- a comment)
-        </div>\
-        """)
-      end
     end
   end
 
@@ -105,9 +103,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
       assert [
                {:tag_open, "div", [], %{line: 1, column: 1}},
-               {:text, _},
+               {:text, _, %{line_end: 2, column_end: 3}},
                {:tag_open, "span", [], %{line: 2, column: 3}},
-               {:text, _},
+               {:text, _, %{line_end: 4, column_end: 1}},
                {:tag_open, "p", [], %{column: 1, line: 4, self_close: true}},
                {:tag_open, "br", [], %{column: 5, line: 4}}
              ] = tokens
@@ -211,6 +209,24 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
       assert_raise ParseError, "nofile:1:6: expected attribute name", fn ->
         tokenize(~S(<div / >))
+      end
+    end
+
+    test "raise on attribute names with quotes" do
+      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: '", fn ->
+        tokenize(~S(<div'>))
+      end
+
+      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: \"", fn ->
+        tokenize(~S(<div">))
+      end
+
+      assert_raise ParseError, "nofile:1:10: invalid character in attribute name: '", fn ->
+        tokenize(~S(<div attr'>))
+      end
+
+      assert_raise ParseError, "nofile:1:20: invalid character in attribute name: \"", fn ->
+        tokenize(~S(<div class={"test"}">))
       end
     end
   end
@@ -492,7 +508,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
       assert [
                {:tag_open, "div", [], _meta},
-               {:text, _},
+               {:text, "\n", %{column_end: 1, line_end: 2}},
                {:tag_close, "div", %{line: 2, column: 1}},
                {:tag_open, "br", [], %{line: 2, column: 7}}
              ] = tokens
@@ -517,6 +533,31 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
   end
 
+  describe "script" do
+    test "self-closing" do
+      assert tokenize("""
+             <script src="foo.js" />
+             """) == [
+               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}}],
+                %{column: 1, line: 1, self_close: true}},
+               {:text, "\n", %{column_end: 1, line_end: 2}}
+             ]
+    end
+
+    test "traverses until </script>" do
+      assert tokenize("""
+             <script>
+               a = "<a>Link</a>"
+             </script>
+             """) == [
+               {:tag_open, "script", [], %{column: 1, line: 1}},
+               {:text, "\n  a = \"<a>Link</a>\"\n", %{column_end: 1, line_end: 3}},
+               {:tag_close, "script", %{column: 1, line: 3}},
+               {:text, "\n", %{column_end: 1, line_end: 4}}
+             ]
+    end
+  end
+
   test "mixing text and tags" do
     tokens =
       tokenize("""
@@ -528,11 +569,11 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """)
 
     assert [
-             {:text, "text before\n"},
+             {:text, "text before\n", %{line_end: 2, column_end: 1}},
              {:tag_open, "div", [], %{}},
-             {:text, "\n  text\n"},
+             {:text, "\n  text\n", %{line_end: 4, column_end: 1}},
              {:tag_close, "div", %{line: 4, column: 1}},
-             {:text, "\ntext after\n"}
+             {:text, "\ntext after\n", %{line_end: 6, column_end: 1}}
            ] = tokens
   end
 

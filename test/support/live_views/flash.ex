@@ -48,7 +48,7 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def render(assigns) do
     ~H"""
-    <div id={@id}" phx-target={@myself} phx-click="click">
+    <div id={@id} phx-target={@myself} phx-click="click">
     <span phx-click="lv:clear-flash">Clear all</span>
     <span phx-click="lv:clear-flash" phx-value-key="info">component[<%= live_flash(@flash, :info) %>]:info</span>
     <span phx-click="lv:clear-flash" phx-value-key="error">component[<%= live_flash(@flash, :error) %>]:error</span>

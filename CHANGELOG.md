@@ -1,5 +1,93 @@
 # Changelog
 
+## 0.17.0
+
+### Breaking Changes
+
+#### on_mount changes
+
+The hook API introduced in LiveView 0.16 has been improved based on feedback.
+LiveView 0.17 removes the custom module-function callbacks for the
+`Phoenix.LiveView.on_mount/1` macro and the `:on_mount` option for
+`Phoenix.LiveView.Router.live_session/3` in favor of supporting a custom
+argument. For clarity, the module function to be invoked during the mount
+lifecycle stage will always be named `on_mount/4`.
+
+For example, if you had invoked `on_mount/1` like so:
+
+```elixir
+on_mount MyAppWeb.MyHook
+on_mount {MyAppWeb.MyHook, :assign_current_user}
+```
+
+and defined your callbacks as:
+
+```elixir
+# my_hook.ex
+
+def mount(_params, _session, _socket) do
+end
+
+def assign_current_user(_params, _session, _socket) do
+end
+```
+
+Change the callback to:
+
+```elixir
+# my_hook.ex
+
+def on_mount(:default, _params, _session, _socket) do
+end
+
+def on_mount(:assign_current_user, _params, _session, _socket) do
+end
+```
+
+When given only a module name, the first argument to `on_mount/4` will be the
+atom `:default`.
+
+#### LEEx templates in stateful LiveComponents
+
+Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
+(`~H` sigil or `.heex` extension). LEEx temlates (`~L` sigil or `.leex` extension)
+are no longer supported. This addresses bugs and allows stateful components
+to be rendered more efficiently client-side.
+
+#### Removal of previously deprecated functionality
+
+Some functionality that was previously deprecated has been removed:
+
+  - Implicit assigns in `live_component` do-blocks is no longer supported
+  - Passing a `@socket` to `live_component` will now raise if possible
+
+### Enhancements
+  - Allow slots in function components: they are marked as `<:slot_name>` and can be rendered with `<%= render_slot @slot_name %>`
+  - Optimize string attributes:
+    - If the attribute is a string interpolation, such as `<div class={"foo bar #{@baz}"}>`, only the interpolation part is marked as dynamic
+    - If the attribute can be empty, such as "class" and "style", keep the attribute name as static
+  - Add a function component for rendering `Phoenix.LiveComponent`. Instead of `<%= live_component FormComponent, id: "form" %>`, you must now do: `<.live_component module={FormComponent} id="form" />`
+
+### Bug fixes
+  - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
+  - Support EEx interpolation inside HTML comments in HEEx templates
+  - Make sure the test client always sends the full URL on `live_patch`/`live_redirect`. This mirrors the behaviour of the JavaScript client
+
+### Deprecations
+  - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
+  - `render_block/2` in deprecated in favor of `render_slot/2`
+
+## 0.16.4 (2021-09-22)
+
+### Enhancements
+  - Improve HEEx error messages
+  - Relax HTML tag validation to support mixed case tags
+  - Support self closing HTML tags
+  - Remove requirement for handle_params to be defined for lifecycle hooks
+
+### Bug fixes
+  - Fix pushes failing to include channel `join_ref` on messages
+
 ## 0.16.3 (2021-09-03)
 
 ### Bug fixes

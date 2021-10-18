@@ -2,7 +2,7 @@ import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
   PHX_FEEDBACK_FOR,
-  PHX_REMOVE,
+  PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_SKIP,
@@ -44,7 +44,8 @@ export default class DOMPatch {
     this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
-      afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: []
+      afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
+      aftertransitionsDiscarded: []
     }
   }
 
@@ -61,7 +62,7 @@ export default class DOMPatch {
 
   markPrunableContentForRemoval(){
     DOM.all(this.container, "[phx-update=append] > *, [phx-update=prepend] > *", el => {
-      el.setAttribute(PHX_REMOVE, "")
+      el.setAttribute(PHX_PRUNE, "")
     })
   }
 
@@ -76,9 +77,11 @@ export default class DOMPatch {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
+    let phxRemove = liveSocket.binding("remove")
     let added = []
     let updates = []
     let appendPrependUpdates = []
+    let pendingRemoves = []
     let externalFormTriggered = null
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
@@ -99,6 +102,12 @@ export default class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
+          // hack to fix Safari handling of img srcset and video tags
+          if(el instanceof HTMLImageElement && el.srcset){
+            el.srcset = el.srcset
+          } else if(el instanceof HTMLVideoElement && el.autoplay){
+            el.play()
+          }
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
@@ -116,8 +125,12 @@ export default class DOMPatch {
           this.trackAfter("discarded", el)
         },
         onBeforeNodeDiscarded: (el) => {
-          if(el.getAttribute && el.getAttribute(PHX_REMOVE) !== null){ return true }
+          if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.getAttribute && el.getAttribute(phxRemove)){
+            pendingRemoves.push(el)
+            return false
+          }
           if(this.skipCIDSibling(el)){ return false }
           return true
         },
@@ -134,6 +147,7 @@ export default class DOMPatch {
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
             updates.push(fromEl)
+            DOM.applyStickyOperations(fromEl)
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
@@ -142,6 +156,7 @@ export default class DOMPatch {
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
+            DOM.applyStickyOperations(fromEl)
             return false
           }
 
@@ -151,6 +166,7 @@ export default class DOMPatch {
             DOM.mergeAttrs(fromEl, toEl, {exclude: [PHX_STATIC]})
             if(prevSession !== ""){ fromEl.setAttribute(PHX_SESSION, prevSession) }
             fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
+            DOM.applyStickyOperations(fromEl)
             return false
           }
 
@@ -165,12 +181,14 @@ export default class DOMPatch {
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
+            DOM.applyStickyOperations(fromEl)
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
             DOM.syncAttrsToProps(toEl)
+            DOM.applyStickyOperations(toEl)
             this.trackBefore("updated", fromEl, toEl)
             return true
           }
@@ -190,6 +208,14 @@ export default class DOMPatch {
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
+
+    if(pendingRemoves.length > 0){
+      liveSocket.transitionRemoves(pendingRemoves)
+      liveSocket.requestDOMUpdate(() => {
+        pendingRemoves.forEach(el => el.remove())
+        this.trackAfter("transitionsDiscarded", pendingRemoves)
+      })
+    }
 
     if(externalFormTriggered){
       liveSocket.disconnect()

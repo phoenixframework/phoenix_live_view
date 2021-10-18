@@ -213,7 +213,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} =
-        live_isolated(conn, AppWeb.ClockLive, session: %{"tz" => "EST"})
+        live_isolated(conn, MyAppWeb.ClockLive, session: %{"tz" => "EST"})
 
   Use `put_connect_params/2` to put connect params for a call to
   `Phoenix.LiveView.get_connect_params/1` in `c:Phoenix.LiveView.mount/3`:
@@ -1175,7 +1175,7 @@ defmodule Phoenix.LiveViewTest do
     assert_patch(view, to, 0)
   end
 
-  @doc """
+  @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
   The default `timeout` is 100.
 
@@ -1185,7 +1185,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      {_path, flash} = assert_redirect view
+      {path, flash} = assert_redirect view
       assert flash["info"] == "Welcome"
       assert path =~ ~r/path\/\d+/
 
@@ -1517,7 +1517,7 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, {:redirect, _}} = live_redirect(page2_live, to: "/admin")
   """
   def live_redirect(view, opts) do
-    Phoenix.LiveViewTest.__live_redirect__(view, opts)
+    __live_redirect__(view, opts)
   end
 
   @doc false

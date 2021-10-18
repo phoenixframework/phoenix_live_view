@@ -333,10 +333,15 @@ defmodule Phoenix.LiveView.Diff do
   defp component_to_rendered(socket, component, id) do
     rendered = Utils.to_rendered(socket, component)
 
-    if rendered.root == false and id != nil do
+    if rendered.root != true and id != nil do
+      reason =
+        case rendered.root do
+          nil -> "Stateful components must return a HEEx template (~H sigil or .heex extension)"
+          false -> "Stateful components must have a single static HTML tag at the root"
+        end
+
       raise ArgumentError,
-            "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. " <>
-              "LiveView expects stateful components to have a single static HTML tag at the root"
+            "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
     end
 
     rendered

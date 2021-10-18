@@ -79,7 +79,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  2 => %{0 => %{0 => "index_2", :s => ["\nELSE ", ""]}, :s => 1},
                  3 => %{0 => %{0 => "index_3"}, :s => 2}
                },
-               :s => ["<div>", "\n</div>\n"]
+               :s => ["<div>", "\n</div>"]
              }) == """
              <div>
              1:
@@ -88,7 +88,7 @@ defmodule Phoenix.LiveView.DiffTest do
              ELSE index_2
              3:
              ELSE index_3
-             </div>
+             </div>\
              """
     end
 
@@ -100,20 +100,20 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{
                    0 => %{
                      0 => %{d: [[], [], []], s: ["ROW"]},
-                     :s => ["\n", "\n"]
+                     :s => ["\n", ""]
                    },
                    :s => ["<div>", "</div>"]
                  },
                  2 => %{
                    0 => %{
                      0 => %{0 => "BAR", :s => ["FOO", "BAZ"]},
-                     :s => ["\n", "\n"]
+                     :s => ["\n", ""]
                    },
                    :s => 1
                  }
                },
                :s => ["", "", ""]
-             }) == "<div>\nROWROWROW\n</div><div>\nFOOBARBAZ\n</div>"
+             }) == "<div>\nROWROWROW</div><div>\nFOOBARBAZ</div>"
     end
   end
 
@@ -125,11 +125,11 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => "10:30",
                1 => "Sunny",
-               :s => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>"]
              }
 
       assert rendered_to_binary(full_render) ==
-               "<div>\n  <h2>It's 10:30</h2>\n  Sunny\n</div>\n"
+               "<div>\n  <h2>It's 10:30</h2>\n  Sunny\n</div>"
 
       assert socket.fingerprints == {rendered.fingerprint, %{}}
     end
@@ -139,10 +139,10 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, full_render, _} = render(rendered)
 
       assert full_render ==
-               %{0 => "foo", 1 => "&lt;div&gt;", :s => ["<div>\n  ", "\n  ", "\n</div>\n"]}
+               %{0 => "foo", 1 => "&lt;div&gt;", :s => ["<div>\n  ", "\n  ", "\n</div>"]}
 
       assert rendered_to_binary(full_render) ==
-               "<div>\n  foo\n  &lt;div&gt;\n</div>\n"
+               "<div>\n  foo\n  &lt;div&gt;\n</div>"
 
       assert socket.fingerprints == {rendered.fingerprint, %{}}
     end
@@ -176,7 +176,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => "Users",
-               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>\n"],
+               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>"],
                1 => %{
                  s: ["\n    <br>", "\n  "],
                  d: [["phoenix"], ["elixir"]]
@@ -196,7 +196,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => "Users",
-               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>\n"],
+               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>"],
                1 => ""
              }
 
@@ -343,7 +343,7 @@ defmodule Phoenix.LiveView.DiffTest do
       <div>
         ID: <%= @id %>
         <%= for {id, children} <- @children do %>
-          <%= live_component __MODULE__, id: id, children: children %>
+          <.live_component module={__MODULE__} id={id} children={children} />
         <% end %>
       </div>
       """
@@ -377,7 +377,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  defmodule BlockComponent do
+  defmodule SlotComponent do
     use Phoenix.LiveComponent
 
     def mount(socket) do
@@ -389,27 +389,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def render(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 1}) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, %{value: 2}) %>
-      </div>
-      """
-    end
-  end
-
-  defmodule BlockNoArgsComponent do
-    use Phoenix.LiveComponent
-
-    def mount(socket) do
-      {:ok, assign(socket, id: "DEFAULT")}
-    end
-
-    def render(%{do: _}), do: raise("unexpected :do assign")
-
-    def render(assigns) do
-      ~H"""
-      <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 1}) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 2}) %>
       </div>
       """
     end
@@ -422,20 +403,29 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
-    def render_with_block_no_args(assigns) do
+    def render_inner_block_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
-        HELLO <%= @id %> <%= render_block(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %>
       </div>
       """
     end
 
-    def render_with_block(assigns) do
+    def render_with_slot_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_block(@inner_block, 1) %>
-        HELLO <%= @id %> <%= render_block(@inner_block, 2) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %>
+      </div>
+      """
+    end
+
+    def render_inner_block(assigns) do
+      ~H"""
+      <div>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 1) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 2) %>
       </div>
       """
     end
@@ -443,10 +433,9 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <%= live_component BlockComponent, id: "WORLD" do %>
-        <% %{value: value } -> %>
+      <.live_component module={SlotComponent} let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
-      <% end %>
+      </.live_component>
       """
     end
   end
@@ -503,7 +492,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
         :c ->
           ~H"""
-          <%= live_component __MODULE__, id: make_ref(), key: :a %>
+          <.live_component module={__MODULE__} id={make_ref()} key={:a} />
           """
       end
     end
@@ -525,102 +514,6 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
-  describe "stateless components" do
-    test "on mount" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]},
-               :s => ["<div>\n  ", "\n</div>\n"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "on update" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {previous_socket, _, previous_components} = render(rendered)
-
-      {socket, full_render, components} =
-        render(rendered, previous_socket.fingerprints, previous_components)
-
-      assert full_render == %{
-               0 => %{0 => "component", 1 => "world"}
-             }
-
-      assert socket.fingerprints == previous_socket.fingerprints
-      assert components == previous_components
-      assert components == Diff.new_components()
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-
-      assert_received {:mount, %Socket{endpoint: __MODULE__, assigns: assigns}}
-      assert assigns[:flash] == %{}
-
-      assert_received {:update, %{from: :component}, %Socket{assigns: %{hello: "world"}}}
-      assert_received :render
-      refute_received _
-    end
-
-    test "render only" do
-      component = %Component{assigns: %{from: :component}, component: RenderOnlyComponent}
-      rendered = component_template(%{component: component})
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "component",
-                 :s => ["<div>RENDER ONLY ", "</div>\n"]
-               },
-               :s => ["<div>\n  ", "\n</div>\n"]
-             }
-
-      assert socket.fingerprints != {rendered.fingerprint, %{}}
-      assert components == Diff.new_components()
-    end
-
-    test "block tracking" do
-      assigns = %{socket: %Socket{}}
-
-      rendered = ~H"""
-      <%= live_component BlockNoArgsComponent do %>
-        INSIDE BLOCK
-      <% end %>
-      """
-
-      {socket, full_render, components} = render(rendered)
-
-      assert full_render == %{
-               0 => %{
-                 0 => "",
-                 1 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 2 => "",
-                 3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>\n"]
-               },
-               :s => ["", "\n"]
-             }
-
-      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
-      assert full_render == %{0 => %{0 => "", 2 => ""}}
-    end
-  end
-
   describe "function components" do
     test "render only" do
       assigns = %{socket: %Socket{}}
@@ -634,22 +527,22 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "component",
-                 :s => ["<div>RENDER ONLY ", "</div>\n"]
+                 :s => ["<div>RENDER ONLY ", "</div>"]
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       assert socket.fingerprints != {rendered.fingerprint, %{}}
       assert components == Diff.new_components()
     end
 
-    test "block tracking without args" do
+    test "@inner_block without args" do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_with_block_no_args/1, id: "DEFAULT" do %>
+      <FunctionComponent.render_inner_block_no_args id="DEFAULT">
         INSIDE BLOCK
-      <% end %>
+      </FunctionComponent.render_inner_block_no_args>
       """
 
       {socket, full_render, components} = render(rendered)
@@ -660,25 +553,52 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{s: ["\n  INSIDE BLOCK\n"]},
                  2 => "DEFAULT",
                  3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>\n"]
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
       assert full_render == %{0 => %{0 => "DEFAULT", 2 => "DEFAULT"}}
     end
 
+    test "slot tracking without args" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <FunctionComponent.render_with_slot_no_args id="MY ID">
+        <:sample>
+          INSIDE SLOT
+        </:sample>
+      </FunctionComponent.render_with_slot_no_args>
+      """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{
+                 0 => "MY ID",
+                 1 => %{s: ["\n    INSIDE SLOT\n  "]},
+                 2 => "MY ID",
+                 3 => %{s: ["\n    INSIDE SLOT\n  "]},
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      assert full_render == %{0 => %{0 => "MY ID", 2 => "MY ID"}}
+    end
+
     defp function_tracking(assigns) do
       ~H"""
-      <%= component &FunctionComponent.render_with_block/1, id: @id do %>
-        <% value -> %>
-          WITH VALUE <%= value %> - <%= @value %>
-      <% end %>
+      <FunctionComponent.render_inner_block let={value} id={@id}>
+        WITH VALUE <%= value %> - <%= @value %>
+      </FunctionComponent.render_inner_block>
       """
     end
 
-    test "block tracking with args and parent assign" do
+    test "@inner_block with args and parent assign" do
       assigns = %{socket: %Socket{}, value: 123, id: "DEFAULT"}
 
       {socket, full_render, components} = render(function_tracking(assigns))
@@ -686,12 +606,12 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{0 => "1", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 1 => %{0 => "1", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
                  2 => "DEFAULT",
-                 3 => %{0 => "2", :s => ["\n    WITH VALUE ", " - ", "\n"], 1 => "123"},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>\n"]
+                 3 => %{0 => "2", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {_socket, full_render, _components} =
@@ -721,9 +641,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{0 => "1"},
                  2 => "DEFAULT",
-                 3 => %{0 => "2"}
                }
              }
 
@@ -740,6 +658,86 @@ defmodule Phoenix.LiveView.DiffTest do
              }
     end
 
+    def render_multiple_slots(assigns) do
+      ~H"""
+      <div>
+        HEADER: <%= render_slot(@header) %>
+        FOOTER: <%= render_slot(@footer) %>
+      </div>
+      """
+    end
+
+    def slot_tracking(assigns) do
+      ~H"""
+      <.render_multiple_slots>
+        <:header>
+          <%= @in_header %><%= @in_both %>
+        </:header>
+        <:footer>
+          <%= @in_footer %><%= @in_both %>
+        </:footer>
+      </.render_multiple_slots>
+      """
+    end
+
+    test "slot tracking with multiple slots" do
+      assigns = %{socket: %Socket{}, in_header: "H", in_footer: "F", in_both: "B"}
+
+      {socket, full_render, components} = render(slot_tracking(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B", :s => ["\n    ", "", "\n  "]},
+                 1 => %{0 => "F", 1 => "B", :s => ["\n    ", "", "\n  "]},
+                 :s => ["<div>\n  HEADER: ", "\n  FOOTER: ", "\n</div>"]
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => "H", 1 => "B"},
+                 1 => %{0 => "F", 1 => "B"}
+               }
+             }
+
+      assigns = Map.put(assigns, :__changed__, %{})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{}
+
+      assigns = Map.put(assigns, :__changed__, %{in_header: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{0 => %{0 => "H"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_footer: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{0 => %{1 => %{0 => "F"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{in_both: true})
+
+      {_socket, full_render, _components} =
+        render(slot_tracking(assigns), socket.fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 1 => %{1 => "B"},
+                 0 => %{1 => "B"}
+               }
+             }
+    end
+
     test "with live_component" do
       assigns = %{socket: %Socket{}}
 
@@ -750,17 +748,17 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, full_render, components} = render(rendered)
 
       assert full_render == %{
-               0 => %{0 => 1, :s => ["COMPONENT\n", "\n"]},
+               0 => %{0 => 1, :s => ["COMPONENT\n", ""]},
                :c => %{
                  1 => %{
                    0 => "WORLD",
                    1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
                    2 => "WORLD",
                    3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>\n"]
+                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                  }
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
@@ -777,9 +775,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert socket.fingerprints == {rendered.fingerprint, %{}}
@@ -804,9 +802,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 1 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert socket.fingerprints == {rendered.fingerprint, %{}}
@@ -825,9 +823,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert another_full_render == %{
                0 => 2,
                :c => %{
-                 2 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 2 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                },
-               :s => ["<span>\n  ", "\n</span>\n"]
+               :s => ["<span>\n  ", "\n</span>"]
              }
 
       assert another_socket.fingerprints == {another_rendered.fingerprint, %{}}
@@ -844,8 +842,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
-      <%= live_component RenderOnlyComponent, id: "SAME", from: "SAME" %>
+      <.live_component module={RenderOnlyComponent} id="SAME" from="SAME" />
+      <.live_component module={RenderOnlyComponent} id="SAME" from="SAME" />
       """
 
       assert_raise RuntimeError,
@@ -913,8 +911,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => 1,
-               :c => %{1 => %{0 => "WELCOME!", :s => ["<div>FROM ", "</div>\n"]}},
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :c => %{1 => %{0 => "WELCOME!", :s => ["<div>FROM ", "</div>"]}},
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       component = %Component{id: "hello", assigns: %{from: :rerender}, component: TempComponent}
@@ -939,8 +937,8 @@ defmodule Phoenix.LiveView.DiffTest do
       {socket, diff, components} = render(rendered)
 
       assert diff == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]},
-               :s => ["<div>\n  ", "\n</div>\n"]
+               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert {root_prints, %{0 => {_, %{}}}} = socket.fingerprints
@@ -954,7 +952,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert diff == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                }
              }
 
@@ -1065,7 +1063,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 2,
                :c => %{
-                 2 => %{0 => "replaced", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 2 => %{0 => "replaced", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                }
              }
 
@@ -1102,10 +1100,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{d: [["0", 1], ["1", 2]], s: ["\n    ", ": ", "\n  "]},
                :c => %{
-                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]},
+                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
                  2 => %{0 => "index_2", 1 => "world", :s => 1}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert {^fingerprint, %{0 => _}} = socket.fingerprints
@@ -1148,11 +1146,11 @@ defmodule Phoenix.LiveView.DiffTest do
                :c => %{
                  1 => %{
                    0 => %{0 => "index_1", :s => ["\n    IF ", "\n  "]},
-                   :s => ["<div>\n  ", "\n</div>\n"]
+                   :s => ["<div>\n  ", "\n</div>"]
                  },
                  2 => %{0 => %{0 => "index_2"}, :s => 1}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       {cid_to_component, _, 3} = diff_components
@@ -1244,12 +1242,12 @@ defmodule Phoenix.LiveView.DiffTest do
                  s: ["\n    ", "\n    ", "\n  "]
                },
                :c => %{
-                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]},
+                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
                  2 => %{0 => "index_2", 1 => "world", :s => 1},
                  3 => %{0 => "index_1", 1 => "world", :s => 1},
                  4 => %{0 => "index_2", 1 => "world", :s => 3}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert {^fingerprint, %{0 => _}} = socket.fingerprints
@@ -1272,7 +1270,7 @@ defmodule Phoenix.LiveView.DiffTest do
         assigns = %{id: id, children: children}
 
         ~H"""
-        <%= live_component RecurComponent, id: @id, children: @children %>
+        <.live_component module={RecurComponent} id={@id} children={@children} />
         """
       end
 
@@ -1281,9 +1279,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>\n"], 1 => ""}
+                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>"], 1 => ""}
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {cid_to_component, _, 2} = diff_components
@@ -1326,7 +1324,7 @@ defmodule Phoenix.LiveView.DiffTest do
         assigns = %{id: id, children: children}
 
         ~H"""
-        <%= live_component RecurComponent, id: @id, children: @children %>
+        <.live_component module={RecurComponent} id={@id} children={@children} />
         """
       end
 
@@ -1335,9 +1333,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>\n"], 1 => ""}
+                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>"], 1 => ""}
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {cid_to_component, _, 2} = diff_components
@@ -1382,16 +1380,16 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  d: [
-                   ["1", %{0 => 1, :s => ["<div>\n  ", "\n</div>\n"]}],
-                   ["2", %{0 => 2, :s => ["<div>\n  ", "\n</div>\n"]}]
+                   ["1", %{0 => 1, :s => ["<div>\n  ", "\n</div>"]}],
+                   ["2", %{0 => 2, :s => ["<div>\n  ", "\n</div>"]}]
                  ],
                  s: ["\n    ", ": ", "\n  "]
                },
                :c => %{
-                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]},
+                 1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
                  2 => %{0 => "index_2", 1 => "world", :s => 1}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert {^fingerprint, %{0 => _}} = socket.fingerprints
@@ -1433,9 +1431,9 @@ defmodule Phoenix.LiveView.DiffTest do
                  s: ["\n    ", "\n  "]
                },
                :c => %{
-                 1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>\n"]}
+                 1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
                },
-               :s => ["<div>\n  ", "\n</div>\n"]
+               :s => ["<div>\n  ", "\n</div>"]
              }
 
       assert {^fingerprint, %{0 => _}} = socket.fingerprints
@@ -1455,7 +1453,7 @@ defmodule Phoenix.LiveView.DiffTest do
       %{fingerprint: _fingerprint} =
         rendered = ~H"""
         <%= for key <- [:b, :c, :a] do %>
-          <%= live_component(NestedDynamicComponent, id: key, key: key) %>
+          <.live_component module={NestedDynamicComponent} id={key} key={key} />
         <% end %>
         """
 
@@ -1464,18 +1462,18 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{d: [[1], [2], [3]], s: ["\n  ", "\n"]},
                :c => %{
-                 1 => %{0 => %{0 => "", :s => ["", "\n"]}, :s => ["<div>\n  ", "\n</div>\n"]},
-                 2 => %{0 => %{0 => 4, :s => ["", "\n"]}, :s => 1},
+                 1 => %{0 => %{0 => "", :s => ["", ""]}, :s => ["<div>\n  ", "\n</div>"]},
+                 2 => %{0 => %{0 => 4, :s => ["", ""]}, :s => 1},
                  3 => %{
                    0 => %{
                      0 => %{d: [["nothing", "nothing"]], s: ["\n  ", "", "\n"]},
-                     :s => ["", "\n"]
+                     :s => ["", ""]
                    },
                    :s => 1
                  },
                  4 => %{0 => %{0 => %{d: [["nothing", "nothing"]]}}, :s => 3}
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       assert rendered_to_binary(full_render) =~ "nothingnothing"
@@ -1483,15 +1481,14 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <%= live_component BlockComponent, %{id: "TRACKING"} do %>
-        <% %{value: value} -> %>
-          WITH PARENT VALUE <%= @parent_value %>
-          WITH VALUE <%= value %>
-      <% end %>
+      <.live_component module={SlotComponent} let={%{value: value}} id="TRACKING">
+        WITH PARENT VALUE <%= @parent_value %>
+        WITH VALUE <%= value %>
+      </.live_component>
       """
     end
 
-    test "block tracking with args and parent assigns" do
+    test "@inner_block tracking with args and parent assigns" do
       assigns = %{socket: %Socket{}, parent_value: 123}
       {socket, full_render, components} = render(tracking(assigns))
 
@@ -1503,18 +1500,18 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{
                      0 => "123",
                      1 => "1",
-                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
                    },
                    2 => "TRACKING",
                    3 => %{
                      0 => "123",
                      1 => "2",
-                     :s => ["\n    WITH PARENT VALUE ", "\n    WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
                    },
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>\n"]
+                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
                  }
                },
-               :s => ["", "\n"]
+               :s => ["", ""]
              }
 
       {_socket, full_render, _components} =

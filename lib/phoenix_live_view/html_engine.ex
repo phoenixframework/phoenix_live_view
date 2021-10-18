@@ -1,14 +1,17 @@
 defmodule Phoenix.LiveView.HTMLEngine do
   @moduledoc """
   The HTMLEngine that powers `.heex` templates and the `~H` sigil.
+
+  It works by adding a HTML parsing and validation layer on top
+  of EEx engine. By default it uses `Phoenix.LiveView.Engine` as
+  its "subengine".
   """
 
+  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
   alias Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   @behaviour Phoenix.Template.Engine
-
-  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
 
   @doc false
   def compile(path, _name) do
@@ -17,12 +20,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @behaviour EEx.Engine
-
-  for void <- ~w(area base br col hr img input link meta param command keygen source) do
-    defp void?(unquote(void)), do: true
-  end
-
-  defp void?(_), do: false
 
   @doc false
   def init(opts) do
@@ -33,28 +30,31 @@ defmodule Phoenix.LiveView.HTMLEngine do
       raise ArgumentError, ":subengine is missing for HTMLEngine"
     end
 
-    state = %{
+    %{
+      cont: :text,
+      tokens: [],
       subengine: subengine,
-      substate: nil,
-      stack: [],
-      tags: [],
-      root: nil,
+      substate: subengine.init([]),
       module: module,
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0)
     }
-
-    update_subengine(state, :init, [])
   end
 
   ## These callbacks return AST
 
   @doc false
-  def handle_body(state) do
-    validate_unclosed_tags!(state)
+  def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
+    tokens = HTMLTokenizer.finalize(tokens, file, cont)
 
-    opts = [root: state.root || false]
-    ast = invoke_subengine(state, :handle_body, [opts])
+    token_state =
+      state
+      |> token_state()
+      |> handle_tokens(tokens)
+
+    validate_unclosed_tags!(token_state)
+    opts = [root: token_state.root || false]
+    ast = invoke_subengine(token_state, :handle_body, [opts])
 
     # Do not require if calling module is helpers. Fix for elixir < 1.12
     # TODO remove after Elixir >= 1.12 support
@@ -66,29 +66,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
         unquote(ast)
       end
     end
-  end
-
-  @doc false
-  def handle_end(state) do
-    invoke_subengine(state, :handle_end, [])
-  end
-
-  ## These callbacks update the state
-
-  @doc false
-  def handle_begin(state) do
-    update_subengine(state, :handle_begin, [])
-  end
-
-  @doc false
-  def handle_text(state, text) do
-    handle_text(state, [line: 1, column: 1, skip_metadata: true], text)
-  end
-
-  def handle_text(%{file: file, indentation: indentation} = state, meta, text) do
-    text
-    |> HTMLTokenizer.tokenize(file, indentation, meta)
-    |> Enum.reduce(state, &handle_token(&1, &2, meta))
   end
 
   defp validate_unclosed_tags!(%{tags: []} = state) do
@@ -103,10 +80,51 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @doc false
-  def handle_expr(state, marker, expr) do
+  def handle_end(state) do
     state
-    |> set_root_on_dynamic()
-    |> update_subengine(:handle_expr, [marker, expr])
+    |> token_state()
+    |> update_subengine(:handle_begin, [])
+    |> handle_tokens(Enum.reverse(state.tokens))
+    |> invoke_subengine(:handle_end, [])
+  end
+
+  defp token_state(%{subengine: subengine, substate: substate, file: file}) do
+    %{
+      subengine: subengine,
+      substate: substate,
+      file: file,
+      stack: [],
+      tags: [],
+      slots: [],
+      root: nil
+    }
+  end
+
+  defp handle_tokens(token_state, tokens) do
+    Enum.reduce(tokens, token_state, &handle_token/2)
+  end
+
+  ## These callbacks update the state
+
+  @doc false
+  def handle_begin(state) do
+    %{state | tokens: []}
+  end
+
+  @doc false
+  def handle_text(state, text) do
+    handle_text(state, [], text)
+  end
+
+  def handle_text(state, meta, text) do
+    %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
+    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
+    %{state | tokens: tokens, cont: cont}
+  end
+
+  @doc false
+  def handle_expr(%{tokens: tokens} = state, marker, expr) do
+    %{state | tokens: [{:expr, marker, expr} | tokens]}
   end
 
   ## Helpers
@@ -134,6 +152,41 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp update_subengine(state, fun, args) do
     %{state | substate: invoke_subengine(state, fun, args)}
+  end
+
+  defp init_slots(state) do
+    %{state | slots: [[] | state.slots]}
+  end
+
+  defp add_slot!(
+         %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
+           state,
+         slot,
+         _meta
+       )
+       when first in ?A..?Z or first == ?. do
+    %{state | slots: [[slot | slots] | other_slots]}
+  end
+
+  defp add_slot!(state, slot, meta) do
+    %{line: line, column: column} = meta
+    {slot_name, _} = slot
+    file = state.file
+
+    message =
+      "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
+
+    raise ParseError, line: line, column: column, file: file, description: message
+  end
+
+  defp pop_slots(%{slots: [slots | other_slots]} = state) do
+    grouped =
+      slots
+      |> Enum.reverse()
+      |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
+      |> Map.to_list()
+
+    {grouped, %{state | slots: other_slots}}
   end
 
   defp push_tag(state, token) do
@@ -177,63 +230,68 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## handle_token
 
+  # Expr
+
+  defp handle_token({:expr, marker, expr}, state) do
+    state
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_expr, [marker, expr])
+  end
+
   # Text
 
-  defp handle_token({:text, text}, state, meta) do
+  defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
     state
-    |> set_root_on_text(text)
-    |> update_subengine(:handle_text, [meta, text])
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_text, [[line: line, column: column], text])
   end
 
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true}} = tag_meta,
-         state,
-         _meta
+         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true} = tag_meta},
+         state
        )
        when first in ?A..?Z do
     file = state.file
     {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
-
-    {let, assigns} = handle_component_attrs(attrs, file)
-    raise_if_let!(let, file)
+    {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     ast =
-      quote do
+      quote line: tag_meta.line do
         Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
       end
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
   # Remote function component (with inner content)
 
-  defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state, _meta)
+  defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state)
        when first in ?A..?Z do
     mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.file)
     token = {:tag_open, tag_name, attrs, Map.put(tag_meta, :mod_fun, mod_fun)}
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> push_tag(token)
+    |> init_slots()
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state, _meta)
+  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}}}, state} = pop_tag!(state, token)
-    {let, assigns} = handle_component_attrs(attrs, state.file)
-    clauses = build_component_clauses(let, state)
+    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}, line: line}}, state} =
+      pop_tag!(state, token)
+
+    {assigns, state} = build_component_assigns(attrs, line, state)
 
     ast =
-      quote do
-        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns),
-          do: unquote(clauses)
-        )
+      quote line: line do
+        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
       end
 
     state
@@ -244,18 +302,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Local function component (self close)
 
   defp handle_token(
-         {:tag_open, "." <> name, attrs, %{self_close: true}},
-         state,
-         _meta
+         {:tag_open, "." <> name, attrs, %{self_close: true, line: line}},
+         state
        ) do
     fun = String.to_atom(name)
-    file = state.file
-
-    {let, assigns} = handle_component_attrs(attrs, file)
-    raise_if_let!(let, file)
+    {assigns, state} = build_self_close_component_assigns(attrs, line, state)
 
     ast =
-      quote do
+      quote line: line do
         Phoenix.LiveView.Helpers.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
           unquote(assigns)
@@ -263,33 +317,91 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     state
-    |> set_root_on_dynamic()
+    |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, ["=", ast])
   end
 
-  # Local function component (with inner content)
+  # Slot
 
-  defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state, _meta) do
+  defp handle_token({:tag_open, ":inner_block", _attrs, meta}, state) do
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: "the slot name :inner_block is reserved"
+  end
+
+  # Slot (self close)
+
+  defp handle_token({:tag_open, ":" <> slot_name, attrs, %{self_close: true} = tag_meta}, state) do
+    %{line: line} = tag_meta
+    slot_key = String.to_atom(slot_name)
+
+    {let, roots, attrs} = split_component_attrs(attrs, state.file)
+
+    with {_, let_meta} <- let do
+      raise ParseError,
+        line: let_meta.line,
+        column: let_meta.column,
+        file: state.file,
+        description: "cannot use `let` on a slot without inner content"
+    end
+
+    attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
+    assigns = merge_component_attrs(roots, attrs, line)
+    add_slot!(state, {slot_key, assigns}, tag_meta)
+  end
+
+  # Slot (with inner content)
+
+  defp handle_token({:tag_open, ":" <> _, _attrs, _tag_meta} = token, state) do
     state
-    |> set_root_on_dynamic()
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state, _meta) do
-    {{:tag_open, _name, attrs, _tag_meta}, state} = pop_tag!(state, token)
+  defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
+    {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
+    slot_key = String.to_atom(slot_name)
 
-    fun = String.to_atom(fun_name)
-    {let, assigns} = handle_component_attrs(attrs, state.file)
+    {let, roots, attrs} = split_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
-      quote do
+      quote line: line do
+        Phoenix.LiveView.Helpers.slot(unquote(slot_key), do: unquote(clauses))
+      end
+
+    attrs = [__slot__: slot_key, inner_block: ast] ++ attrs
+    assigns = merge_component_attrs(roots, attrs, line)
+
+    state
+    |> add_slot!({slot_key, assigns}, tag_meta)
+    |> pop_substate_from_stack()
+  end
+
+  # Local function component (with inner content)
+
+  defp handle_token({:tag_open, "." <> _, _attrs, _tag_meta} = token, state) do
+    state
+    |> set_root_on_not_tag()
+    |> push_tag(token)
+    |> init_slots()
+    |> push_substate_to_stack()
+    |> update_subengine(:handle_begin, [])
+  end
+
+  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
+    {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
+    fun = String.to_atom(fun_name)
+    {assigns, state} = build_component_assigns(attrs, line, state)
+
+    ast =
+      quote line: line do
         Phoenix.LiveView.Helpers.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns),
-          do: unquote(clauses)
+          unquote(assigns)
         )
       end
 
@@ -300,40 +412,32 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # HTML element (self close)
 
-  defp handle_token({:tag_open, name, attrs, %{self_close: true}}, state, meta) do
+  defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
 
     state
     |> set_root_on_tag()
-    |> handle_tag_and_attrs(name, attrs, suffix, meta)
+    |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
   end
 
   # HTML element
 
-  defp handle_token({:tag_open, name, attrs, _tag_meta} = token, state, meta) do
+  defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
     state
     |> set_root_on_tag()
     |> push_tag(token)
-    |> handle_tag_and_attrs(name, attrs, ">", meta)
+    |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
   end
 
-  defp handle_token({:tag_close, name, _tag_close_meta} = token, state, meta) do
+  defp handle_token({:tag_close, name, tag_meta} = token, state) do
     {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
-    update_subengine(state, :handle_text, [meta, "</#{name}>"])
+    update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
   end
 
   # Root tracking
 
-  defp set_root_on_dynamic(%{root: root, tags: tags} = state) do
+  defp set_root_on_not_tag(%{root: root, tags: tags} = state) do
     if tags == [] and root != false do
-      %{state | root: false}
-    else
-      state
-    end
-  end
-
-  defp set_root_on_text(%{root: root, tags: tags} = state, text) do
-    if tags == [] and root != false and String.trim_leading(text) != "" do
       %{state | root: false}
     else
       state
@@ -361,11 +465,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     Enum.reduce(attrs, state, fn
       {:root, {:expr, value, %{line: line, column: col}}}, state ->
         attrs = Code.string_to_quoted!(value, line: line, column: col)
-        handle_attr_escape(state, attrs)
+        handle_attrs_escape(state, meta, attrs)
 
       {name, {:expr, value, %{line: line, column: col}}}, state ->
         attr = Code.string_to_quoted!(value, line: line, column: col)
-        handle_attr_escape(state, [{safe_unless_special(name), attr}])
+        handle_attr_escape(state, meta, name, attr)
 
       {name, {:string, value, %{delimiter: ?"}}}, state ->
         update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
@@ -378,13 +482,110 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp handle_attr_escape(state, attrs) do
+  defp handle_attrs_escape(state, meta, attrs) do
     ast =
-      quote do
+      quote line: meta[:line] do
         Phoenix.HTML.Tag.attributes_escape(unquote(attrs))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
+  end
+
+  defp handle_attr_escape(state, meta, name, value) do
+    case extract_binaries(value, true, []) do
+      :error ->
+        if call = empty_attribute_encoder(name, value, meta) do
+          state
+          |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
+          |> update_subengine(:handle_expr, ["=", {:safe, call}])
+          |> update_subengine(:handle_text, [meta, ~s(")])
+        else
+          handle_attrs_escape(state, meta, [{safe_unless_special(name), value}])
+        end
+
+      binaries ->
+        state
+        |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
+        |> handle_binaries(meta, binaries)
+        |> update_subengine(:handle_text, [meta, ~s(")])
+    end
+  end
+
+  defp handle_binaries(state, meta, binaries) do
+    binaries
+    |> Enum.reverse()
+    |> Enum.reduce(state, fn
+      {:text, value}, state ->
+        update_subengine(state, :handle_text, [meta, binary_encode(value)])
+
+      {:binary, value}, state ->
+        ast =
+          quote line: meta[:line] do
+            {:safe, unquote(__MODULE__).binary_encode(unquote(value))}
+          end
+
+        update_subengine(state, :handle_expr, ["=", ast])
+    end)
+  end
+
+  defp extract_binaries({:<>, _, [left, right]}, _root?, acc) do
+    extract_binaries(right, false, extract_binaries(left, false, acc))
+  end
+
+  defp extract_binaries({:<<>>, _, parts} = bin, _root?, acc) do
+    Enum.reduce(parts, acc, fn
+      part, acc when is_binary(part) ->
+        [{:text, part} | acc]
+
+      {:"::", _, [binary, {:binary, _, _}]}, acc ->
+        [{:binary, binary} | acc]
+
+      _, _ ->
+        throw(:unknown_part)
+    end)
+  catch
+    :unknown_part -> [{:binary, bin} | acc]
+  end
+
+  defp extract_binaries(binary, _root?, acc) when is_binary(binary), do: [{:text, binary} | acc]
+  defp extract_binaries(value, false, acc), do: [{:binary, value} | acc]
+  defp extract_binaries(_value, true, _acc), do: :error
+
+  # TODO: We can refactor the empty_attribute_encoder to simply return an atom
+  # but there is a bug in Elixir v1.12 and earlier where mixing `line: expr`
+  # with .unquote(fun) leads to bugs in line numbers.
+  defp empty_attribute_encoder("class", value, meta) do
+    quote line: meta[:line], do: unquote(__MODULE__).class_attribute_encode(unquote(value))
+  end
+
+  defp empty_attribute_encoder("style", value, meta) do
+    quote line: meta[:line], do: unquote(__MODULE__).empty_attribute_encode(unquote(value))
+  end
+
+  defp empty_attribute_encoder(_, _, _), do: nil
+
+  @doc false
+  def class_attribute_encode([_ | _] = list),
+    do: list |> Enum.filter(& &1) |> Enum.join(" ") |> Phoenix.HTML.Engine.encode_to_iodata!()
+
+  def class_attribute_encode(other),
+    do: empty_attribute_encode(other)
+
+  @doc false
+  def empty_attribute_encode(nil), do: ""
+  def empty_attribute_encode(false), do: ""
+  def empty_attribute_encode(true), do: ""
+  def empty_attribute_encode(value), do: Phoenix.HTML.Engine.encode_to_iodata!(value)
+
+  @doc false
+  def binary_encode(value) when is_binary(value) do
+    value
+    |> Phoenix.HTML.Engine.encode_to_iodata!()
+    |> IO.iodata_to_binary()
+  end
+
+  def binary_encode(value) do
+    raise ArgumentError, "expected a binary in <>, got: #{inspect(value)}"
   end
 
   defp safe_unless_special("aria"), do: "aria"
@@ -392,84 +593,99 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp safe_unless_special("data"), do: "data"
   defp safe_unless_special(name), do: {:safe, name}
 
-  ## handle_component_attrs
+  ## build_self_close_component_assigns/build_component_assigns
 
-  defp handle_component_attrs(attrs, file) do
-    {lets, entries} =
-      case build_component_attrs(attrs) do
-        {lets, [], []} -> {lets, [{:%{}, [], []}]}
-        {lets, r, []} -> {lets, r}
-        {lets, r, d} -> {lets, r ++ [{:%{}, [], d}]}
+  defp build_self_close_component_assigns(attrs, line, %{file: file} = state) do
+    {let, roots, attrs} = split_component_attrs(attrs, file)
+    raise_if_let!(let, file)
+    {merge_component_attrs(roots, attrs, line), state}
+  end
+
+  defp build_component_assigns(attrs, line, %{file: file} = state) do
+    {let, roots, attrs} = split_component_attrs(attrs, file)
+    clauses = build_component_clauses(let, state)
+
+    inner_block_assigns =
+      quote line: line do
+        %{__slot__: :inner_block,
+          inner_block: Phoenix.LiveView.Helpers.slot(:inner_block, do: unquote(clauses))}
       end
 
-    let =
-      case lets do
-        [] ->
-          nil
+    {slots, state} = pop_slots(state)
+    attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slots]
+    {merge_component_attrs(roots, attrs, line), state}
+  end
 
-        [let] ->
-          let
+  defp split_component_attrs(attrs, file) do
+    attrs
+    |> Enum.reverse()
+    |> Enum.reduce({nil, [], []}, &split_component_attr(&1, &2, file))
+  end
 
-        [{_, meta}, {_, previous_meta} | _] ->
-          message = """
-          cannot define multiple `let` attributes. \
-          Another `let` has already been defined at line #{previous_meta.line}\
-          """
+  defp split_component_attr(
+         {:root, {:expr, value, %{line: line, column: col}}},
+         {let, r, a},
+         _file
+       ) do
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
+    {let, [quoted_value | r], a}
+  end
 
-          raise ParseError,
-            line: meta.line,
-            column: meta.column,
-            file: file,
-            description: message
+  defp split_component_attr(
+         {"let", {:expr, value, %{line: line, column: col} = meta}},
+         {nil, r, a},
+         _file
+       ) do
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    {{quoted_value, meta}, r, a}
+  end
+
+  defp split_component_attr(
+         {"let", {:expr, _value, previous_meta}},
+         {{_, meta}, _, _},
+         file
+       ) do
+    message = """
+    cannot define multiple `let` attributes. \
+    Another `let` has already been defined at line #{previous_meta.line}\
+    """
+
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: file,
+      description: message
+  end
+
+  defp split_component_attr(
+         {name, {:expr, value, %{line: line, column: col}}},
+         {let, r, a},
+         _file
+       ) do
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    {let, r, [{String.to_atom(name), quoted_value} | a]}
+  end
+
+  defp split_component_attr({name, {:string, value, _}}, {let, r, a}, _file) do
+    {let, r, [{String.to_atom(name), value} | a]}
+  end
+
+  defp split_component_attr({name, nil}, {let, r, a}, _file) do
+    {let, r, [{String.to_atom(name), true} | a]}
+  end
+
+  defp merge_component_attrs(roots, attrs, line) do
+    entries =
+      case {roots, attrs} do
+        {[], []} -> [{:%{}, [], []}]
+        {_, []} -> roots
+        {_, _} -> roots ++ [{:%{}, [], attrs}]
       end
 
-    assigns =
-      Enum.reduce(entries, fn expr, acc ->
-        quote do: Map.merge(unquote(acc), unquote(expr))
-      end)
-
-    {let, assigns}
-  end
-
-  defp build_component_attrs(attrs) do
-    build_component_attrs(attrs, {[], [], []})
-  end
-
-  defp build_component_attrs([], {lets, r, d}) do
-    {lets, Enum.reverse(r), Enum.reverse(d)}
-  end
-
-  defp build_component_attrs(
-         [{:root, {:expr, value, %{line: line, column: col}}} | attrs],
-         {lets, r, d}
-       ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    quoted_value = quote do: Map.new(unquote(quoted_value))
-    build_component_attrs(attrs, {lets, [quoted_value | r], d})
-  end
-
-  defp build_component_attrs(
-         [{"let", {:expr, value, %{line: line, column: col} = meta}} | attrs],
-         {lets, r, d}
-       ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {[{quoted_value, meta} | lets], r, d})
-  end
-
-  defp build_component_attrs(
-         [{name, {:expr, value, %{line: line, column: col}}} | attrs],
-         {lets, r, d}
-       ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), quoted_value} | d]})
-  end
-
-  defp build_component_attrs([{name, {:string, value, _}} | attrs], {lets, r, d}) do
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), value} | d]})
-  end
-
-  defp build_component_attrs([{name, nil} | attrs], {lets, r, d}) do
-    build_component_attrs(attrs, {lets, r, [{String.to_atom(name), true} | d]})
+    Enum.reduce(entries, fn expr, acc ->
+      quote line: line, do: Map.merge(unquote(acc), unquote(expr))
+    end)
   end
 
   defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
@@ -489,7 +705,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def __unmatched_let__!(pattern, value) do
     message = """
-    cannot match arguments sent from `render_block/2` against the pattern in `let`.
+    cannot match arguments sent from `render_slot/2` against the pattern in `let`.
 
     Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
     """
@@ -531,4 +747,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
     end
   end
+
+  ## Helpers
+
+  for void <- ~w(area base br col hr img input link meta param command keygen source) do
+    defp void?(unquote(void)), do: true
+  end
+
+  defp void?(_), do: false
+
+  defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 end
