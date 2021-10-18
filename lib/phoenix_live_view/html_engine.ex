@@ -464,11 +464,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
       {:root, {:expr, value, %{line: line, column: col}}}, state ->
-        attrs = Code.string_to_quoted!(value, line: line, column: col)
+        attrs = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
         handle_attrs_escape(state, meta, attrs)
 
       {name, {:expr, value, %{line: line, column: col}}}, state ->
-        attr = Code.string_to_quoted!(value, line: line, column: col)
+        attr = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
         handle_attr_escape(state, meta, name, attr)
 
       {name, {:string, value, %{delimiter: ?"}}}, state ->
@@ -625,9 +625,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp split_component_attr(
          {:root, {:expr, value, %{line: line, column: col}}},
          {let, r, a},
-         _file
+         file
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
     {let, [quoted_value | r], a}
   end
@@ -635,9 +635,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp split_component_attr(
          {"let", {:expr, value, %{line: line, column: col} = meta}},
          {nil, r, a},
-         _file
+         file
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     {{quoted_value, meta}, r, a}
   end
 
@@ -661,9 +661,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp split_component_attr(
          {name, {:expr, value, %{line: line, column: col}}},
          {let, r, a},
-         _file
+         file
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col)
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     {let, r, [{String.to_atom(name), quoted_value} | a]}
   end
 

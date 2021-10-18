@@ -1128,7 +1128,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   describe "handle errors in expressions" do
     if Version.match?(System.version(), ">= 1.12.0") do
       test "inside attribute values" do
-        assert_raise(SyntaxError, "nofile:12:22: syntax error before: ','", fn ->
+        assert_raise(SyntaxError, "test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','", fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1144,7 +1144,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end
 
       test "inside root attribute value" do
-        assert_raise(SyntaxError, "nofile:12:16: syntax error before: ','", fn ->
+        assert_raise(SyntaxError, "test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','", fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1160,7 +1160,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end
     else
       test "older versions cannot provide correct line on errors" do
-        assert_raise(SyntaxError, ~r/nofile:2/, fn ->
+        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:2", fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
