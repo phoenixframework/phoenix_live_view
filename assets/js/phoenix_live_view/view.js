@@ -351,7 +351,9 @@ export default class View {
       if(updatedHookIds.has(el.id)){ this.getHook(el).__updated() }
     })
 
-    patch.after("discarded", (el) => removedEls.push(el))
+    patch.after("discarded", (el) => {
+      if(el.nodeType === Node.ELEMENT_NODE){ removedEls.push(el) }
+    })
 
     patch.after("transitionsDiscarded", els => this.afterElementsRemoved(els, pruneCids))
     patch.perform()
@@ -362,11 +364,14 @@ export default class View {
 
   afterElementsRemoved(elements, pruneCids){
     let destroyedCIDs = []
-    elements.forEach(el => {
-      let cid = this.componentID(el)
-      if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
-      let hook = this.getHook(el)
-      hook && this.destroyHook(hook)
+    elements.forEach(parent => {
+      let components = DOM.all(parent, `[${PHX_COMPONENT}]`)
+        components.concat(parent).forEach(el => {
+        let cid = this.componentID(el)
+        if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
+        let hook = this.getHook(el)
+        hook && this.destroyHook(hook)
+      })
     })
     // We should not pruneCids on joins. Otherwise, in case of
     // rejoins, we may notify cids that no longer belong to the

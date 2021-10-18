@@ -1470,6 +1470,7 @@ var DOMPatch = class {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+    let phxRemove = liveSocket.binding("remove");
     let added = [];
     let updates = [];
     let appendPrependUpdates = [];
@@ -1518,7 +1519,7 @@ var DOMPatch = class {
           if (el2.parentNode !== null && dom_default.isPhxUpdate(el2.parentNode, phxUpdate, ["append", "prepend"]) && el2.id) {
             return false;
           }
-          if (el2.getAttribute && el2.getAttribute(liveSocket.binding("remove"))) {
+          if (el2.getAttribute && el2.getAttribute(phxRemove)) {
             pendingRemoves.push(el2);
             return false;
           }
@@ -2065,8 +2066,8 @@ var JS = {
       let newAdds = prevAdds.filter((name) => removes.indexOf(name) < 0).concat(keepAdds);
       let newRemoves = prevRemoves.filter((name) => adds.indexOf(name) < 0).concat(keepRemoves);
       dom_default.putSticky(el2, "classes", (currentEl) => {
-        newRemoves.forEach((name) => currentEl.classList.remove(name));
-        newAdds.forEach((name) => currentEl.classList.add(name));
+        currentEl.classList.remove(...newRemoves);
+        currentEl.classList.add(...newAdds);
         return [newAdds, newRemoves];
       });
     });
@@ -2372,7 +2373,11 @@ var View = class {
         this.getHook(el2).__updated();
       }
     });
-    patch.after("discarded", (el2) => removedEls.push(el2));
+    patch.after("discarded", (el2) => {
+      if (el2.nodeType === Node.ELEMENT_NODE) {
+        removedEls.push(el2);
+      }
+    });
     patch.after("transitionsDiscarded", (els) => this.afterElementsRemoved(els, pruneCids));
     patch.perform();
     this.afterElementsRemoved(removedEls, pruneCids);
@@ -2380,13 +2385,16 @@ var View = class {
   }
   afterElementsRemoved(elements, pruneCids) {
     let destroyedCIDs = [];
-    elements.forEach((el2) => {
-      let cid = this.componentID(el2);
-      if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
-        destroyedCIDs.push(cid);
-      }
-      let hook = this.getHook(el2);
-      hook && this.destroyHook(hook);
+    elements.forEach((parent) => {
+      let components = dom_default.all(parent, `[${PHX_COMPONENT}]`);
+      components.concat(parent).forEach((el2) => {
+        let cid = this.componentID(el2);
+        if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
+          destroyedCIDs.push(cid);
+        }
+        let hook = this.getHook(el2);
+        hook && this.destroyHook(hook);
+      });
     });
     if (pruneCids) {
       this.maybePushComponentsDestroyed(destroyedCIDs);
