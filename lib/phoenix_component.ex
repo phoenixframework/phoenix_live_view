@@ -155,6 +155,25 @@ defmodule Phoenix.Component do
         I like <%= entry %>
       </.unordered_list>
 
+  You can also pattern match the arguments provided to the render block. Let's
+  make our `unordered_list` component fancier:
+
+      def unordered_list(assigns) do
+        ~H"\""
+        <ul>
+          <%= for entry <- @entries do %>
+            <li><%= render_block(@inner_block, %{entry: entry, gif_url: random_gif()} %></li>
+          <% end %>
+        </ul>
+        "\""
+      end
+
+  And now we can invoke it like this:
+
+      <.unordered_list let={%{entry: entry, gif_url: url}}>
+        I like <%= entry %>. <img src={url} />
+      </.unordered_list>
+
   ### Named slots
 
   Besides `@inner_block`, it is also possible to pass named slots
