@@ -9,8 +9,7 @@ let stubViewPushEvent = (view, callback) => {
 
 let prepareLiveViewDOM = (document, rootId) => {
   document.body.innerHTML = `
-    <div data-phx-view="View"
-         data-phx-session="abc123"
+    <div data-phx-session="abc123"
          data-phx-root-id="${rootId}"
          id="${rootId}">
       <label for="plus">Plus</label>

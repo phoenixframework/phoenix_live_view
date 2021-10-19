@@ -5,7 +5,6 @@ let container = (num) => global.document.getElementById(`container${num}`)
 
 let prepareLiveViewDOM = (document) => {
   const div = document.createElement("div")
-  div.setAttribute("data-phx-view", "")
   div.setAttribute("data-phx-session", "abc123")
   div.setAttribute("data-phx-root-id", "container1")
   div.setAttribute("id", "container1")
@@ -104,7 +103,6 @@ describe("LiveSocket", () => {
 
   test("destroyAllViews", async () => {
     const secondLiveView = document.createElement("div")
-    secondLiveView.setAttribute("data-phx-view", "")
     secondLiveView.setAttribute("data-phx-session", "def456")
     secondLiveView.setAttribute("data-phx-root-id", "container1")
     secondLiveView.setAttribute("id", "container2")

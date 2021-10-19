@@ -6,7 +6,6 @@ let containerId = 0
 
 let simulateView = (liveSocket, events, innerHTML) => {
   let el = document.createElement("div")
-  el.setAttribute("data-phx-view", "Events")
   el.setAttribute("data-phx-session", "abc123")
   el.setAttribute("id", `container${containerId++}`)
   el.innerHTML = innerHTML

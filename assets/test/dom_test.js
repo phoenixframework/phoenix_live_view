@@ -39,7 +39,6 @@ describe("DOM", () => {
         <div data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
-            data-phx-view="V"
             id="phx-123"
             class="phx-connected"
             data-phx-root-id="phx-FgFpFf-J8Gg-jEnh">
@@ -139,4 +138,3 @@ describe("DOM", () => {
     })
   })
 })
-
