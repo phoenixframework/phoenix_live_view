@@ -3304,7 +3304,7 @@ within:
         let type = target && target.getAttribute(PHX_LIVE_LINK);
         let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1;
         let wantsNewWindow = e.shiftKey
-        if (!type || !this.isConnected() || !this.main || wantsNewTab || wantsNewWindow) {
+        if(!type || !this.isConnected() || !this.main || wantsNewTab || wantsNewWindow){
           return;
         }
         let href = target.href;
