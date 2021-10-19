@@ -655,7 +655,7 @@ defmodule Phoenix.LiveView.Helpers do
           <%= for row <- @rows do %>
             <tr>
               <%= for col <- @col do %>
-                <%= render_slot(col, row) %>
+                <td><%= render_slot(col, row) %></td>
               <% end %>
             </tr>
           <% end %>
