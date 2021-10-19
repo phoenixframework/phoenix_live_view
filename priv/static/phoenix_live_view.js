@@ -3303,7 +3303,7 @@ within:
         let target = closestPhxBinding(e.target, PHX_LIVE_LINK);
         let type = target && target.getAttribute(PHX_LIVE_LINK);
         let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1;
-        let wantsNewWindow = e.shiftKey;
+        let wantsNewWindow = e.shiftKey
         if (!type || !this.isConnected() || !this.main || wantsNewTab || wantsNewWindow) {
           return;
         }
