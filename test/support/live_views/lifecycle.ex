@@ -25,6 +25,30 @@ defmodule Phoenix.LiveViewTest.MountArgs do
   end
 end
 
+defmodule Phoenix.LiveViewTest.OnMount do
+  use Phoenix.Component
+
+  def on_mount(:default, _params, _session, socket) do
+    {:cont, socket}
+  end
+
+  def on_mount(:other, _params, _session, socket) do
+    {:cont, socket}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.OtherOnMount do
+  use Phoenix.Component
+
+  def on_mount(:default, _params, _session, socket) do
+    {:cont, socket}
+  end
+
+  def on_mount(:other, _params, _session, socket) do
+    {:cont, socket}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.HooksLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.InitAssigns

@@ -137,7 +137,7 @@ defmodule Phoenix.LiveView.RouterTest do
     end
 
     test "with on_mount {Module, arg}", %{conn: conn} do
-      path = "/lifecycle/mount-args"
+      path = "/lifecycle/mount-mod-arg"
 
       assert {:internal, route} =
                Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
@@ -155,6 +155,56 @@ defmodule Phoenix.LiveView.RouterTest do
 
       assert {:error, {:live_redirect, %{to: "/lifecycle?called=true&inlined=true"}}} =
                live(conn, path)
+    end
+
+    test "with on_mount [Module, ...]", %{conn: conn} do
+      path = "/lifecycle/mount-mods"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert route.live_session.extra == %{
+               on_mount: [
+                 %{
+                   id: {Phoenix.LiveViewTest.OnMount, :default},
+                   stage: :mount,
+                   function: Function.capture(Phoenix.LiveViewTest.OnMount, :on_mount, 4)
+                 },
+                 %{
+                   id: {Phoenix.LiveViewTest.OtherOnMount, :default},
+                   stage: :mount,
+                   function: Function.capture(Phoenix.LiveViewTest.OtherOnMount, :on_mount, 4)
+                 }
+               ],
+               session: %{}
+             }
+
+      assert {:ok, _, _} = live(conn, path)
+    end
+
+    test "with on_mount [{Module, arg}, ...]", %{conn: conn} do
+      path = "/lifecycle/mount-mods-args"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert route.live_session.extra == %{
+               on_mount: [
+                 %{
+                   id: {Phoenix.LiveViewTest.OnMount, :other},
+                   stage: :mount,
+                   function: Function.capture(Phoenix.LiveViewTest.OnMount, :on_mount, 4)
+                 },
+                 %{
+                   id: {Phoenix.LiveViewTest.OtherOnMount, :other},
+                   stage: :mount,
+                   function: Function.capture(Phoenix.LiveViewTest.OtherOnMount, :on_mount, 4)
+                 }
+               ],
+               session: %{}
+             }
+
+      assert {:ok, _, _} = live(conn, path)
     end
 
     test "raises when nesting" do
