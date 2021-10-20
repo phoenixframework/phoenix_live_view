@@ -32,7 +32,7 @@ The "redirect" operations must be used when you want to dismount the
 current LiveView and mount a new one. In those cases, an Ajax request
 is made to fetch the necessary information about the new LiveView,
 which is mounted in place of the current one within the current layout.
-While redirecting, a `phx-disconnected` class is added to the LiveView,
+While redirecting, a `phx-loading` class is added to the LiveView,
 which can be used to indicate to the user a new page is being loaded.
 
 At the end of the day, regardless if you invoke [`link/2`](`Phoenix.HTML.Link.link/2`),

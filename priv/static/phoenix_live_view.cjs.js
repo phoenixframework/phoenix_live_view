@@ -41,7 +41,7 @@ var PHX_SKIP = "data-phx-skip";
 var PHX_PRUNE = "data-phx-prune";
 var PHX_PAGE_LOADING = "page-loading";
 var PHX_CONNECTED_CLASS = "phx-connected";
-var PHX_DISCONNECTED_CLASS = "phx-disconnected";
+var PHX_DISCONNECTED_CLASS = "phx-loading";
 var PHX_NO_FEEDBACK_CLASS = "phx-no-feedback";
 var PHX_ERROR_CLASS = "phx-error";
 var PHX_PARENT_ID = "data-phx-parent-id";
@@ -2197,9 +2197,6 @@ var View = class {
   setContainerClasses(...classes) {
     this.el.classList.remove(PHX_CONNECTED_CLASS, PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS);
     this.el.classList.add(...classes);
-  }
-  isLoading() {
-    return this.el.classList.contains(PHX_DISCONNECTED_CLASS);
   }
   showLoader(timeout) {
     clearTimeout(this.loaderTimer);

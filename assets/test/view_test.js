@@ -572,12 +572,12 @@ describe("View", function(){
 
     let view = simulateJoinedView(el, liveSocket)
     view.showLoader()
-    expect(el.classList.contains("phx-disconnected")).toBeTruthy()
+    expect(el.classList.contains("phx-loading")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
     expect(el.classList.contains("user-implemented-class")).toBeTruthy()
 
     view.hideLoader()
-    expect(el.classList.contains("phx-disconnected")).toBeFalsy()
+    expect(el.classList.contains("phx-loading")).toBeFalsy()
     expect(el.classList.contains("phx-connected")).toBeTruthy()
   })
 
@@ -590,7 +590,7 @@ describe("View", function(){
 
     let view = simulateJoinedView(el, liveSocket)
     view.displayError()
-    expect(el.classList.contains("phx-disconnected")).toBeTruthy()
+    expect(el.classList.contains("phx-loading")).toBeTruthy()
     expect(el.classList.contains("phx-error")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
     expect(el.classList.contains("user-implemented-class")).toBeTruthy()

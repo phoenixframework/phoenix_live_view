@@ -167,8 +167,6 @@ export default class View {
     this.el.classList.add(...classes)
   }
 
-  isLoading(){ return this.el.classList.contains(PHX_DISCONNECTED_CLASS) }
-
   showLoader(timeout){
     clearTimeout(this.loaderTimer)
     if(timeout){

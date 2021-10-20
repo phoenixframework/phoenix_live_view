@@ -72,7 +72,7 @@ container:
   - `"phx-connected"` - applied when the view has connected to the server
   - `"phx-disconnected"` - applied when the view is not connected to the server
   - `"phx-error"` - applied when an error occurs on the server. Note, this
-    class will be applied in conjunction with `"phx-disconnected"` if connection
+    class will be applied in conjunction with `"phx-loading"` if connection
     to the server is lost.
 
 All `phx-` event bindings apply their own css classes when pushed. For example
