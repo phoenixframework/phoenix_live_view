@@ -70,7 +70,7 @@ By default, the following classes are applied to the LiveView's parent
 container:
 
   - `"phx-connected"` - applied when the view has connected to the server
-  - `"phx-disconnected"` - applied when the view is not connected to the server
+  - `"phx-loading"` - applied when the view is not connected to the server
   - `"phx-error"` - applied when an error occurs on the server. Note, this
     class will be applied in conjunction with `"phx-loading"` if connection
     to the server is lost.
