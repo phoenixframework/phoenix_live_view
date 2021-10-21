@@ -560,14 +560,6 @@ var LiveView = (() => {
         el2.checked = el2.getAttribute("checked") !== null;
       }
     },
-    syncPropsToAttrs(el2) {
-      if (el2 instanceof HTMLSelectElement) {
-        let selectedItem = el2.options.item(el2.selectedIndex);
-        if (selectedItem && selectedItem.getAttribute("selected") === null) {
-          selectedItem.setAttribute("selected", "");
-        }
-      }
-    },
     isTextualInput(el2) {
       return FOCUSABLE_INPUTS.indexOf(el2.type) >= 0;
     },
@@ -1588,9 +1580,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             dom_default.copyPrivates(toEl, fromEl);
             dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
-            dom_default.syncPropsToAttrs(toEl);
             let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-            if (isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)) {
+            if (isFocusedFormEl) {
               this.trackBefore("updated", fromEl, toEl);
               dom_default.mergeFocusedInput(fromEl, toEl);
               dom_default.syncAttrsToProps(fromEl);
@@ -1633,10 +1624,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         externalFormTriggered.submit();
       }
       return true;
-    }
-    forceFocusedSelectUpdate(fromEl, toEl) {
-      let isSelect = ["select", "select-one", "select-multiple"].find((t) => t === fromEl.type);
-      return fromEl.multiple === true || isSelect && fromEl.innerHTML != toEl.innerHTML;
     }
     isCIDPatch() {
       return this.cidPatch;

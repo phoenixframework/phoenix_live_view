@@ -173,10 +173,9 @@ export default class DOMPatch {
           // input handling
           DOM.copyPrivates(toEl, fromEl)
           DOM.discardError(targetContainer, toEl, phxFeedbackFor)
-          DOM.syncPropsToAttrs(toEl)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-          if(isFocusedFormEl && !this.forceFocusedSelectUpdate(fromEl, toEl)){
+          if(isFocusedFormEl){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
@@ -222,11 +221,6 @@ export default class DOMPatch {
       externalFormTriggered.submit()
     }
     return true
-  }
-
-  forceFocusedSelectUpdate(fromEl, toEl){
-    let isSelect = ["select", "select-one", "select-multiple"].find((t) => t === fromEl.type)
-    return fromEl.multiple === true || (isSelect && fromEl.innerHTML != toEl.innerHTML)
   }
 
   isCIDPatch(){ return this.cidPatch }

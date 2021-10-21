@@ -305,15 +305,6 @@ let DOM = {
     }
   },
 
-  syncPropsToAttrs(el){
-    if(el instanceof HTMLSelectElement){
-      let selectedItem = el.options.item(el.selectedIndex)
-      if(selectedItem && selectedItem.getAttribute("selected") === null){
-        selectedItem.setAttribute("selected", "")
-      }
-    }
-  },
-
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
