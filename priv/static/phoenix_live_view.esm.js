@@ -282,7 +282,9 @@ var DOM = {
     return node.id && DOM.private(node, "destroyed") ? true : false;
   },
   markPhxChildDestroyed(el2) {
-    el2.setAttribute(PHX_SESSION, "");
+    if (this.isPhxChild(el2)) {
+      el2.setAttribute(PHX_SESSION, "");
+    }
     this.putPrivate(el2, "destroyed", true);
   },
   findPhxChildrenInFragment(html, parentId) {

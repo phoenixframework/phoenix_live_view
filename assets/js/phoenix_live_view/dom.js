@@ -57,7 +57,7 @@ let DOM = {
   },
 
   markPhxChildDestroyed(el){
-    el.setAttribute(PHX_SESSION, "")
+    if(this.isPhxChild(el)){ el.setAttribute(PHX_SESSION, "") }
     this.putPrivate(el, "destroyed", true)
   },
 
