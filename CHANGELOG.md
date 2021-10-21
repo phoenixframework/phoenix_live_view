@@ -74,6 +74,7 @@ Some functionality that was previously deprecated has been removed:
 
 ### Bug fixes
   - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceeded by a live redirect
+  - Fix stale session causing full redirect fallback when issuing a `push_redirect` from mount
   - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates
   - Support HTML tags inside script tags (as in regular HTML)
