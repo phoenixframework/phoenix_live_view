@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.1 (2021-10-21)
+
+### Bug fixes
+  - Fix SVG element support for phx binding interactions
+
 ## 0.17.0 (2021-10-21)
 
 ### Breaking Changes

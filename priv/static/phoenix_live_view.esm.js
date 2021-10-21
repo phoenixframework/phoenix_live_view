@@ -2202,7 +2202,7 @@ var View = class {
     this.liveSocket.transition(time, onDone);
   }
   withinTargets(phxTarget, callback) {
-    if (phxTarget instanceof HTMLElement) {
+    if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
       return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
     }
     if (typeof phxTarget === "number" || /^(0|[1-9]\d*)$/.test(phxTarget)) {

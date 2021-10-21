@@ -195,7 +195,7 @@ export default class View {
   }
 
   withinTargets(phxTarget, callback){
-    if(phxTarget instanceof HTMLElement){
+    if(phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement){
       return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
     }
 
