@@ -82,6 +82,7 @@ Some functionality that was previously deprecated has been removed:
   - Include the filename in error messages when it is not possible to parse interpolated attributes
   - Make sure the test client always sends the full URL on `live_patch`/`live_redirect`. This mirrors the behaviour of the JavaScript client
   - Do not reload flash from session on `live_redirect`s
+  - Fix select drop-down flashes in chrome when the DOM is patched during focus
 
 ### Deprecations
   - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
