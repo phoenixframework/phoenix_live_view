@@ -12,6 +12,7 @@ import {
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF,
+  PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
@@ -355,7 +356,7 @@ let DOM = {
   },
 
   replaceRootContainer(container, tagName, attrs){
-    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN])
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID])
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)
         .filter(attr => !retainedAttrs.has(attr.name.toLowerCase()))

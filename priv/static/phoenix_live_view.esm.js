@@ -581,7 +581,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
   },
   replaceRootContainer(container, tagName, attrs) {
-    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN]);
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID]);
     if (container.tagName.toLowerCase() === tagName.toLowerCase()) {
       Array.from(container.attributes).filter((attr) => !retainedAttrs.has(attr.name.toLowerCase())).forEach((attr) => container.removeAttribute(attr.name));
       Object.keys(attrs).filter((name) => !retainedAttrs.has(name.toLowerCase())).forEach((attr) => container.setAttribute(attr, attrs[attr]));
