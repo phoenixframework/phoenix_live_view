@@ -54,6 +54,10 @@ Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
 are no longer supported. This addresses bugs and allows stateful components
 to be rendered more efficiently client-side.
 
+#### phx-disconnected class has been replaced with phx-loading
+
+Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erronous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
+
 #### Removal of previously deprecated functionality
 
 Some functionality that was previously deprecated has been removed:
@@ -69,6 +73,7 @@ Some functionality that was previously deprecated has been removed:
   - Add a function component for rendering `Phoenix.LiveComponent`. Instead of `<%= live_component FormComponent, id: "form" %>`, you must now do: `<.live_component module={FormComponent} id="form" />`
 
 ### Bug fixes
+  - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceeded by a live redirect
   - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates
   - Support HTML tags inside script tags (as in regular HTML)
