@@ -271,7 +271,7 @@ defmodule Phoenix.LiveView do
   | Binding                | Attributes |
   |------------------------|------------|
   | [Params](bindings.md#click-events) | `phx-value-*` |
-  | [Click Events](bindings.md#click-events) | `phx-click`, `phx-capture-click` |
+  | [Click Events](bindings.md#click-events) | `phx-click`, `phx-click-away` |
   | [Focus/Blur Events](bindings.md#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
   | [Key Events](bindings.md#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
   | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |

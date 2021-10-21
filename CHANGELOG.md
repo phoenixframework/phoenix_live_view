@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.17.0
+## 0.17.0 (2021-10-21)
 
 ### Breaking Changes
 
@@ -57,6 +57,10 @@ to be rendered more efficiently client-side.
 #### phx-disconnected class has been replaced with phx-loading
 
 Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erronous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
+
+#### phx-capture-click has been deprecated in favor of phx-click-away
+
+The new phx-click-away binding replaces phx-capture-click and is much more versatile because it can detect "click focus" being lost on containers.
 
 #### Removal of previously deprecated functionality
 
