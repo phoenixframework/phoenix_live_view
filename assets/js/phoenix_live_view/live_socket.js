@@ -724,7 +724,7 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            JS.exec("change", phxEvent, view, input.form, ["push", {_target: e.target.name}])
+            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
           })
         })
       }, false)
