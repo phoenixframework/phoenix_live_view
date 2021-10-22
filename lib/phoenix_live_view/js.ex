@@ -25,6 +25,8 @@ defmodule Phoenix.LiveView.JS do
   Imagine you need to target your current component, and apply a loading state
   to the parent container while the client awaits the server acknowledgement:
 
+      alias Phoenix.LiveView.JS
+
       <div phx-click={JS.push("inc", loading: ".thermo", target: @myself)}>+</div>
 
   Push commands also compose with all other utilities. For example, to add
@@ -49,6 +51,8 @@ defmodule Phoenix.LiveView.JS do
 
   For example, the following modal component can be shown or hidden on the
   client without a trip to the server:
+
+      alias Phoenix.LiveView.JS
 
       def hide_modal(js \\ %JS{}) do
         js

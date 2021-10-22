@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.2 (2021-10-22)
+
+### Bug fixes
+  - Fix show/hide/toggle custom display not being restored.
+  - Fix default `to` target for `JS.show|hide|dispatch`
+  - Fix form input targetting
+
 ## 0.17.1 (2021-10-21)
 
 ### Bug fixes
