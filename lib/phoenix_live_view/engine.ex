@@ -300,13 +300,14 @@ defmodule Phoenix.LiveView.Engine do
     %{
       static: [],
       dynamic: [],
-      vars_count: 0
+      vars_count: 0,
+      depth: 0
     }
   end
 
   @doc false
-  def handle_begin(state) do
-    %{state | static: [], dynamic: []}
+  def handle_begin(%{depth: depth} = state) do
+    %{state | static: [], dynamic: [], vars_count: 0, depth: depth + 1}
   end
 
   @doc false
@@ -339,8 +340,8 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   def handle_expr(state, "=", ast) do
-    %{static: static, dynamic: dynamic, vars_count: vars_count} = state
-    var = Macro.var(:"arg#{vars_count}", __MODULE__)
+    %{static: static, dynamic: dynamic, vars_count: vars_count, depth: depth} = state
+    var = Macro.var(:"v#{depth}_#{vars_count}", __MODULE__)
     ast = quote do: unquote(var) = unquote(__MODULE__).to_safe(unquote(ast))
     %{state | dynamic: [ast | dynamic], static: [var | static], vars_count: vars_count + 1}
   end

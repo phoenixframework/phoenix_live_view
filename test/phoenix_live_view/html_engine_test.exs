@@ -186,6 +186,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  def do_block(do: block), do: block
+
+  test "handles do blocks with expressions" do
+    assigns = %{not_text: "not text", text: "text"}
+
+    template = ~S"""
+    <%= @text %>
+    <%= Phoenix.LiveView.HTMLEngineTest.do_block do %><%= assigns[:not_text] %><% end %>
+    """
+
+    # A bug made it so "not text" appeared inside @text.
+    assert render(template, assigns) == "text\nnot text"
+  end
+
   test "optimizes class attributes" do
     assigns = %{
       nil_assign: nil,
