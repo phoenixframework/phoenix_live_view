@@ -76,6 +76,7 @@ Some functionality that was previously deprecated has been removed:
 
 ### Enhancements
   - Allow slots in function components: they are marked as `<:slot_name>` and can be rendered with `<%= render_slot @slot_name %>`
+  - Add JS command for executing JavaScript utility operations on the client with an extended push API
   - Optimize string attributes:
     - If the attribute is a string interpolation, such as `<div class={"foo bar #{@baz}"}>`, only the interpolation part is marked as dynamic
     - If the attribute can be empty, such as "class" and "style", keep the attribute name as static
