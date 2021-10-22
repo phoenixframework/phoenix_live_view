@@ -80,7 +80,7 @@ let JS = {
     if(to){
       DOM.all(document, to, el => this.show(eventType, view, el, display, transition, time))
     } else {
-      this.show(eventType, view, el, transition, time)
+      this.show(eventType, view, sourceEl, transition, time)
     }
   },
 
@@ -88,7 +88,7 @@ let JS = {
     if(to){
       DOM.all(document, to, el => this.hide(eventType, view, el, display, transition, time))
     } else {
-      this.hide(eventType, view, el, dispaly, transition, time)
+      this.hide(eventType, view, sourceEl, display, transition, time)
     }
   },
 
