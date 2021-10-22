@@ -2055,7 +2055,7 @@ within:
             return;
           }
           this.addOrRemoveClasses(el2, in_classes, out_classes);
-          dom_default.putSticky(el2, "toggle", (currentEl) => currentEl.style.display = "block");
+          dom_default.putSticky(el2, "toggle", (currentEl) => currentEl.style.display = display || "block");
           view.transition(time, () => {
             this.addOrRemoveClasses(el2, [], in_classes);
           });
