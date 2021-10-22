@@ -1959,7 +1959,11 @@ within:
       });
     },
     exec_dispatch(eventType, phxEvent, view, sourceEl, { to, event, detail }) {
-      dom_default.all(document, to, (el2) => dom_default.dispatchEvent(el2, event, detail));
+      if (to) {
+        dom_default.all(document, to, (el2) => dom_default.dispatchEvent(el2, event, detail));
+      } else {
+        dom_default.dispatchEvent(sourceEl, event, detail);
+      }
     },
     exec_push(eventType, phxEvent, view, sourceEl, args) {
       let { event, data, target, page_loading, loading, value } = args;
