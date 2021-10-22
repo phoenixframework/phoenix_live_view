@@ -118,7 +118,7 @@ let JS = {
       } else {
         if(eventType === "remove"){ return }
         this.addOrRemoveClasses(el, in_classes, out_classes)
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "block")
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = (display ||"block"))
         view.transition(time, () => {
           this.addOrRemoveClasses(el, [], in_classes)
         })
