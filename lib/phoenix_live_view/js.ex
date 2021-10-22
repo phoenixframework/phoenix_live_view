@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.JS do
-  @moduledoc """
+  @moduledoc ~S'''
   Provides commands for executing JavaScript utility operations on the client.
 
   JS commands support a variety of utility operations for common client-side
@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.JS do
       end
 
       def modal(assigns) do
-        ~H\"""
+        ~H"""
         <div id="modal" class="phx-modal" phx-remove={hide_modal()}>
           <div
             id="modal-content"
@@ -74,9 +74,9 @@ defmodule Phoenix.LiveView.JS do
             <p><%= @text %></p>
           </div>
         </div>
-        \"""
+        """
       end
-  """
+  '''
   alias Phoenix.LiveView.JS
 
   defstruct ops: []
