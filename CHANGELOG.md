@@ -3,6 +3,7 @@
 ## 0.17.2 (2021-10-22)
 
 ### Bug fixes
+  - Fix HTML engine bug causing attribute expressions to be incorrectly evaluated in certain cases
   - Fix show/hide/toggle custom display not being restored.
   - Fix default `to` target for `JS.show|hide|dispatch`
   - Fix form input targetting
