@@ -144,7 +144,7 @@ defmodule Phoenix.LiveView.JS do
   """
   def dispatch(cmd \\ %JS{}, event, opts) do
     opts = validate_keys(opts, :dispatch, [:to, :detail])
-    args = %{event: event, to: Keyword.fetch!(opts, :to)}
+    args = %{event: event, to: opts[:to]}
 
     args =
       case Keyword.fetch(opts, :detail) do
@@ -225,7 +225,7 @@ defmodule Phoenix.LiveView.JS do
     time = opts[:time] || @default_transition_time
 
     put_op(cmd, "show", %{
-      to: Keyword.fetch!(opts, :to),
+      to: opts[:to],
       display: opts[:display],
       transition: names,
       time: time
@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.JS do
     time = opts[:time] || @default_transition_time
 
     put_op(cmd, "hide", %{
-      to: Keyword.fetch!(opts, :to),
+      to: opts[:to],
       transition: names,
       time: time
     })

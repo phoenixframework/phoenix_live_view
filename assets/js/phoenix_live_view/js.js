@@ -19,7 +19,11 @@ let JS = {
   // commands
 
   exec_dispatch(eventType, phxEvent, view, sourceEl, {to, event, detail}){
-    DOM.all(document, to, el => DOM.dispatchEvent(el, event, detail))
+    if(to){
+      DOM.all(document, to, el => DOM.dispatchEvent(el, event, detail))
+    } else {
+      DOM.dispatchEvent(sourceEl, event, detail)
+    }
   },
 
   exec_push(eventType, phxEvent, view, sourceEl, args){
