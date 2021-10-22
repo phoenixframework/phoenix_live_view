@@ -25,7 +25,13 @@ let JS = {
   exec_push(eventType, phxEvent, view, sourceEl, args){
     let {event, data, target, page_loading, loading, value} = args
     let pushOpts = {page_loading: !!page_loading, loading: loading, value: value}
-    let phxTarget = target || sourceEl.form.getAttribute(view.binding("target")) || sourceEl
+    let phxTarget
+    if(eventType === "change"){
+      phxTarget = target || sourceEl.form.getAttribute(view.binding("target")) || sourceEl
+    } else {
+      phxTarget = target || sourceEl.getAttribute(view.binding("target")) || sourceEl
+    }
+
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "change"){
         let {newCid, _target, callback} = args
