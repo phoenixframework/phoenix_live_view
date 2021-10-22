@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.JS do
-  @moduledoc """
+  @moduledoc ~S'''
   Provides commands for executing JavaScript utility operations on the client.
 
   JS commands support a variety of utility operations for common client-side
@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.JS do
       end
 
       def modal(assigns) do
-        ~H\"""
+        ~H"""
         <div id="modal" class="phx-modal" phx-remove={hide_modal()}>
           <div
             id="modal-content"
@@ -74,9 +74,9 @@ defmodule Phoenix.LiveView.JS do
             <p><%= @text %></p>
           </div>
         </div>
-        \"""
+        """
       end
-  """
+  '''
   alias Phoenix.LiveView.JS
 
   defstruct ops: []
@@ -184,7 +184,11 @@ defmodule Phoenix.LiveView.JS do
         toggle fancy!
       </button>
   """
-  def toggle(cmd \\ %JS{}, opts) when is_list(opts) do
+  def toggle(opts \\ [])
+  def toggle(%JS{} = cmd), do: toggle(cmd, [])
+  def toggle(opts) when is_list(opts), do: toggle(%JS{}, opts)
+
+  def toggle(cmd, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time])
     in_classes = class_names(opts[:in])
     out_classes = class_names(opts[:out])
@@ -223,7 +227,11 @@ defmodule Phoenix.LiveView.JS do
         show fancy!
       </button>
   """
-  def show(cmd \\ %JS{}, opts) when is_list(opts) do
+  def show(opts \\ [])
+  def show(%JS{} = cmd), do: show(cmd, [])
+  def show(opts) when is_list(opts), do: show(%JS{}, opts)
+
+  def show(cmd, opts) when is_list(opts) do
     opts = validate_keys(opts, :show, [:to, :transition, :display, :time])
     names = class_names(opts[:transition])
     time = opts[:time] || @default_transition_time
@@ -259,7 +267,11 @@ defmodule Phoenix.LiveView.JS do
         hide fancy!
       </button>
   """
-  def hide(cmd \\ %JS{}, opts) when is_list(opts) do
+  def hide(opts \\ [])
+  def hide(%JS{} = cmd), do: hide(cmd, [])
+  def hide(opts) when is_list(opts), do: hide(%JS{}, opts)
+
+  def hide(cmd, opts) when is_list(opts) do
     opts = validate_keys(opts, :hide, [:to, :transition, :time])
     names = class_names(opts[:transition])
     time = opts[:time] || @default_transition_time
