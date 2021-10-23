@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveViewTest do
-  @moduledoc """
+  @moduledoc ~S'''
   Conveniences for testing Phoenix LiveViews.
 
   In LiveView tests, we interact with views via process
@@ -48,7 +48,7 @@ defmodule Phoenix.LiveViewTest do
         assert html =~ "<h1>My Connected View</h1>"
       end
 
-  ## Testing Events
+  ### Testing Events
 
   The browser can send a variety of events to a LiveView via `phx-` bindings,
   which are sent to the `handle_event/3` callback. To test events sent by the
@@ -100,7 +100,7 @@ defmodule Phoenix.LiveViewTest do
   perform validations and ensure the events in the HTML actually matches the
   event names on the server.
 
-  ## Testing regular messages
+  ### Testing regular messages
 
   LiveViews are `GenServer`'s under the hood, and can send and receive messages
   just like any other server. To test the side effects of sending or receiving
@@ -110,17 +110,54 @@ defmodule Phoenix.LiveViewTest do
       send(view.pid, {:set_temp, 50})
       assert render(view) =~ "The temperature is: 50℉"
 
-  ## Testing components
+  ## Testing function components
 
-  There are two main mechanisms for testing components. To test stateless
-  components or just a regular rendering of a component, one can use
-  `render_component/2`:
+  There are two mechanisms for testing function components. Imagine the
+  following component:
+
+      def greet(assigns) do
+        ~H"""
+        <div>Hello, <%= @name %>!</div>
+        """
+      end
+
+  You can test it by using `render_component/3`, passing the function
+  reference to the component as first argument:
+
+      import Phoenix.LiveViewTest
+
+      test "greets" do
+        assert render_component(&MyComponents.greet/1, name: "Mary") ==
+                 "<div>Hello, Mary!</div>"
+      end
+
+  However, for complex components, often the simplest way to test them
+  is by using the `~H` sigil itself:
+
+      import Phoenix.LiveView.Helpers
+      import Phoenix.LiveViewTest
+
+      test "greets" do
+        assert rendered_to_string(~H"""
+               <MyComponents.greet name="Mary" />
+               """) ==
+                 "<div>Hello, Mary!</div>"
+      end
+
+  The difference is that we use `rendered_to_string` to convert the rendered
+  template to a string for testing.
+
+  ## Testing stateful components
+
+  There are two main mechanisms for testing stateful components. You can
+  use `render_component/2` to test how a component is mounted and rendered
+  once:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
 
-  If you want to test how components are mounted by a LiveView and
-  interact with DOM events, you can use the regular `live/2` macro
+  However, if you want to test how components are mounted by a LiveView
+  and interact with DOM events, you must use the regular `live/2` macro
   to build the LiveView with the component and then scope events by
   passing the view and a **DOM selector** in a list:
 
@@ -133,7 +170,7 @@ defmodule Phoenix.LiveViewTest do
   ID=user-13 and retrieve its `phx-target`. If `phx-target` points
   to a component, that will be the component used, otherwise it will
   fallback to the view.
-  """
+  '''
 
   @flash_cookie "__phoenix_flash__"
 
@@ -443,7 +480,7 @@ defmodule Phoenix.LiveViewTest do
 
     socket
     |> Diff.component_to_rendered(component, assigns, mount_assigns)
-    |> rendered_to_iodata(socket)
+    |> rendered_to_diff_string(socket)
   end
 
   def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
@@ -452,12 +489,30 @@ defmodule Phoenix.LiveViewTest do
     assigns
     |> Map.new()
     |> function.()
-    |> rendered_to_iodata(socket)
+    |> rendered_to_diff_string(socket)
   end
 
-  defp rendered_to_iodata(rendered, socket) do
+  defp rendered_to_diff_string(rendered, socket) do
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
+  end
+
+  @doc ~S'''
+  Converts a rendered template to a string.
+
+  ## Examples
+
+      iex> ~H"""
+      ...> <div>example</div>
+      ...> """
+      ...> |> rendered_string()
+      "<div>example</div>"
+
+  '''
+  def rendered_to_string(rendered) do
+    rendered
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
   end
 
   @doc """
