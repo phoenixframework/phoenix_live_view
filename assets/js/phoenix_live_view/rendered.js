@@ -67,7 +67,7 @@ export default class Rendered {
         newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache)
       }
 
-      for(var key in newc){ oldc[key] = newc[key] }
+      for(let cid in newc){ oldc[cid] = newc[cid] }
       diff[COMPONENTS] = newc
     }
   }
