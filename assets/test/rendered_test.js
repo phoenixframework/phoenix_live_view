@@ -3,6 +3,7 @@ import Rendered from "phoenix_live_view/rendered"
 const STATIC = "s"
 const DYNAMICS = "d"
 const COMPONENTS = "c"
+const TEMPLATES = "p"
 
 describe("Rendered", () => {
   describe("mergeDiff", () => {
@@ -224,6 +225,22 @@ describe("Rendered", () => {
   </div>
 </div>`.trim())
     })
+
+    test("reuses static in components and comprehensions", () => {
+      let rendered = new Rendered("123", staticReuseDiff)
+      expect(rendered.toString().trim()).toEqual(
+        `<div>
+  <p>
+    foo
+    <span>0: <b data-phx-component="1" id="123-1-0">FROM index_1 world</b></span><span>1: <b data-phx-component="2" id="123-2-0">FROM index_2 world</b></span>
+  </p>
+
+  <p>
+    bar
+    <span>0: <b data-phx-component="3" id="123-3-0">FROM index_1 world</b></span><span>1: <b data-phx-component="4" id="123-4-0">FROM index_2 world</b></span>
+  </p>
+</div>`.trim())
+    })
   })
 })
 
@@ -329,4 +346,22 @@ const deepDiffResult = {
       "      </td>\n    </tr>\n",
     ],
   }
+}
+
+const staticReuseDiff = {
+  "0": {
+    [DYNAMICS]: [
+      ["foo", {[DYNAMICS]: [["0", 1], ["1", 2]], [STATIC]: 0}],
+      ["bar", {[DYNAMICS]: [["0", 3], ["1", 4]], [STATIC]: 0}]
+    ],
+    [STATIC]: ["\n  <p>\n    ", "\n    ", "\n  </p>\n"],
+    [TEMPLATES]: {"0": ["<span>", ": ", "</span>"]}
+  },
+  [COMPONENTS]: {
+    "1": {"0": "index_1", "1": "world", [STATIC]: ["<b>FROM ", " ", "</b>"]},
+    "2": {"0": "index_2", "1": "world", [STATIC]: 1},
+    "3": {"0": "index_1", "1": "world", [STATIC]: 1},
+    "4": {"0": "index_2", "1": "world", [STATIC]: 3}
+  },
+  [STATIC]: ["<div>", "</div>"]
 }

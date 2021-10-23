@@ -1,6 +1,7 @@
 import {
   COMPONENTS,
   DYNAMICS,
+  TEMPLATES,
   EVENTS,
   PHX_COMPONENT,
   PHX_SKIP,
@@ -39,7 +40,7 @@ export default class Rendered {
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
     let output = {buffer: "", components: components, onlyCids: onlyCids}
-    this.toOutputBuffer(rendered, output)
+    this.toOutputBuffer(rendered, null, output)
     return output.buffer
   }
 
@@ -143,35 +144,46 @@ export default class Rendered {
 
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
-  toOutputBuffer(rendered, output){
-    if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, output) }
+  templateStatic(part, templates){
+    if(typeof (part) === "number") {
+      return templates[part]
+    } else {
+      return part
+    }
+  }
+
+  toOutputBuffer(rendered, templates, output){
+    if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
+    statics = this.templateStatic(statics, templates)
 
     output.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
-      this.dynamicToBuffer(rendered[i - 1], output)
+      this.dynamicToBuffer(rendered[i - 1], templates, output)
       output.buffer += statics[i]
     }
   }
 
-  comprehensionToBuffer(rendered, output){
+  comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
+    statics = this.templateStatic(statics, templates)
+    let compTemplates = rendered[TEMPLATES]
 
     for(let d = 0; d < dynamics.length; d++){
       let dynamic = dynamics[d]
       output.buffer += statics[0]
       for(let i = 1; i < statics.length; i++){
-        this.dynamicToBuffer(dynamic[i - 1], output)
+        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output)
         output.buffer += statics[i]
       }
     }
   }
 
-  dynamicToBuffer(rendered, output){
+  dynamicToBuffer(rendered, templates, output){
     if(typeof (rendered) === "number"){
       output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
     } else if(isObject(rendered)){
-      this.toOutputBuffer(rendered, output)
+      this.toOutputBuffer(rendered, templates, output)
     } else {
       output.buffer += rendered
     }

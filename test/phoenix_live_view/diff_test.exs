@@ -641,7 +641,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 2 => "DEFAULT",
+                 2 => "DEFAULT"
                }
              }
 
@@ -1236,10 +1236,11 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  d: [
-                   ["foo", %{d: [["0", 1], ["1", 2]], s: ["\n      ", ": ", "\n    "]}],
-                   ["bar", %{d: [["0", 3], ["1", 4]], s: ["\n      ", ": ", "\n    "]}]
+                   ["foo", %{d: [["0", 1], ["1", 2]], s: 0}],
+                   ["bar", %{d: [["0", 3], ["1", 4]], s: 0}]
                  ],
-                 s: ["\n    ", "\n    ", "\n  "]
+                 s: ["\n    ", "\n    ", "\n  "],
+                 p: %{0 => ["\n      ", ": ", "\n    "]}
                },
                :c => %{
                  1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
@@ -1379,11 +1380,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 d: [
-                   ["1", %{0 => 1, :s => ["<div>\n  ", "\n</div>"]}],
-                   ["2", %{0 => 2, :s => ["<div>\n  ", "\n</div>"]}]
-                 ],
-                 s: ["\n    ", ": ", "\n  "]
+                 d: [["1", %{0 => 1, :s => 0}], ["2", %{0 => 2, :s => 0}]],
+                 s: ["\n    ", ": ", "\n  "],
+                 p: %{0 => ["<div>\n  ", "\n</div>"]}
                },
                :c => %{
                  1 => %{0 => "index_1", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
@@ -1427,12 +1426,11 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 d: [[""], [%{0 => "2", 1 => 1, :s => ["", ": ", ""]}]],
-                 s: ["\n    ", "\n  "]
+                 d: [[""], [%{0 => "2", 1 => 1, :s => 0}]],
+                 s: ["\n    ", "\n  "],
+                 p: %{0 => ["", ": ", ""]}
                },
-               :c => %{
-                 1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
-               },
+               :c => %{1 => %{0 => "index_2", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}},
                :s => ["<div>\n  ", "\n</div>"]
              }
 
