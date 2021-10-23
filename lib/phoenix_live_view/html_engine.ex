@@ -485,7 +485,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_attrs_escape(state, meta, attrs) do
     ast =
       quote line: meta[:line] do
-        Phoenix.HTML.Tag.attributes_escape(unquote(attrs))
+        Phoenix.HTML.attributes_escape(unquote(attrs))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
