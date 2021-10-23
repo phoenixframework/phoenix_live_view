@@ -1,7 +1,6 @@
 # JavaScript interoperability
 
-As seen earlier, you start by instantiating a single LiveSocket to enable LiveView
-client/server interaction, for example:
+To enable LiveView client/server interaction, we instantiate a LiveSocket. For example:
 
     import {Socket} from "phoenix"
     import {LiveSocket} from "phoenix_live_view"
@@ -17,10 +16,10 @@ except for the following LiveView specific options:
   * `params` - the `connect_params` to pass to the view's mount callback. May be
     a literal object or closure returning an object. When a closure is provided,
     the function receives the view's element.
-  * `hooks` – a reference to a user-defined hooks namespace, containing client
+  * `hooks` – a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the [Client hooks](#client-hooks)
     section below for details.
-  * `uploaders` – a reference to a user-defined uploaders namespace, containing
+  * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
     [External Uploads guide](uploads-external.md) for details.
 
@@ -122,38 +121,11 @@ In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
 
-## Triggering phx form events with JavaScript
-
-Often it is desirable to trigger an event on a DOM element without explicit
-user interaction on the element. For example, a custom form element such as a
-date picker or custom select input which utilizes a hidden input element to
-store the selected state.
-
-In these cases, the event functions on the DOM API can be used, for example
-to trigger a `phx-change` event:
-
-```javascript
-document.getElementById("my-select").dispatchEvent(
-  new Event("input", {bubbles: true})
-)
-```
-
-When using a client hook, `this.el` can be used to determine the element as
-outlined in the "Client hooks" documentation.
-
-It is also possible to trigger a `phx-submit` using a "submit" event:
-
-```javascript
-document.getElementById("my-form").dispatchEvent(
-  new Event("submit", {bubbles: true})
-)
-```
-
-## Client hooks
+## Client hooks via `phx-hook`
 
 To handle custom client-side JavaScript when an element is added, updated,
-or removed by the server, a hook object may be provided with the following
-life-cycle callbacks:
+or removed by the server, a hook object may be provided via `phx-hook`.
+`phx-hook` must point to an object with the following life-cycle callbacks:
 
   * `mounted` - the element has been added to the DOM and its server
     LiveView has finished mounting
@@ -267,20 +239,39 @@ And then on the client:
       }
     }
 
-*Note*: events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event. Events may also be handled
-outside a hook with a window event listener, by listening to the event name prefixed by
-the `phx:` namespace. For exmaple:
-
-```javascript
-window.addEventListener("phx:my-pushed-event", e => {
-  console.log("got my-pushed-event from server with data", e.detail)
-})
-```
+*Note*: remember events pushed from the server via `push_event` are global and will be dispatched
+to all active hooks on the client who are handling that event.
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
 
-## Executing JS Commands
+## Triggering `phx-` form events with JavaScript
+
+Often it is desirable to trigger an event on a DOM element without explicit
+user interaction on the element. For example, a custom form element such as a
+date picker or custom select input which utilizes a hidden input element to
+store the selected state.
+
+In these cases, the event functions on the DOM API can be used, for example
+to trigger a `phx-change` event:
+
+```javascript
+document.getElementById("my-select").dispatchEvent(
+  new Event("input", {bubbles: true})
+)
+```
+
+When using a client hook, `this.el` can be used to determine the element as
+outlined in the "Client hooks" documentation.
+
+It is also possible to trigger a `phx-submit` using a "submit" event:
+
+```javascript
+document.getElementById("my-form").dispatchEvent(
+  new Event("submit", {bubbles: true})
+)
+```
+
+## Executing JS Commands for custom attributes
 
 The `Phoenix.LiveView.JS` commands execute when `phx-` bindings are triggered, such as `phx-click`, or `phx-change` bindings. Custom scripts may also execute a command by using the `execJS` function of the `LiveSocket` instance. For example, imagine the following template where you want to highlight an existing element from the server to draw the user's attention:
 

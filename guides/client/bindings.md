@@ -24,7 +24,6 @@ callback, for example:
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1) | `phx-track-static` |
-| [Loading states](js-interop.md#loading-state-and-errors) | `phx-page-loading` |
 
 ## Click Events
 
@@ -47,9 +46,9 @@ sent to the server will be chosen with the following priority:
     If the `phx-value-` prefix is used, the server payload will also contain a `"value"`
     if the element's value attribute exists.
 
-  * When receiving a map on the server, the payload will also include user defined metadata
-    of the client event, or an empty map if none is set. For example, the following `LiveSocket`
-    client option would send the coordinates and `altKey` information for all clicks:
+  * The payload will also include any additional user defined metadata of the client event.
+    For example, the following `LiveSocket` client option would send the coordinates and
+    `altKey` information for all clicks:
 
         let liveSocket = new LiveSocket("/live", Socket, {
           params: {_csrf_token: csrfToken},
@@ -66,13 +65,6 @@ sent to the server will be chosen with the following priority:
 
 The `phx-click-away` event is fired when a click event happens outside of the element.
 This is useful for hiding toggled containers like drop-downs.
-
-The `phx-capture-click` event is just like `phx-click`, but instead of the click event
-being dispatched to the closest `phx-click` element as it bubbles up through the DOM, the event
-is dispatched as it propagates from the top of the DOM tree down to the target element. This is
-useful when wanting to bind click events without receiving bubbled events from child UI elements.
-Since capturing happens before bubbling, this can also be important for preparing or preventing
-behaviour that will be applied during the bubbling phase.
 
 ## Focus and Blur Events
 
@@ -94,13 +86,6 @@ values will be sent as part of the payload. For example:
         phx-value-page="123">
       ...
     </div>
-
-The following window-level bindings are supported:
-
-  * `phx-window-focus`
-  * `phx-window-blur`
-  * `phx-window-keydown`
-  * `phx-window-keyup`
 
 ## Key Events
 
@@ -295,7 +280,7 @@ The `lv:` event prefix supports LiveView specific features that are handled
 by LiveView without calling the user's `handle_event/3` callbacks. Today,
 the following events are supported:
 
-  - `lv:clear-flash` – clears the flash when sent to the server. If a
+  - `lv:clear-flash` – clears the flash when sent to the server. If a
     `phx-value-key` is provided, the specific key will be removed from the flash.
 
 For example:

@@ -31,36 +31,6 @@ defmodule Phoenix.LiveView do
   and encode data on every request. The flipside is that LiveView
   uses more memory on the server compared to stateless requests.
 
-  ## Use cases
-
-  There are many use cases where LiveView is an excellent
-  fit right now:
-
-    * Handling of user interaction and inputs, buttons, and
-      forms - such as input validation, dynamic forms,
-      autocomplete, etc;
-
-    * Events and updates pushed by server - such as
-      notifications, dashboards, etc;
-
-    * Page and data navigation - such as navigating between
-      pages, pagination, etc can be built with LiveView
-      using the excellent live navigation feature set.
-      This reduces the amount of data sent over the wire,
-      gives developers full control over the LiveView
-      life-cycle, while controlling how the browser
-      tracks those changes in state;
-
-  There are also use cases which are a bad fit for LiveView:
-
-    * Animations - animations, menus, and general UI events
-      that do not need the server in the first place are a
-      bad fit for LiveView. Those can be achieved without
-      LiveView in multiple ways, such as with CSS and CSS
-      transitions, using LiveView hooks, or even integrating
-      with UI toolkits designed for this purpose, such as
-      Bootstrap, Alpine.JS, and similar.
-
   ## Life-cycle
 
   A LiveView begins as a regular HTTP request and HTML response,
@@ -268,16 +238,11 @@ defmodule Phoenix.LiveView do
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
-  | Binding                | Attributes |
-  |------------------------|------------|
-  | [Params](bindings.md#click-events) | `phx-value-*` |
-  | [Click Events](bindings.md#click-events) | `phx-click`, `phx-click-away` |
-  | [Focus/Blur Events](bindings.md#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
-  | [Key Events](bindings.md#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
-  | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
-  | [Rate Limiting](bindings.md#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
-  | [DOM Patching](dom-patching.md) | `phx-update` |
-  | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
+  To update UI state, for example, to open and close dropdowns, switch tabs,
+  etc, LiveView also supports JS commands (`Phoenix.LiveView.JS`), which
+  execute directly on the client without reaching the server. To learn more,
+  see [our bindings page](bindings.md) for a complete list of all LiveView
+  bindings as well as our [JavaScript interoperability guide](js-interop.md).
 
   ## Compartmentalize state, markup, and events in LiveView
 
@@ -351,7 +316,7 @@ defmodule Phoenix.LiveView do
 
   LiveView has many guides to help you on your journey.
 
-  ## Server-side
+  ### Server-side
 
   These guides focus on server-side functionality:
 
@@ -364,7 +329,7 @@ defmodule Phoenix.LiveView do
     * [Uploads](uploads.md)
     * [Using Gettext for internationalization](using-gettext.md)
 
-  ## Client-side
+  ### Client-side
 
   These guides focus on LiveView bindings and client-side integration:
 

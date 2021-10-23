@@ -10,13 +10,9 @@ automatically uses `Phoenix.HTML` when you `use MyAppWeb, :live_view` or
 `use MyAppWeb, :live_component` in your modules.
 
 Using the generated `:live_view` and `:live_component` helpers will also
-`import MyAppWeb.ErrorHelpers`, a generated module where `error_tag/2`
-resides (usually located at `lib/my_app_web/views/error_helpers.ex`).
-
-Since `ErrorHelpers` is generated into your app, it is yours
-to modify – you may add additional helper functions here, such
-as those recommended when rendering feedback for
-[`upload_errors/1,2`](`Phoenix.LiveView.Helpers.upload_errors/2`).
+`import MyAppWeb.ErrorHelpers`, a module generated as part of your application
+where `error_tag/2` resides (usually located at `lib/my_app_web/views/error_helpers.ex`).
+You are welcome to change the `ErrorHelpers` module as you prefer.
 
 ## Form Events
 

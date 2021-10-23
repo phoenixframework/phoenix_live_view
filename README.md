@@ -17,9 +17,14 @@ steps:
   * Use a declarative model to render HTML on the server
     over WebSockets with optional LongPolling fallback
 
-  * Smart templating and change tracking - after connected,
-    LiveView sends only what changed to the client, skipping
-    the template markup and reducing the payload
+  * A rich templating language, called HEEx, with support
+    for function components, slots, HTML validation, and more
+
+  * Smart change tracking - after connected, LiveView sends
+    only what changed to the client, skipping the template
+    markup and reducing the payload. This makes LiveView
+    payloads much smaller than server-rendered HTML and on
+    par with fine-tuned SPA applications
 
   * Live form validation with file upload support
 
@@ -27,9 +32,12 @@ steps:
     `phx-focus`, `phx-blur`, `phx-submit`, etc. `phx-hook` is
     included for the cases where you have to write JavaScript
 
-  * Code reuse via components, which break templates, state, and
-    event handling into reusable bits, which is essential in large
-    applications
+  * Perform optimistic updates and transitions via JavaScript
+    commands (`Phoenix.LiveView.JS`)
+
+  * Code reuse via stateful components, which break templates,
+    state, and event handling into reusable bits, which is essential
+    in large applications
 
   * Live navigation to enrich links and redirects to only load the
     minimum amount of content as users navigate between pages
@@ -105,14 +113,6 @@ anywhere else:
     changed, drastically reducing the latency and the amount of data
     sent over the wire. This is achievable thanks to Elixir's
     immutability and its ability to treat code as data.
-
-  * LiveView separates the static and dynamic parts of your templates.
-    When you first render a page, Phoenix LiveView renders and sends
-    the whole template to the browser. Then, for any new update, only
-    the modified dynamic content is resent. This alongside diff tracking
-    makes it so LiveView only sends a few bytes on every update, instead
-    of sending kilobytes on every other user interaction - which would
-    be detrimental to the user experience.
 
 ## Browser Support
 
