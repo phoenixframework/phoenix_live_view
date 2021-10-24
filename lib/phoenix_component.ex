@@ -143,7 +143,7 @@ defmodule Phoenix.Component do
         ~H"""
         <ul>
           <%= for entry <- @entries do %>
-            <li><%= render_block(@inner_block, entry) %></li>
+            <li><%= render_slot(@inner_block, entry) %></li>
           <% end %>
         </ul>
         """
@@ -159,13 +159,13 @@ defmodule Phoenix.Component do
   make our `unordered_list` component fancier:
 
       def unordered_list(assigns) do
-        ~H"\""
+        ~H"""
         <ul>
           <%= for entry <- @entries do %>
-            <li><%= render_block(@inner_block, %{entry: entry, gif_url: random_gif()} %></li>
+            <li><%= render_slot(@inner_block, %{entry: entry, gif_url: random_gif()} %></li>
           <% end %>
         </ul>
-        "\""
+        """
       end
 
   And now we can invoke it like this:
