@@ -2237,7 +2237,7 @@ var View = class {
     if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
       return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
     }
-    if (typeof phxTarget === "number" || /^(0|[1-9]\d*)$/.test(phxTarget)) {
+    if (isCid(phxTarget)) {
       let targets = dom_default.findComponentNodeList(this.el, phxTarget);
       if (targets.length === 0) {
         logError(`no component found matching phx-target of ${phxTarget}`);
