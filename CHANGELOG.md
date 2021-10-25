@@ -63,7 +63,7 @@ atom `:default`.
 #### LEEx templates in stateful LiveComponents
 
 Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
-(`~H` sigil or `.heex` extension). LEEx temlates (`~L` sigil or `.leex` extension)
+(`~H` sigil or `.heex` extension). LEEx templates (`~L` sigil or `.leex` extension)
 are no longer supported. This addresses bugs and allows stateful components
 to be rendered more efficiently client-side.
 
