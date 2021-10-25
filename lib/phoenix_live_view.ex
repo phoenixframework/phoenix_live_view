@@ -550,6 +550,7 @@ defmodule Phoenix.LiveView do
             pipe_through :browser
             live "/", PageLive, :index
           end
+        end
 
         live_session :authenticated, on_mount: {MyAppWeb.InitAssigns, :user} do
           scope "/", MyAppWeb do
