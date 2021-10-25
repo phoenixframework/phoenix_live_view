@@ -716,9 +716,12 @@ export default class View {
   }
 
   targetComponentID(target, targetCtx){
-    if(isCid(targetCtx)){
-      return targetCtx
-    } else if(target.getAttribute(this.binding("target"))){
+    if(isCid(targetCtx)){ return targetCtx }
+
+    let cidOrSelector = target.getAttribute(this.binding("target"))
+    if(isCid(cidOrSelector)){
+      return parseInt(cidOrSelector)
+    } else if(targetCtx && cidOrSelector !== null){
       return this.closestComponentID(targetCtx)
     } else {
       return null
@@ -1008,7 +1011,7 @@ export default class View {
         .map(form => {
           let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`)
           if(newForm){
-            return [form, newForm, this.componentID(newForm)]
+            return [form, newForm, this.targetComponentID(newForm)]
           } else {
             return [form, null, null]
           }

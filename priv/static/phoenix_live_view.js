@@ -157,7 +157,10 @@ var LiveView = (() => {
 
   // js/phoenix_live_view/utils.js
   var logError = (msg, obj) => console.error && console.error(msg, obj);
-  var isCid = (cid) => typeof cid === "number";
+  var isCid = (cid) => {
+    let type = typeof cid;
+    return type === "number" || type === "string" && /^(0|[1-9]\d*)$/.test(cid);
+  };
   function detectDuplicateIds() {
     let ids = new Set();
     let elems = document.querySelectorAll("*[id]");
@@ -1717,8 +1720,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         for (let cid in newc) {
           newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache);
         }
-        for (var key in newc) {
-          oldc[key] = newc[key];
+        for (let cid in newc) {
+          oldc[cid] = newc[cid];
         }
         diff[COMPONENTS] = newc;
       }
@@ -2755,7 +2758,11 @@ within:
     targetComponentID(target, targetCtx) {
       if (isCid(targetCtx)) {
         return targetCtx;
-      } else if (target.getAttribute(this.binding("target"))) {
+      }
+      let cidOrSelector = target.getAttribute(this.binding("target"));
+      if (isCid(cidOrSelector)) {
+        return parseInt(cidOrSelector);
+      } else if (targetCtx && cidOrSelector !== null) {
         return this.closestComponentID(targetCtx);
       } else {
         return null;
@@ -3031,7 +3038,7 @@ within:
       return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
         let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`);
         if (newForm) {
-          return [form, newForm, this.componentID(newForm)];
+          return [form, newForm, this.targetComponentID(newForm)];
         } else {
           return [form, null, null];
         }

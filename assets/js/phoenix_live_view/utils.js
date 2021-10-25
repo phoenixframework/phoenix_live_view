@@ -6,7 +6,10 @@ import EntryUploader from "./entry_uploader"
 
 export let logError = (msg, obj) => console.error && console.error(msg, obj)
 
-export let isCid = (cid) => typeof(cid) === "number"
+export let isCid = (cid) => {
+  let type = typeof(cid)
+  return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid))
+}
 
 export function detectDuplicateIds(){
   let ids = new Set()
