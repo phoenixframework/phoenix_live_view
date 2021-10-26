@@ -88,7 +88,7 @@ validate the user input and change the state accordingly:
     def handle_params(params, _uri, socket) do
       socket =
         case params["sort_by"] do
-          sort_by when sort_by in ~w(name company) -> assign(socket, sort_by: sort)
+          sort_by when sort_by in ~w(name company) -> assign(socket, sort_by: sort_by)
           _ -> socket
         end
 
