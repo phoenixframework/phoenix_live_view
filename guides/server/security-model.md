@@ -255,7 +255,7 @@ a live session, then the `pipe_through` checks are not necessary.
 Declaring the `on_mount` on `live_session` is exactly the same as
 declaring it in each LiveView inside the `live_session`. It will be
 executed every time a LiveView is mounted, even after `live_redirect`s.
-The important to keep in mind is:
+The important concepts to keep in mind are:
 
   * If you have both LiveViews and regular web requests, then you
     must always authorize and authenticate your LiveViews (using
