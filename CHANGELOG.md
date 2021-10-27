@@ -302,6 +302,9 @@ Additionally on the client, the root LiveView element no longer exposes the
 LiveView module name, therefore the `phx-view` attribute is never set.
 Similarly, the `viewName` property of client hooks has been removed.
 
+Codebases calling a custom function `component/3` should rename it or specify its module to avoid a conflict,
+as LiveView introduces a macro with that name and it is special cased by the underlying engine.
+
 ### Enhancements
   - Introduce HEEx templates
   - Introduce `Phoenix.Component`
