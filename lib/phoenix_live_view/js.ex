@@ -367,7 +367,7 @@ defmodule Phoenix.LiveView.JS do
   Transitions elements.
 
   Transitions are useful for temporarily adding an animation class
-  to element(s), such as for highligthing content changes.
+  to element(s), such as for highlighting content changes.
 
   ## Options
 
