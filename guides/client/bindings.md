@@ -264,7 +264,7 @@ end
 <button phx-click={hide_modal("#modal")}>hide modal</button>
 ```
 
-The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing you to customize the event being pushed to the server. For example, imagine you start with a familiar `phx-click` which pushes a mesasge to the server when clicked:
+The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing you to customize the event being pushed to the server. For example, imagine you start with a familiar `phx-click` which pushes a message to the server when clicked:
 
     <button phx-click="clicked">click</button>
 
