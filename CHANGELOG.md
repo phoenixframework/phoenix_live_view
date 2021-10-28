@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.3 (2021-10-28)
+
+### Optimization
+  - Avoid duplicate statics inside comprehension. In previous versions, comprehensions were able to avoid duplication only the content in their root. Now we recursively traverse all comprehension nodes and send the static only once for the whole comprehension. This should massively reduce the cost of sending comprehensions over the wire
+
+### Bug fixes
+  - Fix HTML engine bug causing expressions to be duplicated or not rendered correctly
+  - Fix HTML engine bug causing slots to not be re-rendered when they should have
+  - Fix form recovery being sent to wrong target
+
 ## 0.17.2 (2021-10-22)
 
 ### Bug fixes
