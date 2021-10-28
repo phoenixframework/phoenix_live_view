@@ -276,10 +276,10 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleInfoNotDefined do
     send(self(), {:data, "somedata"})
 
     {:ok, attach_hook(socket, :assign_url, :handle_info, fn message, socket ->
-      {:data, content} = message
-      {:cont, assign(socket, :content, content)}
+      {:data, data} = message
+      {:cont, assign(socket, :data, data)}
     end)}
   end
 
-  def render(assigns), do: ~H"data=<%= assigns[:content] %>"
+  def render(assigns), do: ~H"data=<%= assigns[:data] %>"
 end
