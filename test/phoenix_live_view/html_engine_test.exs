@@ -198,6 +198,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     # A bug made it so "not text" appeared inside @text.
     assert render(template, assigns) == "text\nnot text"
+
+    template = ~S"""
+    <%= for i <- 1..3 do %>
+      <div id={i}>
+        <%= Phoenix.LiveView.HTMLEngineTest.do_block do %>
+          <%= i %>
+        <% end %>
+      </div>
+    <% end %>
+    """
+
+    # A bug made it so "id=1" was not handled properly
+    assert render(template, assigns) =~ ~s'<div id="1">'
   end
 
   test "optimizes class attributes" do

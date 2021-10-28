@@ -83,7 +83,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def handle_end(state) do
     state
     |> token_state()
-    |> update_subengine(:handle_begin, [])
     |> handle_tokens(Enum.reverse(state.tokens))
     |> invoke_subengine(:handle_end, [])
   end
@@ -108,7 +107,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def handle_begin(state) do
-    %{state | tokens: []}
+    update_subengine(%{state | tokens: []}, :handle_begin, [])
   end
 
   @doc false
