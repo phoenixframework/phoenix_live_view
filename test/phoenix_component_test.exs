@@ -182,6 +182,21 @@ defmodule Phoenix.ComponentTest do
                ~H|<.inner_changed><%= @foo %></.inner_changed>|
              ) ==
                [["%{inner_block: true}", ["1"]]]
+
+      assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
+
+      assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) ==
+               [["%{foo: %{bar: true}}", nil]]
+
+      assert eval(
+               ~H|<.inner_changed foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
+             ) ==
+               [["%{foo: %{bar: true}, inner_block: true}", ["%{foo: %{bar: true}}"]]]
+
+      assert eval(
+               ~H|<.inner_changed><%= @foo %></.inner_changed>|
+             ) ==
+               [["%{inner_block: %{bar: true}}", ["1"]]]
     end
 
     test "with let" do

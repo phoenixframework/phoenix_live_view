@@ -1051,7 +1051,13 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def changed_assign?(changed, name), do: changed_assign(changed, name) != false
+  def changed_assign?(changed, name) do
+    case changed do
+      %{^name => _} -> true
+      %{} -> false
+      nil -> true
+    end
+  end
 
   defp changed_assign(changed, name) do
     case changed do
