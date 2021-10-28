@@ -96,7 +96,7 @@ defmodule Phoenix.LiveView.JS do
     * `:target` - The selector or component ID to push to
     * `:loading` - The selector to apply the phx loading classes to
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
-      phx:page-loading-stop events for this push. Defaults `false`
+      phx:page-loading-stop events for this push. Defaults to `false`
     * `:value` - The map of values to send to the server
 
   ## Examples
