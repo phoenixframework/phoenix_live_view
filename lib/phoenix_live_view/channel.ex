@@ -362,7 +362,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp view_handle_info(msg, %{view: view} = socket) do
-    %{exported?: exported?} = Lifecycle.stage_info(socket, view, :handle_info, 2)
+    exported? = function_exported?(view, :handle_info, 2)
 
     case Lifecycle.handle_info(msg, socket) do
       {:cont, %Socket{} = socket} when exported? ->
