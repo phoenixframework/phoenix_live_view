@@ -111,6 +111,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/redirect-halt-mount", HooksLive.RedirectMount, :halt
     live "/lifecycle/components", HooksLive.WithComponent
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
+    live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
 
     # live_patch
     scope host: "app.example.com" do

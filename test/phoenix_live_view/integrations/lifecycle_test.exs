@@ -197,6 +197,11 @@ defmodule Phoenix.LiveView.LifecycleTest do
     refute_received {:intercepted, ^ref}
   end
 
+  test "handle_info/3 without module callback", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/handle-info-not-defined")
+    assert render(lv) =~ "data=somedata"
+  end
+
   test "attach_hook raises when given a live component socket", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle/components")
 
