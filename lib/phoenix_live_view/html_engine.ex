@@ -369,7 +369,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.slot(unquote(slot_key), do: unquote(clauses))
+        Phoenix.LiveView.Helpers.inner_block(unquote(slot_key), do: unquote(clauses))
       end
 
     attrs = [__slot__: slot_key, inner_block: ast] ++ attrs
@@ -607,7 +607,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     inner_block_assigns =
       quote line: line do
         %{__slot__: :inner_block,
-          inner_block: Phoenix.LiveView.Helpers.slot(:inner_block, do: unquote(clauses))}
+          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))}
       end
 
     {slots, state} = pop_slots(state)

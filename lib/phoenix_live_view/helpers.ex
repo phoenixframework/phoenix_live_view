@@ -703,16 +703,18 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Defines a slot's inner block.
+  Define a inner block, generally used by slots.
 
   This macro is mostly used by HTML engines that provides
-  a `slot` implementation and rarely called directly.
+  a `slot` implementation and rarely called directly. The
+  `name` must be the assign name the slot/block will be stored
+  under.
 
   If you're using HEEx templates, you should use its higher
   level `<:slot>` notation instead. See `Phoenix.Component`
   for more information.
   """
-  defmacro slot(name, do: do_block) do
+  defmacro inner_block(name, do: do_block) do
     rewrite_do!(do_block, name, __CALLER__)
   end
 

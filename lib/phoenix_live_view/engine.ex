@@ -733,7 +733,7 @@ defmodule Phoenix.LiveView.Engine do
   defp slots_to_rendered(static, vars) do
     Macro.postwalk(static, fn
       {call, meta, [name, [do: block]]} = node ->
-        if extract_call(call) == :slot do
+        if extract_call(call) == :inner_block do
           {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
         else
           node
@@ -1173,7 +1173,7 @@ defmodule Phoenix.LiveView.Engine do
   # TODO: Remove me when live_component/2/3 are removed
   defp classify_taint(:live_component, [_, [do: _]]), do: :render
   defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  defp classify_taint(:slot, [_, [do: _]]), do: :render
+  defp classify_taint(:inner_block, [_, [do: _]]), do: :render
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
 
   defp classify_taint(:alias, [_]), do: :always
