@@ -92,6 +92,8 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Pushes an event to the server.
 
+    * `event` - The string event name to push.
+
   ## Options
     * `:target` - The selector or component ID to push to
     * `:loading` - The selector to apply the phx loading classes to
@@ -298,6 +300,8 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Adds classes to elements.
 
+    * `names` - The string of classes to add.
+
   ## Options
 
     * `:to` - The optional DOM selector to add classes to.
@@ -340,6 +344,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc """
   Removes classes from elements.
+
+    * `names` - The string of classes to remove.
 
   ## Options
 
@@ -384,6 +390,11 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Transitions elements.
 
+    * `transition` - The string of classes to apply before removing classes or
+      a 3-tuple containing the transition class, the class to apply
+      to start the transition, and the ending transition class, such as:
+      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
+
   Transitions are useful for temporarily adding an animation class
   to element(s), such as for highlighting content changes.
 
@@ -391,10 +402,6 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - The optional DOM selector to remove classes from.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before removing classes or
-      a 3-tuple containing the transition class, the class to apply
-      to start the transition, and the ending transition class, such as:
-      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
 
@@ -403,26 +410,26 @@ defmodule Phoenix.LiveView.JS do
       <div id="item">My Item</div>
       <button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
   """
-  def transition(names) when is_binary(names) or is_tuple(names) do
-    transition(%JS{}, names, [])
+  def transition(transition) when is_binary(transition) or is_tuple(transition) do
+    transition(%JS{}, transition, [])
   end
 
-  def transition(names, opts) when (is_binary(names) or is_tuple(names)) and is_list(opts) do
-    transition(%JS{}, names, opts)
+  def transition(transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
+    transition(%JS{}, transition, opts)
   end
 
-  def transition(%JS{} = cmd, names) when is_binary(names) or is_tuple(names) do
-    transition(cmd, names, [])
+  def transition(%JS{} = cmd, transition) when is_binary(transition) or is_tuple(transition) do
+    transition(cmd, transition, [])
   end
 
-  def transition(%JS{} = cmd, names, opts) when (is_binary(names) or is_tuple(names)) and is_list(opts) do
+  def transition(%JS{} = cmd, transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     opts = validate_keys(opts, :transition, [:to, :time])
     time = opts[:time] || @default_transition_time
 
     put_op(cmd, "transition", %{
       time: time,
       to: opts[:to],
-      transition: transition_class_names(names)
+      transition: transition_class_names(transition)
     })
   end
 
