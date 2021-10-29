@@ -2,6 +2,10 @@
 
 ## 0.17.3 (2021-10-28)
 
+### Enhancements
+  - Support 3-tuple for JS class transitions to support staged animations where a transition class is applied with a starting and ending class
+  - Allow JS commands to be executed on DOM nodes outside of the LiveView container
+
 ### Optimization
   - Avoid duplicate statics inside comprehension. In previous versions, comprehensions were able to avoid duplication only the content in their root. Now we recursively traverse all comprehension nodes and send the static only once for the whole comprehension. This should massively reduce the cost of sending comprehensions over the wire
 
