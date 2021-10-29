@@ -297,17 +297,19 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   def init(_opts) do
+    # Phoenix.LiveView.HTMLEngine calls this engine in a non-linear order
+    # to evaluate slots, which can lead to varible conflicts. Therefore we
+    # use a counter to ensure all variable names are unique.
     %{
       static: [],
       dynamic: [],
-      vars_count: 0,
-      depth: 0
+      counter: :counters.new(1, [])
     }
   end
 
   @doc false
-  def handle_begin(%{depth: depth} = state) do
-    %{state | static: [], dynamic: [], vars_count: 0, depth: depth + 1}
+  def handle_begin(state) do
+    %{state | static: [], dynamic: []}
   end
 
   @doc false
@@ -340,10 +342,13 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   def handle_expr(state, "=", ast) do
-    %{static: static, dynamic: dynamic, vars_count: vars_count, depth: depth} = state
-    var = Macro.var(:"v#{depth}_#{vars_count}", __MODULE__)
+    %{static: static, dynamic: dynamic, counter: counter} = state
+    i = :counters.get(counter, 1)
+    var = Macro.var(:"v#{i}", __MODULE__)
     ast = quote do: unquote(var) = unquote(__MODULE__).to_safe(unquote(ast))
-    %{state | dynamic: [ast | dynamic], static: [var | static], vars_count: vars_count + 1}
+
+    :counters.add(counter, 1, 1)
+    %{state | dynamic: [ast | dynamic], static: [var | static]}
   end
 
   def handle_expr(state, "", ast) do
