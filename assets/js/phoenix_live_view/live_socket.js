@@ -232,8 +232,8 @@ export default class LiveSocket {
     this.transitions.after(callback)
   }
 
-  transition(time, onDone = function(){}){
-    this.transitions.addTransition(time, onDone)
+  transition(time, onStart, onDone = function(){}){
+    this.transitions.addTransition(time, onStart, onDone)
   }
 
   onChannel(channel, event, cb){
@@ -369,7 +369,7 @@ export default class LiveSocket {
   }
 
   owner(childEl, callback){
-    let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el))
+    let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
     if(view){ callback(view) }
   }
 
@@ -775,7 +775,8 @@ class TransitionSet {
     }
   }
 
-  addTransition(time, onDone){
+  addTransition(time, onStart, onDone){
+    onStart()
     let timer = setTimeout(() => {
       this.transitions.delete(timer)
       onDone()

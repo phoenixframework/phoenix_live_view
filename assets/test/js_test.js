@@ -10,6 +10,11 @@ let setupView = (content) => {
   return simulateJoinedView(el, liveSocket)
 }
 
+let simulateVisibility = el => {
+  el.getClientRects = () => [1]
+  return el
+}
+
 describe("JS", () => {
   beforeEach(() => {
     global.document.body.innerHTML = ""
@@ -21,7 +26,7 @@ describe("JS", () => {
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal"}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       expect(modal.style.display).toEqual("")
@@ -37,7 +42,7 @@ describe("JS", () => {
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "inline-block"}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       expect(modal.style.display).toEqual("")
@@ -51,9 +56,9 @@ describe("JS", () => {
     test("with in and out classes", done => {
       let view = setupView(`
       <div id="modal">modal</div>
-      <div id="click" phx-click='[["toggle", {"to": "#modal", "ins": ["fade-in"], "outs": ["fade-out"]}]]'></div>
+      <div id="click" phx-click='[["toggle", {"to": "#modal", "ins": [["fade-in"],[],[]], "outs": [["fade-out"],[],[]]}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       expect(modal.style.display).toEqual("")
@@ -61,14 +66,22 @@ describe("JS", () => {
       expect(modal.classList.contains("fade-in")).toBe(false)
       JS.exec("click", click.getAttribute("phx-click"), view, click)
       window.requestAnimationFrame(() => {
-        expect(modal.classList.contains("fade-out")).toBe(true)
-        expect(modal.classList.contains("fade-in")).toBe(false)
-
-        JS.exec("click", click.getAttribute("phx-click"), view, click)
         window.requestAnimationFrame(() => {
-          expect(modal.classList.contains("fade-out")).toBe(false)
-          expect(modal.classList.contains("fade-in")).toBe(true)
-          done()
+          window.requestAnimationFrame(() => {
+            expect(modal.classList.contains("fade-out")).toBe(true)
+            expect(modal.classList.contains("fade-in")).toBe(false)
+
+            JS.exec("click", click.getAttribute("phx-click"), view, click)
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  expect(modal.classList.contains("fade-out")).toBe(false)
+                  expect(modal.classList.contains("fade-in")).toBe(true)
+                  done()
+                })
+              })
+            })
+          })
         })
       })
     })
@@ -78,9 +91,9 @@ describe("JS", () => {
     test("with defaults", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
-      <div id="click" phx-click='[["transition", {"to": "#modal", "names": ["fade-out"]}]]'></div>
+      <div id="click" phx-click='[["transition", {"to": "#modal", "transition": [["fade-out"],[],[]]}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       expect(Array.from(modal.classList)).toEqual(["modal"])
@@ -95,7 +108,7 @@ describe("JS", () => {
       let view = setupView(`
       <div id="modal1" class="modal">modal</div>
       <div id="modal2" class="modal">modal</div>
-      <div id="click" phx-click='[["transition", {"to": "#modal1, #modal2", "names": ["fade-out"]}]]'></div>
+      <div id="click" phx-click='[["transition", {"to": "#modal1, #modal2", "transition": [["fade-out"],[],[]]}]]'></div>
       `)
       let modal1 = document.querySelector("#modal1")
       let modal2 = document.querySelector("#modal2")
@@ -118,7 +131,7 @@ describe("JS", () => {
       <div id="modal">modal</div>
       <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click"}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       modal.addEventListener("click", () => {
@@ -132,7 +145,7 @@ describe("JS", () => {
       <div id="modal">modal</div>
       <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click", "detail": {"id": 123}}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       modal.addEventListener("click", (e) => {
@@ -175,7 +188,7 @@ describe("JS", () => {
       <div id="add" phx-click='[["add_class", {"to": "#modal", "names": ["class1"]}]]'></div>
       <div id="remove" phx-click='[["remove_class", {"to": "#modal", "names": ["class1"]}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let add = document.querySelector("#add")
       let remove = document.querySelector("#remove")
 
@@ -316,7 +329,7 @@ describe("JS", () => {
       <div id="modal">modal</div>
       <div id="click" phx-click='[["push", {"event": "clicked"}], ["toggle", {"to": "#modal"}]]'></div>
       `)
-      let modal = document.querySelector("#modal")
+      let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
       view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {

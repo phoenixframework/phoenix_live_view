@@ -190,8 +190,8 @@ export default class View {
     this.liveSocket.log(this, kind, msgCallback)
   }
 
-  transition(time, onDone = function(){}){
-    this.liveSocket.transition(time, onDone)
+  transition(time, onStart, onDone = function(){}){
+    this.liveSocket.transition(time, onStart, onDone)
   }
 
   withinTargets(phxTarget, callback){
