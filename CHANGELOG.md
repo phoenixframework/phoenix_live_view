@@ -7,7 +7,7 @@
   - Allow JS commands to be executed on DOM nodes outside of the LiveView container
 
 ### Optimization
-  - Avoid duplicate statics inside comprehension. In previous versions, comprehensions were able to avoid duplication only the content in their root. Now we recursively traverse all comprehension nodes and send the static only once for the whole comprehension. This should massively reduce the cost of sending comprehensions over the wire
+  - Avoid duplicate statics inside comprehension. In previous versions, comprehensions were able to avoid duplication only in the content of their root. Now we recursively traverse all comprehension nodes and send the static only once for the whole comprehension. This should massively reduce the cost of sending comprehensions over the wire
 
 ### Bug fixes
   - Fix HTML engine bug causing expressions to be duplicated or not rendered correctly
@@ -18,20 +18,20 @@
 
 ### Bug fixes
   - Fix HTML engine bug causing attribute expressions to be incorrectly evaluated in certain cases
-  - Fix show/hide/toggle custom display not being restored.
+  - Fix show/hide/toggle custom display not being restored
   - Fix default `to` target for `JS.show|hide|dispatch`
-  - Fix form input targetting
+  - Fix form input targeting
 
 ## 0.17.1 (2021-10-21)
 
 ### Bug fixes
-  - Fix SVG element support for phx binding interactions
+  - Fix SVG element support for `phx` binding interactions
 
 ## 0.17.0 (2021-10-21)
 
 ### Breaking Changes
 
-#### on_mount changes
+#### `on_mount` changes
 
 The hook API introduced in LiveView 0.16 has been improved based on feedback.
 LiveView 0.17 removes the custom module-function callbacks for the
@@ -81,13 +81,13 @@ Stateful LiveComponents (where an `:id` is given) must now return HEEx templates
 are no longer supported. This addresses bugs and allows stateful components
 to be rendered more efficiently client-side.
 
-#### phx-disconnected class has been replaced with phx-loading
+#### `phx-disconnected` class has been replaced with `phx-loading`
 
 Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erronous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
 
-#### phx-capture-click has been deprecated in favor of phx-click-away
+#### `phx-capture-click` has been deprecated in favor of `phx-click-away`
 
-The new phx-click-away binding replaces phx-capture-click and is much more versatile because it can detect "click focus" being lost on containers.
+The new `phx-click-away` binding replaces `phx-capture-click` and is much more versatile because it can detect "click focus" being lost on containers.
 
 #### Removal of previously deprecated functionality
 
@@ -98,7 +98,7 @@ Some functionality that was previously deprecated has been removed:
 
 ### Enhancements
   - Allow slots in function components: they are marked as `<:slot_name>` and can be rendered with `<%= render_slot @slot_name %>`
-  - Add JS command for executing JavaScript utility operations on the client with an extended push API
+  - Add `JS` command for executing JavaScript utility operations on the client with an extended push API
   - Optimize string attributes:
     - If the attribute is a string interpolation, such as `<div class={"foo bar #{@baz}"}>`, only the interpolation part is marked as dynamic
     - If the attribute can be empty, such as "class" and "style", keep the attribute name as static
@@ -107,14 +107,14 @@ Some functionality that was previously deprecated has been removed:
 ### Bug fixes
   - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceeded by a live redirect
   - Fix stale session causing full redirect fallback when issuing a `push_redirect` from mount
-  - Add workaround for Safari bug causing img tags with srcset and video with autoplay to fail to render
+  - Add workaround for Safari bug causing `<img>` tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates
   - Support HTML tags inside script tags (as in regular HTML)
   - Raise if using quotes in attribute names
   - Include the filename in error messages when it is not possible to parse interpolated attributes
   - Make sure the test client always sends the full URL on `live_patch`/`live_redirect`. This mirrors the behaviour of the JavaScript client
   - Do not reload flash from session on `live_redirect`s
-  - Fix select drop-down flashes in chrome when the DOM is patched during focus
+  - Fix select drop-down flashes in Chrome when the DOM is patched during focus
 
 ### Deprecations
   - `<%= live_component MyModule, id: @user.id, user: @user %>` is deprecated in favor of `<.live_component module={MyModule} id={@user.id} user={@user} />`. Notice the new API requires using HEEx templates. This change allows us to further improve LiveComponent and bring new features such as slots to them.
@@ -126,7 +126,7 @@ Some functionality that was previously deprecated has been removed:
   - Improve HEEx error messages
   - Relax HTML tag validation to support mixed case tags
   - Support self closing HTML tags
-  - Remove requirement for handle_params to be defined for lifecycle hooks
+  - Remove requirement for `handle_params` to be defined for lifecycle hooks
 
 ### Bug fixes
   - Fix pushes failing to include channel `join_ref` on messages
@@ -140,10 +140,10 @@ Some functionality that was previously deprecated has been removed:
 
 ### Enhancements
   - Improve error messages on tokenization
-  - Improve error message if inner_block is missing
+  - Improve error message if `@inner_block` is missing
 
 ### Bug fixes
-  - Fix phx-change form recovery event being sent to wrong component on reconnect when component order changes
+  - Fix `phx-change` form recovery event being sent to wrong component on reconnect when component order changes
 
 ## 0.16.1 (2021-08-26)
 
@@ -154,7 +154,7 @@ Some functionality that was previously deprecated has been removed:
 
 ### Bug fixes
   - Do not generate CSRF tokens for non-POST forms
-  - Do not add compile-time dependencies on on_mount declarations
+  - Do not add compile-time dependencies on `on_mount` declarations
 
 ## 0.16.0 (2021-08-10)
 
@@ -192,7 +192,7 @@ and example usage.
 
 ### New HTML Engine
 
-LiveView v0.16 introduces HEEx (HTML+EEx) templates and the concept of function
+LiveView v0.16 introduces HEEx (HTML + EEx) templates and the concept of function
 components via `Phoenix.Component`. The new HEEx templates validate the markup in
 the template while also providing smarter change tracking as well as syntax
 conveniences to make it easier to build composable components.
@@ -337,12 +337,12 @@ as LiveView introduces a macro with that name and it is special cased by the und
 
 ### Bug fixes
   - Make sure components are loaded on `render_component` to ensure all relevant callbacks are invoked
-  - Fix `Phoenix.LiveViewTest.page_title` returning nil in some cases
+  - Fix `Phoenix.LiveViewTest.page_title` returning `nil` in some cases
   - Fix buttons being re-enabled when explicitly set to disabled on server
   - Fix live patch failing to update URL when live patch link is patched again via `handle_params` within the same callback lifecycle
   - Fix `phx-no-feedback` class not applied when page is live-patched
-  - Fix `DOMException, querySelector, not a valid selector` when performing DOM lookups on non-stanard IDs
-  - Fix select dropdown flashing close/opened when assigns are updated on Chrome/MacOS
+  - Fix `DOMException, querySelector, not a valid selector` when performing DOM lookups on non-standard IDs
+  - Fix select dropdown flashing close/opened when assigns are updated on Chrome/macOS
   - Fix error with multiple `live_file_input` in one form
   - Fix race condition in `showError` causing null `querySelector`
   - Fix statics not resolving correctly across recursive diffs
@@ -367,7 +367,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - Fix live patch failing to update URL when live patch link is patched again from `handle_params`
   - Fix regression in `LiveViewTest.render_upload/3` when using channel uploads and progress callback
   - Fix component uploads not being cleaned up on remove
-  - Fix KeyError on LiveView reconnect when an active upload was previously in progress
+  - Fix `KeyError` on LiveView reconnect when an active upload was previously in progress
 
 ### Enhancements
   - Support function components via `component/3`
@@ -393,8 +393,8 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - Fix nested `live_render`'s causing remound of child LiveView even when ID does not change
   - Do not attempt push hook events unless connected
   - Fix preflighted refs causing `auto_upload: true` to fail to submit form
-  - Replace single upload entry when max_entires is 1 instead of accumulating multiple file selections
-  - Fix static_path in open_browser failing to load stylesheets
+  - Replace single upload entry when `max_entries` is 1 instead of accumulating multiple file selections
+  - Fix `static_path` in `open_browser` failing to load stylesheets
 
 ## 0.15.3 (2021-01-02)
 
@@ -404,11 +404,11 @@ as LiveView introduces a macro with that name and it is special cased by the und
 ## 0.15.2 (2021-01-01)
 
 ### Backwards incompatible changes
-  - Remove `beforeDestroy` from phx-hook callbacks
+  - Remove `beforeDestroy` from `phx-hook` callbacks
 
 ### Bug fixes
   - Fix form recovery failing to send input on first connection failure
-  - Fix hooks not getting remounted after liveview reconnect
+  - Fix hooks not getting remounted after LiveView reconnect
   - Fix hooks `reconnected` callback being fired with no prior disconnect
 
 ## 0.15.1 (2020-12-20)
@@ -418,12 +418,12 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - Run `consume_uploaded_entries` in LiveView caller process
 
 ### Bug fixes
-  - Fix hooks not getting remounted after liveview recovery
+  - Fix hooks not getting remounted after LiveView recovery
   - Fix bug causing reload with jitter on timeout from previously closed channel
   - Fix component child nodes being lost when component patch goes from single root node to multiple child siblings
   - Fix `phx-capture-click` triggering on mouseup during text selection
   - Fix LiveView `push_event`'s not clearing up in components
-  - Fix textarea being patched by LV while focused
+  - Fix `<textarea>` being patched by LiveView while focused
 
 ## 0.15.0 (2020-11-20)
 
@@ -454,7 +454,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
 ### Bug fixes
   - Fix `redirect(socket, external: ...)` when returned from an event
   - Properly follow location hashes on live patch/redirect
-  - Fix failure in `Phoenix.LiveViewTest` when phx-update has non-HTML nodes as children
+  - Fix failure in `Phoenix.LiveViewTest` when `phx-update` has non-HTML nodes as children
   - Fix `phx_trigger_action` submitting the form before the DOM updates are complete
 
 ## 0.14.6 (2020-09-21)
@@ -497,16 +497,16 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - Fix `LiveViewTest` failing to patch children properly for append/prepend based phx-update's
   - Fix argument error when providing `:as` option to a `live` route
   - Fix page becoming unresponsive when the server crashes while handling a live patch
-  - Fix empty diff causing pending data-ref based updates, such as classes and disable-with content to not be updated
+  - Fix empty diff causing pending data-ref based updates, such as classes and `phx-disable-with` content to not be updated
   - Fix bug where throttling keydown events would eat key presses
-  - Fix textarea's failing to be disabled on form submit
-  - Fix text node DOM memory leak when using phx-update append/prepend
+  - Fix `<textarea>`'s failing to be disabled on form submit
+  - Fix text node DOM memory leak when using `phx-update` append/prepend
 
 ### Enhancements
   - Allow `:router` to be given to `render_component`
   - Display file on compile warning for `~L`
   - Log error on client when using a hook without a DOM ID
-  - Optimize phx-update append/prepend based DOM updates
+  - Optimize `phx-update` append/prepend based DOM updates
 
 ## 0.14.1 (2020-07-09)
 
@@ -519,7 +519,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
 ### Bug fixes
   - Fix IE11 issue where `document.activeElement` creates a null reference
   - Fix setup and teardown of root views when explicitly calling `liveSocket.disconnect()` followed by `liveSocket.connect()`
-  - Fix `error_tag` failing to be displayed for non-text based inputs such as selects and checkboxes as the phx-no-feedback class was always applied
+  - Fix `error_tag` failing to be displayed for non-text based inputs such as selects and checkboxes as the `phx-no-feedback` class was always applied
   - Fix `phx-error` class being applied on `live_redirect`
   - Properly handle Elixir's special variables, such as `__MODULE__`
   - No longer set disconnected class during patch
@@ -545,7 +545,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
 
 ### Bug fixes
   - Fix duplicate debounced events from being triggered on blur with timed debounce
-  - Fix client error when live_redirected'd route results in a redirect to a non-live route on the server
+  - Fix client error when `live_redirect`ed route results in a redirect to a non-live route on the server
   - Fix DOM siblings being removed when a rootless component is updated
   - Fix debounced input failing to send last change when blurred via Tab, Meta, or other non-printable keys
 
@@ -560,7 +560,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
 ## 0.13.1 (2020-05-26)
 
 ### Bug fixes
-  - Fix forced page refresh when push_redirect from a live_redirect
+  - Fix forced page refresh when `push_redirect` from a `live_redirect`
 
 ### Enhancements
   - Optimize component diffs to avoid sending empty diffs
