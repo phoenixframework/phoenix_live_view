@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.4 (2021-11-01)
+
+### Bug fixes
+  - Fix variable scoping issues causing various content blog or duplication rendering bugs
+
 ## 0.17.3 (2021-10-28)
 
 ### Enhancements
