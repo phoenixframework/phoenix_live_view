@@ -126,24 +126,6 @@ defmodule Phoenix.LiveView do
       <h1>Temperature Control</h1>
       <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
 
-  When a LiveView is rendered, all of the data currently stored in the
-  connection session (see `Plug.Conn.get_session/1`) will be given to
-  the LiveView.
-
-  It is also possible to pass additional session information to the LiveView
-  through a `:session` option:
-
-      # In the router
-      live "/thermostat", ThermostatLive, session: %{"extra_token" => "foo"}
-
-      # In a view
-      <%= live_render(@conn, MyAppWeb.ThermostatLive, session: %{"extra_token" => "foo"}) %>
-
-  Notice the `:session` uses string keys as a reminder that session data
-  is serialized and sent to the client. So you should always keep the data
-  in the session to a minimum. For example, instead of storing a User struct,
-  you should store the "user_id" and load the User when the LiveView mounts.
-
   Once the LiveView is rendered, a regular HTML response is sent. In your
   app.js file, you should find the following:
 

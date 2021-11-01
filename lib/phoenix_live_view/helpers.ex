@@ -331,20 +331,25 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Options
 
-    * `:session` - the map of extra session data to be serialized
-      and sent to the client. Note that all session data currently in
-      the connection is automatically available in LiveViews. You
-      can use this option to provide extra data. Also note that the keys
-      in the session are strings keys, as a reminder that data has
-      to be serialized first.
+    * `:session` - a map of binary keys with extra session data to be
+      serialized and sent to the client. Note that all session data
+      currently in the connection is automatically available in LiveViews.
+      You can use this option to provide extra data. Remember all session
+      data is serialized and sent to the client. So you should always
+      keep the data in the session to a minimum. For example, instead
+      of storing a User struct, you should store the "user_id" and load
+      the User when the LiveView mounts.
+
     * `:container` - an optional tuple for the HTML tag and DOM
       attributes to be used for the LiveView container. For example:
       `{:li, style: "color: blue;"}`. By default it uses the module
       definition container. See the "Containers" section below for more
       information.
+
     * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
       An `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
+
     * `:router` - an optional router that enables this LiveView to
       perform live navigation. Only a single LiveView in a page may
       have the `:router` set. LiveViews defined at the router with
