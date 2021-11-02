@@ -356,6 +356,28 @@ defmodule Phoenix.LiveView.JS do
     })
   end
 
+  def toggle_class(names) when is_binary(names), do: toggle_class(%JS{}, names, [])
+
+  def toggle_class(%JS{} = js, names) when is_binary(names) do
+    toggle_class(js, names, [])
+  end
+
+  def toggle_class(names, opts) when is_binary(names) and is_list(opts) do
+    toggle_class(%JS{}, names, opts)
+  end
+
+  def toggle_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
+    opts = validate_keys(opts, :toggle_class, [:to, :transition, :time])
+    time = opts[:time] || @default_transition_time
+
+    put_op(js, "toggle_class", %{
+      to: opts[:to],
+      names: class_names(names),
+      transition: transition_class_names(opts[:transition]),
+      time: time
+    })
+  end
+
   @doc """
   Removes classes from elements.
 

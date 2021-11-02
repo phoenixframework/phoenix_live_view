@@ -54,6 +54,14 @@ let JS = {
     this.addOrRemoveClasses(el, [], names, transition, time, view)
   },
 
+  exec_toggle_class(eventType, phxEvent, view, sourceEl, {to, names, transition, time}){
+    if(to){
+      DOM.all(document, to, el => this.toggleClasses(el, names, transition, time, view))
+    } else {
+      this.toggleClasses(sourceEl, names, transition, view)
+    }
+  },
+
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
     let [transition_start, running, transition_end] = transition
     let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(running), [])
@@ -140,6 +148,15 @@ let JS = {
         el.dispatchEvent(new Event("phx:show-end"))
       }
     }
+  },
+
+  toggleClasses(el, classes, transition, time, view){
+    window.requestAnimationFrame(() => {
+      let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
+      let newAdds = classes.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
+      let newRemoves = classes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
+      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view)
+    })
   },
 
   addOrRemoveClasses(el, adds, removes, transition, time, view){

@@ -273,6 +273,59 @@ describe("JS", () => {
     })
   })
 
+  describe("exec_toggle_class", () => {
+    test("with defaults", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="toggle" phx-click='[["toggle_class", {"to": "#modal", "names": ["class1"]}]]'></div>
+      `)
+      let modal = simulateVisibility(document.querySelector("#modal"))
+      let toggle = document.querySelector("#toggle")
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          expect(Array.from(modal.classList)).toEqual(["modal", "class1"])
+          JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              expect(Array.from(modal.classList)).toEqual(["modal"])
+              done()
+            })
+          })
+        })
+      })
+    })
+    test("with multiple selector", done => {
+      let view = setupView(`
+      <div id="modal1" class="modal">modal</div>
+      <div id="modal2" class="modal">modal</div>
+      <div id="toggle" phx-click='[["toggle_class", {"to": "#modal1, #modal2", "names": ["class1"]}]]'></div>
+      `)
+      let modal1 = document.querySelector("#modal1")
+      let modal2 = document.querySelector("#modal2")
+      let toggle = document.querySelector("#toggle")
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          expect(Array.from(modal1.classList)).toEqual(["modal", "class1"])
+          expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
+          JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              expect(Array.from(modal1.classList)).toEqual(["modal"])
+              expect(Array.from(modal2.classList)).toEqual(["modal"])
+              done()
+            })
+          })
+        })
+      })
+    })
+  })
+
   describe("push", () => {
     test("regular event", done => {
       let view = setupView(`

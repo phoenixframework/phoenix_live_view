@@ -260,6 +260,109 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "toggle_class" do
+    test "with defaults" do
+      assert JS.toggle_class("show") == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], time: 200, to: nil, transition: [[], [], []]}
+                 ]
+               ]
+             }
+
+      assert JS.toggle_class("show", to: "#modal") == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], time: 200, to: "#modal", transition: [[], [], []]}
+                 ]
+               ]
+             }
+    end
+
+    test "multiple classes" do
+      assert JS.toggle_class("show hl") == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show", "hl"], time: 200, to: nil, transition: [[], [], []]}
+                 ]
+               ]
+             }
+    end
+
+    test "custom time" do
+      assert JS.toggle_class("show", time: 543) == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], time: 543, to: nil, transition: [[], [], []]}
+                 ]
+               ]
+             }
+    end
+
+    test "transition" do
+      assert JS.toggle_class("show", transition: "fade") == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], time: 200, to: nil, transition: [["fade"], [], []]}
+                 ]
+               ]
+             }
+
+      assert JS.toggle_class("c", transition: "a b") == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["c"], time: 200, to: nil, transition: [["a", "b"], [], []]}
+                 ]
+               ]
+             }
+
+      assert JS.toggle_class("show", transition: {"fade", "opacity-0", "opacity-100"}) == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{
+                     names: ["show"],
+                     time: 200,
+                     to: nil,
+                     transition: [["fade"], ["opacity-0"], ["opacity-100"]]
+                   }
+                 ]
+               ]
+             }
+    end
+
+    test "composability" do
+      js = JS.toggle_class("show", to: "#modal", time: 100) |> JS.toggle_class("hl")
+
+      assert js == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], time: 100, to: "#modal", transition: [[], [], []]}
+                 ],
+                 ["toggle_class", %{names: ["hl"], time: 200, to: nil, transition: [[], [], []]}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for toggle_class/, fn ->
+        JS.toggle_class("show", bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.toggle_class("show")) ==
+               "[[&quot;toggle_class&quot;,{&quot;names&quot;:[&quot;show&quot;],&quot;time&quot;:200,&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]"
+    end
+  end
+
   describe "dispatch" do
     test "with defaults" do
       assert JS.dispatch("click", to: "#modal") == %JS{
