@@ -128,7 +128,7 @@ export default class DOMPatch {
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
-          if(el.getAttribute && el.getAttribute(phxRemove)){
+          if(el.nodeType === Node.ELEMENT_NODE && DOM.all(el, `[${phxRemove}]`) != []){
             pendingRemoves.push(el)
             return false
           }
@@ -210,7 +210,7 @@ export default class DOMPatch {
     updates.forEach(el => this.trackAfter("updated", el))
 
     if(pendingRemoves.length > 0){
-      liveSocket.transitionRemoves(pendingRemoves)
+      pendingRemoves.forEach(el => liveSocket.transitionRemoves(el))
       liveSocket.requestDOMUpdate(() => {
         pendingRemoves.forEach(el => el.remove())
         this.trackAfter("transitionsDiscarded", pendingRemoves)

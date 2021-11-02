@@ -351,9 +351,9 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements){
+  transitionRemoves(rootEl = document){
     let removeAttr = this.binding(PHX_REMOVE)
-    elements = elements || DOM.all(document, `[${removeAttr}]`)
+    let elements = DOM.all(rootEl, `[${removeAttr}]`)
     elements.forEach(el => {
       if(document.body.contains(el)){ // skip children already removed
         this.execJS(el, el.getAttribute(removeAttr), "remove")
