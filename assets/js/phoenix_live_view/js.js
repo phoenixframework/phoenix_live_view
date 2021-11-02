@@ -16,7 +16,7 @@ let JS = {
 
   isVisible(el){
     let style = window.getComputedStyle(el)
-    return !(style.opacity === 0 || style.display === "none")
+    return !(el.hidden || style.opacity === 0 || style.display === "none")
   },
 
   // private
