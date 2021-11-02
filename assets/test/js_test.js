@@ -342,5 +342,22 @@ describe("JS", () => {
       expect(modal.style.display).toEqual("none")
     })
   })
+
+  describe("phx-remove", () => {
+    test("executes JS commands on remove", done => {
+      let view = setupView(`
+      <div id="modal" phx-remove='[["push", {"event": "removed"}], ["toggle", {"to": "#modal"}]]'>modal</div>
+      `)
+
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {
+        expect(event).toEqual("removed")
+        done()
+      }
+
+      let updatedHtml = `<div id="foo"></div>`
+      view.update({s: [updatedHtml]}, [])
+      expect(view.el.innerHTML).toBe(updatedHtml)
+    })
+  })
 })
 
