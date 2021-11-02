@@ -757,6 +757,7 @@ defmodule Phoenix.LiveView.ElementsTest do
     test "push", %{live: view} do
       assert view |> element("#component-button-js-click-target") |> render_click()
       assert last_component_event(view) == "<div id=\"component-last-event\">button-click: %{}</div>"
+      refute last_event(view) == "<div id=\"last-event\">button-click: %{}</div>"
     end
   end
 end
