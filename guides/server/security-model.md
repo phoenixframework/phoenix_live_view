@@ -46,47 +46,54 @@ via Plugs, such as this:
 Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView
 should execute those same verifications:
 
-    def mount(params, %{"user_id" => user_id} = _session, socket) do
-      socket = assign(socket, current_user: Accounts.get_user!(user_id))
+```elixir
+def mount(params, %{"user_id" => user_id} = _session, socket) do
+  socket = assign(socket, current_user: Accounts.get_user!(user_id))
 
-      socket =
-        if socket.assigns.current_user.confirmed_at do
-          socket
-        else
-          redirect(socket, to: "/login")
-        end
-
-      {:ok, socket}
+  socket =
+    if socket.assigns.current_user.confirmed_at do
+      socket
+    else
+      redirect(socket, to: "/login")
     end
+
+  {:ok, socket}
+end
+```
 
 LiveView v0.16 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
 which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 
-    defmodule MyAppWeb.UserLiveAuth do
-      import Phoenix.LiveView
 
-      def mount(params, %{"user_id" => user_id} = _session, socket) do
-        socket = assign_new(socket, :current_user, fn ->
-          Accounts.get_user!(user_id)
-        end)
+```elixir
+defmodule MyAppWeb.UserLiveAuth do
+  import Phoenix.LiveView
 
-        if socket.assigns.current_user.confirmed_at do
-          {:cont, socket}
-        else
-          {:halt, redirect(socket, to: "/login")}
-        end
-      end
+  def mount(params, %{"user_id" => user_id} = _session, socket) do
+    socket = assign_new(socket, :current_user, fn ->
+      Accounts.get_user!(user_id)
+    end)
+
+    if socket.assigns.current_user.confirmed_at do
+      {:cont, socket}
+    else
+      {:halt, redirect(socket, to: "/login")}
     end
+  end
+end
+```
 
 and then use it on all relevant LiveViews:
 
-    defmodule MyAppWeb.PageLive do
-      use Phoenix.LiveView
-      on_mount MyAppWeb.UserLiveAuth
+```elixir
+defmodule MyAppWeb.PageLive do
+  use Phoenix.LiveView
+  on_mount MyAppWeb.UserLiveAuth
 
-      ...
-    end
+  ...
+end
+```
 
 Note in the snippet above we used [`assign_new/3`](`Phoenix.LiveView.assign_new/3`).
 This is a convenience to avoid fetching the `current_user` multiple times across
@@ -106,21 +113,23 @@ In LiveView, most actions are handled by the `handle_event` callback. Therefore,
 you typically authorize the user within those callbacks. In the scenario just
 described, one might implement this:
 
-    on_mount MyAppWeb.UserLiveAuth
+```elixir
+on_mount MyAppWeb.UserLiveAuth
 
-    def mount(_params, session, socket) do
-      {:ok, load_projects(socket)}
-    end
+def mount(_params, session, socket) do
+  {:ok, load_projects(socket)}
+end
 
-    def handle_event("delete_project", %{"project_id" => project_id}, socket) do
-      Project.delete!(socket.assigns.current_user, project_id)
-      {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end)}
-    end
+def handle_event("delete_project", %{"project_id" => project_id}, socket) do
+  Project.delete!(socket.assigns.current_user, project_id)
+  {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end)}
+end
 
-    defp load_projects(socket) do
-      projects = Project.all_projects(socket.assigns.current_user)
-      assign(socket, projects: projects)
-    end
+defp load_projects(socket) do
+  projects = Project.all_projects(socket.assigns.current_user)
+  assign(socket, projects: projects)
+end
+```
 
 First, we used `on_mount` to authenticate the user based on the data stored in
 the session. Then we load all projects based on the authenticated user. Now,
@@ -144,15 +153,19 @@ LiveView part unless the user reloads the page.
 Luckily, it is possible to address this by setting a `live_socket_id` in the
 session. For example, when logging in a user, you could do:
 
-    conn
-    |> put_session(:current_user_id, user.id)
-    |> put_session(:live_socket_id, "users_socket:#{user.id}")
+```elixir
+conn
+|> put_session(:current_user_id, user.id)
+|> put_session(:live_socket_id, "users_socket:#{user.id}")
+```
 
 Now all LiveView sockets will be identified and listen to the given `live_socket_id`.
 You can then disconnect all live users identified by said ID by broadcasting on
 the topic:
 
-    MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
+```elixir
+MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
+```
 
 > Note: If you use `mix phx.gen.auth` to generate your authentication system,
 > lines to that effect are already present in the generated code.  The generated
@@ -185,22 +198,23 @@ Your regular users login via email and password, and you have an admin
 dashboard that uses http auth. You can specify different `live_session`s
 for each authentication flow:
 
-    live_session :default do
-      scope "/" do
-        pipe_through [:authenticate_user]
-        get ...
-        live ...
-      end
-    end
+```elixir
+live_session :default do
+  scope "/" do
+    pipe_through [:authenticate_user]
+    get ...
+    live ...
+  end
+end
 
-    live_session :admin do
-      scope "/admin" do
-        pipe_through [:http_auth_admin]
-        get ...
-        live ...
-      end
-    end
-
+live_session :admin do
+  scope "/admin" do
+    pipe_through [:http_auth_admin]
+    get ...
+    live ...
+  end
+end
+```
 Now every time you try to navigate to an admin panel, and out of it,
 a regular page navigation will happen and a brand new live connection
 will be established.
@@ -214,31 +228,35 @@ using `on_mount` hooks.
 a different root layout, since layouts are not updated between live
 redirects:
 
-    live_session :default, root_layout: {LayoutView, "app.html"} do
-      ...
-    end
+```elixir
+live_session :default, root_layout: {LayoutView, "app.html"} do
+  ...
+end
 
-    live_session :admin, root_layout: {LayoutView, "admin.html"} do
-      ...
-    end
+live_session :admin, root_layout: {LayoutView, "admin.html"} do
+  ...
+end
+```
 
 Finally, you can even combine `live_session` with `on_mount`. Instead
 of declaring `on_mount` on every LiveView, you can declare it at the
 router level and it will enforce it on all LiveViews under it:
 
-    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
-      scope "/" do
-        pipe_through [:authenticate_user]
-        live ...
-      end
-    end
+```elixir
+live_session :default, on_mount: MyAppWeb.UserLiveAuth do
+  scope "/" do
+    pipe_through [:authenticate_user]
+    live ...
+  end
+end
 
-    live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-      scope "/admin" do
-        pipe_through [:authenticate_admin]
-        live ...
-      end
-    end
+live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
+  scope "/admin" do
+    pipe_through [:authenticate_admin]
+    live ...
+  end
+end
+```
 
 Each live route under the `:default` `live_session` will invoke
 the `MyAppWeb.UserLiveAuth` hook on mount. This module was defined
