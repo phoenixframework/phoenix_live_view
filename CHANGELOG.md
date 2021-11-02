@@ -1,9 +1,10 @@
 # Changelog
 
-## 0.17.5
+## 0.17.5 (2021-11-02)
 
 ### Bug fixes
   - Do not trigger phx-click-away if element is not visible
+  - Fix phx-remove failing to tear down nested live children
 
 ## 0.17.4 (2021-11-01)
 
