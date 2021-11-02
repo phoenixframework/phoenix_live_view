@@ -266,7 +266,7 @@ defmodule Phoenix.Component do
           <th>
             <%= for col <- @col do %>
               <td><%= col.label %></td>
-            <% end >
+            <% end %>
           </th>
           <%= for row <- @rows do %>
             <tr>
