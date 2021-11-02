@@ -579,7 +579,9 @@ export default class LiveSocket {
       if(!(el.isSameNode(e.target) || el.contains(e.target))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(binding)
-          JS.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
+          if(JS.isVisible(el)){
+            JS.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
+          }
         })
       }
     })

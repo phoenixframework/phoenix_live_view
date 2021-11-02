@@ -14,6 +14,11 @@ let JS = {
     })
   },
 
+  isVisible(el){
+    let style = window.getComputedStyle(el)
+    return !(style.opacity === 0 || style.display === "none")
+  },
+
   // private
 
   // commands
@@ -167,11 +172,6 @@ let JS = {
   },
 
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
-
-  isVisible(el){
-    let style = window.getComputedStyle(el)
-    return !(style.opacity === 0 || style.display === "none")
-  },
 
   isToggledOut(el, outClasses){
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses)
