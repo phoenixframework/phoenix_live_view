@@ -358,6 +358,22 @@ describe("JS", () => {
       view.update({s: [updatedHtml]}, [])
       expect(view.el.innerHTML).toBe(updatedHtml)
     })
+
+    test("worked in deeply nested html", done => {
+      let view = setupView(`<div>
+        <div id="modal" phx-remove='[["push", {"event": "removed"}], ["toggle", {"to": "#modal"}]]'>modal</div>
+      </div>
+      `)
+
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {
+        expect(event).toEqual("removed")
+        done()
+      }
+
+      let updatedHtml = `<div id="foo"></div>`
+      view.update({s: [updatedHtml]}, [])
+      expect(view.el.innerHTML).toBe(updatedHtml)
+    })
   })
 })
 
