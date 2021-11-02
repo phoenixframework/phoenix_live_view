@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.5
+
+### Bug fixes
+  - Do not trigger phx-click-away if element is not visible
+
 ## 0.17.4 (2021-11-01)
 
 ### Bug fixes

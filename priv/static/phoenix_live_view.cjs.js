@@ -1955,6 +1955,10 @@ var JS = {
       this[`exec_${kind}`](eventType, phxEvent, view, el, args);
     });
   },
+  isVisible(el) {
+    let style = window.getComputedStyle(el);
+    return !(style.opacity === 0 || style.display === "none");
+  },
   exec_dispatch(eventType, phxEvent, view, sourceEl, { to, event, detail }) {
     if (to) {
       dom_default.all(document, to, (el) => dom_default.dispatchEvent(el, event, detail));
@@ -2094,10 +2098,6 @@ var JS = {
   },
   hasAllClasses(el, classes) {
     return classes.every((name) => el.classList.contains(name));
-  },
-  isVisible(el) {
-    let style = window.getComputedStyle(el);
-    return !(style.opacity === 0 || style.display === "none");
   },
   isToggledOut(el, outClasses) {
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
@@ -3547,7 +3547,9 @@ var LiveSocket = class {
       if (!(el.isSameNode(e.target) || el.contains(e.target))) {
         this.withinOwners(e.target, (view) => {
           let phxEvent = el.getAttribute(binding);
-          js_default.exec("click", phxEvent, view, e.target, ["push", { data: this.eventMeta("click", e, e.target) }]);
+          if (js_default.isVisible(el)) {
+            js_default.exec("click", phxEvent, view, e.target, ["push", { data: this.eventMeta("click", e, e.target) }]);
+          }
         });
       }
     });
