@@ -321,13 +321,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                 other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
               end
 
-            js_targets =
-              if js_target_selector do
-                DOM.targets_from_selector(root, js_target_selector)
-              else
-                [nil]
-              end
-
+            js_targets = DOM.targets_from_selector(root, js_target_selector)
             node_targets = DOM.targets_from_node(root, node)
 
             targets =
