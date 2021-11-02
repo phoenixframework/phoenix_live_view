@@ -86,6 +86,7 @@ import {
   PHX_LV_PROFILE,
   PHX_MAIN,
   PHX_PARENT_ID,
+  PHX_REMOVE,
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
   PHX_THROTTLE,
@@ -351,7 +352,7 @@ export default class LiveSocket {
   }
 
   transitionRemoves(elements){
-    let removeAttr = this.binding("remove")
+    let removeAttr = this.binding(PHX_REMOVE)
     elements = elements || DOM.all(document, `[${removeAttr}]`)
     elements.forEach(el => {
       if(document.body.contains(el)){ // skip children already removed

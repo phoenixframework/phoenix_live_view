@@ -3,12 +3,13 @@ import {
   PHX_DISABLE_WITH,
   PHX_FEEDBACK_FOR,
   PHX_PRUNE,
+  PHX_REMOVE,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_SKIP,
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
-  PHX_UPDATE
+  PHX_UPDATE,
 } from "./constants"
 
 import {
@@ -77,7 +78,7 @@ export default class DOMPatch {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
-    let phxRemove = liveSocket.binding("remove")
+    let phxRemove = liveSocket.binding(PHX_REMOVE)
     let added = []
     let updates = []
     let appendPrependUpdates = []
