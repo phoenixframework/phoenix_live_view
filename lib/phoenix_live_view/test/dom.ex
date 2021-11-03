@@ -54,7 +54,13 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  def targets_from_selector(tree, selector) do
+  def targets_from_selector(tree, selector)
+
+  def targets_from_selector(_tree, nil), do: [nil]
+
+  def targets_from_selector(_tree, cid) when is_integer(cid), do: [cid]
+
+  def targets_from_selector(tree, selector) when is_binary(selector) do
     case Integer.parse(selector) do
       {cid, ""} ->
         [cid]
