@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.6
+
+### Bug fixes
+  - Fix disable-with failing to disable elements outside of forms
+
 ## 0.17.5 (2021-11-02)
 
 ### Bug fixes
