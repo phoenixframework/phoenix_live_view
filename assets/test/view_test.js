@@ -289,6 +289,21 @@ describe("View + DOM", function(){
       expect(el.querySelector("input").dataset.phxReadonly).toBeTruthy()
       expect(el.querySelector("textarea").dataset.phxReadonly).toBeTruthy()
     })
+
+    test("disables elements", function(){
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM(`
+      <button phx-click="inc" phx-disable-with>+</button>
+      `)
+      let button = el.querySelector("button")
+
+      let view = simulateJoinedView(el, liveSocket)
+      stubChannel(view)
+
+      expect(button.disabled).toEqual(false)
+      view.pushEvent("click", button, el, "inc", {})
+      expect(button.disabled).toEqual(true)
+    })
   })
 
   describe("phx-trigger-action", () => {

@@ -704,7 +704,8 @@ export default class View {
         if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
           el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText)
         }
-        el.innerText = disableText
+        if(disableText !== ""){ el.innerText = disableText }
+        el.setAttribute("disabled", "")
       }
     })
     return [newRef, elements, opts]
