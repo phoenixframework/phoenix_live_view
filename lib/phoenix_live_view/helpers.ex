@@ -562,7 +562,7 @@ defmodule Phoenix.LiveView.Helpers do
 
       <MyApp.Weather.city name="Kraków" />
 
-  It the same as:
+  Is the same as:
 
       <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
 
