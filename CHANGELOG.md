@@ -3,18 +3,18 @@
 ## 0.17.6
 
 ### Bug fixes
-  - Fix disable-with failing to disable elements outside of forms
+  - Fix `phx-disable-with` failing to disable elements outside of forms
 
 ## 0.17.5 (2021-11-02)
 
 ### Bug fixes
-  - Do not trigger phx-click-away if element is not visible
-  - Fix phx-remove failing to tear down nested live children
+  - Do not trigger `phx-click-away` if element is not visible
+  - Fix `phx-remove` failing to tear down nested live children
 
 ## 0.17.4 (2021-11-01)
 
 ### Bug fixes
-  - Fix variable scoping issues causing various content blog or duplication rendering bugs
+  - Fix variable scoping issues causing various content block or duplication rendering bugs
 
 ## 0.17.3 (2021-10-28)
 
