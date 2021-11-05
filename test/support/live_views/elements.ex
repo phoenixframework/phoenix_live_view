@@ -9,6 +9,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
+    <div id="child-component"><%= live_component Phoenix.LiveViewTest.ElementsComponent, id: 1 %></div>
 
     <%# basic render_* %>
     <span id="span-no-attr">This is a span</span>
@@ -134,6 +135,36 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
   def handle_event("form-submit-trigger", _value, socket) do
     {:noreply, assign(socket, :trigger_action, true)}
+  end
+
+  def handle_event(event, value, socket) do
+    {:noreply, assign(socket, :event, "#{event}: #{inspect(value)}")}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.ElementsComponent do
+  use Phoenix.LiveComponent
+
+  alias Phoenix.LiveView.JS
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <div id="component-last-event"><%= @event %></div>
+
+      <button id="component-button-js-click-target" phx-click={JS.push("button-click", target: @myself)}>button</button>
+    </div>
+    """
+  end
+
+  def mount(socket) do
+    socket = assign(socket, :event, nil)
+
+    {:ok, socket}
+  end
+
+  def handle_params(params, _uri, socket) do
+    {:noreply, assign(socket, :event, "handle_params: #{inspect(params)}")}
   end
 
   def handle_event(event, value, socket) do

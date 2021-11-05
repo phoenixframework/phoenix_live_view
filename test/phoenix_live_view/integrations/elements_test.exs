@@ -11,6 +11,10 @@ defmodule Phoenix.LiveView.ElementsTest do
     view |> element("#last-event") |> render() |> HtmlEntities.decode()
   end
 
+  defp last_component_event(view) do
+    view |> element("#component-last-event") |> render() |> HtmlEntities.decode()
+  end
+
   setup do
     conn = Phoenix.ConnTest.build_conn()
     {:ok, live, _} = live(conn, "/elements")
@@ -60,7 +64,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "raises on bad selector", %{live: view} do
       assert_raise ArgumentError,
-                   ~r/expected selector "div" to return a single element, but got 3/,
+                   ~r/expected selector "div" to return a single element, but got 6/,
                    fn -> view |> element("div") |> render() end
 
       assert_raise ArgumentError,
@@ -74,11 +78,11 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("#scoped-render", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   ~r/selector "div" returned 3 elements but none matched the text filter "This is not a div"/,
+                   ~r/selector "div" returned 6 elements but none matched the text filter "This is not a div"/,
                    fn -> view |> element("div", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   ~r/selector "div" returned 3 elements and 2 of them matched the text filter "This"/,
+                   ~r/selector "div" returned 6 elements and 2 of them matched the text filter "This"/,
                    fn -> view |> element("div", "This") |> render() end
     end
 
@@ -89,7 +93,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "raises on bad selector via target", %{live: view} do
       assert_raise ArgumentError,
-                   ~r/expected selector "div" to return a single element, but got 3/,
+                   ~r/expected selector "div" to return a single element, but got 6/,
                    fn -> view |> with_target("div") |> render() end
     end
   end
@@ -746,6 +750,14 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       assert view |> element("#button-js-click-value") |> render_click()
       assert last_event(view) == "<div id=\"last-event\">button-click: %{\"one\" => 1}</div>"
+    end
+  end
+
+  describe "child component / JS commands" do
+    test "push", %{live: view} do
+      assert view |> element("#component-button-js-click-target") |> render_click()
+      assert last_component_event(view) == "<div id=\"component-last-event\">button-click: %{}</div>"
+      refute last_event(view) == "<div id=\"last-event\">button-click: %{}</div>"
     end
   end
 end

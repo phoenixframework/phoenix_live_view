@@ -312,7 +312,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element) do
-            {event, js_values} = maybe_js_event(event_or_js)
+            {event, js_values, js_target_selector} = maybe_js_event(event_or_js)
             extra = Map.merge(extra, js_values)
 
             {values, uploads} =
@@ -321,7 +321,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                 other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
               end
 
-            {view, DOM.targets_from_node(root, node), event, values, uploads}
+            js_targets = DOM.targets_from_selector(root, js_target_selector)
+            node_targets = DOM.targets_from_node(root, node)
+
+            targets =
+              case {js_targets, node_targets} do
+                {[nil], right} -> right
+                {left, [nil]} -> left
+                {left, right} -> Enum.uniq(left ++ right)
+              end
+
+            {view, targets, event, values, uploads}
           end
       end
 
@@ -976,15 +986,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
 
       [["push", %{"event" => event} = args]] ->
-        {event, args["value"] || %{}}
+        {event, args["value"] || %{}, args["target"]}
 
       [_ | _] ->
         raise ArgumentError,
-                "Phoenix.LiveViewTest currently only supports a single push within JS commands"
+              "Phoenix.LiveViewTest currently only supports a single push within JS commands"
     end
   end
 
-  defp maybe_js_event(event), do: {event, _values = %{}}
+  defp maybe_js_event(event), do: {event, _values = %{}, _target = nil}
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do

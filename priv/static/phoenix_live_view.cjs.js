@@ -474,6 +474,9 @@ var DOM = {
   isPhxChild(node) {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
   },
+  firstPhxChild(el) {
+    return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
+  },
   dispatchEvent(target, eventString, detail = {}) {
     let event = new CustomEvent(eventString, { bubbles: true, cancelable: true, detail });
     target.dispatchEvent(event);
@@ -1602,7 +1605,13 @@ var DOMPatch = class {
     if (pendingRemoves.length > 0) {
       liveSocket.transitionRemoves(pendingRemoves);
       liveSocket.requestDOMUpdate(() => {
-        pendingRemoves.forEach((el) => el.remove());
+        pendingRemoves.forEach((el) => {
+          let child = dom_default.firstPhxChild(el);
+          if (child) {
+            liveSocket.destroyViewByEl(child);
+          }
+          el.remove();
+        });
         this.trackAfter("transitionsDiscarded", pendingRemoves);
       });
     }
@@ -2741,7 +2750,10 @@ var View = class {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
           el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
         }
-        el.innerText = disableText;
+        if (disableText !== "") {
+          el.innerText = disableText;
+        }
+        el.setAttribute("disabled", "");
       }
     });
     return [newRef, elements, opts];
