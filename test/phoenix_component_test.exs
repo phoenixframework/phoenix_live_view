@@ -254,4 +254,100 @@ defmodule Phoenix.ComponentTest do
       assert render_component(&hello/1, name: "WORLD!") == "Hello WORLD!"
     end
   end
+
+  describe "component metadata" do
+
+    defmodule RemoteFunctionComponentWithAttrs do
+      use Phoenix.Component
+
+      attr :id, :any, required: true
+      def remote(assigns), do: ~H[]
+    end
+
+    defmodule FunctionComponentWithAttrs do
+      use Phoenix.Component
+      import RemoteFunctionComponentWithAttrs
+      alias RemoteFunctionComponentWithAttrs, as: Remote
+
+      def func1_line, do: __ENV__.line
+      attr :id, :any, required: true
+      attr :email, :any
+      def func1(assigns), do: ~H[]
+
+      def func2_line, do: __ENV__.line
+      attr :name, :any, required: true
+      def func2(assigns), do: ~H[]
+
+      def render_line, do: __ENV__.line
+      def render(assigns) do
+        ~H"""
+        <!-- local -->
+        <.func1 id="1"/>
+        <!-- local with inner content -->
+        <.func1 id="2">CONTENT</.func1>
+        <!-- imported -->
+        <.remote id="3"/>
+        <!-- remote -->
+        <RemoteFunctionComponentWithAttrs.remote id="4"/>
+        <!-- remote with inner content -->
+        <RemoteFunctionComponentWithAttrs.remote id="5">CONTENT</RemoteFunctionComponentWithAttrs.remote>
+        <!-- remote and aliased -->
+        <Remote.remote id="6"/>
+        """
+      end
+    end
+
+    test "store attributes definitions" do
+      func1_line = FunctionComponentWithAttrs.func1_line()
+      func2_line = FunctionComponentWithAttrs.func2_line()
+
+      assert FunctionComponentWithAttrs.__components__() == %{
+        func1: [
+          %{name: :id, type: :any, opts: [required: true], line: func1_line + 1},
+          %{name: :email, type: :any, opts: [], line: func1_line + 2}
+        ],
+        func2: [
+          %{name: :name, type: :any, opts: [required: true], line: func2_line + 1}
+        ]
+      }
+    end
+
+    test "store component calls" do
+      render_line = FunctionComponentWithAttrs.render_line()
+      call_1_line = render_line + 4
+      call_3_line = render_line + 8
+      file = __ENV__.file
+
+      assert [
+        %{
+          component: {FunctionComponentWithAttrs, :func1},
+          attrs: [{"id", {:string, "1", %{}}, %{}}],
+          file: ^file,
+          line: ^call_1_line
+        },
+        %{
+          component: {FunctionComponentWithAttrs, :func1},
+          attrs: [{"id", {:string, "2", %{}}, %{}}]
+        },
+        %{
+          attrs: [{"id", {:string, "3", %{}}, %{}}],
+          component: {RemoteFunctionComponentWithAttrs, :remote},
+          file: ^file,
+          line: ^call_3_line
+        },
+        %{
+          attrs: [{"id", {:string, "4", %{}}, %{}}],
+          component: {RemoteFunctionComponentWithAttrs, :remote}
+        },
+        %{
+          attrs: [{"id", {:string, "5", %{}}, %{}}],
+          component: {RemoteFunctionComponentWithAttrs, :remote}
+        },
+        %{
+          attrs: [{"id", {:string, "6", %{}}, %{}}],
+          component: {RemoteFunctionComponentWithAttrs, :remote}
+        }
+      ] = FunctionComponentWithAttrs.__components_calls__()
+    end
+  end
 end

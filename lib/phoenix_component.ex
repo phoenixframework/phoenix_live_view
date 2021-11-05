@@ -290,6 +290,63 @@ defmodule Phoenix.Component do
     quote do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
+      import unquote(__MODULE__), only: [attr: 2, attr: 3]
+
+      Module.register_attribute(__MODULE__, :__attrs__, accumulate: true)
+      Module.register_attribute(__MODULE__, :__components_calls__, accumulate: true)
+      Module.put_attribute(__MODULE__, :__components__, %{})
+
+      @on_definition {unquote(__MODULE__), :__on_definition__}
+      @before_compile {unquote(__MODULE__), :__before_compile__}
+    end
+  end
+
+  @doc "Defines an attribute for the component"
+  defmacro attr(name, type, opts \\ []) do
+    quote bind_quoted: [
+            name: name,
+            type: type,
+            opts: opts,
+            line: __CALLER__.line
+          ] do
+      Module.put_attribute(__MODULE__, :__attrs__, %{name: name, type: type, opts: opts, line: line})
+    end
+  end
+
+  def __on_definition__(env, _kind, name, [_arg], _guards, _body) do
+    attrs =
+      env.module
+      |> Module.get_attribute(:__attrs__)
+      |> Enum.reverse()
+
+    if attrs != [] do
+      Module.delete_attribute(env.module, :__attrs__)
+
+      components =
+        env.module
+        |> Module.get_attribute(:__components__)
+        |> Map.put(name, attrs)
+
+      Module.put_attribute(env.module, :__components__, components)
+    end
+  end
+
+  def __on_definition__(_env, _kind, _name, _args, _guards, _body) do
+    # TODO: raise if __attrs__ is not empty?
+  end
+
+  defmacro __before_compile__(env) do
+    components = Module.get_attribute(env.module, :__components__)
+    components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
+
+    quote do
+      def __components__() do
+        unquote(Macro.escape(components))
+      end
+
+      def __components_calls__() do
+        unquote(Macro.escape(components_calls))
+      end
     end
   end
 end

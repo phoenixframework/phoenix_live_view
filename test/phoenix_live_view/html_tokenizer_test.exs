@@ -130,46 +130,46 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   end
 
   describe "attributes" do
-    test "represented as a list of {name, tuple | nil}, where tuple is the {type, value}" do
+    test "represented as a list of {name, tuple | nil, meta}, where tuple is the {type, value}" do
       attrs = tokenize_attrs(~S(<div class="panel" style={@style} hidden>))
 
       assert [
-               {"class", {:string, "panel", %{}}},
-               {"style", {:expr, "@style", %{}}},
-               {"hidden", nil}
+               {"class", {:string, "panel", %{}}, %{column: 6, line: 1}},
+               {"style", {:expr, "@style", %{}}, %{column: 20, line: 1}},
+               {"hidden", nil, %{column: 35, line: 1}}
              ] = attrs
     end
 
     test "accepts space between the name and `=`" do
       attrs = tokenize_attrs(~S(<div class ="panel">))
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
     end
 
     test "accepts line breaks between the name and `=`" do
       attrs = tokenize_attrs("<div class\n=\"panel\">")
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
 
       attrs = tokenize_attrs("<div class\r\n=\"panel\">")
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
     end
 
     test "accepts space between `=` and the value" do
       attrs = tokenize_attrs(~S(<div class= "panel">))
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
     end
 
     test "accepts line breaks between `=` and the value" do
       attrs = tokenize_attrs("<div class=\n\"panel\">")
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
 
       attrs = tokenize_attrs("<div class=\r\n\"panel\">")
 
-      assert [{"class", {:string, "panel", %{}}}] = attrs
+      assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
     end
 
     test "raise on missing value" do
@@ -232,34 +232,34 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   end
 
   describe "boolean attributes" do
-    test "represented as {name, nil}" do
+    test "represented as {name, nil, meta}" do
       attrs = tokenize_attrs("<div hidden>")
 
-      assert [{"hidden", nil}] = attrs
+      assert [{"hidden", nil, %{}}] = attrs
     end
 
     test "multiple attributes" do
       attrs = tokenize_attrs("<div hidden selected>")
 
-      assert [{"hidden", nil}, {"selected", nil}] = attrs
+      assert [{"hidden", nil, %{}}, {"selected", nil, %{}}] = attrs
     end
 
     test "with space after" do
       attrs = tokenize_attrs("<div hidden >")
 
-      assert [{"hidden", nil}] = attrs
+      assert [{"hidden", nil, %{}}] = attrs
     end
 
     test "in self close tag" do
       attrs = tokenize_attrs("<div hidden/>")
 
-      assert [{"hidden", nil}] = attrs
+      assert [{"hidden", nil, %{}}] = attrs
     end
 
     test "in self close tag with space after" do
       attrs = tokenize_attrs("<div hidden />")
 
-      assert [{"hidden", nil}] = attrs
+      assert [{"hidden", nil, %{}}] = attrs
     end
   end
 
@@ -267,22 +267,22 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     test "value is represented as {:string, value, meta}}" do
       attrs = tokenize_attrs(~S(<div class="panel">))
 
-      assert [{"class", {:string, "panel", %{delimiter: ?"}}}] = attrs
+      assert [{"class", {:string, "panel", %{delimiter: ?"}}, %{}}] = attrs
     end
 
     test "multiple attributes" do
       attrs = tokenize_attrs(~S(<div class="panel" style="margin: 0px;">))
 
       assert [
-               {"class", {:string, "panel", %{delimiter: ?"}}},
-               {"style", {:string, "margin: 0px;", %{delimiter: ?"}}}
+               {"class", {:string, "panel", %{delimiter: ?"}}, %{}},
+               {"style", {:string, "margin: 0px;", %{delimiter: ?"}}, %{}}
              ] = attrs
     end
 
     test "value containing single quotes" do
       attrs = tokenize_attrs(~S(<div title="i'd love to!">))
 
-      assert [{"title", {:string, "i'd love to!", %{delimiter: ?"}}}] = attrs
+      assert [{"title", {:string, "i'd love to!", %{delimiter: ?"}}, %{}}] = attrs
     end
 
     test "value containing line breaks" do
@@ -294,7 +294,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}}], %{}},
+               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}], %{}},
                {:tag_open, "span", [], %{line: 3, column: 8}}
              ] = tokens
     end
@@ -313,22 +313,22 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     test "value is represented as {:string, value, meta}}" do
       attrs = tokenize_attrs(~S(<div class='panel'>))
 
-      assert [{"class", {:string, "panel", %{delimiter: ?'}}}] = attrs
+      assert [{"class", {:string, "panel", %{delimiter: ?'}}, %{}}] = attrs
     end
 
     test "multiple attributes" do
       attrs = tokenize_attrs(~S(<div class='panel' style='margin: 0px;'>))
 
       assert [
-               {"class", {:string, "panel", %{delimiter: ?'}}},
-               {"style", {:string, "margin: 0px;", %{delimiter: ?'}}}
+               {"class", {:string, "panel", %{delimiter: ?'}}, %{}},
+               {"style", {:string, "margin: 0px;", %{delimiter: ?'}}, %{}}
              ] = attrs
     end
 
     test "value containing double quotes" do
       attrs = tokenize_attrs(~S(<div title='Say "hi!"'>))
 
-      assert [{"title", {:string, ~S(Say "hi!"), %{delimiter: ?'}}}] = attrs
+      assert [{"title", {:string, ~S(Say "hi!"), %{delimiter: ?'}}, %{}}] = attrs
     end
 
     test "value containing line breaks" do
@@ -340,7 +340,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}}], %{}},
+               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}], %{}},
                {:tag_open, "span", [], %{line: 3, column: 8}}
              ] = tokens
     end
@@ -359,38 +359,38 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     test "value is represented as {:expr, value, meta}" do
       attrs = tokenize_attrs(~S(<div class={@class}>))
 
-      assert [{"class", {:expr, "@class", %{line: 1, column: 13}}}] = attrs
+      assert [{"class", {:expr, "@class", %{line: 1, column: 13}}, %{}}] = attrs
     end
 
     test "multiple attributes" do
       attrs = tokenize_attrs(~S(<div class={@class} style={@style}>))
 
       assert [
-               {"class", {:expr, "@class", %{}}},
-               {"style", {:expr, "@style", %{}}}
+               {"class", {:expr, "@class", %{}}, %{}},
+               {"style", {:expr, "@style", %{}}, %{}}
              ] = attrs
     end
 
     test "double quoted strings inside expression" do
       attrs = tokenize_attrs(~S(<div class={"text"}>))
 
-      assert [{"class", {:expr, ~S("text"), %{}}}] = attrs
+      assert [{"class", {:expr, ~S("text"), %{}}, %{}}] = attrs
     end
 
     test "value containing curly braces" do
       attrs = tokenize_attrs(~S(<div class={ [{:active, @active}] }>))
 
-      assert [{"class", {:expr, " [{:active, @active}] ", %{}}}] = attrs
+      assert [{"class", {:expr, " [{:active, @active}] ", %{}}, %{}}] = attrs
     end
 
     test "ignore escaped curly braces inside elixir strings" do
       attrs = tokenize_attrs(~S(<div class={"\{hi"}>))
 
-      assert [{"class", {:expr, ~S("\{hi"), %{}}}] = attrs
+      assert [{"class", {:expr, ~S("\{hi"), %{}}, %{}}] = attrs
 
       attrs = tokenize_attrs(~S(<div class={"hi\}"}>))
 
-      assert [{"class", {:expr, ~S("hi\}"), %{}}}] = attrs
+      assert [{"class", {:expr, ~S("hi\}"), %{}}, %{}}] = attrs
     end
 
     test "compute line and columns" do
@@ -406,9 +406,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {"class", {:expr, _, %{line: 2, column: 10}}},
-               {"style", {:expr, _, %{line: 3, column: 12}}},
-               {"title", {:expr, _, %{line: 6, column: 10}}}
+               {"class", {:expr, _, %{line: 2, column: 10}}, %{}},
+               {"style", {:expr, _, %{line: 3, column: 12}}, %{}},
+               {"title", {:expr, _, %{line: 6, column: 10}}, %{}}
              ] = attrs
     end
 
@@ -426,41 +426,41 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     test "represented as {:root, value, meta}" do
       attrs = tokenize_attrs("<div {@attrs}>")
 
-      assert [{:root, {:expr, "@attrs", %{}}}] = attrs
+      assert [{:root, {:expr, "@attrs", %{}}, %{}}] = attrs
     end
 
     test "with space after" do
       attrs = tokenize_attrs("<div {@attrs} >")
 
-      assert [{:root, {:expr, "@attrs", %{}}}] = attrs
+      assert [{:root, {:expr, "@attrs", %{}}, %{}}] = attrs
     end
 
     test "with line break after" do
       attrs = tokenize_attrs("<div {@attrs}\n>")
 
-      assert [{:root, {:expr, "@attrs", %{}}}] = attrs
+      assert [{:root, {:expr, "@attrs", %{}}, %{}}] = attrs
     end
 
     test "in self close tag" do
       attrs = tokenize_attrs("<div {@attrs}/>")
 
-      assert [{:root, {:expr, "@attrs", %{}}}] = attrs
+      assert [{:root, {:expr, "@attrs", %{}}, %{}}] = attrs
     end
 
     test "in self close tag with space after" do
       attrs = tokenize_attrs("<div {@attrs} />")
 
-      assert [{:root, {:expr, "@attrs", %{}}}] = attrs
+      assert [{:root, {:expr, "@attrs", %{}}, %{}}] = attrs
     end
 
     test "multiple values among other attributes" do
       attrs = tokenize_attrs("<div class={@class} {@attrs1} hidden {@attrs2}/>")
 
       assert [
-               {"class", {:expr, "@class", %{}}},
-               {:root, {:expr, "@attrs1", %{}}},
-               {"hidden", nil},
-               {:root, {:expr, "@attrs2", %{}}}
+               {"class", {:expr, "@class", %{}}, %{}},
+               {:root, {:expr, "@attrs1", %{}}, %{}},
+               {"hidden", nil, %{}},
+               {:root, {:expr, "@attrs2", %{}}, %{}}
              ] = attrs
     end
 
@@ -477,9 +477,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:root, {:expr, "@root1", %{line: 2, column: 4}}},
-               {:root, {:expr, "\n      @root2\n    ", %{line: 3, column: 6}}},
-               {:root, {:expr, "@root3", %{line: 6, column: 4}}}
+               {:root, {:expr, "@root1", %{line: 2, column: 4}},%{line: 2, column: 4}},
+               {:root, {:expr, "\n      @root2\n    ", %{line: 3, column: 6}}, %{line: 3, column: 6}},
+               {:root, {:expr, "@root3", %{line: 6, column: 4}}, %{line: 6, column: 4}}
              ] = attrs
     end
 
@@ -538,7 +538,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       assert tokenize("""
              <script src="foo.js" />
              """) == [
-               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}}],
+               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 9, line: 1}}],
                 %{column: 1, line: 1, self_close: true}},
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]

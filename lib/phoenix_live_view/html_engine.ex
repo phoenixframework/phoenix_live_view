@@ -15,8 +15,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def compile(path, _name) do
+    # We need access for the caller, so we return a call to a macro.
+    quote do
+      require Phoenix.LiveView.HTMLEngine
+      Phoenix.LiveView.HTMLEngine.compile(unquote(path))
+    end
+  end
+
+  @doc false
+  defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim)
+    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim, caller: __CALLER__)
   end
 
   @behaviour EEx.Engine
@@ -37,7 +46,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       substate: subengine.init([]),
       module: module,
       file: Keyword.get(opts, :file, "nofile"),
-      indentation: Keyword.get(opts, :indentation, 0)
+      indentation: Keyword.get(opts, :indentation, 0),
+      caller: Keyword.get(opts, :caller)
     }
   end
 
@@ -87,7 +97,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(%{subengine: subengine, substate: substate, file: file}) do
+  defp token_state(%{subengine: subengine, substate: substate, file: file, module: module, caller: caller}) do
     %{
       subengine: subengine,
       substate: substate,
@@ -95,7 +105,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       slots: [],
-      root: nil
+      root: nil,
+      module: module,
+      caller: caller
     }
   end
 
@@ -248,17 +260,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true} = tag_meta},
+         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true, line: line} = tag_meta},
          state
        )
        when first in ?A..?Z do
     file = state.file
-    {mod, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
+    {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
     {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
+
+    mod = Macro.expand(mod_ast, state.caller)
+    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
 
     ast =
       quote line: tag_meta.line do
-        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
+        Phoenix.LiveView.Helpers.component(&(unquote(mod_ast).unquote(fun) / 1), unquote(assigns))
       end
 
     state
@@ -283,14 +298,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod, fun}, line: line}}, state} =
+    {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
     {assigns, state} = build_component_assigns(attrs, line, state)
 
+    mod = Macro.expand(mod_ast, state.caller)
+    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.component(&(unquote(mod).unquote(fun) / 1), unquote(assigns))
+        Phoenix.LiveView.Helpers.component(&(unquote(mod_ast).unquote(fun) / 1), unquote(assigns))
       end
 
     state
@@ -306,6 +324,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
        ) do
     fun = String.to_atom(name)
     {assigns, state} = build_self_close_component_assigns(attrs, line, state)
+
+    mod = actual_component_module(state.caller, fun)
+    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -396,6 +417,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     fun = String.to_atom(fun_name)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
+    mod = actual_component_module(state.caller, fun)
+    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+
     ast =
       quote line: line do
         Phoenix.LiveView.Helpers.component(
@@ -462,21 +486,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
-      {:root, {:expr, value, %{line: line, column: col}}}, state ->
+      {:root, {:expr, value, %{line: line, column: col}}, _attr_meta}, state ->
         attrs = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
         handle_attrs_escape(state, meta, attrs)
 
-      {name, {:expr, value, %{line: line, column: col}}}, state ->
+      {name, {:expr, value, %{line: line, column: col}}, _attr_meta}, state ->
         attr = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
         handle_attr_escape(state, meta, name, attr)
 
-      {name, {:string, value, %{delimiter: ?"}}}, state ->
+      {name, {:string, value, %{delimiter: ?"}}, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
 
-      {name, {:string, value, %{delimiter: ?'}}}, state ->
+      {name, {:string, value, %{delimiter: ?'}}, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, ~s( #{name}='#{value}')])
 
-      {name, nil}, state ->
+      {name, nil, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, " #{name}"])
     end)
   end
@@ -622,7 +646,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr(
-         {:root, {:expr, value, %{line: line, column: col}}},
+         {:root, {:expr, value, %{line: line, column: col}}, _attr_meta},
          {let, r, a},
          file
        ) do
@@ -632,7 +656,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr(
-         {"let", {:expr, value, %{line: line, column: col} = meta}},
+         {"let", {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
          {nil, r, a},
          file
        ) do
@@ -641,7 +665,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr(
-         {"let", {:expr, _value, previous_meta}},
+         {"let", {:expr, _value, previous_meta}, _attr_meta},
          {{_, meta}, _, _},
          file
        ) do
@@ -658,7 +682,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr(
-         {name, {:expr, value, %{line: line, column: col}}},
+         {name, {:expr, value, %{line: line, column: col}}, _attr_meta},
          {let, r, a},
          file
        ) do
@@ -666,11 +690,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {let, r, [{String.to_atom(name), quoted_value} | a]}
   end
 
-  defp split_component_attr({name, {:string, value, _}}, {let, r, a}, _file) do
+  defp split_component_attr({name, {:string, value, _}, _attr_meta}, {let, r, a}, _file) do
     {let, r, [{String.to_atom(name), value} | a]}
   end
 
-  defp split_component_attr({name, nil}, {let, r, a}, _file) do
+  defp split_component_attr({name, nil, _attr_meta}, {let, r, a}, _file) do
     {let, r, [{String.to_atom(name), true} | a]}
   end
 
@@ -747,6 +771,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
+  defp store_component_call(module, component, attrs, file, line) do
+    if Module.open?(module) do
+      call = %{component: component, attrs: attrs, file: file, line: line}
+      Module.put_attribute(module, :__components_calls__, call)
+    end
+  end
+
   ## Helpers
 
   for void <- ~w(area base br col hr img input link meta param command keygen source) do
@@ -756,4 +787,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
+
+  defp actual_component_module(env, fun) do
+    case lookup_import(env, {fun, 1}) do
+      [{_, module}| _] -> module
+      _ -> env.module
+    end
+  end
+
+  # Code extracted from `Macro.Env`. We can call it directly as
+  # soon as version < 1.13 is no longer supported by phoenix.
+  defp lookup_import(
+        %{__struct__: Macro.Env, functions: functions, macros: macros},
+        {name, arity} = pair
+      )
+      when is_atom(name) and is_integer(arity) do
+    f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
+    m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
+    f ++ m
+  end
 end

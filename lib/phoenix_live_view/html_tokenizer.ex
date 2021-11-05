@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_attribute(text, line, column, acc, state) do
     case handle_attr_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc = put_attr(acc, name)
+        acc = put_attr(acc, name, %{line: line, column: column})
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
       {:error, message, column} ->
@@ -299,7 +299,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_root_attribute(text, line, column, acc, state) do
     case handle_interpolation(text, line, column, [], state) do
       {:ok, value, new_line, new_column, rest, state} ->
-        acc = put_attr(acc, :root, {:expr, value, %{line: line, column: column}})
+        meta = %{line: line, column: column}
+        acc = put_attr(acc, :root, meta, {:expr, value, meta})
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
@@ -502,13 +503,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp text_to_acc(buffer, acc, line, column),
     do: [{:text, buffer_to_string(buffer), %{line_end: line, column_end: column}} | acc]
 
-  defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, value \\ nil) do
-    attrs = [{attr, value} | attrs]
+  defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, attr_meta, value \\ nil) do
+    attrs = [{attr, value, attr_meta} | attrs]
     [{:tag_open, name, attrs, meta} | acc]
   end
 
-  defp put_attr_value([{:tag_open, name, [{attr, _value} | attrs], meta} | acc], value) do
-    attrs = [{attr, value} | attrs]
+  defp put_attr_value([{:tag_open, name, [{attr, _value, attr_meta} | attrs], meta} | acc], value) do
+    attrs = [{attr, value, attr_meta} | attrs]
     [{:tag_open, name, attrs, meta} | acc]
   end
 

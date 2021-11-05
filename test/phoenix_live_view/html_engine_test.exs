@@ -12,7 +12,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       Keyword.merge(opts,
         file: __ENV__.file,
         engine: HTMLEngine,
-        subengine: Phoenix.LiveView.Engine
+        subengine: Phoenix.LiveView.Engine,
+        caller: __ENV__
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -27,7 +28,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   defmacrop compile(string) do
     quote do
-      unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine))
+      unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine, module: __MODULE__, caller: __CALLER__))
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
     end
