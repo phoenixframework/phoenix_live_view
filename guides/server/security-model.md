@@ -59,14 +59,14 @@ should execute those same verifications:
       {:ok, socket}
     end
 
-LiveView v0.16 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
+LiveView v0.17 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
 which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.LiveView
 
-      def mount(params, %{"user_id" => user_id} = _session, socket) do
+      def on_mount(:default, params, %{"user_id" => user_id} = _session, socket) do
         socket = assign_new(socket, :current_user, fn ->
           Accounts.get_user!(user_id)
         end)
