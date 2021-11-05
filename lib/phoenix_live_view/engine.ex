@@ -298,7 +298,7 @@ defmodule Phoenix.LiveView.Engine do
   @doc false
   def init(_opts) do
     # Phoenix.LiveView.HTMLEngine calls this engine in a non-linear order
-    # to evaluate slots, which can lead to varible conflicts. Therefore we
+    # to evaluate slots, which can lead to variable conflicts. Therefore we
     # use a counter to ensure all variable names are unique.
     %{
       static: [],
