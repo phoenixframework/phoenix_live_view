@@ -1280,13 +1280,13 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a redirect was performed.
 
-  It returns a tuple containing the new path and the flash messages
-  from said redirect, if any. Note the flash will contain string keys.
+  It returns the flash messages from said redirect, if any. Note the
+  flash will contain string keys.
 
   ## Examples
 
       render_click(view, :event_that_triggers_redirect)
-      {_path, flash} = assert_redirected view, "/path"
+      flash = assert_redirected view, "/path"
       assert flash["info"] == "Welcome"
 
   """
