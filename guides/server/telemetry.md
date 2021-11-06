@@ -14,7 +14,8 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           %{
             socket: Phoenix.LiveView.Socket.t,
             params: unsigned_params | :not_mounted_at_router,
-            session: map
+            session: map,
+            uri: String.t() | nil
           }
 
 
@@ -30,7 +31,8 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           %{
             socket: Phoenix.LiveView.Socket.t,
             params: unsigned_params | :not_mounted_at_router,
-            session: map
+            session: map,
+            uri: String.t() | nil
           }
 
 
@@ -46,7 +48,8 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             kind: atom,
             reason: term,
             params: unsigned_params | :not_mounted_at_router,
-            session: map
+            session: map,
+            uri: String.t() | nil
           }
 
   * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView`

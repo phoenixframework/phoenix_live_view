@@ -65,12 +65,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
                       %{socket: %Socket{transport_pid: nil}} = metadata}
 
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
     end
 
     @tag session: %{current_user_id: "1"}
@@ -86,6 +88,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert metadata.params == %{"crash_on" => "disconnected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_mount"
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
                       %{socket: %Socket{transport_pid: nil}} = metadata}
@@ -94,6 +97,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert %RuntimeError{} = metadata.reason
       assert metadata.params == %{"crash_on" => "disconnected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_mount"
     end
 
     test "live mount in single call", %{conn: conn} do
@@ -134,6 +138,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert metadata.socket.transport_pid
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
                       %{socket: %{transport_pid: pid}} = metadata}
@@ -142,6 +147,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert metadata.socket.transport_pid
       assert metadata.params == %{"foo" => "bar"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
     end
 
     @tag session: %{current_user_id: "1"}
@@ -157,6 +163,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert metadata.socket.transport_pid
       assert metadata.params == %{"crash_on" => "connected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/errors?crash_on=connected_mount"
 
       assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
                       %{socket: %{transport_pid: pid}} = metadata}
@@ -167,6 +174,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert %RuntimeError{} = metadata.reason
       assert metadata.params == %{"crash_on" => "connected_mount"}
       assert metadata.session == %{"current_user_id" => "1"}
+      assert metadata.uri == "http://www.example.com/errors?crash_on=connected_mount"
     end
 
     test "push_redirect when disconnected", %{conn: conn} do

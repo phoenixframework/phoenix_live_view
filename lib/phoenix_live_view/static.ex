@@ -257,7 +257,7 @@ defmodule Phoenix.LiveView.Static do
     mount_params = if socket.router, do: params, else: :not_mounted_at_router
 
     socket
-    |> Utils.maybe_call_live_view_mount!(view, mount_params, session)
+    |> Utils.maybe_call_live_view_mount!(view, mount_params, session, uri)
     |> mount_handle_params(view, params, uri)
     |> case do
       {:noreply, %Socket{redirected: {:live, _, _}} = socket} ->
