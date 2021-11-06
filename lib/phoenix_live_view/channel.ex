@@ -922,7 +922,7 @@ defmodule Phoenix.LiveView.Channel do
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         socket
-        |> Utils.maybe_call_live_view_mount!(view, params, merged_session)
+        |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
         |> build_state(phx_socket)
         |> maybe_call_mount_handle_params(router, url, params)
         |> reply_mount(from, verified, route)
