@@ -11,16 +11,53 @@ defmodule Phoenix.LiveView.UploadChannel do
     GenServer.call(pid, :cancel, @timeout)
   end
 
+  def prepare_consume(pid, entry, func) when is_function(func, 1) or is_function(func, 2) do
+    case GenServer.call(pid, :prepare_consume, @timeout) do
+      {:ok, file_meta} ->
+        cond do
+          is_function(func, 1) -> func.(file_meta)
+          is_function(func, 2) -> func.(file_meta, entry)
+        end
+
+      {:error, :in_progress} ->
+        raise RuntimeError, "cannot prepare uploaded file that is still in progress"
+    end
+  end
+
   def consume(pid, entry, func) when is_function(func, 1) or is_function(func, 2) do
     case GenServer.call(pid, :consume_start, @timeout) do
       {:ok, file_meta} ->
         try do
-          cond do
-            is_function(func, 1) -> func.(file_meta)
-            is_function(func, 2) -> func.(file_meta, entry)
+          result =
+            cond do
+              is_function(func, 1) -> func.(file_meta)
+              is_function(func, 2) -> func.(file_meta, entry)
+            end
+
+          case result do
+            {:ok, return} ->
+              GenServer.call(pid, :consume_done, @timeout)
+              return
+
+            {:postpone, return} ->
+              return
+
+            return ->
+              IO.warn """
+              consuming uploads requires a return signature matching:
+
+                  {:ok, value} | {:postpone, value}
+
+              got:
+
+                  #{inspect(return)}
+              """
+              GenServer.call(pid, :consume_done, @timeout)
+              return
           end
-        after
-          GenServer.call(pid, :consume_done, @timeout)
+        catch
+          _kind, _reason ->
+            GenServer.call(pid, :consume_done, @timeout)
         end
 
       {:error, :in_progress} ->
@@ -85,6 +122,15 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   def handle_info(:chunk_timeout, socket) do
     {:stop, {:shutdown, :closed}, socket}
+  end
+
+  @impl true
+  def handle_call(:prepare_consume, _from, socket) do
+    if socket.assigns.done? do
+      {:reply, {:ok, file_meta(socket)}, socket}
+    else
+      {:reply, {:error, :in_progress}, socket}
+    end
   end
 
   @impl true

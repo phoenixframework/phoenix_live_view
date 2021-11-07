@@ -65,7 +65,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     socket =
       if entry.done? do
         name =
-          Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> entry.client_name end)
+          Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
+            {:ok, entry.client_name}
+          end)
 
         LiveView.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
       else
@@ -355,7 +357,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         UploadLive.run(lv, fn socket ->
           Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
-            send(parent, {:file, path, entry.client_name, File.read!(path)})
+            {:ok, send(parent, {:file, path, entry.client_name, File.read!(path)})}
           end)
 
           {:reply, :ok, socket}
@@ -385,7 +387,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
 
           Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn %{path: path} ->
-            send(parent, {:file, path, entry.client_name, File.read!(path)})
+            {:ok, send(parent, {:file, path, entry.client_name, File.read!(path)})}
           end)
 
           {:reply, :ok, socket}
@@ -582,6 +584,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
+
       UploadLive.run(lv, fn component_socket ->
         new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
         {:reply, :ok, new_socket}
@@ -595,6 +598,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     test "cancel_upload not yet in progress when component is removed", %{lv: lv} do
       file_name = "myfile1.jpeg"
       avatar = file_input(lv, "#upload0", :avatar, [%{name: file_name, content: "ok"}])
+
       assert lv
              |> form("form", user: %{})
              |> render_change(avatar) =~ file_name
@@ -609,6 +613,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
+
       UploadLive.run(lv, fn component_socket ->
         new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
         {:reply, :ok, new_socket}

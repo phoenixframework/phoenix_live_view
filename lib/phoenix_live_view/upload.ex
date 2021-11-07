@@ -279,16 +279,43 @@ defmodule Phoenix.LiveView.Upload do
         |> Enum.map(fn entry ->
           meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
 
-          cond do
-            is_function(func, 1) -> func.(meta)
-            is_function(func, 2) -> func.(meta, entry)
+          result =
+            cond do
+              is_function(func, 1) -> func.(meta)
+              is_function(func, 2) -> func.(meta, entry)
+            end
+
+          case result do
+            {:ok, return} ->
+              {entry.ref, return}
+
+            {:postpone, return} ->
+              {:postpone, return}
+
+            return ->
+              IO.warn("""
+              consuming uploads requires a return signature matching:
+
+                  {:ok, value} | {:postpone, value}
+
+              got:
+
+                  #{inspect(return)}
+              """)
+
+              {entry.ref, return}
           end
         end)
 
-      entry_refs = for entry <- entries, do: entry.ref
-      Phoenix.LiveView.Channel.drop_upload_entries(conf, entry_refs)
+      consumed_refs =
+        Enum.flat_map(results, fn
+          {:postpone, _result} -> []
+          {ref, _result} -> [ref]
+        end)
 
-      results
+      Phoenix.LiveView.Channel.drop_upload_entries(conf, consumed_refs)
+
+      Enum.map(results, fn {_ref, result} -> result end)
     else
       entries
       |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
