@@ -1,8 +1,17 @@
 # Installation
 
-**Note:** Phoenix v1.5 comes with built-in support for LiveView apps. Just create
-your application with `mix phx.new my_app --live`. If you are using earlier Phoenix
-versions or your app already exists, keep on reading.
+## New projects
+
+Phoenix v1.5 comes with built-in support for LiveView apps. Just create
+your application with `mix phx.new my_app --live`.
+
+Once you've created a LiveView project, refer to [LiveView documentation](`Phoenix.LiveView`)
+for further information on how to use it.
+
+## Existing projects
+
+If you are using a Phoenix version earlier than v1.5 or your app already exists, continue
+with the following steps.
 
 The instructions below will serve if you are installing the latest stable version
 from Hex. To start using LiveView, add one of the following dependencies to your `mix.exs`
