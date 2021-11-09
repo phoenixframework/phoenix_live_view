@@ -322,7 +322,7 @@ defmodule Phoenix.LiveView do
     * [Uploads (External)](uploads-external.md)
   '''
 
-  alias Phoenix.LiveView.{Socket, Route}
+  alias Phoenix.LiveView.Socket
 
   @type unsigned_params :: map
 
@@ -1047,17 +1047,8 @@ defmodule Phoenix.LiveView do
 
   """
   def push_patch(%Socket{} = socket, opts) do
-    %{to: to} = opts = push_opts!(opts, "push_patch/2")
-
-    case Route.live_link_info!(socket, socket.private.root_view, to) do
-      {:internal, %Route{params: params, action: action}} ->
-        put_redirect(socket, {:live, {params, action}, opts})
-
-      {:external, _uri} ->
-        raise ArgumentError,
-              "cannot push_patch/2 to #{inspect(to)} because the given path " <>
-                "does not point to the current root view #{inspect(socket.private.root_view)}"
-    end
+    opts = push_opts!(opts, "push_patch/2")
+    put_redirect(socket, {:live, :patch, opts})
   end
 
   @doc """

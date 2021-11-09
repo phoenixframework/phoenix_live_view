@@ -347,7 +347,7 @@ defmodule Phoenix.LiveView.Utils do
     """
   end
 
-  defp validate_mount_redirect!({:live, {_, _}, _}), do: raise_bad_mount_and_live_patch!()
+  defp validate_mount_redirect!({:live, :patch, _}), do: raise_bad_mount_and_live_patch!()
   defp validate_mount_redirect!(_), do: :ok
 
   @doc """
