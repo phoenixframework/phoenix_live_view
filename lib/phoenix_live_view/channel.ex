@@ -416,7 +416,9 @@ defmodule Phoenix.LiveView.Channel do
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
-      {:live, {params, action}, %{to: to} = opts} ->
+      {:live, :patch, %{to: to} = opts} ->
+        {params, action} = patch_params_and_action!(new_socket, opts)
+
         %{socket: new_socket} = new_state = drop_redirect(new_state)
         uri = build_uri(new_state, to)
 
@@ -664,14 +666,16 @@ defmodule Phoenix.LiveView.Channel do
         |> push_live_redirect(opts, ref, pending_diff_ack)
         |> stop_shutdown_redirect(:live_redirect, opts)
 
-      {:live, {params, action}, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
+      {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
+        {params, action} = patch_params_and_action!(new_socket, opts)
+
         new_state
         |> drop_redirect()
         |> maybe_push_pending_diff_ack(pending_diff_ack)
         |> Map.update!(:socket, &Utils.replace_flash(&1, flash))
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
-      {:live, {_params, _action}, %{to: _to, kind: _kind}} = patch ->
+      {:live, :patch, %{to: _to, kind: _kind}} = patch ->
         send(new_socket.root_pid, {@prefix, :redirect, patch, flash})
         {:diff, diff, new_state} = render_diff(new_state, new_socket, false)
 
@@ -680,6 +684,21 @@ defmodule Phoenix.LiveView.Channel do
          |> drop_redirect()
          |> maybe_push_pending_diff_ack(pending_diff_ack)
          |> push_diff(diff, ref)}
+    end
+  end
+
+  defp patch_params_and_action!(socket, %{to: to}) do
+    destructure [path, query], :binary.split(to, "?")
+    to = %{socket.host_uri | path: path, query: query}
+
+    case Route.live_link_info!(socket, socket.private.root_view, to) do
+      {:internal, %Route{params: params, action: action}} ->
+        {params, action}
+
+      {:external, _uri} ->
+        raise ArgumentError,
+              "cannot push_patch/2 to #{inspect(to)} because the given path " <>
+                "does not point to the current root view #{inspect(socket.private.root_view)}"
     end
   end
 
@@ -767,7 +786,13 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push(state, event, payload) do
-    message = %Message{topic: state.topic, event: event, payload: payload, join_ref: state.join_ref}
+    message = %Message{
+      topic: state.topic,
+      event: event,
+      payload: payload,
+      join_ref: state.join_ref
+    }
+
     send(state.socket.transport_pid, state.serializer.encode!(message))
     state
   end

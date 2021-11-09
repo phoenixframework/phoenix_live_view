@@ -364,16 +364,10 @@ defmodule Phoenix.LiveViewUnitTest do
         push_patch(@socket, to: "//foo.com")
       end
 
-      assert_raise ArgumentError,
-                   ~r"cannot push_patch/2 to \"/counter/123\" because the given path does not point to the current root view",
-                   fn ->
-                     push_patch(put_in(@socket.private.root_view, __MODULE__), to: "/counter/123")
-                   end
-
       socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
 
       assert push_patch(socket, to: "/counter/123").redirected ==
-               {:live, {%{"id" => "123"}, nil}, %{kind: :push, to: "/counter/123"}}
+               {:live, :patch, %{kind: :push, to: "/counter/123"}}
     end
   end
 end
