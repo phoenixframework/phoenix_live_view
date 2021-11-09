@@ -149,6 +149,7 @@ defmodule Phoenix.LiveView.Static do
       ) do
     config = load_live!(view, :view)
     container = container(config, opts)
+    sticky? = Keyword.get(opts, :sticky, false)
 
     child_id =
       opts[:id] ||
@@ -162,15 +163,15 @@ defmodule Phoenix.LiveView.Static do
           id: to_string(child_id),
           view: view,
           endpoint: endpoint,
-          root_pid: parent.root_pid,
-          parent_pid: self(),
+          root_pid: if(sticky?, do: nil, else: parent.root_pid),
+          parent_pid: if(sticky?, do: nil, else: self()),
           router: parent.router
         },
         %{
           assign_new: {parent.assigns.__assigns__, []},
           lifecycle: config.lifecycle,
           phoenix_live_layout: false,
-          root_view: parent.private.root_view,
+          root_view: if(sticky?, do: view, else: parent.private.root_view),
           __changed__: %{}
         },
         nil,
@@ -179,21 +180,25 @@ defmodule Phoenix.LiveView.Static do
       )
 
     if transport_pid do
-      connected_nested_render(parent, socket, view, container, opts)
+      connected_nested_render(parent, socket, view, container, opts, sticky?)
     else
-      disconnected_nested_render(parent, socket, view, container, opts)
+      disconnected_nested_render(parent, socket, view, container, opts, sticky?)
     end
   end
 
-  defp disconnected_nested_render(parent, socket, view, container, opts) do
+  defp disconnected_nested_render(parent, socket, view, container, opts, sticky?) do
     conn_session = parent.private.conn_session
-    {_, mount_session} = load_session(conn_session, opts)
+    {to_sign_session, mount_session} = load_session(conn_session, opts)
     {tag, extended_attrs} = container
 
     socket = put_in(socket.private[:conn_session], conn_session)
 
     socket =
       Utils.maybe_call_live_view_mount!(socket, view, :not_mounted_at_router, mount_session)
+
+    session_token =
+      if sticky?, do: sign_nested_session(parent, socket, view, to_sign_session, sticky?)
+
 
     if redir = socket.redirected do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
@@ -206,23 +211,28 @@ defmodule Phoenix.LiveView.Static do
     attrs = [
       {:id, socket.id},
       {:data,
-       phx_session: "",
-       phx_static: sign_static_token(socket),
-       phx_parent_id: parent.id}
+       [
+         phx_session: session_token || "",
+         phx_static: sign_static_token(socket)
+       ] ++ if(sticky?, do: [phx_sticky: true], else: [phx_parent_id: parent.id])}
       | extended_attrs
     ]
 
     to_rendered_content_tag(socket, tag, view, attrs)
   end
 
-  defp connected_nested_render(parent, socket, view, container, opts) do
+  defp connected_nested_render(parent, socket, view, container, opts, sticky?) do
     {to_sign_session, _} = load_session(%{}, opts)
     {tag, extended_attrs} = container
-    session_token = sign_nested_session(parent, socket, view, to_sign_session)
+    session_token = sign_nested_session(parent, socket, view, to_sign_session, sticky?)
 
     attrs = [
       {:id, socket.id},
-      {:data, phx_parent_id: parent.id, phx_session: session_token, phx_static: ""}
+      {:data,
+       [
+         phx_session: session_token,
+         phx_static: ""
+       ] ++ if(sticky?, do: [phx_sticky: true], else: [phx_parent_id: parent.id])}
       | extended_attrs
     ]
 
@@ -310,15 +320,15 @@ defmodule Phoenix.LiveView.Static do
     })
   end
 
-  defp sign_nested_session(%Socket{} = parent, %Socket{} = child, view, session) do
+  defp sign_nested_session(%Socket{} = parent, %Socket{} = child, view, session, sticky?) do
     # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     sign_token(parent.endpoint, %{
       id: child.id,
       view: view,
-      root_view: parent.private.root_view,
+      root_view: if(sticky?, do: view, else: parent.private.root_view),
       router: parent.router,
-      parent_pid: self(),
-      root_pid: parent.root_pid,
+      parent_pid: if(sticky?, do: nil, else: self()),
+      root_pid: if(sticky?, do: nil, else: parent.root_pid),
       session: session
     })
   end

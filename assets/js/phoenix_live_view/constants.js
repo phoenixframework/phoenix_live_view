@@ -37,6 +37,7 @@ export const CHECKABLE_INPUTS = ["checkbox", "radio"]
 export const PHX_HAS_SUBMITTED = "phx-has-submitted"
 export const PHX_SESSION = "data-phx-session"
 export const PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`
+export const PHX_STICKY = "data-phx-sticky"
 export const PHX_STATIC = "data-phx-static"
 export const PHX_READONLY = "data-phx-readonly"
 export const PHX_DISABLED = "data-phx-disabled"

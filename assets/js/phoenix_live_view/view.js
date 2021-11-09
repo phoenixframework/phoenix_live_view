@@ -338,7 +338,13 @@ export default class View {
       if(newHook){ newHook.__mounted() }
     })
 
-    patch.after("phxChildAdded", _el => phxChildrenAdded = true)
+    patch.after("phxChildAdded", el => {
+      if(DOM.isPhxSticky(el)){
+        this.liveSocket.joinRootViews()
+      } else {
+        phxChildrenAdded = true
+      }
+    })
 
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.triggerBeforeUpdateHook(fromEl, toEl)
