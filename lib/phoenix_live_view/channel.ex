@@ -688,7 +688,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp patch_params_and_action!(socket, %{to: to}) do
-    to = URI.to_string(%{socket.host_uri | path: to})
+    to = %{socket.host_uri | path: to}
 
     case Route.live_link_info!(socket, socket.private.root_view, to) do
       {:internal, %Route{params: params, action: action}} ->
