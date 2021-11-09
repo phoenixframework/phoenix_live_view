@@ -17,6 +17,7 @@ import {
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
+  PHX_STICKY,
   THROTTLED
 } from "./constants"
 
@@ -74,6 +75,8 @@ let DOM = {
   isPhxUpdate(el, phxUpdate, updateTypes){
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0
   },
+
+  findPhxSticky(el){ return this.all(el, `[${PHX_STICKY}]`) },
 
   findPhxChildren(el, parentId){
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
@@ -236,6 +239,10 @@ let DOM = {
 
   isPhxChild(node){
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
+  },
+
+  isPhxSticky(node){
+    return node.getAttribute && node.getAttribute(PHX_STICKY) !== null
   },
 
   firstPhxChild(el){
