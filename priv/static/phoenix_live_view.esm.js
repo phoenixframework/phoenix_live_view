@@ -42,6 +42,7 @@ var CHECKABLE_INPUTS = ["checkbox", "radio"];
 var PHX_HAS_SUBMITTED = "phx-has-submitted";
 var PHX_SESSION = "data-phx-session";
 var PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
+var PHX_STICKY = "data-phx-sticky";
 var PHX_STATIC = "data-phx-static";
 var PHX_READONLY = "data-phx-readonly";
 var PHX_DISABLED = "data-phx-disabled";
@@ -302,6 +303,9 @@ var DOM = {
   isPhxUpdate(el, phxUpdate, updateTypes) {
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0;
   },
+  findPhxSticky(el) {
+    return this.all(el, `[${PHX_STICKY}]`);
+  },
   findPhxChildren(el, parentId) {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
   },
@@ -460,6 +464,9 @@ var DOM = {
   },
   isPhxChild(node) {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
+  },
+  isPhxSticky(node) {
+    return node.getAttribute && node.getAttribute(PHX_STICKY) !== null;
   },
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
@@ -1489,13 +1496,13 @@ var DOMPatch = class {
             externalFormTriggered = el;
           }
           dom_default.discardError(targetContainer, el, phxFeedbackFor);
-          if (dom_default.isPhxChild(el) && view.ownsElement(el)) {
+          if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
           }
           added.push(el);
         },
         onNodeDiscarded: (el) => {
-          if (dom_default.isPhxChild(el)) {
+          if (dom_default.isPhxChild(el) || dom_default.isPhxSticky(el)) {
             liveSocket.destroyViewByEl(el);
           }
           this.trackAfter("discarded", el);
@@ -1525,6 +1532,9 @@ var DOMPatch = class {
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.cleanChildNodes(toEl, phxUpdate);
           if (this.skipCIDSibling(toEl)) {
+            return false;
+          }
+          if (dom_default.isPhxSticky(fromEl)) {
             return false;
           }
           if (dom_default.isIgnored(fromEl, phxUpdate)) {
@@ -2374,7 +2384,13 @@ var View = class {
         newHook.__mounted();
       }
     });
-    patch.after("phxChildAdded", (_el) => phxChildrenAdded = true);
+    patch.after("phxChildAdded", (el) => {
+      if (dom_default.isPhxSticky(el)) {
+        this.liveSocket.joinRootViews();
+      } else {
+        phxChildrenAdded = true;
+      }
+    });
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
@@ -3307,6 +3323,7 @@ var LiveSocket = class {
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
+          dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
           oldMainEl.replaceWith(newMainEl);
           callback && callback();
           onDone();
@@ -3355,7 +3372,10 @@ var LiveSocket = class {
   }
   destroyViewByEl(el) {
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
-    if (root) {
+    if (root && root.id === el.id) {
+      root.destroy();
+      delete this.roots[root.id];
+    } else if (root) {
       root.destroyDescendent(el.id);
     }
   }
