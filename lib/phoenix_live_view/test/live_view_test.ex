@@ -1523,10 +1523,12 @@ defmodule Phoenix.LiveViewTest do
     quote bind_quoted: binding() do
       case reason do
         {:error, {:live_redirect, opts}} ->
+          opts = Phoenix.LiveViewTest.__ensure_signed_flash__(@endpoint, opts)
           {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
           live(conn, to)
 
         {:error, {:redirect, opts}} ->
+          opts = Phoenix.LiveViewTest.__ensure_signed_flash__(@endpoint, opts)
           {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
           {:ok, get(conn, to)}
 
@@ -1535,6 +1537,13 @@ defmodule Phoenix.LiveViewTest do
       end
     end
   end
+
+  @doc false
+  def __ensure_signed_flash__(endpoint, %{flash: flash} = opts) when is_map(flash) do
+    Map.put(opts, :flash, Phoenix.LiveView.Utils.sign_flash(endpoint, flash))
+  end
+
+  def __ensure_signed_flash__(_, opts), do: opts
 
   @doc false
   def __follow_redirect__(conn, expected_to, %{to: to} = opts) do
