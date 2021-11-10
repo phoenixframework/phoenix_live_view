@@ -953,6 +953,11 @@ defmodule Phoenix.LiveView do
   it is guaranteed that all entries have completed before the submit event
   is invoked. Once entries are consumed, they are removed from the upload.
 
+  The function passed to consume the may return a tagged tuple of the form
+  `{:ok, my_result}` to collect results about the consumed entries, or
+  `{:postpone, my_result}` to collect results, but postpone the file
+  consumption to be performed later.
+
   ## Examples
 
       def handle_event("save", _params, socket) do
@@ -977,6 +982,11 @@ defmodule Phoenix.LiveView do
 
   This is a lower-level feature than `consume_uploaded_entries/3` and useful
   for scenarios where you want to consume entries as they are individually completed.
+
+  Like `consume_uploaded_entries/3`, the function passed to consume the may return
+  a tagged tuple of the form `{:ok, my_result}` to collect results about the
+  consumed entries, or `{:postpone, my_result}` to collect results,
+  but postpone the file consumption to be performed later.
 
   ## Examples
 
