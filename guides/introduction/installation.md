@@ -3,7 +3,7 @@
 ## New projects
 
 Phoenix v1.5+ comes with built-in support for LiveView apps. Just create
-your application with `mix phx.new my_app --live`.
+your application with `mix phx.new my_app`.
 
 Once you've created a LiveView project, refer to [LiveView documentation](`Phoenix.LiveView`)
 for further information on how to use it.
