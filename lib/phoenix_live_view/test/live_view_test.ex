@@ -358,8 +358,7 @@ defmodule Phoenix.LiveViewTest do
 
     opts =
       if flash = conn.private[:phoenix_flash] do
-        endpoint = Phoenix.Controller.endpoint_module(conn)
-        %{to: to, flash: Phoenix.LiveView.Utils.sign_flash(endpoint, flash)}
+        %{to: to, flash: flash}
       else
         %{to: to}
       end
