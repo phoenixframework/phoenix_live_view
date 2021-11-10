@@ -243,9 +243,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           raise ArgumentError, """
           invalid :chunk_timeout value provided to allow_upload.
 
-          Only a positive integer in milliseconds is supported (Defaults to #{
-            @default_chunk_timeout
-          } ms). Got:
+          Only a positive integer in milliseconds is supported (Defaults to #{@default_chunk_timeout} ms). Got:
 
           #{inspect(other)}
           """
@@ -634,7 +632,6 @@ defmodule Phoenix.LiveView.UploadConfig do
     case entry_pid(conf, entry) do
       channel_pid when is_pid(channel_pid) ->
         Phoenix.LiveView.UploadChannel.cancel(channel_pid)
-
         update_entry(conf, entry.ref, fn entry -> %UploadEntry{entry | cancelled?: true} end)
 
       _ ->

@@ -15,12 +15,37 @@ defmodule Phoenix.LiveView.UploadChannel do
     case GenServer.call(pid, :consume_start, @timeout) do
       {:ok, file_meta} ->
         try do
-          cond do
-            is_function(func, 1) -> func.(file_meta)
-            is_function(func, 2) -> func.(file_meta, entry)
+          result =
+            cond do
+              is_function(func, 1) -> func.(file_meta)
+              is_function(func, 2) -> func.(file_meta, entry)
+            end
+
+          case result do
+            {:ok, return} ->
+              GenServer.call(pid, :consume_done, @timeout)
+              return
+
+            {:postpone, return} ->
+              return
+
+            return ->
+              IO.warn """
+              consuming uploads requires a return signature matching:
+
+                  {:ok, value} | {:postpone, value}
+
+              got:
+
+                  #{inspect(return)}
+              """
+              GenServer.call(pid, :consume_done, @timeout)
+              return
           end
-        after
-          GenServer.call(pid, :consume_done, @timeout)
+        rescue
+          exception ->
+            GenServer.call(pid, :consume_done, @timeout)
+            reraise(exception, __STACKTRACE__)
         end
 
       {:error, :in_progress} ->

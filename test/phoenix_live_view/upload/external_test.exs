@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
   def consume(%LiveView.UploadEntry{} = entry, socket) do
     if entry.done? do
-      Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> :ok end)
+      Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> {:ok, :ok} end)
     end
 
     {:noreply, socket}
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     run(lv, fn socket ->
       Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn meta, entry ->
-        send(parent, {:consume, meta, entry.client_name})
+        {:ok, send(parent, {:consume, meta, entry.client_name})}
       end)
       {:reply, :ok, socket}
     end)
@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     run(lv, fn socket ->
       {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
       Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn meta ->
-        send(parent, {:individual_consume, meta, entry.client_name})
+        {:ok, send(parent, {:individual_consume, meta, entry.client_name})}
       end)
       {:reply, :ok, socket}
     end)
