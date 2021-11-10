@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.JS do
   client-side hooks, JS commands are DOM patch aware, so operations applied
   by the JS APIs will stick to elements across patches from the server.
 
-  In addition to purely client-side utilities, the JS command incluces a
+  In addition to purely client-side utilities, the JS commands includes a
   rich `push` API, for extending the default `phx-` binding pushes with
   options to customize targets, loading states, and additional payload values.
 
@@ -95,6 +95,7 @@ defmodule Phoenix.LiveView.JS do
     * `event` - The string event name to push.
 
   ## Options
+
     * `:target` - The selector or component ID to push to
     * `:loading` - The selector to apply the phx loading classes to
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
@@ -414,7 +415,8 @@ defmodule Phoenix.LiveView.JS do
     transition(%JS{}, transition, [])
   end
 
-  def transition(transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
+  def transition(transition, opts)
+      when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     transition(%JS{}, transition, opts)
   end
 
@@ -422,7 +424,8 @@ defmodule Phoenix.LiveView.JS do
     transition(cmd, transition, [])
   end
 
-  def transition(%JS{} = cmd, transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
+  def transition(%JS{} = cmd, transition, opts)
+      when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     opts = validate_keys(opts, :transition, [:to, :time])
     time = opts[:time] || @default_transition_time
 
