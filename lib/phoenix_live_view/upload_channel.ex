@@ -42,9 +42,10 @@ defmodule Phoenix.LiveView.UploadChannel do
               GenServer.call(pid, :consume_done, @timeout)
               return
           end
-        catch
-          _kind, _reason ->
+        rescue
+          exception ->
             GenServer.call(pid, :consume_done, @timeout)
+            reraise(exception, __STACKTRACE__)
         end
 
       {:error, :in_progress} ->
