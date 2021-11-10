@@ -464,6 +464,57 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+      test "consume_uploaded_entries can postpone consumption",
+           %{lv: lv} do
+        parent = self()
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
+        avatar_pid = avatar.pid
+        assert render_upload(avatar, "foo.jpeg") =~ "100%"
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        Process.monitor(avatar_pid)
+        Process.monitor(channel_pid)
+
+        UploadLive.run(lv, fn socket ->
+          results =
+            Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+              send(parent, {:file, path, entry.client_name, File.read!(path)})
+              {:postpone, {:postponed, path}}
+            end)
+
+          send(parent, {:results, results})
+          {:reply, :ok, socket}
+        end)
+
+        assert_receive {:results, [{:postponed, tmp_path}]}
+        assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
+        refute_receive {:DOWN, _ref, :process, ^avatar_pid, _}
+        refute_receive {:DOWN, _ref, :process, ^channel_pid, _}
+        assert File.exists?(tmp_path)
+
+        UploadLive.run(lv, fn socket ->
+          results =
+            Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+              send(parent, {:file, path, entry.client_name, File.read!(path)})
+              {:ok, {:consumed, path}}
+            end)
+
+          send(parent, {:results, results})
+          {:reply, :ok, socket}
+        end)
+
+        assert_receive {:results, [{:consumed, tmp_path}]}
+        assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        # synchronize with LV to ensure it has processed DOWN
+        assert render(lv)
+        # synchronize with Plug.Upload to ensure it has processed DOWN
+        :sys.get_state(Plug.Upload)
+        refute File.exists?(tmp_path)
+      end
+
+      @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "cancel_upload in progress", %{lv: lv} do
         avatar =
           file_input(lv, "form", :avatar, [
