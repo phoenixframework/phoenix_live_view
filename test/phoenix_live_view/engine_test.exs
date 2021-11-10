@@ -265,13 +265,6 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
     end
 
-    test "renders dynamic if it has a lexical form" do
-      template = "<%= import List %><%= flatten(@foo) %>"
-      assert changed(template, %{foo: '123'}, nil) == ["Elixir.List", '123']
-      assert changed(template, %{foo: '123'}, %{}) == ["Elixir.List", nil]
-      assert changed(template, %{foo: '123'}, %{foo: true}) == ["Elixir.List", '123']
-    end
-
     test "renders dynamic if it has variables" do
       template = "<%= foo = 1 + 2 %><%= foo %>"
       assert changed(template, %{}, nil) == ["3", "3"]
