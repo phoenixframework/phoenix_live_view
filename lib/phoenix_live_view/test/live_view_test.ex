@@ -1191,8 +1191,8 @@ defmodule Phoenix.LiveViewTest do
   def assert_patch(view, to) when is_binary(to), do: assert_patch(view, to, 100)
 
   @doc """
-  Asserts a live patch will to a given path within `timeout` milliseconds. The
-  default `timeout` is 100.
+  Asserts a live patch will happen to a given path within `timeout`
+  milliseconds. The default `timeout` is 100.
 
   It always returns `:ok`.
 
