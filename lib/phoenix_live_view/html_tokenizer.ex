@@ -544,11 +544,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp strip_text_token_partially(tokens) do
-    with [{:text, text, meta} | rest] <- tokens do
-      case String.trim_leading(text) do
-        "" -> strip_text_token_partially(rest)
-        text -> [{:text, text, meta} | rest]
-      end
+    with [{:text, text, _meta} | rest] <- tokens,
+         "" <- String.trim_leading(text) do
+      strip_text_token_partially(rest)
     else
       _ -> tokens
     end

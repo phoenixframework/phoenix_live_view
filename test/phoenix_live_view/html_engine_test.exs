@@ -765,7 +765,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "multiple slots with default" do
-      assigns = %{}
+      assigns = %{middle: "middle"}
 
       expected = """
       BEFORE COMPONENT
@@ -774,8 +774,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           The header content
         \
 
-      TEXT:top
-        mid
+      TEXT:
+        top
+        foo middle bar
         bot
       :TEXT
 
@@ -794,7 +795,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <:header>
                  The header content
                </:header>
-               mid
+               foo <%= @middle %> bar
                <:footer>
                  The footer content
                </:footer>
@@ -810,7 +811,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <:header>
                  The header content
                </:header>
-               mid
+               foo <%= @middle %> bar
                <:footer>
                  The footer content
                </:footer>
