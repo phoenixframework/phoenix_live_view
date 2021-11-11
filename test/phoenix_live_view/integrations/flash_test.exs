@@ -27,6 +27,14 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert conn.resp_body =~ "root[ok!]:info"
     end
 
+    test "returns flash as a map", %{conn: conn} do
+      {:error, {:redirect, %{flash: flash}}} =
+        conn
+        |> live("/flash-child?mount_redirect=ok!")
+
+      assert is_map(flash)
+    end
+
     test "redirect with flash", %{conn: conn} do
       {:ok, flash_child, _} = live(conn, "/flash-child")
 
