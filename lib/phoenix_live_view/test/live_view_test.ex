@@ -1523,13 +1523,11 @@ defmodule Phoenix.LiveViewTest do
     quote bind_quoted: binding() do
       case reason do
         {:error, {:live_redirect, opts}} ->
-          opts = Phoenix.LiveViewTest.__ensure_signed_flash__(@endpoint, opts)
-          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
+          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, @endpoint, to, opts)
           live(conn, to)
 
         {:error, {:redirect, opts}} ->
-          opts = Phoenix.LiveViewTest.__ensure_signed_flash__(@endpoint, opts)
-          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, to, opts)
+          {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, @endpoint, to, opts)
           {:ok, get(conn, to)}
 
         _ ->
@@ -1539,14 +1537,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __ensure_signed_flash__(endpoint, %{flash: flash} = opts) when is_map(flash) do
-    Map.put(opts, :flash, Phoenix.LiveView.Utils.sign_flash(endpoint, flash))
-  end
-
-  def __ensure_signed_flash__(_, opts), do: opts
-
-  @doc false
-  def __follow_redirect__(conn, expected_to, %{to: to} = opts) do
+  def __follow_redirect__(conn, endpoint, expected_to, %{to: to} = opts) do
     if expected_to && expected_to != to do
       raise ArgumentError,
             "expected LiveView to redirect to #{inspect(expected_to)}, but got #{inspect(to)}"
@@ -1555,11 +1546,18 @@ defmodule Phoenix.LiveViewTest do
     conn = Phoenix.ConnTest.ensure_recycled(conn)
 
     if flash = opts[:flash] do
-      {Phoenix.ConnTest.put_req_cookie(conn, @flash_cookie, flash), to}
+      {Phoenix.ConnTest.put_req_cookie(conn, @flash_cookie, ensure_signed_flash(endpoint, flash)),
+       to}
     else
       {conn, to}
     end
   end
+
+  defp ensure_signed_flash(endpoint, flash) when is_map(flash) do
+    Phoenix.LiveView.Utils.sign_flash(endpoint, flash)
+  end
+
+  defp ensure_signed_flash(_, flash), do: flash
 
   @doc """
   Performs a live redirect from one LiveView to another.
