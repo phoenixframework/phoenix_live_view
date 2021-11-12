@@ -2,7 +2,7 @@
 
 LiveView begins its life-cycle as a regular HTTP request. Then a stateful
 connection is established. Both the HTTP request and the stateful connection
-receives the client data via parameters and session.
+receive the client data via parameters and session.
 
 This means that any session validation must happen both in the HTTP request
 (plug pipeline) and the stateful connection (LiveView mount).
