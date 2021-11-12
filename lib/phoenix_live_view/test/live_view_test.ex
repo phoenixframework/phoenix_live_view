@@ -454,7 +454,7 @@ defmodule Phoenix.LiveViewTest do
                "some markup in component"
 
   """
-  defmacro render_component(component, assigns, opts \\ []) do
+  defmacro render_component(component, assigns \\ Macro.escape(%{}), opts \\ []) do
     endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
 
     quote do
@@ -472,7 +472,10 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
-    assigns = Map.new(assigns)
+
+    assigns =
+      Map.new(assigns)
+      |> Map.put_new(:__changed__, %{})
 
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
@@ -487,6 +490,7 @@ defmodule Phoenix.LiveViewTest do
 
     assigns
     |> Map.new()
+    |> Map.put_new(:__changed__, %{})
     |> function.()
     |> rendered_to_diff_string(socket)
   end
