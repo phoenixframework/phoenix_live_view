@@ -3,7 +3,8 @@
 ## New projects
 
 Phoenix v1.5+ comes with built-in support for LiveView apps. Just create
-your application with `mix phx.new my_app --live`.
+your application with `mix phx.new my_app --live`. The `--live` flag has
+become the default on Phoenix v1.6.
 
 Once you've created a LiveView project, refer to [LiveView documentation](`Phoenix.LiveView`)
 for further information on how to use it.
@@ -207,7 +208,7 @@ pipeline :browser do
 end
 ```
 
-The layout given to `put_root_layout` must use `<%= @inner_content %>` instead of `<%= render(@view_module, @view_template, assigns) %>`. It is typically very barebones, with mostly
+The layout given to `put_root_layout` is typically very barebones, with mostly
 `<head>` and `<body>` tags. For example:
 
 ```elixir

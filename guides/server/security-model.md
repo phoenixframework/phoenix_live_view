@@ -79,18 +79,32 @@ as you would with plug:
       end
     end
 
-and then use it on all relevant LiveViews:
+
+We use [`assign_new/3`](`Phoenix.LiveView.assign_new/3`). This is a
+convenience to avoid fetching the `current_user` multiple times across
+LiveViews.
+
+Now we can use the hook whenever relevant:
 
     defmodule MyAppWeb.PageLive do
-      use Phoenix.LiveView
+      use MyAppWeb, :live_view
       on_mount MyAppWeb.UserLiveAuth
 
       ...
     end
 
-Note in the snippet above we used [`assign_new/3`](`Phoenix.LiveView.assign_new/3`).
-This is a convenience to avoid fetching the `current_user` multiple times across
-LiveViews.
+If you prefer, you can add the hook to `def live_view` under `MyAppWeb`,
+to run it on all LiveViews by default:
+
+    def live_view do
+      quote do
+        use Phoenix.LiveView,
+          layout: {<%= web_namespace %>.LayoutView, "live.html"}
+
+        on_mount MyAppWeb.UserLiveAuth
+        unquote(view_helpers())
+      end
+    end
 
 ## Events considerations
 

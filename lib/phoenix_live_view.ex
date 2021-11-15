@@ -74,8 +74,7 @@ defmodule Phoenix.LiveView do
   and `c:render/1`:
 
       defmodule MyAppWeb.ThermostatLive do
-        # If you generated an app with mix phx.new --live,
-        # the line below would be: use MyAppWeb, :live_view
+        # In Phoenix v1.6+ apps, the line below should be: use MyAppWeb, :live_view
         use Phoenix.LiveView
 
         def render(assigns) do
@@ -112,10 +111,8 @@ defmodule Phoenix.LiveView do
 
   *Note:* the above assumes there is `plug :put_root_layout` call
   in your router that configures the LiveView layout. This call is
-  automatically included by `mix phx.new --live` and described in
-  the installation guide. If you don't want to configure a root layout,
-  you must pass `layout: {MyAppWeb.LayoutView, "app.html"}` as an
-  option to the `Phoenix.LiveView.Router.live/3` macro above.
+  automatically included in Phoenix v1.6 apps and described in
+  the installation guide.
 
   Alternatively, you can `live_render` from any template. In your view:
 
