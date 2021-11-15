@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.JS do
         toggle item!
       </button>
 
-      <button phx-click={JS.show(to: "#item", in: "fade-in-scale", out: "fade-out-scale")}>
+      <button phx-click={JS.toggle(to: "#item", in: "fade-in-scale", out: "fade-out-scale")}>
         toggle fancy!
       </button>
   """
