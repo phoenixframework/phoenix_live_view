@@ -14,7 +14,7 @@ considered:
     a root layout. The root layout is typically declared on the
     router with `put_root_layout` and defined as "root.html.heex"
     in your `MyAppWeb.LayoutView`. It may also be given via the
-    `:layout` option to the router's `live` macro.
+    `:root_layout` option to a `live_session` macro in the router.
 
   * the app layout - this is the default application layout which
     is not included or used by LiveViews. It defaults to "app.html.heex"
