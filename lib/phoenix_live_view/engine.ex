@@ -534,7 +534,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_conditional_var(keys, var, live_struct) when keys == %{} do
-    quote do
+    quote generated: true do
       unquote(var) =
         case changed do
           %{} -> nil
