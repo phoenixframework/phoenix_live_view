@@ -12,6 +12,7 @@ import {
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF,
+  PHX_REF_SRC,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
@@ -325,6 +326,7 @@ let DOM = {
   syncPendingRef(fromEl, toEl, disableWith){
     let ref = fromEl.getAttribute(PHX_REF)
     if(ref === null){ return true }
+    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
 
     if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
       if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
@@ -335,6 +337,7 @@ let DOM = {
         fromEl.classList.contains(className) && toEl.classList.add(className)
       })
       toEl.setAttribute(PHX_REF, ref)
+      toEl.setAttribute(PHX_REF_SRC, refSrc)
       return true
     }
   },
