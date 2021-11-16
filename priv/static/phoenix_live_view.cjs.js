@@ -30,6 +30,7 @@ var PHX_LIVE_LINK = "data-phx-link";
 var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
 var PHX_REF = "data-phx-ref";
+var PHX_REF_SRC = "data-phx-ref-src";
 var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
@@ -568,6 +569,7 @@ var DOM = {
     if (ref === null) {
       return true;
     }
+    let refSrc = fromEl.getAttribute(PHX_REF_SRC);
     if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
       if (DOM.isUploadInput(fromEl)) {
         DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
@@ -579,6 +581,7 @@ var DOM = {
         fromEl.classList.contains(className) && toEl.classList.add(className);
       });
       toEl.setAttribute(PHX_REF, ref);
+      toEl.setAttribute(PHX_REF_SRC, refSrc);
       return true;
     }
   },
@@ -2193,7 +2196,7 @@ var View = class {
     this.href = href;
   }
   isMain() {
-    return this.liveSocket.main === this;
+    return this.el.getAttribute(PHX_MAIN) !== null;
   }
   connectParams() {
     let params = this.liveSocket.params(this.el);
@@ -2322,7 +2325,10 @@ var View = class {
     });
   }
   dropPendingRefs() {
-    dom_default.all(this.el, `[${PHX_REF}]`, (el) => el.removeAttribute(PHX_REF));
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el) => {
+      el.removeAttribute(PHX_REF);
+      el.removeAttribute(PHX_REF_SRC);
+    });
   }
   onJoinComplete({ live_patch }, html, events) {
     if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
@@ -2618,7 +2624,7 @@ var View = class {
     return this.destroyed;
   }
   join(callback) {
-    if (!this.parent) {
+    if (this.isMain()) {
       this.stopCallback = this.liveSocket.withPageLoading({ to: this.href, kind: "initial" });
     }
     this.joinCallback = (onDone) => {
@@ -2724,9 +2730,10 @@ var View = class {
     });
   }
   undoRefs(ref) {
-    dom_default.all(this.el, `[${PHX_REF}="${ref}"]`, (el) => {
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
       let disabledVal = el.getAttribute(PHX_DISABLED);
       el.removeAttribute(PHX_REF);
+      el.removeAttribute(PHX_REF_SRC);
       if (el.getAttribute(PHX_READONLY) !== null) {
         el.readOnly = false;
         el.removeAttribute(PHX_READONLY);
@@ -2761,6 +2768,7 @@ var View = class {
     elements.forEach((el) => {
       el.classList.add(`phx-${event}-loading`);
       el.setAttribute(PHX_REF, newRef);
+      el.setAttribute(PHX_REF_SRC, this.el.id);
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
