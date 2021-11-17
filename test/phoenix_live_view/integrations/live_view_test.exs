@@ -312,10 +312,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "renders a live view with custom session and a router", %{conn: conn} do
       conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
+
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive,
-          session: %{"hello" => "world"}
-        )
+        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
@@ -834,6 +833,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert clock_view = find_live_child(thermo_view, "clock")
 
       id = Enum.random(1000..9999)
+
       send(
         clock_view.pid,
         {:run,
@@ -914,6 +914,30 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert_receive {^ref, transport_pid}
       assert transport_pid == self()
+    end
+  end
+
+  describe "sticky live_render" do
+    @tag session: %{name: "ny"}
+    test "process does not go down with parent", %{conn: conn} do
+      {:ok, clock_view, _html} = live(conn, "/clock?sticky=true")
+      %Phoenix.LiveViewTest.View{} = sticky_child = find_live_child(clock_view, "ny-controls")
+      child_pid = sticky_child.pid
+      assert Process.alive?(child_pid)
+      Process.monitor(child_pid)
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_redirect(socket, to: "/clock?sticky=true&redirected=true")}
+         end}
+      )
+
+      assert_redirect(clock_view, "/clock?sticky=true&redirected=true")
+      refute_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :parent_exited}}
+      # clietn proxy trasnport
+      assert_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :closed}}
     end
   end
 end
