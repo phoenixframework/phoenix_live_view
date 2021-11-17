@@ -1056,12 +1056,12 @@ describe("View + Component", function(){
   describe("undoRefs", () => {
     test("restores phx specific attributes awaiting a ref", () => {
       let content = `
-        <span data-phx-ref="1"></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
-          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+        <span data-phx-ref="1" data-phx-ref-src="root"></span>
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
         </form>
       `.trim()
       let liveSocket = new LiveSocket("/live", Socket)
@@ -1071,11 +1071,11 @@ describe("View + Component", function(){
       view.undoRefs(1)
       expect(el.innerHTML).toBe(`
         <span></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38">
-          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38">
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref="38">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref="38">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-disable-with-restore="GO TO HEXDOCS" data-phx-ref="38">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-disable-with-restore="GO TO HEXDOCS" data-phx-ref-src="root" data-phx-ref="38">Searching...</button>
         </form>
       `.trim())
 
@@ -1095,10 +1095,11 @@ describe("View + Component", function(){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = rootContainer("")
 
-      let fromEl = tag("span", {"data-phx-ref": "1"}, "hello")
+      let fromEl = tag("span", {"data-phx-ref-src": el.id, "data-phx-ref": "1"}, "hello")
       let toEl = tag("span", {"class": "new"}, "world")
 
       DOM.putPrivate(fromEl, "data-phx-ref", toEl)
+
       el.appendChild(fromEl)
       let view = simulateJoinedView(el, liveSocket)
 
@@ -1121,7 +1122,8 @@ describe("View + Component", function(){
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
       view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}})
-      view.update({s: ["<span id=\"myhook\" data-phx-ref=\"1\" phx-hook=\"MyHook\">Hello</span>"]}, [])
+
+      view.update({s: ["<span id=\"myhook\" data-phx-ref=\"1\" data-phx-ref-src=\"container\" phx-hook=\"MyHook\">Hello</span>"]}, [])
 
       let toEl = tag("span", {"id": "myhook", "phx-hook": "MyHook"}, "world")
       DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref", toEl)

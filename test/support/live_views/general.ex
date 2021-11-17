@@ -75,8 +75,13 @@ defmodule Phoenix.LiveViewTest.ClockLive do
     """
   end
 
-  def mount(params, session, socket) do
-    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY", sticky: !!params["sticky"])}
+  def mount(:not_mounted_at_router, session, socket) do
+    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY", sticky: false)}
+  end
+
+  def mount(%{} = params, session, socket) do
+    {:ok,
+     assign(socket, time: "12:00", name: session["name"] || "NY", sticky: !!params["sticky"])}
   end
 
   def handle_info(:snooze, socket) do

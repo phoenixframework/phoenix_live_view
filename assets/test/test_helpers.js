@@ -9,7 +9,7 @@ export let appendTitle = opts => {
 }
 
 export let rootContainer = (content) => {
-  let div = tag("div", {id: 123}, content)
+  let div = tag("div", {id: "root"}, content)
   document.body.appendChild(div)
   return div
 }
