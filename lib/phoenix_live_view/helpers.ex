@@ -355,6 +355,9 @@ defmodule Phoenix.LiveView.Helpers do
       have the `:router` set. LiveViews defined at the router with
       the `live` macro automatically have the `:router` option set.
 
+    * `:sticky` - an optional flag to maintain the live view across
+      live redirects, even if it is nested within another parent.
+
   ## Examples
 
       # within eex template

@@ -17,6 +17,7 @@ var PHX_LIVE_LINK = "data-phx-link";
 var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
 var PHX_REF = "data-phx-ref";
+var PHX_REF_SRC = "data-phx-ref-src";
 var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
@@ -42,6 +43,7 @@ var CHECKABLE_INPUTS = ["checkbox", "radio"];
 var PHX_HAS_SUBMITTED = "phx-has-submitted";
 var PHX_SESSION = "data-phx-session";
 var PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
+var PHX_STICKY = "data-phx-sticky";
 var PHX_STATIC = "data-phx-static";
 var PHX_READONLY = "data-phx-readonly";
 var PHX_DISABLED = "data-phx-disabled";
@@ -302,6 +304,9 @@ var DOM = {
   isPhxUpdate(el, phxUpdate, updateTypes) {
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0;
   },
+  findPhxSticky(el) {
+    return this.all(el, `[${PHX_STICKY}]`);
+  },
   findPhxChildren(el, parentId) {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
   },
@@ -461,6 +466,9 @@ var DOM = {
   isPhxChild(node) {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
   },
+  isPhxSticky(node) {
+    return node.getAttribute && node.getAttribute(PHX_STICKY) !== null;
+  },
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
@@ -548,6 +556,7 @@ var DOM = {
     if (ref === null) {
       return true;
     }
+    let refSrc = fromEl.getAttribute(PHX_REF_SRC);
     if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
       if (DOM.isUploadInput(fromEl)) {
         DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
@@ -559,6 +568,7 @@ var DOM = {
         fromEl.classList.contains(className) && toEl.classList.add(className);
       });
       toEl.setAttribute(PHX_REF, ref);
+      toEl.setAttribute(PHX_REF_SRC, refSrc);
       return true;
     }
   },
@@ -1489,13 +1499,13 @@ var DOMPatch = class {
             externalFormTriggered = el;
           }
           dom_default.discardError(targetContainer, el, phxFeedbackFor);
-          if (dom_default.isPhxChild(el) && view.ownsElement(el)) {
+          if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
           }
           added.push(el);
         },
         onNodeDiscarded: (el) => {
-          if (dom_default.isPhxChild(el)) {
+          if (dom_default.isPhxChild(el) || dom_default.isPhxSticky(el)) {
             liveSocket.destroyViewByEl(el);
           }
           this.trackAfter("discarded", el);
@@ -1525,6 +1535,9 @@ var DOMPatch = class {
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.cleanChildNodes(toEl, phxUpdate);
           if (this.skipCIDSibling(toEl)) {
+            return false;
+          }
+          if (dom_default.isPhxSticky(fromEl)) {
             return false;
           }
           if (dom_default.isIgnored(fromEl, phxUpdate)) {
@@ -2170,7 +2183,7 @@ var View = class {
     this.href = href;
   }
   isMain() {
-    return this.liveSocket.main === this;
+    return this.el.getAttribute(PHX_MAIN) !== null;
   }
   connectParams() {
     let params = this.liveSocket.params(this.el);
@@ -2299,7 +2312,10 @@ var View = class {
     });
   }
   dropPendingRefs() {
-    dom_default.all(this.el, `[${PHX_REF}]`, (el) => el.removeAttribute(PHX_REF));
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el) => {
+      el.removeAttribute(PHX_REF);
+      el.removeAttribute(PHX_REF_SRC);
+    });
   }
   onJoinComplete({ live_patch }, html, events) {
     if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
@@ -2374,7 +2390,13 @@ var View = class {
         newHook.__mounted();
       }
     });
-    patch.after("phxChildAdded", (_el) => phxChildrenAdded = true);
+    patch.after("phxChildAdded", (el) => {
+      if (dom_default.isPhxSticky(el)) {
+        this.liveSocket.joinRootViews();
+      } else {
+        phxChildrenAdded = true;
+      }
+    });
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
@@ -2589,7 +2611,7 @@ var View = class {
     return this.destroyed;
   }
   join(callback) {
-    if (!this.parent) {
+    if (this.isMain()) {
       this.stopCallback = this.liveSocket.withPageLoading({ to: this.href, kind: "initial" });
     }
     this.joinCallback = (onDone) => {
@@ -2695,9 +2717,10 @@ var View = class {
     });
   }
   undoRefs(ref) {
-    dom_default.all(this.el, `[${PHX_REF}="${ref}"]`, (el) => {
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
       let disabledVal = el.getAttribute(PHX_DISABLED);
       el.removeAttribute(PHX_REF);
+      el.removeAttribute(PHX_REF_SRC);
       if (el.getAttribute(PHX_READONLY) !== null) {
         el.readOnly = false;
         el.removeAttribute(PHX_READONLY);
@@ -2732,6 +2755,7 @@ var View = class {
     elements.forEach((el) => {
       el.classList.add(`phx-${event}-loading`);
       el.setAttribute(PHX_REF, newRef);
+      el.setAttribute(PHX_REF_SRC, this.el.id);
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3307,6 +3331,7 @@ var LiveSocket = class {
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
+          dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
           oldMainEl.replaceWith(newMainEl);
           callback && callback();
           onDone();
@@ -3355,7 +3380,10 @@ var LiveSocket = class {
   }
   destroyViewByEl(el) {
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
-    if (root) {
+    if (root && root.id === el.id) {
+      root.destroy();
+      delete this.roots[root.id];
+    } else if (root) {
       root.destroyDescendent(el.id);
     }
   }

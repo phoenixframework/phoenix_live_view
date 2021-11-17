@@ -342,6 +342,7 @@ export default class LiveSocket {
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
+          DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           oldMainEl.replaceWith(newMainEl)
           callback && callback()
           onDone()
@@ -393,7 +394,12 @@ export default class LiveSocket {
 
   destroyViewByEl(el){
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
-    if(root){ root.destroyDescendent(el.id) }
+    if(root && root.id === el.id){
+      root.destroy()
+      delete this.roots[root.id]
+    } else if(root){
+      root.destroyDescendent(el.id)
+    }
   }
 
   setActiveElement(target){

@@ -12,11 +12,13 @@ import {
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF,
+  PHX_REF_SRC,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
+  PHX_STICKY,
   THROTTLED
 } from "./constants"
 
@@ -74,6 +76,8 @@ let DOM = {
   isPhxUpdate(el, phxUpdate, updateTypes){
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0
   },
+
+  findPhxSticky(el){ return this.all(el, `[${PHX_STICKY}]`) },
 
   findPhxChildren(el, parentId){
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
@@ -238,6 +242,10 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_PARENT_ID)
   },
 
+  isPhxSticky(node){
+    return node.getAttribute && node.getAttribute(PHX_STICKY) !== null
+  },
+
   firstPhxChild(el){
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0]
   },
@@ -318,6 +326,7 @@ let DOM = {
   syncPendingRef(fromEl, toEl, disableWith){
     let ref = fromEl.getAttribute(PHX_REF)
     if(ref === null){ return true }
+    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
 
     if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
       if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
@@ -328,6 +337,7 @@ let DOM = {
         fromEl.classList.contains(className) && toEl.classList.add(className)
       })
       toEl.setAttribute(PHX_REF, ref)
+      toEl.setAttribute(PHX_REF_SRC, refSrc)
       return true
     }
   },

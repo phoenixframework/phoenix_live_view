@@ -114,14 +114,14 @@ export default class DOMPatch {
           //input handling
           DOM.discardError(targetContainer, el, phxFeedbackFor)
           // nested view handling
-          if(DOM.isPhxChild(el) && view.ownsElement(el)){
+          if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
           }
           added.push(el)
         },
         onNodeDiscarded: (el) => {
           // nested view handling
-          if(DOM.isPhxChild(el)){ liveSocket.destroyViewByEl(el) }
+          if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ liveSocket.destroyViewByEl(el) }
           this.trackAfter("discarded", el)
         },
         onBeforeNodeDiscarded: (el) => {
@@ -143,6 +143,7 @@ export default class DOMPatch {
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
+          if(DOM.isPhxSticky(fromEl)){ return false }
           if(DOM.isIgnored(fromEl, phxUpdate)){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})

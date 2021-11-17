@@ -71,12 +71,12 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def render(assigns) do
     ~H"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls") %>
+    <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls", sticky: @sticky) %>
     """
   end
 
-  def mount(_params, session, socket) do
-    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY")}
+  def mount(params, session, socket) do
+    {:ok, assign(socket, time: "12:00", name: session["name"] || "NY", sticky: !!params["sticky"])}
   end
 
   def handle_info(:snooze, socket) do
