@@ -936,7 +936,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert_redirect(clock_view, "/clock?sticky=true&redirected=true")
       refute_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :parent_exited}}
-      # clietn proxy trasnport
+      # client proxy trasnport
       assert_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :closed}}
     end
   end
