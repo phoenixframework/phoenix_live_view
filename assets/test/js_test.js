@@ -342,5 +342,42 @@ describe("JS", () => {
       expect(modal.style.display).toEqual("none")
     })
   })
+
+  describe("exec_set_attr and exec_remove_attr", () => {
+    test("with defaults", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="set" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
+      <div id="remove" phx-click='[["remove_attr", {"to": "#modal", "attr": "aria-expanded"}]]'></div>
+      `)
+      let modal = document.querySelector("#modal")
+      let set = document.querySelector("#set")
+      let remove = document.querySelector("#remove")
+
+      expect(modal.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(modal.getAttribute("aria-expanded")).toEqual("true")
+
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      expect(modal.getAttribute("aria-expanded")).toEqual(null)
+    })
+
+    test("with no selector", () => {
+      let view = setupView(`
+      <div id="set" phx-click='[["set_attr", {"to": null, "attr": ["aria-expanded", "true"]}]]'></div>
+      <div id="remove" class="here" phx-click='[["remove_attr", {"to": null, "attr": "class"}]]'></div>
+      `)
+      let set = document.querySelector("#set")
+      let remove = document.querySelector("#remove")
+
+      expect(set.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(set.getAttribute("aria-expanded")).toEqual("true")
+
+      expect(remove.getAttribute("class")).toEqual("here")
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      expect(remove.getAttribute("class")).toEqual(null)
+    })
+  })
 })
 

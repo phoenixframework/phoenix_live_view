@@ -623,6 +623,90 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "set_attribute" do
+    test "with defaults" do
+      assert JS.set_attribute({"aria-expanded", "true"}) == %JS{
+               ops: [
+                 ["set_attr", %{attr: ["aria-expanded", "true"], to: nil}]
+               ]
+             }
+
+      assert JS.set_attribute({"aria-expanded", "true"}, to: "#dropdown") == %JS{
+               ops: [
+                 ["set_attr", %{attr: ["aria-expanded", "true"], to: "#dropdown"}]
+               ]
+             }
+    end
+
+    test "composability" do
+      js =
+        JS.set_attribute({"expanded", "true"})
+        |> JS.set_attribute({"has-popup", "true"})
+        |> JS.set_attribute({"has-popup", "true"}, to: "#dropdown")
+
+      assert js == %JS{
+               ops: [
+                 ["set_attr", %{to: nil, attr: ["expanded", "true"]}],
+                 ["set_attr", %{to: nil, attr: ["has-popup", "true"]}],
+                 ["set_attr", %{to: "#dropdown", attr: ["has-popup", "true"]}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for set_attribute/, fn ->
+        JS.set_attribute({"disabled", ""}, bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.set_attribute({"disabled", "true"})) ==
+               "[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+    end
+  end
+
+  describe "remove_attribute" do
+    test "with defaults" do
+      assert JS.remove_attribute("aria-expanded") == %JS{
+               ops: [
+                 ["remove_attr", %{attr: "aria-expanded", to: nil}]
+               ]
+             }
+
+      assert JS.remove_attribute("aria-expanded", to: "#dropdown") == %JS{
+               ops: [
+                 ["remove_attr", %{attr: "aria-expanded", to: "#dropdown"}]
+               ]
+             }
+    end
+
+    test "composability" do
+      js =
+        JS.remove_attribute("expanded")
+        |> JS.remove_attribute("has-popup")
+        |> JS.remove_attribute("has-popup", to: "#dropdown")
+
+      assert js == %JS{
+               ops: [
+                 ["remove_attr", %{to: nil, attr: "expanded"}],
+                 ["remove_attr", %{to: nil, attr: "has-popup"}],
+                 ["remove_attr", %{to: "#dropdown", attr: "has-popup"}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for remove_attribute/, fn ->
+        JS.remove_attribute("disabled", bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.remove_attribute("disabled")) ==
+               "[[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;disabled&quot;,&quot;to&quot;:null}]]"
+    end
+  end
+
   defp js_to_string(%JS{} = js) do
     js
     |> Phoenix.HTML.Safe.to_iodata()

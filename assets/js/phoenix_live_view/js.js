@@ -99,6 +99,22 @@ let JS = {
     }
   },
 
+  exec_set_attr(eventType, phxEvent, view, sourceEl, {to, attr: [attr, val]}){
+    if(to){
+      DOM.all(document, to, el => this.setOrRemoveAttrs(el, [[attr, val]], []))
+    } else {
+      this.setOrRemoveAttrs(sourceEl, [[attr, val]], [])
+    }
+  },
+
+  exec_remove_attr(eventType, phxEvent, view, sourceEl, {to, attr}){
+    if(to){
+      DOM.all(document, to, el => this.setOrRemoveAttrs(el, [], [attr]))
+    } else {
+      this.setOrRemoveAttrs(sourceEl, [], [attr])
+    }
+  },
+
   // utils for commands
 
   show(eventType, view, el, display, transition, time){
@@ -170,6 +186,22 @@ let JS = {
       })
     })
   },
+
+  setOrRemoveAttrs(el, sets, removes){
+    let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
+    let keepSets = sets.filter(([attr, _val]) => !this.hasSet(prevSets, attr) && !el.attributes.getNamedItem(attr))
+    let keepRemoves = removes.filter(attr => prevRemoves.indexOf(attr) < 0 && el.attributes.getNamedItem(attr))
+    let newSets = prevSets.filter(([attr, _val]) => removes.indexOf(attr) < 0).concat(keepSets)
+    let newRemoves = prevRemoves.filter(attr => !this.hasSet(sets, attr)).concat(keepRemoves)
+
+    DOM.putSticky(el, "attrs", currentEl => {
+      newRemoves.forEach(attr => currentEl.removeAttribute(attr))
+      newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val))
+      return [newSets, newRemoves]
+    })
+  },
+
+  hasSet(sets, nameSearch){ return sets.find(([name, val]) => name === nameSearch) },
 
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
 

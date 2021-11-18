@@ -414,7 +414,8 @@ defmodule Phoenix.LiveView.JS do
     transition(%JS{}, transition, [])
   end
 
-  def transition(transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
+  def transition(transition, opts)
+      when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     transition(%JS{}, transition, opts)
   end
 
@@ -422,7 +423,8 @@ defmodule Phoenix.LiveView.JS do
     transition(cmd, transition, [])
   end
 
-  def transition(%JS{} = cmd, transition, opts) when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
+  def transition(%JS{} = cmd, transition, opts)
+      when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     opts = validate_keys(opts, :transition, [:to, :time])
     time = opts[:time] || @default_transition_time
 
@@ -431,6 +433,62 @@ defmodule Phoenix.LiveView.JS do
       to: opts[:to],
       transition: transition_class_names(transition)
     })
+  end
+
+  @doc """
+  Sets an attribute on elements.
+
+  Accepts a tuple containing the string attribute name/value pair.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to remove classes from.
+      Defaults to the interacted element.
+
+  ## Examples
+
+      <button phx-click={JS.set_attribute({"aria-expanded", "true"}, to: "#dropdown")}>
+        show
+      </button>
+  """
+  def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
+
+  def set_attribute({attr, val}, opts) when is_list(opts),
+    do: set_attribute(%JS{}, {attr, val}, opts)
+
+  def set_attribute(%JS{} = cmd, {attr, val}), do: set_attribute(cmd, {attr, val}, [])
+
+  def set_attribute(%JS{} = cmd, {attr, val}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :set_attribute, [:to])
+    put_op(cmd, "set_attr", %{to: opts[:to], attr: [attr, val]})
+  end
+
+  @doc """
+  Removes an attribute from elements.
+
+    * `attr` - The string attribute name to remove.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to remove classes from.
+      Defaults to the interacted element.
+
+  ## Examples
+
+      <button phx-click={JS.remove_attribute("aria-expanded", to: "#dropdown")}>
+        hide
+      </button>
+  """
+  def remove_attribute(attr), do: remove_attribute(%JS{}, attr, [])
+
+  def remove_attribute(attr, opts) when is_list(opts),
+    do: remove_attribute(%JS{}, attr, opts)
+
+  def remove_attribute(%JS{} = cmd, attr), do: remove_attribute(cmd, attr, [])
+
+  def remove_attribute(%JS{} = cmd, attr, opts) when is_list(opts) do
+    opts = validate_keys(opts, :remove_attribute, [:to])
+    put_op(cmd, "remove_attr", %{to: opts[:to], attr: attr})
   end
 
   defp put_op(%JS{ops: ops} = cmd, kind, %{} = args) do
