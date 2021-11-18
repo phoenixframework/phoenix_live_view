@@ -1984,28 +1984,26 @@ within:
 
   // js/phoenix_live_view/js.js
   var JS = {
-    exec(eventType, phxEvent, view, el, defaults) {
+    exec(eventType, phxEvent, view, sourceEl, defaults) {
       let [defaultKind, defaultArgs] = defaults || [null, {}];
       let commands = phxEvent.charAt(0) === "[" ? JSON.parse(phxEvent) : [[defaultKind, defaultArgs]];
       commands.forEach(([kind, args]) => {
         if (kind === defaultKind && defaultArgs.data) {
           args.data = Object.assign(args.data || {}, defaultArgs.data);
         }
-        this[`exec_${kind}`](eventType, phxEvent, view, el, args);
+        this.filterToEls(sourceEl, args).forEach((el) => {
+          this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args);
+        });
       });
     },
     isVisible(el) {
       let style = window.getComputedStyle(el);
       return !(style.opacity === 0 || style.display === "none");
     },
-    exec_dispatch(eventType, phxEvent, view, sourceEl, { to, event, detail }) {
-      if (to) {
-        dom_default.all(document, to, (el) => dom_default.dispatchEvent(el, event, detail));
-      } else {
-        dom_default.dispatchEvent(sourceEl, event, detail);
-      }
+    exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail }) {
+      dom_default.dispatchEvent(el, event, detail);
     },
-    exec_push(eventType, phxEvent, view, sourceEl, args) {
+    exec_push(eventType, phxEvent, view, sourceEl, el, args) {
       let { event, data, target, page_loading, loading, value } = args;
       let pushOpts = { page_loading: !!page_loading, loading, value };
       let targetSrc = eventType === "change" ? sourceEl.form : sourceEl;
@@ -2024,63 +2022,32 @@ within:
         }
       });
     },
-    exec_add_class(eventType, phxEvent, view, sourceEl, { to, names, transition, time }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.addOrRemoveClasses(el, names, [], transition, time, view));
-      } else {
-        this.addOrRemoveClasses(sourceEl, names, [], transition, view);
-      }
+    exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
+      this.addOrRemoveClasses(el, names, [], transition, time, view);
     },
-    exec_remove_class(eventType, phxEvent, view, sourceEl, { to, names, transition, time }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.addOrRemoveClasses(el, [], names, transition, time, view));
-      } else {
-        this.addOrRemoveClasses(sourceEl, [], names, transition, time, view);
-      }
+    exec_remove_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
+      this.addOrRemoveClasses(el, [], names, transition, time, view);
     },
-    exec_transition(eventType, phxEvent, view, sourceEl, { time, to, transition }) {
-      let els = to ? dom_default.all(document, to) : [sourceEl];
+    exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition }) {
       let [transition_start, running, transition_end] = transition;
-      els.forEach((el) => {
-        let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(running), []);
-        let onDone = () => this.addOrRemoveClasses(el, transition_end, transition_start.concat(running));
-        view.transition(time, onStart, onDone);
-      });
+      let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(running), []);
+      let onDone = () => this.addOrRemoveClasses(el, transition_end, transition_start.concat(running));
+      view.transition(time, onStart, onDone);
     },
-    exec_toggle(eventType, phxEvent, view, sourceEl, { to, display, ins, outs, time }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.toggle(eventType, view, el, display, ins, outs, time));
-      } else {
-        this.toggle(eventType, view, sourceEl, display, ins, outs, time);
-      }
+    exec_toggle(eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time }) {
+      this.toggle(eventType, view, el, display, ins, outs, time);
     },
-    exec_show(eventType, phxEvent, view, sourceEl, { to, display, transition, time }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.show(eventType, view, el, display, transition, time));
-      } else {
-        this.show(eventType, view, sourceEl, transition, time);
-      }
+    exec_show(eventType, phxEvent, view, sourceEl, el, { display, transition, time }) {
+      this.show(eventType, view, el, display, transition, time);
     },
-    exec_hide(eventType, phxEvent, view, sourceEl, { to, display, transition, time }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.hide(eventType, view, el, display, transition, time));
-      } else {
-        this.hide(eventType, view, sourceEl, display, transition, time);
-      }
+    exec_hide(eventType, phxEvent, view, sourceEl, el, { display, transition, time }) {
+      this.hide(eventType, view, el, display, transition, time);
     },
-    exec_set_attr(eventType, phxEvent, view, sourceEl, { to, attr: [attr, val] }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.setOrRemoveAttrs(el, [[attr, val]], []));
-      } else {
-        this.setOrRemoveAttrs(sourceEl, [[attr, val]], []);
-      }
+    exec_set_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
+      this.setOrRemoveAttrs(el, [[attr, val]], []);
     },
-    exec_remove_attr(eventType, phxEvent, view, sourceEl, { to, attr }) {
-      if (to) {
-        dom_default.all(document, to, (el) => this.setOrRemoveAttrs(el, [], [attr]));
-      } else {
-        this.setOrRemoveAttrs(sourceEl, [], [attr]);
-      }
+    exec_remove_attr(eventType, phxEvent, view, sourceEl, el, { attr }) {
+      this.setOrRemoveAttrs(el, [], [attr]);
     },
     show(eventType, view, el, display, transition, time) {
       if (!this.isVisible(el)) {
@@ -2169,6 +2136,9 @@ within:
     },
     isToggledOut(el, outClasses) {
       return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
+    },
+    filterToEls(sourceEl, { to }) {
+      return to ? dom_default.all(document, to) : [sourceEl];
     }
   };
   var js_default = JS;
@@ -3180,6 +3150,7 @@ within:
       this.silenced = false;
       this.main = null;
       this.linkRef = 1;
+      this.clickRef = 1;
       this.roots = {};
       this.href = window.location.href;
       this.pendingLink = null;
@@ -3606,12 +3577,14 @@ within:
         if (!this.isConnected()) {
           return;
         }
+        this.clickRef++;
+        let clickRefWas = this.clickRef;
         let target = null;
         if (capture) {
           target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`);
         } else {
           target = closestPhxBinding(e.target, click);
-          this.dispatchClickAway(e);
+          this.dispatchClickAway(e, clickRefWas);
         }
         let phxEvent = target && target.getAttribute(click);
         if (!phxEvent) {
@@ -3622,19 +3595,24 @@ within:
         }
         this.debounce(target, e, () => {
           this.withinOwners(target, (view) => {
-            js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
+            if (dom_default.private(target, "click-ref") !== clickRefWas) {
+              js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
+            }
           });
         });
       }, capture);
     }
-    dispatchClickAway(e) {
-      let binding = this.binding("click-away");
-      dom_default.all(document, `[${binding}]`, (el) => {
+    dispatchClickAway(e, clickRefWas) {
+      let phxClickAway = this.binding("click-away");
+      let phxClick = this.binding("click");
+      dom_default.all(document, `[${phxClickAway}]`, (el) => {
         if (!(el.isSameNode(e.target) || el.contains(e.target))) {
           this.withinOwners(e.target, (view) => {
-            let phxEvent = el.getAttribute(binding);
+            let phxEvent = el.getAttribute(phxClickAway);
             if (js_default.isVisible(el)) {
-              js_default.exec("click", phxEvent, view, e.target, ["push", { data: this.eventMeta("click", e, e.target) }]);
+              let target = e.target.closest(`[${phxClick}]`) || e.target;
+              dom_default.putPrivate(target, "click-ref", clickRefWas);
+              js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, e.target) }]);
             }
           });
         }

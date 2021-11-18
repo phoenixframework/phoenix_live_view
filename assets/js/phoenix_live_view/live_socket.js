@@ -134,6 +134,7 @@ export default class LiveSocket {
     this.silenced = false
     this.main = null
     this.linkRef = 1
+    this.clickRef = 1
     this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
@@ -560,12 +561,14 @@ export default class LiveSocket {
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       if(!this.isConnected()){ return }
+      this.clickRef++
+      let clickRefWas = this.clickRef
       let target = null
       if(capture){
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
       } else {
         target = closestPhxBinding(e.target, click)
-        this.dispatchClickAway(e)
+        this.dispatchClickAway(e, clickRefWas)
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
@@ -573,20 +576,25 @@ export default class LiveSocket {
 
       this.debounce(target, e, () => {
         this.withinOwners(target, view => {
-          JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
+          if(DOM.private(target, "click-ref") !== clickRefWas){
+            JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
+          }
         })
       })
     }, capture)
   }
 
-  dispatchClickAway(e){
-    let binding = this.binding("click-away")
-    DOM.all(document, `[${binding}]`, el => {
+  dispatchClickAway(e, clickRefWas){
+    let phxClickAway = this.binding("click-away")
+    let phxClick = this.binding("click")
+    DOM.all(document, `[${phxClickAway}]`, el => {
       if(!(el.isSameNode(e.target) || el.contains(e.target))){
         this.withinOwners(e.target, view => {
-          let phxEvent = el.getAttribute(binding)
+          let phxEvent = el.getAttribute(phxClickAway)
           if(JS.isVisible(el)){
-            JS.exec("click", phxEvent, view, e.target, ["push", {data: this.eventMeta("click", e, e.target)}])
+            let target = e.target.closest(`[${phxClick}]`) || e.target
+            DOM.putPrivate(target, "click-ref", clickRefWas)
+            JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })
       }
