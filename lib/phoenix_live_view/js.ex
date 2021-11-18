@@ -400,7 +400,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove classes from.
+    * `:to` - The optional DOM selector to apply transitions to.
       Defaults to the interacted element.
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
@@ -442,7 +442,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove classes from.
+    * `:to` - The optional DOM selector to add attributes to.
       Defaults to the interacted element.
 
   ## Examples
@@ -470,7 +470,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove classes from.
+    * `:to` - The optional DOM selector to remove attributes from.
       Defaults to the interacted element.
 
   ## Examples
