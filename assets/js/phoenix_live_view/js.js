@@ -111,6 +111,7 @@ let JS = {
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses))
           DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+          el.dispatchEvent(new Event("phx:hide"))
         })
       } else {
         if(eventType === "remove"){ return }
@@ -124,11 +125,17 @@ let JS = {
         }
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses))
+          el.dispatchEvent(new Event("phx:show"))
         })
       }
     } else {
-      let newDisplay = this.isVisible(el) ? "none" : (display || "block")
-      DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = newDisplay)
+      if(this.isVisible(el)){
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+        el.dispatchEvent(new Event("phx:hide"))
+      } else {
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = display || "block")
+        el.dispatchEvent(new Event("phx:show"))
+      }
     }
   },
 

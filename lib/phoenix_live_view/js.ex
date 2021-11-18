@@ -180,6 +180,9 @@ defmodule Phoenix.LiveView.JS do
       Defaults #{@default_transition_time}
     * `:display` - The optional display value to set when toggling in. Defaults `"block"`.
 
+  When the toggle is complete on the client, a `phx:show` or `phx:hide` event will be dispatched
+  to the toggled elements.
+
   ## Examples
 
       <div id="item">My Item</div>
@@ -226,6 +229,9 @@ defmodule Phoenix.LiveView.JS do
       Defaults #{@default_transition_time}
     * `:display` - The optional display value to set when showing. Defaults `"block"`.
 
+  When the show is complete on the client, a `phx:show` event will be dispatched to
+  the shown elements.
+
   ## Examples
 
       <div id="item">My Item</div>
@@ -268,6 +274,9 @@ defmodule Phoenix.LiveView.JS do
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
+
+  When the show is complete on the client, a `phx:hide` event will be dispatched to
+  the hidden elements.
 
   ## Examples
 
