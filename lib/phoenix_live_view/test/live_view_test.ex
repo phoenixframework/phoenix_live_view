@@ -504,7 +504,7 @@ defmodule Phoenix.LiveViewTest do
       iex> ~H"""
       ...> <div>example</div>
       ...> """
-      ...> |> rendered_string()
+      ...> |> rendered_to_string()
       "<div>example</div>"
 
   '''
