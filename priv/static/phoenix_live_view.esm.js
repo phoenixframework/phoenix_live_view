@@ -2044,6 +2044,7 @@ var JS = {
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses));
           dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+          el.dispatchEvent(new Event("phx:hide"));
         });
       } else {
         if (eventType === "remove") {
@@ -2059,11 +2060,17 @@ var JS = {
         };
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses));
+          el.dispatchEvent(new Event("phx:show"));
         });
       }
     } else {
-      let newDisplay = this.isVisible(el) ? "none" : display || "block";
-      dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = newDisplay);
+      if (this.isVisible(el)) {
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+        el.dispatchEvent(new Event("phx:hide"));
+      } else {
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
+        el.dispatchEvent(new Event("phx:show"));
+      }
     }
   },
   addOrRemoveClasses(el, adds, removes, transition, time, view) {
