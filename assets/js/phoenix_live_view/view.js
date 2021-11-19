@@ -653,20 +653,24 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
-          this.liveSocket.requestDOMUpdate(() => {
-            let hookReply = null
-            if(ref !== null){ this.undoRefs(ref) }
-            if(resp.diff){
-              hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
-                this.update(diff, events)
-              })
-            }
+          if(ref !== null){ this.undoRefs(ref) }
+          let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
             if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
             onLoadingDone()
             onReply(resp, hookReply)
-          })
+          }
+          if(resp.diff){
+            this.liveSocket.requestDOMUpdate(() => {
+              let hookReply = this.applyDiff("update", resp.diff, ({diff, events}) => {
+                this.update(diff, events)
+              })
+              finish(hookReply)
+            })
+          } else {
+            finish(null)
+          }
         })
       })
     )
