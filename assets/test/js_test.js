@@ -28,10 +28,14 @@ describe("JS", () => {
       `)
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
-      let showCalled = false
-      let hideCalled = false
-      modal.addEventListener("phx:show", () => showCalled = true)
-      modal.addEventListener("phx:hide", () => hideCalled = true)
+      let showEndCalled = false
+      let hideEndCalled = false
+      let showStartCalled = false
+      let hideStartCalled = false
+      modal.addEventListener("phx:show-end", () => showEndCalled = true)
+      modal.addEventListener("phx:hide-end", () => hideEndCalled = true)
+      modal.addEventListener("phx:show-start", () => showStartCalled = true)
+      modal.addEventListener("phx:hide-start", () => hideStartCalled = true)
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
@@ -39,8 +43,10 @@ describe("JS", () => {
 
       JS.exec("click", click.getAttribute("phx-click"), view, click)
       expect(modal.style.display).toEqual("block")
-      expect(showCalled).toBe(true)
-      expect(hideCalled).toBe(true)
+      expect(showEndCalled).toBe(true)
+      expect(hideEndCalled).toBe(true)
+      expect(showStartCalled).toBe(true)
+      expect(hideStartCalled).toBe(true)
     })
 
     test("with display", () => {
@@ -50,10 +56,14 @@ describe("JS", () => {
       `)
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
-      let showCalled = false
-      let hideCalled = false
-      modal.addEventListener("phx:show", () => showCalled = true)
-      modal.addEventListener("phx:hide", () => hideCalled = true)
+      let showEndCalled = false
+      let hideEndCalled = false
+      let showStartCalled = false
+      let hideStartCalled = false
+      modal.addEventListener("phx:show-end", () => showEndCalled = true)
+      modal.addEventListener("phx:hide-end", () => hideEndCalled = true)
+      modal.addEventListener("phx:show-start", () => showStartCalled = true)
+      modal.addEventListener("phx:hide-start", () => hideStartCalled = true)
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
@@ -61,8 +71,10 @@ describe("JS", () => {
 
       JS.exec("click", click.getAttribute("phx-click"), view, click)
       expect(modal.style.display).toEqual("inline-block")
-      expect(showCalled).toBe(true)
-      expect(hideCalled).toBe(true)
+      expect(showEndCalled).toBe(true)
+      expect(hideEndCalled).toBe(true)
+      expect(showStartCalled).toBe(true)
+      expect(hideStartCalled).toBe(true)
     })
 
     test("with in and out classes", done => {
@@ -72,10 +84,14 @@ describe("JS", () => {
       `)
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
-      let showCalled = false
-      let hideCalled = false
-      modal.addEventListener("phx:show", () => showCalled = true)
-      modal.addEventListener("phx:hide", () => hideCalled = true)
+      let showEndCalled = false
+      let hideEndCalled = false
+      let showStartCalled = false
+      let hideStartCalled = false
+      modal.addEventListener("phx:show-end", () => showEndCalled = true)
+      modal.addEventListener("phx:hide-end", () => hideEndCalled = true)
+      modal.addEventListener("phx:show-start", () => showStartCalled = true)
+      modal.addEventListener("phx:hide-start", () => hideStartCalled = true)
 
       expect(modal.style.display).toEqual("")
       expect(modal.classList.contains("fade-out")).toBe(false)
@@ -93,8 +109,10 @@ describe("JS", () => {
                 window.requestAnimationFrame(() => {
                   expect(modal.classList.contains("fade-out")).toBe(false)
                   expect(modal.classList.contains("fade-in")).toBe(true)
-                  expect(showCalled).toBe(true)
-                  expect(hideCalled).toBe(true)
+                  expect(showEndCalled).toBe(true)
+                  expect(hideEndCalled).toBe(true)
+                  expect(showStartCalled).toBe(true)
+                  expect(hideStartCalled).toBe(true)
                   done()
                 })
               })

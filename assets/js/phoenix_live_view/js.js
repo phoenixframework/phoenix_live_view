@@ -108,10 +108,11 @@ let JS = {
             window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses))
           })
         }
+        el.dispatchEvent(new Event("phx:hide-start"))
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses))
           DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-          el.dispatchEvent(new Event("phx:hide"))
+          el.dispatchEvent(new Event("phx:hide-end"))
         })
       } else {
         if(eventType === "remove"){ return }
@@ -123,18 +124,21 @@ let JS = {
             window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses))
           })
         }
+        el.dispatchEvent(new Event("phx:show-start"))
         view.transition(time, onStart, () => {
           this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses))
-          el.dispatchEvent(new Event("phx:show"))
+          el.dispatchEvent(new Event("phx:show-end"))
         })
       }
     } else {
       if(this.isVisible(el)){
+        el.dispatchEvent(new Event("phx:hide-start"))
         DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-        el.dispatchEvent(new Event("phx:hide"))
+        el.dispatchEvent(new Event("phx:hide-end"))
       } else {
+        el.dispatchEvent(new Event("phx:show-start"))
         DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = display || "block")
-        el.dispatchEvent(new Event("phx:show"))
+        el.dispatchEvent(new Event("phx:show-end"))
       }
     }
   },
