@@ -5,10 +5,12 @@
 ### Enhancements
   - Add `JS.set_attribute` and `JS.remove_attribute`
   - Add `sticky: true` option to `live_render` to maintain a nested child on across live redirects
+  - Dispatch `phx:show-start`, `phx:show-end`, `phx:hide-start` and `phx:hide-end` on `JS.show|hide|toggle`
 
 ### Bug fixes
   - Fix `phx-disable-with` failing to disable elements outside of forms
   - Fix phx ref tracking leaving elements in awaiting state when targetting an external LiveView
+  - Fix diff on response failing to await for active transitions in certain cases
 
 ## 0.17.5 (2021-11-02)
 
