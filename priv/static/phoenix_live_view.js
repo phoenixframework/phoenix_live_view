@@ -2071,10 +2071,11 @@ within:
               window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses));
             });
           };
+          el.dispatchEvent(new Event("phx:hide-start"));
           view.transition(time, onStart, () => {
             this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses));
             dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-            el.dispatchEvent(new Event("phx:hide"));
+            el.dispatchEvent(new Event("phx:hide-end"));
           });
         } else {
           if (eventType === "remove") {
@@ -2088,18 +2089,21 @@ within:
               window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
             });
           };
+          el.dispatchEvent(new Event("phx:show-start"));
           view.transition(time, onStart, () => {
             this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses));
-            el.dispatchEvent(new Event("phx:show"));
+            el.dispatchEvent(new Event("phx:show-end"));
           });
         }
       } else {
         if (this.isVisible(el)) {
+          el.dispatchEvent(new Event("phx:hide-start"));
           dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide"));
+          el.dispatchEvent(new Event("phx:hide-end"));
         } else {
+          el.dispatchEvent(new Event("phx:show-start"));
           dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
-          el.dispatchEvent(new Event("phx:show"));
+          el.dispatchEvent(new Event("phx:show-end"));
         }
       }
     },
@@ -2727,16 +2731,10 @@ within:
       }
       return this.liveSocket.wrapPush(this, { timeout: true }, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
-          this.liveSocket.requestDOMUpdate(() => {
-            let hookReply = null;
-            if (ref !== null) {
-              this.undoRefs(ref);
-            }
-            if (resp.diff) {
-              hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
-                this.update(diff, events);
-              });
-            }
+          if (ref !== null) {
+            this.undoRefs(ref);
+          }
+          let finish = (hookReply) => {
             if (resp.redirect) {
               this.onRedirect(resp.redirect);
             }
@@ -2748,7 +2746,17 @@ within:
             }
             onLoadingDone();
             onReply(resp, hookReply);
-          });
+          };
+          if (resp.diff) {
+            this.liveSocket.requestDOMUpdate(() => {
+              let hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
+                this.update(diff, events);
+              });
+              finish(hookReply);
+            });
+          } else {
+            finish(null);
+          }
         });
       });
     }
