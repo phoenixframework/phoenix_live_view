@@ -655,11 +655,11 @@ defmodule Phoenix.LiveView.Helpers do
       def table(assigns) do
         ~H"""
         <table>
-          <th>
+          <tr>
             <%= for col <- @col do %>
-              <td><%= col.label %></td>
+              <th><%= col.label %></th>
             <% end >
-          </th>
+          </tr>
           <%= for row <- @rows do %>
             <tr>
               <%= for col <- @col do %>
