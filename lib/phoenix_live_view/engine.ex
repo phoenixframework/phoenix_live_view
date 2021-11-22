@@ -74,6 +74,9 @@ defmodule Phoenix.LiveView.Comprehension do
           fingerprint: integer()
         }
 
+  @doc false
+  def __annotate__(comprehension, _collection), do: comprehension
+
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
       for dynamic <- dynamics, do: to_iodata(static, dynamic)
@@ -428,20 +431,28 @@ defmodule Phoenix.LiveView.Engine do
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns) do
-    with {:for, meta, [_ | _] = args} <- expr,
+    with {:for, meta, [gen | args]} <- expr,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{})
 
-      for = {:for, meta, filters ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
+      gen_var = Macro.var(:for, __MODULE__)
+      {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
+      gen_collection = quote(do: unquote(gen_var) = unquote(gen_collection))
+      gen = {:<-, gen_meta, [gen_pattern, gen_var]}
+      for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
       quote do
-        %Phoenix.LiveView.Comprehension{
-          static: unquote(static),
-          dynamics: unquote(for),
-          fingerprint: unquote(fingerprint)
-        }
+        unquote(gen_collection)
+        Phoenix.LiveView.Comprehension.__annotate__(
+          %Phoenix.LiveView.Comprehension{
+            static: unquote(static),
+            dynamics: unquote(for),
+            fingerprint: unquote(fingerprint)
+          },
+          unquote(gen_var)
+        )
       end
     else
       _ -> to_safe(expr, true)
