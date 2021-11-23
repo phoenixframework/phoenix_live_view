@@ -11,6 +11,7 @@ defmodule Phoenix.ComponentTest do
 
   describe "rendering" do
     defp hello(assigns) do
+      assigns = assign_new(assigns, :name, fn -> "World" end)
       ~H"""
       Hello <%= @name %>
       """
@@ -249,7 +250,8 @@ defmodule Phoenix.ComponentTest do
     import Phoenix.LiveViewTest
 
     test "render_component/1" do
-      assert render_component(&hello/1, name: "World!") == "Hello World!"
+      assert render_component(&hello/1) == "Hello World"
+      assert render_component(&hello/1, name: "WORLD!") == "Hello WORLD!"
     end
   end
 end
