@@ -414,7 +414,7 @@ defmodule Phoenix.LiveComponent do
 
   They also work inside any function component, such as `form`:
 
-      <.form let={f} for={@changeset} url="#">
+      <.form let={f} for={@changeset} action="#">
         <%= live_component FormComponent, id: :form %>
       </.form>
 
