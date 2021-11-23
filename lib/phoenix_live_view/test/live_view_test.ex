@@ -1327,7 +1327,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       render_click(view, :event_that_triggers_redirect_to_path)
-      :ok = refute_redirect view, "/wrong_path"
+      :ok = refute_redirected view, "/wrong_path"
   """
   def refute_redirected(view, to) when is_binary(to) do
     refute_navigation(view, :redirect, to)
