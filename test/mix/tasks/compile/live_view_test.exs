@@ -86,11 +86,29 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
         }
       ]
     end
+
+    defmodule NoAttrs do
+      use Phoenix.Component
+
+      def func(assigns), do: ~H[]
+
+      def render(assigns) do
+        ~H"""
+        <.func width="btn"/>
+        """
+      end
+    end
+
+    test "do not validate if component doesn't have any attr declared" do
+      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([NoAttrs])
+
+      assert diagnostics == []
+    end
   end
 
   describe "live_view compiler" do
     test "run validations for all project modules and return diagnostics" do
-      {:ok, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      {:error, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
       file = to_string(Mix.Tasks.Compile.LiveViewTest.Comp1.module_info(:compile)[:source])
 
       assert Enum.all?(diagnostics, &match?(%Diagnostic{file: ^file}, &1))
