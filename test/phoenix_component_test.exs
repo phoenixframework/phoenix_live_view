@@ -349,5 +349,9 @@ defmodule Phoenix.ComponentTest do
         }
       ] = FunctionComponentWithAttrs.__components_calls__()
     end
+
+    test "do not generate __components_calls__ if there's no call" do
+      refute function_exported?(RemoteFunctionComponentWithAttrs, :__components_calls__, 0)
+    end
   end
 end

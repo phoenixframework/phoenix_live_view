@@ -339,14 +339,22 @@ defmodule Phoenix.Component do
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
-    quote do
-      def __components__() do
-        unquote(Macro.escape(components))
+    def_components_ast =
+      quote do
+        def __components__() do
+          unquote(Macro.escape(components))
+        end
       end
 
-      def __components_calls__() do
-        unquote(Macro.escape(components_calls))
+    def_components_calls_ast =
+      if components_calls != [] do
+        quote do
+          def __components_calls__() do
+            unquote(Macro.escape(components_calls))
+          end
+        end
       end
-    end
+
+    {def_components_ast, def_components_calls_ast}
   end
 end
