@@ -9,7 +9,7 @@
 
 ### Bug fixes
   - Fix `phx-disable-with` failing to disable elements outside of forms
-  - Fix phx ref tracking leaving elements in awaiting state when targetting an external LiveView
+  - Fix phx ref tracking leaving elements in awaiting state when targeting an external LiveView
   - Fix diff on response failing to await for active transitions in certain cases
 
 ## 0.17.5 (2021-11-02)
@@ -106,7 +106,7 @@ to be rendered more efficiently client-side.
 
 #### `phx-disconnected` class has been replaced with `phx-loading`
 
-Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erronous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
+Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erroneous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
 
 #### `phx-capture-click` has been deprecated in favor of `phx-click-away`
 
@@ -128,7 +128,7 @@ Some functionality that was previously deprecated has been removed:
   - Add a function component for rendering `Phoenix.LiveComponent`. Instead of `<%= live_component FormComponent, id: "form" %>`, you must now do: `<.live_component module={FormComponent} id="form" />`
 
 ### Bug fixes
-  - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceeded by a live redirect
+  - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceded by a live redirect
   - Fix stale session causing full redirect fallback when issuing a `push_redirect` from mount
   - Add workaround for Safari bug causing `<img>` tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates

@@ -268,7 +268,7 @@ The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing yo
 
     <button phx-click="clicked">click</button>
 
-Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targetted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
+Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
 
     <button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
 
