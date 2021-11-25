@@ -353,5 +353,74 @@ defmodule Phoenix.ComponentTest do
     test "do not generate __components_calls__ if there's no call" do
       refute function_exported?(RemoteFunctionComponentWithAttrs, :__components_calls__, 0)
     end
+
+    test "raise if attr is not declared before the first function definition" do
+      code = """
+      defmodule Phoenix.ComponentTest.MultiClause do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :any
+        def func(assigns = %{foo: _}), do: ~H[]
+        def func(assigns = %{bar: _}), do: ~H[]
+      end
+      """
+
+      assert {{:module, _, _, _}, _} = Code.eval_string(code)
+
+      code = """
+      defmodule Phoenix.ComponentTest.MultiClauseWrong do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :any
+        def func(assigns = %{foo: _}), do: ~H[]
+        def func(assigns = %{bar: _}), do: ~H[]
+
+        attr :bar, :any
+        def func(assigns = %{baz: _}), do: ~H[]
+      end
+      """
+
+      message = "code:8: attributes must be defined before the first function clause at line 5"
+
+      assert_raise(CompileError, message, fn ->
+        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
+      end)
+    end
+
+    test "raise if attr is declared on an invalid function" do
+      code = """
+      defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :any
+        def func(a, b), do: a + b
+      end
+      """
+
+      message = """
+      code:4: cannot declare attributes for `func/2`. \
+      Components must be functions with arity 1.\
+      """
+      assert_raise(CompileError, message, fn ->
+        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
+      end)
+    end
+
+    test "raise if attr is declared without a related function" do
+      code = """
+      defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+        use Elixir.Phoenix.Component
+
+        def func(assigns = %{baz: _}), do: ~H[]
+
+        attr :foo, :any
+      end
+      """
+
+      message = "code:6: cannot define attributes without a related function component"
+      assert_raise(CompileError, message, fn ->
+        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
+      end)
+    end
   end
 end

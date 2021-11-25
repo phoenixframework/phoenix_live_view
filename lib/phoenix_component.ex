@@ -313,29 +313,27 @@ defmodule Phoenix.Component do
     end
   end
 
-  def __on_definition__(env, _kind, name, [_arg], _guards, _body) do
-    attrs =
-      env.module
-      |> Module.get_attribute(:__attrs__)
-      |> Enum.reverse()
+  def __on_definition__(env, kind, name, [_arg], _guards, _body) when kind in [:def, :defp] do
+    attrs = pop_attrs(env)
 
     if attrs != [] do
-      Module.delete_attribute(env.module, :__attrs__)
-
-      components =
-        env.module
-        |> Module.get_attribute(:__components__)
-        |> Map.put(name, attrs)
-
-      Module.put_attribute(env.module, :__components__, components)
+      register_component!(env, name, attrs)
     end
+
+    maybe_set_last_tracked_def(env, name)
   end
 
-  def __on_definition__(_env, _kind, _name, _args, _guards, _body) do
-    # TODO: raise if __attrs__ is not empty?
+  def __on_definition__(env, _kind, name, args, _guards, _body) do
+    arity = length(args)
+    message = "cannot declare attributes for `#{name}/#{arity}`. Components must be functions with arity 1."
+    attrs = pop_attrs(env)
+    validate_misplaced_attrs!(attrs, message, env.file)
   end
 
   defmacro __before_compile__(env) do
+    attrs = pop_attrs(env)
+    validate_misplaced_attrs!(attrs, "cannot define attributes without a related function component", env.file)
+
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
@@ -356,5 +354,46 @@ defmodule Phoenix.Component do
       end
 
     {def_components_ast, def_components_calls_ast}
+  end
+
+  defp register_component!(env, name, attrs) do
+    with {^name, line} <- get_last_tracked_def(env) do
+      [%{line: first_attr_line} | _] = attrs
+      message = "attributes must be defined before the first function clause at line #{line}"
+      raise CompileError, line: first_attr_line, file: env.file, description: message
+    end
+
+    components =
+      env.module
+      |> Module.get_attribute(:__components__)
+      |> Map.put(name, attrs)
+
+    Module.put_attribute(env.module, :__components__, components)
+  end
+
+  defp maybe_set_last_tracked_def(env, name) do
+    if !match?({^name, _}, Module.get_attribute(env.module, :__last_tracked_def__)) do
+      Module.put_attribute(env.module, :__last_tracked_def__, {name, env.line})
+    end
+  end
+
+  defp get_last_tracked_def(env) do
+    Module.get_attribute(env.module, :__last_tracked_def__)
+  end
+
+  defp validate_misplaced_attrs!(attrs, message, file) do
+    with [%{line: first_attr_line} | _] <- attrs do
+      raise CompileError, line: first_attr_line, file: file, description: message
+    end
+  end
+
+  defp pop_attrs(env) do
+    attrs =
+      env.module
+      |> Module.get_attribute(:__attrs__)
+      |> Enum.reverse()
+
+    Module.delete_attribute(env.module, :__attrs__)
+    attrs
   end
 end
