@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.JS do
   client-side hooks, JS commands are DOM patch aware, so operations applied
   by the JS APIs will stick to elements across patches from the server.
 
-  In addition to purely client-side utilities, the JS command incluces a
+  In addition to purely client-side utilities, the JS commands include a
   rich `push` API, for extending the default `phx-` binding pushes with
   options to customize targets, loading states, and additional payload values.
 
@@ -95,6 +95,7 @@ defmodule Phoenix.LiveView.JS do
     * `event` - The string event name to push.
 
   ## Options
+
     * `:target` - The selector or component ID to push to
     * `:loading` - The selector to apply the phx loading classes to
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
