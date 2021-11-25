@@ -17,7 +17,7 @@ except for the following LiveView specific options:
     a literal object or closure returning an object. When a closure is provided,
     the function receives the view's element.
   * `hooks` – a reference to a user-defined hooks namespace, containing client
-    callbacks for server/client interop. See the [Client hooks](#client-hooks)
+    callbacks for server/client interop. See the [Client hooks](#client-hooks-via-phx-hook)
     section below for details.
   * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
