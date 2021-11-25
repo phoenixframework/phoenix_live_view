@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.JS do
     * `remove_class` - Remove classes from elements, with optional transitions
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
-    * `toggle` - Shows or hides elements based on visiblity, with optional transitions
+    * `toggle` - Shows or hides elements based on visibility, with optional transitions
     * `transition` - Apply a temporary transition to elements for animations
     * `dispatch` - Dispatch a DOM event to elements
 
