@@ -183,6 +183,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       %{
         "name" => name,
+        "path" => name,
         "size" => size,
         "ref" => ref,
         "type" => type
@@ -194,6 +195,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert [
                %Phoenix.LiveView.UploadEntry{
                  client_name: ^name,
+                 client_path: ^name,
                  client_size: ^size,
                  client_type: ^type,
                  ref: ^ref
@@ -210,6 +212,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       %{
         "name" => name,
+        "path" => name,
         "size" => size,
         "ref" => ref,
         "type" => type
@@ -221,6 +224,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert [
                %Phoenix.LiveView.UploadEntry{
                  client_name: ^name,
+                 client_path: ^name,
                  client_size: ^size,
                  client_type: ^type,
                  ref: ^ref
@@ -391,6 +395,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       "size" => 1024,
       "type" => "application/octet-stream"
     })
+    |> then(&Map.put_new(&1, "path", &1["name"]))
     |> Map.put_new_lazy("ref", &Phoenix.LiveView.Utils.random_id/0)
   end
 end
