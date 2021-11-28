@@ -15,7 +15,7 @@ a user. Authorization is about telling if a user has access to a certain
 resource or feature in the system.
 
 In a regular web application, once a user is authenticated, for example by
-entering his email and password, or by using a third-party service such as
+entering their email and password, or by using a third-party service such as
 Google, Twitter, or Facebook, a token identifying the user is stored in the
 session, which is a cookie (a key-value pair) stored in the user's browser.
 
