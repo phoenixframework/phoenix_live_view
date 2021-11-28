@@ -658,7 +658,7 @@ defmodule Phoenix.LiveView.Helpers do
           <tr>
             <%= for col <- @col do %>
               <th><%= col.label %></th>
-            <% end >
+            <% end %>
           </tr>
           <%= for row <- @rows do %>
             <tr>
