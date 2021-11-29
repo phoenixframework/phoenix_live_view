@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     end
 
     test "validate required attributes" do
-      line = RequiredAttrs.line()
+      line = get_line(RequiredAttrs)
       diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrs])
 
       assert diagnostics == [
@@ -85,7 +85,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     end
 
     test "validate undefined attributes" do
-      line = UndefinedAttrs.line()
+      line = get_line(UndefinedAttrs)
       diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([UndefinedAttrs])
 
       assert diagnostics == [
@@ -133,21 +133,48 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       assert Enum.all?(diagnostics, &match?(%Diagnostic{file: ^file}, &1))
     end
 
-    test "print diagnostics when --return-errors is not passed" do
-      messages = """
-      ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:9: \
-      missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-      ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:15: \
-      missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-      ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:28: \
-      missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-      ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:34: \
-      missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-      """
+    if Version.match?(System.version(), ">= 1.12.0") do
+      test "print diagnostics when --return-errors is not passed" do
+        messages = """
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:9: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:15: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:28: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:34: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        """
 
-      assert capture_io(:standard_error, fn ->
-        Mix.Tasks.Compile.LiveView.run([])
-      end) == messages
+        assert capture_io(:standard_error, fn ->
+          Mix.Tasks.Compile.LiveView.run([])
+        end) == messages
+      end
+    else
+      test "print diagnostics when --return-errors is not passed" do
+        messages = """
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:1: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:1: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:1: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        ** (CompileError) test/support/mix/tasks/compile/live_view_test_components.ex:1: \
+        missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        """
+
+        assert capture_io(:standard_error, fn ->
+          Mix.Tasks.Compile.LiveView.run([])
+        end) == messages
+      end
+    end
+  end
+
+  defp get_line(module) do
+    if Version.match?(System.version(), ">= 1.12.0") do
+      module.line()
+    else
+      1
     end
   end
 end

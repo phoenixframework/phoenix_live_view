@@ -314,8 +314,13 @@ defmodule Phoenix.ComponentTest do
 
     test "store component calls" do
       render_line = FunctionComponentWithAttrs.render_line()
-      call_1_line = render_line + 4
-      call_3_line = render_line + 8
+      {call_1_line, call_3_line} =
+        if Version.match?(System.version(), ">= 1.12.0") do
+          {render_line + 4, render_line + 8}
+        else
+          {2, 6}
+        end
+
       file = __ENV__.file
 
       assert [
