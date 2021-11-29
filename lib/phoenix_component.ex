@@ -309,7 +309,36 @@ defmodule Phoenix.Component do
             opts: opts,
             line: __CALLER__.line
           ] do
+      Phoenix.Component.validate_attr!(name, type, opts, line, __ENV__.file)
       Module.put_attribute(__MODULE__, :__attrs__, %{name: name, type: type, opts: opts, line: line})
+    end
+  end
+
+  @doc false
+  def validate_attr!(name, type, opts, line, file) do
+    validate_attr_type!(name, type, line, file)
+    validate_attr_opts!(name, opts, line, file)
+  end
+
+  defp validate_attr_type!(name, type, line, file) do
+    if type != :any do
+      message = """
+      invalid type `#{inspect(type)}` for attr `#{inspect(name)}`. \
+      Currently, only type `:any` is supported.\
+      """
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  defp validate_attr_opts!(name, opts, line, file) do
+    for {key, _} <- opts do
+      if key != :required do
+        message = """
+        invalid option `#{inspect(key)}` for attr `#{inspect(name)}`. \
+        Currently, only `:required` is supported.\
+        """
+        raise CompileError, line: line, file: file, description: message
+      end
     end
   end
 

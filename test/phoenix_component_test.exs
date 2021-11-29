@@ -422,5 +422,37 @@ defmodule Phoenix.ComponentTest do
         Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
       end)
     end
+
+    test "raise if attr type is not supported" do
+      code = """
+      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :not_a_type
+        def func(assigns), do: ~H[]
+      end
+      """
+
+      message = "code:4: invalid type `:not_a_type` for attr `:foo`. Currently, only type `:any` is supported."
+      assert_raise(CompileError, message, fn ->
+        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
+      end)
+    end
+
+    test "raise if attr option is not supported" do
+      code = """
+      defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :any, not_an_opt: true
+        def func(assigns), do: ~H[]
+      end
+      """
+
+      message = "code:4: invalid option `:not_an_opt` for attr `:foo`. Currently, only `:required` is supported."
+      assert_raise(CompileError, message, fn ->
+        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
+      end)
+    end
   end
 end
