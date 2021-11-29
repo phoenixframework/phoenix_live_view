@@ -51,6 +51,25 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       ]
     end
 
+    defmodule RequiredAttrsWithDynamic do
+      use Phoenix.Component
+
+      attr :name, :any, required: true
+
+      def func(assigns), do: ~H[]
+
+      def render(assigns) do
+        ~H"""
+        <.func {[foo: 1]}/>
+        """
+      end
+    end
+
+    test "do not validate required attributes when passing dynamic attr" do
+      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrsWithDynamic])
+      assert diagnostics == []
+    end
+
     defmodule UndefinedAttrs do
       use Phoenix.Component
 

@@ -23,39 +23,49 @@ defmodule Mix.Tasks.Compile.LiveView do
     for module <- modules,
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
-        call <- module.__components_calls__(),
-        attrs_defs = callee_attrs_defs(call) do
-      [validate_required_attrs(call, attrs_defs), validate_undefined_attrs(call, attrs_defs)]
+        %{component: {mod, fun}, attrs: attrs, file: file, line: line} <- module.__components_calls__(),
+        attrs_defs = callee_attrs_defs(mod, fun) do
+      {dyn_attrs, static_attrs} = Enum.split_with(attrs, &match?({:root, _, _}, &1))
+      meta = %{file: file, line: line, callee: "#{inspect(mod)}.#{fun}/1"}
+
+      [
+        maybe_validate_required_attrs(static_attrs, dyn_attrs, attrs_defs, meta),
+        validate_undefined_attrs(static_attrs, attrs_defs, meta)
+      ]
     end
     |> List.flatten()
   end
 
-  defp validate_required_attrs(call, attrs_defs) do
-    %{component: component, attrs: call_attrs, file: file, line: line} = call
-    passed_attrs = Enum.map(call_attrs, &elem(&1, 0))
+  defp maybe_validate_required_attrs(static_attrs, _dyn_attrs = [], attrs_defs, meta) do
+    validate_required_attrs(static_attrs, attrs_defs, meta)
+  end
+
+  defp maybe_validate_required_attrs(_, _, _, _) do
+    []
+  end
+
+  defp validate_required_attrs(static_attrs, attrs_defs, meta) do
+    %{callee: callee, file: file, line: line} = meta
+    passed_attrs = Enum.map(static_attrs, &elem(&1, 0))
 
     for %{name: name, opts: opts} <- attrs_defs, opts[:required], "#{name}" not in passed_attrs do
-      message = "missing required attribute `#{name}` for component `#{format_component(component)}`"
+      message = "missing required attribute `#{name}` for component `#{callee}`"
       error(message, file, line)
     end
   end
 
-  defp validate_undefined_attrs(call, attrs_defs) do
-    %{component: component, attrs: call_attrs, file: file} = call
+  defp validate_undefined_attrs(static_attrs, attrs_defs, meta) do
+    %{callee: callee, file: file} = meta
     defined_attrs = Enum.map(attrs_defs, fn %{name: name} -> "#{name}" end)
 
-    for {name, _value, %{line: line}} <- call_attrs, name not in defined_attrs do
-      message = "undefined attribute `#{name}` for component `#{format_component(component)}`"
+    for {name, _value, %{line: line}} <- static_attrs, name not in defined_attrs do
+      message = "undefined attribute `#{name}` for component `#{callee}`"
       error(message, file, line)
     end
   end
 
-  defp callee_attrs_defs(_call = %{component: {module, fun}}) do
+  defp callee_attrs_defs(module, fun) do
     module.__components__()[fun]
-  end
-
-  defp format_component({module, fun}) do
-    "#{inspect(module)}.#{fun}/1"
   end
 
   defp project_modules do
