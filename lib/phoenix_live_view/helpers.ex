@@ -472,15 +472,19 @@ defmodule Phoenix.LiveView.Helpers do
 
     2. Then instead of:
 
-          <%= live_component MyModule, id: "hello" do %>
-            ...
-          <% end %>
+       ```
+       <%= live_component MyModule, id: "hello" do %>
+       ...
+       <% end %>
+       ```
 
        You should do:
 
-          <.live_component module={MyModule} id="hello">
-            ...
-          </.live_component>
+       ```
+       <.live_component module={MyModule} id="hello">
+       ...
+       </.live_component>
+       ```
 
     3. If your component is using `render_block/2`, replace
        it by `render_slot/2`
