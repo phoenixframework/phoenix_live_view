@@ -18,7 +18,7 @@ callback, for example:
 | [Params](#click-events) | `phx-value-*` |
 | [Click Events](#click-events) | `phx-click`, `phx-click-away` |
 | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
-| [Focus/Blur Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
+| [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [DOM Patching](dom-patching.md) | `phx-update`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
@@ -288,3 +288,35 @@ For example:
     <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
       <%= live_flash(@flash, :info) %>
     </p>
+
+## Loading states and errors
+
+All `phx-` event bindings apply their own css classes when pushed. For example
+the following markup:
+
+    <button phx-click="clicked" phx-window-keydown="key">...</button>
+
+On click, would receive the `phx-click-loading` class, and on keydown would receive
+the `phx-keydown-loading` class. The css loading classes are maintained until an
+acknowledgement is received on the client for the pushed event.
+
+In the case of forms, when a `phx-change` is sent to the server, the input element
+which emitted the change receives the `phx-change-loading` class, along with the
+parent form tag. The following events receive css loading classes:
+
+  - `phx-click` - `phx-click-loading`
+  - `phx-change` - `phx-change-loading`
+  - `phx-submit` - `phx-submit-loading`
+  - `phx-focus` - `phx-focus-loading`
+  - `phx-blur` - `phx-blur-loading`
+  - `phx-window-keydown` - `phx-keydown-loading`
+  - `phx-window-keyup` - `phx-keyup-loading`
+
+Additionally, the following classes are applied to the LiveView's parent
+container:
+
+  - `"phx-connected"` - applied when the view has connected to the server
+  - `"phx-loading"` - applied when the view is not connected to the server
+  - `"phx-error"` - applied when an error occurs on the server. Note, this
+    class will be applied in conjunction with `"phx-loading"` if connection
+    to the server is lost.
