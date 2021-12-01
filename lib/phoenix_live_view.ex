@@ -511,10 +511,12 @@ defmodule Phoenix.LiveView do
           {:cont, assign(socket, :page_title, "DemoWeb")}
         end
 
-        def on_mount(:user, _params, _session, socket) do
+        def on_mount(:user, params, session, socket) do
+          # code
         end
 
-        def on_mount(:admin, _params, _session, socket) do
+        def on_mount(:admin, params, session, socket) do
+          # code
         end
       end
 
