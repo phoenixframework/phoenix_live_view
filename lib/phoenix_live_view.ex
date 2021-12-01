@@ -479,11 +479,11 @@ defmodule Phoenix.LiveView do
   multiple modules. Instead, pass a tuple and use pattern matching to handle
   different cases:
 
-      def on_mount(:admin, _params, _session, _socket) do
+      def on_mount(:admin, _params, _session, socket) do
         {:cont, socket}
       end
 
-      def on_mount(:user, _params, _session, _socket) do
+      def on_mount(:user, _params, _session, socket) do
         {:cont, socket}
       end
 
