@@ -296,8 +296,8 @@ defmodule Phoenix.Component do
       Module.register_attribute(__MODULE__, :__components_calls__, accumulate: true)
       Module.put_attribute(__MODULE__, :__components__, %{})
 
-      @on_definition {unquote(__MODULE__), :__on_definition__}
-      @before_compile {unquote(__MODULE__), :__before_compile__}
+      @on_definition unquote(__MODULE__)
+      @before_compile unquote(__MODULE__)
     end
   end
 
@@ -331,14 +331,13 @@ defmodule Phoenix.Component do
   end
 
   defp validate_attr_opts!(name, opts, line, file) do
-    for {key, _} <- opts do
-      if key != :required do
-        message = """
-        invalid option `#{inspect(key)}` for attr `#{inspect(name)}`. \
-        Currently, only `:required` is supported.\
-        """
-        raise CompileError, line: line, file: file, description: message
-      end
+    for {key, _} <- opts, key != :required do
+      message = """
+      invalid option `#{inspect(key)}` for attr `#{inspect(name)}`. \
+      Currently, only `:required` is supported.\
+      """
+
+      raise CompileError, line: line, file: file, description: message
     end
   end
 

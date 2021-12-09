@@ -795,7 +795,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  # Use Macro.Env.lookup_import/2 when we require Elixir v1.13+
+  # TODO: Use Macro.Env.lookup_import/2 when we require Elixir v1.13+
   defp lookup_import(%Macro.Env{functions: functions, macros: macros}, {name, arity} = pair)
       when is_atom(name) and is_integer(arity) do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}

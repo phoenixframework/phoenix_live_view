@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Compile.LiveView do
 
   @doc false
   def run(args) do
-    {compile_opts, _argv, _errors} = OptionParser.parse(args, strict: [return_errors: :boolean])
+    {compile_opts, _argv, _errors} = OptionParser.parse(args, switches: [return_errors: :boolean])
 
     case validate_components_calls(project_modules()) do
       [] ->
@@ -70,9 +70,7 @@ defmodule Mix.Tasks.Compile.LiveView do
 
   defp project_modules do
     files =
-      Mix.Project.config()[:app]
-      |> Application.app_dir()
-      |> Path.join("ebin")
+      Mix.Project.compile_path()
       |> File.ls!
       |> Enum.sort()
 
@@ -88,6 +86,7 @@ defmodule Mix.Tasks.Compile.LiveView do
   end
 
   defp error(message, file, line) do
+    # TODO: Provide column information in diagnostic once we depend on Elixir v1.13+
     %Diagnostic{
       compiler_name: "live_view",
       file: file,
