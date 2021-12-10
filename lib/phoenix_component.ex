@@ -48,6 +48,21 @@ defmodule Phoenix.Component do
 
   You can learn more about the `~H` sigil [in its documentation](`Phoenix.LiveView.Helpers.sigil_H/2`).
 
+  For multiple dynamic attributes, the `{assigns}` syntax can be used.
+
+      ~H"""
+      <.greet {@dynamic_attrs} />
+      """
+
+  It is required to used `Phoenix.LiveView.Helpers.assigns_to_attributes/2` to
+  strip out any slots when using an HTML element.
+
+      ~H"""
+      <div assigns_to_attributes{assigns}>
+        ...
+      </div>
+      """
+
   ## `use Phoenix.Component`
 
   Modules that define function components should call
