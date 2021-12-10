@@ -356,24 +356,83 @@ defmodule Phoenix.LiveView do
             ) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
+  @doc """
+  Renders a template.
+
+  This callback is invoked whenever LiveView detects
+  new content must be rendered and sent to the client.
+
+  If you define this function, it must return a template
+  defined via the `Phoenix.LiveView.Helpers.sigil_H/2`.
+
+  If you don't define this function, LiveView will attempt
+  to render a template in the directory as your LiveView.
+  For example, if you have a LiveView named `MyApp.MyCustomView`
+  inside `lib/my_app/live_views/my_custom_view.ex`, Phoenix
+  will look for a template at `lib/my_app/live_views/my_custom_view.html.heex`.
+  """
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
+  @doc """
+  Invoked when the LiveView is terminating.
+
+  In case of errors, this callback is only invoked if the LiveView,
+  is trapping exits. See `c:GenServer.terminate/2` for more info.
+  """
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
+  @doc """
+  Invoked after mount and whenever there is a live patch event.
+
+  It receives the current `params`, including parameters from
+  the router, the current `uri` from the client and the `socket`.
+  It is invoked after mount or whenever there is a live navigation
+  event caused by `push_patch/2` or `Phoenix.LiveView.Helpers.live_patch/2`.
+
+  It must always return `{:noreply, socket}`, where `:noreply`
+  means no additional information is sent to the client.
+  """
   @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
+  @doc """
+  Invoked to handle events sent by the client.
+
+  It receives the `event` name , the event payload as a map,
+  and the socket.
+
+  It must always return `{:noreply, socket}`, where `:noreply`
+  means no additional information is sent to the client.
+  """
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
+  @doc """
+  Invoked to handle calls from other Elixir processes.
+
+  See `GenServer.call/3` and `c:GenServer.handle_call/3`
+  for more information.
+  """
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()}
 
-  @callback handle_info(msg :: term, socket :: Socket.t()) ::
+  @doc """
+  Invoked to handle casts from other Elixir processes.
+
+  See `GenServer.cast/2` and `c:GenServer.handle_cast/2`
+  for more information.
+  """
+  @callback handle_cast(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
-  @callback handle_cast(msg :: term, socket :: Socket.t()) ::
+  @doc """
+  Invoked to handle messages from other Elixir processes.
+
+  See `Kernel.send/2` and `c:GenServer.handle_info/2`
+  for more information.
+  """
+  @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
