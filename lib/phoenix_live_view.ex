@@ -366,7 +366,7 @@ defmodule Phoenix.LiveView do
   defined via the `Phoenix.LiveView.Helpers.sigil_H/2`.
 
   If you don't define this function, LiveView will attempt
-  to render a template in the directory as your LiveView.
+  to render a template in the same directory as your LiveView.
   For example, if you have a LiveView named `MyApp.MyCustomView`
   inside `lib/my_app/live_views/my_custom_view.ex`, Phoenix
   will look for a template at `lib/my_app/live_views/my_custom_view.html.heex`.
@@ -376,7 +376,7 @@ defmodule Phoenix.LiveView do
   @doc """
   Invoked when the LiveView is terminating.
 
-  In case of errors, this callback is only invoked if the LiveView,
+  In case of errors, this callback is only invoked if the LiveView
   is trapping exits. See `c:GenServer.terminate/2` for more info.
   """
   @callback terminate(reason, socket :: Socket.t()) :: term
