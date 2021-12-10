@@ -5,6 +5,14 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   alias Phoenix.LiveViewTest.{Upload, ClientProxy}
 
+  def child_spec(opts) do
+    %{
+      id: make_ref(),
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :temporary
+    }
+  end
+
   def channel_pids(%Upload{pid: pid}) do
     GenServer.call(pid, :channel_pids)
   end
@@ -33,17 +41,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   def init(opts) do
     cid = Keyword.fetch!(opts, :cid)
-
-    socket =
-      case Keyword.fetch(opts, :socket_builder) do
-        {:ok, func} ->
-          {:ok, socket} = func.()
-          socket
-
-        :error ->
-          nil
-      end
-
+    socket = Keyword.get(opts, :socket)
+    socket = socket && put_in(socket.transport_pid, self())
     {:ok, %{socket: socket, cid: cid, upload_ref: nil, config: %{}, entries: %{}}}
   end
 
