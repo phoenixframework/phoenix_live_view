@@ -399,7 +399,7 @@ defmodule Phoenix.LiveView do
   @doc """
   Invoked to handle events sent by the client.
 
-  It receives the `event` name , the event payload as a map,
+  It receives the `event` name, the event payload as a map,
   and the socket.
 
   It must return `{:noreply, socket}`, where `:noreply` means
@@ -425,7 +425,7 @@ defmodule Phoenix.LiveView do
   See `GenServer.cast/2` and `c:GenServer.handle_cast/2`
   for more information. It must always return `{:noreply, socket}`,
   where `:noreply` means no additional information is sent
-  to the process who cast the message.
+  to the process which cast the message.
   """
   @callback handle_cast(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -436,7 +436,7 @@ defmodule Phoenix.LiveView do
   See `Kernel.send/2` and `c:GenServer.handle_info/2`
   for more information. It must always return `{:noreply, socket}`,
   where `:noreply` means no additional information is sent
-  to the process who sent the message.
+  to the process which sent the message.
   """
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
