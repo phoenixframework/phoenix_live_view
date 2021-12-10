@@ -95,8 +95,11 @@ validate the user input and change the state accordingly:
       {:noreply, load_users(socket)}
     end
 
-As with other `handle_*` callbacks, changes to the state inside
-[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will trigger a server render.
+Note we returned `{:noreply, socket}`, where `:noreply` means no
+additional information is sent to the client. As with other `handle_*`
+callbacks, changes to the state inside
+[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will trigger
+a new server render.
 
 Note the parameters given to [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`)
 are the same as the ones given to [`mount/3`](`c:Phoenix.LiveView.mount/3`).

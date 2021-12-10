@@ -402,8 +402,10 @@ defmodule Phoenix.LiveView do
   It receives the `event` name , the event payload as a map,
   and the socket.
 
-  It must always return `{:noreply, socket}`, where `:noreply`
-  means no additional information is sent to the client.
+  It must return `{:noreply, socket}`, where `:noreply` means
+  no additional information is sent to the client, or
+  `{:reply, map(), socket}`, where the given `map()` is encoded
+  and sent as a reply to the client.
   """
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
@@ -421,7 +423,9 @@ defmodule Phoenix.LiveView do
   Invoked to handle casts from other Elixir processes.
 
   See `GenServer.cast/2` and `c:GenServer.handle_cast/2`
-  for more information.
+  for more information. It must always return `{:noreply, socket}`,
+  where `:noreply` means no additional information is sent
+  to the process who cast the message.
   """
   @callback handle_cast(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -430,7 +434,9 @@ defmodule Phoenix.LiveView do
   Invoked to handle messages from other Elixir processes.
 
   See `Kernel.send/2` and `c:GenServer.handle_info/2`
-  for more information.
+  for more information. It must always return `{:noreply, socket}`,
+  where `:noreply` means no additional information is sent
+  to the process who sent the message.
   """
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
