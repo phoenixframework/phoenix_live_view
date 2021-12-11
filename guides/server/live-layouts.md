@@ -1,6 +1,6 @@
 # Live layouts
 
-*NOTE:* Make sure you've read the [Assigns and LiveEEx templates](assigns-eex.md)
+*NOTE:* Make sure you've read the [Assigns and HEEx templates](assigns-eex.md)
 guide before moving forward.
 
 When working with LiveViews, there are usually three layouts to be
