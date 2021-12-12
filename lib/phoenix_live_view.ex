@@ -45,21 +45,24 @@ defmodule Phoenix.LiveView do
   As in a regular request, `params` contains public data that can be
   modified by the user. The `session` always contains private data set
   by the application itself. The `c:mount/3` callback wires up socket
-  assigns necessary for rendering the view. After mounting, `c:render/1`
+  assigns necessary for rendering the view. After mounting, `c:handle_params/3`
+  is invoked so uri and query params are handled. Finally, `c:render/1`
   is invoked and the HTML is sent as a regular HTML response to the
   client.
 
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via `phx-` bindings. Just like
-  the first rendering, `c:mount/3` is invoked  with params, session,
-  and socket state, where mount assigns values for rendering. However
-  in the connected client case, a LiveView process is spawned on
-  the server, pushes the result of `c:render/1` to the client and
-  continues on for the duration of the connection. If at any point
-  during the stateful life-cycle a crash is encountered, or the client
-  connection drops, the client gracefully reconnects to the server,
-  calling `c:mount/3` once again.
+  the first rendering, `c:mount/3, is invoked  with params, session,
+  and socket state, However in the connected client case, a LiveView process
+  is spawned on the server, runs `c:handle_params/3` again and then pushes
+  the result of `c:render/1` to the client and continues on for the duration
+  of the connection. If at any point during the stateful life-cycle a crash
+  is encountered, or the client connection drops, the client gracefully
+  reconnects to the server, calling `c:mount/3` and `c:handle_params/3` again.
+
+  LiveView also allows attaching hooks to specific life-cycle stages with
+  `attach_hook/4`.
 
   ## Example
 
