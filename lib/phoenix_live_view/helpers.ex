@@ -153,6 +153,10 @@ defmodule Phoenix.LiveView.Helpers do
   more about components in `Phoenix.Component`.
   '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
+      raise "~H requires a variable named \"assigns\" to exist and be set to a map"
+    end
+
     options = [
       engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
@@ -561,6 +565,15 @@ defmodule Phoenix.LiveView.Helpers do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
+  defp rewrite_do!(do_block, key, caller) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      rewrite_do(do_block, key)
+    else
+      raise ArgumentError,
+            "cannot use live_component because the assigns var is unbound/unset"
+    end
+  end
+
   @doc """
   Renders a component defined by the given function.
 
@@ -727,16 +740,7 @@ defmodule Phoenix.LiveView.Helpers do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    rewrite_do!(do_block, name, __CALLER__)
-  end
-
-  defp rewrite_do!(do_block, key, caller) do
-    if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, key)
-    else
-      raise ArgumentError,
-            "cannot use component/live_component because the assigns var is unbound/unset"
-    end
+    rewrite_do(do_block, name)
   end
 
   defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
