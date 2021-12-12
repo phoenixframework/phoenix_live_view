@@ -61,6 +61,9 @@ defmodule Phoenix.LiveView do
   is encountered, or the client connection drops, the client gracefully
   reconnects to the server, calling `c:mount/3` and `c:handle_params/3` again.
 
+  LiveView also allows attaching hooks to specific life-cycle stages with
+  `attach_hook/4`.
+
   ## Example
 
   Before writing your first example, make sure that Phoenix LiveView
