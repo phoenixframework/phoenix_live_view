@@ -138,6 +138,7 @@ defmodule Phoenix.LiveViewTest do
       import Phoenix.LiveViewTest
 
       test "greets" do
+        assigns = []
         assert rendered_to_string(~H"""
                <MyComponents.greet name="Mary" />
                """) ==
@@ -504,7 +505,9 @@ defmodule Phoenix.LiveViewTest do
   Converts a rendered template to a string.
 
   ## Examples
-
+      
+      iex> import Phoenix.LiveView.Helpers
+      iex> assigns = []
       iex> ~H"""
       ...> <div>example</div>
       ...> """
