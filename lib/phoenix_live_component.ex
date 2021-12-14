@@ -171,7 +171,15 @@ defmodule Phoenix.LiveComponent do
 
   ## Slots
 
-  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`.
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
+
+      <.live_component module={MyComponent} >
+        <div>Inner content here</div>
+      </.live_component>
+
+  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
+  includes the `:inner_block` assign it received.
+
   See the docs for `Phoenix.Component` for more information.
 
   ## Live patches and live redirects
