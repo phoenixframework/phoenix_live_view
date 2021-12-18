@@ -1221,43 +1221,87 @@ defmodule Phoenix.LiveView do
     if connect_params = private[:connect_params] do
       if connected?(socket), do: connect_params, else: nil
     else
-      raise_connect_only!(socket, "connect_params")
+      raise_root_and_mount_only!(socket, "connect_params")
+    end
+  end
+
+  @deprecated "use connect_info/2 instead"
+  def get_connect_info(%Socket{private: private} = socket) do
+    if connect_info = private[:connect_info] do
+      if connected?(socket), do: connect_info, else: nil
+    else
+      raise_root_and_mount_only!(socket, "connect_info")
     end
   end
 
   @doc """
-  Accesses the connect info from the socket to use on connected mount.
+  Accesses a given connect info key from the socket.
 
-  Connect info are only sent when the client connects to the server and
-  only remain available during mount. `nil` is returned when called in a
-  disconnected state and a `RuntimeError` is raised if called after mount.
+  The following keys are supported: `:peer_data`, `:trace_context_headers`,
+  `:x_headers`, `:uri`, and `:user_agent`.
+
+  The connect information is available only during mount. During disconnected
+  render, all keys are available. On connected render, only the keys explicitly
+  declared in your socket are available. See `Phoenix.Endpoint.socket/3` for
+  a complete description of the keys.
 
   ## Examples
 
-  First, when invoking the LiveView socket, you need to declare the
-  `connect_info` you want to receive. Typically, it includes at least
-  the session but it may include other keys, such as `:peer_data`.
-  See `Phoenix.Endpoint.socket/3`:
+  The first step is to declare the `connect_info` you want to receive.
+  Typically, it includes at least the session, but you must include all
+  other keys you want to access on connected mount, such as `:peer_data`:
 
       socket "/live", Phoenix.LiveView.Socket,
         websocket: [connect_info: [:peer_data, session: @session_options]]
 
   Those values can now be accessed on the connected mount as
-  `get_connect_info/1`:
+  `get_connect_info/2`:
 
       def mount(_params, _session, socket) do
-        if info = get_connect_info(socket) do
-          {:ok, assign(socket, ip: info.peer_data.address)}
-        else
-          {:ok, assign(socket, ip: nil)}
-        end
+        peer_data = get_connect_info(socket, :peer_data) do
+        {:ok, assign(socket, ip: peer_data.address)}
       end
+
+  If the key is not available, usually because it was not specified
+  in `connect_info`, it returns nil.
   """
-  def get_connect_info(%Socket{private: private} = socket) do
+  def get_connect_info(%Socket{private: private} = socket, key) when is_atom(key) do
     if connect_info = private[:connect_info] do
-      if connected?(socket), do: connect_info, else: nil
+      if connected?(socket), do: connect_info[key], else: conn_connect_info(connect_info, key)
     else
-      raise_connect_only!(socket, "connect_info")
+      raise_root_and_mount_only!(socket, "connect_info")
+    end
+  end
+
+  defp conn_connect_info(conn, :peer_data) do
+    Plug.Conn.get_peer_data(conn)
+  end
+
+  defp conn_connect_info(conn, :x_headers) do
+    for {header, _} = pair <- conn.req_headers,
+        String.starts_with?(header, "x-"),
+        do: pair
+  end
+
+  defp conn_connect_info(conn, :trace_context_headers) do
+    for {header, _} = pair <- conn.req_headers,
+      header in ["traceparent", "tracestate"],
+      do: pair
+  end
+
+  defp conn_connect_info(conn, :uri) do
+    %URI{
+      scheme: to_string(conn.scheme),
+      query: conn.query_string,
+      port: conn.port,
+      host: conn.host,
+      path: conn.request_path
+    }
+  end
+
+  defp conn_connect_info(conn, :user_agent) do
+    with {_, value} <- List.keyfind(conn.req_headers, "user-agent", 0) do
+      value
     end
   end
 
@@ -1317,7 +1361,7 @@ defmodule Phoenix.LiveView do
           endpoint.config(:cache_static_manifest_latest)
         )
     else
-      raise_connect_only!(socket, "static_changed?")
+      raise_root_and_mount_only!(socket, "static_changed?")
     end
   end
 
@@ -1335,7 +1379,7 @@ defmodule Phoenix.LiveView do
 
   defp static_changed?(_, _), do: false
 
-  defp raise_connect_only!(socket, fun) do
+  defp raise_root_and_mount_only!(socket, fun) do
     if child?(socket) do
       raise RuntimeError, """
       attempted to read #{fun} from a nested child LiveView #{inspect(socket.view)}.
