@@ -43,6 +43,15 @@ defmodule Phoenix.ComponentTest do
       assert eval(~H"<.changed foo={@foo} />") == [["nil"]]
     end
 
+    test "with tainted variable" do
+      foo = 1
+      assigns = %{foo: 1}
+      assert eval(~H"<.changed foo={foo} />") == [["nil"]]
+
+      assigns = %{foo: 1, __changed__: %{}}
+      assert eval(~H"<.changed foo={foo} />") == [["%{foo: true}"]]
+    end
+
     test "with changed assigns on root" do
       assigns = %{foo: 1, __changed__: %{}}
       assert eval(~H"<.changed foo={@foo} />") == [nil]
