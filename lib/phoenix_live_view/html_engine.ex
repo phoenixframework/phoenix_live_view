@@ -587,9 +587,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ArgumentError, "expected a binary in <>, got: #{inspect(value)}"
   end
 
-  defp safe_unless_special("aria"), do: "aria"
-  defp safe_unless_special("class"), do: "class"
-  defp safe_unless_special("data"), do: "data"
+  # We mark attributes as safe so we don't escape them
+  # at rendering time. However, some attributes are
+  # specially handled, so we keep them as strings shape.
+  defp safe_unless_special("id"), do: :id
+  defp safe_unless_special("aria"), do: :aria
+  defp safe_unless_special("class"), do: :class
+  defp safe_unless_special("data"), do: :data
   defp safe_unless_special(name), do: {:safe, name}
 
   ## build_self_close_component_assigns/build_component_assigns

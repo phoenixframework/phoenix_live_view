@@ -1029,7 +1029,7 @@ defmodule Phoenix.LiveView.Helpers do
 
     {csrf_token, opts} =
       Keyword.pop_lazy(opts, :csrf_token, fn ->
-        if method == "post", do: Phoenix.HTML.Tag.csrf_token_value(action)
+        if method == "post", do: Plug.CSRFProtection.get_csrf_token_for(action)
       end)
 
     opts =
