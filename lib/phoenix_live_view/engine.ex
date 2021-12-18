@@ -825,11 +825,7 @@ defmodule Phoenix.LiveView.Engine do
   # Non-expanded assign
   defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
        when is_atom(name) and is_atom(context) do
-    expr =
-      quote line: meta[:line] || 0 do
-        unquote(@assigns_var).unquote(name)
-      end
-
+    expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
