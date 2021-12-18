@@ -135,13 +135,6 @@ defmodule Phoenix.LiveView.HelpersTest do
         </.form>
         """)
       end
-
-      assert_raise ArgumentError, ~r/This means a component requires a do-block or HTML children/, fn ->
-        assigns = %{}
-        parse(~H"""
-        <.form for={:myform} />
-        """)
-      end
     end
 
     test "generates form with no options" do

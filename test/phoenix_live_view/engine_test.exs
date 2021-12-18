@@ -77,10 +77,8 @@ defmodule Phoenix.LiveView.EngineTest do
                "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
     end
 
-    test "raises ArgumentError for missing assigns" do
-      assert_raise ArgumentError,
-                   ~r/assign @foo not available in template.*Available assigns: \[:bar\]/s,
-                   fn -> render("<%= @foo %>", %{bar: true}) end
+    test "raises KeyError for missing assigns" do
+      assert_raise KeyError, fn -> render("<%= @foo %>", %{bar: true}) end
     end
   end
 
@@ -370,7 +368,7 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "renders dynamic if it uses assigns directly" do
-      template = "<%= for _ <- [1, 2, 3], do: assigns.foo %>"
+      template = "<%= for _ <- [1, 2, 3], do: Map.get(assigns, :foo) %>"
       assert changed(template, %{foo: "a"}, nil) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{foo: true}) == [["a", "a", "a"]]

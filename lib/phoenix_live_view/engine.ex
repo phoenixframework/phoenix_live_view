@@ -789,6 +789,18 @@ defmodule Phoenix.LiveView.Engine do
     {ast, keys, vars}
   end
 
+  # Expanded assign access. The non-expanded form is handled on root,
+  # then all further traversals happen on the expanded form
+  defp analyze_assign(
+         {{:., _, [{:assigns, _, nil}, name]}, _, args} = expr,
+         vars,
+         assigns,
+         nest
+       )
+       when is_atom(name) and args in [[], nil] do
+    {expr, vars, Map.put(assigns, [name | nest], true)}
+  end
+
   # Nested assign
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
     {args, vars, assigns} =
@@ -804,7 +816,8 @@ defmodule Phoenix.LiveView.Engine do
     {{{:., dot_meta, [Access, :get]}, meta, args}, vars, assigns}
   end
 
-  defp analyze_assign({{:., dot_meta, [left, right]}, meta, []}, vars, assigns, nest) do
+  defp analyze_assign({{:., dot_meta, [left, right]}, meta, args}, vars, assigns, nest)
+       when args in [[], nil] do
     {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
   end
@@ -814,21 +827,9 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(name) and is_atom(context) do
     expr =
       quote line: meta[:line] || 0 do
-        unquote(__MODULE__).fetch_assign!(unquote(@assigns_var), unquote(name))
+        unquote(@assigns_var).unquote(name)
       end
 
-    {expr, vars, Map.put(assigns, [name | nest], true)}
-  end
-
-  # Expanded assign access. The non-expanded form is handled on root,
-  # then all further traversals happen on the expanded form
-  defp analyze_assign(
-         {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
-         vars,
-         assigns,
-         nest
-       )
-       when is_atom(name) do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
@@ -841,21 +842,12 @@ defmodule Phoenix.LiveView.Engine do
     analyze_assign(expr, vars, assigns, [])
   end
 
-  defp analyze({{:., _, [_, _]}, _, []} = expr, vars, assigns) do
+  defp analyze({{:., _, [_, _]}, _, args} = expr, vars, assigns) when args in [[], nil] do
     analyze_assign(expr, vars, assigns, [])
   end
 
   defp analyze({:@, _, [{name, _, context}]} = expr, vars, assigns)
        when is_atom(name) and is_atom(context) do
-    analyze_assign(expr, vars, assigns, [])
-  end
-
-  defp analyze(
-         {{:., _, [__MODULE__, :fetch_assign!]}, _, [{:assigns, _, nil}, name]} = expr,
-         vars,
-         assigns
-       )
-       when is_atom(name) do
     analyze_assign(expr, vars, assigns, [])
   end
 
@@ -1123,43 +1115,6 @@ defmodule Phoenix.LiveView.Engine do
 
       {_, _} ->
         true
-    end
-  end
-
-  @doc false
-  def fetch_assign!(assigns, key) do
-    case assigns do
-      %{^key => val} ->
-        val
-
-      %{} when key == :inner_block ->
-        raise ArgumentError, """
-        assign @#{key} not available in template.
-
-        This means a component requires a do-block or HTML children to
-        be given as argument but none were given. For example, instead of:
-
-            <.component />
-
-        You must do:
-
-            <.component>
-              more content
-            </.component>
-
-        Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
-        """
-
-      %{} ->
-        raise ArgumentError, """
-        assign @#{key} not available in template.
-
-        Please make sure all proper assigns have been set. If you are
-        calling a component, make sure you are passing all required
-        assigns as arguments.
-
-        Available assigns: #{inspect(Enum.map(assigns, &elem(&1, 0)))}
-        """
     end
   end
 

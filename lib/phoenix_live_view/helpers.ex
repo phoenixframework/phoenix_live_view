@@ -1066,9 +1066,6 @@ defmodule Phoenix.LiveView.Helpers do
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
       match?({^assign_name, _, _}, expression) or
-      match?(
-        {{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]},
-        expression
-      )
+      match?({{:., _, [{:assigns, _, nil}, ^assign_name]}, _, []}, expression)
   end
 end
