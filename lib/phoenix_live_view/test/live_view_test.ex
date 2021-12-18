@@ -190,11 +190,7 @@ defmodule Phoenix.LiveViewTest do
     Plug.Conn.put_private(conn, :live_view_connect_params, params)
   end
 
-  @doc """
-  Puts connect info to be used on LiveView connections.
-
-  See `Phoenix.LiveView.get_connect_info/1`.
-  """
+  @deprecated "set the relevant connect_info fields in the connection instead"
   def put_connect_info(conn, params) when is_map(params) do
     Plug.Conn.put_private(conn, :live_view_connect_info, params)
   end
@@ -336,7 +332,7 @@ defmodule Phoenix.LiveViewTest do
     start_proxy(path, %{
       html: Phoenix.ConnTest.html_response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
-      connect_info: conn.private[:live_view_connect_info] || %{},
+      connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
       live_module: live_module,
       router: router,
       endpoint: Phoenix.Controller.endpoint_module(conn),
@@ -352,6 +348,10 @@ defmodule Phoenix.LiveViewTest do
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
        when redir in [301, 302] do
     error_redirect_conn(conn)
+  end
+
+  defp prune_conn(conn) do
+    %{conn | resp_body: nil, resp_headers: []}
   end
 
   defp error_redirect_conn(conn) do

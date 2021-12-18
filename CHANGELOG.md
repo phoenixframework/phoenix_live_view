@@ -14,7 +14,8 @@
   - Fix diff on response failing to await for active transitions in certain cases
 
 ### Deprecations
-   - Deprecate get_connect_info/1 in favor of `get_connect_info/2`
+   - Deprecate `Phoenix.LiveView.get_connect_info/1` in favor of `get_connect_info/2`
+   - Deprecate `Phoenix.LiveViewTest.put_connect_info/2` in favor of calling the relevant functions in `Plug.Conn`
 
 ## 0.17.5 (2021-11-02)
 

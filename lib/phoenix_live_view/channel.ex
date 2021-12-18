@@ -917,7 +917,9 @@ defmodule Phoenix.LiveView.Channel do
 
     # Optional verified parts
     flash = verify_flash(endpoint, verified, params["flash"], connect_params)
-    socket_session = connect_info[:session] || %{}
+
+    # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
+    socket_session = Map.get(connect_info, :session, %{})
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)

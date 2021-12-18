@@ -1267,7 +1267,10 @@ defmodule Phoenix.LiveView do
   """
   def get_connect_info(%Socket{private: private} = socket, key) when is_atom(key) do
     if connect_info = private[:connect_info] do
-      if connected?(socket), do: connect_info[key], else: conn_connect_info(connect_info, key)
+      case connect_info do
+        %Plug.Conn{} -> conn_connect_info(connect_info, key)
+        %{} -> connect_info[key]
+      end
     else
       raise_root_and_mount_only!(socket, "connect_info")
     end

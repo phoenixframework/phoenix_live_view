@@ -113,6 +113,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
     live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
 
+    # integration connect
+    live "/connect", ConnectLive
+
     # live_patch
     scope host: "app.example.com" do
       live "/with-host/full", HostLive, :full
