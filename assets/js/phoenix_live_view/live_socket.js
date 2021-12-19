@@ -28,6 +28,10 @@
  * @param {Object} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
  * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
  * loading states.
+ * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
+ * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
+ * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
+ * @param {integer} [opts.failsafeJitter] - The time between reload attempts in failsafe mode.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -91,7 +95,8 @@ import {
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
-  RELOAD_JITTER,
+  RELOAD_JITTER_MIN,
+  RELOAD_JITTER_MAX,
 } from "./constants"
 
 import {
@@ -142,6 +147,10 @@ export default class LiveSocket {
     this.hooks = opts.hooks || {}
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
+    this.maxReloads = opts.maxReloads || MAX_RELOADS
+    this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN
+    this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX
+    this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
@@ -281,13 +290,14 @@ export default class LiveSocket {
   reloadWithJitter(view, log){
     view.destroy()
     this.disconnect()
-    let [minMs, maxMs] = RELOAD_JITTER
+    let minMs = this.reloadJitterMin
+    let maxMs = this.reloadJitterMax
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
-    if(tries > MAX_RELOADS){
-      this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
-      afterMs = FAILSAFE_JITTER
+    if(tries > this.maxReloads){
+      this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`])
+      afterMs = this.failsafeJitter
     }
     setTimeout(() => {
       if(this.hasPendingLink()){
