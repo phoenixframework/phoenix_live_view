@@ -1225,7 +1225,7 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  @deprecated "use connect_info/2 instead"
+  @deprecated "use get_connect_info/2 instead"
   def get_connect_info(%Socket{private: private} = socket) do
     if connect_info = private[:connect_info] do
       if connected?(socket), do: connect_info, else: nil
@@ -1288,8 +1288,8 @@ defmodule Phoenix.LiveView do
 
   defp conn_connect_info(conn, :trace_context_headers) do
     for {header, _} = pair <- conn.req_headers,
-      header in ["traceparent", "tracestate"],
-      do: pair
+        header in ["traceparent", "tracestate"],
+        do: pair
   end
 
   defp conn_connect_info(conn, :uri) do
