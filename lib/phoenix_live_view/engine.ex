@@ -889,6 +889,17 @@ defmodule Phoenix.LiveView.Engine do
     {{:"::", meta, [left, right]}, vars, assigns}
   end
 
+  # Handle for/with to consider the first generator.
+  # Ideally we would track all variables on the patterns and expand all generators
+  # but except for the unlikely scenario of combinations, all comprehensions will
+  # be using nested generators.
+  defp analyze({for_with, meta, [{:<-, arrow_meta, [left, right]} | args]}, vars, assigns)
+       when for_with in [:for, :with] do
+    {right, vars, assigns} = analyze(right, vars, assigns)
+    {[left | args], vars, assigns} = analyze_with_restricted_vars([left | args], vars, assigns)
+    {{for_with, meta, [{:<-, arrow_meta, [left, right]} | args]}, vars, assigns}
+  end
+
   # Classify calls
   defp analyze({left, meta, args}, vars, assigns) do
     call = extract_call(left)
@@ -1139,8 +1150,8 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:require, [_, _]), do: :special_form
 
   defp classify_taint(:&, [_]), do: :never
-  defp classify_taint(:for, _), do: :never
   defp classify_taint(:fn, _), do: :never
+  defp classify_taint(:for, _), do: :never
 
   defp classify_taint(_, _), do: :none
 end

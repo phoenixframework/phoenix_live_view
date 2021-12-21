@@ -304,10 +304,13 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "does not render dynamic if it has variables as comprehension generators" do
-      template = "<% foo = [1, 2, 3] %><%= for x <- foo, do: x %>"
-      assert changed(template, %{}, nil) == [[1, 2, 3]]
-      assert changed(template, %{}, %{}) == [[1, 2, 3]]
-      assert changed(template, %{}, %{foo: true}) == [[1, 2, 3]]
+      template = "<%= for x <- foo do %><%= x %><% end %>"
+
+      rendered = eval(template, %{__changed__: nil}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+
+      rendered = eval(template, %{__changed__: %{}}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
     end
 
     test "does not render dynamic if it has variables inside optimized comprehension" do
@@ -836,8 +839,8 @@ defmodule Phoenix.LiveView.EngineTest do
     end
   end
 
-  defp eval(string, assigns \\ %{}) do
-    EEx.eval_string(string, [assigns: assigns], file: __ENV__.file, engine: Engine)
+  defp eval(string, assigns \\ %{}, binding \\ []) do
+    EEx.eval_string(string, [assigns: assigns] ++ binding, file: __ENV__.file, engine: Engine)
   end
 
   defp changed(string, assigns, changed, track_changes? \\ true) do
