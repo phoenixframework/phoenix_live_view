@@ -486,6 +486,26 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "raise on unclosed local call" do
+      message = ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component value='1' let={var}>
+        """)
+      end)
+
+      message = ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <%= if true do %>
+          <.local_function_component value='1' let={var}>
+        <% end %>
+        """)
+      end)
+    end
+
     test "empty attributes" do
       assigns = %{}
       assert compile("<.assigns_component />") == "%{}"
@@ -1109,7 +1129,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing closing tag" do
-      message = ~r/.exs:2:(1:)? end of file reached without closing tag for <div>/
+      message = ~r/.exs:2:(1:)? end of template reached without closing tag for <div>/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1118,7 +1138,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:2:(3:)? end of file reached without closing tag for <span>/
+      message = ~r/.exs:2:(3:)? end of template reached without closing tag for <span>/
 
       assert_raise(ParseError, message, fn ->
         eval("""

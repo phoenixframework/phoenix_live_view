@@ -303,6 +303,13 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: [1, 2, 3]}, %{foo: true}) == [[1, 2, 3]]
     end
 
+    test "does not render dynamic if it has variables as comprehension generators" do
+      template = "<% foo = [1, 2, 3] %><%= for x <- foo, do: x %>"
+      assert changed(template, %{}, nil) == [[1, 2, 3]]
+      assert changed(template, %{}, %{}) == [[1, 2, 3]]
+      assert changed(template, %{}, %{foo: true}) == [[1, 2, 3]]
+    end
+
     test "does not render dynamic if it has variables inside optimized comprehension" do
       template = "<%= for foo <- @foo do %><%= foo %><% end %>"
 

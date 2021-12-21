@@ -51,8 +51,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       state
       |> token_state()
       |> handle_tokens(tokens)
+      |> validate_unclosed_tags!("template")
 
-    validate_unclosed_tags!(token_state)
     opts = [root: token_state.root || false]
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
@@ -68,14 +68,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp validate_unclosed_tags!(%{tags: []} = state) do
+  defp validate_unclosed_tags!(%{tags: []} = state, _context) do
     state
   end
 
-  defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
+  defp validate_unclosed_tags!(%{tags: [tag | _]} = state, context) do
     {:tag_open, name, _attrs, %{line: line, column: column}} = tag
     file = state.file
-    message = "end of file reached without closing tag for <#{name}>"
+    message = "end of #{context} reached without closing tag for <#{name}>"
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
@@ -84,6 +84,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state
     |> token_state()
     |> handle_tokens(Enum.reverse(state.tokens))
+    |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
 
