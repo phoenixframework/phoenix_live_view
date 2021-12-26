@@ -359,13 +359,6 @@ defmodule Phoenix.LiveView.Helpers do
       An `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
 
-    * `:router` - an optional router that enables this LiveView to
-      perform live navigation. You should set this to your application
-      router (such as `MyApp.Router`) only if you are rendering a LiveView
-      inside a controller and you want to use live navigation helpers
-      (such as `push_patch`, `push_redirect`, and friends). Only a single
-      LiveView in a page may have the `:router` set.
-
     * `:sticky` - an optional flag to maintain the LiveView across
       live redirects, even if it is nested within another LiveView.
 
