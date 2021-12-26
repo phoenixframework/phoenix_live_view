@@ -330,16 +330,21 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a LiveView within an originating plug request or
-  within a parent LiveView.
+  Renders a LiveView within a template.
+
+  This is useful in two situations:
+
+    * When rendering a child LiveView inside a LiveView
+
+    * When rendering a LiveView inside a regular (non-live) controller/view
 
   ## Options
 
     * `:session` - a map of binary keys with extra session data to be
-      serialized and sent to the client. Note that all session data
-      currently in the connection is automatically available in LiveViews.
-      You can use this option to provide extra data. Remember all session
-      data is serialized and sent to the client. So you should always
+      serialized and sent to the client. All session data currently in
+      the connection is automatically available in LiveViews. You can
+      use this option to provide extra data. Remember all session data
+      is serialized and sent to the client, so you should always
       keep the data in the session to a minimum. For example, instead
       of storing a User struct, you should store the "user_id" and load
       the User when the LiveView mounts.
@@ -355,25 +360,33 @@ defmodule Phoenix.LiveView.Helpers do
       but it is a required option when rendering a child LiveView.
 
     * `:router` - an optional router that enables this LiveView to
-      perform live navigation. Only a single LiveView in a page may
-      have the `:router` set. LiveViews defined at the router with
-      the `live` macro automatically have the `:router` option set.
+      perform live navigation. You should set this to your application
+      router (such as `MyApp.Router`) only if you are rendering a LiveView
+      inside a controller and you want to use live navigation helpers
+      (such as `push_patch`, `push_redirect`, and friends). Only a single
+      LiveView in a page may have the `:router` set.
 
-    * `:sticky` - an optional flag to maintain the live view across
-      live redirects, even if it is nested within another parent.
+    * `:sticky` - an optional flag to maintain the LiveView across
+      live redirects, even if it is nested within another LiveView.
 
   ## Examples
 
-      # within eex template
+  When rendering from a controller/view, you can call:
+
       <%= live_render(@conn, MyApp.ThermostatLive) %>
 
-      # within leex template
+  Or:
+
+      <%= live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id}) %>
+
+  Within another LiveView, you must pass the `:id` option:
+
       <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
 
   ## Containers
 
   When a `LiveView` is rendered, its contents are wrapped in a container.
-  By default, said container is a `div` tag with a handful of `LiveView`
+  By default, the container is a `div` tag with a handful of `LiveView`
   specific attributes.
 
   The container can be customized in different ways:
