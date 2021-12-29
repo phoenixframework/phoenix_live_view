@@ -104,6 +104,16 @@ defmodule Phoenix.LiveView.Helpers do
         ...
       </div>
 
+  The following attributes values have special meaning:
+
+    * `true` - if a value is `true`, the attribute is rendered with no value at all.
+      For example, `<input required={true}>` is the same as `<input required>`;
+
+    * `false` or `nil` - if a value is `false` or `nil`, the attribute is not rendered;
+
+    * `list` (only for the `class` attribute) - each element of the list is considered
+      as a different class. `nil` and `false` elements are discarded.
+
   For multiple dynamic attributes, you can use the same notation but without
   assigning the expression to any specific attribute.
 
