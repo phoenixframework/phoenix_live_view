@@ -171,6 +171,7 @@ def handle_event("save", _params, socket) do
   uploaded_files =
     consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
       dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+      # The `static/uploads` directory must exist for `File.cp!/2` to work.
       File.cp!(path, dest)
       {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
     end)
