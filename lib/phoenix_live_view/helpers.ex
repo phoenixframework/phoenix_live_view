@@ -901,7 +901,7 @@ defmodule Phoenix.LiveView.Helpers do
   attribute pointing to the DOM ID of the file input. By default, the file input ID is the
   upload `ref`, so the following markup is all that is required for drag and drop support:
 
-      <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+      <div class="container" phx-drop-target={@uploads.avatar.ref}>
           ...
           <%= live_file_input @uploads.avatar %>
       </div>
