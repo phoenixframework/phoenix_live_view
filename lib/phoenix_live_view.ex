@@ -353,7 +353,7 @@ defmodule Phoenix.LiveView do
 
   """
   @callback mount(
-              unsigned_params() | :not_mounted_at_router,
+              params :: unsigned_params() | :not_mounted_at_router,
               session :: map,
               socket :: Socket.t()
             ) ::
