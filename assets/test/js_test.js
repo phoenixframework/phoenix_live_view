@@ -11,7 +11,11 @@ let setupView = (content) => {
 }
 
 let simulateVisibility = el => {
-  el.getClientRects = () => [1]
+  el.getClientRects = () => {
+    let style = window.getComputedStyle(el)
+    let visible = !(style.opacity === 0 || style.display === "none")
+    return visible ? {length: 1} : {length: 0}
+  }
   return el
 }
 

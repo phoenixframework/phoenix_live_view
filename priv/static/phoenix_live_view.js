@@ -1998,8 +1998,7 @@ within:
       });
     },
     isVisible(el) {
-      let style = window.getComputedStyle(el);
-      return !(style.opacity === 0 || style.display === "none");
+      return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
     },
     exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail }) {
       dom_default.dispatchEvent(el, event, detail);

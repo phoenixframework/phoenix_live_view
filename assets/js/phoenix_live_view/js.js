@@ -17,8 +17,7 @@ let JS = {
   },
 
   isVisible(el){
-    let style = window.getComputedStyle(el)
-    return !(style.opacity === 0 || style.display === "none")
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0)
   },
 
   // private
