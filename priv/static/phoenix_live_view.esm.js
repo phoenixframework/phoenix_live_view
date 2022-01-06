@@ -1,7 +1,8 @@
 // js/phoenix_live_view/constants.js
 var CONSECUTIVE_RELOADS = "consecutive-reloads";
 var MAX_RELOADS = 10;
-var RELOAD_JITTER = [1e3, 3e3];
+var RELOAD_JITTER_MIN = 1e3;
+var RELOAD_JITTER_MAX = 3e3;
 var FAILSAFE_JITTER = 3e4;
 var PHX_EVENT_CLASSES = [
   "phx-click-loading",
@@ -38,7 +39,7 @@ var PHX_ROOT_ID = "data-phx-root-id";
 var PHX_TRIGGER_ACTION = "trigger-action";
 var PHX_FEEDBACK_FOR = "feedback-for";
 var PHX_HAS_FOCUSED = "phx-has-focused";
-var FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"];
+var FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"];
 var CHECKABLE_INPUTS = ["checkbox", "radio"];
 var PHX_HAS_SUBMITTED = "phx-has-submitted";
 var PHX_SESSION = "data-phx-session";
@@ -3143,6 +3144,10 @@ var LiveSocket = class {
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
+    this.maxReloads = opts.maxReloads || MAX_RELOADS;
+    this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN;
+    this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX;
+    this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER;
     this.localStorage = opts.localStorage || window.localStorage;
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
@@ -3282,13 +3287,14 @@ var LiveSocket = class {
   reloadWithJitter(view, log) {
     view.destroy();
     this.disconnect();
-    let [minMs, maxMs] = RELOAD_JITTER;
+    let minMs = this.reloadJitterMin;
+    let maxMs = this.reloadJitterMax;
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
     let tries = browser_default.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, (count) => count + 1);
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
-    if (tries > MAX_RELOADS) {
-      this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`]);
-      afterMs = FAILSAFE_JITTER;
+    if (tries > this.maxReloads) {
+      this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`]);
+      afterMs = this.failsafeJitter;
     }
     setTimeout(() => {
       if (this.hasPendingLink()) {

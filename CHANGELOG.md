@@ -7,6 +7,7 @@
   - Add `sticky: true` option to `live_render` to maintain a nested child on across live redirects
   - Dispatch `phx:show-start`, `phx:show-end`, `phx:hide-start` and `phx:hide-end` on `JS.show|hide|toggle`
   - Add `get_connect_info/2` that also works on disconnected render
+  - Add `LiveSocket` constructor options for configuration failsafe behavior via new `maxReloads`, `reloadJitterMin`, `reloadJitterMax`, `failsafeJitter` options
 
 ### Bug fixes
   - Fix `phx-disable-with` failing to disable elements outside of forms
