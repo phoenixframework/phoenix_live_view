@@ -3632,7 +3632,7 @@ within:
             if (js_default.isVisible(el)) {
               let target = e.target.closest(`[${phxClick}]`) || e.target;
               dom_default.putPrivate(target, "click-ref", clickRefWas);
-              js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, e.target) }]);
+              js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
             }
           });
         }

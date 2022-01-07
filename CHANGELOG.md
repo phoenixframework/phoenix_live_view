@@ -13,6 +13,7 @@
   - Fix `phx-disable-with` failing to disable elements outside of forms
   - Fix phx ref tracking leaving elements in awaiting state when targeting an external LiveView
   - Fix diff on response failing to await for active transitions in certain cases
+  - Fix `phx-click-away` not respecting `phx-target`
 
 ### Deprecations
    - Deprecate `Phoenix.LiveView.get_connect_info/1` in favor of `get_connect_info/2`
