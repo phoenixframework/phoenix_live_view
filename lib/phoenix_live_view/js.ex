@@ -356,6 +356,29 @@ defmodule Phoenix.LiveView.JS do
     })
   end
 
+  @doc """
+  Toggles classes on an element.
+
+    * `names` - The string of classes to add.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to toggle classes to.
+      Defaults to the interacted element.
+    * `:transition` - The string of classes to apply before adding classes or
+      a 3-tuple containing the transition class, the class to apply
+      to start the transition, and the ending transition class, such as:
+      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
+    * `:time` - The time to apply the transition from `:transition`.
+      Defaults #{@default_transition_time}
+
+  ## Examples
+
+      <div id="item">My Item</div>
+      <button phx-click={JS.toggle_class("active", to: "#item")}>
+        toggle active!
+      </button>
+  """
   def toggle_class(names) when is_binary(names), do: toggle_class(%JS{}, names, [])
 
   def toggle_class(%JS{} = js, names) when is_binary(names) do
