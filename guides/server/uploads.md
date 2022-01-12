@@ -137,13 +137,20 @@ end
 
 Entries for files that do not match the [`allow_upload/3`]
 spec will contain errors. Use
-`Phoenix.LiveView.Helpers.upload_errors/2`, `Phoenix.LiveView.Helpers.upload_errors/1`
-and your own helper function to render a friendly error message:
+`Phoenix.LiveView.Helpers.upload_errors/2` and your own
+helper function to render a friendly error message:
 
 ```elixir
 def error_to_string(:too_large), do: "Too large"
-def error_to_string(:too_many_files), do: "You have selected too many files"
 def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+```
+
+For error messages that affect all entries, use
+`Phoenix.LiveView.Helpers.upload_errors/1`, and your own
+helper function to render a friendly error message:
+
+```elixir
+def error_to_string(:too_many_files), do: "You have selected too many files"
 ```
 
 ### Cancel an entry
