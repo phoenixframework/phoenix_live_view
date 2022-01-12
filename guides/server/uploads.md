@@ -103,6 +103,11 @@ Let's look at an annotated example:
   </article>
 <% end %>
 
+<%# Phoenix.LiveView.Helpers.upload_errors/1 returns a list of error atoms %>
+<%= for err <- upload_errors(@uploads.avatar) do %>
+  <p class="alert alert-danger"><%= error_to_string(err) %></p>
+<% end %>
+
 </section>
 ```
 
@@ -137,8 +142,15 @@ helper function to render a friendly error message:
 
 ```elixir
 def error_to_string(:too_large), do: "Too large"
-def error_to_string(:too_many_files), do: "You have selected too many files"
 def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+```
+
+For error messages that affect all entries, use
+`Phoenix.LiveView.Helpers.upload_errors/1`, and your own
+helper function to render a friendly error message:
+
+```elixir
+def error_to_string(:too_many_files), do: "You have selected too many files"
 ```
 
 ### Cancel an entry

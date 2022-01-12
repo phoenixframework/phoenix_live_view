@@ -820,7 +820,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Returns the entry errors for an upload.
 
-  The following errors may be returned:
+  The following error may be returned:
 
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
 
