@@ -103,6 +103,11 @@ Let's look at an annotated example:
   </article>
 <% end %>
 
+<%# Phoenix.LiveView.Helpers.upload_errors/1 returns a list of error atoms %>
+<%= for err <- upload_errors(@uploads.avatar) do %>
+  <p class="alert alert-danger"><%= error_to_string(err) %></p>
+<% end %>
+
 </section>
 ```
 
@@ -132,8 +137,8 @@ end
 
 Entries for files that do not match the [`allow_upload/3`]
 spec will contain errors. Use
-`Phoenix.LiveView.Helpers.upload_errors/2` and your own
-helper function to render a friendly error message:
+`Phoenix.LiveView.Helpers.upload_errors/2`, `Phoenix.LiveView.Helpers.upload_errors/1`
+and your own helper function to render a friendly error message:
 
 ```elixir
 def error_to_string(:too_large), do: "Too large"
