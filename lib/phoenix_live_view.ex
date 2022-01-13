@@ -202,7 +202,7 @@ defmodule Phoenix.LiveView do
         end
       end
 
-  In all cases, each assign in the template will be accessible as `@assign`.
+  In all cases, each assign in the template will be accessible as `@assigns`.
   You can learn more about [assigns and HEEx templates in their own guide](assigns-eex.md).
 
   ## Bindings
