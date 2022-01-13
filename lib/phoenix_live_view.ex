@@ -53,7 +53,7 @@ defmodule Phoenix.LiveView do
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via `phx-` bindings. Just like
-  the first rendering, `c:mount/3, is invoked  with params, session,
+  the first rendering, `c:mount/3`, is invoked  with params, session,
   and socket state, However in the connected client case, a LiveView process
   is spawned on the server, runs `c:handle_params/3` again and then pushes
   the result of `c:render/1` to the client and continues on for the duration
