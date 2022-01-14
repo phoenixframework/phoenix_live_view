@@ -101,6 +101,7 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration components
     live "/component_in_live", ComponentInLive.Root
     live "/cids_destroyed", CidsDestroyedLive
+    live "/component_and_nested_in_live", ComponentAndNestedInLive
 
     # integration lifecycle
     live "/lifecycle", HooksLive

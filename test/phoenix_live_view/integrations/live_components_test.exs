@@ -98,6 +98,18 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     refute render(view) =~ "Hello World"
   end
 
+  test "tracks removals of a nested LiveView alongside with a LiveComponent in the root view", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/component_and_nested_in_live")
+    html = render(view)
+    assert html =~ "hello"
+    assert html =~ "world"
+    render_click(view, "disable", %{})
+
+    html = render(view)
+    refute html =~ "hello"
+    refute html =~ "world"
+  end
+
   test "tracks removals when there is a race between server and client", %{conn: conn} do
     {:ok, view, _} = live(conn, "/cids_destroyed")
 

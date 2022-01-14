@@ -550,7 +550,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
-    push(state, view, "phx_leave", %{})
+    state = push(state, view, "phx_leave", %{})
 
     state =
       Enum.reduce(view.children, state, fn {child_id, _child_session}, acc ->
@@ -768,17 +768,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp push(state, view, event, payload) do
-    ref = to_string(state.ref + 1)
-
-    send(view.pid, %Phoenix.Socket.Message{
+    ref = state.ref + 1
+    message = %Phoenix.Socket.Message{
       join_ref: state.join_ref,
       topic: view.topic,
       event: event,
       payload: payload,
-      ref: ref
-    })
+      ref: to_string(ref)
+    }
 
-    %{state | ref: state.ref + 1}
+    send(view.pid, message)
+
+    %{state | ref: ref}
   end
 
   defp push_with_reply(state, from, view, event, payload) do
