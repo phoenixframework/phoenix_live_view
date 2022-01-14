@@ -844,10 +844,11 @@ defmodule Phoenix.LiveView.Channel do
             {:stop, :shutdown, :no_state}
 
           %{} ->
-            case authorize_session(verified, endpoint, params) do
-              {:ok, %Session{} = new_verified, route, url} ->
-                verified_mount(new_verified, route, url, params, from, phx_socket, connect_info)
-
+            with {:ok, %Session{view: view} = new_verified, route, url} <-
+                   authorize_session(verified, endpoint, params),
+                 {:ok, config} <- load_live_view(view) do
+              verified_mount(new_verified, config, route, url, params, from, phx_socket, connect_info)
+            else
               {:error, :unauthorized} ->
                 GenServer.reply(from, {:error, %{reason: "unauthorized"}})
                 {:stop, :shutdown, :no_state}
@@ -870,23 +871,19 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
-    cond do
-      # flash_token is given by the client on live_redirects and has higher priority.
-      flash_token ->
-        Utils.verify_flash(endpoint, flash_token)
-
-      # verified.flash comes from the disconnected render, therefore we only want
-      # to load it we are not inside a live redirect and if it is our first mount.
-      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash ->
-        verified.flash
-
-      true ->
-        %{}
-    end
+  defp load_live_view(view) do
+    # Make sure the view is loaded. Otherwise if the first request
+    # ever is a LiveView connection, the view won't be loaded and
+    # the mount/handle_params callbacks won't be invoked as they
+    # are optional, leading to errors.
+    {:ok, view.__live__()}
+  rescue
+    # If it fails, then the only possible answer is that the live
+    # view has been renamed. So we force the client to reconnect.
+    _ -> {:error, :stale}
   end
 
-  defp verified_mount(%Session{} = verified, route, url, params, from, phx_socket, connect_info) do
+  defp verified_mount(%Session{} = verified, config, route, url, params, from, phx_socket, connect_info) do
     %Session{
       id: id,
       view: view,
@@ -897,12 +894,6 @@ defmodule Phoenix.LiveView.Channel do
       assign_new: assign_new,
       router: router
     } = verified
-
-    # Make sure the view is loaded. Otherwise if the first request
-    # ever is a LiveView connection, the view won't be loaded and
-    # the mount/handle_params callbacks won't be invoked as they
-    # are optional, leading to errors.
-    config = view.__live__()
 
     live_session_on_mount = load_live_session_on_mount(route)
     lifecycle = lifecycle(config, live_session_on_mount)
@@ -963,6 +954,22 @@ defmodule Phoenix.LiveView.Channel do
       {:error, :noproc} ->
         GenServer.reply(from, {:error, %{reason: "stale"}})
         {:stop, :shutdown, :no_state}
+    end
+  end
+
+  defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
+    cond do
+      # flash_token is given by the client on live_redirects and has higher priority.
+      flash_token ->
+        Utils.verify_flash(endpoint, flash_token)
+
+      # verified.flash comes from the disconnected render, therefore we only want
+      # to load it we are not inside a live redirect and if it is our first mount.
+      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash ->
+        verified.flash
+
+      true ->
+        %{}
     end
   end
 
