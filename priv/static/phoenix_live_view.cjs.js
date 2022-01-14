@@ -2080,13 +2080,17 @@ var JS = {
       }
     } else {
       if (this.isVisible(el)) {
-        el.dispatchEvent(new Event("phx:hide-start"));
-        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-        el.dispatchEvent(new Event("phx:hide-end"));
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:hide-start"));
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+          el.dispatchEvent(new Event("phx:hide-end"));
+        });
       } else {
-        el.dispatchEvent(new Event("phx:show-start"));
-        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
-        el.dispatchEvent(new Event("phx:show-end"));
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:show-start"));
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
+          el.dispatchEvent(new Event("phx:show-end"));
+        });
       }
     }
   },
@@ -3598,9 +3602,7 @@ var LiveSocket = class {
       }
       this.debounce(target, e, () => {
         this.withinOwners(target, (view) => {
-          if (dom_default.private(target, "click-ref") !== clickRefWas) {
-            js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
-          }
+          js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
         });
       });
     }, capture);
@@ -3614,7 +3616,6 @@ var LiveSocket = class {
           let phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el)) {
             let target = e.target.closest(`[${phxClick}]`) || e.target;
-            dom_default.putPrivate(target, "click-ref", clickRefWas);
             js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
           }
         });

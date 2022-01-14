@@ -25,7 +25,7 @@ describe("JS", () => {
   })
 
   describe("exec_toggle", () => {
-    test("with defaults", () => {
+    test("with defaults", done => {
       let view = setupView(`
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal"}]]'></div>
@@ -43,17 +43,22 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("block")
-      expect(showEndCalled).toBe(true)
-      expect(hideEndCalled).toBe(true)
-      expect(showStartCalled).toBe(true)
-      expect(hideStartCalled).toBe(true)
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
+        window.requestAnimationFrame(() => {
+          expect(modal.style.display).toEqual("block")
+          expect(showEndCalled).toBe(true)
+          expect(hideEndCalled).toBe(true)
+          expect(showStartCalled).toBe(true)
+          expect(hideStartCalled).toBe(true)
+          done()
+        })
+      })
     })
 
-    test("with display", () => {
+    test("with display", done => {
       let view = setupView(`
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "inline-block"}]]'></div>
@@ -71,14 +76,19 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("inline-block")
-      expect(showEndCalled).toBe(true)
-      expect(hideEndCalled).toBe(true)
-      expect(showStartCalled).toBe(true)
-      expect(hideStartCalled).toBe(true)
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
+        window.requestAnimationFrame(() => {
+          expect(modal.style.display).toEqual("inline-block")
+          expect(showEndCalled).toBe(true)
+          expect(hideEndCalled).toBe(true)
+          expect(showStartCalled).toBe(true)
+          expect(hideStartCalled).toBe(true)
+          done()
+        })
+      })
     })
 
     test("with in and out classes", done => {
@@ -379,7 +389,9 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
+      })
     })
   })
 

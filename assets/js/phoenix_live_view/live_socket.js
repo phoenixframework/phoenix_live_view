@@ -586,9 +586,7 @@ export default class LiveSocket {
 
       this.debounce(target, e, () => {
         this.withinOwners(target, view => {
-          if(DOM.private(target, "click-ref") !== clickRefWas){
-            JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
-          }
+          JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
     }, capture)
@@ -603,7 +601,6 @@ export default class LiveSocket {
           let phxEvent = el.getAttribute(phxClickAway)
           if(JS.isVisible(el)){
             let target = e.target.closest(`[${phxClick}]`) || e.target
-            DOM.putPrivate(target, "click-ref", clickRefWas)
             JS.exec("click", phxEvent, view, el, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })
