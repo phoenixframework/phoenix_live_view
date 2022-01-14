@@ -371,6 +371,10 @@ defmodule Phoenix.LiveView.Helpers do
 
     * `:sticky` - an optional flag to maintain the LiveView across
       live redirects, even if it is nested within another LiveView.
+      If you are rendering the sticky view within your live layout,
+      make sure that the sticky view itself does not use the same
+      layout. You can do so by returning `{:ok, socket, layout: false}`
+      from mount.
 
   ## Examples
 
