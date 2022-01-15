@@ -550,7 +550,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
 
       assert view
-             |> element("buttons", "Increment")
+             |> element("button", "Increment")
              |> render_click() =~ "The temperature is: 30℉"
   """
   def render_click(element, value \\ %{})
