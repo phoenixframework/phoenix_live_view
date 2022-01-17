@@ -455,6 +455,12 @@ export default class LiveSocket {
     if(this.boundTopLevelEvents){ return }
 
     this.boundTopLevelEvents = true
+    // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
+    this.socket.onClose(event => {
+      if(event.code === 1000 && this.main){
+        this.reloadWithJitter(this.main)
+      }
+    })
     document.body.addEventListener("click", function (){ }) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
       if(e.persisted){ // reload page if being restored from back/forward cache
