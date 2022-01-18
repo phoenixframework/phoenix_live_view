@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.17.6
+## 0.17.6 (2022-01-18)
 
 ### Enhancements
   - Add `JS.set_attribute` and `JS.remove_attribute`
