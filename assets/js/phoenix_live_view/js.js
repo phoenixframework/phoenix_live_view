@@ -30,7 +30,7 @@ let JS = {
 
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
     let {event, data, target, page_loading, loading, value} = args
-    let pushOpts = {page_loading: !!page_loading, loading: loading, value: value}
+    let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" ? sourceEl.form : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
     view.withinTargets(phxTarget, (targetView, targetCtx) => {

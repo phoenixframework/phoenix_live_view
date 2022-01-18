@@ -735,13 +735,13 @@ export default class View {
     return cid ? parseInt(cid) : null
   }
 
-  targetComponentID(target, targetCtx){
+  targetComponentID(target, targetCtx, opts = {}){
     if(isCid(targetCtx)){ return targetCtx }
 
     let cidOrSelector = target.getAttribute(this.binding("target"))
     if(isCid(cidOrSelector)){
       return parseInt(cidOrSelector)
-    } else if(targetCtx && cidOrSelector !== null){
+    } else if(targetCtx && (cidOrSelector !== null || opts.target)){
       return this.closestComponentID(targetCtx)
     } else {
       return null
@@ -801,7 +801,7 @@ export default class View {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
-      cid: this.targetComponentID(el, targetCtx)
+      cid: this.targetComponentID(el, targetCtx, opts)
     })
   }
 
