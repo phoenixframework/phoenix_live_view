@@ -10,6 +10,7 @@
   - Add `LiveSocket` constructor options for configuration failsafe behavior via new `maxReloads`, `reloadJitterMin`, `reloadJitterMax`, `failsafeJitter` options
 
 ### Bug fixes
+  - Show form errors after submit even when no changes occur on server
   - Fix `phx-disable-with` failing to disable elements outside of forms
   - Fix phx ref tracking leaving elements in awaiting state when targeting an external LiveView
   - Fix diff on response failing to await for active transitions in certain cases

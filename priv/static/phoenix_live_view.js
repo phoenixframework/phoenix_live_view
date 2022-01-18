@@ -3134,8 +3134,11 @@ within:
     }
     submitForm(form, targetCtx, phxEvent, opts = {}) {
       dom_default.putPrivate(form, PHX_HAS_SUBMITTED, true);
+      let phxFeedback = this.liveSocket.binding(PHX_FEEDBACK_FOR);
+      let inputs = Array.from(form.elements);
       this.liveSocket.blurActiveElement(this);
       this.pushFormSubmit(form, targetCtx, phxEvent, opts, () => {
+        inputs.forEach((input) => dom_default.showError(input, phxFeedback));
         this.liveSocket.restorePreviouslyActiveFocus();
       });
     }
