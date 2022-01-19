@@ -3,9 +3,10 @@ defmodule Phoenix.LiveView.JS do
   Provides commands for executing JavaScript utility operations on the client.
 
   JS commands support a variety of utility operations for common client-side
-  needs, such as adding or removing css classes, showing or hiding content, and transitioning
-  in and out with animations. While these operations can be accomplished via
-  client-side hooks, JS commands are DOM patch aware, so operations applied
+  needs, such as adding or removing css classes, setting or removing tag attributes,
+  showing or hiding content, and transitioning in and out with animations.
+  While these operations can be accomplished via client-side hooks,
+  JS commands are DOM patch aware, so operations applied
   by the JS APIs will stick to elements across patches from the server.
 
   In addition to purely client-side utilities, the JS commands include a
@@ -43,6 +44,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `add_class` - Add classes to elements, with optional transitions
     * `remove_class` - Remove classes from elements, with optional transitions
+    * `set_attribute` - Set an attribute on elements
+    * `remove_attribute` - Remove an attribute from elements
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
