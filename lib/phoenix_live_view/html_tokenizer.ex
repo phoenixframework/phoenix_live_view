@@ -43,19 +43,19 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   @doc """
-  Tokenize the given text according tho the given params.
+  Tokenize the given text according to the given params.
 
-  * `text` - The contents to be tokenized.
+  * `text` - The content to be tokenized.
   * `file` - Can be either a file or a string "nofile".
-  * `indentation` - Integer that indicates the current indentation.
-  * `meta` - a keyword list with `:line` and `column`. Both must be integers.
-  * `tokens` - a list of tokens.
-  * `cont` - An atom. Can be `:text`, `:script` or a tuple: {:comment, line, column}.
+  * `indentation` - An integer that indicates the current indentation.
+  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
+  * `tokens` - A list of tokens.
+  * `cont` - An atom that is `:text` or `:script`, or a tuple {:comment, line, column}.
 
   ### Examples
 
       iex> alias Phoenix.LiveView.HTMLTokenizer
-      iex> HTMLTokenizer.tokenize("<section><div/><section", "nofile", 0, [], :text)
+      iex> HTMLTokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
       {[
          {:tag_close, "section", %{column: 16, line: 1}},
          {:tag_open, "div", [], %{column: 10, line: 1, self_close: true}},
