@@ -42,6 +42,27 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     |> strip_text_token_fully()
   end
 
+  @doc """
+  Tokenize the given text according tho the given params.
+
+  * `text` - The contents to be tokenized.
+  * `file` - Can be either a file or a string "nofile".
+  * `indentation` - Integer that indicates the current indentation.
+  * `meta` - a keyword list with `:line` and `column`. Both must be integers.
+  * `tokens` - a list of tokens.
+  * `cont` - An atom. Can be `:text`, `:script` or a tuple: {:comment, line, column}.
+
+  ### Examples
+
+      iex> alias Phoenix.LiveView.HTMLTokenizer
+      iex> HTMLTokenizer.tokenize("<section><div/><section", "nofile", 0, [], :text)
+      {[
+         {:tag_close, "section", %{column: 16, line: 1}},
+         {:tag_open, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag_open, "section", [], %{column: 1, line: 1}}
+       ], :text}
+
+  """
   def tokenize(text, file, indentation, meta, tokens, cont) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
