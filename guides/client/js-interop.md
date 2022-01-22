@@ -144,7 +144,7 @@ is triggered. First, update the element to embed the JS command into a data
 attribute:
 
 ```heex
-<div id={"item-#{item.id}"} class="item" data-highlight={JS.transition("highligh")}>
+<div id={"item-#{item.id}"} class="item" data-highlight={JS.transition("highlight")}>
   <%= item.title %>
 </div>
 ```
