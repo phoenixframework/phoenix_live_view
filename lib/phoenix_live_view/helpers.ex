@@ -1080,6 +1080,18 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
+  def flash(assigns) do
+    type = assigns[:type] || raise ArgumentError, "missing :type assign for flash"
+    message = assigns[:message] || raise ArgumentError, "missing :message assign for flash"
+    class = assigns[:class] || "alert alert-#{type}"
+
+    ~H"""
+    <%= if is_binary(message) and byte_size(String.trim(message)) > 0 do %>
+      <p class={class} role="alert"><%= @message %></p>
+    <% end %>
+    """
+  end
+
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
 

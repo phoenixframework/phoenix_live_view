@@ -125,10 +125,52 @@ defmodule Phoenix.LiveView.HelpersTest do
     |> Phoenix.LiveViewTest.DOM.parse()
   end
 
+  describe "flash" do
+    test "raises when missing required assigns" do
+      assert_raise ArgumentError, ~r/missing :type assign/, fn ->
+        assigns = %{}
+
+        parse(~H"""
+        <.flash />
+        """)
+      end
+    end
+
+    test "generates flash if message is present" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.flash type="alert" message="User created successfully." />
+        """)
+
+      assert [
+               {"p", [{"class", "alert alert-alert"}, {"role", "alert"}],
+                ["User created successfully."]}
+             ] == html
+    end
+
+    test "does not generate flash if message is empty" do
+      assigns = %{}
+
+      empty_messages = [nil, "", " "]
+
+      for empty_message <- empty_messages do
+        html =
+          parse(~H"""
+          <.flash type="alert" message={empty_message} />
+          """)
+
+        assert [] == html
+      end
+    end
+  end
+
   describe "form" do
     test "raises when missing required assigns" do
       assert_raise ArgumentError, ~r/missing :for assign/, fn ->
         assigns = %{}
+
         parse(~H"""
         <.form let={f}>
           <%= text_input f, :foo %>
