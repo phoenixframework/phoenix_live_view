@@ -1000,8 +1000,9 @@ export default class View {
   pushLinkPatch(href, targetEl, callback){
     let linkRef = this.liveSocket.setPendingLink(href)
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
+    let fallback = () => this.liveSocket.redirect(window.location.href)
 
-    this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
+    let push = this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
       this.liveSocket.requestDOMUpdate(() => {
         if(resp.link_redirect){
           this.liveSocket.replaceMain(href, null, callback, linkRef)
@@ -1013,7 +1014,13 @@ export default class View {
           callback && callback(linkRef)
         }
       })
-    }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
+    })
+
+    if(push){
+      push.receive("timeout", fallback)
+    } else {
+      fallback()
+    }
   }
 
   formsForRecovery(html){

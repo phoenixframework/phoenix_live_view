@@ -3080,7 +3080,8 @@ within:
     pushLinkPatch(href, targetEl, callback) {
       let linkRef = this.liveSocket.setPendingLink(href);
       let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
-      this.pushWithReply(refGen, "live_patch", { url: href }, (resp) => {
+      let fallback = () => this.liveSocket.redirect(window.location.href);
+      let push = this.pushWithReply(refGen, "live_patch", { url: href }, (resp) => {
         this.liveSocket.requestDOMUpdate(() => {
           if (resp.link_redirect) {
             this.liveSocket.replaceMain(href, null, callback, linkRef);
@@ -3092,7 +3093,12 @@ within:
             callback && callback(linkRef);
           }
         });
-      }).receive("timeout", () => this.liveSocket.redirect(window.location.href));
+      });
+      if (push) {
+        push.receive("timeout", fallback);
+      } else {
+        fallback();
+      }
     }
     formsForRecovery(html) {
       if (this.joinCount === 0) {
