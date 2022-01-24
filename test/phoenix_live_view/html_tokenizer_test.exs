@@ -1,9 +1,10 @@
 defmodule Phoenix.LiveView.HTMLTokenizerTest do
   use ExUnit.Case, async: true
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
+  alias Phoenix.LiveView.HTMLTokenizer
 
   defp tokenize(text) do
-    Phoenix.LiveView.HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
+    HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
     |> elem(0)
     |> Enum.reverse()
   end
@@ -68,6 +69,89 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
                {:tag_close, "p", %{line: 5, column: 1}},
                {:tag_open, "br", [], %{line: 5, column: 5}}
              ] = tokenize(code)
+    end
+
+    test "adds comment_start and comment_end" do
+      first_part = """
+      <p>
+      <!--
+      <div>
+      """
+
+      {first_tokens, cont} = HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text)
+
+      second_part = """
+      </div>
+      -->
+      </p>
+      <div>
+        <p>Hello</p>
+      </div>
+      """
+
+      {tokens, :text} = HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont)
+
+      assert Enum.reverse(tokens) == [
+               {:tag_open, "p", [], %{column: 1, line: 1}},
+               {:text, "\n<!--\n<div>\n",
+                %{column_end: 1, context: [:comment_start], line_end: 4}},
+               {:text, "</div>\n-->\n", %{column_end: 1, context: [:comment_end], line_end: 3}},
+               {:tag_close, "p", %{column: 1, line: 3}},
+               {:text, "\n", %{column_end: 1, line_end: 4}},
+               {:tag_open, "div", [], %{column: 1, line: 4}},
+               {:text, "\n  ", %{column_end: 3, line_end: 5}},
+               {:tag_open, "p", [], %{column: 3, line: 5}},
+               {:text, "Hello", %{column_end: 11, line_end: 5}},
+               {:tag_close, "p", %{column: 11, line: 5}},
+               {:text, "\n", %{column_end: 1, line_end: 6}},
+               {:tag_close, "div", %{column: 1, line: 6}},
+               {:text, "\n", %{column_end: 1, line_end: 7}}
+             ]
+    end
+
+    test "two comments in a row" do
+      first_part = """
+      <p>
+      <!--
+      <%= "Hello" %>
+      """
+
+      {first_tokens, cont} = HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text)
+
+      second_part = """
+      -->
+      <!--
+      <p><%= "World"</p>
+      """
+
+      {second_tokens, cont} =
+        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont)
+
+      third_part = """
+      -->
+      <div>
+        <p>Hi</p>
+      </p>
+      """
+
+      {tokens, :text} = HTMLTokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont)
+
+      assert Enum.reverse(tokens) == [
+               {:tag_open, "p", [], %{column: 1, line: 1}},
+               {:text, "\n<!--\n<%= \"Hello\" %>\n",
+                %{column_end: 1, context: [:comment_start], line_end: 4}},
+               {:text, "-->\n<!--\n<p><%= \"World\"</p>\n",
+                %{column_end: 1, context: [:comment_end, :comment_start], line_end: 4}},
+               {:text, "-->\n", %{column_end: 1, line_end: 2, context: [:comment_end]}},
+               {:tag_open, "div", [], %{column: 1, line: 2}},
+               {:text, "\n  ", %{column_end: 3, line_end: 3}},
+               {:tag_open, "p", [], %{column: 3, line: 3}},
+               {:text, "Hi", %{column_end: 8, line_end: 3}},
+               {:tag_close, "p", %{column: 8, line: 3}},
+               {:text, "\n", %{column_end: 1, line_end: 4}},
+               {:tag_close, "p", %{column: 1, line: 4}},
+               {:text, "\n", %{column_end: 1, line_end: 5}}
+             ]
     end
   end
 
