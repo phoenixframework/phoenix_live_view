@@ -21,6 +21,7 @@
 ### Deprecations
    - Deprecate `Phoenix.LiveView.get_connect_info/1` in favor of `get_connect_info/2`
    - Deprecate `Phoenix.LiveViewTest.put_connect_info/2` in favor of calling the relevant functions in `Plug.Conn`
+   - Deprecate returning "raw" values from upload callbacks on `Phoenix.LiveView.consume_uploaded_entry/3` and `Phoenix.LiveView.consume_uploaded_entries/3`. The callback must return either `{:ok, value}` or `{:postpone, value}`. Returning any other value will emit a warning.
 
 ## 0.17.5 (2021-11-02)
 
