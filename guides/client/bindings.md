@@ -23,7 +23,7 @@ callback, for example:
 | [DOM Patching](dom-patching.md) | `phx-update`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
-| [Static tracking](`Phoenix.LiveView.static_changed?/1) | `phx-track-static` |
+| [Static tracking](Phoenix.LiveView.html#static_changed?/1) | `phx-track-static` |
 
 ## Click Events
 
