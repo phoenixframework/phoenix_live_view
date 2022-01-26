@@ -121,7 +121,7 @@ Next, the server can issue a highlight using the standard `push_event`:
 
 ```elixir
 def handle_info({:item_updated, item}, socket) do
-  {:ok, push_event(socket, "highlight", %{id: item.id})}
+  {:noreply, push_event(socket, "highlight", %{id: item.id})}
 end
 ```
 
