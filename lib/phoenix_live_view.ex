@@ -904,15 +904,44 @@ defmodule Phoenix.LiveView do
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
   @doc """
-  Pushes an event to the client to be consumed by hooks.
+  Pushes an event to the client.
 
-  *Note*: events will be dispatched to all active hooks on the client who are
-  handling the given `event`. Scoped events can be achieved by namespacing
-  your event names.
+  Events can be handled in two ways:
 
-  ## Examples
+    1. They can be handled on `window` via `addEventListener`.
+       A "phx:" prefix will be added to the event name.
+
+    2. They can be handled inside a hook via `handleEvent`.
+
+  Note events are dispatched to all active hooks on the client who are
+  handling the given `event`. If you need to scope events, then this must
+  be done by namespacing them.
+
+  ## Hook example
+
+  If push a "scores" event from your LiveView:
 
       {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}
+
+  A hook declared via `phx-hook` can handle it via `handleEvent`:
+
+      this.handleEvent("points", data => ...)
+
+  ## `window` example
+
+  All events are also dispatched on the `window`. This means you can handle
+  them by adding listeners. For example, if you want to remove an element
+  from the page, you can do this:
+
+      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"}}
+
+  And now in your app.js you can register and handle it:
+
+      window.addEventListener(
+        "phx:remove-el",
+        e => document.getElementById(e.detail.id).remove()
+      )
+
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
