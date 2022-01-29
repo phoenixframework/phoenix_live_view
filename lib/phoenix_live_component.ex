@@ -173,7 +173,7 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
 
-      <.live_component module={MyComponent} >
+      <.live_component module={MyComponent} id={@data.id} >
         <div>Inner content here</div>
       </.live_component>
 
