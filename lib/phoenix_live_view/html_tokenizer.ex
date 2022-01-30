@@ -100,14 +100,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_text("</" <> rest, line, column, buffer, acc, state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
-    state = put_in(state.context, [])
-    handle_tag_close(rest, line, column + 2, text_to_acc, state)
+    handle_tag_close(rest, line, column + 2, text_to_acc, %{state | context: []})
   end
 
   defp handle_text("<" <> rest, line, column, buffer, acc, state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
-    state = put_in(state.context, [])
-    handle_tag_open(rest, line, column + 1, text_to_acc, state)
+    handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
@@ -115,7 +113,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column), :text)
+    ok(text_to_acc(buffer, acc, line, column, []), :text)
   end
 
   ## handle_doctype
@@ -141,7 +139,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
     acc = [
       {:tag_close, "script", %{line: line, column: column}}
-      | text_to_acc(buffer, acc, line, column)
+      | text_to_acc(buffer, acc, line, column, [])
     ]
 
     handle_text(rest, line, column + 9, [], acc, state)
@@ -160,7 +158,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_script(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column), :script)
+    ok(text_to_acc(buffer, acc, line, column, []), :script)
   end
 
   ## handle_comment
@@ -523,7 +521,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     IO.iodata_to_binary(Enum.reverse(buffer))
   end
 
-  defp text_to_acc(buffer, acc, line, column, context \\ nil)
+  defp text_to_acc(buffer, acc, line, column, context)
 
   defp text_to_acc([], acc, _line, _column, _context),
     do: acc
@@ -541,7 +539,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     [{:text, buffer_to_string(buffer), meta} | acc]
   end
 
-  defp get_context(nil), do: nil
   defp get_context([]), do: nil
   defp get_context(context), do: Enum.reverse(context)
 
