@@ -913,13 +913,13 @@ defmodule Phoenix.LiveView do
 
     2. They can be handled inside a hook via `handleEvent`.
 
-  Note events are dispatched to all active hooks on the client who are
+  Note that events are dispatched to all active hooks on the client who are
   handling the given `event`. If you need to scope events, then this must
   be done by namespacing them.
 
   ## Hook example
 
-  If push a "scores" event from your LiveView:
+  If you push a "scores" event from your LiveView:
 
       {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}
 
