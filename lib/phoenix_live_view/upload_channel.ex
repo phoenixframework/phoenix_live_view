@@ -53,6 +53,16 @@ defmodule Phoenix.LiveView.UploadChannel do
     end
   end
 
+  def get_file_meta(pid) do
+    case GenServer.call(pid, :get_file_meta, :infinity) do
+      {:ok, file_meta} ->
+        file_meta
+
+      {:error, :in_progress} ->
+        raise RuntimeError, "cannot access file that is still in progress of uploading"
+    end
+  end
+
   @impl true
   def join(_topic, auth_payload, socket) do
     %{"token" => token} = auth_payload
@@ -131,6 +141,15 @@ defmodule Phoenix.LiveView.UploadChannel do
     new_socket = close_file(socket)
     GenServer.reply(from, :ok)
     {:stop, {:shutdown, :closed}, new_socket}
+  end
+
+  @impl true
+  def handle_call(:get_file_meta, _from, socket) do
+    if socket.assigns.done? do
+      {:reply, {:ok, file_meta(socket)}, socket}
+    else
+      {:reply, {:error, :in_progress}, socket}
+    end
   end
 
   defp reschedule_chunk_timer(socket) do

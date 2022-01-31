@@ -108,6 +108,17 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
+  Returns the entry metadata.
+  Will raise if called on unfinished upload
+  """
+  def get_entry_meta(%Socket{} = socket, %UploadEntry{} = entry) do
+    socket.assigns.uploads
+    |> Map.fetch!(entry.upload_config)
+    |> UploadConfig.entry_pid(entry)
+    |> Phoenix.LiveView.UploadChannel.get_file_meta()
+  end
+
+  @doc """
   Updates the entry progress.
 
   Progress is either an integer percently between 0 and 100, or a map
