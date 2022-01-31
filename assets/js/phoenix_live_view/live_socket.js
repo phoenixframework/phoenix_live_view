@@ -123,7 +123,7 @@ export default class LiveSocket {
       a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
 
           import {Socket} from "phoenix"
-          import LiveSocket from "phoenix_live_view"
+          import {LiveSocket} from "phoenix_live_view"
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `)
     }
