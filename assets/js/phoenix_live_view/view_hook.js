@@ -60,6 +60,14 @@ export default class ViewHook {
     return this.__view.withinTargets(phxTarget, view => view.dispatchUploads(name, files))
   }
 
+  execJS(encodedJS, eventType = null){
+    return this.__liveSocket.execJS(this.el, encodedJS, eventType)
+  }
+
+  execJSTo(targetEl, encodedJS, eventType = null){
+    return this.__liveSocket.execJS(targetEl, encodedJS, eventType)
+  }
+
   __cleanup__(){
     this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
   }

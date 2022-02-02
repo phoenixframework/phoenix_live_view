@@ -196,6 +196,8 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     on the server-side. Dispatching new uploads triggers an input change event which will be sent to the
     LiveComponent or LiveView the `selectorOrTarget` is defined in, where it's value can be either a query selector or an
     actual DOM element. If the query selector returns more than one live file input, an error will be logged.
+  * `execJS(encodedJS, eventType = null)` - method to execute [`JS`](`Phoenix.LiveView.JS`) commands on the bound DOM node. See also `LiveSocket.execJS`.
+  * `execJSTo(targetEl, encodedJS, eventType = null)` - method to execute [`JS`](`Phoenix.LiveView.JS`) commands on the given target element. See also `LiveSocket.execJS`.
 
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
