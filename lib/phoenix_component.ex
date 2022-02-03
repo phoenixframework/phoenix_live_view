@@ -162,7 +162,7 @@ defmodule Phoenix.Component do
         ~H"""
         <ul>
           <%= for entry <- @entries do %>
-            <li><%= render_slot(@inner_block, %{entry: entry, gif_url: random_gif()} %></li>
+            <li><%= render_slot(@inner_block, %{entry: entry, gif_url: random_gif()}) %></li>
           <% end %>
         </ul>
         """
