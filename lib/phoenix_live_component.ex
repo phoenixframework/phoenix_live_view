@@ -5,7 +5,7 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponents are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
-  Components run inside the LiveView process but have their own state and
+  They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
   which are stateless.
@@ -24,20 +24,20 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  A component can be invoked as:
+  A LiveComponent is rendered as:
 
       <.live_component module={HeroComponent} id="hero" content={@content} />
 
-  A component must receive the `:id` assign as argument, which is
-  used to uniquely identify the component. A component will be treated
-  as the same component as long as its `:id` does not change.
+  You must always pass the `module` and `id` attributes. The `id` will be
+  available as an assign and it must be used to uniquely identify the
+  component. All other attributes will be available as assigns inside the
+  LiveComponent.
 
   ## Life-cycle
 
   Stateful components are identified by the component module and their ID.
-  Therefore, two different component modules with the same ID are different
-  components. This means we can often tie the component ID to some application
-  based ID:
+  Therefore, two stateful components with the same module and ID are treated
+  as the same ID. We often tie the component ID to some application based ID:
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
@@ -55,10 +55,8 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  Note all stateful components require a single root element in the HTML template
-  and you will receive a warning otherwise. Furthermore, the given `:id` is not
-  necessarily used as the DOM ID. If you want to set a DOM ID, it is your
-  responsibility to do so when rendering:
+  Note the given `id` is not necessarily used as the DOM ID. If you want to set
+  a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
         use Phoenix.LiveComponent
@@ -391,40 +389,10 @@ defmodule Phoenix.LiveComponent do
 
   ## Limitations
 
-  ### Components require at least one HTML tag
+  ### Components require a single HTML tag at the root
 
-  Components must only contain HTML tags at their root. At least one HTML
-  tag must be present. It is not possible to have components that render
-  only text or text mixed with tags at the root.
-
-  ### Change tracking requirement
-
-  Another limitation of components is that they must always be change
-  tracked. For example, if you render a component inside `content_tag`, like
-  this:
-
-      <%= content_tag :div, @div_attrs do %>
-        <%= live_component SomeComponent, id: :example %>
-      <% end %>
-
-  The component ends up enclosed by the `content_tag`, where LiveView
-  cannot track it. In such cases, you may receive an error such as:
-
-      ** (ArgumentError) cannot convert component SomeComponent to HTML.
-      A component must always be returned directly as part of a LiveView template
-
-  Luckily, there is little reason to use `content_tag` inside HEEx templates.
-  So instead you can do:
-
-      <div {@div_attrs}>
-        <%= live_component SomeComponent, id: :example %>
-      </div>
-
-  They also work inside any function component, such as `form`:
-
-      <.form let={f} for={@changeset} action="#">
-        <%= live_component FormComponent, id: :form %>
-      </.form>
+  Components require a single HTML tag at the root. It is not possible
+  to have components that render only text or multiple tags.
 
   ### SVG support
 
