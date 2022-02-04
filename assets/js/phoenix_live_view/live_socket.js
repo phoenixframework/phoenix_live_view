@@ -165,6 +165,27 @@ export default class LiveSocket {
         window.location.reload()
       }
     })
+
+    // hack
+    this.__viewsWithPendingUpdates = []
+  }
+
+  // hack
+  addViewWithPendingUpdates(view) {
+    this.__viewsWithPendingUpdates.push(view)
+  }
+
+  removeViewWithPendingUpdates(view) {
+    this.__viewsWithPendingUpdates =
+      this.__viewsWithPendingUpdates.filter((v) => v != view)
+  }
+
+  // hack
+  applyPendingUpdatesToViewsWithPendingUpdates() {
+    this.__viewsWithPendingUpdates.forEach((view) => {
+      view.applyPendingUpdates()
+    })
+    this.__viewsWithPendingUpdates = []
   }
 
   // public

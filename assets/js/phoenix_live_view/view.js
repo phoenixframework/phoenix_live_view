@@ -139,6 +139,8 @@ export default class View {
   }
 
   destroy(callback = function (){ }){
+    // hack #1867
+    this.liveSocket.removeViewWithPendingUpdates(this)
     this.destroyAllChildren()
     this.destroyed = true
     delete this.root.children[this.id]
@@ -450,8 +452,17 @@ export default class View {
 
   update(diff, events){
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
-      return this.pendingDiffs.push({diff, events})
+      this.pendingDiffs.push({diff, events})
+      // hack #1867, if a message set of 
+      // live_patch, diff, reply
+      // comes in, the diff update will be deferred until after the live_patch
+      // but the live_patch reply callback will only run the pending updates
+      // against it's own view, not any others that were deferred.
+      // So let livesocket track these views and in the reply, request that
+      // the updates get applied.
+      return this.liveSocket.addViewWithPendingUpdates(this)
     }
+
 
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
@@ -1011,6 +1022,8 @@ export default class View {
             this.href = href
           }
           this.applyPendingUpdates()
+          // see comment for update() and #1867
+          this.liveSocket.applyPendingUpdatesToViewsWithPendingUpdates()
           callback && callback(linkRef)
         }
       })
