@@ -55,7 +55,7 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  Note that the given `id` is not necessarily used as the DOM ID. If you want to set
+  The given `id` is not necessarily used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
