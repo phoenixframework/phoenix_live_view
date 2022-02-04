@@ -139,7 +139,6 @@ export default class View {
   }
 
   destroy(callback = function (){ }){
-    // hack #1867
     this.liveSocket.removeViewWithPendingUpdates(this)
     this.destroyAllChildren()
     this.destroyed = true
@@ -453,16 +452,32 @@ export default class View {
   update(diff, events){
     if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
       this.pendingDiffs.push({diff, events})
-      // hack #1867, if a message set of 
-      // live_patch, diff, reply
-      // comes in, the diff update will be deferred until after the live_patch
-      // but the live_patch reply callback will only run the pending updates
-      // against it's own view, not any others that were deferred.
-      // So let livesocket track these views and in the reply, request that
-      // the updates get applied.
-      return this.liveSocket.addViewWithPendingUpdates(this)
-    }
 
+      if(this.liveSocket.hasPendingLink()){
+        // If a set of messages arrives in this order:
+        //
+        //    live_patch, diff, reply
+        //
+        // the diff update will be cached on the view until after the
+        // live_patch reply arrives. After the reply is handled, any pending
+        // updates are applied.
+        //
+        // However, if the diff wasn't for the main view (where the main view is
+        // handling live_patch events and its reply), the pending updates will
+        // be cached on a different view and the reply callback is unable to
+        // message that view to apply any pending updates.
+        //
+        // To remedy this, we will inform the LiveSocket we have some pending
+        // updates. The live_patch reply callback will tell the LiveSocket
+        // to call applyPendingUpdates() on any views it is tracking.
+        //
+        // Views in a joinPending state will receive per-view messages and can
+        // apply their updates without communicating with the LiveSocket.
+        this.liveSocket.addViewWithPendingUpdates(this)
+      }
+
+      return
+    }
 
     this.rendered.mergeDiff(diff)
     let phxChildrenAdded = false
@@ -1022,7 +1037,6 @@ export default class View {
             this.href = href
           }
           this.applyPendingUpdates()
-          // see comment for update() and #1867
           this.liveSocket.applyPendingUpdatesToViewsWithPendingUpdates()
           callback && callback(linkRef)
         }

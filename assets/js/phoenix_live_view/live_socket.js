@@ -166,26 +166,20 @@ export default class LiveSocket {
       }
     })
 
-    // hack
-    this.__viewsWithPendingUpdates = []
+    this.viewsWithPendingUpdates = []
   }
 
-  // hack
   addViewWithPendingUpdates(view) {
-    this.__viewsWithPendingUpdates.push(view)
+    this.viewsWithPendingUpdates.push(view)
   }
 
   removeViewWithPendingUpdates(view) {
-    this.__viewsWithPendingUpdates =
-      this.__viewsWithPendingUpdates.filter((v) => v != view)
+    this.viewsWithPendingUpdates = this.viewsWithPendingUpdates.filter((v) => v != view)
   }
 
-  // hack
   applyPendingUpdatesToViewsWithPendingUpdates() {
-    this.__viewsWithPendingUpdates.forEach((view) => {
-      view.applyPendingUpdates()
-    })
-    this.__viewsWithPendingUpdates = []
+    this.viewsWithPendingUpdates.forEach((view) => view.applyPendingUpdates())
+    this.viewsWithPendingUpdates = []
   }
 
   // public
