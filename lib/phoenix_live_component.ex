@@ -3,7 +3,7 @@ defmodule Phoenix.LiveComponent do
   LiveComponents are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
-  Components are defined by using `Phoenix.LiveComponent` and are used
+  LiveComponents are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
   Components run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
