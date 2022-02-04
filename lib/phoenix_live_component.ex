@@ -37,7 +37,7 @@ defmodule Phoenix.LiveComponent do
 
   Stateful components are identified by the component module and their ID.
   Therefore, two stateful components with the same module and ID are treated
-  as the same ID. We often tie the component ID to some application based ID:
+  as the same component. We often tie the component ID to some application based ID:
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
@@ -55,7 +55,7 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  Note the given `id` is not necessarily used as the DOM ID. If you want to set
+  The given `id` is not necessarily used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
