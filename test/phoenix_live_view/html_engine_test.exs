@@ -1059,6 +1059,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "tag validations" do
+    test "handles style" do
+      assert render("<style>a = '<a>';<%= :b %> = '<b>';</style>") ==
+               "<style>a = '<a>';b = '<b>';</style>"
+    end
+
     test "handles script" do
       assert render("<script>a = '<a>';<%= :b %> = '<b>';</script>") ==
                "<script>a = '<a>';b = '<b>';</script>"

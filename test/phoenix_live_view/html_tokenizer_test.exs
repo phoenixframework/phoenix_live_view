@@ -642,6 +642,31 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
   end
 
+  describe "style" do
+    test "self-closing" do
+      assert tokenize("""
+             <style src="foo.js" />
+             """) == [
+               {:tag_open, "style", [{"src", {:string, "foo.js", %{delimiter: 34}}}],
+                %{column: 1, line: 1, self_close: true}},
+               {:text, "\n", %{column_end: 1, line_end: 2}}
+             ]
+    end
+
+    test "traverses until </style>" do
+      assert tokenize("""
+             <style>
+               a = "<a>Link</a>"
+             </style>
+             """) == [
+               {:tag_open, "style", [], %{column: 1, line: 1}},
+               {:text, "\n  a = \"<a>Link</a>\"\n", %{column_end: 1, line_end: 3}},
+               {:tag_close, "style", %{column: 1, line: 3}},
+               {:text, "\n", %{column_end: 1, line_end: 4}}
+             ]
+    end
+  end
+
   test "mixing text and tags" do
     tokens =
       tokenize("""

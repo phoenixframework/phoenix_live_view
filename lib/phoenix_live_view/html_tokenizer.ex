@@ -50,7 +50,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   * `indentation` - An integer that indicates the current indentation.
   * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
   * `tokens` - A list of tokens.
-  * `cont` - An atom that is `:text` or `:script`, or a tuple {:comment, line, column}.
+  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
+    {:comment, line, column}.
 
   ### Examples
 
@@ -70,6 +71,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
+      :style -> handle_style(text, line, column, [], tokens, state)
       :script -> handle_script(text, line, column, [], tokens, state)
       {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
     end
@@ -159,6 +161,33 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_script(<<>>, line, column, buffer, acc, _state) do
     ok(text_to_acc(buffer, acc, line, column, []), :script)
+  end
+
+  ## handle_style
+
+  defp handle_style("</style>" <> rest, line, column, buffer, acc, state) do
+    acc = [
+      {:tag_close, "style", %{line: line, column: column}}
+      | text_to_acc(buffer, acc, line, column, [])
+    ]
+
+    handle_text(rest, line, column + 9, [], acc, state)
+  end
+
+  defp handle_style("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_style(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_style("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_style(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_style(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_style(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
+  end
+
+  defp handle_style(<<>>, line, column, buffer, acc, _state) do
+    ok(text_to_acc(buffer, acc, line, column, []), :style)
   end
 
   ## handle_comment
@@ -263,6 +292,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     case reverse_attrs(acc) do
       [{:tag_open, "script", _, _} | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
+
+      [{:tag_open, "style", _, _} | _] = acc ->
+        handle_style(rest, line, column + 1, [], acc, state)
 
       acc ->
         handle_text(rest, line, column + 1, [], acc, state)
