@@ -170,7 +170,7 @@ let JS = {
 
   setOrRemoveAttrs(el, sets, removes){
     let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
-    let keepSets = sets.filter(([attr, _val]) => !this.hasSet(prevSets, attr) && !el.attributes.getNamedItem(attr))
+    let keepSets = sets.filter(([attr, _val]) => !this.hasSet(prevSets, attr))
     let keepRemoves = removes.filter(attr => prevRemoves.indexOf(attr) < 0 && el.attributes.getNamedItem(attr))
     let newSets = prevSets.filter(([attr, _val]) => removes.indexOf(attr) < 0).concat(keepSets)
     let newRemoves = prevRemoves.filter(attr => !this.hasSet(sets, attr)).concat(keepRemoves)

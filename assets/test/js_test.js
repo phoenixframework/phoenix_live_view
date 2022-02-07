@@ -398,13 +398,15 @@ describe("JS", () => {
   describe("exec_set_attr and exec_remove_attr", () => {
     test("with defaults", () => {
       let view = setupView(`
-      <div id="modal" class="modal">modal</div>
+      <div id="modal" class="modal" aria-label="Some Modal">modal</div>
       <div id="set" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
       <div id="remove" phx-click='[["remove_attr", {"to": "#modal", "attr": "aria-expanded"}]]'></div>
+      <div id="replace" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-label", "Some other Modal"]}]]'></div>
       `)
       let modal = document.querySelector("#modal")
       let set = document.querySelector("#set")
       let remove = document.querySelector("#remove")
+      let replace = document.querySelector("#replace")
 
       expect(modal.getAttribute("aria-expanded")).toEqual(null)
       JS.exec("click", set.getAttribute("phx-click"), view, set)
@@ -412,6 +414,10 @@ describe("JS", () => {
 
       JS.exec("click", remove.getAttribute("phx-click"), view, remove)
       expect(modal.getAttribute("aria-expanded")).toEqual(null)
+      
+      expect(modal.getAttribute("aria-label")).toEqual("Some Modal")
+      JS.exec("click", replace.getAttribute("phx-click"), view, replace)
+      expect(modal.getAttribute("aria-label")).toEqual("Some other Modal")
     })
 
     test("with no selector", () => {
