@@ -35,6 +35,20 @@ defmodule Phoenix.LiveView.DiffTest do
     """
   end
 
+  def nested_comprehension_template(assigns) do
+    ~H"""
+    <div>
+      <h1><%= @title %></h1>
+      <%= for name <- @names do %>
+        <br/><%= name %>
+        <%= for score <- @scores do %>
+          <br/><%= score %>
+        <% end %>
+      <% end %>
+    </div>
+    """
+  end
+
   defp nested_rendered(changed? \\ true) do
     %Rendered{
       static: ["<h2>", "</h2>", "<span>", "</span>"],
@@ -228,6 +242,34 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {^fingerprint, %{1 => ^comprehension_print}} = socket.fingerprints
+    end
+
+    test "nested comprehensions" do
+      %{fingerprint: fingerprint} =
+        rendered =
+        nested_comprehension_template(%{
+          title: "Users",
+          names: ["phoenix", "elixir"],
+          scores: [1, 2]
+        })
+
+      {socket, full_render, _} = render(rendered)
+
+      assert full_render == %{
+               0 => "Users",
+               1 => %{
+                 d: [
+                   ["phoenix", %{d: [["1"], ["2"]], s: 0}],
+                   ["elixir", %{d: [["1"], ["2"]], s: 0}]
+                 ],
+                 p: %{0 => ["\n      <br>", "\n    "]},
+                 s: ["\n    <br>", "\n    ", "\n  "]
+               },
+               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>"]
+             }
+
+      assert {^fingerprint, %{1 => comprehension_print}} = socket.fingerprints
+      assert is_integer(comprehension_print)
     end
   end
 

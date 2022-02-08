@@ -167,7 +167,7 @@ export default class Rendered {
   comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-    let compTemplates = rendered[TEMPLATES]
+    let compTemplates = templates || rendered[TEMPLATES]
 
     for(let d = 0; d < dynamics.length; d++){
       let dynamic = dynamics[d]
