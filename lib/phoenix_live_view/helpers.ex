@@ -990,9 +990,13 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Options
 
-  The `:for` assign is the form's source data and the optional `:action`
-  assign can be provided for the form's action. Additionally accepts
-  the same options as `Phoenix.HTML.Form.form_for/4` as optional assigns:
+  The following assign is required:
+
+    * `:for` - the form source data
+
+  The following assigns are optional:
+
+    * `:action` - the action to submit the form on. Defaults to "#".
 
     * `:as` - the server side parameter in which all params for this
       form will be collected (i.e. `as: :user_params` would mean all fields
@@ -1006,9 +1010,9 @@ defmodule Phoenix.LiveView.Helpers do
     * `:multipart` - when true, sets enctype to "multipart/form-data".
       Required when uploading files
 
-    * `:csrf_token` - for "post" requests, the form tag will automatically
-      include an input tag with name `_csrf_token`. When set to false, this
-      is disabled
+    * `:csrf_token` - for "post" requests with an `:action`, the form tag
+      will automatically include an input tag with name `_csrf_token`.
+      When set to false, this is disabled
 
     * `:errors` - use this to manually pass a keyword list of errors to the form
       (for example from `conn.assigns[:errors]`). This option is only used when a
@@ -1032,7 +1036,8 @@ defmodule Phoenix.LiveView.Helpers do
   """
   def form(assigns) do
     # Extract options and then to the same call as form_for
-    action = assigns[:action] || "#"
+    assigns_action = assigns[:action]
+    action = assigns_action || "#"
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
     form_options = assigns_to_attributes(assigns, [:action, :for])
 
@@ -1049,7 +1054,9 @@ defmodule Phoenix.LiveView.Helpers do
 
     {csrf_token, opts} =
       Keyword.pop_lazy(opts, :csrf_token, fn ->
-        if method == "post", do: Plug.CSRFProtection.get_csrf_token_for(action)
+        if method == "post" and assigns_action != nil do
+          Plug.CSRFProtection.get_csrf_token_for(action)
+        end
       end)
 
     opts =
