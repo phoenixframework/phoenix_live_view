@@ -1835,7 +1835,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     comprehensionToBuffer(rendered, templates, output) {
       let { [DYNAMICS]: dynamics, [STATIC]: statics } = rendered;
       statics = this.templateStatic(statics, templates);
-      let compTemplates = rendered[TEMPLATES];
+      let compTemplates = templates || rendered[TEMPLATES];
       for (let d = 0; d < dynamics.length; d++) {
         let dynamic = dynamics[d];
         output.buffer += statics[0];
@@ -3162,7 +3162,7 @@ within:
       a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
 
           import {Socket} from "phoenix"
-          import LiveSocket from "phoenix_live_view"
+          import {LiveSocket} from "phoenix_live_view"
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `);
       }
