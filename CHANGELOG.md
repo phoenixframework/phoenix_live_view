@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.7 (2022-02-07)
+
+### Enhancements
+  - Optimize nested for comprehension diffs
+
+### Bug fixes
+  - Fix error when `live_redirect` links are clicked when not connected in certain cases
+
 ## 0.17.6 (2022-01-18)
 
 ### Enhancements
