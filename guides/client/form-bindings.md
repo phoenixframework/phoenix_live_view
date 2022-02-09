@@ -275,12 +275,8 @@ with the following rules in your `app.css`:
     .hide-on-submit { display: block; }
 
     .phx-submit-loading {
-        .show-on-submit {
-            display: block;
-        }
-        .hide-on-submit {
-          display: none;
-        }
+        .show-on-submit { display: block; }
+        .hide-on-submit { display: none; }
     }
 
 You can show and hide content with the following markup:
