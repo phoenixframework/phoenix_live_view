@@ -260,7 +260,7 @@ On completion of server processing of the `phx-submit` event:
 2. The last input with focus is restored (unless another input has received focus)
 3. Updates are patched to the DOM as usual
 
-To handle latent events, any HTML tag can be annotated with
+To handle latent events, the `<button>` tag of a form can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
 value during event submission. For example, the following code would change
 the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
@@ -271,19 +271,23 @@ You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
 
-    .while-submitting { display: none; }
-    .inputs { display: block; }
+    .show-on-submit { display: none; }
+    .hide-on-submit { display: block; }
 
     .phx-submit-loading {
-      .while-submitting { display: block; }
-      .inputs { display: none; }
+        .show-on-submit {
+            display: block;
+        }
+        .hide-on-submit {
+          display: none;
+        }
     }
 
 You can show and hide content with the following markup:
 
     <form phx-change="update">
-      <div class="while-submitting">Please wait while we save our content...</div>
-      <div class="inputs">
+      <div class="show-on-submit">Please wait while we save our content...</div>
+      <div class="hide-on-submit">
         <input type="text" name="text" value="<%= @text %>">
       </div>
     </form>
