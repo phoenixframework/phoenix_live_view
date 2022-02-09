@@ -1025,9 +1025,17 @@ defmodule Phoenix.LiveViewTest do
 
   An optional text filter may be given to filter the results by the query
   selector. If the text filter is a string or a regex, it will match any
-  element that contains the string or matches the regex. After the text
-  filter is applied, only one element must remain, otherwise an error is
-  raised.
+  element that contains the string (including as a substring) or matches the
+  regex.
+
+  So a link containing the text "unopened" will match `element("a", "opened")`.
+  To prevent this, a regex could specify that "opened" appear without the prefix "un".
+  For example, `element("a", ~r{(?<!un)opened})`.
+  But it may be clearer to add an HTML attribute to make the element easier to
+  select.
+
+  After the text filter is applied, only one element must remain, otherwise an
+  error is raised.
 
   If no text filter is given, then the query selector itself must return
   a single element.
