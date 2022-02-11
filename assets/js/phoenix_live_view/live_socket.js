@@ -651,7 +651,7 @@ export default class LiveSocket {
       if(!type || !this.isConnected() || !this.main || wantsNewTab){ return }
       let href = target.href
       
-      if (href instanceof SvgAnimationObject) {href = href.baseVal}
+      if(href instanceof SvgAnimationObject){ href = href.baseVal }
       
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
