@@ -325,18 +325,9 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   defp live_link(type, block_or_text, opts) do
-    uri = Keyword.fetch!(opts, :to)
-    replace = Keyword.get(opts, :replace, false)
-    kind = if replace, do: "replace", else: "push"
+    opts = live_link_options(type, opts)
 
-    data = [phx_link: type, phx_link_state: kind]
-
-    opts =
-      opts
-      |> Keyword.update(:data, data, &Keyword.merge(&1, data))
-      |> Keyword.put(:href, uri)
-
-    Phoenix.HTML.Tag.content_tag(:a, Keyword.delete(opts, :to), do: block_or_text)
+    Phoenix.HTML.Tag.content_tag(:a, opts, do: block_or_text)
   end
 
   @doc """
@@ -1089,6 +1080,44 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
+
+  @doc """
+  Renders a link
+  """
+  def link(%{navigate: to} = assigns) do
+    assigns =
+      LiveView.assign(assigns,
+        opts: live_link_options("redirect", to: to, replace: assigns[:replace])
+      )
+
+    ~H"""
+    <a {@opts}><%= render_slot(@inner_block) %></a>
+    """
+  end
+
+  def link(%{patch: to} = assigns) do
+    assigns =
+      LiveView.assign(assigns,
+        opts: live_link_options("patch", to: to, replace: assigns[:replace])
+      )
+
+    ~H"""
+    <a {@opts}><%= render_slot(@inner_block) %></a>
+    """
+  end
+
+  defp live_link_options(type, opts) do
+    uri = Keyword.fetch!(opts, :to)
+    replace = Keyword.get(opts, :replace, false)
+    kind = if replace, do: "replace", else: "push"
+
+    data = [phx_link: type, phx_link_state: kind]
+
+    opts
+    |> Keyword.update(:data, data, &Keyword.merge(&1, data))
+    |> Keyword.put(:href, uri)
+    |> Keyword.delete(:to)
+  end
 
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
