@@ -933,7 +933,7 @@ defmodule Phoenix.LiveView do
   them by adding listeners. For example, if you want to remove an element
   from the page, you can do this:
 
-      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"}}
+      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"})}
 
   And now in your app.js you can register and handle it:
 
