@@ -241,7 +241,7 @@ defmodule Phoenix.LiveView.JS do
   def toggle(%JS{} = js), do: toggle(js, [])
   def toggle(opts) when is_list(opts), do: toggle(%JS{}, opts)
 
-  @doc "See `toggle/2`."
+  @doc "See `toggle/1`."
   def toggle(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time])
     in_classes = transition_class_names(opts[:in])
@@ -291,7 +291,7 @@ defmodule Phoenix.LiveView.JS do
   def show(%JS{} = js), do: show(js, [])
   def show(opts) when is_list(opts), do: show(%JS{}, opts)
 
-  @doc "See `show/2`."
+  @doc "See `show/1`."
   def show(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :show, [:to, :transition, :display, :time])
     transition = transition_class_names(opts[:transition])
@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView.JS do
   def hide(%JS{} = js), do: hide(js, [])
   def hide(opts) when is_list(opts), do: hide(%JS{}, opts)
 
-  @doc "See `hide/2`."
+  @doc "See `hide/1`."
   def hide(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :hide, [:to, :transition, :time])
     transition = transition_class_names(opts[:transition])
