@@ -358,7 +358,7 @@ export default class LiveSocket {
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
-          DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
+          Object.entries(this.roots).forEach(([id, view]) => view.isSticky() && newMainEl.appendChild(view.el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
           callback && callback()
@@ -401,6 +401,12 @@ export default class LiveSocket {
   }
 
   getRootById(id){ return this.roots[id] }
+
+  applyViewsPendingUpdates() {
+    Object.entries(this.roots).forEach(([id, view]) => {
+      view.applyPendingUpdates()
+    })
+  }
 
   destroyAllViews(){
     for(let id in this.roots){
@@ -635,10 +641,13 @@ export default class LiveSocket {
 
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
-          this.main.pushLinkPatch(href, null)
+          this.main.pushLinkPatch(href, null, () => {
+            this.applyViewsPendingUpdates()
+          })
         } else {
           this.replaceMain(href, null, () => {
             if(root){ this.replaceRootHistory() }
+            this.applyViewsPendingUpdates()
             if(typeof(scroll) === "number"){
               setTimeout(() => {
                 window.scrollTo(0, scroll)
@@ -690,6 +699,7 @@ export default class LiveSocket {
     this.withPageLoading({to: href, kind: "patch"}, done => {
       this.main.pushLinkPatch(href, targetEl, linkRef => {
         this.historyPatch(href, linkState, linkRef)
+        this.applyViewsPendingUpdates()
         done()
       })
     })
@@ -708,6 +718,7 @@ export default class LiveSocket {
       this.replaceMain(href, flash, () => {
         Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
         this.registerNewLocation(window.location)
+        this.applyViewsPendingUpdates()
         done()
       })
     })

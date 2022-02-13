@@ -120,6 +120,8 @@ export default class View {
   }
 
   isMain(){ return this.el.getAttribute(PHX_MAIN) !== null }
+  
+  isSticky() { return DOM.isPhxSticky(this.el) }
 
   connectParams(){
     let params = this.liveSocket.params(this.el)
@@ -1022,7 +1024,6 @@ export default class View {
           if(this.liveSocket.commitPendingLink(linkRef)){
             this.href = href
           }
-          this.applyPendingUpdates()
           callback && callback(linkRef)
         }
       })

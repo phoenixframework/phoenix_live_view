@@ -77,8 +77,6 @@ let DOM = {
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0
   },
 
-  findPhxSticky(el){ return this.all(el, `[${PHX_STICKY}]`) },
-
   findPhxChildren(el, parentId){
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
   },
