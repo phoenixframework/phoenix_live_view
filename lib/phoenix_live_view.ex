@@ -1287,7 +1287,7 @@ defmodule Phoenix.LiveView do
   `get_connect_info/2`:
 
       def mount(_params, _session, socket) do
-        peer_data = get_connect_info(socket, :peer_data) do
+        peer_data = get_connect_info(socket, :peer_data)
         {:ok, assign(socket, ip: peer_data.address)}
       end
 
