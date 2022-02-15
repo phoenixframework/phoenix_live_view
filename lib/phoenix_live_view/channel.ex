@@ -306,6 +306,30 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   @impl true
+  def format_status(:terminate, [_pdict, state]) do
+    state
+  end
+
+  def format_status(:normal, [_pdict, %{} = state]) do
+    %{topic: topic, socket: socket, components: {cid_to_component, _, _}} = state
+    %Socket{view: view, parent_pid: parent_pid, transport_pid: transport_pid} = socket
+
+    [
+      data: [
+        {'LiveView', view},
+        {'Parent pid', parent_pid},
+        {'Transport pid', transport_pid},
+        {'Topic', topic},
+        {'Components count', map_size(cid_to_component)}
+      ]
+    ]
+  end
+
+  def format_status(_, [_pdict, state]) do
+    [data: [{'State', state}]]
+  end
+
+  @impl true
   def terminate(reason, %{socket: socket}) do
     %{view: view} = socket
 
