@@ -1,5 +1,7 @@
 defmodule Phoenix.LiveView.ParamsTest do
-  use ExUnit.Case
+  # Telemetry events need to run asynchronously
+  use ExUnit.Case, async: false
+
   import Plug.Conn
   import Phoenix.ConnTest
 
