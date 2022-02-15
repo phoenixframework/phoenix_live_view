@@ -336,6 +336,31 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
+  describe "format_status/2" do
+    test "returns LiveView information", %{conn: conn} do
+      {:ok, %{pid: pid}, _html} = live(conn, "/clock")
+
+      assert {:status, ^pid, {:module, :gen_server},
+              [
+                _pdict,
+                :running,
+                _parent,
+                _dbg_opts,
+                [
+                  header: 'Status for generic server ' ++ _,
+                  data: _gen_server_data,
+                  data: [
+                    {'LiveView', Phoenix.LiveViewTest.ClockLive},
+                    {'Parent pid', nil},
+                    {'Transport pid', _},
+                    {'Topic', <<_::binary>>},
+                    {'Components count', 0}
+                  ]
+                ]
+              ]} = :sys.get_status(pid)
+    end
+  end
+
   describe "transport_pid/1" do
     test "raises when not connected" do
       assert_raise ArgumentError, ~r/may only be called when the socket is connected/, fn ->
