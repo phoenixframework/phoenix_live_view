@@ -727,9 +727,39 @@ defmodule Phoenix.LiveView do
   end
 
   def assign_new(assigns, _key, fun) when is_function(fun, 0) do
+    raise_bad_socket_or_assign!("assign_new/3", assigns)
+  end
+
+  defp raise_bad_socket_or_assign!(name, assigns) do
+    extra =
+      case assigns do
+        %_{} ->
+          ""
+
+        %{} ->
+          """
+          You passed an assigns map that does not have the relevant change tracking \
+          information. This typically means you are calling a function component by \
+          hand instead of using the HEEx template syntax. If you are using HEEx, make \
+          sure you are calling a component using:
+
+              <.component attribute={value} />
+
+          If you are outside of HEEx and you want to test a component, use \
+          Phoenix.LiveViewTest.render_component/2:
+
+              Phoenix.LiveViewTest.render_component(&component/1, attribute: "value")
+
+          """
+
+        _ ->
+          ""
+      end
+
     raise ArgumentError,
-          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+          "#{name} expects a socket from Phoenix.LiveView/Phoenix.LiveComponent " <>
+            " or an assigns map from Phoenix.Component as first argument, got: " <>
+            inspect(assigns) <> extra
   end
 
   @doc """
@@ -761,9 +791,7 @@ defmodule Phoenix.LiveView do
   end
 
   def assign(assigns, _key, _val) do
-    raise ArgumentError,
-          "assign/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("assign/3", assigns)
   end
 
   @doc """
@@ -827,9 +855,7 @@ defmodule Phoenix.LiveView do
   end
 
   def update(assigns, _key, fun) when is_function(fun, 1) do
-    raise ArgumentError,
-          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("update/3", assigns)
   end
 
   @doc """
@@ -854,9 +880,7 @@ defmodule Phoenix.LiveView do
   end
 
   def changed?(assigns, _key) do
-    raise ArgumentError,
-          "changed?/2 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
   @doc """
