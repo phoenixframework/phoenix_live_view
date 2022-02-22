@@ -3464,7 +3464,7 @@ var LiveSocket = class {
     }
     this.boundTopLevelEvents = true;
     this.socket.onClose((event) => {
-      if (event.code === 1e3 && this.main) {
+      if (event && event.code === 1e3 && this.main) {
         this.reloadWithJitter(this.main);
       }
     });

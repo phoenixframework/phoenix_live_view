@@ -649,10 +649,8 @@ export default class LiveSocket {
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
       if(!type || !this.isConnected() || !this.main || wantsNewTab){ return }
+
       let href = target.href
-      
-      if(href instanceof SvgAnimationObject){ href = href.baseVal }
-      
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
       if(this.pendingLink === href){ return }
