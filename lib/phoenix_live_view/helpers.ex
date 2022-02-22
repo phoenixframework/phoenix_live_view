@@ -882,7 +882,7 @@ defmodule Phoenix.LiveView.Helpers do
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
     attrs =
       Keyword.merge(opts,
-        id: "phx-preview-#{ref}",
+        id: opts[:id] || "phx-preview-#{ref}",
         data_phx_upload_ref: entry.upload_ref,
         data_phx_entry_ref: ref,
         data_phx_hook: "Phoenix.LiveImgPreview",
