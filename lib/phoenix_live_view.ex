@@ -689,8 +689,8 @@ defmodule Phoenix.LiveView do
       <.my_component />
 
   In such cases, the implementation can use `assign_new` to lazily
-  assign a color if one is given. Let's make it so it picks a random one
-  if none is given:
+  assign a color if none is given. Let's make it so it picks a random one
+  when none is given:
 
       def my_component(assigns) do
         assigns = assign_new(assigns, :color, fn -> Enum.random(~w(red green blue)) end)
@@ -704,7 +704,7 @@ defmodule Phoenix.LiveView do
 
   ## Referencing parent assigns
 
-  When a user first access an application using LiveView, the LiveView is first
+  When a user first accesses an application using LiveView, the LiveView is first
   rendered in its disconnected state, as part of a regular HTML response. In some
   cases, there may be data that is shared by your Plug pipelines and your LiveView,
   such as the `:current_user` assign.
