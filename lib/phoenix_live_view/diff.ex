@@ -13,6 +13,7 @@ defmodule Phoenix.LiveView.Diff do
   @reply :r
   @title :t
   @template :p
+  @stream_id :id
 
   # We use this to track which components have been marked
   # for deletion. If the component is used after being marked,
@@ -419,7 +420,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          socket,
-         %Comprehension{fingerprint: fingerprint, dynamics: dynamics},
+         %Comprehension{fingerprint: fingerprint, dynamics: dynamics, id: stream_id},
          fingerprint,
          pending,
          components,
@@ -432,7 +433,11 @@ defmodule Phoenix.LiveView.Diff do
     {dynamics, {pending, components, {_, comprehension_template}}} =
       traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
 
-    diff = maybe_add_template(%{@dynamics => dynamics}, comprehension_template)
+    diff =
+      %{@dynamics => dynamics}
+      |> maybe_add_template(comprehension_template)
+      |> maybe_add_stream_id(stream_id)
+
     {diff, fingerprint, pending, components, nil}
   end
 
@@ -451,7 +456,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          socket,
-         %Comprehension{fingerprint: fingerprint, static: static, dynamics: dynamics},
+         %Comprehension{fingerprint: print, static: static, dynamics: dynamics, id: id},
          _,
          pending,
          components,
@@ -462,18 +467,20 @@ defmodule Phoenix.LiveView.Diff do
       {dynamics, {pending, components, template}} =
         traverse_comprehension(socket, dynamics, pending, components, template)
 
-      {diff, template} =
-        maybe_template_static(%{@dynamics => dynamics}, fingerprint, static, template)
+      {diff, template} = maybe_template_static(%{@dynamics => dynamics}, print, static, template)
+      diff = maybe_add_stream_id(diff, id)
 
-      {diff, fingerprint, pending, components, template}
+      {diff, print, pending, components, template}
     else
       {dynamics, {pending, components, {_, comprehension_template}}} =
         traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
 
       diff =
-        maybe_add_template(%{@dynamics => dynamics, @static => static}, comprehension_template)
+        %{@dynamics => dynamics, @static => static}
+        |> maybe_add_template(comprehension_template)
+        |> maybe_add_stream_id(id)
 
-      {diff, fingerprint, pending, components, nil}
+      {diff, print, pending, components, nil}
     end
   end
 
@@ -544,6 +551,9 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_add_template(map, template) when template == %{}, do: map
   defp maybe_add_template(map, template), do: Map.put(map, @template, template)
+
+  defp maybe_add_stream_id(diff, nil = _stream_id), do: diff
+  defp maybe_add_stream_id(diff, stream_id), do: Map.put(diff, @stream_id, stream_id)
 
   ## Stateful components helpers
 

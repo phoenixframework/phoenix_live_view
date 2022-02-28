@@ -33,13 +33,14 @@ export default class DOMPatch {
     })
   }
 
-  constructor(view, container, id, html, targetCID){
+  constructor(view, container, id, html, streams, targetCID){
     this.view = view
     this.liveSocket = view.liveSocket
     this.container = container
     this.id = id
     this.rootID = view.root.id
     this.html = html
+    this.streams = streams
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
@@ -91,6 +92,7 @@ export default class DOMPatch {
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
+    // console.log("streams", JSON.parse(JSON.stringify(this.streams)))
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
@@ -126,6 +128,7 @@ export default class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
+          if(el.parentNode !== null && el.parentNode.getAttribute("phx-stream") !== null){ return false }
           if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(el.getAttribute && el.getAttribute(phxRemove)){
             pendingRemoves.push(el)
@@ -139,6 +142,20 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
           updates.push(el)
+        },
+        onBeforeElChildrenUpdated: (fromEl, toEl) => {
+          if(toEl.getAttribute("phx-stream") === null){
+            return true
+          } else {
+            let stream = this.streams[toEl.id]
+            // // if we have no stream, we are rendering for the first time
+            // if(!stream){
+            //   return true
+            // } else {
+              console.log(toEl.id, this.streams[toEl.id]())
+              return false
+            // }
+          }
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)

@@ -59,9 +59,10 @@ defmodule Phoenix.LiveView.Comprehension do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamics, :fingerprint]
+  defstruct [:static, :dynamics, :fingerprint, :id]
 
   @type t :: %__MODULE__{
+          id: String.t() | integer(),
           static: [String.t()],
           dynamics: [
             [
@@ -75,6 +76,11 @@ defmodule Phoenix.LiveView.Comprehension do
         }
 
   @doc false
+  # TODO fix struct
+  def __annotate__(comprehension, %{__struct__: Phoenix.LiveView.LiveStream, id: id}) do
+    Map.put(comprehension, :id, id)
+  end
+
   def __annotate__(comprehension, _collection), do: comprehension
 
   defimpl Phoenix.HTML.Safe do
@@ -445,6 +451,7 @@ defmodule Phoenix.LiveView.Engine do
 
       quote do
         unquote(gen_collection)
+
         Phoenix.LiveView.Comprehension.__annotate__(
           %Phoenix.LiveView.Comprehension{
             static: unquote(static),
@@ -1001,7 +1008,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro __raise__(special_form, arity) do
-    message =  "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
+    message = "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
     reraise ArgumentError.exception(message), Macro.Env.stacktrace(__CALLER__)
   end
 
@@ -1030,8 +1037,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Calls to attributes escape is always safe
   defp to_safe(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} =
-           safe,
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} = safe,
          line,
          _extra_clauses?
        ) do

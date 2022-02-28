@@ -7,7 +7,8 @@ import {
   PHX_SKIP,
   REPLY,
   STATIC,
-  TITLE
+  TITLE,
+  STREAM_ID,
 } from "./constants"
 
 import {
@@ -28,13 +29,16 @@ export default class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
+    this.streams = {}
     this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    this.streams = {}
+    let str = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    return [str, this.streams]
   }
 
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
@@ -112,7 +116,8 @@ export default class Rendered {
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+      let isObjVal = isObject(val)
+      if(isObjVal && val[STATIC] === undefined && isObject(targetVal)){
         this.doMutableMerge(targetVal, val)
       } else {
         target[key] = val
@@ -132,7 +137,11 @@ export default class Rendered {
     return merged
   }
 
-  componentToString(cid){ return this.recursiveCIDToString(this.rendered[COMPONENTS], cid) }
+  componentToString(cid){
+    this.streams = {}
+    let str =  this.recursiveCIDToString(this.rendered[COMPONENTS], cid)
+    return [str, this.streams]
+  }
 
   pruneCIDs(cids){
     cids.forEach(cid => delete this.rendered[COMPONENTS][cid])
@@ -165,17 +174,29 @@ export default class Rendered {
   }
 
   comprehensionToBuffer(rendered, templates, output){
-    let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
+    let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM_ID]: streamId} = rendered
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
-
-    for(let d = 0; d < dynamics.length; d++){
-      let dynamic = dynamics[d]
-      output.buffer += statics[0]
-      for(let i = 1; i < statics.length; i++){
-        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output)
-        output.buffer += statics[i]
+    let writeBuffer = (currentOutput) => {
+      for(let d = 0; d < dynamics.length; d++){
+        let dynamic = dynamics[d]
+        currentOutput.buffer += statics[0]
+        for(let i = 1; i < statics.length; i++){
+          this.dynamicToBuffer(dynamic[i - 1], compTemplates, currentOutput)
+          currentOutput.buffer += statics[i]
+        }
       }
+    }
+
+    if(streamId !== undefined && rendered[DYNAMICS].length > 0){
+      let streamOutput = {buffer: "", components: output.components, onlyCids: output.onlyCids}
+      rendered[DYNAMICS] = []
+      this.streams[streamId] = () => {
+        writeBuffer(streamOutput)
+        return streamOutput.buffer
+      }
+    } else if(streamId === undefined){
+      writeBuffer(output)
     }
   }
 

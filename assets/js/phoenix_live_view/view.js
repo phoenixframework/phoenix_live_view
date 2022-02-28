@@ -241,7 +241,7 @@ export default class View {
     Browser.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
       this.rendered = new Rendered(this.id, diff)
-      let html = this.renderContainer(null, "join")
+      let [html, streams] = this.renderContainer(null, "join")
       this.dropPendingRefs()
       let forms = this.formsForRecovery(html)
       this.joinCount++
@@ -250,12 +250,12 @@ export default class View {
         forms.forEach(([form, newForm, newCid], i) => {
           this.pushFormRecovery(form, newCid, resp => {
             if(i === forms.length - 1){
-              this.onJoinComplete(resp, html, events)
+              this.onJoinComplete(resp, html, streams, events)
             }
           })
         })
       } else {
-        this.onJoinComplete(resp, html, events)
+        this.onJoinComplete(resp, html, streams, events)
       }
     })
   }
@@ -267,11 +267,11 @@ export default class View {
     })
   }
 
-  onJoinComplete({live_patch}, html, events){
+  onJoinComplete({live_patch}, html, streams, events){
     // In order to provide a better experience, we want to join
     // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
-      return this.applyJoinPatch(live_patch, html, events)
+      return this.applyJoinPatch(live_patch, html, streams, events)
     }
 
     // One downside of this approach is that we need to find phxChildren
@@ -287,14 +287,14 @@ export default class View {
 
     if(newChildren.length === 0){
       if(this.parent){
-        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)])
+        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, streams, events)])
         this.parent.ackJoin(this)
       } else {
         this.onAllChildJoinsComplete()
-        this.applyJoinPatch(live_patch, html, events)
+        this.applyJoinPatch(live_patch, html, streams, events)
       }
     } else {
-      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)])
+      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, streams, events)])
     }
   }
 
@@ -303,9 +303,9 @@ export default class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
-  applyJoinPatch(live_patch, html, events){
+  applyJoinPatch(live_patch, html, streams, events){
     this.attachTrueDocEl()
-    let patch = new DOMPatch(this, this.el, this.id, html, null)
+    let patch = new DOMPatch(this, this.el, this.id, html, streams, null)
     patch.markPrunableContentForRemoval()
     this.performPatch(patch, false)
     this.joinNewChildren()
@@ -475,8 +475,8 @@ export default class View {
       })
     } else if(!isEmpty(diff)){
       this.liveSocket.time("full patch complete", () => {
-        let html = this.renderContainer(diff, "update")
-        let patch = new DOMPatch(this, this.el, this.id, html, null)
+        let [html, streams] = this.renderContainer(diff, "update")
+        let patch = new DOMPatch(this, this.el, this.id, html, streams, null)
         phxChildrenAdded = this.performPatch(patch, true)
       })
     }
@@ -491,15 +491,15 @@ export default class View {
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
       let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
-      let html = this.rendered.toString(cids)
-      return `<${tag}>${html}</${tag}>`
+      let [html, streams] = this.rendered.toString(cids)
+      return [`<${tag}>${html}</${tag}>`, streams]
     })
   }
 
   componentPatch(diff, cid){
     if(isEmpty(diff)) return false
-    let html = this.rendered.componentToString(cid)
-    let patch = new DOMPatch(this, this.el, this.id, html, cid)
+    let [html, streams] = this.rendered.componentToString(cid)
+    let patch = new DOMPatch(this, this.el, this.id, html, streams, cid)
     let childrenAdded = this.performPatch(patch, true)
     return childrenAdded
   }
