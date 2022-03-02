@@ -116,6 +116,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     handle_text(state, [], text)
   end
 
+  @doc false
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
     {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)

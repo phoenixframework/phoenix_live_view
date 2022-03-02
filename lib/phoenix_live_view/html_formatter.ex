@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.HTMLFormatter do
   @moduledoc """
-  Format Heex templates from `.heex` files or `~H` sigils.
+  Format HEEx templates from `.heex` files or `~H` sigils.
 
   This is a `mix format` [plugin](https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-plugins).
 
@@ -93,21 +93,25 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   The content within it will be formatted accordingly though. Therefore, the given
   input:
 
+  ```eex
   <%= live_redirect(
          to: "/my/path",
     class: "my class"
   ) do %>
           My Link
   <% end %>
+  ```
 
   Will be formatted to
 
+  ```eex
   <%= live_redirect(
          to: "/my/path",
     class: "my class"
   ) do %>
     My Link
   <% end %>
+  ```
 
   Note that only the text `My Link` has been formatted.
 
@@ -127,7 +131,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   Will be formatted to:
 
-  ```
+  ```eex
   <p>
     text
 
@@ -148,12 +152,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
   # @impl Mix.Tasks.Format
+  @doc false
   def features(_opts) do
     [sigils: [:H], extensions: [".heex"]]
   end
 
   # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
   # @impl Mix.Tasks.Format
+  @doc false
   def format(contents, opts) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
@@ -330,6 +336,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #    ]}
   # ]
   # ```
+  @doc false
   def to_tree(tokens) do
     to_tree(tokens, [], [])
   end
