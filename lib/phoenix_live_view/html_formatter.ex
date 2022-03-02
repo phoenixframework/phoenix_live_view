@@ -321,11 +321,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
        ]) do
     buffer = Enum.reverse([{:text, String.trim_trailing(text), %{}} | buffer])
 
-    to_tree(
-      tokens,
-      [{:html_comment, [{:text, String.trim_leading(start_text), %{}} | buffer]} | upper_buffer],
-      stack
-    )
+    text = {:text, String.trim_leading(start_text), %{}}
+    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack)
   end
 
   defp to_tree(
