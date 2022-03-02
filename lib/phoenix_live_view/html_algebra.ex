@@ -148,10 +148,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
           empty()
 
         _ ->
-          lines
-          |> Enum.map(&remove_indentation(&1, indentation))
-          |> text_to_algebra(0, [])
-          |> then(&nest(concat(line(), &1), 2))
+          text =
+            lines
+            |> Enum.map(&remove_indentation(&1, indentation))
+            |> text_to_algebra(0, [])
+
+          nest(concat(line(), text), 2)
       end
 
     group =
