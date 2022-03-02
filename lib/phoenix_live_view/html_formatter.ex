@@ -89,6 +89,28 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   </section>
   ```
 
+  This formatter **does not** format Elixir expressions with `do...end`.
+  The content within it will be formatted accordingly though. Therefore, the given
+  input:
+
+  <%= live_redirect(
+         to: "/my/path",
+    class: "my class"
+  ) do %>
+          My Link
+  <% end %>
+
+  Will be formatted to
+
+  <%= live_redirect(
+         to: "/my/path",
+    class: "my class"
+  ) do %>
+    My Link
+  <% end %>
+
+  Note that only the text `My Link` has been formatted.
+
   ### Intentional new lines
 
   The formatter will keep intentional new lines. However, the formatter will
@@ -150,7 +172,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #
   # The following content:
   #
-  # "<section>\n  <p><%= user.name ></p>\n  <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>\n</section>\n"
+  # "<section>\n  <p><%= user.name ></p>\n  <%= if true do %> <p>this</p><% else %><p>that</p><% end %>\n</section>\n"
   #
   # Will be tokenized as:
   #
@@ -161,11 +183,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #   {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", %{block?: true, column: 6, line: 1}},
   #   {:text, " ", %{column_end: 2, line_end: 1}},
   #   {:tag_open, "p", [], %{column: 2, line: 1}},
-  #   {:text, "deu bom", %{column_end: 12, line_end: 1}},
+  #   {:text, "this", %{column_end: 12, line_end: 1}},
   #   {:tag_close, "p", %{column: 12, line: 1}},
   #   {:eex_tag, "<% else %>", %{block?: false, column: 35, line: 2}},
   #   {:tag_open, "p", [], %{column: 1, line: 1}},
-  #   {:text, " deu ruim ", %{column_end: 14, line_end: 1}},
+  #   {:text, "that", %{column_end: 14, line_end: 1}},
   #   {:tag_close, "p", %{column: 14, line: 1}},
   #   {:eex_tag, "<% end %>", %{block?: false, column: 62, line: 2}},
   #   {:text, "\n", %{column_end: 1, line_end: 2}},
@@ -251,7 +273,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # ### How does this algorithm work?
   #
   # As this is a recursive algorithm, it starts with an empty buffer and an empty
-  # stack. Each will be accumulated in the buffer until it finds a `{:tag_open, ..., ...}`.
+  # stack. The buffer will be accumulated until it finds a `{:tag_open, ..., ...}`.
   #
   # As soon as the `tag_open` arrives, a new buffer will be started and we move
   # the previous buffer to the stack along with the `tag_open`:
@@ -270,12 +292,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #   end
   #   ```
   #
-  # Here we build the `tag_block` with the accumulated buffer, placing the buffer accumulated
-  # before the tag open (upper_buffer) on top.
+  # In the snippet above, we build the `tag_block` with the accumulated buffer,
+  # putting the buffer accumulated before the tag open (upper_buffer) on top.
   #
-  # We apply the same logic for `eex` expressions but, instead of `tag_open` and `tag_close`, here
-  # we have `start_expr` and `end_expr` plus `middle_expr`. The only real difference is that for
-  # `eex` we also need to build a `middle_buffer`.
+  # We apply the same logic for `eex` expressions but, instead of `tag_open` and
+  # `tag_close`, eex expressions use `start_expr`, `middle_expr` and `end_expr`.
+  # The only real difference is that also need to handle `middle_buffer`.
   #
   # So given this eex input:
   #
