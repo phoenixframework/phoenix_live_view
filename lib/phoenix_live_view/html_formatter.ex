@@ -2,13 +2,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   @moduledoc """
   Format Heex templates from `.heex` files or `~H` sigils.
 
-  This is a plugin for Mix format:
+  This is a `mix format` [plugin](https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-plugins).
 
-  https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-plugins
+  ## Setup
 
-  ### Setup
-
-  Add it as plugin to your project `.formatter` file and make sure to put the`heex` extension in
+  Add it as plugin to your `.formatter.exs` file and make sure to put the`heex` extension in
   the `inputs` option.
 
   ```elixir
@@ -19,12 +17,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ]
   ```
 
-  ### options
+  ## Options
 
-  * `line_length`: The Elixir formatter defaults to a maximum line length of 98 characters,
-    which can be overwritten with the `line_length` option in your `.formatter` file.
+  * `:line_length` - The Elixir formatter defaults to a maximum line length
+    of 98 characters, which can be overwritten with the `:line_length` option
+    in your `.formatter.exs` file.
 
-    Set `heex_line_length` to only set the line length for the heex formatter.
+  * `:heex_line_length` - change the line length only for the HEEx formatter.
 
     ```elixir
     [
@@ -33,10 +32,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     ]
     ```
 
-  ### Formatting
+  ## Formatting
 
   This formatter tries to be as consistent as possible with the Elixir formatter.
-  With that being said, you should expect a similar formatting experience.
 
   Given HTML like this:
 
@@ -57,8 +55,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   The following links list all block and inline elements.
 
-  https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#elements
-  https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+  * https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#elements
+  * https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
   It will also keep inline elements in their own lines if you intentionally write them this way:
 
@@ -71,9 +69,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```
 
   This formatter will place all attributes on their own lines when they do not all fit in the
-  current line.
-
-  Therefore this:
+  current line. Therefore this:
 
   ```eex
   <section id="user-section-id" class="sm:focus:block flex w-full p-3" phx-click="send-event">
@@ -87,42 +83,18 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   <section
     id="user-section-id"
     class="sm:focus:block flex w-full p-3"
-    phx-click="send-event">
+    phx-click="send-event"
+  >
     <p>Hi</p>
   </section>
   ```
 
   ### Intentional new lines
 
-  The formatter will keep intentional new lines. In fact, the formatter will
+  The formatter will keep intentional new lines. However, the formatter will
   always keep a maximum of one line break in case you have multiple ones:
 
   ```eex
-  <section>
-
-
-    <h1>
-      <%= Hello %>
-    </h1>
-
-  </section>
-  ```
-
-  Will become:
-
-  ```eex
-  <section>
-
-    <h1>
-      <%= Hello %>
-    </h1>
-
-  </section>
-  ```
-
-  It also won't keep multiple lines between texts:
-
-  ```
   <p>
     text
 
@@ -141,10 +113,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   </p>
   ```
   """
+
   alias Phoenix.LiveView.HTMLAlgebra
   alias Phoenix.LiveView.HTMLTokenizer
 
-  # Default line length to be used in case nothing is specified in the `.formatter` options.
+  # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
   @behaviour Mix.Tasks.Format
@@ -173,7 +146,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     IO.iodata_to_binary([formatted, newline])
   end
 
-  # Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
+  # Tokenize contents using EEx.tokenize and Phoenix.Live.HTMLTokenizer respectively.
   #
   # The following content:
   #
@@ -442,8 +415,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp count_newlines_until_text(_, counter),
     do: counter
 
-  # LV Tokenizer doesn't tell us when it is an inline comment and we need to know that in order
-  # to handle this.
+  # LV Tokenizer doesn't tell us when it is an inline comment
+  # and we need to know that in order to handle this.
   defp inline_comment?(text) do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
