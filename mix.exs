@@ -117,6 +117,7 @@ defmodule Phoenix.LiveView.MixProject do
       "Plugin API": [
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
+        Phoenix.LiveView.HTMLFormatter,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension
