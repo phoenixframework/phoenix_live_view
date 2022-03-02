@@ -360,7 +360,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
-    if inline_comment?(text) do
+    if line_html_comment?(text) do
       to_tree(tokens, [{:comment, text} | buffer], stack)
     else
       meta = %{newlines: count_newlines_until_text(text, 0)}
@@ -438,9 +438,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp count_newlines_until_text(_, counter),
     do: counter
 
-  # LV Tokenizer doesn't tell us when it is an inline comment
-  # and we need to know that in order to handle this.
-  defp inline_comment?(text) do
+  # We just want to handle as :comment when the whole line is a HTML comment.
+  #
+  #   <!-- Modal content -->
+  #   <%= render_slot(@inner_block) %>
+  #
+  # Thefore the case above will stay as is. Otherwise it would put them in the
+  # same line.
+  defp line_html_comment?(text) do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
