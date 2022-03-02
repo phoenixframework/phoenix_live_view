@@ -142,14 +142,18 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
-  @behaviour Mix.Tasks.Format
+  if Version.match?(System.version(), ">= 1.13.0") do
+    @behaviour Mix.Tasks.Format
+  end
 
-  @impl Mix.Tasks.Format
+  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
+  # @impl Mix.Tasks.Format
   def features(_opts) do
     [sigils: [:H], extensions: [".heex"]]
   end
 
-  @impl Mix.Tasks.Format
+  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
+  # @impl Mix.Tasks.Format
   def format(contents, opts) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
