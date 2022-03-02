@@ -131,7 +131,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       |> Inspect.Algebra.format(:infinity)
       |> IO.iodata_to_binary()
       |> String.split(["\r\n", "\n"])
-      |> trim_new_lines()
+      |> Enum.drop_while(&(String.trim_leading(&1) == ""))
 
     indentation =
       lines
@@ -399,12 +399,4 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp remove_indentation(<<?\t, rest::binary>>, indent), do: remove_indentation(rest, indent - 2)
   defp remove_indentation(<<?\s, rest::binary>>, indent), do: remove_indentation(rest, indent - 1)
   defp remove_indentation(rest, _indent), do: rest
-
-  defp trim_new_lines(lines) do
-    lines
-    |> Enum.drop_while(&(String.trim_leading(&1) == ""))
-    |> Enum.reverse()
-    |> Enum.drop_while(&(String.trim_leading(&1) == ""))
-    |> Enum.reverse()
-  end
 end
