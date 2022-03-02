@@ -3,6 +3,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   import Inspect.Algebra, except: [format: 2]
 
+  # TODO: Remove it after versions before Elixir 1.13 are no longer supported.
+  @compile {:no_warn_undefined, Code}
+
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
   #
