@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.JS do
         """
       end
 
-  ## Enhanced Push Events
+  ## Enhanced push events
 
   The `push/1` command allows you to extend the built-in pushed event handling
   when a `phx-` event is pushed to the server. For example, you may wish to
@@ -80,15 +80,15 @@ defmodule Phoenix.LiveView.JS do
         |> JS.add_class(".warmer", to: ".thermo")
       }>+</div>
 
-  ## Using dispatch with window.addEventListener
+  ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
-  `dispatch/1` can be used to dispatch JavaScript events to elements.
-  For example, you can use `JS.dispatch("click", to: "#foo")`, to
-  dispatch a click event to an element.
+  `dispatch/1` can be used to dispatch custom JavaScript events to
+  elements. For example, you can use `JS.dispatch("click", to: "#foo")`,
+  to dispatch a click event to an element.
 
   This also means you can augment your elements with custom events,
-  by using JavaScript's `window.addEventListener` and then invoke
-  them with `dispatch/1`. For example, imagine you want to provide
+  by using JavaScript's `window.addEventListener` and invoking them
+  with `dispatch/1`. For example, imagine you want to provide
   a copy-to-clipboard functionality in your application. You can
   add a custom event for it:
 
