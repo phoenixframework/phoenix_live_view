@@ -166,7 +166,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     formatted =
       contents
       |> tokenize()
-      |> to_tree()
+      |> to_tree([], [])
       |> HTMLAlgebra.build(opts)
       |> Inspect.Algebra.format(line_length)
 
@@ -336,11 +336,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #    ]}
   # ]
   # ```
-  @doc false
-  def to_tree(tokens) do
-    to_tree(tokens, [], [])
-  end
-
   defp to_tree([], buffer, []) do
     Enum.reverse(buffer)
   end
