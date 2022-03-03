@@ -143,20 +143,6 @@ export default class DOMPatch {
           }
           updates.push(el)
         },
-        onBeforeElChildrenUpdated: (fromEl, toEl) => {
-          if(toEl.getAttribute("phx-stream") === null){
-            return true
-          } else {
-            let stream = this.streams[toEl.id]
-            // // if we have no stream, we are rendering for the first time
-            // if(!stream){
-            //   return true
-            // } else {
-              console.log(toEl.id, this.streams[toEl.id]())
-              return false
-            // }
-          }
-        },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }

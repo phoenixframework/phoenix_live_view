@@ -29,23 +29,21 @@ export default class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
-    this.streams = {}
     this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    this.streams = {}
-    let str = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
-    return [str, this.streams]
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    return [str, streams]
   }
 
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids}
+    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
     this.toOutputBuffer(rendered, null, output)
-    return output.buffer
+    return [output.buffer, output.streams]
   }
 
   componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
@@ -138,9 +136,8 @@ export default class Rendered {
   }
 
   componentToString(cid){
-    this.streams = {}
-    let str =  this.recursiveCIDToString(this.rendered[COMPONENTS], cid)
-    return [str, this.streams]
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid)
+    return [str, streams]
   }
 
   pruneCIDs(cids){
@@ -177,32 +174,26 @@ export default class Rendered {
     let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM_ID]: streamId} = rendered
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
-    let writeBuffer = (currentOutput) => {
-      for(let d = 0; d < dynamics.length; d++){
-        let dynamic = dynamics[d]
-        currentOutput.buffer += statics[0]
-        for(let i = 1; i < statics.length; i++){
-          this.dynamicToBuffer(dynamic[i - 1], compTemplates, currentOutput)
-          currentOutput.buffer += statics[i]
-        }
+    for(let d = 0; d < dynamics.length; d++){
+      let dynamic = dynamics[d]
+      output.buffer += statics[0]
+      for(let i = 1; i < statics.length; i++){
+        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output)
+        output.buffer += statics[i]
       }
     }
 
     if(streamId !== undefined && rendered[DYNAMICS].length > 0){
-      let streamOutput = {buffer: "", components: output.components, onlyCids: output.onlyCids}
       rendered[DYNAMICS] = []
-      this.streams[streamId] = () => {
-        writeBuffer(streamOutput)
-        return streamOutput.buffer
-      }
-    } else if(streamId === undefined){
-      writeBuffer(output)
+      output.streams.add(streamId)
     }
   }
 
   dynamicToBuffer(rendered, templates, output){
     if(typeof (rendered) === "number"){
-      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      output.buffer += str
+      output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, templates, output)
     } else {
@@ -213,7 +204,8 @@ export default class Rendered {
   recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
-    template.innerHTML = this.recursiveToString(component, components, onlyCids)
+    let [html, streams] = this.recursiveToString(component, components, onlyCids)
+    template.innerHTML = html
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
 
@@ -247,13 +239,13 @@ export default class Rendered {
     if(!hasChildNodes && !hasChildComponents){
       logError("expected at least one HTML element tag inside a component, but the component is empty:\n",
         template.innerHTML.trim())
-      return this.createSpan("", cid).outerHTML
+      return [this.createSpan("", cid).outerHTML, streams]
     } else if(!hasChildNodes && hasChildComponents){
       logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.",
         template.innerHTML.trim())
-      return template.innerHTML
+      return [template.innerHTML, streams]
     } else {
-      return template.innerHTML
+      return [template.innerHTML, streams]
     }
   }
 
