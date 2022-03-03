@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   Given HTML like this:
 
   ```eex
-    <section><h1>   <b>Hello</b></h1> </section>
+    <section><h1>   <b><%= @user.name %></b></h1></section>
   ```
 
   It will be formatted as:
