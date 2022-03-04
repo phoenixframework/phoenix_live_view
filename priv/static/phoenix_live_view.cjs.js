@@ -3160,6 +3160,7 @@ var LiveSocket = class {
     this.prevActive = null;
     this.silenced = false;
     this.main = null;
+    this.outgoingMainEl = null;
     this.linkRef = 1;
     this.clickRef = 1;
     this.roots = {};
@@ -3367,8 +3368,8 @@ var LiveSocket = class {
     browser_default.redirect(to, flash);
   }
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
-    let oldMainEl = this.main.el;
-    let newMainEl = dom_default.cloneNode(oldMainEl, "");
+    this.outgoingMainEl = this.outgoingMainEl || this.main.el;
+    let newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
     this.main.showLoader(this.loaderTimeout);
     this.main.destroy();
     this.main = this.newRootView(newMainEl, flash);
@@ -3378,7 +3379,8 @@ var LiveSocket = class {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
           dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
-          oldMainEl.replaceWith(newMainEl);
+          this.outgoingMainEl.replaceWith(newMainEl);
+          this.outgoingMainEl = null;
           callback && callback();
           onDone();
         });
