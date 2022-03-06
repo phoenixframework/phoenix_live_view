@@ -186,7 +186,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
-    defined in, where it's value can be either a query selector or an actual DOM element. If the query selector returns
+    defined in, where its value can be either a query selector or an actual DOM element. If the query selector returns
     more than one element it will send the event to all of them, even if all the elements are in the same LiveComponent
     or LiveView.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
@@ -194,7 +194,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `uploadTo(selectorOrTarget, name, files)` - method to inject a list of file-like objects into an uploader.
     The hook will send the files to the uploader with `name` defined by [`allow_upload/3`](`Phoenix.LiveView.allow_upload/3`)
     on the server-side. Dispatching new uploads triggers an input change event which will be sent to the
-    LiveComponent or LiveView the `selectorOrTarget` is defined in, where it's value can be either a query selector or an
+    LiveComponent or LiveView the `selectorOrTarget` is defined in, where its value can be either a query selector or an
     actual DOM element. If the query selector returns more than one live file input, an error will be logged.
 
 For example, the markup for a controlled input for phone-number formatting could be written
