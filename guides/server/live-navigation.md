@@ -15,7 +15,9 @@ You can trigger live navigation in two ways:
 
 For example, in a template you may write:
 
-    <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+```heex
+<%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+```
 
 or in a LiveView:
 
@@ -78,7 +80,9 @@ the system and you define it in the router as:
 
 Now to add live sorting, you could do:
 
+```heex
     <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+```
 
 When clicked, since we are navigating to the current LiveView,
 [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will be invoked.
