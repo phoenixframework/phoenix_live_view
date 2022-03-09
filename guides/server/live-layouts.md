@@ -55,9 +55,11 @@ For example, you can define a new `live.html.heex` layout with
 dynamic content. You must use `@inner_content` where the output
 of the actual template will be placed at:
 
-    <p><%= live_flash(@flash, :notice) %></p>
-    <p><%= live_flash(@flash, :error) %></p>
-    <%= @inner_content %>
+```heex
+<p><%= live_flash(@flash, :notice) %></p>
+<p><%= live_flash(@flash, :error) %></p>
+<%= @inner_content %>
+```
 
 To use the live layout, update your LiveView to pass the `:layout`
 option to `use Phoenix.LiveView`:
@@ -96,13 +98,17 @@ mount:
 
 Then access `@page_title` in the root layout:
 
-    <title><%= @page_title %></title>
+```heex
+<title><%= @page_title %></title>
+```
 
 You can also use `Phoenix.LiveView.Helpers.live_title_tag/2` to support
 adding automatic prefix and suffix to the page title when rendered and
 on subsequent updates:
 
-    <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
+```heex
+<%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
+```
 
 Although the root layout is not updated by LiveView, by simply assigning
 to `page_title`, LiveView knows you want the title to be updated:

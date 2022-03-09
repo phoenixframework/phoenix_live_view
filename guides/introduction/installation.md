@@ -128,7 +128,7 @@ Where `@session_options` are the options given to `plug Plug.Session` by using a
 
 Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
 
-```html
+```heex
 <%= csrf_meta_tag() %>
 <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 ```
@@ -211,7 +211,7 @@ end
 The layout given to `put_root_layout` is typically very barebones, with mostly
 `<head>` and `<body>` tags. For example:
 
-```elixir
+```heex
 <!DOCTYPE html>
 <html lang="en">
   <head>
