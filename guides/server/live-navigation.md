@@ -81,7 +81,7 @@ the system and you define it in the router as:
 Now to add live sorting, you could do:
 
 ```heex
-    <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+<%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
 ```
 
 When clicked, since we are navigating to the current LiveView,
