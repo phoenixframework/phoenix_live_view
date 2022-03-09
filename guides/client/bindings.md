@@ -73,7 +73,7 @@ This is useful for hiding toggled containers like drop-downs.
 Focus and blur events may be bound to DOM elements that emit
 such events, using the `phx-blur`, and `phx-focus` bindings, for example:
 
-```html
+```heex
 <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
 ```
 
@@ -84,7 +84,7 @@ level events may also be necessary if the element in consideration
 bindings, `phx-value-*` can be provided on the bound element, and those
 values will be sent as part of the payload. For example:
 
-```html
+```heex
 <div class="container"
     phx-window-focus="page-active"
     phx-window-blur="page-inactive"
@@ -183,7 +183,7 @@ And to rate limit a volume up click to once every second:
 
 Likewise, you may throttle held-down keydown:
 
-```html
+```heex
 <div phx-window-keydown="keydown" phx-throttle="500">
   ...
 </div>

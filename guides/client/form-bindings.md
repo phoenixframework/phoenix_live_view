@@ -116,7 +116,7 @@ from the client when an input is invalid, instead allowing the browser's native
 validation UI to drive user interaction. Once the input becomes valid, change and
 submit events will be sent normally.
 
-```html
+```heex
 <input type="number">
 ```
 
@@ -128,7 +128,7 @@ One alternative is the `inputmode` attribute, which may serve your application's
 and users much better. According to [Can I Use?](https://caniuse.com/#search=inputmode),
 the following is supported by 86% of the global market (as of Sep 2021):
 
-```html
+```heex
 <input type="text" inputmode="numeric" pattern="[0-9]*">
 ```
 
@@ -186,7 +186,7 @@ fields on next render:
 
         {:error, changeset} ->
           {:noreply, assign(socket, changeset: changeset)}
-        end
+      end
     end
 
 Once `phx-trigger-action` is true, LiveView disconnects and then submits the form.
@@ -279,7 +279,7 @@ To handle latent events, any HTML tag can be annotated with
 value during event submission. For example, the following code would change
 the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 
-```html
+```heex
 <button type="submit" phx-disable-with="Saving...">Save</button>
 ```
 
@@ -301,7 +301,7 @@ You can show and hide content with the following markup:
 <form phx-change="update">
   <div class="while-submitting">Please wait while we save our content...</div>
   <div class="inputs">
-    <input type="text" name="text" value="<%= @text %>">
+    <input type="text" name="text" value={@text}>
   </div>
 </form>
 ```
