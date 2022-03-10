@@ -377,10 +377,13 @@ export default class View {
     let destroyedCIDs = []
     elements.forEach(parent => {
       let components = DOM.all(parent, `[${PHX_COMPONENT}]`)
-        components.concat(parent).forEach(el => {
+      let hooks = DOM.all(parent, `[${this.binding(PHX_HOOK)}]`)
+      components.concat(parent).forEach(el => {
         let cid = this.componentID(el)
         if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
-        let hook = this.getHook(el)
+      })
+      hooks.concat(parent).forEach(hookEl => {
+        let hook = this.getHook(hookEl)
         hook && this.destroyHook(hook)
       })
     })
