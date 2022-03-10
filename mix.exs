@@ -46,8 +46,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:jason, "~> 1.0", optional: true},
       {:floki, "~> 0.30.0", only: :test},
       {:ex_doc, "~> 0.28", only: :docs},
-      {:makeup_eex, "~> 0.1", only: :docs},
-      {:html_entities, ">= 0.0.0", only: :test},
+      {:makeup_eex, ">= 0.1.1", only: :docs},
+      {:html_entities, ">= 0.0.0", only: :test}
     ]
   end
 
@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.MixProject do
     # Phoenix.LiveViewTest
 
     [
-      "Components": [
+      Components: [
         Phoenix.Component,
         Phoenix.LiveComponent,
         Phoenix.LiveComponent.CID
