@@ -3,7 +3,8 @@
 ## 0.17.8
 
 ### Bug fixes
-  - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount.
+  - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
+  - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
 
 ## 0.17.7 (2022-02-07)
 
