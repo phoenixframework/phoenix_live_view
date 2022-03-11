@@ -1178,6 +1178,32 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  describe "Heex validations" do
+    test "phx-update attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? phx-update requires an ID/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore">
+          Content
+        </div>
+        """)
+      end)
+    end
+
+    test "phx-hook attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? phx-hook requires an ID/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="ignore">
+          Content
+        </div>
+        """)
+      end)
+    end
+  end
+
   describe "handle errors in expressions" do
     if Version.match?(System.version(), ">= 1.12.0") do
       test "inside attribute values" do

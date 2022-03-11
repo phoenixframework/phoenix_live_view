@@ -49,7 +49,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
-    <section phx-hook="Example" class="idless-hook">Section</section>
+    <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
     <%# forms %>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>

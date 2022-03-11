@@ -415,6 +415,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
+    validate_phx_attrs!(attrs, tag_meta, state)
 
     state
     |> set_root_on_tag()
@@ -424,6 +425,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
+    validate_phx_attrs!(attrs, tag_meta, state)
+
     state
     |> set_root_on_tag()
     |> push_tag(token)
@@ -762,4 +765,30 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
+
+  @attrs_with_required_ids ["phx-update", "phx-hook"]
+
+  # Check if attrs contains `@attrs_with_required_ids`.
+  #
+  # In case one is found and there is no ID, an error will be raised. Otherwise,
+  # it returns :ok.
+  defp validate_phx_attrs!(attrs, meta, state),
+    do: validate_phx_attrs!(attrs, meta, state, %{id: nil, attr: nil})
+
+  defp validate_phx_attrs!([], meta, state, %{attr: attr, id: nil})
+       when attr in @attrs_with_required_ids do
+    message = "#{attr} requires an ID"
+
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: message
+  end
+
+  defp validate_phx_attrs!([], _meta, _state, _acc), do: :ok
+  defp validate_phx_attrs!([{"id", _} | _t], _tmeta, _state, _acc), do: :ok
+
+  defp validate_phx_attrs!([{attr, _} | t], meta, state, acc),
+    do: validate_phx_attrs!(t, meta, state, %{acc | attr: attr})
 end
