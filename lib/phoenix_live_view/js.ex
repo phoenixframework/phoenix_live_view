@@ -188,6 +188,7 @@ defmodule Phoenix.LiveView.JS do
     * `:detail` - The optional detail map to dispatch along
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
+    * `:bubbles` – The boolean flag to bubble the event or not. Default `true`.
 
   ## Examples
 
@@ -201,8 +202,20 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `dispatch/2`."
   def dispatch(%JS{} = js, event, opts) do
-    opts = validate_keys(opts, :dispatch, [:to, :detail])
+    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles])
     args = %{event: event, to: opts[:to]}
+
+    args =
+      case Keyword.fetch(opts, :bubbles) do
+        {:ok, val} when is_boolean(val) ->
+          Map.put(args, :bubbles, val)
+
+        {:ok, other} ->
+          raise ArgumentError, "expected :bubbles to be a boolean, got: #{inspect(other)}"
+
+        :error ->
+          args
+      end
 
     args =
       case {event, Keyword.fetch(opts, :detail)} do

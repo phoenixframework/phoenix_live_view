@@ -24,10 +24,10 @@ let JS = {
 
   // commands
 
-  exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail}){
+  exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
     detail = detail || {}
     detail.dispatcher = sourceEl
-    DOM.dispatchEvent(el, event, detail)
+    DOM.dispatchEvent(el, event, {detail, bubbles})
   },
 
   exec_push(eventType, phxEvent, view, sourceEl, el, args){

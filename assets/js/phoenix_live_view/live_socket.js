@@ -670,7 +670,7 @@ export default class LiveSocket {
   }
 
   dispatchEvent(event, payload = {}){
-    DOM.dispatchEvent(window, `phx:${event}`, payload)
+    DOM.dispatchEvent(window, `phx:${event}`, {detail: payload})
   }
 
   dispatchEvents(events){
@@ -678,8 +678,8 @@ export default class LiveSocket {
   }
 
   withPageLoading(info, callback){
-    DOM.dispatchEvent(window, "phx:page-loading-start", info)
-    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", info)
+    DOM.dispatchEvent(window, "phx:page-loading-start", {detail: info})
+    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", {detail: info})
     return callback ? callback(done) : done
   }
 

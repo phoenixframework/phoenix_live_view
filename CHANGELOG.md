@@ -2,6 +2,10 @@
 
 ## 0.17.8
 
+### Enhancements
+  - Dispatch `MouseEvent` on client
+  - Add `:bubbles` option to `JS.dispatch` to control event bubbling
+
 ### Bug fixes
   - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
   - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases

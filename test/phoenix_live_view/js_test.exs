@@ -271,6 +271,12 @@ defmodule Phoenix.LiveView.JSTest do
              }
     end
 
+    test "with optional flags" do
+      assert JS.dispatch("click", bubbles: false) == %JS{
+               ops: [["dispatch", %{to: nil, event: "click", bubbles: false}]]
+             }
+    end
+
     test "raises with unknown options" do
       assert_raise ArgumentError, ~r/invalid option for dispatch/, fn ->
         JS.dispatch("click", to: ".foo", bad: :opt)

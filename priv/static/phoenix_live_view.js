@@ -503,9 +503,10 @@ var LiveView = (() => {
     firstPhxChild(el) {
       return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
     },
-    dispatchEvent(target, name, detail = {}) {
-      let opts = { bubbles: true, cancelable: true, detail };
-      let event = name === "click" ? new MouseEvent("click", opts) : new CustomEvent(name, opts);
+    dispatchEvent(target, name, opts = {}) {
+      let bubbles = opts.bubbles === void 0 ? true : !!opts.bubbles;
+      let eventOpts = { bubbles, cancelable: true, detail: opts.detail || {} };
+      let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts);
       target.dispatchEvent(event);
     },
     cloneNode(node, html) {
@@ -2001,10 +2002,10 @@ within:
     isVisible(el) {
       return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
     },
-    exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail }) {
+    exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail, bubbles }) {
       detail = detail || {};
       detail.dispatcher = sourceEl;
-      dom_default.dispatchEvent(el, event, detail);
+      dom_default.dispatchEvent(el, event, { detail, bubbles });
     },
     exec_push(eventType, phxEvent, view, sourceEl, el, args) {
       let { event, data, target, page_loading, loading, value } = args;
@@ -2720,7 +2721,7 @@ within:
     }
     displayError() {
       if (this.isMain()) {
-        dom_default.dispatchEvent(window, "phx:page-loading-start", { to: this.href, kind: "error" });
+        dom_default.dispatchEvent(window, "phx:page-loading-start", { detail: { to: this.href, kind: "error" } });
       }
       this.showLoader();
       this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS);
@@ -3073,7 +3074,7 @@ within:
       } else if (inputs.length > 1) {
         logError(`duplicate live file inputs found matching the name "${name}"`);
       } else {
-        dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { files: filesOrBlobs });
+        dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { detail: { files: filesOrBlobs } });
       }
     }
     pushFormRecovery(form, newCid, callback) {
@@ -3723,14 +3724,14 @@ within:
       }, false);
     }
     dispatchEvent(event, payload = {}) {
-      dom_default.dispatchEvent(window, `phx:${event}`, payload);
+      dom_default.dispatchEvent(window, `phx:${event}`, { detail: payload });
     }
     dispatchEvents(events) {
       events.forEach(([event, payload]) => this.dispatchEvent(event, payload));
     }
     withPageLoading(info, callback) {
-      dom_default.dispatchEvent(window, "phx:page-loading-start", info);
-      let done = () => dom_default.dispatchEvent(window, "phx:page-loading-stop", info);
+      dom_default.dispatchEvent(window, "phx:page-loading-start", { detail: info });
+      let done = () => dom_default.dispatchEvent(window, "phx:page-loading-stop", { detail: info });
       return callback ? callback(done) : done;
     }
     pushHistoryPatch(href, linkState, targetEl) {

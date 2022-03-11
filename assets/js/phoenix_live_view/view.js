@@ -638,7 +638,7 @@ export default class View {
   }
 
   displayError(){
-    if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {to: this.href, kind: "error"}) }
+    if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {detail: {to: this.href, kind: "error"}}) }
     this.showLoader()
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
@@ -988,7 +988,7 @@ export default class View {
     let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
-    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
   }
 
   pushFormRecovery(form, newCid, callback){
