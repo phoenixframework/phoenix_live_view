@@ -43,8 +43,8 @@ template.
 Use the `Phoenix.LiveView.Helpers.live_file_input/2` file
 input generator to render a file input for the upload:
 
-```elixir
-# lib/my_app_web/live/upload_live.html.heex
+```heex
+<%# lib/my_app_web/live/upload_live.html.heex %>
 
 <form id="upload-form" phx-submit="save" phx-change="validate">
   <%= live_file_input @uploads.avatar %>
@@ -73,8 +73,8 @@ info, errors, etc.
 
 Let's look at an annotated example:
 
-```elixir
-# lib/my_app_web/live/upload_live.html.heex
+```heex
+<%# lib/my_app_web/live/upload_live.html.heex %>
 
 <%# use phx-drop-target with the upload ref to enable file drag and drop %>
 <section phx-drop-target={@uploads.avatar.ref}>

@@ -503,8 +503,9 @@ var LiveView = (() => {
     firstPhxChild(el) {
       return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
     },
-    dispatchEvent(target, eventString, detail = {}) {
-      let event = new CustomEvent(eventString, { bubbles: true, cancelable: true, detail });
+    dispatchEvent(target, name, detail = {}) {
+      let opts = { bubbles: true, cancelable: true, detail };
+      let event = name === "click" ? new MouseEvent("click", opts) : new CustomEvent(name, opts);
       target.dispatchEvent(event);
     },
     cloneNode(node, html) {
@@ -2001,6 +2002,8 @@ within:
       return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
     },
     exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail }) {
+      detail = detail || {};
+      detail.dispatcher = sourceEl;
       dom_default.dispatchEvent(el, event, detail);
     },
     exec_push(eventType, phxEvent, view, sourceEl, el, args) {
@@ -2466,12 +2469,15 @@ within:
       let destroyedCIDs = [];
       elements.forEach((parent) => {
         let components = dom_default.all(parent, `[${PHX_COMPONENT}]`);
+        let hooks = dom_default.all(parent, `[${this.binding(PHX_HOOK)}]`);
         components.concat(parent).forEach((el) => {
           let cid = this.componentID(el);
           if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
             destroyedCIDs.push(cid);
           }
-          let hook = this.getHook(el);
+        });
+        hooks.concat(parent).forEach((hookEl) => {
+          let hook = this.getHook(hookEl);
           hook && this.destroyHook(hook);
         });
       });
@@ -3177,6 +3183,7 @@ within:
       this.prevActive = null;
       this.silenced = false;
       this.main = null;
+      this.outgoingMainEl = null;
       this.linkRef = 1;
       this.clickRef = 1;
       this.roots = {};
@@ -3384,8 +3391,8 @@ within:
       browser_default.redirect(to, flash);
     }
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
-      let oldMainEl = this.main.el;
-      let newMainEl = dom_default.cloneNode(oldMainEl, "");
+      this.outgoingMainEl = this.outgoingMainEl || this.main.el;
+      let newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
       this.main.showLoader(this.loaderTimeout);
       this.main.destroy();
       this.main = this.newRootView(newMainEl, flash);
@@ -3395,7 +3402,8 @@ within:
         if (joinCount === 1 && this.commitPendingLink(linkRef)) {
           this.requestDOMUpdate(() => {
             dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
-            oldMainEl.replaceWith(newMainEl);
+            this.outgoingMainEl.replaceWith(newMainEl);
+            this.outgoingMainEl = null;
             callback && callback();
             onDone();
           });
@@ -3494,7 +3502,7 @@ within:
       }
       this.boundTopLevelEvents = true;
       this.socket.onClose((event) => {
-        if (event.code === 1e3 && this.main) {
+        if (event && event.code === 1e3 && this.main) {
           this.reloadWithJitter(this.main);
         }
       });

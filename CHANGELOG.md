@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.8
+
+### Bug fixes
+  - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
+  - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
+
 ## 0.17.7 (2022-02-07)
 
 ### Enhancements
@@ -714,7 +720,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - `Phoenix.LiveViewTest.assert_remove/3` has been removed. If the LiveView crashes, it will cause the test to crash too
   - Passing a path with DOM IDs to `render_*` test functions is deprecated. Furthermore, they now require a `phx-target="<%= @id %>"` on the given DOM ID:
 
-    ```html
+    ```heex
     <div id="component-id" phx-target="component-id">
       ...
     </div>
@@ -931,7 +937,7 @@ The steps are:
 
   4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
-      ```html
+      ```heex
       <%= csrf_meta_tag() %>
       <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
       ```

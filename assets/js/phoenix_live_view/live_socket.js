@@ -138,6 +138,7 @@ export default class LiveSocket {
     this.prevActive = null
     this.silenced = false
     this.main = null
+    this.outgoingMainEl = null
     this.linkRef = 1
     this.clickRef = 1
     this.roots = {}
@@ -342,8 +343,8 @@ export default class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
-    let oldMainEl = this.main.el
-    let newMainEl = DOM.cloneNode(oldMainEl, "")
+    this.outgoingMainEl = this.outgoingMainEl || this.main.el
+    let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
@@ -354,7 +355,8 @@ export default class LiveSocket {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
-          oldMainEl.replaceWith(newMainEl)
+          this.outgoingMainEl.replaceWith(newMainEl)
+          this.outgoingMainEl = null
           callback && callback()
           onDone()
         })
@@ -457,7 +459,7 @@ export default class LiveSocket {
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
     this.socket.onClose(event => {
-      if(event.code === 1000 && this.main){
+      if(event && event.code === 1000 && this.main){
         this.reloadWithJitter(this.main)
       }
     })
@@ -649,6 +651,7 @@ export default class LiveSocket {
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
       if(!type || !this.isConnected() || !this.main || wantsNewTab){ return }
+
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()

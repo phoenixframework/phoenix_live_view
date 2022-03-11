@@ -668,37 +668,78 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
-  @doc """
+  @doc ~S'''
   Assigns the given `key` with value from `fun` into `socket_or_assigns` if
   one does not yet exist.
 
   The first argument is either a LiveView `socket` or an `assigns` map from
   function components.
 
-  Useful for lazily assigning values and referencing parent assigns.
+  This function is useful for lazily assigning values and referencing parent
+  assigns. We wil cover both use cases next.
+
+  ## Lazy assigns
+
+  Imagine you have a function component that accepts a color:
+
+      <.my_component color="red" />
+
+  The color is also optional, so you can skip it:
+
+      <.my_component />
+
+  In such cases, the implementation can use `assign_new` to lazily
+  assign a color if none is given. Let's make it so it picks a random one
+  when none is given:
+
+      def my_component(assigns) do
+        assigns = assign_new(assigns, :color, fn -> Enum.random(~w(red green blue)) end)
+
+        ~H"""
+        <div class={"bg-#{@color}"}>
+          Example
+        </div>
+        """
+      end
 
   ## Referencing parent assigns
 
-  When a LiveView is mounted in a disconnected state, the `Plug.Conn` assigns
-  will be available for reference via `assign_new/3`, allowing assigns to
-  be shared for the initial HTTP request. The `Plug.Conn` assigns will not be
-  available during the connected mount. Likewise, nested LiveView children have
-  access to their parent's assigns on mount using `assign_new/3`, which allows
-  assigns to be shared down the nested LiveView tree.
+  When a user first accesses an application using LiveView, the LiveView is first
+  rendered in its disconnected state, as part of a regular HTML response. In some
+  cases, there may be data that is shared by your Plug pipelines and your LiveView,
+  such as the `:current_user` assign.
 
-  ## Examples
+  By using `assign_new` in the mount callback of your LiveView, you can instruct
+  LiveView to re-use any assigns set in your Plug pipelines as part of `Plug.Conn`,
+  avoiding sending additional queries to the database. Imagine you have a Plug
+  that does:
 
-      # controller
-      conn
-      |> assign(:current_user, user)
-      |> LiveView.Controller.live_render(MyLive, session: %{"user_id" => user.id})
+      # A plug
+      def authenticate(conn, _opts) do
+        if user_id = get_session(conn, :user_id) do
+          assign(conn, :current_user, Accounts.get_user!(user_id))
+        else
+          send_resp(conn, :forbidden)
+        end
+      end
 
-      # LiveView mount
+  You can re-use the `:current_user` assign in your LiveView during the initial
+  render:
+
       def mount(_params, %{"user_id" => user_id}, socket) do
         {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
-  """
+  If there is no such `:current_user` assign or the LiveView was mounted as part
+  of the live navigation, where no Plug pipelines are invoked, then the anonymous
+  function is invoked to execute the query.
+
+  LiveView is also able to share assigns via `assign_new` within nested LiveView.
+  If the parent LiveView defines a `:current_user` assign and the child LiveView
+  also uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback,
+  as above, the assign will be fetched from the parent LiveView, once again
+  avoiding additional database queries.
+  '''
   def assign_new(socket_or_assigns, key, fun)
 
   def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
@@ -727,9 +768,39 @@ defmodule Phoenix.LiveView do
   end
 
   def assign_new(assigns, _key, fun) when is_function(fun, 0) do
+    raise_bad_socket_or_assign!("assign_new/3", assigns)
+  end
+
+  defp raise_bad_socket_or_assign!(name, assigns) do
+    extra =
+      case assigns do
+        %_{} ->
+          ""
+
+        %{} ->
+          """
+          You passed an assigns map that does not have the relevant change tracking \
+          information. This typically means you are calling a function component by \
+          hand instead of using the HEEx template syntax. If you are using HEEx, make \
+          sure you are calling a component using:
+
+              <.component attribute={value} />
+
+          If you are outside of HEEx and you want to test a component, use \
+          Phoenix.LiveViewTest.render_component/2:
+
+              Phoenix.LiveViewTest.render_component(&component/1, attribute: "value")
+
+          """
+
+        _ ->
+          ""
+      end
+
     raise ArgumentError,
-          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+          "#{name} expects a socket from Phoenix.LiveView/Phoenix.LiveComponent " <>
+            " or an assigns map from Phoenix.Component as first argument, got: " <>
+            inspect(assigns) <> extra
   end
 
   @doc """
@@ -761,9 +832,7 @@ defmodule Phoenix.LiveView do
   end
 
   def assign(assigns, _key, _val) do
-    raise ArgumentError,
-          "assign/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("assign/3", assigns)
   end
 
   @doc """
@@ -827,9 +896,7 @@ defmodule Phoenix.LiveView do
   end
 
   def update(assigns, _key, fun) when is_function(fun, 1) do
-    raise ArgumentError,
-          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("update/3", assigns)
   end
 
   @doc """
@@ -854,9 +921,7 @@ defmodule Phoenix.LiveView do
   end
 
   def changed?(assigns, _key) do
-    raise ArgumentError,
-          "changed?/2 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
   @doc """
@@ -933,7 +998,7 @@ defmodule Phoenix.LiveView do
   them by adding listeners. For example, if you want to remove an element
   from the page, you can do this:
 
-      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"}}
+      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"})}
 
   And now in your app.js you can register and handle it:
 
@@ -1287,7 +1352,7 @@ defmodule Phoenix.LiveView do
   `get_connect_info/2`:
 
       def mount(_params, _session, socket) do
-        peer_data = get_connect_info(socket, :peer_data) do
+        peer_data = get_connect_info(socket, :peer_data)
         {:ok, assign(socket, ip: peer_data.address)}
       end
 

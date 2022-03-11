@@ -250,8 +250,9 @@ let DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0]
   },
 
-  dispatchEvent(target, eventString, detail = {}){
-    let event = new CustomEvent(eventString, {bubbles: true, cancelable: true, detail: detail})
+  dispatchEvent(target, name, detail = {}){
+    let opts = {bubbles: true, cancelable: true, detail: detail}
+    let event = name === "click" ? new MouseEvent("click", opts) : new CustomEvent(name, opts)
     target.dispatchEvent(event)
   },
 

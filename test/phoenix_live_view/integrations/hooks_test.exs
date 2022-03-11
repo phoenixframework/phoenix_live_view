@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.LifecycleTest do
+defmodule Phoenix.LiveView.HooksTest do
   use ExUnit.Case
 
   import Phoenix.ConnTest

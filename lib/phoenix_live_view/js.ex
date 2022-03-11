@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.JS do
         """
       end
 
-  ## Enhanced Push Events
+  ## Enhanced push events
 
   The `push/1` command allows you to extend the built-in pushed event handling
   when a `phx-` event is pushed to the server. For example, you may wish to
@@ -80,15 +80,15 @@ defmodule Phoenix.LiveView.JS do
         |> JS.add_class(".warmer", to: ".thermo")
       }>+</div>
 
-  ## Using dispatch with window.addEventListener
+  ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
-  `dispatch/1` can be used to dispatch JavaScript events to elements.
-  For example, you can use `JS.dispatch("click", to: "#foo")`, to
-  dispatch a click event to an element.
+  `dispatch/1` can be used to dispatch custom JavaScript events to
+  elements. For example, you can use `JS.dispatch("click", to: "#foo")`,
+  to dispatch a click event to an element.
 
   This also means you can augment your elements with custom events,
-  by using JavaScript's `window.addEventListener` and then invoke
-  them with `dispatch/1`. For example, imagine you want to provide
+  by using JavaScript's `window.addEventListener` and invoking them
+  with `dispatch/1`. For example, imagine you want to provide
   a copy-to-clipboard functionality in your application. You can
   add a custom event for it:
 
@@ -171,6 +171,16 @@ defmodule Phoenix.LiveView.JS do
 
     * `event` - The string event name to dispatch.
 
+  *Note*: All events dispatched are of a type
+  [CustomEvent](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent),
+  with the exception of `"click"`. For a `"click"`, a
+  [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent)
+  is dispatched to properly simulate a UI click.
+
+  For emitted `CustomEvent`'s, the event detail will contain a `dispatcher`,
+  which references the DOM node that dispatched the JS event to the target
+  element.
+
   ## Options
 
     * `:to` - The optional DOM selector to dispatch the event to.
@@ -195,9 +205,27 @@ defmodule Phoenix.LiveView.JS do
     args = %{event: event, to: opts[:to]}
 
     args =
-      case Keyword.fetch(opts, :detail) do
-        {:ok, detail} -> Map.put(args, :detail, detail)
-        :error -> args
+      case {event, Keyword.fetch(opts, :detail)} do
+        {"click", {:ok, _detail}} ->
+          raise ArgumentError, """
+          click events cannot be dispatched with details.
+
+          The browser rewrites `MouseEvent` details to an integer. If you would like to
+          handle a click event with custom details, dispatch your own proxy event, read the
+          details, then trigger the click, for example:
+
+              JS.dispatch("myapp:click", detail: %{...})
+              window.addEventListener("myapp:click", e => {
+                console.log("details", e.detail)
+                e.target.click() // forward click event
+              })
+          """
+
+        {_, {:ok, detail}} ->
+          Map.put(args, :detail, detail)
+
+        {_, :error} ->
+          args
       end
 
     put_op(js, "dispatch", args)
@@ -241,7 +269,7 @@ defmodule Phoenix.LiveView.JS do
   def toggle(%JS{} = js), do: toggle(js, [])
   def toggle(opts) when is_list(opts), do: toggle(%JS{}, opts)
 
-  @doc "See `toggle/2`."
+  @doc "See `toggle/1`."
   def toggle(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time])
     in_classes = transition_class_names(opts[:in])
@@ -291,7 +319,7 @@ defmodule Phoenix.LiveView.JS do
   def show(%JS{} = js), do: show(js, [])
   def show(opts) when is_list(opts), do: show(%JS{}, opts)
 
-  @doc "See `show/2`."
+  @doc "See `show/1`."
   def show(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :show, [:to, :transition, :display, :time])
     transition = transition_class_names(opts[:transition])
@@ -338,7 +366,7 @@ defmodule Phoenix.LiveView.JS do
   def hide(%JS{} = js), do: hide(js, [])
   def hide(opts) when is_list(opts), do: hide(%JS{}, opts)
 
-  @doc "See `hide/2`."
+  @doc "See `hide/1`."
   def hide(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :hide, [:to, :transition, :time])
     transition = transition_class_names(opts[:transition])

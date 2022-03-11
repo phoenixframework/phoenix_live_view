@@ -35,6 +35,9 @@ jobs:
           - elixir: 1.12.0
             otp: 23.3
 
+          - elixir: 1.13.2
+            otp: 24.2
+
     runs-on: ubuntu-latest
 
     steps:

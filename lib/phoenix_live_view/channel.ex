@@ -147,8 +147,17 @@ defmodule Phoenix.LiveView.Channel do
         entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
 
         if event = entry && upload_conf.progress_event do
-          {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
-          {new_socket, {:ok, {msg.ref, %{}}, state}}
+          case event.(upload_conf.name, entry, new_socket) do
+            {:noreply, %Socket{} = new_socket} ->
+              {new_socket, {:ok, {msg.ref, %{}}, state}}
+
+            other ->
+              raise ArgumentError, """
+              expected #{inspect(upload_conf.name)} upload progress #{inspect(event)} to return {:noreply, Socket.t()} got:
+
+                  #{inspect(other)}
+              """
+          end
         else
           {new_socket, {:ok, {msg.ref, %{}}, state}}
         end
@@ -294,6 +303,30 @@ defmodule Phoenix.LiveView.Channel do
     msg
     |> socket.view.handle_cast(socket)
     |> handle_result({:handle_cast, 2, nil}, state)
+  end
+
+  @impl true
+  def format_status(:terminate, [_pdict, state]) do
+    state
+  end
+
+  def format_status(:normal, [_pdict, %{} = state]) do
+    %{topic: topic, socket: socket, components: {cid_to_component, _, _}} = state
+    %Socket{view: view, parent_pid: parent_pid, transport_pid: transport_pid} = socket
+
+    [
+      data: [
+        {'LiveView', view},
+        {'Parent pid', parent_pid},
+        {'Transport pid', transport_pid},
+        {'Topic', topic},
+        {'Components count', map_size(cid_to_component)}
+      ]
+    ]
+  end
+
+  def format_status(_, [_pdict, state]) do
+    [data: [{'State', state}]]
   end
 
   @impl true
@@ -514,6 +547,7 @@ defmodule Phoenix.LiveView.Channel do
   defp unregister_upload(state, ref, entry_ref, cid) do
     write_socket(state, cid, nil, fn socket, _ ->
       conf = Upload.get_upload_by_ref!(socket, ref)
+
       new_state =
         if Enum.count(conf.entries) == 1 do
           drop_upload_name(state, conf.name)
@@ -847,7 +881,16 @@ defmodule Phoenix.LiveView.Channel do
             with {:ok, %Session{view: view} = new_verified, route, url} <-
                    authorize_session(verified, endpoint, params),
                  {:ok, config} <- load_live_view(view) do
-              verified_mount(new_verified, config, route, url, params, from, phx_socket, connect_info)
+              verified_mount(
+                new_verified,
+                config,
+                route,
+                url,
+                params,
+                from,
+                phx_socket,
+                connect_info
+              )
             else
               {:error, :unauthorized} ->
                 GenServer.reply(from, {:error, %{reason: "unauthorized"}})
@@ -883,7 +926,16 @@ defmodule Phoenix.LiveView.Channel do
     _ -> {:error, :stale}
   end
 
-  defp verified_mount(%Session{} = verified, config, route, url, params, from, phx_socket, connect_info) do
+  defp verified_mount(
+         %Session{} = verified,
+         config,
+         route,
+         url,
+         params,
+         from,
+         phx_socket,
+         connect_info
+       ) do
     %Session{
       id: id,
       view: view,

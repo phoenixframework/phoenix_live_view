@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(template, assigns) == "text\nnot text"
 
     template = ~S"""
-    <%= for i <- 1..3 do %>
+    <%= for i <- ["id1", "id2", "id3"] do %>
       <div id={i}>
         <%= Phoenix.LiveView.HTMLEngineTest.do_block do %>
           <%= i %>
@@ -209,8 +209,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     <% end %>
     """
 
-    # A bug made it so "id=1" was not handled properly
-    assert render(template, assigns) =~ ~s'<div id="1">'
+    # A bug made it so "id={id}" was not handled properly
+    assert render(template, assigns) =~ ~s'<div id="id1">'
   end
 
   test "optimizes class attributes" do
