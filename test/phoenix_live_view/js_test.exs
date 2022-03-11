@@ -277,6 +277,12 @@ defmodule Phoenix.LiveView.JSTest do
       end
     end
 
+    test "raises with click details" do
+      assert_raise ArgumentError, ~r/click events cannot be dispatched with details/, fn ->
+        JS.dispatch("click", to: ".foo", detail: %{id: 123})
+      end
+    end
+
     test "composability" do
       js =
         JS.dispatch("click", to: "#modal")

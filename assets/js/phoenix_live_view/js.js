@@ -25,6 +25,8 @@ let JS = {
   // commands
 
   exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail}){
+    detail = detail || {}
+    detail.dispatcher = sourceEl
     DOM.dispatchEvent(el, event, detail)
   },
 

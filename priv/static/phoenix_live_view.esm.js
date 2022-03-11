@@ -473,8 +473,9 @@ var DOM = {
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
-  dispatchEvent(target, eventString, detail = {}) {
-    let event = new CustomEvent(eventString, { bubbles: true, cancelable: true, detail });
+  dispatchEvent(target, name, detail = {}) {
+    let opts = { bubbles: true, cancelable: true, detail };
+    let event = name === "click" ? new MouseEvent("click", opts) : new CustomEvent(name, opts);
     target.dispatchEvent(event);
   },
   cloneNode(node, html) {
@@ -1971,6 +1972,8 @@ var JS = {
     return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
   },
   exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail }) {
+    detail = detail || {};
+    detail.dispatcher = sourceEl;
     dom_default.dispatchEvent(el, event, detail);
   },
   exec_push(eventType, phxEvent, view, sourceEl, el, args) {

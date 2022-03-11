@@ -171,6 +171,16 @@ defmodule Phoenix.LiveView.JS do
 
     * `event` - The string event name to dispatch.
 
+  *Note*: All events dispatched are of a type
+  [CustomEvent](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent),
+  with the exception of `"click"`. For a `"click"`, a
+  [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent)
+  is dispatched to properly simulate a UI click.
+
+  For emitted `CustomEvent`'s, the event detail will contain a `dispatcher`,
+  which references the DOM node that dispatched the JS event to the target
+  element.
+
   ## Options
 
     * `:to` - The optional DOM selector to dispatch the event to.
@@ -195,9 +205,27 @@ defmodule Phoenix.LiveView.JS do
     args = %{event: event, to: opts[:to]}
 
     args =
-      case Keyword.fetch(opts, :detail) do
-        {:ok, detail} -> Map.put(args, :detail, detail)
-        :error -> args
+      case {event, Keyword.fetch(opts, :detail)} do
+        {"click", {:ok, _detail}} ->
+          raise ArgumentError, """
+          click events cannot be dispatched with details.
+
+          The browser rewrites `MouseEvent` details to an integer. If you would like to
+          handle a click event with custom details, dispatch your own proxy event, read the
+          details, then trigger the click, for example:
+
+              JS.dispatch("myapp:click", detail: %{...})
+              window.addEventListener("myapp:click", e => {
+                console.log("details", e.detail)
+                e.target.click() // forward click event
+              })
+          """
+
+        {_, {:ok, detail}} ->
+          Map.put(args, :detail, detail)
+
+        {_, :error} ->
+          args
       end
 
     put_op(js, "dispatch", args)

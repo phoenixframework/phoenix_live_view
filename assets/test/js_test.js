@@ -193,41 +193,47 @@ describe("JS", () => {
     test("with details", done => {
       let view = setupView(`
       <div id="modal">modal</div>
-      <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click", "detail": {"id": 123}}]]'></div>
+      <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click"}]]'></div>
+      <div id="close" phx-click='[["dispatch", {"to": "#modal", "event": "close", "detail": {"id": 1}}]]'></div>
       `)
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
+      let close = document.querySelector("#close")
 
-      modal.addEventListener("click", (e) => {
-        expect(e.detail).toEqual({id: 123})
-        done()
+      modal.addEventListener("close", e => {
+        expect(e.detail).toEqual({id: 1, dispatcher: close})
+        modal.addEventListener("click", e => {
+          expect(e.detail).toEqual(0)
+          done()
+        })
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
       })
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      JS.exec("close", close.getAttribute("phx-click"), view, close)
     })
 
     test("with multiple selector", done => {
       let view = setupView(`
       <div id="modal1" class="modal">modal1</div>
       <div id="modal2" class="modal">modal2</div>
-      <div id="click" phx-click='[["dispatch", {"to": ".modal", "event": "click", "detail": {"id": 123}}]]'></div>
+      <div id="close" phx-click='[["dispatch", {"to": ".modal", "event": "close", "detail": {"id": 123}}]]'></div>
       `)
       let modal1Clicked = false
       let modal1 = document.querySelector("#modal1")
       let modal2 = document.querySelector("#modal2")
-      let click = document.querySelector("#click")
+      let close = document.querySelector("#close")
 
-      modal1.addEventListener("click", (e) => {
-       modal1Clicked = true
-        expect(e.detail).toEqual({id: 123})
+      modal1.addEventListener("close", (e) => {
+        modal1Clicked = true
+        expect(e.detail).toEqual({id: 123, dispatcher: close})
       })
 
-      modal2.addEventListener("click", (e) => {
+      modal2.addEventListener("close", (e) => {
         expect(modal1Clicked).toBe(true)
-        expect(e.detail).toEqual({id: 123})
+        expect(e.detail).toEqual({id: 123, dispatcher: close})
         done()
       })
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      JS.exec("close", close.getAttribute("phx-click"), view, close)
     })
   })
 
