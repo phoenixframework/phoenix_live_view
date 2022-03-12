@@ -1178,7 +1178,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  describe "Heex validations" do
+  describe "html validations" do
     test "phx-update attr requires an unique ID" do
       message = ~r/.exs:1:(1:)? phx-update requires an ID/
 
