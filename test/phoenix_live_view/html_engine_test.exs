@@ -1180,7 +1180,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "html validations" do
     test "phx-update attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? phx-update requires an ID/
+      message = ~r/.exs:1:(1:)? attribute \"phx-update\" requires the \"id\" attribute to be set/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1189,14 +1189,34 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         </div>
         """)
       end)
-    end
-
-    test "phx-hook attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? phx-hook requires an ID/
 
       assert_raise(ParseError, message, fn ->
         eval("""
-        <div phx-hook="ignore">
+        <div phx-update="ignore" class="foo">
+          Content
+        </div>
+        """)
+      end)
+    end
+
+    test "validates phx-update values" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-update\" value must be: ignore, append or prepend/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div id="id" phx-update="bar">
+          Content
+        </div>
+        """)
+      end)
+    end
+
+    test "phx-hook attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-hook\" requires the \"id\" attribute to be set/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="MyHook">
           Content
         </div>
         """)

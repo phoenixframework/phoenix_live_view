@@ -766,18 +766,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 
-  @attrs_with_required_ids ["phx-update", "phx-hook"]
-
-  # Check if attrs contains `@attrs_with_required_ids`.
-  #
-  # In case one is found and there is no ID, an error will be raised. Otherwise,
-  # it returns :ok.
+  # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
+  # there is no ID attribute set.
   defp validate_phx_attrs!(attrs, meta, state),
-    do: validate_phx_attrs!(attrs, meta, state, nil)
+    do: validate_phx_attrs!(attrs, meta, state, %{attr: nil, id?: false})
 
-  defp validate_phx_attrs!([], meta, state, %{attr: attr, id: nil})
-       when attr in @attrs_with_required_ids do
-    message = "#{attr} requires an ID"
+  defp validate_phx_attrs!([], meta, state, %{attr: attr, id?: false})
+       when attr in ["phx-update", "phx-hook"] do
+    message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
 
     raise ParseError,
       line: meta.line,
@@ -787,8 +783,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp validate_phx_attrs!([], _meta, _state, _acc), do: :ok
-  defp validate_phx_attrs!([{"id", _} | _t], _tmeta, _state, _acc), do: :ok
 
-  defp validate_phx_attrs!([{attr, _} | t], meta, state, acc),
-    do: validate_phx_attrs!(t, meta, state, %{acc | attr: attr})
+  defp validate_phx_attrs!([{"id", _} | t], meta, state, acc),
+    do: validate_phx_attrs!(t, meta, state, %{acc | id?: true})
+
+  defp validate_phx_attrs!([{"phx-update", {_type, value, _meta}} | t], meta, state, acc) do
+    if value in ~w(ignore append prepend) do
+      validate_phx_attrs!(t, meta, state, %{acc | attr: "phx-update"})
+    else
+      message = "attribute \"phx-update\" value must be: ignore, append or prepend/"
+
+      raise ParseError,
+        line: meta.line,
+        column: meta.column,
+        file: state.file,
+        description: message
+    end
+  end
+
+  defp validate_phx_attrs!([{"phx-hook", _} | t], meta, state, acc),
+    do: validate_phx_attrs!(t, meta, state, %{acc | attr: "phx-hook"})
+
+  defp validate_phx_attrs!([_h | t], meta, state, acc),
+    do: validate_phx_attrs!(t, meta, state, acc)
 end
