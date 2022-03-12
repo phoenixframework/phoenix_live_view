@@ -773,7 +773,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # In case one is found and there is no ID, an error will be raised. Otherwise,
   # it returns :ok.
   defp validate_phx_attrs!(attrs, meta, state),
-    do: validate_phx_attrs!(attrs, meta, state, %{id: nil, attr: nil})
+    do: validate_phx_attrs!(attrs, meta, state, nil)
 
   defp validate_phx_attrs!([], meta, state, %{attr: attr, id: nil})
        when attr in @attrs_with_required_ids do
