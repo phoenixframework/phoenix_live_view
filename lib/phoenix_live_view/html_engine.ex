@@ -786,8 +786,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   # Handle <div phx-update="ignore" {@some_var}>Content</div> since here the ID
   # might be inserted dynamically so we can't raise at compile time.
-  defp validate_phx_attrs!([{:root, _} | _t], _meta, _state, _attr, _id?),
-    do: :ok
+  defp validate_phx_attrs!([{:root, _} | t], meta, state, attr, _id?),
+    do: validate_phx_attrs!(t, meta, state, attr, true)
 
   defp validate_phx_attrs!([{"id", _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
