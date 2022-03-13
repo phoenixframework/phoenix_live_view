@@ -415,6 +415,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
+    validate_phx_attrs!(attrs, tag_meta, state)
 
     state
     |> set_root_on_tag()
@@ -424,6 +425,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
+    validate_phx_attrs!(attrs, tag_meta, state)
+
     state
     |> set_root_on_tag()
     |> push_tag(token)
@@ -762,4 +765,50 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
+
+  # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
+  # there is no ID attribute set.
+  defp validate_phx_attrs!(attrs, meta, state),
+    do: validate_phx_attrs!(attrs, meta, state, nil, false)
+
+  defp validate_phx_attrs!([], meta, state, attr, false)
+       when attr in ["phx-update", "phx-hook"] do
+    message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
+
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: message
+  end
+
+  defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
+
+  # Handle <div phx-update="ignore" {@some_var}>Content</div> since here the ID
+  # might be inserted dynamically so we can't raise at compile time.
+  defp validate_phx_attrs!([{:root, _} | t], meta, state, attr, _id?),
+    do: validate_phx_attrs!(t, meta, state, attr, true)
+
+  defp validate_phx_attrs!([{"id", _} | t], meta, state, attr, _id?),
+    do: validate_phx_attrs!(t, meta, state, attr, true)
+
+  defp validate_phx_attrs!([{"phx-update", {_type, value, _meta}} | t], meta, state, _attr, id?) do
+    if value in ~w(ignore append prepend) do
+      validate_phx_attrs!(t, meta, state, "phx-update", id?)
+    else
+      message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
+
+      raise ParseError,
+        line: meta.line,
+        column: meta.column,
+        file: state.file,
+        description: message
+    end
+  end
+
+  defp validate_phx_attrs!([{"phx-hook", _} | t], meta, state, _attr, id?),
+    do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
+
+  defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
+    do: validate_phx_attrs!(t, meta, state, attr, id?)
 end

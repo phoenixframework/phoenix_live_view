@@ -197,14 +197,6 @@ defmodule Phoenix.LiveView.ElementsTest do
                    "element selected by \"span#span-no-attr\" does not have phx-hook attribute",
                    fn -> view |> element("span#span-no-attr") |> render_hook("custom-event") end
     end
-
-    test "raises if element does not have id", %{live: view} do
-      assert_raise ArgumentError,
-                   "element selected by \"section.idless-hook\" for phx-hook does not have an ID",
-                   fn ->
-                     view |> element("section.idless-hook") |> render_hook("custom-event")
-                   end
-    end
   end
 
   describe "render_blur" do

@@ -1178,6 +1178,75 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  describe "html validations" do
+    test "phx-update attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-update\" requires the \"id\" attribute to be set/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore" class="foo">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore" class="foo" />
+        """)
+      end)
+    end
+
+    test "validates phx-update values" do
+      message =
+        ~r/.exs:1:(1:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div id="id" phx-update="bar">
+          Content
+        </div>
+        """)
+      end)
+    end
+
+    test "phx-hook attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-hook\" requires the \"id\" attribute to be set/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="MyHook">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="MyHook" />
+        """)
+      end)
+    end
+
+    test "don't raise when there are dynamic variables" do
+      assert eval("""
+             <div phx-hook="MyHook" {@some_var}>Content</div>
+             """)
+
+      assert eval("""
+             <div phx-update="ignore" {@some_var}>Content</div>
+             """)
+    end
+  end
+
   describe "handle errors in expressions" do
     if Version.match?(System.version(), ">= 1.12.0") do
       test "inside attribute values" do
