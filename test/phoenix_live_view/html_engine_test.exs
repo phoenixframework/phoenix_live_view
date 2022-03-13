@@ -1223,7 +1223,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "don't raise when there is dinamic variables" do
+    test "don't raise when there are dynamic variables" do
       assert eval("""
              <div phx-hook="MyHook" {@some_var}>Content</div>
              """)
