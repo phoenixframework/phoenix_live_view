@@ -785,7 +785,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
 
   # Handle <div phx-update="ignore" {@some_var}>Content</div> since here the ID
-  # might be inserted dinamically so we can't raise at compile time.
+  # might be inserted dynamically so we can't raise at compile time.
   defp validate_phx_attrs!([{:root, _} | _t], _meta, _state, _attr, _id?),
     do: :ok
 
@@ -796,7 +796,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     if value in ~w(ignore append prepend) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
-      message = "attribute \"phx-update\" value must be: ignore, append or prepend"
+      message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
 
       raise ParseError,
         line: meta.line,
