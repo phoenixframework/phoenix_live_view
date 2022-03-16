@@ -449,7 +449,7 @@ describe("JS", () => {
       expect(modal.getAttribute("aria-expanded")).toEqual("true")
     })
 
-    test("setting an dynamically added attribute updates its value", () => {
+    test("setting a dynamically added attribute updates its value", () => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <div id="set-false" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "false"]}]]'></div>
