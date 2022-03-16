@@ -436,6 +436,33 @@ describe("JS", () => {
       JS.exec("click", remove.getAttribute("phx-click"), view, remove)
       expect(remove.getAttribute("class")).toEqual(null)
     })
+
+    test("setting a pre-existing attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal" aria-expanded="false">modal</div>
+      <div id="set" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
+      `)
+      let set = document.querySelector("#set")
+
+      expect(modal.getAttribute("aria-expanded")).toEqual("false")
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(modal.getAttribute("aria-expanded")).toEqual("true")
+    })
+
+    test("setting an dynamically added attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="set-false" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "false"]}]]'></div>
+      <div id="set-true" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
+      `)
+      let setFalse = document.querySelector("#set-false")
+      let setTrue = document.querySelector("#set-true")
+
+      expect(modal.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", setFalse.getAttribute("phx-click"), view, setFalse)
+      expect(modal.getAttribute("aria-expanded")).toEqual("false")
+      JS.exec("click", setTrue.getAttribute("phx-click"), view, setTrue)
+      expect(modal.getAttribute("aria-expanded")).toEqual("true")
+    })
   })
 })
-
