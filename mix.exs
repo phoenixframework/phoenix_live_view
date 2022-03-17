@@ -65,6 +65,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp extras do
     [
+      "CHANGELOG.md",
       "guides/introduction/installation.md",
       "guides/client/bindings.md",
       "guides/client/form-bindings.md",
@@ -130,7 +131,10 @@ defmodule Phoenix.LiveView.MixProject do
     [
       maintainers: ["Chris McCord", "José Valim", "Gary Rennie", "Alex Garibay", "Scott Newcomer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/phoenixframework/phoenix_live_view"},
+      links: %{
+        Changelog: "https://hexdocs.pm/phoenix_live_view/changelog.html",
+        GitHub: "https://github.com/phoenixframework/phoenix_live_view"
+      },
       files:
         ~w(assets/js lib priv) ++
           ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)

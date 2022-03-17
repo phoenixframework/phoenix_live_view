@@ -210,7 +210,7 @@ Some functionality that was previously deprecated has been removed:
 
 ## 0.16.0 (2021-08-10)
 
-## # Security Considerations Upgrading from 0.15
+### Security Considerations Upgrading from 0.15
 
 LiveView v0.16 optimizes live redirects by supporting navigation purely
 over the existing WebSocket connection. This is accomplished by the new
@@ -1045,7 +1045,7 @@ let liveSocket = new LiveSocket("/live", Socket, {...})
   - Fix params failing to update on re-mounts after live_redirect
   - Fix blur event metadata being sent with type of `"focus"`
 
-## 0.1.2
+## 0.1.2 (2019-08-28)
 
 ### Backwards incompatible changes
   - `phx-value` has no effect, use `phx-value-*` instead
