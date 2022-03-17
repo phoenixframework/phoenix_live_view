@@ -309,6 +309,6 @@ It is also possible to trigger a `phx-submit` using a "submit" event:
 
 ```javascript
 document.getElementById("my-form").dispatchEvent(
-  new Event("submit", {bubbles: true})
+  new Event("submit", {bubbles: true, cancelable: true})
 )
 ```
