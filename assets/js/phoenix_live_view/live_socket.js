@@ -304,7 +304,10 @@ export default class LiveSocket {
       if(this.hasPendingLink()){
         window.location = this.pendingLink
       } else {
-        window.location.reload()
+        var shouldStopReload = view.triggerBeforeReload();
+        if (!shouldStopReload){
+          window.location.reload()
+        }
       }
     }, afterMs)
   }

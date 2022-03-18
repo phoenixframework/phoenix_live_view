@@ -811,6 +811,47 @@ describe("View Hooks", function(){
     expect(toHTML).toBe("updated")
     expect(view.el.firstChild.innerHTML).toBe("updated")
   })
+
+  test("beforeReload", async () => {
+    let uiTextMounted = 'reloader hook is mounted'
+    let uiTextActivatedBeforeReload = 'The hook is now managing the reloading'
+    let values = []
+    let hooks = {
+      Reloader: {
+        mounted(){
+          values.push('mounted')
+          this.el.innerText = uiTextMounted
+        },
+        beforeReload() {
+          values.push('beforeReload')
+          this.el.innerText = uiTextActivatedBeforeReload
+          return true;
+        }
+      }
+    }
+    let liveSocket = new LiveSocket("/live", Socket, { hooks })
+    let el = liveViewDOM()
+    let view = simulateJoinedView(el, liveSocket)
+
+    let template = `
+    <div id="reloader" phx-hook="Reloader" phx-update="ignore">
+      Reloader is mounting
+    </div>
+    `
+    view.onJoin({
+      rendered: {
+        s: [template],
+        fingerprint: 123
+      }
+    })
+
+    expect(view.el.querySelector("#reloader").innerText).toBe(uiTextMounted)
+    expect(values).toEqual(['mounted'])
+    view.destroy(); //simulate the view deplay upon disconnection
+    view.triggerBeforeReload();
+    expect(view.el.querySelector("#reloader").innerText).toBe(uiTextActivatedBeforeReload)
+    expect(values).toEqual(['mounted', 'beforeReload'])
+  })
 })
 
 function liveViewComponent(){

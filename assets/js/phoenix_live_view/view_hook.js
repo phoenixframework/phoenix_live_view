@@ -29,6 +29,8 @@ export default class ViewHook {
     this.disconnected && this.disconnected()
   }
 
+  __beforeReload(){ return this.beforeReload && this.beforeReload() }
+
   pushEvent(event, payload = {}, onReply = function (){ }){
     return this.__view.pushHookEvent(null, event, payload, onReply)
   }

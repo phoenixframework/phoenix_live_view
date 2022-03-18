@@ -179,6 +179,7 @@ or removed by the server, a hook object may be provided via `phx-hook`.
     by a parent update, or by the parent being removed entirely
   * `disconnected` - the element's parent LiveView has disconnected from the server
   * `reconnected` - the element's parent LiveView has reconnected to the server
+  * `beforeReload` - the element's parent LiveView is trying to conduct a full reload. If this lifecycle callback returns a truthy value, LiveView assumes that the logic related to reloading is delegated to the hook and will not execute the reload.
 
 The above life-cycle callbacks have in-scope access to the following attributes:
 
