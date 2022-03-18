@@ -139,8 +139,8 @@ export default class LiveSocket {
     this.silenced = false
     this.main = null
     this.outgoingMainEl = null
+    this.clickStartedAtTarget = null
     this.linkRef = 1
-    this.clickRef = 1
     this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
@@ -571,6 +571,7 @@ export default class LiveSocket {
   }
 
   bindClicks(){
+    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
     this.bindClick("click", "click", false)
     this.bindClick("mousedown", "capture-click", true)
   }
@@ -579,14 +580,14 @@ export default class LiveSocket {
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       if(!this.isConnected()){ return }
-      this.clickRef++
-      let clickRefWas = this.clickRef
       let target = null
       if(capture){
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
       } else {
-        target = closestPhxBinding(e.target, click)
-        this.dispatchClickAway(e, clickRefWas)
+        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+        target = closestPhxBinding(clickStartedAtTarget, click)
+        this.dispatchClickAway(e, clickStartedAtTarget)
+        this.clickStartedAtTarget = null
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
@@ -600,15 +601,13 @@ export default class LiveSocket {
     }, capture)
   }
 
-  dispatchClickAway(e, clickRefWas){
+  dispatchClickAway(e, clickStartedAt){
     let phxClickAway = this.binding("click-away")
-    let phxClick = this.binding("click")
     DOM.all(document, `[${phxClickAway}]`, el => {
-      if(!(el.isSameNode(e.target) || el.contains(e.target))){
+      if(!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(phxClickAway)
           if(JS.isVisible(el)){
-            let target = e.target.closest(`[${phxClick}]`) || e.target
             JS.exec("click", phxEvent, view, el, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })
@@ -655,6 +654,7 @@ export default class LiveSocket {
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
+      e.stopImmediatePropagation() // do not bubble click to regular phx-click bindings
       if(this.pendingLink === href){ return }
 
       this.requestDOMUpdate(() => {
