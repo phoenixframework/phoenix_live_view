@@ -738,10 +738,15 @@ export default class LiveSocket {
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
+        let phxChange = this.binding("change")
         let input = e.target
-        let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
+        let inputEvent = input.getAttribute(phxChange)
+        let formEvent = input.form && input.form.getAttribute(phxChange)
+        let phxEvent = inputEvent || formEvent
         if(!phxEvent){ return }
         if(input.type === "number" && input.validity && input.validity.badInput){ return }
+
+        let dispatcher = inputEvent ? input : input.form
         let currentIterations = iterations
         iterations++
         let {at: at, type: lastType} = DOM.private(input, "prev-iteration") || {}
@@ -751,12 +756,12 @@ export default class LiveSocket {
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
         this.debounce(input, e, () => {
-          this.withinOwners(input.form, view => {
+          this.withinOwners(dispatcher, view => {
             DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
+            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
       }, false)
