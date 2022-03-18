@@ -184,11 +184,18 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
     children = if force_newline?, do: force_unfit(children), else: children
 
-    group =
+    tag_open =
+      case attrs do
+        [attr] ->
+          concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
+
+        attrs ->
+          concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
+      end
+
+    doc =
       concat([
-        "<#{name}",
-        build_attrs(attrs, "", context.opts),
-        ">",
+        tag_open,
         children,
         break(""),
         "</#{name}>"
@@ -196,14 +203,23 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       |> group()
 
     if !force_newline? and name in @inline_elements do
-      {:inline, group}
+      {:inline, doc}
     else
-      {:block, group}
+      {:block, doc}
     end
   end
 
   defp to_algebra({:tag_self_close, name, attrs}, context) do
-    {:block, group(concat(["<#{name}", build_attrs(attrs, " ", context.opts), "/>"]))}
+    doc =
+      case attrs do
+        [attr] ->
+          concat(["<#{name} ", render_attribute(attr, context.opts), " />"])
+
+        attrs ->
+          concat(["<#{name}", build_attrs(attrs, " ", context.opts), "/>"])
+      end
+
+    {:block, group(doc)}
   end
 
   # Handle EEX blocks within `pre` tag

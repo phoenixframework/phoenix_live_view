@@ -68,9 +68,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       expected = """
       <section>
         <h1>
-          <b
-            class="there are several classes"
-          >
+          <b class="there are several classes">
           </b>
         </h1>
       </section>
@@ -573,6 +571,18 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """
 
       assert_formatter_output(input, expected)
+    end
+
+    test "does not break lines for single long attributes" do
+      assert_formatter_doesnt_change("""
+      <h1 class="font-medium leading-tight text-5xl mt-0 mb-2 text-blue-600 text-sm sm:text-sm lg:text-sm font-semibold">
+        Title
+      </h1>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <div class="font-medium leading-tight text-5xl mt-0 mb-2 text-blue-600 text-sm sm:text-sm lg:text-sm font-semibold" />
+      """)
     end
 
     test "does not break lines when tag doesn't contain content" do
