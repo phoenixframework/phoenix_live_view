@@ -263,7 +263,7 @@ export default class LiveSocket {
     let latency = this.getLatencySim()
     let oldJoinCount = view.joinCount
     if(!latency){
-      if(opts.timeout){
+      if(this.isConnected() && opts.timeout){
         return push().receive("timeout", () => {
           if(view.joinCount === oldJoinCount && !view.isDestroyed()){
             this.reloadWithJitter(view, () => {
