@@ -125,9 +125,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       expected = """
       <section>
         <h1>
-          <b
-            class="there are several classes"
-          >
+          <b class="there are several classes">
             <%= @user.name %>
           </b>
         </h1>
