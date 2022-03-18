@@ -328,7 +328,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       {:ok, string} when is_binary(string) ->
         ~s(#{attr}="#{string}")
 
-      {:ok, _ast} ->
+      _ ->
         expr =
           break("")
           |> concat(expr_to_code_algebra(value, meta, opts))
