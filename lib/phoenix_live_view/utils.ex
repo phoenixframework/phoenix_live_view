@@ -404,7 +404,8 @@ defmodule Phoenix.LiveView.Utils do
         end
 
       if socket.redirected do
-        raise "cannot redirect socket on update/2"
+        raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
+                " or use `send/2` and redirect in the `handle_info/2` response"
       end
 
       socket
