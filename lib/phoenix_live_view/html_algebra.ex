@@ -324,13 +324,18 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp render_attribute({attr, {:string, value, _meta}}, _opts), do: ~s(#{attr}="#{value}")
 
   defp render_attribute({attr, {:expr, value, meta}}, opts) do
-    expr =
-      break("")
-      |> concat(expr_to_code_algebra(value, meta, opts))
-      |> nest(2)
+    case Code.string_to_quoted(value) do
+      {:ok, string} when is_binary(string) ->
+        ~s(#{attr}="#{string}")
 
-    concat(["#{attr}={", expr, concat(break(""), "}")])
-    |> group()
+      _ ->
+        expr =
+          break("")
+          |> concat(expr_to_code_algebra(value, meta, opts))
+          |> nest(2)
+
+        group(concat(["#{attr}={", expr, concat(break(""), "}")]))
+    end
   end
 
   defp render_attribute({attr, {_, value, _meta}}, _opts), do: ~s(#{attr}=#{value})

@@ -585,6 +585,29 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "changes expr to literal when it is an string" do
+      assert_formatter_doesnt_change("""
+      <div class={@id} />
+      """)
+
+      assert_formatter_doesnt_change("""
+      <div class={some_function(:foo, :bar)} />
+      """)
+
+      assert_formatter_output(
+        """
+        <div class={"mx-auto flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-purple-100 sm:mx-0"}>
+          Content
+        </div>
+        """,
+        """
+        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-purple-100 sm:mx-0">
+          Content
+        </div>
+        """
+      )
+    end
+
     test "does not break lines when tag doesn't contain content" do
       input = """
       <thead>
