@@ -2137,18 +2137,14 @@ within:
     },
     setOrRemoveAttrs(el, sets, removes) {
       let [prevSets, prevRemoves] = dom_default.getSticky(el, "attrs", [[], []]);
-      let keepSets = sets.filter(([attr, _val]) => !this.hasSet(prevSets, attr) && !el.attributes.getNamedItem(attr));
-      let keepRemoves = removes.filter((attr) => prevRemoves.indexOf(attr) < 0 && el.attributes.getNamedItem(attr));
-      let newSets = prevSets.filter(([attr, _val]) => removes.indexOf(attr) < 0).concat(keepSets);
-      let newRemoves = prevRemoves.filter((attr) => !this.hasSet(sets, attr)).concat(keepRemoves);
+      let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
+      let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
+      let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
       dom_default.putSticky(el, "attrs", (currentEl) => {
         newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
         newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
         return [newSets, newRemoves];
       });
-    },
-    hasSet(sets, nameSearch) {
-      return sets.find(([name, val]) => name === nameSearch);
     },
     hasAllClasses(el, classes) {
       return classes.every((name) => el.classList.contains(name));
@@ -3307,7 +3303,7 @@ within:
       let latency = this.getLatencySim();
       let oldJoinCount = view.joinCount;
       if (!latency) {
-        if (opts.timeout) {
+        if (this.isConnected() && opts.timeout) {
           return push().receive("timeout", () => {
             if (view.joinCount === oldJoinCount && !view.isDestroyed()) {
               this.reloadWithJitter(view, () => {

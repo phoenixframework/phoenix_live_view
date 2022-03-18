@@ -9,6 +9,7 @@
 ### Bug fixes
   - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
   - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
+  - Do not failsafe reload the page on push timeout if disconnected
 
 ## 0.17.7 (2022-02-07)
 
