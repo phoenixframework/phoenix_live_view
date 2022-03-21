@@ -1041,7 +1041,7 @@ defmodule Phoenix.LiveViewTest do
   a single element.
 
       assert view
-            |> element("#term a:first-child()", "Increment")
+            |> element("#term a:first-child", "Increment")
             |> render() =~ "Increment</a>"
 
   Attribute selectors are also supported, and may be used on special cases
@@ -1366,7 +1366,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       view
-      |> element("#term a:first-child()", "Increment")
+      |> element("#term a:first-child", "Increment")
       |> open_browser()
 
       assert view
