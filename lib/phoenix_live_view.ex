@@ -730,9 +730,10 @@ defmodule Phoenix.LiveView do
         {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
-  If there is no such `:current_user` assign or the LiveView was mounted as part
-  of the live navigation, where no Plug pipelines are invoked, then the anonymous
-  function is invoked to execute the query.
+  In such case `conn.assigns.current_user` will be used if present. If there is no
+  such `:current_user` assign or the LiveView was mounted as part of the live
+  navigation, where no Plug pipelines are invoked, then the anonymous function is
+  invoked to execute the query instead.
 
   LiveView is also able to share assigns via `assign_new` within nested LiveView.
   If the parent LiveView defines a `:current_user` assign and the child LiveView
