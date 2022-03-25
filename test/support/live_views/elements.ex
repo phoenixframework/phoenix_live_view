@@ -108,6 +108,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <%= Phoenix.HTML.Form.datetime_select :hello, :naive_select %>
       <input name="hello[utc_text]" type="text">
       <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
+      <input name="hello[individual]" type="text" phx-change="individual-changed"/>
     </form>
 
     <form id="trigger-form-default" phx-submit="form-submit-trigger"
