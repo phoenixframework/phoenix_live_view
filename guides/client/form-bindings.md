@@ -19,7 +19,7 @@ You are welcome to change the `ErrorHelpers` module as you prefer.
 To handle form changes and submissions, use the `phx-change` and `phx-submit`
 events. In general, it is preferred to handle input changes at the form level,
 where all form fields are passed to the LiveView's callback given any
-single input change, but invididual inputs may also track their own changes.
+single input change, but individual inputs may also track their own changes.
 For example, to handle real-time form validation and saving, your form would
 use both `phx-change` and `phx-submit` bindings:
 
@@ -78,8 +78,8 @@ socket is annotated for redirect with `Phoenix.LiveView.redirect/2` to
 the new user page, otherwise the socket assigns are updated with the errored
 changeset to be re-rendered for the client.
 
-You may wish for an individual input to use its own change event, or target a
-different compoponenet. This can be accomplished by annotating the input itself
+You may wish for an individual input to use its own change event or to target
+a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```
@@ -98,7 +98,7 @@ def handle_event("email_changed", %{"user" => %{"email" => email}}, socket) do
 end
 ```
 
-*Note*: only the individual input is sent as params for an input marked with `phx-change`.
+_Note_: only the individual input is sent as params for an input marked with `phx-change`.
 
 ## `phx-feedback-for`
 
