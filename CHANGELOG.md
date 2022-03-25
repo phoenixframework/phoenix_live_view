@@ -3,6 +3,7 @@
 ## 0.17.8
 
 ### Enhancements
+  - Support `phx-change` on individual inputs
   - Dispatch `MouseEvent` on client
   - Add `:bubbles` option to `JS.dispatch` to control event bubbling
 

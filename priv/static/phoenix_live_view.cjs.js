@@ -1991,9 +1991,9 @@ var JS = {
     dom_default.dispatchEvent(el, event, { detail, bubbles });
   },
   exec_push(eventType, phxEvent, view, sourceEl, el, args) {
-    let { event, data, target, page_loading, loading, value } = args;
+    let { event, data, target, page_loading, loading, value, dispatcher } = args;
     let pushOpts = { loading, value, target, page_loading: !!page_loading };
-    let targetSrc = eventType === "change" ? sourceEl.form : sourceEl;
+    let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if (eventType === "change") {
@@ -2142,7 +2142,7 @@ var JS = {
 var js_default = JS;
 
 // js/phoenix_live_view/view.js
-var serializeForm = (form, meta = {}) => {
+var serializeForm = (form, meta, onlyNames = []) => {
   let formData = new FormData(form);
   let toRemove = [];
   formData.forEach((val, key, _index) => {
@@ -2153,7 +2153,9 @@ var serializeForm = (form, meta = {}) => {
   toRemove.forEach((key) => formData.delete(key));
   let params = new URLSearchParams();
   for (let [key, val] of formData.entries()) {
-    params.append(key, val);
+    if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
+      params.append(key, val);
+    }
   }
   for (let metaKey in meta) {
     params.append(metaKey, meta[metaKey]);
@@ -2897,7 +2899,12 @@ var View = class {
     let uploads;
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx);
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
-    let formData = serializeForm(inputEl.form, { _target: opts._target });
+    let formData;
+    if (inputEl.getAttribute(this.binding("change"))) {
+      formData = serializeForm(inputEl.form, { _target: opts._target }, [inputEl.name]);
+    } else {
+      formData = serializeForm(inputEl.form, { _target: opts._target });
+    }
     if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
     }
@@ -2999,7 +3006,7 @@ var View = class {
         }, onReply);
       });
     } else {
-      let formData = serializeForm(formEl);
+      let formData = serializeForm(formEl, {});
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
@@ -3765,14 +3772,18 @@ var LiveSocket = class {
     }, false);
     for (let type of ["change", "input"]) {
       this.on(type, (e) => {
+        let phxChange = this.binding("change");
         let input = e.target;
-        let phxEvent = input.form && input.form.getAttribute(this.binding("change"));
+        let inputEvent = input.getAttribute(phxChange);
+        let formEvent = input.form && input.form.getAttribute(phxChange);
+        let phxEvent = inputEvent || formEvent;
         if (!phxEvent) {
           return;
         }
         if (input.type === "number" && input.validity && input.validity.badInput) {
           return;
         }
+        let dispatcher = inputEvent ? input : input.form;
         let currentIterations = iterations;
         iterations++;
         let { at, type: lastType } = dom_default.private(input, "prev-iteration") || {};
@@ -3781,12 +3792,12 @@ var LiveSocket = class {
         }
         dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });
         this.debounce(input, e, () => {
-          this.withinOwners(input.form, (view) => {
+          this.withinOwners(dispatcher, (view) => {
             dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
             if (!dom_default.isTextualInput(input)) {
               this.setActiveElement(input);
             }
-            js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name }]);
+            js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
           });
         });
       }, false);
