@@ -135,7 +135,7 @@ Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your 
 
 and enable connecting to a LiveView socket in your `app.js` file.
 
-```javascript
+```
 // assets/js/app.js
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
