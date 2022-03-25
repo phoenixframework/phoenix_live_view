@@ -626,7 +626,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - No longer send event metadata by default. Metadata is now opt-in and user defined at the `LiveSocket` level.
   To maintain backwards compatibility with pre-0.13 behaviour, you can provide the following metadata option:
 
-  ```javascript
+  ```
   let liveSocket = new LiveSocket("/live", Socket, {
     params: {_csrf_token: csrfToken},
     metadata: {
@@ -949,7 +949,7 @@ The steps are:
 
   5) Then in your app.js:
 
-      ```javascript
+      ```
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
       let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
       ```
@@ -1030,7 +1030,7 @@ Also note that **the session from now on will have string keys**. LiveView will 
   - All `phx-update` containers now require a unique ID
   - `LiveSocket` JavaScript constructor now requires explicit dependency injection of Phoenix Socket constructor. For example:
 
-```javascript
+```
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 

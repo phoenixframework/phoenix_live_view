@@ -125,7 +125,7 @@ $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill fo
 
 Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18](https://caniuse.com/#feat=keyboardevent-key).
 
-```javascript
+```
 // assets/js/app.js
 import "mdn-polyfills/Object.assign"
 import "mdn-polyfills/CustomEvent"

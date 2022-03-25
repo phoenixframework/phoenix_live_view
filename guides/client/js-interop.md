@@ -2,7 +2,7 @@
 
 To enable LiveView client/server interaction, we instantiate a LiveSocket. For example:
 
-```javascript
+```
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 
@@ -33,7 +33,7 @@ Calling `enableDebug()` turns on debug logging which includes LiveView life-cycl
 payload events as they come and go from client to server. In practice, you can expose
 your instance on `window` for quick access in the browser's web console, for example:
 
-```javascript
+```
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -57,7 +57,7 @@ the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disable
 functions which apply throughout the current browser session. The `enableLatencySim` function
 accepts an integer in milliseconds for the round-trip-time to the server. For example:
 
-```javascript
+```
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -82,7 +82,7 @@ submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
 event may dispatch page loading events by annotating the DOM element with
 `phx-page-loading`. This is useful for showing main page loading status, for example:
 
-```javascript
+```
 // app.js
 import topbar from "topbar"
 window.addEventListener("phx:page-loading-start", info => topbar.show())
@@ -128,7 +128,7 @@ end
 Finally, a window event listener can listen for the event and conditionally
 execute the highlight command if the element matches:
 
-```javascript
+```
 let liveSocket = new LiveSocket(...)
 window.addEventListener(`phx:highlight`, (e) => {
   let el = document.getElementById(e.detail.id)
@@ -152,7 +152,7 @@ attribute:
 Now, in the event listener, use `LiveSocket.execJS` to trigger all JS
 commands in the new attribute:
 
-```javascript
+```
 let liveSocket = new LiveSocket(...)
 window.addEventListener(`phx:highlight`, (e) => {
   document.querySelectorAll(`[data-highlight]`).forEach(el => {
@@ -296,7 +296,7 @@ store the selected state.
 In these cases, the event functions on the DOM API can be used, for example
 to trigger a `phx-change` event:
 
-```javascript
+```
 document.getElementById("my-select").dispatchEvent(
   new Event("input", {bubbles: true})
 )
@@ -307,7 +307,7 @@ outlined in the "Client hooks" documentation.
 
 It is also possible to trigger a `phx-submit` using a "submit" event:
 
-```javascript
+```
 document.getElementById("my-form").dispatchEvent(
   new Event("submit", {bubbles: true, cancelable: true})
 )
