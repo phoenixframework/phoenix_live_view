@@ -305,7 +305,7 @@ describe("JS", () => {
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
 
-    test("change event", done => {
+    test("form change event with JS command", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <form id="my-form" phx-change='[["push", {"event": "validate", "_target": "username"}]]' phx-submit="submit">
@@ -315,27 +315,127 @@ describe("JS", () => {
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
       view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, callback) => {
+        expect(phxEvent).toBe("validate")
         expect(sourceEl.isSameNode(input)).toBe(true)
         expect(_target).toBe(input.name)
         done()
       }
-      JS.exec("change", form.getAttribute("phx-change"), view, input)
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", form.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("form change event with string event", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username" />
+        <input type="text" name="other" id="other" phx-change="other_changed" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("validate")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "validate",
+          type: "form",
+          uploads: {},
+          value: "username=&other=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", form.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("input change event with JS command", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username1" phx-change='[["push", {"event": "username_changed", "_target": "username"}]]'/>
+        <input type="text" name="other" id="other" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username1")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("username_changed")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "username_changed",
+          type: "form",
+          uploads: {},
+          value: "username=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", input.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("input change event with string event", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username" phx-change='username_changed' />
+        <input type="text" name="other" id="other" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("username_changed")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "username_changed",
+          type: "form",
+          uploads: {},
+          value: "username=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", input.getAttribute("phx-change"), view, input, args)
     })
 
     test("submit event", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <form id="my-form" phx-change="validate" phx-submit='[["push", {"event": "save"}]]'>
-        <input type="text" name="username" id="username" phx-click=''></div>
+        <input type="text" name="username" id="username" />
+        <input type="text" name="desc" id="desc" phx-change="desc_changed" />
       </form>
       `)
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
-      view.submitForm = (sourceEl, targetCtx, phxEvent) => {
-        expect(sourceEl.isSameNode(input)).toBe(true)
+
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": "username=&desc="})
         done()
       }
-      JS.exec("submit", form.getAttribute("phx-submit"), view, input, ["push", {}])
+      JS.exec("submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
     })
 
     test("page_loading", done => {

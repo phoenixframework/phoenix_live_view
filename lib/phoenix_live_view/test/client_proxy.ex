@@ -769,6 +769,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp push(state, view, event, payload) do
     ref = state.ref + 1
+
     message = %Phoenix.Socket.Message{
       join_ref: state.join_ref,
       topic: view.topic,
@@ -1015,20 +1016,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
 
   defp maybe_values(type, {tag, _, _} = node, element) when type in [:change, :submit] do
-    if tag == "form" do
-      defaults =
-        node
-        |> DOM.reverse_filter(fn node ->
-          DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
-        end)
-        |> Enum.reduce(%{}, &form_defaults/2)
+    cond do
+      tag == "form" ->
+        defaults =
+          node
+          |> DOM.reverse_filter(fn node ->
+            DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
+          end)
+          |> Enum.reduce(%{}, &form_defaults/2)
 
-      case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
-        {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
-        {:error, _, _} = error -> error
-      end
-    else
-      {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
+        case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
+          {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
+          {:error, _, _} = error -> error
+        end
+
+      type == :change and tag in ~w(input select textarea) ->
+        {:ok, form_defaults(node, %{})}
+
+      true ->
+        {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
     end
   end
 

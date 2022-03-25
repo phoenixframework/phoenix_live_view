@@ -50,7 +50,7 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-let serializeForm = (form, meta = {}) => {
+let serializeForm = (form, meta, onlyNames = []) => {
   let formData = new FormData(form)
   let toRemove = []
 
@@ -62,7 +62,11 @@ let serializeForm = (form, meta = {}) => {
   toRemove.forEach(key => formData.delete(key))
 
   let params = new URLSearchParams()
-  for(let [key, val] of formData.entries()){ params.append(key, val) }
+  for(let [key, val] of formData.entries()){
+    if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
+      params.append(key, val)
+    }
+  }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
   return params.toString()
@@ -824,7 +828,12 @@ export default class View {
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
-    let formData = serializeForm(inputEl.form, {_target: opts._target})
+    let formData
+    if(inputEl.getAttribute(this.binding("change"))){
+      formData = serializeForm(inputEl.form, {_target: opts._target}, [inputEl.name])
+    } else {
+      formData = serializeForm(inputEl.form, {_target: opts._target})
+    }
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
     }
@@ -933,7 +942,7 @@ export default class View {
         }, onReply)
       })
     } else {
-      let formData = serializeForm(formEl)
+      let formData = serializeForm(formEl, {})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
