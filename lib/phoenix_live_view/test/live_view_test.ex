@@ -207,7 +207,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} = live(conn, "/path")
-      assert view.module = MyLive
+      assert view.module == MyLive
       assert html =~ "the count is 3"
 
       assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "/path")
