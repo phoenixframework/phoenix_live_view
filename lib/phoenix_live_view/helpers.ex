@@ -124,6 +124,18 @@ defmodule Phoenix.LiveView.Helpers do
   The expression inside `{...}` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
 
+  You can pair this notation `assigns_to_attributes/2` to strip out any internal
+  LiveView attributes and user-defined assigns from being expanded into the HTML tag:
+
+      <div {assigns_to_attributes(assigns, [:visible])}>
+        ...
+      </div>
+
+  The above would add all caller attributes into the HTML, but strip out LiveView
+  assigns like slots, as well as user-defined assigns like `:visible` that are not
+  meant to be added to the HTML itself. This appraoch is useful to allow a component
+  to accept arbitrary HTML attributes like class, ARIA attributes, etc.
+
   ### HEEx extension: Defining function components
 
   Function components are stateless components implemented as pure functions
