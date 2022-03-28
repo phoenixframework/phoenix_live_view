@@ -313,17 +313,15 @@ with the following rules in your `app.css`:
     .while-submitting { display: none; }
     .inputs { display: block; }
 
-    .phx-submit-loading {
-        .show-on-submit { display: block; }
-        .hide-on-submit { display: none; }
-    }
+    .phx-submit-loading .while-submitting { display: block; }
+    .phx-submit-loading .inputs { display: none; }
 
 You can show and hide content with the following markup:
 
 ```heex
 <form phx-change="update">
-  <div class="show-on-submit">Please wait while we save our content...</div>
-  <div class="hide-on-submit">
+  <div class="while-submitting">Please wait while we save our content...</div>
+  <div class="inputs">
     <input type="text" name="text" value={@text}>
   </div>
 </form>
