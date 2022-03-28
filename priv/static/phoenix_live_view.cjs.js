@@ -527,7 +527,7 @@ var DOM = {
   },
   mergeFocusedInput(target, source) {
     if (!(target instanceof HTMLSelectElement)) {
-      DOM.mergeAttrs(target, source, { except: ["value"] });
+      DOM.mergeAttrs(target, source, { exclude: ["value"] });
     }
     if (source.readOnly) {
       target.setAttribute("readonly", true);
