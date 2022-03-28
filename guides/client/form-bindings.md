@@ -288,7 +288,7 @@ swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
 
     .while-submitting { display: none; }
-    .hide-on-submit { display: block; }
+    .inputs { display: block; }
 
     .phx-submit-loading {
         .show-on-submit { display: block; }
