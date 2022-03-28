@@ -1891,7 +1891,7 @@ var ViewHook = class {
   }
   constructor(view, el, callbacks) {
     this.__view = view;
-    this.__liveSocket = view.liveSocket;
+    this.liveSocket = view.liveSocket;
     this.__callbacks = callbacks;
     this.__listeners = new Set();
     this.__isDisconnected = false;
