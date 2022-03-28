@@ -297,7 +297,7 @@ On completion of server processing of the `phx-submit` event:
 2. The last input with focus is restored (unless another input has received focus)
 3. Updates are patched to the DOM as usual
 
-To handle latent events, any HTML tag can be annotated with
+To handle latent events, the `<button>` tag of a form can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
 value during event submission. For example, the following code would change
 the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
@@ -313,10 +313,8 @@ with the following rules in your `app.css`:
     .while-submitting { display: none; }
     .inputs { display: block; }
 
-    .phx-submit-loading {
-      .while-submitting { display: block; }
-      .inputs { display: none; }
-    }
+    .phx-submit-loading .while-submitting { display: block; }
+    .phx-submit-loading .inputs { display: none; }
 
 You can show and hide content with the following markup:
 
