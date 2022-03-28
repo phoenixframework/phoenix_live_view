@@ -287,7 +287,7 @@ You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
 
-    .show-on-submit { display: none; }
+    .while-submitting { display: none; }
     .hide-on-submit { display: block; }
 
     .phx-submit-loading {
