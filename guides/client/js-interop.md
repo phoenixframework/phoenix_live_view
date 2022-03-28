@@ -183,6 +183,7 @@ or removed by the server, a hook object may be provided via `phx-hook`.
 The above life-cycle callbacks have in-scope access to the following attributes:
 
   * `el` - attribute referencing the bound DOM node
+  * `liveSocket` - the reference to the underlying `LiveSocket` instance
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
