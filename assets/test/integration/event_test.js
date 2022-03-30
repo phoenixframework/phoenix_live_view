@@ -34,6 +34,7 @@ describe("events", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
     let view = liveSocket.getViewByEl(document.getElementById("root"))
+    view.isConnected = () => true
     let input = view.el.querySelector("#first_name")
     let meta = {
       event: null,

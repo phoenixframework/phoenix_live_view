@@ -2008,6 +2008,9 @@ within:
       dom_default.dispatchEvent(el, event, { detail, bubbles });
     },
     exec_push(eventType, phxEvent, view, sourceEl, el, args) {
+      if (!view.isConnected()) {
+        return;
+      }
       let { event, data, target, page_loading, loading, value, dispatcher } = args;
       let pushOpts = { loading, value, target, page_loading: !!page_loading };
       let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
@@ -3625,9 +3628,6 @@ within:
     bindClick(eventName, bindingName, capture) {
       let click = this.binding(bindingName);
       window.addEventListener(eventName, (e) => {
-        if (!this.isConnected()) {
-          return;
-        }
         let target = null;
         if (capture) {
           target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`);

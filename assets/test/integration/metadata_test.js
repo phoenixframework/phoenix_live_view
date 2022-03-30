@@ -52,6 +52,7 @@ describe("metadata", () => {
     liveSocket.connect()
     liveSocket.isConnected = () => true
     let view = liveSocket.getViewByEl(document.getElementById("root"))
+    view.isConnected = () => true
     let btn = view.el.querySelector("button")
     let meta = {}
     stubViewPushEvent(view, (type, el, target, phxEvent, metadata, opts) => {

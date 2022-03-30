@@ -31,6 +31,8 @@ let JS = {
   },
 
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
+    if(!view.isConnected()){ return }
+
     let {event, data, target, page_loading, loading, value, dispatcher} = args
     let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
