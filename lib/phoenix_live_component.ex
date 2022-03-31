@@ -371,14 +371,12 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  Instead, it is much simpler to create a function:
+  Instead, it is much simpler to create a function component:
 
-      def my_button(text, click) do
-        assigns = %{text: text, click: click}
-
+      def my_button(%{text: _, click: _} = assigns) do
         ~H"\""
         <button class="css-framework-class" phx-click={@click}>
-            <%= @text %>
+          <%= @text %>
         </button>
         "\""
       end
@@ -389,9 +387,9 @@ defmodule Phoenix.LiveComponent do
 
   ## Limitations
 
-  ### Components require a single HTML tag at the root
+  ### Live Components require a single HTML tag at the root
 
-  Components require a single HTML tag at the root. It is not possible
+  Live Components require a single HTML tag at the root. It is not possible
   to have components that render only text or multiple tags.
 
   ### SVG support
