@@ -346,11 +346,16 @@ defmodule Phoenix.LiveView.Router do
 
     {as_helper, as_action} = inferred_as(live_view, opts[:as], action)
 
+    metadata =
+      metadata
+      |> Map.put(:phoenix_live_view, {live_view, action, opts, live_session})
+      |> Map.put_new(:log_module, live_view)
+
     {as_action,
      alias: false,
      as: as_helper,
      private: Map.put(private, :phoenix_live_view, {live_view, opts, live_session}),
-     metadata: Map.put(metadata, :phoenix_live_view, {live_view, action, opts, live_session})}
+     metadata: metadata}
   end
 
   defp validate_live_opts!(opts) do
