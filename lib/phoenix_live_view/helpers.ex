@@ -36,6 +36,9 @@ defmodule Phoenix.LiveView.Helpers do
   > file:line:column information in error messages. Earlier Elixir versions will
   > work but will show inaccurate error messages.
 
+  > Note: The HEEx HTML formatter requires Elixir >= 1.13.0. See the
+  > `Phoenix.LiveView.HTMLFormatter` for more information on template formatting.
+
   `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
 
     * Built-in handling of HTML attributes

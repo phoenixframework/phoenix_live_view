@@ -1,18 +1,20 @@
 # Changelog
 
-## 0.17.8
+## 0.17.8 (2022-04-06)
 
 ### Enhancements
+  - Add HEEx formatter
   - Support `phx-change` on individual inputs
   - Dispatch `MouseEvent` on client
   - Add `:bubbles` option to `JS.dispatch` to control event bubbling
   - Expose underlying `liveSocket` instance on hooks
-  - Enabled client debug by default on localhost
+  - Enable client debug by default on localhost
 
 ### Bug fixes
   - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
   - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
   - Do not failsafe reload the page on push timeout if disconnected
+  - Do not bubble navigation click events to regular phx-click's
 
 ## 0.17.7 (2022-02-07)
 
