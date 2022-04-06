@@ -271,7 +271,7 @@ defmodule Phoenix.Component do
           <%= for row <- @rows do %>
             <tr>
               <%= for col <- @col do %>
-                <td><%= render_slot(col, row) %></td>
+                <td><%= render_slot(@col, row) %></td>
               <% end %>
             </tr>
           <% end %>
