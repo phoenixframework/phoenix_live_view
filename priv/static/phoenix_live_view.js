@@ -3225,6 +3225,9 @@ within:
     isDebugEnabled() {
       return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
     }
+    isDebugDisabled() {
+      return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false";
+    }
     enableDebug() {
       this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
     }
@@ -3232,7 +3235,7 @@ within:
       this.sessionStorage.setItem(PHX_LV_PROFILE, "true");
     }
     disableDebug() {
-      this.sessionStorage.removeItem(PHX_LV_DEBUG);
+      this.sessionStorage.setItem(PHX_LV_DEBUG, "false");
     }
     disableProfiling() {
       this.sessionStorage.removeItem(PHX_LV_PROFILE);
@@ -3253,6 +3256,9 @@ within:
       return this.socket;
     }
     connect() {
+      if (window.location.hostname === "localhost" && !this.isDebugDisabled()) {
+        this.enableDebug();
+      }
       let doConnect = () => {
         if (this.joinRootViews()) {
           this.bindTopLevelEvents();

@@ -3208,6 +3208,9 @@ var LiveSocket = class {
   isDebugEnabled() {
     return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
   }
+  isDebugDisabled() {
+    return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false";
+  }
   enableDebug() {
     this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
   }
@@ -3215,7 +3218,7 @@ var LiveSocket = class {
     this.sessionStorage.setItem(PHX_LV_PROFILE, "true");
   }
   disableDebug() {
-    this.sessionStorage.removeItem(PHX_LV_DEBUG);
+    this.sessionStorage.setItem(PHX_LV_DEBUG, "false");
   }
   disableProfiling() {
     this.sessionStorage.removeItem(PHX_LV_PROFILE);
@@ -3236,6 +3239,9 @@ var LiveSocket = class {
     return this.socket;
   }
   connect() {
+    if (window.location.hostname === "localhost" && !this.isDebugDisabled()) {
+      this.enableDebug();
+    }
     let doConnect = () => {
       if (this.joinRootViews()) {
         this.bindTopLevelEvents();

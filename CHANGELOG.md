@@ -7,6 +7,7 @@
   - Dispatch `MouseEvent` on client
   - Add `:bubbles` option to `JS.dispatch` to control event bubbling
   - Expose underlying `liveSocket` instance on hooks
+  - Enabled client debug by default on localhost
 
 ### Bug fixes
   - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
