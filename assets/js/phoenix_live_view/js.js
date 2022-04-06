@@ -40,6 +40,7 @@ let JS = {
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "change"){
         let {newCid, _target, callback} = args
+        _target = _target || (sourceEl instanceof HTMLInputElement ? sourceEl.name : undefined)
         if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
