@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.9 (2022-04-07)
+
+### Bug fixes
+  - Fix sticky LiveViews failing to be patched during live navigation
+  - Do not raise on dynamic `phx-update` value
+
 ## 0.17.8 (2022-04-06)
 
 ### Enhancements

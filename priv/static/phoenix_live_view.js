@@ -2544,7 +2544,7 @@ within:
       });
     }
     update(diff, events) {
-      if (this.isJoinPending() || this.liveSocket.hasPendingLink()) {
+      if (this.isJoinPending() || this.liveSocket.hasPendingLink() && !dom_default.isPhxSticky(this.el)) {
         return this.pendingDiffs.push({ diff, events });
       }
       this.rendered.mergeDiff(diff);
