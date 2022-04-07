@@ -1203,6 +1203,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div phx-update="ignore" class="foo" />
         """)
       end)
+
+      assert_raise(ParseError, message, fn ->
+        assert eval("""
+               <div phx-update={@value}>Content</div>
+               """)
+      end)
+
+      assert eval("""
+             <div id="id" phx-update={@value}>Content</div>
+             """)
     end
 
     test "validates phx-update values" do

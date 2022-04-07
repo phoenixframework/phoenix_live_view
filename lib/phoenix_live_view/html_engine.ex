@@ -792,7 +792,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp validate_phx_attrs!([{"id", _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
 
-  defp validate_phx_attrs!([{"phx-update", {_type, value, _meta}} | t], meta, state, _attr, id?) do
+  defp validate_phx_attrs!([{"phx-update", {:string, value, _meta}} | t], meta, state, _attr, id?) do
     if value in ~w(ignore append prepend replace) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
@@ -804,6 +804,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
         file: state.file,
         description: message
     end
+  end
+
+  defp validate_phx_attrs!([{"phx-update", _attrs} | t], meta, state, _attr, id?) do
+    validate_phx_attrs!(t, meta, state, "phx-update", id?)
   end
 
   defp validate_phx_attrs!([{"phx-hook", _} | t], meta, state, _attr, id?),
