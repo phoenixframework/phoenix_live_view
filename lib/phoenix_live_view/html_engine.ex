@@ -793,7 +793,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     do: validate_phx_attrs!(t, meta, state, attr, true)
 
   defp validate_phx_attrs!([{"phx-update", {_type, value, _meta}} | t], meta, state, _attr, id?) do
-    if value in ~w(ignore append prepend) do
+    if value in ~w(ignore append prepend replace) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
       message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
