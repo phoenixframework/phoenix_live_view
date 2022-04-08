@@ -308,7 +308,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   # Final clause: multiple lines
   defp text_to_algebra([], _, acc),
-    do: acc |> Enum.reverse() |> tl() |> concat() |> force_unfit()
+    do: acc |> Enum.reverse() |> tl() |> concat()
 
   defp build_attrs([], on_break, _opts), do: on_break
 
