@@ -1205,9 +1205,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
 
       assert_raise(ParseError, message, fn ->
-        assert eval("""
-               <div phx-update={@value}>Content</div>
-               """)
+        eval("""
+        <div phx-update={@value}>Content</div>
+        """)
       end)
 
       assert eval("""
