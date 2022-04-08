@@ -219,7 +219,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
           concat(["<#{name}", build_attrs(attrs, " ", context.opts), "/>"])
       end
 
-    {:block, group(doc)}
+    {:inline, group(doc)}
   end
 
   # Handle EEX blocks within `pre` tag

@@ -1203,6 +1203,14 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(input, expected)
     end
 
+    test "does not break lines in self closed elements" do
+      assert_formatter_doesnt_change("""
+      <div>
+        This should not wrap on a new line <input />.
+      </div>
+      """)
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
