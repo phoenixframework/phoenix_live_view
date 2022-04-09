@@ -1213,6 +1213,28 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "keep eex along with the text" do
+      assert_formatter_doesnt_change("""
+      <div>
+        _______________________________________________________ result<%= if(@row_count != 1, do: "s") %>
+      </div>
+      """)
+
+      assert_formatter_output(
+        """
+        <div>
+          _______________________________________________________ result <%= if(@row_count != 1, do: "s") %>
+        </div>
+        """,
+        """
+        <div>
+          _______________________________________________________ result
+          <%= if(@row_count != 1, do: "s") %>
+        </div>
+        """
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

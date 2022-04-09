@@ -62,7 +62,20 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
               ""
             end
 
-          {next_node, next_type, concat([prev_doc, flex_break(on_break), next_doc])}
+          # We can't use flex_break when the next_node is eex_token and it
+          # doesn't have a white space. Otherwise it would change the displayed
+          # text.
+          #
+          # text<%= @foo %>  - should not use flex_break
+          # text <%= @foo %> - should use flex_break
+          on_break =
+            if eex_token?(next_node) and on_break == "" do
+              on_break
+            else
+              flex_break(on_break)
+            end
+
+          {next_node, next_type, concat([prev_doc, on_break, next_doc])}
 
         prev_type == :newline and next_type == :inline ->
           {next_node, next_type, concat([prev_doc, line(), next_doc])}
@@ -83,6 +96,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> elem(2)
     |> group()
   end
+
+  defp eex_token?({:eex, _text, _meta}), do: true
+  defp eex_token?(_token), do: false
 
   @codepoints '\s\n\r\t'
 
