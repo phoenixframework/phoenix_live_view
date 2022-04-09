@@ -395,28 +395,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "keep tags with text and eex expressions inline" do
-      assert_formatter_output(
-        """
-          <p>
-            $
-            <%= @product.value %> in Dollars
-          </p>
-          <button>
-            Submit
-          </button>
-        """,
-        """
-        <p>
-          $ <%= @product.value %> in Dollars
-        </p>
-        <button>
-          Submit
-        </button>
-        """
-      )
-    end
-
     test "parse eex inside of html tags" do
       assert_formatter_output(
         """
@@ -764,7 +742,14 @@ if Version.match?(System.version(), ">= 1.13.0") do
     end
 
     test "keep intentional line breaks" do
-      input = """
+      assert_formatter_doesnt_change("""
+      <div>
+        Should not <%= "line break" %>.
+        But it does.
+      </div>
+      """)
+
+      assert_formatter_doesnt_change("""
       <section>
         <h1>
           <b>
@@ -778,9 +763,26 @@ if Version.match?(System.version(), ">= 1.13.0") do
 
         <h2>Subtitle</h2>
       </section>
-      """
+      """)
 
-      assert_formatter_doesnt_change(input)
+      assert_formatter_output(
+        """
+          <p>
+            $ <%= @product.value %> in Dollars
+          </p>
+          <button>
+            Submit
+          </button>
+        """,
+        """
+        <p>
+          $ <%= @product.value %> in Dollars
+        </p>
+        <button>
+          Submit
+        </button>
+        """
+      )
     end
 
     test "keep eex expressions in the next line" do
