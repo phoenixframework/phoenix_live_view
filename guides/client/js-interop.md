@@ -251,7 +251,7 @@ hook element or by using `Phoenix.LiveView.push_event/3` on the server and `hand
 
 For example, to implement infinite scrolling, one can pass the current page using data attributes:
 
-    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page="<%= @page %>">
+    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
 
 And then in the client:
 
