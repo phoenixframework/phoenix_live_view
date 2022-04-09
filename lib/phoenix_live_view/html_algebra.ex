@@ -52,46 +52,49 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         |> to_algebra(context)
         |> maybe_force_unfit()
 
-      cond do
-        prev_type == :inline and next_type == :inline ->
-          on_break =
-            if next_doc != empty() and
-                 (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
-              " "
+      doc =
+        cond do
+          prev_type == :inline and next_type == :inline ->
+            on_break =
+              if next_doc != empty() and
+                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
+                " "
+              else
+                ""
+              end
+
+            # We can't use flex_break when the next_node is eex_token and it
+            # doesn't have a white space. Otherwise it would change the displayed
+            # text.
+            #
+            # text<%= @foo %>  - should not use flex_break
+            # text <%= @foo %> - should use flex_break
+            on_break =
+              if eex_token?(next_node) and on_break == "" do
+                on_break
+              else
+                flex_break(on_break)
+              end
+
+            concat([prev_doc, on_break, next_doc])
+
+          prev_type == :newline and next_type == :inline ->
+            concat([prev_doc, line(), next_doc])
+
+          next_type == :newline ->
+            {:text, _text, %{newlines: newlines}} = next_node
+
+            if newlines > 1 do
+              concat([prev_doc, nest(line(), :reset), next_doc])
             else
-              ""
+              concat([prev_doc, next_doc])
             end
 
-          # We can't use flex_break when the next_node is eex_token and it
-          # doesn't have a white space. Otherwise it would change the displayed
-          # text.
-          #
-          # text<%= @foo %>  - should not use flex_break
-          # text <%= @foo %> - should use flex_break
-          on_break =
-            if eex_token?(next_node) and on_break == "" do
-              on_break
-            else
-              flex_break(on_break)
-            end
+          true ->
+            concat([prev_doc, break(""), next_doc])
+        end
 
-          {next_node, next_type, concat([prev_doc, on_break, next_doc])}
-
-        prev_type == :newline and next_type == :inline ->
-          {next_node, next_type, concat([prev_doc, line(), next_doc])}
-
-        next_type == :newline ->
-          {:text, _text, %{newlines: newlines}} = next_node
-
-          if newlines > 1 do
-            {next_node, next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
-          else
-            {next_node, next_type, concat([prev_doc, next_doc])}
-          end
-
-        true ->
-          {next_node, next_type, concat([prev_doc, break(""), next_doc])}
-      end
+      {next_node, next_type, doc}
     end)
     |> elem(2)
     |> group()
