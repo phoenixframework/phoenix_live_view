@@ -269,8 +269,7 @@ defmodule Phoenix.LiveView.Channel do
     read_socket(state, cid, fn socket, _ ->
       result =
         with {:ok, uploads} <- Map.fetch(socket.assigns, :uploads),
-             {:ok, conf} <- Map.fetch(uploads, name),
-             do: {:ok, conf}
+             do: Map.fetch(uploads, name)
 
       {:reply, result, state}
     end)

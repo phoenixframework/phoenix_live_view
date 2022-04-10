@@ -5,7 +5,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
 
   describe "find_live_views" do
     # >= 4432 characters
-    @too_big_session Enum.map(1..4432, fn _ -> "t" end) |> Enum.join()
+    @too_big_session Enum.map_join(1..4432, fn _ -> "t" end)
 
     test "finds views given html" do
       assert DOM.find_live_views(
