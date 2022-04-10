@@ -676,7 +676,7 @@ defmodule Phoenix.LiveView do
   function components.
 
   This function is useful for lazily assigning values and referencing parent
-  assigns. We wil cover both use cases next.
+  assigns. We will cover both use cases next.
 
   ## Lazy assigns
 
