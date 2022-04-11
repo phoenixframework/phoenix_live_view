@@ -1235,10 +1235,22 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "keep single quote delimiter" do
+    test "keep single quote delimiter when value has quotes" do
       assert_formatter_doesnt_change("""
       <div title='Say "hi!"'></div>
       """)
+    end
+
+    test "transform single quotes to double when value has no quotes" do
+      input = """
+      <div title='Say hi!'></div>
+      """
+
+      expected = """
+      <div title="Say hi!"></div>
+      """
+
+      assert_formatter_output(input, expected)
     end
 
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
