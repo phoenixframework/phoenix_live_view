@@ -140,6 +140,16 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     text
   </p>
   ```
+
+  ### Inline elements
+
+  We don't format inline elements when there is a text without whitespace before
+  or after the element. Otherwise it would compromise what is rendered adding
+  an extra whitespace.
+
+  This is the list of inline elements:
+
+  https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
@@ -364,6 +374,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
+    buffer = add_meta_if_tag_block(buffer, text)
+
     if line_html_comment?(text) do
       to_tree(tokens, [{:comment, text} | buffer], stack)
     else
@@ -391,7 +403,19 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer)}
+    # Set format? as false in case the previous token is a text without whitespaces. So we can check
+    # for that when formatting inline elements.
+    format? =
+      case List.first(upper_buffer) do
+        {:text, text, _meta} ->
+          :binary.last(text) in '\s\t\r\n'
+
+        _ ->
+          true
+      end
+
+    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{format?: format?}}
+
     to_tree(tokens, [tag_block | upper_buffer], stack)
   end
 
@@ -453,4 +477,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
+
+  # Set format? as false in case the next token is a text without whitespaces. So we can check
+  # for that when formatting inline elements.
+  defp add_meta_if_tag_block([{:tag_block, name, attrs, block, _meta} | list], text) do
+    format? = :binary.first(text) in '\s\t\r\n'
+    [{:tag_block, name, attrs, block, %{format?: format?}} | list]
+  end
+
+  defp add_meta_if_tag_block(buffer, _text), do: buffer
 end

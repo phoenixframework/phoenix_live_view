@@ -55,14 +55,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       doc =
         cond do
           prev_type == :inline and next_type == :inline ->
-            on_break =
-              if next_doc != empty() and
-                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
-                " "
-              else
-                ""
-              end
-
             # We can't use flex_break when the next_node is eex_token and it
             # doesn't have a white space. Otherwise it would change the displayed
             # text.
@@ -70,10 +62,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             # text<%= @foo %>  - should not use flex_break
             # text <%= @foo %> - should use flex_break
             on_break =
-              if eex_token?(next_node) and on_break == "" do
-                on_break
+              if next_doc != empty() and
+                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
+                flex_break(" ")
               else
-                flex_break(on_break)
+                ""
               end
 
             concat([prev_doc, on_break, next_doc])
@@ -100,9 +93,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
-  defp eex_token?({:eex, _text, _meta}), do: true
-  defp eex_token?(_token), do: false
-
   @codepoints '\s\n\r\t'
 
   defp text_starts_with_space?({:text, text, _meta}) when text != "",
@@ -120,7 +110,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, "pre", attrs, block}, context) do
+  defp to_algebra({:tag_block, "pre", attrs, block, _meta}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     tag =
@@ -136,14 +126,14 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :preserve} = context) do
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, %{mode: :preserve} = context) do
     children = block_to_algebra(block, context)
 
     {:inline,
      concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context) when name in @languages do
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) when name in @languages do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     # Convert the whole block to text as there are no
@@ -192,7 +182,31 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context) do
+  # Don't format inline tags that are surrounded by texts without with spaces.
+  # For instance the examples below will not be formatted:
+  #
+  #   text<a class="bar">link</a>text
+  #   <a class="bar">link</a>text
+  #   text<a class="bar">link</a>
+  defp to_algebra({:tag_block, name, attrs, block, %{format?: false}}, context)
+       when name in @inline_elements do
+    children = block_to_algebra(block, %{context | mode: :preserve})
+    attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
+
+    tag =
+      concat([
+        "<#{name}",
+        attrs,
+        ">",
+        children,
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:inline, tag}
+  end
+
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) do
     {block, force_newline?} = trim_block_newlines(block)
 
     children =
