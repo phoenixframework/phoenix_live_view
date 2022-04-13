@@ -348,6 +348,15 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   defp render_attribute({:root, {:expr, expr, _}}, _opts), do: ~s({#{expr}})
+
+  defp render_attribute({attr, {:string, value, %{delimiter: ?'}}}, _opts) do
+    if String.contains?(value, ["\"", "'"]) do
+      ~s(#{attr}='#{value}')
+    else
+      ~s(#{attr}="#{value}")
+    end
+  end
+
   defp render_attribute({attr, {:string, value, _meta}}, _opts), do: ~s(#{attr}="#{value}")
 
   defp render_attribute({attr, {:expr, value, meta}}, opts) do
