@@ -55,12 +55,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       doc =
         cond do
           prev_type == :inline and next_type == :inline ->
-            # We can't use flex_break when the next_node is eex_token and it
-            # doesn't have a white space. Otherwise it would change the displayed
-            # text.
-            #
-            # text<%= @foo %>  - should not use flex_break
-            # text <%= @foo %> - should use flex_break
             on_break =
               if next_doc != empty() and
                    (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
