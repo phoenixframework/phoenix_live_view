@@ -176,7 +176,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  # Don't format inline tags that are surrounded by texts without with spaces.
+  # Don't format inline tags that are surrounded by texts without whitespaces.
   # For instance the examples below will not be formatted:
   #
   #   text<a class="bar">link</a>text
