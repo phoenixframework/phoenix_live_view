@@ -1253,6 +1253,51 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(input, expected)
     end
 
+    test "does not format inline elements surrounded by texts without white spaces" do
+      assert_formatter_output(
+        """
+        <p>
+          text text<a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+        </p>
+        """,
+        """
+        <p>
+          text text<a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+        </p>
+        """,
+        line_length: 50
+      )
+
+      assert_formatter_output(
+        """
+        <p>
+          text text <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+        </p>
+        """,
+        """
+        <p>
+          text text
+          <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+        </p>
+        """,
+        line_length: 50
+      )
+
+      assert_formatter_output(
+        """
+        <p>
+          <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text text text text.
+        </p>
+        """,
+        """
+        <p>
+          <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text text text text.
+        </p>
+        """,
+        line_length: 50
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

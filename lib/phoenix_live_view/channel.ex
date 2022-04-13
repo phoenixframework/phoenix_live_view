@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Channel do
 
   @prefix :phoenix
   @not_mounted_at_router :not_mounted_at_router
+  @max_host_size 253
 
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
@@ -983,7 +984,7 @@ defmodule Phoenix.LiveView.Channel do
 
     {params, host_uri, action} =
       case route do
-        %Route{} = route ->
+        %Route{uri: %URI{host: host}} = route when byte_size(host) <= @max_host_size ->
           {route.params, route.uri, route.action}
 
         nil ->

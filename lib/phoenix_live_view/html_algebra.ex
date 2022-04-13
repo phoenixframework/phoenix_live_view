@@ -52,53 +52,40 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         |> to_algebra(context)
         |> maybe_force_unfit()
 
-      cond do
-        prev_type == :inline and next_type == :inline ->
-          on_break =
-            if next_doc != empty() and
-                 (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
-              " "
+      doc =
+        cond do
+          prev_type == :inline and next_type == :inline ->
+            on_break =
+              if next_doc != empty() and
+                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
+                flex_break(" ")
+              else
+                ""
+              end
+
+            concat([prev_doc, on_break, next_doc])
+
+          prev_type == :newline and next_type == :inline ->
+            concat([prev_doc, line(), next_doc])
+
+          next_type == :newline ->
+            {:text, _text, %{newlines: newlines}} = next_node
+
+            if newlines > 1 do
+              concat([prev_doc, nest(line(), :reset), next_doc])
             else
-              ""
+              concat([prev_doc, next_doc])
             end
 
-          # We can't use flex_break when the next_node is eex_token and it
-          # doesn't have a white space. Otherwise it would change the displayed
-          # text.
-          #
-          # text<%= @foo %>  - should not use flex_break
-          # text <%= @foo %> - should use flex_break
-          on_break =
-            if eex_token?(next_node) and on_break == "" do
-              on_break
-            else
-              flex_break(on_break)
-            end
+          true ->
+            concat([prev_doc, break(""), next_doc])
+        end
 
-          {next_node, next_type, concat([prev_doc, on_break, next_doc])}
-
-        prev_type == :newline and next_type == :inline ->
-          {next_node, next_type, concat([prev_doc, line(), next_doc])}
-
-        next_type == :newline ->
-          {:text, _text, %{newlines: newlines}} = next_node
-
-          if newlines > 1 do
-            {next_node, next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
-          else
-            {next_node, next_type, concat([prev_doc, next_doc])}
-          end
-
-        true ->
-          {next_node, next_type, concat([prev_doc, break(""), next_doc])}
-      end
+      {next_node, next_type, doc}
     end)
     |> elem(2)
     |> group()
   end
-
-  defp eex_token?({:eex, _text, _meta}), do: true
-  defp eex_token?(_token), do: false
 
   @codepoints '\s\n\r\t'
 
@@ -117,7 +104,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, "pre", attrs, block}, context) do
+  defp to_algebra({:tag_block, "pre", attrs, block, _meta}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     tag =
@@ -133,14 +120,14 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :preserve} = context) do
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, %{mode: :preserve} = context) do
     children = block_to_algebra(block, context)
 
     {:inline,
      concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context) when name in @languages do
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) when name in @languages do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     # Convert the whole block to text as there are no
@@ -189,7 +176,31 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context) do
+  # Don't format inline tags that are surrounded by texts without whitespaces.
+  # For instance the examples below will not be formatted:
+  #
+  #   text<a class="bar">link</a>text
+  #   <a class="bar">link</a>text
+  #   text<a class="bar">link</a>
+  defp to_algebra({:tag_block, name, attrs, block, %{format?: false}}, context)
+       when name in @inline_elements do
+    children = block_to_algebra(block, %{context | mode: :preserve})
+    attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
+
+    tag =
+      concat([
+        "<#{name}",
+        attrs,
+        ">",
+        children,
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:inline, tag}
+  end
+
+  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) do
     {block, force_newline?} = trim_block_newlines(block)
 
     children =
