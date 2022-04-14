@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.10 (Unreleased)
+
+### Bug fixes
+  - [Formatter] Preserve single quote delimiter on attrs
+  - [Formatter] Fix inline elements surrounded by texts without whitespaces
+  - [Formatter] Keep text and eex along when there isn't a whitespace
+  - [Formatter] Fix intentional line breaks after eex expressions
+  - [Formatter] Handle self close tags as inline
+
+
 ## 0.17.9 (2022-04-07)
 
 ### Bug fixes
