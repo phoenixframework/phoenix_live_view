@@ -419,7 +419,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
 
     state
-    |> maybe_set_root_on_tag()
+    |> set_root_on_tag()
     |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
   end
 
@@ -429,7 +429,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
 
     state
-    |> maybe_set_root_on_tag()
+    |> set_root_on_tag()
     |> push_tag(token)
     |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
   end
@@ -449,16 +449,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp maybe_set_root_on_tag(state) do
+  defp set_root_on_tag(state) do
     case state do
-      %{root: nil, tags: []} ->
-        %{state | root: true}
-
-      %{root: true, tags: []} ->
-        %{state | root: false}
-
-      %{root: bool} when is_boolean(bool) ->
-        state
+      %{root: nil, tags: []} -> %{state | root: true}
+      %{root: true, tags: []} -> %{state | root: false}
+      %{root: bool} when is_boolean(bool) -> state
     end
   end
 
