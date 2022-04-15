@@ -82,13 +82,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def handle_end(state) do
     state
+    |> Map.put(:root, false)
     |> token_state()
     |> handle_tokens(Enum.reverse(state.tokens))
     |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(%{subengine: subengine, substate: substate, file: file}) do
+  defp token_state(%{subengine: subengine, substate: substate, file: file} = state) do
     %{
       subengine: subengine,
       substate: substate,
@@ -96,7 +97,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       slots: [],
-      root: nil
+      root: state[:root]
     }
   end
 
@@ -457,10 +458,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
         %{state | root: false}
 
       %{root: bool} when is_boolean(bool) ->
-        state
-
-      %{root: nil, slots: [], tags: [{_, <<first, _::binary>>, _, _} | _]}
-        when first == ?: ->
         state
     end
   end
