@@ -356,25 +356,34 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
   test "lv:clear-flash component", %{conn: conn} do
     {:ok, flash_live, _} = live(conn, "/flash-root")
 
-    result =
-      flash_live
-      |> element("#flash-component")
-      |> render_click(%{"type" => "put_flash", "info" => "ok!"})
+    flash_live
+    |> element("#flash-component")
+    |> render_click(%{"type" => "put_flash", "info" => "ok!"})
 
-    assert result =~ "component[ok!]:info"
+    flash_live
+    |> element("#flash-component")
+    |> render_click(%{"type" => "put_flash", "error" => "oops!"})
 
-    result = flash_live |> element("#flash-component span", "Clear all") |> render_click()
-    assert result =~ "component[]:info"
+    assert has_element?(flash_live, "span[phx-value-key=info]", "component[ok!]:info")
+    assert has_element?(flash_live, "span[phx-value-key=error]", "component[oops!]:error")
 
-    result =
-      flash_live
-      |> element("#flash-component")
-      |> render_click(%{"type" => "put_flash", "error" => "oops!"})
+    flash_live |> element("#flash-component span", "Clear all") |> render_click()
 
-    assert result =~ "component[oops!]:error"
+    assert has_element?(flash_live, "#flash-component span[phx-value-key=info]", "component[]:info")
+    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[]:error")
+  end
 
-    result = flash_live |> element("#flash-component span", ":error") |> render_click()
-    assert result =~ "component[]:error"
+  test "lv:clear-flash component with phx-value-key", %{conn: conn} do
+    {:ok, flash_live, _} = live(conn, "/flash-root")
+
+    flash_live
+    |> element("#flash-component")
+    |> render_click(%{"type" => "put_flash", "error" => "oops!"})
+
+    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[oops!]:error")
+
+    flash_live |> element("#flash-component span", ":error") |> render_click()
+    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[]:error")
   end
 
   test "works without session and flash", %{conn: conn} do
