@@ -304,6 +304,22 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert result =~ "uri[http://www.example.com/flash-root?patch]"
       assert result =~ "root[ok!]"
     end
+
+    test "erase child flash", %{conn: conn} do
+      {:ok, flash_live, _} = live(conn, "/flash-root")
+
+      flash_live
+      |> element("#flash-component")
+      |> render_click(%{
+        "type" => "push_patch",
+        "to" => "/flash-root?patch",
+        "info" => "ok!"
+      })
+
+      result = render(flash_live)
+      assert result =~ "root[ok!]"
+      assert has_element?(flash_live, "#flash-component span[phx-value-key=info]", "component[]:info")
+    end
   end
 
   describe "LiveView <=> DeadView" do

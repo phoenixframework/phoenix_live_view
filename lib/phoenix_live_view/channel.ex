@@ -521,9 +521,16 @@ defmodule Phoenix.LiveView.Channel do
 
     result =
       Diff.write_component(socket, cid, components, fn component_socket, component ->
-        component_socket
-        |> maybe_update_uploads(payload)
-        |> inner_component_handle_event(component, event, val)
+        {component_socket, {redirected, flash}} = inner_component =
+          component_socket
+          |> maybe_update_uploads(payload)
+          |> inner_component_handle_event(component, event, val)
+
+        if redirected do
+          {Utils.clear_flash(component_socket), {redirected, flash}}
+        else
+          inner_component
+        end
       end)
 
     # Due to race conditions, the browser can send a request for a
