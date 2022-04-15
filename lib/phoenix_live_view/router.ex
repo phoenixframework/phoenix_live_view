@@ -350,6 +350,7 @@ defmodule Phoenix.LiveView.Router do
       metadata
       |> Map.put(:phoenix_live_view, {live_view, action, opts, live_session})
       |> Map.put_new(:log_module, live_view)
+      |> Map.put_new(:log_function, :mount)
 
     {as_action,
      alias: false,
