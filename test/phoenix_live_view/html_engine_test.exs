@@ -1001,7 +1001,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:3:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message = ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1011,7 +1011,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             <p>Content</p>
           </:sample>
         <% end %>
-        </div>
+        </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
         """)
       end)
 
