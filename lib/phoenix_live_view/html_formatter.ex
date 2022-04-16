@@ -164,8 +164,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
-  def inline_elements, do: @inline_elements
-
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
@@ -414,12 +412,25 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    preserve? =
-      name in ["pre", "textarea"] or
-        (name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer)) or
-        contains_special_attrs?(attrs)
+    mode =
+      cond do
+        name in ["pre", "textarea"] ->
+          :preserve
 
-    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{preserve?: preserve?}}
+        name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer) ->
+          :preserve
+
+        contains_special_attrs?(attrs) ->
+          :preserve
+
+        name in @inline_elements ->
+          :inline
+
+        true ->
+          :block
+      end
+
+    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{mode: mode}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
   end
@@ -498,11 +509,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   # In case the given tag is inline and the there is no white spaces in the next
-  # text, we want to set preserve as true. So this tag will not be formatted.
-  defp may_set_preserve([{:tag_block, name, attrs, block, _meta} | list], text)
+  # text, we want to set mode as preserve. So this tag will not be formatted.
+  defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
-    preserve? = !(:binary.first(text) in '\s\t')
-    [{:tag_block, name, attrs, block, %{preserve?: preserve?}} | list]
+    mode = if !(:binary.first(text) in '\s\t'), do: :preserve, else: meta.mode
+    [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
   defp may_set_preserve(buffer, _text), do: buffer

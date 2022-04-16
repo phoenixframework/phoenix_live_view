@@ -1,8 +1,6 @@
 defmodule Phoenix.LiveView.HTMLAlgebra do
   @moduledoc false
 
-  alias Phoenix.LiveView.HTMLFormatter
-
   import Inspect.Algebra, except: [format: 2]
 
   # TODO: Remove it after versions before Elixir 1.13 are no longer supported.
@@ -153,7 +151,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{preserve?: true}}, context) do
+  defp to_algebra({:tag_block, name, attrs, block, %{mode: :preserve}}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
     attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
 
@@ -170,7 +168,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+  defp to_algebra({:tag_block, name, attrs, block, meta}, context) do
     {block, force_newline?} = trim_block_newlines(block)
 
     children =
@@ -199,7 +197,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       ])
       |> group()
 
-    if !force_newline? and name in HTMLFormatter.inline_elements() do
+    if !force_newline? and meta.mode == :inline do
       {:inline, doc}
     else
       {:block, doc}
