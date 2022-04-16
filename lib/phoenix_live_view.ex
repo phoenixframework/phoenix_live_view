@@ -991,7 +991,7 @@ defmodule Phoenix.LiveView do
 
   A hook declared via `phx-hook` can handle it via `handleEvent`:
 
-      this.handleEvent("points", data => ...)
+      this.handleEvent("scores", data => ...)
 
   ## `window` example
 
