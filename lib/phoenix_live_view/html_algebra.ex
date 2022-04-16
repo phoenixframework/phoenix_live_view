@@ -1,19 +1,12 @@
 defmodule Phoenix.LiveView.HTMLAlgebra do
   @moduledoc false
 
+  alias Phoenix.LiveView.HTMLFormatter
+
   import Inspect.Algebra, except: [format: 2]
 
   # TODO: Remove it after versions before Elixir 1.13 are no longer supported.
   @compile {:no_warn_undefined, Code}
-
-  # Reference for all inline elements so that we can tell the formatter to not
-  # force a line break. This list has been taken from here:
-  #
-  # https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
-  @inline_elements ~w(a abbr acronym audio b bdi bdo big br button canvas cite
-  code data datalist del dfn em embed i iframe img input ins kbd label map
-  mark meter noscript object output picture progress q ruby s samp select slot
-  small span strong sub sup svg template textarea time u tt var video wbr)
 
   @languages ~w(style script)
 
@@ -104,22 +97,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, "pre", attrs, block, _meta}, context) do
-    children = block_to_algebra(block, %{context | mode: :preserve})
-
-    tag =
-      concat([
-        "<pre",
-        build_attrs(attrs, "", context.opts),
-        ">",
-        nest(children, :reset),
-        "</pre>"
-      ])
-      |> group()
-
-    {:block, tag}
-  end
-
   defp to_algebra({:tag_block, name, attrs, block, _meta}, %{mode: :preserve} = context) do
     children = block_to_algebra(block, context)
 
@@ -176,14 +153,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  # Don't format inline tags that are surrounded by texts without whitespaces.
-  # For instance the examples below will not be formatted:
-  #
-  #   text<a class="bar">link</a>text
-  #   <a class="bar">link</a>text
-  #   text<a class="bar">link</a>
-  defp to_algebra({:tag_block, name, attrs, block, %{format?: false}}, context)
-       when name in @inline_elements do
+  defp to_algebra({:tag_block, name, attrs, block, %{preserve?: true}}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
     attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
 
@@ -192,7 +162,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         "<#{name}",
         attrs,
         ">",
-        children,
+        nest(children, :reset),
         "</#{name}>"
       ])
       |> group()
@@ -229,7 +199,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       ])
       |> group()
 
-    if !force_newline? and name in @inline_elements do
+    if !force_newline? and name in HTMLFormatter.inline_elements() do
       {:inline, doc}
     else
       {:block, doc}

@@ -1298,6 +1298,43 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "does not format when contenteditable is present" do
+      assert_formatter_doesnt_change(
+        """
+        <div contenteditable>The content contet content content content</div>
+        """,
+        line_length: 10
+      )
+
+      assert_formatter_doesnt_change(
+        """
+        <div contenteditable="true">The content contet content content content</div>
+        """,
+        line_length: 10
+      )
+
+      assert_formatter_output(
+        """
+        <div contenteditable="false">The content contet content content content</div>
+        """,
+        """
+        <div contenteditable="false">
+          The content contet content content content
+        </div>
+        """,
+        line_length: 10
+      )
+    end
+
+    test "does not format textarea" do
+      assert_formatter_doesnt_change(
+        """
+        <textarea><%= @content %></textarea>
+        """,
+        line_length: 5
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

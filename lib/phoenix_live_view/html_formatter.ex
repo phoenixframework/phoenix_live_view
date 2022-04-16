@@ -155,6 +155,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   alias Phoenix.LiveView.HTMLAlgebra
   alias Phoenix.LiveView.HTMLTokenizer
 
+  # Reference for all inline elements so that we can tell the formatter to not
+  # force a line break. This list has been taken from here:
+  #
+  # https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+  @inline_elements ~w(a abbr acronym audio b bdi bdo big br button canvas cite
+  code data datalist del dfn em embed i iframe img input ins kbd label map
+  mark meter noscript object output picture progress q ruby s samp select slot
+  small span strong sub sup svg template textarea time u tt var video wbr)
+
+  def inline_elements, do: @inline_elements
+
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
@@ -374,7 +385,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
-    buffer = add_meta_if_tag_block(buffer, text)
+    buffer = may_set_preserve(buffer, text)
 
     if line_html_comment?(text) do
       to_tree(tokens, [{:comment, text} | buffer], stack)
@@ -403,18 +414,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    # Set format? as false in case the previous token is a text without whitespaces. So we can check
-    # for that when formatting inline elements.
-    format? =
-      case List.first(upper_buffer) do
-        {:text, text, _meta} ->
-          :binary.last(text) in '\s\t\r\n'
+    preserve? =
+      name in ["pre", "textarea"] or
+        (name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer)) or
+        contains_special_attrs?(attrs)
 
-        _ ->
-          true
-      end
-
-    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{format?: format?}}
+    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{preserve?: preserve?}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
   end
@@ -457,6 +462,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [{:eex, expr, meta} | buffer], stack)
   end
 
+  # -- HELPERS
+
   defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in '\s\t\r',
     do: count_newlines_until_text(rest, counter)
 
@@ -478,12 +485,33 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
-  # Set format? as false in case the next token is a text without whitespaces. So we can check
-  # for that when formatting inline elements.
-  defp add_meta_if_tag_block([{:tag_block, name, attrs, block, _meta} | list], text) do
-    format? = :binary.first(text) in '\s\t\r\n'
-    [{:tag_block, name, attrs, block, %{format?: format?}} | list]
+  # In case the first element of the given buffer is a text and, this text
+  # ends with a whitespace, it wil return true. Otherwise false.
+  defp head_is_text_ending_with_whitespace?(upper_buffer) do
+    case List.first(upper_buffer) do
+      {:text, text, _meta} ->
+        if String.trim_leading(text) == "", do: false, else: :binary.last(text) in '\s\t'
+
+      _ ->
+        false
+    end
   end
 
-  defp add_meta_if_tag_block(buffer, _text), do: buffer
+  # In case the given tag is inline and the there is no white spaces in the next
+  # text, we want to set preserve as true. So this tag will not be formatted.
+  defp may_set_preserve([{:tag_block, name, attrs, block, _meta} | list], text)
+       when name in @inline_elements do
+    preserve? = !(:binary.first(text) in '\s\t')
+    [{:tag_block, name, attrs, block, %{preserve?: preserve?}} | list]
+  end
+
+  defp may_set_preserve(buffer, _text), do: buffer
+
+  defp contains_special_attrs?(attrs) do
+    Enum.any?(attrs, fn
+      {"contenteditable", {:string, "false", _meta}} -> false
+      {"contenteditable", _v} -> true
+      _ -> false
+    end)
+  end
 end
