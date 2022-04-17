@@ -37,6 +37,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     ~H"<%= inspect(Map.delete(assigns, :__changed__)) %>"
   end
 
+  def textarea(assigns) do
+    ~H"<textarea><%= render_slot(@inner_block) %></textarea>"
+  end
+
   def remote_function_component(assigns) do
     ~H"REMOTE COMPONENT: Value: <%= @value %>"
   end
@@ -1190,6 +1194,22 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
     end
+  end
+
+  test "do not render phx-no-break attr" do
+    rendered = eval("<div phx-no-break>Content</div>")
+    assert rendered.static == ["<div>Content</div>"]
+
+    rendered = eval("<div phx-no-break />")
+    assert rendered.static == ["<div></div>"]
+
+    assigns = %{}
+
+    assert compile("""
+           <Phoenix.LiveView.HTMLEngineTest.textarea phx-no-break>
+            Content
+           </Phoenix.LiveView.HTMLEngineTest.textarea>
+           """) == "<textarea>\n Content\n</textarea>"
   end
 
   describe "html validations" do

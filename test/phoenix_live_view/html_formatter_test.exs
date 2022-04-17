@@ -1355,6 +1355,15 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "does not format when phx-no-break attr is present" do
+      assert_formatter_doesnt_change(
+        """
+        <.textarea phx-no-break>My content</.textarea>
+        """,
+        line_length: 5
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

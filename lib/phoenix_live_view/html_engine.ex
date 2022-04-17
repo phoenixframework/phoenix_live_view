@@ -415,6 +415,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
+    attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
     state
@@ -425,6 +426,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
+    attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
     state
@@ -765,6 +767,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
+
+  def remove_phx_no_break(attrs) do
+    Enum.reject(attrs, fn
+      {"phx-no-break", _v} -> true
+      _ -> false
+    end)
+  end
 
   # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
   # there is no ID attribute set.
