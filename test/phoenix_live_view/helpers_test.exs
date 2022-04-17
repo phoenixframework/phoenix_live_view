@@ -135,13 +135,6 @@ defmodule Phoenix.LiveView.HelpersTest do
         </.form>
         """)
       end
-
-      assert_raise ArgumentError, ~r/This means a component requires a do-block or HTML children/, fn ->
-        assigns = %{}
-        parse(~H"""
-        <.form for={:myform} />
-        """)
-      end
     end
 
     test "generates form with no options" do
@@ -157,24 +150,37 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert [
                {"form", [{"action", "#"}, {"method", "post"}],
                 [
-                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", _}], []},
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
                 ]}
              ] = html
     end
 
-    test "does not generate csrf_token if method is not post" do
+    test "does not generate csrf_token if method is not post or if no action" do
       assigns = %{}
 
       html =
         parse(~H"""
-        <.form let={f} for={:myform} method="get">
+        <.form let={f} for={:myform} method="get" action="/">
           <%= text_input f, :foo %>
         </.form>
         """)
 
       assert [
-               {"form", [{"action", "#"}, {"method", "get"}],
+               {"form", [{"action", "/"}, {"method", "get"}],
+                [
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+
+      html =
+        parse(~H"""
+        <.form let={f} for={:myform}>
+          <%= text_input f, :foo %>
+        </.form>
+        """)
+
+      assert [
+               {"form", [{"action", "#"}, {"method", "post"}],
                 [
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
                 ]}

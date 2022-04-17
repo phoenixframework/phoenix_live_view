@@ -9,6 +9,7 @@ defmodule Phoenix.LiveView.Channel do
 
   @prefix :phoenix
   @not_mounted_at_router :not_mounted_at_router
+  @max_host_size 253
 
   def start_link({endpoint, from}) do
     hibernate_after = endpoint.config(:live_view)[:hibernate_after] || 15000
@@ -147,8 +148,17 @@ defmodule Phoenix.LiveView.Channel do
         entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
 
         if event = entry && upload_conf.progress_event do
-          {:noreply, new_socket} = event.(upload_conf.name, entry, new_socket)
-          {new_socket, {:ok, {msg.ref, %{}}, state}}
+          case event.(upload_conf.name, entry, new_socket) do
+            {:noreply, %Socket{} = new_socket} ->
+              {new_socket, {:ok, {msg.ref, %{}}, state}}
+
+            other ->
+              raise ArgumentError, """
+              expected #{inspect(upload_conf.name)} upload progress #{inspect(event)} to return {:noreply, Socket.t()} got:
+
+                  #{inspect(other)}
+              """
+          end
         else
           {new_socket, {:ok, {msg.ref, %{}}, state}}
         end
@@ -260,8 +270,7 @@ defmodule Phoenix.LiveView.Channel do
     read_socket(state, cid, fn socket, _ ->
       result =
         with {:ok, uploads} <- Map.fetch(socket.assigns, :uploads),
-             {:ok, conf} <- Map.fetch(uploads, name),
-             do: {:ok, conf}
+             do: Map.fetch(uploads, name)
 
       {:reply, result, state}
     end)
@@ -294,6 +303,30 @@ defmodule Phoenix.LiveView.Channel do
     msg
     |> socket.view.handle_cast(socket)
     |> handle_result({:handle_cast, 2, nil}, state)
+  end
+
+  @impl true
+  def format_status(:terminate, [_pdict, state]) do
+    state
+  end
+
+  def format_status(:normal, [_pdict, %{} = state]) do
+    %{topic: topic, socket: socket, components: {cid_to_component, _, _}} = state
+    %Socket{view: view, parent_pid: parent_pid, transport_pid: transport_pid} = socket
+
+    [
+      data: [
+        {'LiveView', view},
+        {'Parent pid', parent_pid},
+        {'Transport pid', transport_pid},
+        {'Topic', topic},
+        {'Components count', map_size(cid_to_component)}
+      ]
+    ]
+  end
+
+  def format_status(_, [_pdict, state]) do
+    [data: [{'State', state}]]
   end
 
   @impl true
@@ -514,6 +547,7 @@ defmodule Phoenix.LiveView.Channel do
   defp unregister_upload(state, ref, entry_ref, cid) do
     write_socket(state, cid, nil, fn socket, _ ->
       conf = Upload.get_upload_by_ref!(socket, ref)
+
       new_state =
         if Enum.count(conf.entries) == 1 do
           drop_upload_name(state, conf.name)
@@ -844,10 +878,20 @@ defmodule Phoenix.LiveView.Channel do
             {:stop, :shutdown, :no_state}
 
           %{} ->
-            case authorize_session(verified, endpoint, params) do
-              {:ok, %Session{} = new_verified, route, url} ->
-                verified_mount(new_verified, route, url, params, from, phx_socket, connect_info)
-
+            with {:ok, %Session{view: view} = new_verified, route, url} <-
+                   authorize_session(verified, endpoint, params),
+                 {:ok, config} <- load_live_view(view) do
+              verified_mount(
+                new_verified,
+                config,
+                route,
+                url,
+                params,
+                from,
+                phx_socket,
+                connect_info
+              )
+            else
               {:error, :unauthorized} ->
                 GenServer.reply(from, {:error, %{reason: "unauthorized"}})
                 {:stop, :shutdown, :no_state}
@@ -870,23 +914,28 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, :shutdown, :no_session}
   end
 
-  defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
-    cond do
-      # flash_token is given by the client on live_redirects and has higher priority.
-      flash_token ->
-        Utils.verify_flash(endpoint, flash_token)
-
-      # verified.flash comes from the disconnected render, therefore we only want
-      # to load it we are not inside a live redirect and if it is our first mount.
-      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash ->
-        verified.flash
-
-      true ->
-        %{}
-    end
+  defp load_live_view(view) do
+    # Make sure the view is loaded. Otherwise if the first request
+    # ever is a LiveView connection, the view won't be loaded and
+    # the mount/handle_params callbacks won't be invoked as they
+    # are optional, leading to errors.
+    {:ok, view.__live__()}
+  rescue
+    # If it fails, then the only possible answer is that the live
+    # view has been renamed. So we force the client to reconnect.
+    _ -> {:error, :stale}
   end
 
-  defp verified_mount(%Session{} = verified, route, url, params, from, phx_socket, connect_info) do
+  defp verified_mount(
+         %Session{} = verified,
+         config,
+         route,
+         url,
+         params,
+         from,
+         phx_socket,
+         connect_info
+       ) do
     %Session{
       id: id,
       view: view,
@@ -897,12 +946,6 @@ defmodule Phoenix.LiveView.Channel do
       assign_new: assign_new,
       router: router
     } = verified
-
-    # Make sure the view is loaded. Otherwise if the first request
-    # ever is a LiveView connection, the view won't be loaded and
-    # the mount/handle_params callbacks won't be invoked as they
-    # are optional, leading to errors.
-    config = view.__live__()
 
     live_session_on_mount = load_live_session_on_mount(route)
     lifecycle = lifecycle(config, live_session_on_mount)
@@ -917,7 +960,9 @@ defmodule Phoenix.LiveView.Channel do
 
     # Optional verified parts
     flash = verify_flash(endpoint, verified, params["flash"], connect_params)
-    socket_session = connect_info[:session] || %{}
+
+    # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
+    socket_session = Map.get(connect_info, :session, %{})
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
@@ -939,7 +984,7 @@ defmodule Phoenix.LiveView.Channel do
 
     {params, host_uri, action} =
       case route do
-        %Route{} = route ->
+        %Route{uri: %URI{host: host}} = route when byte_size(host) <= @max_host_size ->
           {route.params, route.uri, route.action}
 
         nil ->
@@ -961,6 +1006,22 @@ defmodule Phoenix.LiveView.Channel do
       {:error, :noproc} ->
         GenServer.reply(from, {:error, %{reason: "stale"}})
         {:stop, :shutdown, :no_state}
+    end
+  end
+
+  defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
+    cond do
+      # flash_token is given by the client on live_redirects and has higher priority.
+      flash_token ->
+        Utils.verify_flash(endpoint, flash_token)
+
+      # verified.flash comes from the disconnected render, therefore we only want
+      # to load it we are not inside a live redirect and if it is our first mount.
+      not verified.redirected? && connect_params["_mounts"] == 0 && verified.flash ->
+        verified.flash
+
+      true ->
+        %{}
     end
   end
 

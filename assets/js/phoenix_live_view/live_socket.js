@@ -28,6 +28,10 @@
  * @param {Object} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
  * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
  * loading states.
+ * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
+ * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
+ * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
+ * @param {integer} [opts.failsafeJitter] - The time between reload attempts in failsafe mode.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -91,7 +95,8 @@ import {
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
-  RELOAD_JITTER,
+  RELOAD_JITTER_MIN,
+  RELOAD_JITTER_MAX,
 } from "./constants"
 
 import {
@@ -118,7 +123,7 @@ export default class LiveSocket {
       a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
 
           import {Socket} from "phoenix"
-          import LiveSocket from "phoenix_live_view"
+          import {LiveSocket} from "phoenix_live_view"
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `)
     }
@@ -133,8 +138,9 @@ export default class LiveSocket {
     this.prevActive = null
     this.silenced = false
     this.main = null
+    this.outgoingMainEl = null
+    this.clickStartedAtTarget = null
     this.linkRef = 1
-    this.clickRef = 1
     this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
@@ -142,6 +148,10 @@ export default class LiveSocket {
     this.hooks = opts.hooks || {}
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
+    this.maxReloads = opts.maxReloads || MAX_RELOADS
+    this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN
+    this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX
+    this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
@@ -164,11 +174,13 @@ export default class LiveSocket {
 
   isDebugEnabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
 
+  isDebugDisabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false" }
+
   enableDebug(){ this.sessionStorage.setItem(PHX_LV_DEBUG, "true") }
 
   enableProfiling(){ this.sessionStorage.setItem(PHX_LV_PROFILE, "true") }
 
-  disableDebug(){ this.sessionStorage.removeItem(PHX_LV_DEBUG) }
+  disableDebug(){ this.sessionStorage.setItem(PHX_LV_DEBUG, "false") }
 
   disableProfiling(){ this.sessionStorage.removeItem(PHX_LV_PROFILE) }
 
@@ -188,6 +200,8 @@ export default class LiveSocket {
   getSocket(){ return this.socket }
 
   connect(){
+    // enable debug by default if on localhost and not explicitly disabled
+    if(window.location.hostname === "localhost" && !this.isDebugDisabled()){ this.enableDebug() }
     let doConnect = () => {
       if(this.joinRootViews()){
         this.bindTopLevelEvents()
@@ -253,7 +267,7 @@ export default class LiveSocket {
     let latency = this.getLatencySim()
     let oldJoinCount = view.joinCount
     if(!latency){
-      if(opts.timeout){
+      if(this.isConnected() && opts.timeout){
         return push().receive("timeout", () => {
           if(view.joinCount === oldJoinCount && !view.isDestroyed()){
             this.reloadWithJitter(view, () => {
@@ -281,13 +295,14 @@ export default class LiveSocket {
   reloadWithJitter(view, log){
     view.destroy()
     this.disconnect()
-    let [minMs, maxMs] = RELOAD_JITTER
+    let minMs = this.reloadJitterMin
+    let maxMs = this.reloadJitterMax
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
     log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
-    if(tries > MAX_RELOADS){
-      this.log(view, "join", () => [`exceeded ${MAX_RELOADS} consecutive reloads. Entering failsafe mode`])
-      afterMs = FAILSAFE_JITTER
+    if(tries > this.maxReloads){
+      this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`])
+      afterMs = this.failsafeJitter
     }
     setTimeout(() => {
       if(this.hasPendingLink()){
@@ -332,8 +347,8 @@ export default class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
-    let oldMainEl = this.main.el
-    let newMainEl = DOM.cloneNode(oldMainEl, "")
+    this.outgoingMainEl = this.outgoingMainEl || this.main.el
+    let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
@@ -344,7 +359,8 @@ export default class LiveSocket {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
-          oldMainEl.replaceWith(newMainEl)
+          this.outgoingMainEl.replaceWith(newMainEl)
+          this.outgoingMainEl = null
           callback && callback()
           onDone()
         })
@@ -445,6 +461,12 @@ export default class LiveSocket {
     if(this.boundTopLevelEvents){ return }
 
     this.boundTopLevelEvents = true
+    // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
+    this.socket.onClose(event => {
+      if(event && event.code === 1000 && this.main){
+        this.reloadWithJitter(this.main)
+      }
+    })
     document.body.addEventListener("click", function (){ }) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
       if(e.persisted){ // reload page if being restored from back/forward cache
@@ -553,6 +575,7 @@ export default class LiveSocket {
   }
 
   bindClicks(){
+    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
     this.bindClick("click", "click", false)
     this.bindClick("mousedown", "capture-click", true)
   }
@@ -560,15 +583,14 @@ export default class LiveSocket {
   bindClick(eventName, bindingName, capture){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
-      if(!this.isConnected()){ return }
-      this.clickRef++
-      let clickRefWas = this.clickRef
       let target = null
       if(capture){
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
       } else {
-        target = closestPhxBinding(e.target, click)
-        this.dispatchClickAway(e, clickRefWas)
+        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+        target = closestPhxBinding(clickStartedAtTarget, click)
+        this.dispatchClickAway(e, clickStartedAtTarget)
+        this.clickStartedAtTarget = null
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
@@ -576,25 +598,20 @@ export default class LiveSocket {
 
       this.debounce(target, e, () => {
         this.withinOwners(target, view => {
-          if(DOM.private(target, "click-ref") !== clickRefWas){
-            JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
-          }
+          JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
     }, capture)
   }
 
-  dispatchClickAway(e, clickRefWas){
+  dispatchClickAway(e, clickStartedAt){
     let phxClickAway = this.binding("click-away")
-    let phxClick = this.binding("click")
     DOM.all(document, `[${phxClickAway}]`, el => {
-      if(!(el.isSameNode(e.target) || el.contains(e.target))){
+      if(!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(phxClickAway)
           if(JS.isVisible(el)){
-            let target = e.target.closest(`[${phxClick}]`) || e.target
-            DOM.putPrivate(target, "click-ref", clickRefWas)
-            JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, e.target)}])
+            JS.exec("click", phxEvent, view, el, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })
       }
@@ -636,9 +653,11 @@ export default class LiveSocket {
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1
       if(!type || !this.isConnected() || !this.main || wantsNewTab){ return }
+
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
+      e.stopImmediatePropagation() // do not bubble click to regular phx-click bindings
       if(this.pendingLink === href){ return }
 
       this.requestDOMUpdate(() => {
@@ -654,7 +673,7 @@ export default class LiveSocket {
   }
 
   dispatchEvent(event, payload = {}){
-    DOM.dispatchEvent(window, `phx:${event}`, payload)
+    DOM.dispatchEvent(window, `phx:${event}`, {detail: payload})
   }
 
   dispatchEvents(events){
@@ -662,8 +681,8 @@ export default class LiveSocket {
   }
 
   withPageLoading(info, callback){
-    DOM.dispatchEvent(window, "phx:page-loading-start", info)
-    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", info)
+    DOM.dispatchEvent(window, "phx:page-loading-start", {detail: info})
+    let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", {detail: info})
     return callback ? callback(done) : done
   }
 
@@ -722,10 +741,15 @@ export default class LiveSocket {
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
+        let phxChange = this.binding("change")
         let input = e.target
-        let phxEvent = input.form && input.form.getAttribute(this.binding("change"))
+        let inputEvent = input.getAttribute(phxChange)
+        let formEvent = input.form && input.form.getAttribute(phxChange)
+        let phxEvent = inputEvent || formEvent
         if(!phxEvent){ return }
         if(input.type === "number" && input.validity && input.validity.badInput){ return }
+
+        let dispatcher = inputEvent ? input : input.form
         let currentIterations = iterations
         iterations++
         let {at: at, type: lastType} = DOM.private(input, "prev-iteration") || {}
@@ -735,12 +759,12 @@ export default class LiveSocket {
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
         this.debounce(input, e, () => {
-          this.withinOwners(input.form, view => {
+          this.withinOwners(dispatcher, view => {
             DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name}])
+            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
       }, false)

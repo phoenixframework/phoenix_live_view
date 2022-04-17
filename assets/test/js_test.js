@@ -11,7 +11,11 @@ let setupView = (content) => {
 }
 
 let simulateVisibility = el => {
-  el.getClientRects = () => [1]
+  el.getClientRects = () => {
+    let style = window.getComputedStyle(el)
+    let visible = !(style.opacity === 0 || style.display === "none")
+    return visible ? {length: 1} : {length: 0}
+  }
   return el
 }
 
@@ -21,7 +25,7 @@ describe("JS", () => {
   })
 
   describe("exec_toggle", () => {
-    test("with defaults", () => {
+    test("with defaults", done => {
       let view = setupView(`
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal"}]]'></div>
@@ -39,17 +43,22 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("block")
-      expect(showEndCalled).toBe(true)
-      expect(hideEndCalled).toBe(true)
-      expect(showStartCalled).toBe(true)
-      expect(hideStartCalled).toBe(true)
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
+        window.requestAnimationFrame(() => {
+          expect(modal.style.display).toEqual("block")
+          expect(showEndCalled).toBe(true)
+          expect(hideEndCalled).toBe(true)
+          expect(showStartCalled).toBe(true)
+          expect(hideStartCalled).toBe(true)
+          done()
+        })
+      })
     })
 
-    test("with display", () => {
+    test("with display", done => {
       let view = setupView(`
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "inline-block"}]]'></div>
@@ -67,14 +76,19 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("inline-block")
-      expect(showEndCalled).toBe(true)
-      expect(hideEndCalled).toBe(true)
-      expect(showStartCalled).toBe(true)
-      expect(hideStartCalled).toBe(true)
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
+        window.requestAnimationFrame(() => {
+          expect(modal.style.display).toEqual("inline-block")
+          expect(showEndCalled).toBe(true)
+          expect(hideEndCalled).toBe(true)
+          expect(showStartCalled).toBe(true)
+          expect(hideStartCalled).toBe(true)
+          done()
+        })
+      })
     })
 
     test("with in and out classes", done => {
@@ -179,41 +193,47 @@ describe("JS", () => {
     test("with details", done => {
       let view = setupView(`
       <div id="modal">modal</div>
-      <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click", "detail": {"id": 123}}]]'></div>
+      <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "click"}]]'></div>
+      <div id="close" phx-click='[["dispatch", {"to": "#modal", "event": "close", "detail": {"id": 1}}]]'></div>
       `)
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
+      let close = document.querySelector("#close")
 
-      modal.addEventListener("click", (e) => {
-        expect(e.detail).toEqual({id: 123})
-        done()
+      modal.addEventListener("close", e => {
+        expect(e.detail).toEqual({id: 1, dispatcher: close})
+        modal.addEventListener("click", e => {
+          expect(e.detail).toEqual(0)
+          done()
+        })
+        JS.exec("click", click.getAttribute("phx-click"), view, click)
       })
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      JS.exec("close", close.getAttribute("phx-click"), view, close)
     })
 
     test("with multiple selector", done => {
       let view = setupView(`
       <div id="modal1" class="modal">modal1</div>
       <div id="modal2" class="modal">modal2</div>
-      <div id="click" phx-click='[["dispatch", {"to": ".modal", "event": "click", "detail": {"id": 123}}]]'></div>
+      <div id="close" phx-click='[["dispatch", {"to": ".modal", "event": "close", "detail": {"id": 123}}]]'></div>
       `)
       let modal1Clicked = false
       let modal1 = document.querySelector("#modal1")
       let modal2 = document.querySelector("#modal2")
-      let click = document.querySelector("#click")
+      let close = document.querySelector("#close")
 
-      modal1.addEventListener("click", (e) => {
-       modal1Clicked = true
-        expect(e.detail).toEqual({id: 123})
+      modal1.addEventListener("close", (e) => {
+        modal1Clicked = true
+        expect(e.detail).toEqual({id: 123, dispatcher: close})
       })
 
-      modal2.addEventListener("click", (e) => {
+      modal2.addEventListener("close", (e) => {
         expect(modal1Clicked).toBe(true)
-        expect(e.detail).toEqual({id: 123})
+        expect(e.detail).toEqual({id: 123, dispatcher: close})
         done()
       })
 
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      JS.exec("close", close.getAttribute("phx-click"), view, close)
     })
   })
 
@@ -285,7 +305,7 @@ describe("JS", () => {
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
 
-    test("change event", done => {
+    test("form change event with JS command", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <form id="my-form" phx-change='[["push", {"event": "validate", "_target": "username"}]]' phx-submit="submit">
@@ -295,27 +315,127 @@ describe("JS", () => {
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
       view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, callback) => {
+        expect(phxEvent).toBe("validate")
         expect(sourceEl.isSameNode(input)).toBe(true)
         expect(_target).toBe(input.name)
         done()
       }
-      JS.exec("change", form.getAttribute("phx-change"), view, input)
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", form.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("form change event with string event", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username" />
+        <input type="text" name="other" id="other" phx-change="other_changed" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("validate")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "validate",
+          type: "form",
+          uploads: {},
+          value: "username=&other=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", form.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("input change event with JS command", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username1" phx-change='[["push", {"event": "username_changed", "_target": "username"}]]'/>
+        <input type="text" name="other" id="other" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username1")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("username_changed")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "username_changed",
+          type: "form",
+          uploads: {},
+          value: "username=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", input.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("input change event with string event", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form" phx-change='validate' phx-submit="submit">
+        <input type="text" name="username" id="username" phx-change='username_changed' />
+        <input type="text" name="other" id="other" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username")
+      let oldPush = view.pushInput.bind(view)
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
+        let {_target} = opts
+        expect(phxEvent).toBe("username_changed")
+        expect(sourceEl.isSameNode(input)).toBe(true)
+        expect(_target).toBe(input.name)
+        oldPush(sourceEl, targetCtx, newCid, phxEvent, opts, callback)
+      }
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          cid: null,
+          event: "username_changed",
+          type: "form",
+          uploads: {},
+          value: "username=&_target=username"
+        })
+        done()
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec("change", input.getAttribute("phx-change"), view, input, args)
     })
 
     test("submit event", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <form id="my-form" phx-change="validate" phx-submit='[["push", {"event": "save"}]]'>
-        <input type="text" name="username" id="username" phx-click=''></div>
+        <input type="text" name="username" id="username" />
+        <input type="text" name="desc" id="desc" phx-change="desc_changed" />
       </form>
       `)
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
-      view.submitForm = (sourceEl, targetCtx, phxEvent) => {
-        expect(sourceEl.isSameNode(input)).toBe(true)
+
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": "username=&desc="})
         done()
       }
-      JS.exec("submit", form.getAttribute("phx-submit"), view, input, ["push", {}])
+      JS.exec("submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
     })
 
     test("page_loading", done => {
@@ -375,7 +495,9 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      expect(modal.style.display).toEqual("none")
+      window.requestAnimationFrame(() => {
+        expect(modal.style.display).toEqual("none")
+      })
     })
   })
 
@@ -414,6 +536,33 @@ describe("JS", () => {
       JS.exec("click", remove.getAttribute("phx-click"), view, remove)
       expect(remove.getAttribute("class")).toEqual(null)
     })
+
+    test("setting a pre-existing attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal" aria-expanded="false">modal</div>
+      <div id="set" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
+      `)
+      let set = document.querySelector("#set")
+
+      expect(modal.getAttribute("aria-expanded")).toEqual("false")
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(modal.getAttribute("aria-expanded")).toEqual("true")
+    })
+
+    test("setting a dynamically added attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="set-false" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "false"]}]]'></div>
+      <div id="set-true" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
+      `)
+      let setFalse = document.querySelector("#set-false")
+      let setTrue = document.querySelector("#set-true")
+
+      expect(modal.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", setFalse.getAttribute("phx-click"), view, setFalse)
+      expect(modal.getAttribute("aria-expanded")).toEqual("false")
+      JS.exec("click", setTrue.getAttribute("phx-click"), view, setTrue)
+      expect(modal.getAttribute("aria-expanded")).toEqual("true")
+    })
   })
 })
-

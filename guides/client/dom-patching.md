@@ -42,9 +42,11 @@ to be discarded after the client has been patched.
 Imagine you want to implement a chat application with LiveView. You
 could render each message like this:
 
-    <%= for message <- @messages do %>
-      <p><span><%= message.username %>:</span> <%= message.text %></p>
-    <% end %>
+```heex
+<%= for message <- @messages do %>
+  <p><span><%= message.username %>:</span> <%= message.text %></p>
+<% end %>
+```
 
 Every time there is a new message, you would append it to the `@messages`
 assign and re-render all messages.
@@ -76,13 +78,15 @@ In the template, we want to wrap all of the messages in a container
 and tag this content with `phx-update`. Remember, we must add an ID
 to the container as well as to each child:
 
-    <div id="chat-messages" phx-update="append">
-      <%= for message <- @messages do %>
-        <p id={message.id}>
-          <span><%= message.username %>:</span> <%= message.text %>
-        </p>
-      <% end %>
-    </div>
+```heex
+<div id="chat-messages" phx-update="append">
+  <%= for message <- @messages do %>
+    <p id={message.id}>
+      <span><%= message.username %>:</span> <%= message.text %>
+    </p>
+  <% end %>
+</div>
+```
 
 When the client receives new messages, it now knows to append to the
 old content rather than replace it.

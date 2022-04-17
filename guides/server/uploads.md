@@ -43,8 +43,8 @@ template.
 Use the `Phoenix.LiveView.Helpers.live_file_input/2` file
 input generator to render a file input for the upload:
 
-```elixir
-# lib/my_app_web/live/upload_live.html.heex
+```heex
+<%# lib/my_app_web/live/upload_live.html.heex %>
 
 <form id="upload-form" phx-submit="save" phx-change="validate">
   <%= live_file_input @uploads.avatar %>
@@ -73,8 +73,8 @@ info, errors, etc.
 
 Let's look at an annotated example:
 
-```elixir
-# lib/my_app_web/live/upload_live.html.heex
+```heex
+<%# lib/my_app_web/live/upload_live.html.heex %>
 
 <%# use phx-drop-target with the upload ref to enable file drag and drop %>
 <section phx-drop-target={@uploads.avatar.ref}>
@@ -101,6 +101,11 @@ Let's look at an annotated example:
     <% end %>
 
   </article>
+<% end %>
+
+<%# Phoenix.LiveView.Helpers.upload_errors/1 returns a list of error atoms %>
+<%= for err <- upload_errors(@uploads.avatar) do %>
+  <p class="alert alert-danger"><%= error_to_string(err) %></p>
 <% end %>
 
 </section>
@@ -137,8 +142,15 @@ helper function to render a friendly error message:
 
 ```elixir
 def error_to_string(:too_large), do: "Too large"
-def error_to_string(:too_many_files), do: "You have selected too many files"
 def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+```
+
+For error messages that affect all entries, use
+`Phoenix.LiveView.Helpers.upload_errors/1`, and your own
+helper function to render a friendly error message:
+
+```elixir
+def error_to_string(:too_many_files), do: "You have selected too many files"
 ```
 
 ### Cancel an entry
@@ -171,6 +183,7 @@ def handle_event("save", _params, socket) do
   uploaded_files =
     consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
       dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+      # The `static/uploads` directory must exist for `File.cp!/2` to work.
       File.cp!(path, dest)
       {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
     end)

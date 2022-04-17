@@ -36,6 +36,9 @@ defmodule Phoenix.LiveView.Helpers do
   > file:line:column information in error messages. Earlier Elixir versions will
   > work but will show inaccurate error messages.
 
+  > Note: The HEEx HTML formatter requires Elixir >= 1.13.0. See the
+  > `Phoenix.LiveView.HTMLFormatter` for more information on template formatting.
+
   `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
 
     * Built-in handling of HTML attributes
@@ -104,6 +107,16 @@ defmodule Phoenix.LiveView.Helpers do
         ...
       </div>
 
+  The following attribute values have special meaning:
+
+    * `true` - if a value is `true`, the attribute is rendered with no value at all.
+      For example, `<input required={true}>` is the same as `<input required>`;
+
+    * `false` or `nil` - if a value is `false` or `nil`, the attribute is not rendered;
+
+    * `list` (only for the `class` attribute) - each element of the list is processed
+      as a different class. `nil` and `false` elements are discarded.
+
   For multiple dynamic attributes, you can use the same notation but without
   assigning the expression to any specific attribute.
 
@@ -113,6 +126,18 @@ defmodule Phoenix.LiveView.Helpers do
 
   The expression inside `{...}` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
+
+  You can pair this notation `assigns_to_attributes/2` to strip out any internal
+  LiveView attributes and user-defined assigns from being expanded into the HTML tag:
+
+      <div {assigns_to_attributes(assigns, [:visible])}>
+        ...
+      </div>
+
+  The above would add all caller attributes into the HTML, but strip out LiveView
+  assigns like slots, as well as user-defined assigns like `:visible` that are not
+  meant to be added to the HTML itself. This appraoch is useful to allow a component
+  to accept arbitrary HTML attributes like class, ARIA attributes, etc.
 
   ### HEEx extension: Defining function components
 
@@ -153,6 +178,10 @@ defmodule Phoenix.LiveView.Helpers do
   more about components in `Phoenix.Component`.
   '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+    unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
+      raise "~H requires a variable named \"assigns\" to exist and be set to a map"
+    end
+
     options = [
       engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
@@ -327,16 +356,21 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a LiveView within an originating plug request or
-  within a parent LiveView.
+  Renders a LiveView within a template.
+
+  This is useful in two situations:
+
+    * When rendering a child LiveView inside a LiveView
+
+    * When rendering a LiveView inside a regular (non-live) controller/view
 
   ## Options
 
     * `:session` - a map of binary keys with extra session data to be
-      serialized and sent to the client. Note that all session data
-      currently in the connection is automatically available in LiveViews.
-      You can use this option to provide extra data. Remember all session
-      data is serialized and sent to the client. So you should always
+      serialized and sent to the client. All session data currently in
+      the connection is automatically available in LiveViews. You can
+      use this option to provide extra data. Remember all session data
+      is serialized and sent to the client, so you should always
       keep the data in the session to a minimum. For example, instead
       of storing a User struct, you should store the "user_id" and load
       the User when the LiveView mounts.
@@ -351,26 +385,31 @@ defmodule Phoenix.LiveView.Helpers do
       An `:id` is automatically generated when rendering root LiveViews
       but it is a required option when rendering a child LiveView.
 
-    * `:router` - an optional router that enables this LiveView to
-      perform live navigation. Only a single LiveView in a page may
-      have the `:router` set. LiveViews defined at the router with
-      the `live` macro automatically have the `:router` option set.
-
-    * `:sticky` - an optional flag to maintain the live view across
-      live redirects, even if it is nested within another parent.
+    * `:sticky` - an optional flag to maintain the LiveView across
+      live redirects, even if it is nested within another LiveView.
+      If you are rendering the sticky view within your live layout,
+      make sure that the sticky view itself does not use the same
+      layout. You can do so by returning `{:ok, socket, layout: false}`
+      from mount.
 
   ## Examples
 
-      # within eex template
+  When rendering from a controller/view, you can call:
+
       <%= live_render(@conn, MyApp.ThermostatLive) %>
 
-      # within leex template
+  Or:
+
+      <%= live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id}) %>
+
+  Within another LiveView, you must pass the `:id` option:
+
       <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
 
   ## Containers
 
   When a `LiveView` is rendered, its contents are wrapped in a container.
-  By default, said container is a `div` tag with a handful of `LiveView`
+  By default, the container is a `div` tag with a handful of `LiveView`
   specific attributes.
 
   The container can be customized in different ways:
@@ -473,15 +512,19 @@ defmodule Phoenix.LiveView.Helpers do
 
     2. Then instead of:
 
-          <%= live_component MyModule, id: "hello" do %>
-            ...
-          <% end %>
+       ```
+       <%= live_component MyModule, id: "hello" do %>
+       ...
+       <% end %>
+       ```
 
        You should do:
 
-          <.live_component module={MyModule} id="hello">
-            ...
-          </.live_component>
+       ```
+       <.live_component module={MyModule} id="hello">
+       ...
+       </.live_component>
+       ```
 
     3. If your component is using `render_block/2`, replace
        it by `render_slot/2`
@@ -556,6 +599,15 @@ defmodule Phoenix.LiveView.Helpers do
   def __live_component__(%{kind: kind, module: module}, assigns, _inner)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
+  end
+
+  defp rewrite_do!(do_block, key, caller) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      rewrite_do(do_block, key)
+    else
+      raise ArgumentError,
+            "cannot use live_component because the assigns var is unbound/unset"
+    end
   end
 
   @doc """
@@ -659,7 +711,7 @@ defmodule Phoenix.LiveView.Helpers do
           <tr>
             <%= for col <- @col do %>
               <th><%= col.label %></th>
-            <% end >
+            <% end %>
           </tr>
           <%= for row <- @rows do %>
             <tr>
@@ -724,16 +776,7 @@ defmodule Phoenix.LiveView.Helpers do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    rewrite_do!(do_block, name, __CALLER__)
-  end
-
-  defp rewrite_do!(do_block, key, caller) do
-    if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, key)
-    else
-      raise ArgumentError,
-            "cannot use component/live_component because the assigns var is unbound/unset"
-    end
+    rewrite_do(do_block, name)
   end
 
   defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
@@ -797,7 +840,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Returns the entry errors for an upload.
 
-  The following errors may be returned:
+  The following error may be returned:
 
     * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
 
@@ -855,7 +898,7 @@ defmodule Phoenix.LiveView.Helpers do
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
     attrs =
       Keyword.merge(opts,
-        id: "phx-preview-#{ref}",
+        id: opts[:id] || "phx-preview-#{ref}",
         data_phx_upload_ref: entry.upload_ref,
         data_phx_entry_ref: ref,
         data_phx_hook: "Phoenix.LiveImgPreview",
@@ -878,7 +921,7 @@ defmodule Phoenix.LiveView.Helpers do
   attribute pointing to the DOM ID of the file input. By default, the file input ID is the
   upload `ref`, so the following markup is all that is required for drag and drop support:
 
-      <div class="container" phx-drop-target="<%= @uploads.avatar.ref %>">
+      <div class="container" phx-drop-target={@uploads.avatar.ref}>
           ...
           <%= live_file_input @uploads.avatar %>
       </div>
@@ -963,9 +1006,13 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Options
 
-  The `:for` assign is the form's source data and the optional `:action`
-  assign can be provided for the form's action. Additionally accepts
-  the same options as `Phoenix.HTML.Form.form_for/4` as optional assigns:
+  The following assign is required:
+
+    * `:for` - the form source data
+
+  The following assigns are optional:
+
+    * `:action` - the action to submit the form on. Defaults to "#".
 
     * `:as` - the server side parameter in which all params for this
       form will be collected (i.e. `as: :user_params` would mean all fields
@@ -979,9 +1026,9 @@ defmodule Phoenix.LiveView.Helpers do
     * `:multipart` - when true, sets enctype to "multipart/form-data".
       Required when uploading files
 
-    * `:csrf_token` - for "post" requests, the form tag will automatically
-      include an input tag with name `_csrf_token`. When set to false, this
-      is disabled
+    * `:csrf_token` - for "post" requests with an `:action`, the form tag
+      will automatically include an input tag with name `_csrf_token`.
+      When set to false, this is disabled
 
     * `:errors` - use this to manually pass a keyword list of errors to the form
       (for example from `conn.assigns[:errors]`). This option is only used when a
@@ -1005,7 +1052,8 @@ defmodule Phoenix.LiveView.Helpers do
   """
   def form(assigns) do
     # Extract options and then to the same call as form_for
-    action = assigns[:action] || "#"
+    assigns_action = assigns[:action]
+    action = assigns_action || "#"
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
     form_options = assigns_to_attributes(assigns, [:action, :for])
 
@@ -1022,7 +1070,9 @@ defmodule Phoenix.LiveView.Helpers do
 
     {csrf_token, opts} =
       Keyword.pop_lazy(opts, :csrf_token, fn ->
-        if method == "post", do: Phoenix.HTML.Tag.csrf_token_value(action)
+        if method == "post" and assigns_action != nil do
+          Plug.CSRFProtection.get_csrf_token_for(action)
+        end
       end)
 
     opts =
@@ -1059,9 +1109,6 @@ defmodule Phoenix.LiveView.Helpers do
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
       match?({^assign_name, _, _}, expression) or
-      match?(
-        {{:., _, [Phoenix.LiveView.Engine, :fetch_assign!]}, _, [{:assigns, _, _}, ^assign_name]},
-        expression
-      )
+      match?({{:., _, [{:assigns, _, nil}, ^assign_name]}, _, []}, expression)
   end
 end

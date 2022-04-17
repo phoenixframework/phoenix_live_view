@@ -662,9 +662,13 @@ describe("View Hooks", function(){
   test("hooks", async () => {
     let upcaseWasDestroyed = false
     let upcaseBeforeUpdate = false
+    let hookLiveSocket
     let Hooks = {
       Upcase: {
-        mounted(){ this.el.innerHTML = this.el.innerHTML.toUpperCase() },
+        mounted(){
+          hookLiveSocket = this.liveSocket
+          this.el.innerHTML = this.el.innerHTML.toUpperCase()
+        },
         beforeUpdate(){ upcaseBeforeUpdate = true },
         updated(){ this.el.innerHTML = this.el.innerHTML + " updated" },
         disconnected(){ this.el.innerHTML = "disconnected" },
@@ -700,6 +704,7 @@ describe("View Hooks", function(){
 
     view.update({s: ["<div></div>"], fingerprint: 123}, [])
     expect(upcaseWasDestroyed).toBe(true)
+    expect(hookLiveSocket).toBeDefined()
   })
 
   test("view destroyed", async () => {

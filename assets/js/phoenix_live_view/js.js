@@ -17,26 +17,30 @@ let JS = {
   },
 
   isVisible(el){
-    let style = window.getComputedStyle(el)
-    return !(style.opacity === 0 || style.display === "none")
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0)
   },
 
   // private
 
   // commands
 
-  exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail}){
-    DOM.dispatchEvent(el, event, detail)
+  exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
+    detail = detail || {}
+    detail.dispatcher = sourceEl
+    DOM.dispatchEvent(el, event, {detail, bubbles})
   },
 
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
-    let {event, data, target, page_loading, loading, value} = args
-    let pushOpts = {page_loading: !!page_loading, loading: loading, value: value}
-    let targetSrc = eventType === "change" ? sourceEl.form : sourceEl
+    if(!view.isConnected()){ return }
+
+    let {event, data, target, page_loading, loading, value, dispatcher} = args
+    let pushOpts = {loading, value, target, page_loading: !!page_loading}
+    let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "change"){
         let {newCid, _target, callback} = args
+        _target = _target || (sourceEl instanceof HTMLInputElement ? sourceEl.name : undefined)
         if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
@@ -132,13 +136,17 @@ let JS = {
       }
     } else {
       if(this.isVisible(el)){
-        el.dispatchEvent(new Event("phx:hide-start"))
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-        el.dispatchEvent(new Event("phx:hide-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:hide-start"))
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+          el.dispatchEvent(new Event("phx:hide-end"))
+        })
       } else {
-        el.dispatchEvent(new Event("phx:show-start"))
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = display || "block")
-        el.dispatchEvent(new Event("phx:show-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:show-start"))
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = display || "block")
+          el.dispatchEvent(new Event("phx:show-end"))
+        })
       }
     }
   },
@@ -167,10 +175,10 @@ let JS = {
 
   setOrRemoveAttrs(el, sets, removes){
     let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
-    let keepSets = sets.filter(([attr, _val]) => !this.hasSet(prevSets, attr) && !el.attributes.getNamedItem(attr))
-    let keepRemoves = removes.filter(attr => prevRemoves.indexOf(attr) < 0 && el.attributes.getNamedItem(attr))
-    let newSets = prevSets.filter(([attr, _val]) => removes.indexOf(attr) < 0).concat(keepSets)
-    let newRemoves = prevRemoves.filter(attr => !this.hasSet(sets, attr)).concat(keepRemoves)
+
+    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
+    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
+    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
 
     DOM.putSticky(el, "attrs", currentEl => {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))
@@ -178,8 +186,6 @@ let JS = {
       return [newSets, newRemoves]
     })
   },
-
-  hasSet(sets, nameSearch){ return sets.find(([name, val]) => name === nameSearch) },
 
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
 

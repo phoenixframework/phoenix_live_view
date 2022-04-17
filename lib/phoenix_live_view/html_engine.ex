@@ -59,10 +59,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     token_state =
       state
-      |> token_state()
+      |> token_state(nil)
       |> handle_tokens(tokens)
+      |> validate_unclosed_tags!("template")
 
-    validate_unclosed_tags!(token_state)
     opts = [root: token_state.root || false]
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
@@ -78,26 +78,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp validate_unclosed_tags!(%{tags: []} = state) do
+  defp validate_unclosed_tags!(%{tags: []} = state, _context) do
     state
   end
 
-  defp validate_unclosed_tags!(%{tags: [tag | _]} = state) do
+  defp validate_unclosed_tags!(%{tags: [tag | _]} = state, context) do
     {:tag_open, name, _attrs, %{line: line, column: column}} = tag
     file = state.file
-    message = "end of file reached without closing tag for <#{name}>"
+    message = "end of #{context} reached without closing tag for <#{name}>"
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
   @doc false
   def handle_end(state) do
     state
-    |> token_state()
+    |> token_state(false)
     |> handle_tokens(Enum.reverse(state.tokens))
+    |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(%{subengine: subengine, substate: substate, file: file, module: module, caller: caller}) do
+  defp token_state(%{subengine: subengine, substate: substate, file: file, module: module, caller: caller}, root) do
     %{
       subengine: subengine,
       substate: substate,
@@ -105,9 +106,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       slots: [],
-      root: nil,
       module: module,
-      caller: caller
+      caller: caller,
+      root: root
     }
   end
 
@@ -127,6 +128,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     handle_text(state, [], text)
   end
 
+  @doc false
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
     {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
@@ -437,6 +439,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
+    validate_phx_attrs!(attrs, tag_meta, state)
 
     state
     |> set_root_on_tag()
@@ -446,6 +449,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
+    validate_phx_attrs!(attrs, tag_meta, state)
+
     state
     |> set_root_on_tag()
     |> push_tag(token)
@@ -611,9 +616,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ArgumentError, "expected a binary in <>, got: #{inspect(value)}"
   end
 
-  defp safe_unless_special("aria"), do: "aria"
-  defp safe_unless_special("class"), do: "class"
-  defp safe_unless_special("data"), do: "data"
+  # We mark attributes as safe so we don't escape them
+  # at rendering time. However, some attributes are
+  # specially handled, so we keep them as strings shape.
+  defp safe_unless_special("id"), do: :id
+  defp safe_unless_special("aria"), do: :aria
+  defp safe_unless_special("class"), do: :class
+  defp safe_unless_special("data"), do: :data
   defp safe_unless_special(name), do: {:safe, name}
 
   ## build_self_close_component_assigns/build_component_assigns
@@ -802,4 +811,54 @@ defmodule Phoenix.LiveView.HTMLEngine do
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
   end
+
+  # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
+  # there is no ID attribute set.
+  defp validate_phx_attrs!(attrs, meta, state),
+    do: validate_phx_attrs!(attrs, meta, state, nil, false)
+
+  defp validate_phx_attrs!([], meta, state, attr, false)
+       when attr in ["phx-update", "phx-hook"] do
+    message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
+
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: message
+  end
+
+  defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
+
+  # Handle <div phx-update="ignore" {@some_var}>Content</div> since here the ID
+  # might be inserted dynamically so we can't raise at compile time.
+  defp validate_phx_attrs!([{:root, _, _} | t], meta, state, attr, _id?),
+    do: validate_phx_attrs!(t, meta, state, attr, true)
+
+  defp validate_phx_attrs!([{"id", _, _} | t], meta, state, attr, _id?),
+    do: validate_phx_attrs!(t, meta, state, attr, true)
+
+  defp validate_phx_attrs!([{"phx-update", {:string, value, _meta}, _} | t], meta, state, _attr, id?) do
+    if value in ~w(ignore append prepend replace) do
+      validate_phx_attrs!(t, meta, state, "phx-update", id?)
+    else
+      message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
+
+      raise ParseError,
+        line: meta.line,
+        column: meta.column,
+        file: state.file,
+        description: message
+    end
+  end
+
+  defp validate_phx_attrs!([{"phx-update", _attrs, _} | t], meta, state, _attr, id?) do
+    validate_phx_attrs!(t, meta, state, "phx-update", id?)
+  end
+
+  defp validate_phx_attrs!([{"phx-hook", _, _} | t], meta, state, _attr, id?),
+    do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
+
+  defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
+    do: validate_phx_attrs!(t, meta, state, attr, id?)
 end

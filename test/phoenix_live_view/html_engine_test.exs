@@ -201,7 +201,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(template, assigns) == "text\nnot text"
 
     template = ~S"""
-    <%= for i <- 1..3 do %>
+    <%= for i <- ["id1", "id2", "id3"] do %>
       <div id={i}>
         <%= Phoenix.LiveView.HTMLEngineTest.do_block do %>
           <%= i %>
@@ -210,8 +210,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     <% end %>
     """
 
-    # A bug made it so "id=1" was not handled properly
-    assert render(template, assigns) =~ ~s'<div id="1">'
+    # A bug made it so "id={id}" was not handled properly
+    assert render(template, assigns) =~ ~s'<div id="id1">'
   end
 
   test "optimizes class attributes" do
@@ -483,6 +483,26 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           let={var1}
           let={var2}
         />
+        """)
+      end)
+    end
+
+    test "raise on unclosed local call" do
+      message = ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component value='1' let={var}>
+        """)
+      end)
+
+      message = ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <%= if true do %>
+          <.local_function_component value='1' let={var}>
+        <% end %>
         """)
       end)
     end
@@ -982,6 +1002,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
+      message = ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+        <%= if true do %>
+          <:sample>
+            <p>Content</p>
+          </:sample>
+        <% end %>
+        </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+        """)
+      end)
+
       message = ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
@@ -1040,6 +1074,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "tag validations" do
+    test "handles style" do
+      assert render("<style>a = '<a>';<%= :b %> = '<b>';</style>") ==
+               "<style>a = '<a>';b = '<b>';</style>"
+    end
+
     test "handles script" do
       assert render("<script>a = '<a>';<%= :b %> = '<b>';</script>") ==
                "<script>a = '<a>';b = '<b>';</script>"
@@ -1110,7 +1149,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing closing tag" do
-      message = ~r/.exs:2:(1:)? end of file reached without closing tag for <div>/
+      message = ~r/.exs:2:(1:)? end of template reached without closing tag for <div>/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1119,7 +1158,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:2:(3:)? end of file reached without closing tag for <span>/
+      message = ~r/.exs:2:(3:)? end of template reached without closing tag for <span>/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1151,6 +1190,85 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div foo={<%= @foo %>}>bar</div>
         """)
       end)
+    end
+  end
+
+  describe "html validations" do
+    test "phx-update attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-update\" requires the \"id\" attribute to be set/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore" class="foo">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update="ignore" class="foo" />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-update={@value}>Content</div>
+        """)
+      end)
+
+      assert eval("""
+             <div id="id" phx-update={@value}>Content</div>
+             """)
+    end
+
+    test "validates phx-update values" do
+      message =
+        ~r/.exs:1:(1:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div id="id" phx-update="bar">
+          Content
+        </div>
+        """)
+      end)
+    end
+
+    test "phx-hook attr requires an unique ID" do
+      message = ~r/.exs:1:(1:)? attribute \"phx-hook\" requires the \"id\" attribute to be set/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="MyHook">
+          Content
+        </div>
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div phx-hook="MyHook" />
+        """)
+      end)
+    end
+
+    test "don't raise when there are dynamic variables" do
+      assert eval("""
+             <div phx-hook="MyHook" {@some_var}>Content</div>
+             """)
+
+      assert eval("""
+             <div phx-update="ignore" {@some_var}>Content</div>
+             """)
     end
   end
 

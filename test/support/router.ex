@@ -101,6 +101,7 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration components
     live "/component_in_live", ComponentInLive.Root
     live "/cids_destroyed", CidsDestroyedLive
+    live "/component_and_nested_in_live", ComponentAndNestedInLive
 
     # integration lifecycle
     live "/lifecycle", HooksLive
@@ -112,6 +113,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/components", HooksLive.WithComponent
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
     live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
+
+    # integration connect
+    live "/connect", ConnectLive
 
     # live_patch
     scope host: "app.example.com" do

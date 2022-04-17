@@ -34,13 +34,22 @@ defmodule Phoenix.ComponentTest do
 
     defp changed(assigns) do
       ~H"""
-      <%= inspect(assigns.__changed__) %>
+      <%= inspect(Map.get(assigns, :__changed__)) %>
       """
     end
 
     test "without changed assigns on root" do
       assigns = %{foo: 1}
       assert eval(~H"<.changed foo={@foo} />") == [["nil"]]
+    end
+
+    test "with tainted variable" do
+      foo = 1
+      assigns = %{foo: 1}
+      assert eval(~H"<.changed foo={foo} />") == [["nil"]]
+
+      assigns = %{foo: 1, __changed__: %{}}
+      assert eval(~H"<.changed foo={foo} />") == [["%{foo: true}"]]
     end
 
     test "with changed assigns on root" do
@@ -159,7 +168,7 @@ defmodule Phoenix.ComponentTest do
 
     defp inner_changed(assigns) do
       ~H"""
-      <%= inspect(assigns.__changed__) %>
+      <%= inspect(Map.get(assigns, :__changed__)) %>
       <%= render_slot(@inner_block, "var") %>
       """
     end
@@ -175,7 +184,7 @@ defmodule Phoenix.ComponentTest do
                [["%{foo: true}", nil]]
 
       assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
+               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
@@ -190,7 +199,7 @@ defmodule Phoenix.ComponentTest do
                [["%{foo: %{bar: true}}", nil]]
 
       assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
+               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: %{bar: true}, inner_block: true}", ["%{foo: %{bar: true}}"]]]
 
@@ -210,17 +219,17 @@ defmodule Phoenix.ComponentTest do
                [["%{foo: true}", nil]]
 
       assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(assigns.__changed__) %></.inner_changed>|
+               ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed>|
+               ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
+               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [
@@ -230,12 +239,12 @@ defmodule Phoenix.ComponentTest do
                ]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(assigns.__changed__) %></.inner_changed>|
+               ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(assigns.__changed__) %></.inner_changed></.inner_changed>|
+               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [

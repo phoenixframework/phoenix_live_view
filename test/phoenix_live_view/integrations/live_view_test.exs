@@ -1,18 +1,14 @@
 defmodule Phoenix.LiveView.LiveViewTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
-  import Plug.Conn
   import Phoenix.ConnTest
-
   import Phoenix.LiveViewTest
-  import Phoenix.LiveView.TelemetryTestHelpers
+
   alias Phoenix.HTML
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.Socket
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LiveInComponent}
+  alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
-  @moduletag :capture_log
 
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
@@ -52,54 +48,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 1"
     end
 
-    @tag session: %{current_user_id: "1"}
-    test "static mount emits telemetry events are emitted on successful callback", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
-      conn
-      |> get("/thermo?foo=bar")
-      |> html_response(200)
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
-
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
-
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
-    end
-
-    @tag session: %{current_user_id: "1"}
-    test "static mount emits telemetry events when callback raises an exception", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
-      assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
-        get(conn, "/errors?crash_on=disconnected_mount")
-      end
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
-
-      assert metadata.params == %{"crash_on" => "disconnected_mount"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_mount"
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
-
-      assert metadata.kind == :error
-      assert %RuntimeError{} = metadata.reason
-      assert metadata.params == %{"crash_on" => "disconnected_mount"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/errors?crash_on=disconnected_mount"
-    end
-
     test "live mount in single call", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/thermo")
       assert html =~ "The temp is: 1"
@@ -122,223 +70,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
         conn
         |> get("/not_found")
         |> live()
-      end
-    end
-
-    @tag session: %{current_user_id: "1"}
-    test "live mount emits telemetry events are emitted on successful callback", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
-      {:ok, _view, _html} = live(conn, "/thermo?foo=bar")
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
-
-      assert metadata.socket.transport_pid
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
-
-      assert metadata.socket.transport_pid
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
-    end
-
-    @tag session: %{current_user_id: "1"}
-    test "live mount emits telemetry events when callback raises an exception", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :mount])
-
-      assert catch_exit(live(conn, "/errors?crash_on=connected_mount"))
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
-
-      assert metadata.socket.transport_pid
-      assert metadata.params == %{"crash_on" => "connected_mount"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/errors?crash_on=connected_mount"
-
-      assert_receive {:event, [:phoenix, :live_view, :mount, :exception], %{duration: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
-
-      assert metadata.socket.transport_pid
-      assert metadata.kind == :error
-      assert %RuntimeError{} = metadata.reason
-      assert metadata.params == %{"crash_on" => "connected_mount"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/errors?crash_on=connected_mount"
-    end
-
-    test "push_redirect when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
-      assert redirected_to(conn) == "/thermo"
-
-      {:error, {:live_redirect, %{to: "/thermo"}}} =
-        live(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
-    end
-
-    test "push_redirect when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=push_redirect&to=/thermo")
-      assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, {:live_redirect, %{kind: :push, to: "/thermo"}}} = live(conn)
-    end
-
-    test "push_patch when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/attempted to live patch while/, fn ->
-        get(conn, "/redir?during=disconnected&kind=push_patch&to=/redir?patched=true")
-      end
-    end
-
-    test "push_patch when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=push_patch&to=/redir?patched=true")
-      assert html_response(conn, 200) =~ "parent_content"
-
-      assert Exception.format(:exit, catch_exit(live(conn))) =~
-               "attempted to live patch while mounting"
-    end
-
-    test "redirect when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=redirect&to=/thermo")
-      assert redirected_to(conn) == "/thermo"
-
-      {:error, {:redirect, %{to: "/thermo"}}} =
-        live(conn, "/redir?during=disconnected&kind=redirect&to=/thermo")
-    end
-
-    test "redirect when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=redirect&to=/thermo")
-      assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, {:redirect, %{to: "/thermo"}}} = live(conn)
-    end
-
-    test "external redirect when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=external&to=https://phoenixframework.org")
-      assert redirected_to(conn) == "https://phoenixframework.org"
-
-      {:error, {:redirect, %{to: "https://phoenixframework.org"}}} =
-        live(conn, "/redir?during=disconnected&kind=external&to=https://phoenixframework.org")
-    end
-
-    test "external redirect when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=external&to=https://phoenixframework.org")
-      assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, {:redirect, %{to: "https://phoenixframework.org"}}} = live(conn)
-    end
-
-    test "child push_redirect when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&child_to=/thermo")
-      assert redirected_to(conn) == "/thermo"
-    end
-
-    test "child push_redirect when connected", %{conn: conn} do
-      conn =
-        get(conn, "/redir?during=connected&kind=push_redirect&child_to=/thermo?from_child=true")
-
-      assert html_response(conn, 200) =~ "child_content"
-      assert {:error, {:live_redirect, %{to: "/thermo?from_child=true"}}} = live(conn)
-    end
-
-    test "child push_patch when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
-                   ~r/a LiveView cannot be mounted while issuing a live patch to the client/,
-                   fn ->
-                     get(
-                       conn,
-                       "/redir?during=disconnected&kind=push_patch&child_to=/redir?patched=true"
-                     )
-                   end
-    end
-
-    test "child push_patch when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=push_patch&child_to=/redir?patched=true")
-      assert html_response(conn, 200) =~ "child_content"
-
-      assert Exception.format(:exit, catch_exit(live(conn))) =~
-               "a LiveView cannot be mounted while issuing a live patch to the client"
-    end
-
-    test "child redirect when disconnected", %{conn: conn} do
-      conn =
-        get(conn, "/redir?during=disconnected&kind=redirect&child_to=/thermo?from_child=true")
-
-      assert redirected_to(conn) == "/thermo?from_child=true"
-    end
-
-    test "child redirect when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=redirect&child_to=/thermo?from_child=true")
-      assert html_response(conn, 200) =~ "parent_content"
-      assert {:error, {:redirect, %{to: "/thermo?from_child=true"}}} = live(conn)
-    end
-
-    test "child external redirect when disconnected", %{conn: conn} do
-      conn =
-        get(
-          conn,
-          "/redir?during=disconnected&kind=external&child_to=https://phoenixframework.org?from_child=true"
-        )
-
-      assert redirected_to(conn) == "https://phoenixframework.org?from_child=true"
-    end
-
-    test "child external redirect when connected", %{conn: conn} do
-      conn =
-        get(
-          conn,
-          "/redir?during=connected&kind=external&child_to=https://phoenixframework.org?from_child=true"
-        )
-
-      assert html_response(conn, 200) =~ "parent_content"
-
-      assert {:error, {:redirect, %{to: "https://phoenixframework.org?from_child=true"}}} =
-               live(conn)
-    end
-  end
-
-  describe "live_isolated" do
-    test "renders a live view with custom session", %{conn: conn} do
-      {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
-
-      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
-    end
-
-    test "renders a live view with custom session and a router", %{conn: conn} do
-      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
-
-      {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
-
-      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
-    end
-
-    test "raises if handle_params is implemented", %{conn: conn} do
-      assert_raise ArgumentError,
-                   ~r/it is not mounted nor accessed through the router live\/3 macro/,
-                   fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
-    end
-
-    test "works without an initialized session" do
-      {:ok, view, _} =
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
-          session: %{"hello" => "world"}
-        )
-
-      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
-    end
-
-    test "raises on session with atom keys" do
-      assert_raise ArgumentError, ~r"LiveView :session must be a map with string keys,", fn ->
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
-          session: %{hello: "world"}
-        )
       end
     end
   end
@@ -401,7 +132,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  describe "event rendering" do
+  describe "render_*" do
     test "render_click", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_click(view, :save, %{temp: 20}) =~ "The temp is: 20"
@@ -450,51 +181,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "render_hook", %{conn: conn} do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_hook(view, :save, %{temp: 20}) =~ "The temp is: 20"
-    end
-
-    test "render_* with a successful handle_event callback emits telemetry metrics", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_view, :handle_event])
-
-      {:ok, view, _} = live(conn, "/thermo")
-      render_submit(view, :save, %{temp: 20})
-
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _},
-                      metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "save"
-      assert metadata.params == %{"temp" => "20"}
-
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :stop], %{duration: _},
-                      metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "save"
-      assert metadata.params == %{"temp" => "20"}
-    end
-
-    test "render_* with crashing handle_event callback emits telemetry metrics", %{conn: conn} do
-      Process.flag(:trap_exit, true)
-      attach_telemetry([:phoenix, :live_view, :handle_event])
-
-      {:ok, view, _} = live(conn, "/errors")
-      catch_exit(render_submit(view, :crash, %{"foo" => "bar"}))
-
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _},
-                      metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "crash"
-      assert metadata.params == %{"foo" => "bar"}
-
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :exception], %{duration: _},
-                      metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.kind == :error
-      assert %RuntimeError{} = metadata.reason
-      assert metadata.event == "crash"
-      assert metadata.params == %{"foo" => "bar"}
     end
   end
 
@@ -601,294 +287,77 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
-  describe "nested live render" do
-    test "nested child render on disconnected mount", %{conn: conn} do
-      conn =
-        conn
-        |> Plug.Test.init_test_session(%{nest: []})
-        |> get("/thermo")
-
-      html = html_response(conn, 200)
-      assert html =~ "The temp is: 0"
-      assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"snooze\">+</button>"
-    end
-
-    @tag session: %{nest: []}
-    test "nested child render on connected mount", %{conn: conn} do
-      {:ok, thermo_view, _} = live(conn, "/thermo")
-
-      html = render(thermo_view)
-      assert html =~ "The temp is: 1"
-      assert html =~ "time: 12:00"
-      assert html =~ "<button phx-click=\"snooze\">+</button>"
-
-      GenServer.call(thermo_view.pid, {:set, :nest, false})
-      html = render(thermo_view)
-      assert html =~ "The temp is: 1"
-      refute html =~ "time"
-      refute html =~ "snooze"
-    end
-
-    test "dynamically added children", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      assert render(thermo_view) =~ "The temp is: 1"
-      refute render(thermo_view) =~ "time"
-      refute render(thermo_view) =~ "snooze"
-      GenServer.call(thermo_view.pid, {:set, :nest, []})
-      assert render(thermo_view) =~ "The temp is: 1"
-      assert render(thermo_view) =~ "time"
-      assert render(thermo_view) =~ "snooze"
-
-      assert clock_view = find_live_child(thermo_view, "clock")
-      assert controls_view = find_live_child(clock_view, "NY-controls")
-      assert clock_view.module == ClockLive
-      assert controls_view.module == ClockControlsLive
-
-      assert render_click(controls_view, :snooze) == "<button phx-click=\"snooze\">+</button>"
-      assert render(clock_view) =~ "time: 12:05"
-      assert render(clock_view) =~ "<button phx-click=\"snooze\">+</button>"
-      assert render(controls_view) =~ "<button phx-click=\"snooze\">+</button>"
-
-      :ok = GenServer.call(clock_view.pid, {:set, "12:01"})
-
-      assert render(clock_view) =~ "time: 12:01"
-      assert render(thermo_view) =~ "time: 12:01"
-
-      assert render(thermo_view) =~ "<button phx-click=\"snooze\">+</button>"
-    end
-
-    @tag session: %{nest: []}
-    test "nested children are removed and killed", %{conn: conn} do
-      Process.flag(:trap_exit, true)
-
-      html_without_nesting =
-        DOM.parse("""
-        Redirect: none\nThe temp is: 1
-        <button phx-click="dec">-</button>
-        <button phx-click="inc">+</button>
-        """)
-
-      {:ok, thermo_view, _} = live(conn, "/thermo")
-
-      assert find_live_child(thermo_view, "clock")
-      refute DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
-
-      GenServer.call(thermo_view.pid, {:set, :nest, false})
-      assert DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
-      refute find_live_child(thermo_view, "clock")
-    end
-
-    @tag session: %{dup: false}
-    test "multiple nested children of same module", %{conn: conn} do
-      {:ok, parent, _} = live(conn, "/same-child")
-      assert tokyo = find_live_child(parent, "Tokyo")
-      assert madrid = find_live_child(parent, "Madrid")
-      assert toronto = find_live_child(parent, "Toronto")
-      child_ids = for view <- [tokyo, madrid, toronto], do: view.id
-
-      assert Enum.uniq(child_ids) == child_ids
-      assert render(parent) =~ "Tokyo"
-      assert render(parent) =~ "Madrid"
-      assert render(parent) =~ "Toronto"
-    end
-
-    @tag session: %{dup: false}
-    test "multiple nested children of same module with new session", %{conn: conn} do
-      {:ok, parent, _} = live(conn, "/same-child")
-      assert render_click(parent, :inc) =~ "Toronto"
-    end
-
-    test "nested for comprehensions", %{conn: conn} do
-      users = [
-        %{name: "chris", email: "chris@test"},
-        %{name: "josé", email: "jose@test"}
-      ]
-
-      expected_users = "<i>chris chris@test</i><i>josé jose@test</i>"
-
-      {:ok, thermo_view, html} =
-        conn
-        |> put_session(:nest, [])
-        |> put_session(:users, users)
-        |> live("/thermo")
-
-      assert html =~ expected_users
-      assert render(thermo_view) =~ expected_users
-    end
-
-    test "raises on duplicate child LiveView id", %{conn: conn} do
-      Process.flag(:trap_exit, true)
-
-      {:ok, view, _html} =
-        conn
-        |> Plug.Conn.put_session(:user_id, 13)
-        |> live("/root")
-
-      :ok = GenServer.call(view.pid, {:dynamic_child, :static})
-
-      assert Exception.format(:exit, catch_exit(render(view))) =~
-               "expected selector \"#static\" to return a single element, but got 2"
-    end
-
-    test "live view nested inside a live component" do
-      assert {:ok, _view, _html} = live_isolated(build_conn(), LiveInComponent.Root)
-    end
-
-    @tag session: %{nest: []}
-    test "push_redirect", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
-         end}
-      )
-
-      assert_redirect(thermo_view, "/thermo?redirect=push")
-    end
-
-    @tag session: %{nest: []}
-    test "refute_redirect", %{conn: conn} do
-      {:ok, thermo_view, _html} = live(conn, "/thermo")
-
-      clock_view = find_live_child(thermo_view, "clock")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/some_url")}
-         end}
-      )
-
-      refute_redirected(thermo_view, "/not_going_here")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/another_url")}
-         end}
-      )
-
-      try do
-        refute_redirected(thermo_view, "/another_url")
-      rescue
-        e ->
-          assert %ArgumentError{message: message} = e
-          assert message =~ "not to redirect to"
-      end
-    end
-
-    @tag session: %{nest: []}
-    test "push_redirect with destination that can vary", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      id = Enum.random(1000..9999)
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=#{id}")}
-         end}
-      )
-
-      {path, _flash} = assert_redirect(thermo_view)
-      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
-    end
-
-    @tag session: %{nest: []}
-    test "push_patch", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=patch")}
-         end}
-      )
-
-      assert_patch(thermo_view, "/thermo?redirect=patch")
-      assert render(thermo_view) =~ "Redirect: patch"
-    end
-
-    @tag session: %{nest: []}
-    test "push_patch to destination which can vary", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      id = Enum.random(1000..9999)
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_patch(socket, to: "/thermo?redirect=#{id}")}
-         end}
-      )
-
-      path = assert_patch(thermo_view)
-      assert path =~ ~r/\/thermo\?redirect=[0-9]+/
-      assert render(thermo_view) =~ "Redirect: #{id}"
-    end
-
-    @tag session: %{nest: []}
-    test "redirect from child", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.redirect(socket, to: "/thermo?redirect=redirect")}
-         end}
-      )
-
-      assert_redirect(thermo_view, "/thermo?redirect=redirect")
-    end
-
-    @tag session: %{nest: []}
-    test "external redirect from child", %{conn: conn} do
-      {:ok, thermo_view, html} = live(conn, "/thermo")
-      assert html =~ "Redirect: none"
-
-      assert clock_view = find_live_child(thermo_view, "clock")
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.redirect(socket, external: "https://phoenixframework.org")}
-         end}
-      )
-
-      assert_redirect(thermo_view, "https://phoenixframework.org")
-    end
-  end
-
   describe "title" do
     test "sends page title updates", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/thermo")
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
       assert page_title(view) =~ "New Title"
+    end
+  end
+
+  describe "live_isolated" do
+    test "renders a live view with custom session", %{conn: conn} do
+      {:ok, view, _} =
+        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+
+      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+    end
+
+    test "renders a live view with custom session and a router", %{conn: conn} do
+      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
+
+      {:ok, view, _} =
+        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+
+      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+    end
+
+    test "raises if handle_params is implemented", %{conn: conn} do
+      assert_raise ArgumentError,
+                   ~r/it is not mounted nor accessed through the router live\/3 macro/,
+                   fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
+    end
+
+    test "works without an initialized session" do
+      {:ok, view, _} =
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+          session: %{"hello" => "world"}
+        )
+
+      assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
+    end
+
+    test "raises on session with atom keys" do
+      assert_raise ArgumentError, ~r"LiveView :session must be a map with string keys,", fn ->
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+          session: %{hello: "world"}
+        )
+      end
+    end
+  end
+
+  describe "format_status/2" do
+    test "returns LiveView information", %{conn: conn} do
+      {:ok, %{pid: pid}, _html} = live(conn, "/clock")
+
+      assert {:status, ^pid, {:module, :gen_server},
+              [
+                _pdict,
+                :running,
+                _parent,
+                _dbg_opts,
+                [
+                  header: 'Status for generic server ' ++ _,
+                  data: _gen_server_data,
+                  data: [
+                    {'LiveView', Phoenix.LiveViewTest.ClockLive},
+                    {'Parent pid', nil},
+                    {'Transport pid', _},
+                    {'Topic', <<_::binary>>},
+                    {'Components count', 0}
+                  ]
+                ]
+              ]} = :sys.get_status(pid)
     end
   end
 
@@ -899,7 +368,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       end
     end
 
-    test "return the transport pid when connected", %{conn: conn} do
+    test "return the transport pid as the test process when connected", %{conn: conn} do
       {:ok, clock_view, _html} = live(conn, "/clock")
       parent = self()
       ref = make_ref()
@@ -914,30 +383,6 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert_receive {^ref, transport_pid}
       assert transport_pid == self()
-    end
-  end
-
-  describe "sticky live_render" do
-    @tag session: %{name: "ny"}
-    test "process does not go down with parent", %{conn: conn} do
-      {:ok, clock_view, _html} = live(conn, "/clock?sticky=true")
-      %Phoenix.LiveViewTest.View{} = sticky_child = find_live_child(clock_view, "ny-controls")
-      child_pid = sticky_child.pid
-      assert Process.alive?(child_pid)
-      Process.monitor(child_pid)
-
-      send(
-        clock_view.pid,
-        {:run,
-         fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/clock?sticky=true&redirected=true")}
-         end}
-      )
-
-      assert_redirect(clock_view, "/clock?sticky=true&redirected=true")
-      refute_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :parent_exited}}
-      # client proxy trasnport
-      assert_receive {:DOWN, _ref, :process, ^child_pid, {:shutdown, :closed}}
     end
   end
 end

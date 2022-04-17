@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.17.5"
+  @version "0.17.9"
 
   def project do
     [
@@ -39,14 +39,15 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.5.9 or ~> 1.6.0"},
+      {:phoenix, "~> 1.6.0"},
       {:phoenix_html, "~> 3.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
-      {:ex_doc, "~> 0.22", only: :docs},
       {:floki, "~> 0.30.0", only: :test},
-      {:html_entities, ">= 0.0.0", only: :test},
+      {:ex_doc, "~> 0.28", only: :docs},
+      {:makeup_eex, ">= 0.1.1", only: :docs},
+      {:html_entities, ">= 0.0.0", only: :test}
     ]
   end
 
@@ -58,12 +59,14 @@ defmodule Phoenix.LiveView.MixProject do
       extra_section: "GUIDES",
       extras: extras(),
       groups_for_extras: groups_for_extras(),
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
   end
 
   defp extras do
     [
+      "CHANGELOG.md",
       "guides/introduction/installation.md",
       "guides/client/bindings.md",
       "guides/client/form-bindings.md",
@@ -100,7 +103,7 @@ defmodule Phoenix.LiveView.MixProject do
     # Phoenix.LiveViewTest
 
     [
-      "Components": [
+      Components: [
         Phoenix.Component,
         Phoenix.LiveComponent,
         Phoenix.LiveComponent.CID
@@ -117,6 +120,7 @@ defmodule Phoenix.LiveView.MixProject do
       "Plugin API": [
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
+        Phoenix.LiveView.HTMLFormatter,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension
@@ -128,7 +132,10 @@ defmodule Phoenix.LiveView.MixProject do
     [
       maintainers: ["Chris McCord", "José Valim", "Gary Rennie", "Alex Garibay", "Scott Newcomer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/phoenixframework/phoenix_live_view"},
+      links: %{
+        Changelog: "https://hexdocs.pm/phoenix_live_view/changelog.html",
+        GitHub: "https://github.com/phoenixframework/phoenix_live_view"
+      },
       files:
         ~w(assets/js lib priv) ++
           ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)

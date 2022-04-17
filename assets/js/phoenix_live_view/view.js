@@ -50,7 +50,7 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-let serializeForm = (form, meta = {}) => {
+let serializeForm = (form, meta, onlyNames = []) => {
   let formData = new FormData(form)
   let toRemove = []
 
@@ -62,7 +62,11 @@ let serializeForm = (form, meta = {}) => {
   toRemove.forEach(key => formData.delete(key))
 
   let params = new URLSearchParams()
-  for(let [key, val] of formData.entries()){ params.append(key, val) }
+  for(let [key, val] of formData.entries()){
+    if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
+      params.append(key, val)
+    }
+  }
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
   return params.toString()
@@ -377,10 +381,13 @@ export default class View {
     let destroyedCIDs = []
     elements.forEach(parent => {
       let components = DOM.all(parent, `[${PHX_COMPONENT}]`)
-        components.concat(parent).forEach(el => {
+      let hooks = DOM.all(parent, `[${this.binding(PHX_HOOK)}]`)
+      components.concat(parent).forEach(el => {
         let cid = this.componentID(el)
         if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
-        let hook = this.getHook(el)
+      })
+      hooks.concat(parent).forEach(hookEl => {
+        let hook = this.getHook(hookEl)
         hook && this.destroyHook(hook)
       })
     })
@@ -449,7 +456,7 @@ export default class View {
   }
 
   update(diff, events){
-    if(this.isJoinPending() || this.liveSocket.hasPendingLink()){
+    if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && !DOM.isPhxSticky(this.el))){
       return this.pendingDiffs.push({diff, events})
     }
 
@@ -635,7 +642,7 @@ export default class View {
   }
 
   displayError(){
-    if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {to: this.href, kind: "error"}) }
+    if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {detail: {to: this.href, kind: "error"}}) }
     this.showLoader()
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
   }
@@ -735,13 +742,13 @@ export default class View {
     return cid ? parseInt(cid) : null
   }
 
-  targetComponentID(target, targetCtx){
+  targetComponentID(target, targetCtx, opts = {}){
     if(isCid(targetCtx)){ return targetCtx }
 
     let cidOrSelector = target.getAttribute(this.binding("target"))
     if(isCid(cidOrSelector)){
       return parseInt(cidOrSelector)
-    } else if(targetCtx && cidOrSelector !== null){
+    } else if(targetCtx && (cidOrSelector !== null || opts.target)){
       return this.closestComponentID(targetCtx)
     } else {
       return null
@@ -801,7 +808,7 @@ export default class View {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
-      cid: this.targetComponentID(el, targetCtx)
+      cid: this.targetComponentID(el, targetCtx, opts)
     })
   }
 
@@ -821,7 +828,12 @@ export default class View {
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
-    let formData = serializeForm(inputEl.form, {_target: opts._target})
+    let formData
+    if(inputEl.getAttribute(this.binding("change"))){
+      formData = serializeForm(inputEl.form, {_target: opts._target}, [inputEl.name])
+    } else {
+      formData = serializeForm(inputEl.form, {_target: opts._target})
+    }
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
     }
@@ -930,7 +942,7 @@ export default class View {
         }, onReply)
       })
     } else {
-      let formData = serializeForm(formEl)
+      let formData = serializeForm(formEl, {})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
@@ -985,7 +997,7 @@ export default class View {
     let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
-    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {files: filesOrBlobs}) }
+    else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
   }
 
   pushFormRecovery(form, newCid, callback){
@@ -1000,8 +1012,9 @@ export default class View {
   pushLinkPatch(href, targetEl, callback){
     let linkRef = this.liveSocket.setPendingLink(href)
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
+    let fallback = () => this.liveSocket.redirect(window.location.href)
 
-    this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
+    let push = this.pushWithReply(refGen, "live_patch", {url: href}, resp => {
       this.liveSocket.requestDOMUpdate(() => {
         if(resp.link_redirect){
           this.liveSocket.replaceMain(href, null, callback, linkRef)
@@ -1013,7 +1026,13 @@ export default class View {
           callback && callback(linkRef)
         }
       })
-    }).receive("timeout", () => this.liveSocket.redirect(window.location.href))
+    })
+
+    if(push){
+      push.receive("timeout", fallback)
+    } else {
+      fallback()
+    }
   }
 
   formsForRecovery(html){
@@ -1074,8 +1093,11 @@ export default class View {
 
   submitForm(form, targetCtx, phxEvent, opts = {}){
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
+    let phxFeedback = this.liveSocket.binding(PHX_FEEDBACK_FOR)
+    let inputs = Array.from(form.elements)
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, targetCtx, phxEvent, opts, () => {
+      inputs.forEach(input => DOM.showError(input, phxFeedback))
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }

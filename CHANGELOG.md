@@ -1,16 +1,67 @@
 # Changelog
 
-## 0.17.6
+## 0.17.10 (Unreleased)
+
+### Bug fixes
+  - [Formatter] Preserve single quote delimiter on attrs
+  - [Formatter] Fix inline elements surrounded by texts without whitespaces
+  - [Formatter] Keep text and eex along when there isn't a whitespace
+  - [Formatter] Fix intentional line breaks after eex expressions
+  - [Formatter] Handle self close tags as inline
+
+
+## 0.17.9 (2022-04-07)
+
+### Bug fixes
+  - Fix sticky LiveViews failing to be patched during live navigation
+  - Do not raise on dynamic `phx-update` value
+
+## 0.17.8 (2022-04-06)
+
+### Enhancements
+  - Add HEEx formatter
+  - Support `phx-change` on individual inputs
+  - Dispatch `MouseEvent` on client
+  - Add `:bubbles` option to `JS.dispatch` to control event bubbling
+  - Expose underlying `liveSocket` instance on hooks
+  - Enable client debug by default on localhost
+
+### Bug fixes
+  - Fix hook and sticky LiveView issues caused by back-to-back live redirects from mount
+  - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
+  - Do not failsafe reload the page on push timeout if disconnected
+  - Do not bubble navigation click events to regular phx-click's
+
+## 0.17.7 (2022-02-07)
+
+### Enhancements
+  - Optimize nested for comprehension diffs
+
+### Bug fixes
+  - Fix error when `live_redirect` links are clicked when not connected in certain cases
+
+## 0.17.6 (2022-01-18)
 
 ### Enhancements
   - Add `JS.set_attribute` and `JS.remove_attribute`
   - Add `sticky: true` option to `live_render` to maintain a nested child on across live redirects
   - Dispatch `phx:show-start`, `phx:show-end`, `phx:hide-start` and `phx:hide-end` on `JS.show|hide|toggle`
+  - Add `get_connect_info/2` that also works on disconnected render
+  - Add `LiveSocket` constructor options for configuration failsafe behavior via new `maxReloads`, `reloadJitterMin`, `reloadJitterMax`, `failsafeJitter` options
 
 ### Bug fixes
+  - Show form errors after submit even when no changes occur on server
   - Fix `phx-disable-with` failing to disable elements outside of forms
-  - Fix phx ref tracking leaving elements in awaiting state when targetting an external LiveView
+  - Fix phx ref tracking leaving elements in awaiting state when targeting an external LiveView
   - Fix diff on response failing to await for active transitions in certain cases
+  - Fix `phx-click-away` not respecting `phx-target`
+  - Fix "disconnect" broadcast failing to failsafe refresh the page
+  - Fix `JS.push` with `:target` failing to send to correct component in certain cases
+
+### Deprecations
+   - Deprecate `Phoenix.LiveView.get_connect_info/1` in favor of `get_connect_info/2`
+   - Deprecate `Phoenix.LiveViewTest.put_connect_info/2` in favor of calling the relevant functions in `Plug.Conn`
+   - Deprecate returning "raw" values from upload callbacks on `Phoenix.LiveView.consume_uploaded_entry/3` and `Phoenix.LiveView.consume_uploaded_entries/3`. The callback must return either `{:ok, value}` or `{:postpone, value}`. Returning any other value will emit a warning.
 
 ## 0.17.5 (2021-11-02)
 
@@ -106,7 +157,7 @@ to be rendered more efficiently client-side.
 
 #### `phx-disconnected` class has been replaced with `phx-loading`
 
-Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erronous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
+Due to a bug in the newly released Safari 15, the previously used `.phx-disconnected` class has been replaced by a new `.phx-loading` class. The reason for the change is `phx.new` included a `.phx-disconnected` rule in the generated `app.css` which triggers the Safari bug. Renaming the class avoids applying the erroneous rule for existing applications. Folks can upgrade by simply renaming their `.phx-disconnected` rules to `.phx-loading`.
 
 #### `phx-capture-click` has been deprecated in favor of `phx-click-away`
 
@@ -128,7 +179,7 @@ Some functionality that was previously deprecated has been removed:
   - Add a function component for rendering `Phoenix.LiveComponent`. Instead of `<%= live_component FormComponent, id: "form" %>`, you must now do: `<.live_component module={FormComponent} id="form" />`
 
 ### Bug fixes
-  - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceeded by a live redirect
+  - Fix LiveViews with form recovery failing to properly mount following a reconnect when preceded by a live redirect
   - Fix stale session causing full redirect fallback when issuing a `push_redirect` from mount
   - Add workaround for Safari bug causing `<img>` tags with srcset and video with autoplay to fail to render
   - Support EEx interpolation inside HTML comments in HEEx templates
@@ -181,7 +232,7 @@ Some functionality that was previously deprecated has been removed:
 
 ## 0.16.0 (2021-08-10)
 
-## # Security Considerations Upgrading from 0.15
+### Security Considerations Upgrading from 0.15
 
 LiveView v0.16 optimizes live redirects by supporting navigation purely
 over the existing WebSocket connection. This is accomplished by the new
@@ -596,7 +647,7 @@ as LiveView introduces a macro with that name and it is special cased by the und
   - No longer send event metadata by default. Metadata is now opt-in and user defined at the `LiveSocket` level.
   To maintain backwards compatibility with pre-0.13 behaviour, you can provide the following metadata option:
 
-  ```javascript
+  ```
   let liveSocket = new LiveSocket("/live", Socket, {
     params: {_csrf_token: csrfToken},
     metadata: {
@@ -695,7 +746,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - `Phoenix.LiveViewTest.assert_remove/3` has been removed. If the LiveView crashes, it will cause the test to crash too
   - Passing a path with DOM IDs to `render_*` test functions is deprecated. Furthermore, they now require a `phx-target="<%= @id %>"` on the given DOM ID:
 
-    ```html
+    ```heex
     <div id="component-id" phx-target="component-id">
       ...
     </div>
@@ -912,14 +963,14 @@ The steps are:
 
   4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
-      ```html
+      ```heex
       <%= csrf_meta_tag() %>
       <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
       ```
 
   5) Then in your app.js:
 
-      ```javascript
+      ```
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
       let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}});
       ```
@@ -1000,7 +1051,7 @@ Also note that **the session from now on will have string keys**. LiveView will 
   - All `phx-update` containers now require a unique ID
   - `LiveSocket` JavaScript constructor now requires explicit dependency injection of Phoenix Socket constructor. For example:
 
-```javascript
+```
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 
@@ -1016,7 +1067,7 @@ let liveSocket = new LiveSocket("/live", Socket, {...})
   - Fix params failing to update on re-mounts after live_redirect
   - Fix blur event metadata being sent with type of `"focus"`
 
-## 0.1.2
+## 0.1.2 (2019-08-28)
 
 ### Backwards incompatible changes
   - `phx-value` has no effect, use `phx-value-*` instead

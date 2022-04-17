@@ -15,7 +15,9 @@ You can trigger live navigation in two ways:
 
 For example, in a template you may write:
 
-    <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+```heex
+<%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
+```
 
 or in a LiveView:
 
@@ -78,7 +80,9 @@ the system and you define it in the router as:
 
 Now to add live sorting, you could do:
 
-    <%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+```heex
+<%= live_patch "Sort by name", to: Routes.live_path(@socket, UserTable, %{sort_by: "name"}) %>
+```
 
 When clicked, since we are navigating to the current LiveView,
 [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will be invoked.
@@ -95,8 +99,11 @@ validate the user input and change the state accordingly:
       {:noreply, load_users(socket)}
     end
 
-As with other `handle_*` callbacks, changes to the state inside
-[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will trigger a server render.
+Note we returned `{:noreply, socket}`, where `:noreply` means no
+additional information is sent to the client. As with other `handle_*`
+callbacks, changes to the state inside
+[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) will trigger
+a new server render.
 
 Note the parameters given to [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`)
 are the same as the ones given to [`mount/3`](`c:Phoenix.LiveView.mount/3`).

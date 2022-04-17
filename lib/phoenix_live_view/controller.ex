@@ -7,10 +7,11 @@ defmodule Phoenix.LiveView.Controller do
   alias Phoenix.LiveView.Socket
 
   @doc """
-  Renders a live view from a Plug request and sends an HTML response.
+  Renders a live view from a Plug request and sends an HTML response
+  from within a controller.
 
-  Before rendering, the `@live_module` assign will be added to the
-  connection assigns for reference.
+  It also automatically sets the `@live_module` assign with the value
+  of the LiveView to be rendered.
 
   ## Options
 

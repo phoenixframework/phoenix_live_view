@@ -27,7 +27,9 @@ When you first render a `.heex` template, it will send all of the
 static and dynamic parts of the template to the client. Imagine the
 following template:
 
-    <h1><%= expand_title(@title) %></h1>
+```heex
+<h1><%= expand_title(@title) %></h1>
+```
 
 It has two static parts, `<h1>` and `</h1>` and one dynamic part
 made of `expand_title(@title)`. Further rendering of this template
@@ -42,9 +44,12 @@ nothing is sent.
 Change tracking also works when accessing map/struct fields.
 Take this template:
 
-    <div id={"user_#{@user.id}"}>
-      <%= @user.name %>
-    </div>
+
+```heex
+<div id={"user_#{@user.id}"}>
+  <%= @user.name %>
+</div>
+```
 
 If the `@user.name` changes but `@user.id` doesn't, then LiveView
 will re-render only `@user.name` and it will not execute or resend `@user.id`
@@ -53,19 +58,26 @@ at all.
 The change tracking also works when rendering other templates as
 long as they are also `.heex` templates:
 
-    <%= render "child_template.html", assigns %>
+
+```heex
+<%= render "child_template.html", assigns %>
+```
 
 Or when using function components:
 
-    <.show_name name={@user.name} />
+```heex
+<.show_name name={@user.name} />
+```
 
 The assign tracking feature also implies that you MUST avoid performing
 direct operations in the template. For example, if you perform a database
 query in your template:
 
-    <%= for user <- Repo.all(User) do %>
-      <%= user.name %>
-    <% end %>
+```heex
+<%= for user <- Repo.all(User) do %>
+  <%= user.name %>
+<% end %>
+```
 
 Then Phoenix will never re-render the section above, even if the number of
 users in the database changes. Instead, you need to store the users as
@@ -88,20 +100,24 @@ If the do/end block is given to a library function or user function, such as
 `content_tag`, change tracking won't work. For example, imagine the following
 template that renders a `div`:
 
-    <%= content_tag :div, id: "user_#{@id}" do %>
-      <%= @name %>
-      <%= @description %>
-    <% end %>
+```heex
+<%= content_tag :div, id: "user_#{@id}" do %>
+  <%= @name %>
+  <%= @description %>
+<% end %>
+```
 
 LiveView knows nothing about `content_tag`, which means the whole `div` will
 be sent whenever any of the assigns change. Luckily, HEEx templates provide
 a nice syntax for building tags, so there is rarely a need to use `content_tag`
 inside `.heex` templates:
 
-    <div id={"user_#{@id}"}>
-      <%= @name %>
-      <%= @description %>
-    </div>
+```heex
+<div id={"user_#{@id}"}>
+  <%= @name %>
+  <%= @description %>
+</div>
+```
 
 The next pitfall is related to variables. Due to the scope of variables,
 LiveView has to disable change tracking whenever variables are used in the
@@ -109,12 +125,16 @@ template, with the exception of variables introduced by Elixir basic `case`,
 `for`, and other block constructs. Therefore, you **must avoid** code like
 this in your LiveView templates:
 
-    <% some_var = @x + @y %>
-    <%= some_var %>
+```heex
+<% some_var = @x + @y %>
+<%= some_var %>
+```
 
 Instead, use a function:
 
-    <%= sum(@x, @y) %>
+```heex
+<%= sum(@x, @y) %>
+```
 
 Similarly, **do not** define variables at the top of your `render` function:
 
@@ -136,9 +156,11 @@ access variables is always executed on every render. This also applies to the
 constructs. For example, accessing the `post` variable defined by the comprehension
 below works as expected:
 
-    <%= for post <- @posts do %>
-      ...
-    <% end %>
+```heex
+<%= for post <- @posts do %>
+  ...
+<% end %>
+```
 
 To sum up:
 

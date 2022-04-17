@@ -1,9 +1,8 @@
 defmodule Phoenix.LiveView.LiveComponentsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  import Phoenix.LiveView.TelemetryTestHelpers
   alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
 
   @endpoint Endpoint
@@ -96,6 +95,18 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     assert render(view) =~ "Hello World"
     view |> find_live_child("nested_live") |> render_click("disable", %{})
     refute render(view) =~ "Hello World"
+  end
+
+  test "tracks removals of a nested LiveView alongside with a LiveComponent in the root view", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/component_and_nested_in_live")
+    html = render(view)
+    assert html =~ "hello"
+    assert html =~ "world"
+    render_click(view, "disable", %{})
+
+    html = render(view)
+    refute html =~ "hello"
+    refute html =~ "world"
   end
 
   test "tracks removals when there is a race between server and client", %{conn: conn} do
@@ -246,56 +257,6 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
                  ]
                }
              ] = DOM.parse(html)
-    end
-
-    test "emits telemetry events when callback is successful", %{conn: conn} do
-      attach_telemetry([:phoenix, :live_component, :handle_event])
-      {:ok, view, _html} = live(conn, "/components")
-
-      view |> element("#chris") |> render_click(%{"op" => "upcase"})
-
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
-                      %{system_time: _}, metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "upcase"}
-
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
-                      metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "upcase"}
-    end
-
-    test "emits telemetry events when callback fails", %{conn: conn} do
-      Process.flag(:trap_exit, true)
-
-      attach_telemetry([:phoenix, :live_component, :handle_event])
-      {:ok, view, _html} = live(conn, "/components")
-
-      assert view |> element("#chris") |> render_click(%{"op" => "boom"}) |> catch_exit
-
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
-                      %{system_time: _}, metadata}
-
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "boom"}
-
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :exception],
-                      %{duration: _}, metadata}
-
-      assert metadata.kind == :error
-      assert metadata.reason == {:case_clause, "boom"}
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "boom"}
     end
   end
 

@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.HookTest do
+defmodule Phoenix.LiveView.IntegrationHooksTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView

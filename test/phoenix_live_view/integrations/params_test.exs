@@ -1,5 +1,7 @@
 defmodule Phoenix.LiveView.ParamsTest do
-  use ExUnit.Case
+  # Telemetry events need to run asynchronously
+  use ExUnit.Case, async: false
+
   import Plug.Conn
   import Phoenix.ConnTest
 
@@ -372,26 +374,6 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       assert {{:shutdown, {:live_redirect, %{to: "/thermo/123"}}}, _} =
                catch_exit(GenServer.call(counter_live.pid, {:push_redirect, next}))
-    end
-  end
-
-  describe "connect_params" do
-    test "connect_params can be read on mount", %{conn: conn} do
-      {:ok, counter_live, _html} =
-        conn |> put_connect_params(%{"connect1" => "1"}) |> live("/counter/123")
-
-      assert render(counter_live) =~ rendered_to_string(~s|connect: %{"_mounts" => 0, "connect1" => "1"}|)
-    end
-  end
-
-  describe "connect_info" do
-    test "connect_params can be read on mount", %{conn: conn} do
-      {:ok, counter_live, _html} =
-        conn
-        |> put_connect_info(%{x_headers: [{"x-forwarded-for", "1.2.3.4"}]})
-        |> live("/counter/123")
-
-      assert render(counter_live) =~ rendered_to_string(~s|x_headers: [{"x-forwarded-for", "1.2.3.4"}]|)
     end
   end
 

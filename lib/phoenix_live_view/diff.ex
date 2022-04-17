@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp to_iodata(%{@dynamics => dynamics, @static => static} = comp, components, template, mapper) do
     static = template_static(static, template)
-    template = comp[@template]
+    template = template || comp[@template]
 
     Enum.map_reduce(dynamics, components, fn dynamic, components ->
       many_to_iodata(static, dynamic, [], components, template, mapper)
@@ -430,10 +430,10 @@ defmodule Phoenix.LiveView.Diff do
     nil = template
 
     {dynamics, {pending, components, {_, comprehension_template}}} =
-      traverse_comprehension(socket, dynamics, pending, components)
+      traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
 
-    {maybe_add_template(%{@dynamics => dynamics}, comprehension_template), fingerprint, pending,
-     components, nil}
+    diff = maybe_add_template(%{@dynamics => dynamics}, comprehension_template)
+    {diff, fingerprint, pending, components, nil}
   end
 
   defp traverse(
@@ -458,15 +458,23 @@ defmodule Phoenix.LiveView.Diff do
          template,
          _changed?
        ) do
-    {dynamics, {pending, components, {_, comprehension_template}}} =
-      traverse_comprehension(socket, dynamics, pending, components)
+    if template do
+      {dynamics, {pending, components, template}} =
+        traverse_comprehension(socket, dynamics, pending, components, template)
 
-    {diff, template} =
-      %{@dynamics => dynamics}
-      |> maybe_add_template(comprehension_template)
-      |> maybe_template_static(fingerprint, static, template)
+      {diff, template} =
+        maybe_template_static(%{@dynamics => dynamics}, fingerprint, static, template)
 
-    {diff, fingerprint, pending, components, template}
+      {diff, fingerprint, pending, components, template}
+    else
+      {dynamics, {pending, components, {_, comprehension_template}}} =
+        traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
+
+      diff =
+        maybe_add_template(%{@dynamics => dynamics, @static => static}, comprehension_template)
+
+      {diff, fingerprint, pending, components, nil}
+    end
   end
 
   defp traverse(_socket, nil, fingerprint_tree, pending, components, template, _changed?) do
@@ -506,9 +514,7 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  defp traverse_comprehension(socket, dynamics, pending, components) do
-    template = {%{}, %{}}
-
+  defp traverse_comprehension(socket, dynamics, pending, components, template) do
     Enum.map_reduce(dynamics, {pending, components, template}, fn rendereds, acc ->
       Enum.map_reduce(rendereds, acc, fn rendered, {pending, components, template} ->
         {diff, _, pending, components, template} =

@@ -18,12 +18,12 @@ callback, for example:
 | [Params](#click-events) | `phx-value-*` |
 | [Click Events](#click-events) | `phx-click`, `phx-click-away` |
 | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
-| [Focus/Blur Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
+| [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [DOM Patching](dom-patching.md) | `phx-update`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
-| [Static tracking](`Phoenix.LiveView.static_changed?/1) | `phx-track-static` |
+| [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
 ## Click Events
 
@@ -33,7 +33,9 @@ sent to the server will be chosen with the following priority:
 
   * The `:value` specified in `Phoenix.LiveView.JS.push/3`, such as:
 
-        <div phx-click={JS.push("inc", value: %{myvar1: @val1})}>
+    ```heex
+    <div phx-click={JS.push("inc", value: %{myvar1: @val1})}>
+    ```
 
   * Any number of optional `phx-value-` prefixed attributes, such as:
 
@@ -71,7 +73,9 @@ This is useful for hiding toggled containers like drop-downs.
 Focus and blur events may be bound to DOM elements that emit
 such events, using the `phx-blur`, and `phx-focus` bindings, for example:
 
-    <input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+```heex
+<input name="email" phx-focus="myfocus" phx-blur="myblur"/>
+```
 
 To detect when the page itself has received focus or blur,
 `phx-window-focus` and `phx-window-blur` may be specified. These window
@@ -80,12 +84,14 @@ level events may also be necessary if the element in consideration
 bindings, `phx-value-*` can be provided on the bound element, and those
 values will be sent as part of the payload. For example:
 
-    <div class="container"
-        phx-window-focus="page-active"
-        phx-window-blur="page-inactive"
-        phx-value-page="123">
-      ...
-    </div>
+```heex
+<div class="container"
+    phx-window-focus="page-active"
+    phx-window-blur="page-inactive"
+    phx-value-page="123">
+  ...
+</div>
+```
 
 ## Key Events
 
@@ -164,10 +170,12 @@ All events can be rate-limited on the client by using the
 For example, to avoid validating an email until the field is blurred, while validating
 the username at most every 2 seconds after a user changes the field:
 
-    <form phx-change="validate" phx-submit="save">
-      <input type="text" name="user[email]" phx-debounce="blur"/>
-      <input type="text" name="user[username]" phx-debounce="2000"/>
-    </form>
+```heex
+<form phx-change="validate" phx-submit="save">
+  <input type="text" name="user[email]" phx-debounce="blur"/>
+  <input type="text" name="user[username]" phx-debounce="2000"/>
+</form>
+```
 
 And to rate limit a volume up click to once every second:
 
@@ -175,9 +183,11 @@ And to rate limit a volume up click to once every second:
 
 Likewise, you may throttle held-down keydown:
 
-    <div phx-window-keydown="keydown" phx-throttle="500">
-      ...
-    </div>
+```heex
+<div phx-window-keydown="keydown" phx-throttle="500">
+  ...
+</div>
+```
 
 Unless held-down keys are required, a better approach is generally to use
 `phx-keyup` bindings which only trigger on key up, thereby being self-limiting.
@@ -266,11 +276,15 @@ end
 
 The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing you to customize the event being pushed to the server. For example, imagine you start with a familiar `phx-click` which pushes a message to the server when clicked:
 
-    <button phx-click="clicked">click</button>
+```heex
+<button phx-click="clicked">click</button>
+```
 
-Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targetted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
+Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
 
-    <button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
+```heex
+<button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
+```
 
 See `Phoenix.LiveView.JS.push/3` for all supported options.
 
@@ -285,6 +299,42 @@ the following events are supported:
 
 For example:
 
-    <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-      <%= live_flash(@flash, :info) %>
-    </p>
+```heex
+<p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
+  <%= live_flash(@flash, :info) %>
+</p>
+```
+
+## Loading states and errors
+
+All `phx-` event bindings apply their own css classes when pushed. For example
+the following markup:
+
+```heex
+<button phx-click="clicked" phx-window-keydown="key">...</button>
+```
+
+On click, would receive the `phx-click-loading` class, and on keydown would receive
+the `phx-keydown-loading` class. The css loading classes are maintained until an
+acknowledgement is received on the client for the pushed event.
+
+In the case of forms, when a `phx-change` is sent to the server, the input element
+which emitted the change receives the `phx-change-loading` class, along with the
+parent form tag. The following events receive css loading classes:
+
+  - `phx-click` - `phx-click-loading`
+  - `phx-change` - `phx-change-loading`
+  - `phx-submit` - `phx-submit-loading`
+  - `phx-focus` - `phx-focus-loading`
+  - `phx-blur` - `phx-blur-loading`
+  - `phx-window-keydown` - `phx-keydown-loading`
+  - `phx-window-keyup` - `phx-keyup-loading`
+
+Additionally, the following classes are applied to the LiveView's parent
+container:
+
+  - `"phx-connected"` - applied when the view has connected to the server
+  - `"phx-loading"` - applied when the view is not connected to the server
+  - `"phx-error"` - applied when an error occurs on the server. Note, this
+    class will be applied in conjunction with `"phx-loading"` if connection
+    to the server is lost.

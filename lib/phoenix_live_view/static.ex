@@ -96,7 +96,7 @@ defmodule Phoenix.LiveView.Static do
         %{
           assign_new: {conn.assigns, []},
           connect_params: %{},
-          connect_info: %{},
+          connect_info: conn,
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,

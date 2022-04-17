@@ -77,10 +77,8 @@ defmodule Phoenix.LiveView.EngineTest do
                "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
     end
 
-    test "raises ArgumentError for missing assigns" do
-      assert_raise ArgumentError,
-                   ~r/assign @foo not available in template.*Available assigns: \[:bar\]/s,
-                   fn -> render("<%= @foo %>", %{bar: true}) end
+    test "raises KeyError for missing assigns" do
+      assert_raise KeyError, fn -> render("<%= @foo %>", %{bar: true}) end
     end
   end
 
@@ -305,6 +303,16 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: [1, 2, 3]}, %{foo: true}) == [[1, 2, 3]]
     end
 
+    test "does not render dynamic if it has variables as comprehension generators" do
+      template = "<%= for x <- foo do %><%= x %><% end %>"
+
+      rendered = eval(template, %{__changed__: nil}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+
+      rendered = eval(template, %{__changed__: %{}}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+    end
+
     test "does not render dynamic if it has variables inside optimized comprehension" do
       template = "<%= for foo <- @foo do %><%= foo %><% end %>"
 
@@ -370,7 +378,7 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "renders dynamic if it uses assigns directly" do
-      template = "<%= for _ <- [1, 2, 3], do: assigns.foo %>"
+      template = "<%= for _ <- [1, 2, 3], do: Map.get(assigns, :foo) %>"
       assert changed(template, %{foo: "a"}, nil) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{foo: true}) == [["a", "a", "a"]]
@@ -831,8 +839,8 @@ defmodule Phoenix.LiveView.EngineTest do
     end
   end
 
-  defp eval(string, assigns \\ %{}) do
-    EEx.eval_string(string, [assigns: assigns], file: __ENV__.file, engine: Engine)
+  defp eval(string, assigns \\ %{}, binding \\ []) do
+    EEx.eval_string(string, [assigns: assigns] ++ binding, file: __ENV__.file, engine: Engine)
   end
 
   defp changed(string, assigns, changed, track_changes? \\ true) do

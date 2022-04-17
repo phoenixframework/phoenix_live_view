@@ -74,7 +74,7 @@ defmodule Phoenix.LiveViewUnitTest do
       socket = Utils.post_mount_prune(%{@socket | transport_pid: self()})
 
       assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
-        get_connect_info(socket)
+        get_connect_info(socket, :uri)
       end
     end
 
@@ -82,18 +82,40 @@ defmodule Phoenix.LiveViewUnitTest do
       socket = Utils.post_mount_prune(%{@socket | transport_pid: nil})
 
       assert_raise RuntimeError, ~r/attempted to read connect_info/, fn ->
-        get_connect_info(socket)
+        get_connect_info(socket, :uri)
       end
     end
 
-    test "returns nil when disconnected" do
-      socket = %{@socket | transport_pid: nil}
-      assert get_connect_info(socket) == nil
+    test "returns params when connected" do
+      socket = %{@socket | transport_pid: self(), private: %{connect_info: %{user_agent: "foo"}}}
+      assert get_connect_info(socket, :user_agent) == "foo"
     end
 
-    test "returns params connected and mounting" do
-      socket = %{@socket | transport_pid: self()}
-      assert get_connect_info(socket) == %{}
+    test "returns params when disconnected" do
+      conn =
+        Plug.Test.conn(:get, "/")
+        |> Plug.Conn.put_req_header("user-agent", "custom-client")
+        |> Plug.Conn.put_req_header("x-foo", "bar")
+        |> Plug.Conn.put_req_header("x-bar", "baz")
+        |> Plug.Conn.put_req_header("tracestate", "one")
+        |> Plug.Conn.put_req_header("traceparent", "two")
+
+      socket = %{@socket | private: %{connect_info: conn}}
+
+      assert get_connect_info(socket, :user_agent) ==
+               "custom-client"
+
+      assert get_connect_info(socket, :x_headers) ==
+               [{"x-foo", "bar"}, {"x-bar", "baz"}]
+
+      assert get_connect_info(socket, :trace_context_headers) ==
+               [{"tracestate", "one"}, {"traceparent", "two"}]
+
+      assert get_connect_info(socket, :peer_data) ==
+               %{address: {127, 0, 0, 1}, port: 111317, ssl_cert: nil}
+
+      assert get_connect_info(socket, :uri) ==
+               %URI{host: "www.example.com", path: "/", port: 80, query: "", scheme: "http"}
     end
   end
 
@@ -273,7 +295,7 @@ defmodule Phoenix.LiveViewUnitTest do
 
   describe "assign_new with assigns" do
     test "tracks changes" do
-      assigns = assign_new(@assigns_changes, :key, fn -> raise "wont be invoked" end)
+      assigns = assign_new(@assigns_changes, :key, fn -> raise "won't be invoked" end)
       assert assigns.key == "value"
       refute changed?(assigns, :key)
       refute assigns.__changed__[:key]

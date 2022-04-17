@@ -66,7 +66,7 @@ check that the user has access to it like this:
 The code above builds a query that returns all organizations that belongs to
 the current user and then validates that the given "org_id" belongs to the
 user. If there is no such "org_id" or if the user has no access to it, an
-`Ecto.NotFoundError` exception is raised.
+`Ecto.NoResultsError` exception is raised.
 
 During a regular controller request, this exception will be converted to a
 404 exception and rendered as a custom error page, as

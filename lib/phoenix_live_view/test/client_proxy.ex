@@ -550,7 +550,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp drop_view_by_id(state, id, reason) do
     {:ok, view} = fetch_view_by_id(state, id)
-    push(state, view, "phx_leave", %{})
+    state = push(state, view, "phx_leave", %{})
 
     state =
       Enum.reduce(view.children, state, fn {child_id, _child_session}, acc ->
@@ -768,17 +768,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp push(state, view, event, payload) do
-    ref = to_string(state.ref + 1)
+    ref = state.ref + 1
 
-    send(view.pid, %Phoenix.Socket.Message{
+    message = %Phoenix.Socket.Message{
       join_ref: state.join_ref,
       topic: view.topic,
       event: event,
       payload: payload,
-      ref: ref
-    })
+      ref: to_string(ref)
+    }
 
-    %{state | ref: state.ref + 1}
+    send(view.pid, message)
+
+    %{state | ref: ref}
   end
 
   defp push_with_reply(state, from, view, event, payload) do
@@ -1014,20 +1016,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
 
   defp maybe_values(type, {tag, _, _} = node, element) when type in [:change, :submit] do
-    if tag == "form" do
-      defaults =
-        node
-        |> DOM.reverse_filter(fn node ->
-          DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
-        end)
-        |> Enum.reduce(%{}, &form_defaults/2)
+    cond do
+      tag == "form" ->
+        defaults =
+          node
+          |> DOM.reverse_filter(fn node ->
+            DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
+          end)
+          |> Enum.reduce(%{}, &form_defaults/2)
 
-      case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
-        {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
-        {:error, _, _} = error -> error
-      end
-    else
-      {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
+        case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
+          {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
+          {:error, _, _} = error -> error
+        end
+
+      type == :change and tag in ~w(input select textarea) ->
+        {:ok, form_defaults(node, %{})}
+
+      true ->
+        {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
     end
   end
 

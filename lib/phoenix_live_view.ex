@@ -45,21 +45,24 @@ defmodule Phoenix.LiveView do
   As in a regular request, `params` contains public data that can be
   modified by the user. The `session` always contains private data set
   by the application itself. The `c:mount/3` callback wires up socket
-  assigns necessary for rendering the view. After mounting, `c:render/1`
+  assigns necessary for rendering the view. After mounting, `c:handle_params/3`
+  is invoked so uri and query params are handled. Finally, `c:render/1`
   is invoked and the HTML is sent as a regular HTML response to the
   client.
 
   After rendering the static page, LiveView connects from the client
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via `phx-` bindings. Just like
-  the first rendering, `c:mount/3` is invoked  with params, session,
-  and socket state, where mount assigns values for rendering. However
-  in the connected client case, a LiveView process is spawned on
-  the server, pushes the result of `c:render/1` to the client and
-  continues on for the duration of the connection. If at any point
-  during the stateful life-cycle a crash is encountered, or the client
-  connection drops, the client gracefully reconnects to the server,
-  calling `c:mount/3` once again.
+  the first rendering, `c:mount/3`, is invoked  with params, session,
+  and socket state, However in the connected client case, a LiveView process
+  is spawned on the server, runs `c:handle_params/3` again and then pushes
+  the result of `c:render/1` to the client and continues on for the duration
+  of the connection. If at any point during the stateful life-cycle a crash
+  is encountered, or the client connection drops, the client gracefully
+  reconnects to the server, calling `c:mount/3` and `c:handle_params/3` again.
+
+  LiveView also allows attaching hooks to specific life-cycle stages with
+  `attach_hook/4`.
 
   ## Example
 
@@ -350,30 +353,95 @@ defmodule Phoenix.LiveView do
 
   """
   @callback mount(
-              unsigned_params() | :not_mounted_at_router,
+              params :: unsigned_params() | :not_mounted_at_router,
               session :: map,
               socket :: Socket.t()
             ) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
+  @doc """
+  Renders a template.
+
+  This callback is invoked whenever LiveView detects
+  new content must be rendered and sent to the client.
+
+  If you define this function, it must return a template
+  defined via the `Phoenix.LiveView.Helpers.sigil_H/2`.
+
+  If you don't define this function, LiveView will attempt
+  to render a template in the same directory as your LiveView.
+  For example, if you have a LiveView named `MyApp.MyCustomView`
+  inside `lib/my_app/live_views/my_custom_view.ex`, Phoenix
+  will look for a template at `lib/my_app/live_views/my_custom_view.html.heex`.
+  """
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
+  @doc """
+  Invoked when the LiveView is terminating.
+
+  In case of errors, this callback is only invoked if the LiveView
+  is trapping exits. See `c:GenServer.terminate/2` for more info.
+  """
   @callback terminate(reason, socket :: Socket.t()) :: term
             when reason: :normal | :shutdown | {:shutdown, :left | :closed | term}
 
+  @doc """
+  Invoked after mount and whenever there is a live patch event.
+
+  It receives the current `params`, including parameters from
+  the router, the current `uri` from the client and the `socket`.
+  It is invoked after mount or whenever there is a live navigation
+  event caused by `push_patch/2` or `Phoenix.LiveView.Helpers.live_patch/2`.
+
+  It must always return `{:noreply, socket}`, where `:noreply`
+  means no additional information is sent to the client.
+  """
   @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
+  @doc """
+  Invoked to handle events sent by the client.
+
+  It receives the `event` name, the event payload as a map,
+  and the socket.
+
+  It must return `{:noreply, socket}`, where `:noreply` means
+  no additional information is sent to the client, or
+  `{:reply, map(), socket}`, where the given `map()` is encoded
+  and sent as a reply to the client.
+  """
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
+  @doc """
+  Invoked to handle calls from other Elixir processes.
+
+  See `GenServer.call/3` and `c:GenServer.handle_call/3`
+  for more information.
+  """
   @callback handle_call(msg :: term, {pid, reference}, socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, term, Socket.t()}
 
-  @callback handle_info(msg :: term, socket :: Socket.t()) ::
+  @doc """
+  Invoked to handle casts from other Elixir processes.
+
+  See `GenServer.cast/2` and `c:GenServer.handle_cast/2`
+  for more information. It must always return `{:noreply, socket}`,
+  where `:noreply` means no additional information is sent
+  to the process which cast the message.
+  """
+  @callback handle_cast(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
-  @callback handle_cast(msg :: term, socket :: Socket.t()) ::
+  @doc """
+  Invoked to handle messages from other Elixir processes.
+
+  See `Kernel.send/2` and `c:GenServer.handle_info/2`
+  for more information. It must always return `{:noreply, socket}`,
+  where `:noreply` means no additional information is sent
+  to the process which sent the message.
+  """
+  @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
@@ -479,11 +547,11 @@ defmodule Phoenix.LiveView do
   multiple modules. Instead, pass a tuple and use pattern matching to handle
   different cases:
 
-      def on_mount(:admin, _params, _session, _socket) do
+      def on_mount(:admin, _params, _session, socket) do
         {:cont, socket}
       end
 
-      def on_mount(:user, _params, _session, _socket) do
+      def on_mount(:user, _params, _session, socket) do
         {:cont, socket}
       end
 
@@ -511,10 +579,12 @@ defmodule Phoenix.LiveView do
           {:cont, assign(socket, :page_title, "DemoWeb")}
         end
 
-        def on_mount(:user, _params, _session, socket) do
+        def on_mount(:user, params, session, socket) do
+          # code
         end
 
-        def on_mount(:admin, _params, _session, socket) do
+        def on_mount(:admin, params, session, socket) do
+          # code
         end
       end
 
@@ -598,37 +668,79 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
-  @doc """
+  @doc ~S'''
   Assigns the given `key` with value from `fun` into `socket_or_assigns` if
   one does not yet exist.
 
   The first argument is either a LiveView `socket` or an `assigns` map from
   function components.
 
-  Useful for lazily assigning values and referencing parent assigns.
+  This function is useful for lazily assigning values and referencing parent
+  assigns. We will cover both use cases next.
+
+  ## Lazy assigns
+
+  Imagine you have a function component that accepts a color:
+
+      <.my_component color="red" />
+
+  The color is also optional, so you can skip it:
+
+      <.my_component />
+
+  In such cases, the implementation can use `assign_new` to lazily
+  assign a color if none is given. Let's make it so it picks a random one
+  when none is given:
+
+      def my_component(assigns) do
+        assigns = assign_new(assigns, :color, fn -> Enum.random(~w(red green blue)) end)
+
+        ~H"""
+        <div class={"bg-#{@color}"}>
+          Example
+        </div>
+        """
+      end
 
   ## Referencing parent assigns
 
-  When a LiveView is mounted in a disconnected state, the `Plug.Conn` assigns
-  will be available for reference via `assign_new/3`, allowing assigns to
-  be shared for the initial HTTP request. The `Plug.Conn` assigns will not be
-  available during the connected mount. Likewise, nested LiveView children have
-  access to their parent's assigns on mount using `assign_new/3`, which allows
-  assigns to be shared down the nested LiveView tree.
+  When a user first accesses an application using LiveView, the LiveView is first
+  rendered in its disconnected state, as part of a regular HTML response. In some
+  cases, there may be data that is shared by your Plug pipelines and your LiveView,
+  such as the `:current_user` assign.
 
-  ## Examples
+  By using `assign_new` in the mount callback of your LiveView, you can instruct
+  LiveView to re-use any assigns set in your Plug pipelines as part of `Plug.Conn`,
+  avoiding sending additional queries to the database. Imagine you have a Plug
+  that does:
 
-      # controller
-      conn
-      |> assign(:current_user, user)
-      |> LiveView.Controller.live_render(MyLive, session: %{"user_id" => user.id})
+      # A plug
+      def authenticate(conn, _opts) do
+        if user_id = get_session(conn, :user_id) do
+          assign(conn, :current_user, Accounts.get_user!(user_id))
+        else
+          send_resp(conn, :forbidden)
+        end
+      end
 
-      # LiveView mount
+  You can re-use the `:current_user` assign in your LiveView during the initial
+  render:
+
       def mount(_params, %{"user_id" => user_id}, socket) do
         {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
       end
 
-  """
+  In such case `conn.assigns.current_user` will be used if present. If there is no
+  such `:current_user` assign or the LiveView was mounted as part of the live
+  navigation, where no Plug pipelines are invoked, then the anonymous function is
+  invoked to execute the query instead.
+
+  LiveView is also able to share assigns via `assign_new` within nested LiveView.
+  If the parent LiveView defines a `:current_user` assign and the child LiveView
+  also uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback,
+  as above, the assign will be fetched from the parent LiveView, once again
+  avoiding additional database queries.
+  '''
   def assign_new(socket_or_assigns, key, fun)
 
   def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
@@ -657,9 +769,39 @@ defmodule Phoenix.LiveView do
   end
 
   def assign_new(assigns, _key, fun) when is_function(fun, 0) do
+    raise_bad_socket_or_assign!("assign_new/3", assigns)
+  end
+
+  defp raise_bad_socket_or_assign!(name, assigns) do
+    extra =
+      case assigns do
+        %_{} ->
+          ""
+
+        %{} ->
+          """
+          You passed an assigns map that does not have the relevant change tracking \
+          information. This typically means you are calling a function component by \
+          hand instead of using the HEEx template syntax. If you are using HEEx, make \
+          sure you are calling a component using:
+
+              <.component attribute={value} />
+
+          If you are outside of HEEx and you want to test a component, use \
+          Phoenix.LiveViewTest.render_component/2:
+
+              Phoenix.LiveViewTest.render_component(&component/1, attribute: "value")
+
+          """
+
+        _ ->
+          ""
+      end
+
     raise ArgumentError,
-          "assign_new/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+          "#{name} expects a socket from Phoenix.LiveView/Phoenix.LiveComponent " <>
+            " or an assigns map from Phoenix.Component as first argument, got: " <>
+            inspect(assigns) <> extra
   end
 
   @doc """
@@ -691,9 +833,7 @@ defmodule Phoenix.LiveView do
   end
 
   def assign(assigns, _key, _val) do
-    raise ArgumentError,
-          "assign/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("assign/3", assigns)
   end
 
   @doc """
@@ -757,9 +897,7 @@ defmodule Phoenix.LiveView do
   end
 
   def update(assigns, _key, fun) when is_function(fun, 1) do
-    raise ArgumentError,
-          "update/3 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("update/3", assigns)
   end
 
   @doc """
@@ -784,9 +922,7 @@ defmodule Phoenix.LiveView do
   end
 
   def changed?(assigns, _key) do
-    raise ArgumentError,
-          "changed?/2 expects a socket or an assigns map from a function component as first argument, got: " <>
-            inspect(assigns)
+    raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
   @doc """
@@ -834,15 +970,44 @@ defmodule Phoenix.LiveView do
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
   @doc """
-  Pushes an event to the client to be consumed by hooks.
+  Pushes an event to the client.
 
-  *Note*: events will be dispatched to all active hooks on the client who are
-  handling the given `event`. Scoped events can be achieved by namespacing
-  your event names.
+  Events can be handled in two ways:
 
-  ## Examples
+    1. They can be handled on `window` via `addEventListener`.
+       A "phx:" prefix will be added to the event name.
+
+    2. They can be handled inside a hook via `handleEvent`.
+
+  Note that events are dispatched to all active hooks on the client who are
+  handling the given `event`. If you need to scope events, then this must
+  be done by namespacing them.
+
+  ## Hook example
+
+  If you push a "scores" event from your LiveView:
 
       {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"})}
+
+  A hook declared via `phx-hook` can handle it via `handleEvent`:
+
+      this.handleEvent("scores", data => ...)
+
+  ## `window` example
+
+  All events are also dispatched on the `window`. This means you can handle
+  them by adding listeners. For example, if you want to remove an element
+  from the page, you can do this:
+
+      {:noreply, push_event(socket, "remove-el", %{id: "foo-bar"})}
+
+  And now in your app.js you can register and handle it:
+
+      window.addEventListener(
+        "phx:remove-el",
+        e => document.getElementById(e.detail.id).remove()
+      )
+
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
@@ -950,7 +1115,7 @@ defmodule Phoenix.LiveView do
   it is guaranteed that all entries have completed before the submit event
   is invoked. Once entries are consumed, they are removed from the upload.
 
-  The function passed to consume the may return a tagged tuple of the form
+  The function passed to consume may return a tagged tuple of the form
   `{:ok, my_result}` to collect results about the consumed entries, or
   `{:postpone, my_result}` to collect results, but postpone the file
   consumption to be performed later.
@@ -980,7 +1145,7 @@ defmodule Phoenix.LiveView do
   This is a lower-level feature than `consume_uploaded_entries/3` and useful
   for scenarios where you want to consume entries as they are individually completed.
 
-  Like `consume_uploaded_entries/3`, the function passed to consume the may return
+  Like `consume_uploaded_entries/3`, the function passed to consume may return
   a tagged tuple of the form `{:ok, my_result}` to collect results about the
   consumed entries, or `{:postpone, my_result}` to collect results,
   but postpone the file consumption to be performed later.
@@ -1151,43 +1316,90 @@ defmodule Phoenix.LiveView do
     if connect_params = private[:connect_params] do
       if connected?(socket), do: connect_params, else: nil
     else
-      raise_connect_only!(socket, "connect_params")
+      raise_root_and_mount_only!(socket, "connect_params")
+    end
+  end
+
+  @deprecated "use get_connect_info/2 instead"
+  def get_connect_info(%Socket{private: private} = socket) do
+    if connect_info = private[:connect_info] do
+      if connected?(socket), do: connect_info, else: nil
+    else
+      raise_root_and_mount_only!(socket, "connect_info")
     end
   end
 
   @doc """
-  Accesses the connect info from the socket to use on connected mount.
+  Accesses a given connect info key from the socket.
 
-  Connect info are only sent when the client connects to the server and
-  only remain available during mount. `nil` is returned when called in a
-  disconnected state and a `RuntimeError` is raised if called after mount.
+  The following keys are supported: `:peer_data`, `:trace_context_headers`,
+  `:x_headers`, `:uri`, and `:user_agent`.
+
+  The connect information is available only during mount. During disconnected
+  render, all keys are available. On connected render, only the keys explicitly
+  declared in your socket are available. See `Phoenix.Endpoint.socket/3` for
+  a complete description of the keys.
 
   ## Examples
 
-  First, when invoking the LiveView socket, you need to declare the
-  `connect_info` you want to receive. Typically, it includes at least
-  the session but it may include other keys, such as `:peer_data`.
-  See `Phoenix.Endpoint.socket/3`:
+  The first step is to declare the `connect_info` you want to receive.
+  Typically, it includes at least the session, but you must include all
+  other keys you want to access on connected mount, such as `:peer_data`:
 
       socket "/live", Phoenix.LiveView.Socket,
         websocket: [connect_info: [:peer_data, session: @session_options]]
 
   Those values can now be accessed on the connected mount as
-  `get_connect_info/1`:
+  `get_connect_info/2`:
 
       def mount(_params, _session, socket) do
-        if info = get_connect_info(socket) do
-          {:ok, assign(socket, ip: info.peer_data.address)}
-        else
-          {:ok, assign(socket, ip: nil)}
-        end
+        peer_data = get_connect_info(socket, :peer_data)
+        {:ok, assign(socket, ip: peer_data.address)}
       end
+
+  If the key is not available, usually because it was not specified
+  in `connect_info`, it returns nil.
   """
-  def get_connect_info(%Socket{private: private} = socket) do
+  def get_connect_info(%Socket{private: private} = socket, key) when is_atom(key) do
     if connect_info = private[:connect_info] do
-      if connected?(socket), do: connect_info, else: nil
+      case connect_info do
+        %Plug.Conn{} -> conn_connect_info(connect_info, key)
+        %{} -> connect_info[key]
+      end
     else
-      raise_connect_only!(socket, "connect_info")
+      raise_root_and_mount_only!(socket, "connect_info")
+    end
+  end
+
+  defp conn_connect_info(conn, :peer_data) do
+    Plug.Conn.get_peer_data(conn)
+  end
+
+  defp conn_connect_info(conn, :x_headers) do
+    for {header, _} = pair <- conn.req_headers,
+        String.starts_with?(header, "x-"),
+        do: pair
+  end
+
+  defp conn_connect_info(conn, :trace_context_headers) do
+    for {header, _} = pair <- conn.req_headers,
+        header in ["traceparent", "tracestate"],
+        do: pair
+  end
+
+  defp conn_connect_info(conn, :uri) do
+    %URI{
+      scheme: to_string(conn.scheme),
+      query: conn.query_string,
+      port: conn.port,
+      host: conn.host,
+      path: conn.request_path
+    }
+  end
+
+  defp conn_connect_info(conn, :user_agent) do
+    with {_, value} <- List.keyfind(conn.req_headers, "user-agent", 0) do
+      value
     end
   end
 
@@ -1247,7 +1459,7 @@ defmodule Phoenix.LiveView do
           endpoint.config(:cache_static_manifest_latest)
         )
     else
-      raise_connect_only!(socket, "static_changed?")
+      raise_root_and_mount_only!(socket, "static_changed?")
     end
   end
 
@@ -1265,7 +1477,7 @@ defmodule Phoenix.LiveView do
 
   defp static_changed?(_, _), do: false
 
-  defp raise_connect_only!(socket, fun) do
+  defp raise_root_and_mount_only!(socket, fun) do
     if child?(socket) do
       raise RuntimeError, """
       attempted to read #{fun} from a nested child LiveView #{inspect(socket.view)}.

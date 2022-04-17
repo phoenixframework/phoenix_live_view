@@ -265,6 +265,16 @@ defmodule Phoenix.LiveView.JSTest do
       assert JS.dispatch("click", to: "#modal") == %JS{
                ops: [["dispatch", %{to: "#modal", event: "click"}]]
              }
+
+      assert JS.dispatch("click") == %JS{
+               ops: [["dispatch", %{to: nil, event: "click"}]]
+             }
+    end
+
+    test "with optional flags" do
+      assert JS.dispatch("click", bubbles: false) == %JS{
+               ops: [["dispatch", %{to: nil, event: "click", bubbles: false}]]
+             }
     end
 
     test "raises with unknown options" do
@@ -273,13 +283,23 @@ defmodule Phoenix.LiveView.JSTest do
       end
     end
 
+    test "raises with click details" do
+      assert_raise ArgumentError, ~r/click events cannot be dispatched with details/, fn ->
+        JS.dispatch("click", to: ".foo", detail: %{id: 123})
+      end
+    end
+
     test "composability" do
-      js = JS.dispatch("click", to: "#modal") |> JS.dispatch("keydown", to: "#keyboard")
+      js =
+        JS.dispatch("click", to: "#modal")
+        |> JS.dispatch("keydown", to: "#keyboard")
+        |> JS.dispatch("keyup")
 
       assert js == %JS{
                ops: [
                  ["dispatch", %{to: "#modal", event: "click"}],
-                 ["dispatch", %{to: "#keyboard", event: "keydown"}]
+                 ["dispatch", %{to: "#keyboard", event: "keydown"}],
+                 ["dispatch", %{to: nil, event: "keyup"}]
                ]
              }
     end

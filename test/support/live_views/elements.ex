@@ -49,7 +49,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
-    <section phx-hook="Example" class="idless-hook">Section</section>
+    <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
     <%# forms %>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
@@ -108,6 +108,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <%= Phoenix.HTML.Form.datetime_select :hello, :naive_select %>
       <input name="hello[utc_text]" type="text">
       <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
+      <input name="hello[individual]" type="text" phx-change="individual-changed"/>
     </form>
 
     <form id="trigger-form-default" phx-submit="form-submit-trigger"

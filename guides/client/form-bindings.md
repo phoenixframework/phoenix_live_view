@@ -19,20 +19,23 @@ You are welcome to change the `ErrorHelpers` module as you prefer.
 To handle form changes and submissions, use the `phx-change` and `phx-submit`
 events. In general, it is preferred to handle input changes at the form level,
 where all form fields are passed to the LiveView's callback given any
-single input change. For example, to handle real-time form validation and
-saving, your template would use both `phx_change` and `phx_submit` bindings:
+single input change, but individual inputs may also track their own changes.
+For example, to handle real-time form validation and saving, your form would
+use both `phx-change` and `phx-submit` bindings:
 
-    <.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
-      <%= label f, :username %>
-      <%= text_input f, :username %>
-      <%= error_tag f, :username %>
+```
+<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+  <%= label f, :username %>
+  <%= text_input f, :username %>
+  <%= error_tag f, :username %>
 
-      <%= label f, :email %>
-      <%= text_input f, :email %>
-      <%= error_tag f, :email %>
+  <%= label f, :email %>
+  <%= text_input f, :email %>
+  <%= error_tag f, :email %>
 
-      <%= submit "Save" %>
-    </.form>
+  <%= submit "Save" %>
+</.form>
+```
 
 Next, your LiveView picks up the events in `handle_event` callbacks:
 
@@ -75,6 +78,28 @@ socket is annotated for redirect with `Phoenix.LiveView.redirect/2` to
 the new user page, otherwise the socket assigns are updated with the errored
 changeset to be re-rendered for the client.
 
+You may wish for an individual input to use its own change event or to target
+a different component. This can be accomplished by annotating the input itself
+with `phx-change`, for example:
+
+```
+<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+  ...
+  <%= label f, :county %>
+  <%= text_input f, :email, phx_change: "email_changed", phx_target: @myself %>
+</.form>
+```
+
+Then your LiveView or LiveComponent would handle the event:
+
+```elixir
+def handle_event("email_changed", %{"user" => %{"email" => email}}, socket) do
+  ...
+end
+```
+
+_Note_: only the individual input is sent as params for an input marked with `phx-change`.
+
 ## `phx-feedback-for`
 
 For proper form error tag updates, the error tag must specify which
@@ -114,7 +139,9 @@ from the client when an input is invalid, instead allowing the browser's native
 validation UI to drive user interaction. Once the input becomes valid, change and
 submit events will be sent normally.
 
-    <input type="number">
+```heex
+<input type="number">
+```
 
 This is known to have a plethora of problems including accessibility, large numbers
 are converted to exponential notation, and scrolling can accidentally increase or
@@ -124,7 +151,9 @@ One alternative is the `inputmode` attribute, which may serve your application's
 and users much better. According to [Can I Use?](https://caniuse.com/#search=inputmode),
 the following is supported by 86% of the global market (as of Sep 2021):
 
-    <input type="text" inputmode="numeric" pattern="[0-9]*">
+```heex
+<input type="text" inputmode="numeric" pattern="[0-9]*">
+```
 
 ## Password inputs
 
@@ -132,10 +161,12 @@ Password inputs are also special cased in `Phoenix.HTML`. For security reasons,
 password field values are not reused when rendering a password input tag. This
 requires explicitly setting the `:value` in your markup, for example:
 
-    <%= password_input f, :password, value: input_value(f, :password) %>
-    <%= password_input f, :password_confirmation, value: input_value(f, :password_confirmation) %>
-    <%= error_tag f, :password %>
-    <%= error_tag f, :password_confirmation %>
+```heex
+<%= password_input f, :password, value: input_value(f, :password) %>
+<%= password_input f, :password_confirmation, value: input_value(f, :password_confirmation) %>
+<%= error_tag f, :password %>
+<%= error_tag f, :password_confirmation %>
+```
 
 ## File inputs
 
@@ -143,10 +174,12 @@ LiveView forms support [reactive file inputs](uploads.md),
 including drag and drop support via the `phx-drop-target`
 attribute:
 
-    <div class="container" phx-drop-target={@uploads.avatar.ref}>
-        ...
-        <%= live_file_input @uploads.avatar %>
-    </div>
+```heex
+<div class="container" phx-drop-target={@uploads.avatar.ref}>
+    ...
+    <%= live_file_input @uploads.avatar %>
+</div>
+```
 
 See `Phoenix.LiveView.Helpers.live_file_input/2` for more.
 
@@ -159,10 +192,12 @@ submit before posting to a controller route for operations that require
 Plug session mutation. For example, in your LiveView template you can
 annotate the `phx-trigger-action` with a boolean assign:
 
-    <.form let={f} for={@changeset}
-      action={Routes.reset_password_path(@socket, :create)}
-      phx-submit="save",
-      phx-trigger-action={@trigger_submit}>
+```heex
+<.form let={f} for={@changeset}
+  action={Routes.reset_password_path(@socket, :create)}
+  phx-submit="save",
+  phx-trigger-action={@trigger_submit}>
+```
 
 Then in your LiveView, you can toggle the assign to trigger the form with the current
 fields on next render:
@@ -174,7 +209,7 @@ fields on next render:
 
         {:error, changeset} ->
           {:noreply, assign(socket, changeset: changeset)}
-        end
+      end
     end
 
 Once `phx-trigger-action` is true, LiveView disconnects and then submits the form.
@@ -238,7 +273,9 @@ which triggered the change event.
 
 For example, if the following input triggered a change event:
 
-    <input name="user[username]"/>
+```heex
+<input name="user[username]"/>
+```
 
 The server's `handle_event/3` would receive a payload:
 
@@ -260,12 +297,14 @@ On completion of server processing of the `phx-submit` event:
 2. The last input with focus is restored (unless another input has received focus)
 3. Updates are patched to the DOM as usual
 
-To handle latent events, any HTML tag can be annotated with
+To handle latent events, the `<button>` tag of a form can be annotated with
 `phx-disable-with`, which swaps the element's `innerText` with the provided
 value during event submission. For example, the following code would change
 the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 
-    <button type="submit" phx-disable-with="Saving...">Save</button>
+```heex
+<button type="submit" phx-disable-with="Saving...">Save</button>
+```
 
 You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
@@ -274,19 +313,19 @@ with the following rules in your `app.css`:
     .while-submitting { display: none; }
     .inputs { display: block; }
 
-    .phx-submit-loading {
-      .while-submitting { display: block; }
-      .inputs { display: none; }
-    }
+    .phx-submit-loading .while-submitting { display: block; }
+    .phx-submit-loading .inputs { display: none; }
 
 You can show and hide content with the following markup:
 
-    <form phx-change="update">
-      <div class="while-submitting">Please wait while we save our content...</div>
-      <div class="inputs">
-        <input type="text" name="text" value="<%= @text %>">
-      </div>
-    </form>
+```heex
+<form phx-change="update">
+  <div class="while-submitting">Please wait while we save our content...</div>
+  <div class="inputs">
+    <input type="text" name="text" value={@text}>
+  </div>
+</form>
+```
 
 Additionally, we strongly recommend including a unique HTML "id" attribute on the form.
 When DOM siblings change, elements without an ID will be replaced rather than moved,

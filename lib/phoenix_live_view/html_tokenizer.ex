@@ -42,13 +42,36 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     |> strip_text_token_fully()
   end
 
+  @doc """
+  Tokenize the given text according to the given params.
+
+  * `text` - The content to be tokenized.
+  * `file` - Can be either a file or a string "nofile".
+  * `indentation` - An integer that indicates the current indentation.
+  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
+  * `tokens` - A list of tokens.
+  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
+    {:comment, line, column}.
+
+  ### Examples
+
+      iex> alias Phoenix.LiveView.HTMLTokenizer
+      iex> HTMLTokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
+      {[
+         {:tag_close, "section", %{column: 16, line: 1}},
+         {:tag_open, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag_open, "section", [], %{column: 1, line: 1}}
+       ], :text}
+
+  """
   def tokenize(text, file, indentation, meta, tokens, cont) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
-    state = %{file: file, column_offset: indentation + 1, braces: []}
+    state = %{file: file, column_offset: indentation + 1, braces: [], context: []}
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
+      :style -> handle_style(text, line, column, [], tokens, state)
       :script -> handle_script(text, line, column, [], tokens, state)
       {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
     end
@@ -73,15 +96,18 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text("<!--" <> rest, line, column, buffer, acc, state) do
+    state = update_in(state.context, &[:comment_start | &1])
     handle_comment(rest, line, column + 4, ["<!--" | buffer], acc, state)
   end
 
   defp handle_text("</" <> rest, line, column, buffer, acc, state) do
-    handle_tag_close(rest, line, column + 2, text_to_acc(buffer, acc, line, column), state)
+    text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
+    handle_tag_close(rest, line, column + 2, text_to_acc, %{state | context: []})
   end
 
   defp handle_text("<" <> rest, line, column, buffer, acc, state) do
-    handle_tag_open(rest, line, column + 1, text_to_acc(buffer, acc, line, column), state)
+    text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
+    handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
@@ -89,7 +115,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_text(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column), :text)
+    ok(text_to_acc(buffer, acc, line, column, []), :text)
   end
 
   ## handle_doctype
@@ -115,7 +141,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
     acc = [
       {:tag_close, "script", %{line: line, column: column}}
-      | text_to_acc(buffer, acc, line, column)
+      | text_to_acc(buffer, acc, line, column, [])
     ]
 
     handle_text(rest, line, column + 9, [], acc, state)
@@ -134,7 +160,34 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_script(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column), :script)
+    ok(text_to_acc(buffer, acc, line, column, []), :script)
+  end
+
+  ## handle_style
+
+  defp handle_style("</style>" <> rest, line, column, buffer, acc, state) do
+    acc = [
+      {:tag_close, "style", %{line: line, column: column}}
+      | text_to_acc(buffer, acc, line, column, [])
+    ]
+
+    handle_text(rest, line, column + 9, [], acc, state)
+  end
+
+  defp handle_style("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_style(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_style("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_style(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_style(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_style(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
+  end
+
+  defp handle_style(<<>>, line, column, buffer, acc, _state) do
+    ok(text_to_acc(buffer, acc, line, column, []), :style)
   end
 
   ## handle_comment
@@ -148,6 +201,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_comment("-->" <> rest, line, column, buffer, acc, state) do
+    state = update_in(state.context, &[:comment_end | &1])
     handle_text(rest, line, column + 3, ["-->" | buffer], acc, state)
   end
 
@@ -155,8 +209,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     handle_comment(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_comment(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column), {:comment, line, column})
+  defp handle_comment(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, state.context), {:comment, line, column})
   end
 
   ## handle_tag_open
@@ -238,6 +292,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     case reverse_attrs(acc) do
       [{:tag_open, "script", _, _} | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
+
+      [{:tag_open, "style", _, _} | _] = acc ->
+        handle_style(rest, line, column + 1, [], acc, state)
 
       acc ->
         handle_text(rest, line, column + 1, [], acc, state)
@@ -497,11 +554,26 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     IO.iodata_to_binary(Enum.reverse(buffer))
   end
 
-  defp text_to_acc([], acc, _line, _column),
+  defp text_to_acc(buffer, acc, line, column, context)
+
+  defp text_to_acc([], acc, _line, _column, _context),
     do: acc
 
-  defp text_to_acc(buffer, acc, line, column),
-    do: [{:text, buffer_to_string(buffer), %{line_end: line, column_end: column}} | acc]
+  defp text_to_acc(buffer, acc, line, column, context) do
+    meta = %{line_end: line, column_end: column}
+
+    meta =
+      if context = get_context(context) do
+        Map.put(meta, :context, context)
+      else
+        meta
+      end
+
+    [{:text, buffer_to_string(buffer), meta} | acc]
+  end
+
+  defp get_context([]), do: nil
+  defp get_context(context), do: Enum.reverse(context)
 
   defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, attr_meta, value \\ nil) do
     attrs = [{attr, value, attr_meta} | attrs]

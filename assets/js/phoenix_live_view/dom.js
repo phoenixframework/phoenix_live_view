@@ -250,8 +250,10 @@ let DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0]
   },
 
-  dispatchEvent(target, eventString, detail = {}){
-    let event = new CustomEvent(eventString, {bubbles: true, cancelable: true, detail: detail})
+  dispatchEvent(target, name, opts = {}){
+    let bubbles = opts.bubbles === undefined ? true : !!opts.bubbles
+    let eventOpts = {bubbles: bubbles, cancelable: true, detail: opts.detail || {}}
+    let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts)
     target.dispatchEvent(event)
   },
 
@@ -287,7 +289,7 @@ let DOM = {
 
   mergeFocusedInput(target, source){
     // skip selects because FF will reset highlighted index for any setAttribute
-    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, {except: ["value"]}) }
+    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, {exclude: ["value"]}) }
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {

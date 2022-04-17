@@ -1,7 +1,8 @@
 
 export const CONSECUTIVE_RELOADS = "consecutive-reloads"
 export const MAX_RELOADS = 10
-export const RELOAD_JITTER = [1000, 3000]
+export const RELOAD_JITTER_MIN = 1000
+export const RELOAD_JITTER_MAX = 3000
 export const FAILSAFE_JITTER = 30000
 export const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
@@ -33,7 +34,7 @@ export const PHX_ROOT_ID = "data-phx-root-id"
 export const PHX_TRIGGER_ACTION = "trigger-action"
 export const PHX_FEEDBACK_FOR = "feedback-for"
 export const PHX_HAS_FOCUSED = "phx-has-focused"
-export const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time"]
+export const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"]
 export const CHECKABLE_INPUTS = ["checkbox", "radio"]
 export const PHX_HAS_SUBMITTED = "phx-has-submitted"
 export const PHX_SESSION = "data-phx-session"

@@ -138,6 +138,7 @@ defmodule Phoenix.LiveViewTest do
       import Phoenix.LiveViewTest
 
       test "greets" do
+        assigns = []
         assert rendered_to_string(~H"""
                <MyComponents.greet name="Mary" />
                """) ==
@@ -189,11 +190,7 @@ defmodule Phoenix.LiveViewTest do
     Plug.Conn.put_private(conn, :live_view_connect_params, params)
   end
 
-  @doc """
-  Puts connect info to be used on LiveView connections.
-
-  See `Phoenix.LiveView.get_connect_info/1`.
-  """
+  @deprecated "set the relevant connect_info fields in the connection instead"
   def put_connect_info(conn, params) when is_map(params) do
     Plug.Conn.put_private(conn, :live_view_connect_info, params)
   end
@@ -210,7 +207,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       {:ok, view, html} = live(conn, "/path")
-      assert view.module = MyLive
+      assert view.module == MyLive
       assert html =~ "the count is 3"
 
       assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "/path")
@@ -335,7 +332,7 @@ defmodule Phoenix.LiveViewTest do
     start_proxy(path, %{
       html: Phoenix.ConnTest.html_response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
-      connect_info: conn.private[:live_view_connect_info] || %{},
+      connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
       live_module: live_module,
       router: router,
       endpoint: Phoenix.Controller.endpoint_module(conn),
@@ -351,6 +348,10 @@ defmodule Phoenix.LiveViewTest do
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
        when redir in [301, 302] do
     error_redirect_conn(conn)
+  end
+
+  defp prune_conn(conn) do
+    %{conn | resp_body: nil, resp_headers: []}
   end
 
   defp error_redirect_conn(conn) do
@@ -504,7 +505,9 @@ defmodule Phoenix.LiveViewTest do
   Converts a rendered template to a string.
 
   ## Examples
-
+      
+      iex> import Phoenix.LiveView.Helpers
+      iex> assigns = []
       iex> ~H"""
       ...> <div>example</div>
       ...> """
@@ -547,7 +550,7 @@ defmodule Phoenix.LiveViewTest do
       {:ok, view, html} = live(conn, "/thermo")
 
       assert view
-             |> element("buttons", "Increment")
+             |> element("button", "Increment")
              |> render_click() =~ "The temperature is: 30℉"
   """
   def render_click(element, value \\ %{})
@@ -1022,15 +1025,23 @@ defmodule Phoenix.LiveViewTest do
 
   An optional text filter may be given to filter the results by the query
   selector. If the text filter is a string or a regex, it will match any
-  element that contains the string or matches the regex. After the text
-  filter is applied, only one element must remain, otherwise an error is
-  raised.
+  element that contains the string (including as a substring) or matches the
+  regex.
+
+  So a link containing the text "unopened" will match `element("a", "opened")`.
+  To prevent this, a regex could specify that "opened" appear without the prefix "un".
+  For example, `element("a", ~r{(?<!un)opened})`.
+  But it may be clearer to add an HTML attribute to make the element easier to
+  select.
+
+  After the text filter is applied, only one element must remain, otherwise an
+  error is raised.
 
   If no text filter is given, then the query selector itself must return
   a single element.
 
       assert view
-            |> element("#term a:first-child()", "Increment")
+            |> element("#term a:first-child", "Increment")
             |> render() =~ "Increment</a>"
 
   Attribute selectors are also supported, and may be used on special cases
@@ -1129,24 +1140,15 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp start_upload_client(socket_builder, view, form_selector, name, entries, cid) do
-    spec = %{
-      id: make_ref(),
-      start: {UploadClient, :start_link, [[socket_builder: socket_builder, cid: cid]]},
-      restart: :temporary
-    }
-
+  defp start_upload_client(builder, view, form_selector, name, entries, cid) do
+    {:ok, socket} = builder.()
+    spec = {UploadClient, socket: socket, cid: cid}
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
 
   defp start_external_upload_client(view, form_selector, name, entries, cid) do
-    spec = %{
-      id: make_ref(),
-      start: {UploadClient, :start_link, [[cid: cid]]},
-      restart: :temporary
-    }
-
+    spec = {UploadClient, cid: cid}
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
@@ -1327,7 +1329,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       render_click(view, :event_that_triggers_redirect_to_path)
-      :ok = refute_redirect view, "/wrong_path"
+      :ok = refute_redirected view, "/wrong_path"
   """
   def refute_redirected(view, to) when is_binary(to) do
     refute_navigation(view, :redirect, to)
@@ -1364,7 +1366,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       view
-      |> element("#term a:first-child()", "Increment")
+      |> element("#term a:first-child", "Increment")
       |> open_browser()
 
       assert view
