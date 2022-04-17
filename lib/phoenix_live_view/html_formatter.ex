@@ -19,6 +19,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ]
   ```
 
+  > ### For umbrella projects {: .info}
+  >
+  > In umbrella projects, you must also add `:phoenix_live_view` to your `deps`
+  > in the `mix.exs` file at the umbrella root. This is because the formatter
+  > does not attempt to load the dependencies of all children applications.
+
   ## Options
 
   * `:line_length` - The Elixir formatter defaults to a maximum line length
