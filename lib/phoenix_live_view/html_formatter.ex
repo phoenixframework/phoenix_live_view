@@ -160,13 +160,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ### Special attributes
 
   In case you don't want part of your HTML to be automatically formatted. you
-  can use `phx-no-break` attr so that the formatter will skip the element block.
+  can use `phx-no-format` attr so that the formatter will skip the element block.
   Note that this attribute will not be rendered.
 
   Therefore:
 
   ```eex
-  <.textarea phx-no-break>My content</.textarea>
+  <.textarea phx-no-format>My content</.textarea>
   ```
 
   Will be kept as is your code editor, but rendered as:
@@ -552,7 +552,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     Enum.any?(attrs, fn
       {"contenteditable", {:string, "false", _meta}} -> false
       {"contenteditable", _v} -> true
-      {"phx-no-break", _v} -> true
+      {"phx-no-format", _v} -> true
       _ -> false
     end)
   end

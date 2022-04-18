@@ -1370,10 +1370,10 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
-    test "does not format when phx-no-break attr is present" do
+    test "does not format when phx-no-format attr is present" do
       assert_formatter_doesnt_change(
         """
-        <.textarea phx-no-break>My content</.textarea>
+        <.textarea phx-no-format>My content</.textarea>
         """,
         line_length: 5
       )

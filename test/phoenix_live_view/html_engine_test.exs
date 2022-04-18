@@ -1197,22 +1197,22 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  test "do not render phx-no-break attr" do
-    rendered = eval("<div phx-no-break>Content</div>")
+  test "do not render phx-no-format attr" do
+    rendered = eval("<div phx-no-format>Content</div>")
     assert rendered.static == ["<div>Content</div>"]
 
-    rendered = eval("<div phx-no-break />")
+    rendered = eval("<div phx-no-format />")
     assert rendered.static == ["<div></div>"]
 
     assigns = %{}
 
     assert compile("""
-           <Phoenix.LiveView.HTMLEngineTest.textarea phx-no-break>
+           <Phoenix.LiveView.HTMLEngineTest.textarea phx-no-format>
             Content
            </Phoenix.LiveView.HTMLEngineTest.textarea>
            """) == "<textarea>\n Content\n</textarea>"
 
-    assert compile("<.textarea phx-no-break>Content</.textarea>") ==
+    assert compile("<.textarea phx-no-format>Content</.textarea>") ==
              "<textarea>Content</textarea>"
   end
 
