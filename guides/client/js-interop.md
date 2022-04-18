@@ -229,7 +229,9 @@ DOM management, the `LiveSocket` constructor accepts a `dom` option with an
 function just before the DOM patch operations occurs in LiveView. This allows external
 libraries to (re)initialize DOM elements or copy attributes as necessary as LiveView
 performs its own patch operations. The update operation cannot be cancelled or deferred,
-and the return value is ignored. For example, the following option could be used to add
+and the return value is ignored. 
+
+For example, the following option could be used to add
 [Alpine.js](https://github.com/alpinejs/alpine) support to your project:
 
     let liveSocket = new LiveSocket("/live", Socket, {
@@ -240,6 +242,17 @@ and the return value is ignored. For example, the following option could be used
         }
       },
     })
+
+You could also use the same approach to guarantee that some attributes set on the client-side are kept intact.
+In the following example, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView:
+
+    onBeforeElUpdated(from, to){
+      for (const attr of from.attributes){
+        if (attr.name.startsWith("data-js-")){ 
+          to.setAttribute(attr.name, attr.value); 
+        }
+      }
+    }
 
 ### Client-server communication
 
