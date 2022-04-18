@@ -775,10 +775,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 
   def remove_phx_no_break(attrs) do
-    Enum.reject(attrs, fn
-      {"phx-no-break", _v} -> true
-      _ -> false
-    end)
+    List.keydelete(attrs, "phx-no-break", 0)
   end
 
   # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
