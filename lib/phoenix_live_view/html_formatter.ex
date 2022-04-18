@@ -537,7 +537,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
     mode =
-      if String.trim_leading(text) != "" and !(:binary.first(text) in '\s\t') do
+      if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t' do
         :preserve
       else
         meta.mode
