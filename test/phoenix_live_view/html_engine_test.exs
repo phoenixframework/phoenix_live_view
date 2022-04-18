@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveView.Helpers,
-    only: [sigil_H: 2, render_slot: 1, render_slot: 2]
+    only: [sigil_H: 2, render_slot: 1, render_slot: 2, assigns_to_attributes: 2]
 
   alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
@@ -35,6 +35,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   def assigns_component(assigns) do
     ~H"<%= inspect(Map.delete(assigns, :__changed__)) %>"
+  end
+
+  def textarea(assigns) do
+    assigns = Phoenix.LiveView.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+    ~H"<textarea {@extra_assigns}><%= render_slot(@inner_block) %></textarea>"
   end
 
   def remote_function_component(assigns) do
@@ -1190,6 +1195,25 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
     end
+  end
+
+  test "do not render phx-no-break attr" do
+    rendered = eval("<div phx-no-break>Content</div>")
+    assert rendered.static == ["<div>Content</div>"]
+
+    rendered = eval("<div phx-no-break />")
+    assert rendered.static == ["<div></div>"]
+
+    assigns = %{}
+
+    assert compile("""
+           <Phoenix.LiveView.HTMLEngineTest.textarea phx-no-break>
+            Content
+           </Phoenix.LiveView.HTMLEngineTest.textarea>
+           """) == "<textarea>\n Content\n</textarea>"
+
+    assert compile("<.textarea phx-no-break>Content</.textarea>") ==
+             "<textarea>Content</textarea>"
   end
 
   describe "html validations" do

@@ -1335,6 +1335,35 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "keeps right format for inline elements within block elements" do
+      assert_formatter_doesnt_change("""
+      <section>
+        <svg
+          id="game"
+          viewBox="0 0 1000 1000"
+          width="1000"
+          height="1000"
+          class="bg-white dark:bg-zinc-900 shadow mx-auto"
+        >
+          <defs>
+            <pattern id="tenthGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="silver" stroke-width="0.5" />
+            </pattern>
+          </defs>
+        </svg>
+      </section>
+      """)
+    end
+
+    test "does not format when phx-no-break attr is present" do
+      assert_formatter_doesnt_change(
+        """
+        <.textarea phx-no-break>My content</.textarea>
+        """,
+        line_length: 5
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

@@ -156,6 +156,24 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   This is the list of inline elements:
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+
+  ### Special attributes
+
+  In case you don't want part of your HTML to be automatically formatted. you
+  can use `phx-no-break` attr so that the formatter will skip the element block.
+  Note that this attribute will not be rendered.
+
+  Therefore:
+
+  ```eex
+  <.textarea phx-no-break>My content</.textarea>
+  ```
+
+  Will be kept as is your code editor, but rendered as:
+
+  ```html
+  <textarea>My content</textarea>
+  ```
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
@@ -518,7 +536,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # text, we want to set mode as preserve. So this tag will not be formatted.
   defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
-    mode = if !(:binary.first(text) in '\s\t'), do: :preserve, else: meta.mode
+    mode =
+      if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t' do
+        :preserve
+      else
+        meta.mode
+      end
+
     [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
@@ -528,6 +552,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     Enum.any?(attrs, fn
       {"contenteditable", {:string, "false", _meta}} -> false
       {"contenteditable", _v} -> true
+      {"phx-no-break", _v} -> true
       _ -> false
     end)
   end
