@@ -774,7 +774,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 
-  def remove_phx_no_break(attrs) do
+  defp remove_phx_no_break(attrs) do
     List.keydelete(attrs, "phx-no-break", 0)
   end
 
