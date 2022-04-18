@@ -1262,7 +1262,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         """
         <p>
-          text text<a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+          text text<a
+            class="text-blue-500"
+            href=""
+            target="_blank"
+            attr1=""
+          >link</a>text.
         </p>
         """,
         line_length: 50
@@ -1277,7 +1282,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """
         <p>
           text text
-          <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+          <a
+            class="text-blue-500"
+            href=""
+            target="_blank"
+            attr1=""
+          >link</a>text.
         </p>
         """,
         line_length: 50
@@ -1291,7 +1301,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         """
         <p>
-          <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text text text text.
+          <a
+            class="text-blue-500"
+            href=""
+            target="_blank"
+            attr1=""
+          >link</a>text text text text.
         </p>
         """,
         line_length: 50

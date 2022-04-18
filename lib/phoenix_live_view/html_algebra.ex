@@ -153,13 +153,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp to_algebra({:tag_block, name, attrs, block, %{mode: :preserve}}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
-    attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
 
     tag =
       concat([
-        "<#{name}",
-        attrs,
-        ">",
+        format_tag_open(name, attrs, context),
         nest(children, :reset),
         "</#{name}>"
       ])
@@ -179,18 +176,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
     children = if force_newline?, do: force_unfit(children), else: children
 
-    tag_open =
-      case attrs do
-        [attr] ->
-          concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
-
-        attrs ->
-          concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
-      end
-
     doc =
       concat([
-        tag_open,
+        format_tag_open(name, attrs, context),
         children,
         break(""),
         "</#{name}>"
@@ -314,6 +302,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> concat(break(on_break))
     |> group()
   end
+
+  defp format_tag_open(name, [attr], context),
+    do: concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
+
+  defp format_tag_open(name, attrs, context),
+    do: concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
 
   defp render_attribute({:root, {:expr, expr, _}}, _opts), do: ~s({#{expr}})
 
