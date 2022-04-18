@@ -433,6 +433,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
     validate_phx_attrs!(attrs, tag_meta, state)
+    attrs = remove_phx_no_break(attrs)
 
     state
     |> set_root_on_tag()
@@ -442,7 +443,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, name, tag_meta} = token, state) do
     {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
-    attrs = remove_phx_no_break(attrs)
     update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
   end
 
