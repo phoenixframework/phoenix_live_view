@@ -21,9 +21,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   > ### For umbrella projects {: .info}
   >
-  > In umbrella projects, you must also add `:phoenix_live_view` to your `deps`
-  > in the `mix.exs` file at the umbrella root. This is because the formatter
-  > does not attempt to load the dependencies of all children applications.
+  > In umbrella projects you must also change two files at the umbrella root,
+  > add `:phoenix_live_view` to your `deps` in the `mix.exs` file
+  > and add `plugins: [Phoenix.LiveView.HTMLFormatter]` in the `.formatter.exs` file.
+  > This is because the formatter does not attempt to load the dependencies of all children applications.
 
   ## Options
 
