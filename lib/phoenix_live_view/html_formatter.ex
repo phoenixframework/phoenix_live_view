@@ -445,6 +445,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer) ->
           :preserve
 
+        name in @inline_elements and head_is_eex_expresion?(upper_buffer) ->
+          :preserve
+
         contains_special_attrs?(attrs) ->
           :preserve
 
@@ -532,6 +535,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         false
     end
   end
+
+  # Return true if the first element of the given buffer is a EEx expression,
+  # otherwise return false.
+  defp head_is_eex_expresion?([{:eex, _, _} | _]), do: true
+  defp head_is_eex_expresion?(_), do: false
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.

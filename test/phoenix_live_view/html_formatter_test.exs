@@ -1313,6 +1313,15 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "preserve inline element on the same line when followed by a eex expression without whitespaces" do
+      assert_formatter_doesnt_change(
+        """
+        <%= some_function("arg") %><span>content</span>
+        """,
+        line_length: 25
+      )
+    end
+
     test "does not format when contenteditable is present" do
       assert_formatter_doesnt_change(
         """
