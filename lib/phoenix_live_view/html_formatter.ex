@@ -456,12 +456,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       end
 
     buffer =
-      cond do
-        name in @inline_elements and head_is_eex_expresion?(upper_buffer) ->
-          Enum.map(buffer, &maybe_force_text_on_newline/1)
-
-        true ->
-          buffer
+      if name in @inline_elements and head_is_eex_expresion?(upper_buffer) do
+        Enum.map(buffer, &maybe_force_text_on_newline/1)
+      else
+        buffer
       end
 
     tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{mode: mode}}
