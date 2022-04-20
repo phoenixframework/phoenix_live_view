@@ -1313,7 +1313,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "preserve inline element on the same newline when followed by a eex expression without whitespace" do
+    test "preserve inline element on the same line when followed by a eex expression without whitespaces" do
       assert_formatter_doesnt_change(
         """
         <%= some_function("arg") %><span>content</span>
