@@ -541,12 +541,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp head_is_eex_expresion?([{:eex, _, _} | _]), do: true
   defp head_is_eex_expresion?(_), do: false
 
-  defp maybe_force_text_on_newline({:text, text, %{newlines: 0} = meta}) do
-    {:text, text, Map.put(meta, :newlines, 1)}
-  end
-
-  defp maybe_force_text_on_newline(text), do: text
-
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
   defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
