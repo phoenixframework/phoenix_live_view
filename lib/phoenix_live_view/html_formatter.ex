@@ -442,9 +442,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         name in ["pre", "textarea"] ->
           :preserve
 
-        name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer) ->
-          :preserve
-
         name in @inline_elements and head_is_eex_expresion?(upper_buffer) ->
           :preserve
 
@@ -522,18 +519,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp line_html_comment?(text) do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
-  end
-
-  # In case the first element of the given buffer is a text and, this text
-  # ends with a whitespace, it wil return true. Otherwise false.
-  defp head_is_text_ending_with_whitespace?(upper_buffer) do
-    case List.first(upper_buffer) do
-      {:text, text, _meta} ->
-        if String.trim_leading(text) == "", do: false, else: :binary.last(text) in '\s\t'
-
-      _ ->
-        false
-    end
   end
 
   # Return true if the first element of the given buffer is a EEx expression,
