@@ -439,16 +439,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
     mode =
       cond do
-        name in ["pre", "textarea"] ->
-          :preserve
-
-        name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer) ->
-          :preserve
-
-        name in @inline_elements and head_is_eex_expresion?(upper_buffer) ->
-          :preserve
-
-        contains_special_attrs?(attrs) ->
+        preserve_format?(name, upper_buffer, attrs) ->
           :preserve
 
         name in @inline_elements ->
@@ -524,22 +515,22 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
-  # In case the first element of the given buffer is a text and, this text
-  # ends with a whitespace, it wil return true. Otherwise false.
-  defp head_is_text_ending_with_whitespace?(upper_buffer) do
-    case List.first(upper_buffer) do
-      {:text, text, _meta} ->
-        if String.trim_leading(text) == "", do: false, else: :binary.last(text) in '\s\t'
-
-      _ ->
-        false
-    end
+  # We want to preserve the format:
+  #
+  # * In case the head is a text that doesn't end with whitespace.
+  # * In case the head is eex.
+  # * In case it contains special attrs such as contenteditable or phx-no-format.
+  defp preserve_format?(name, upper_buffer, attrs) do
+    name in ["pre", "textarea"] or
+      (name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)) or
+      contains_special_attrs?(attrs)
   end
 
-  # Return true if the first element of the given buffer is a EEx expression,
-  # otherwise return false.
-  defp head_is_eex_expresion?([{:eex, _, _} | _]), do: true
-  defp head_is_eex_expresion?(_), do: false
+  defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
+    do: if(String.trim_leading(text) == "", do: false, else: !(:binary.last(text) in '\s\t'))
+
+  defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
+  defp head_may_not_have_whitespace?(_), do: false
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
