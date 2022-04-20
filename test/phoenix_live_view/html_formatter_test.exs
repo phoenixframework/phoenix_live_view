@@ -1257,17 +1257,17 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(
         """
         <p>
-          text text<a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+          text text text<a class="text-blue-500" href="" target="_blank" attr1="">link</a>
         </p>
         """,
         """
         <p>
-          text text<a
+          text text text<a
             class="text-blue-500"
             href=""
             target="_blank"
             attr1=""
-          >link</a>text.
+          >link</a>
         </p>
         """,
         line_length: 50
@@ -1317,6 +1317,17 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_doesnt_change(
         """
         <%= some_function("arg") %><span>content</span>
+        """,
+        line_length: 25
+      )
+
+      assert_formatter_output(
+        """
+        <%= some_function("arg") %> <span>content</span>
+        """,
+        """
+        <%= some_function("arg") %>
+        <span>content</span>
         """,
         line_length: 25
       )
