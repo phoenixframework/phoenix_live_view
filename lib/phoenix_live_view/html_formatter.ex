@@ -544,12 +544,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # Return true if the first element of the given buffer is a EEx expression,
   # otherwise return false.
-  defp head_is_eex_expresion?(upper_buffer) do
-    case List.first(upper_buffer) do
-      {:eex, _text, _meta} -> true
-      _ -> false
-    end
-  end
+  defp head_is_eex_expresion?([{:eex, _, _} | _]), do: true
+  defp head_is_eex_expresion?(_), do: false
 
   defp maybe_force_text_on_newline({:text, text, %{newlines: 0} = meta}) do
     {:text, text, Map.put(meta, :newlines, 1)}
