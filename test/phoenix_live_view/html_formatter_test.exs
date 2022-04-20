@@ -7,11 +7,11 @@ if Version.match?(System.version(), ">= 1.13.0") do
     defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
       formatted = HTMLFormatter.format(input, dot_formatter_opts)
       assert formatted == expected
-      assert HTMLFormatter.format(input, dot_formatter_opts) == formatted
+      assert HTMLFormatter.format(formatted, dot_formatter_opts) == expected
     end
 
-    def assert_formatter_doesnt_change(code, opts \\ []) do
-      assert_formatter_output(code, code, opts)
+    def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
+      assert HTMLFormatter.format(code, dot_formatter_opts) == code
     end
 
     test "always break lines for block elements" do

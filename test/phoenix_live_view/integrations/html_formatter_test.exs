@@ -1,8 +1,7 @@
 if Version.match?(System.version(), ">= 1.13.0") do
   defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
-    use ExUnit.Case, async: true
+    use ExUnit.Case
 
-    alias Mix.Tasks.Format, as: MixFormat
     alias Phoenix.LiveView.HTMLFormatter
 
     defp assert_mix_format_output(input_ex, expected, dot_formatter_opts \\ []) do
@@ -27,7 +26,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
     end
 
     defp run_formatter(ex_path, dot_formatter_path) do
-      MixFormat.run([ex_path, "--dot-formatter", dot_formatter_path])
+      Mix.Tasks.Format.run([ex_path, "--dot-formatter", dot_formatter_path])
       File.read!(ex_path)
     end
 
