@@ -1313,6 +1313,21 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "force inline element into a newline when followed by a eex expression" do
+      input = """
+        <%= some_function("arg") %><span>content</span>
+      """
+
+      expected = """
+      <%= some_function("arg") %>
+      <span>
+        content
+      </span>
+      """
+
+      assert_formatter_output(input, expected, line_length: 25)
+    end
+
     test "does not format when contenteditable is present" do
       assert_formatter_doesnt_change(
         """

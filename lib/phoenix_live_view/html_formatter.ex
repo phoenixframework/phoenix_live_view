@@ -455,6 +455,15 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           :block
       end
 
+    buffer =
+      cond do
+        name in @inline_elements and head_is_eex_expresion?(upper_buffer) ->
+          Enum.map(buffer, &maybe_force_text_on_newline/1)
+
+        true ->
+          buffer
+      end
+
     tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{mode: mode}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
@@ -532,6 +541,21 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         false
     end
   end
+
+  # Return true if the first element of the given buffer is a EEx expression,
+  # otherwise return false.
+  defp head_is_eex_expresion?(upper_buffer) do
+    case List.first(upper_buffer) do
+      {:eex, _text, _meta} -> true
+      _ -> false
+    end
+  end
+
+  defp maybe_force_text_on_newline({:text, text, %{newlines: 0} = meta}) do
+    {:text, text, Map.put(meta, :newlines, 1)}
+  end
+
+  defp maybe_force_text_on_newline(text), do: text
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
