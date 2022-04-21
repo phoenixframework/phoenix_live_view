@@ -1041,13 +1041,33 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <.form let={f} for={@changeset}>
+  The `:for` attribute is typically an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html):
+
+      <.form let={f} for={@changeset} phx-change="change_name">
         <%= text_input f, :name %>
       </.form>
 
-      <.form let={user_form} for={@changeset} as="user" multipart {@extra}>
+      <.form let={user_form} for={@changeset} multipart phx-submit="save_user">
         <%= text_input user_form, :name %>
+        <%= submit "Save" %>
       </.form>
+
+  The `:for` attribute can also be an atom, in case you don't have an
+  existing data layer but you want to use the existing form helpers:
+
+      <.form let={user_form} for={:user} multipart phx-submit="save_user">
+        <%= text_input user_form, :name %>
+        <%= submit "Save" %>
+      </.form>
+
+  However, if you don't have a data layer, it may be more straight-forward
+  to drop this `form` component altogether and simply rely on HTML:
+
+      <form multipart phx-submit="save_user">
+        <input type="text" name="user[name]">
+        <input type="submit" name="Save">
+      </form>
+
   """
   def form(assigns) do
     # Extract options and then to the same call as form_for
