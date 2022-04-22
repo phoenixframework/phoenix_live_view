@@ -95,13 +95,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, _meta}, %{mode: :preserve} = context) do
-    children = block_to_algebra(block, context)
-
-    {:inline,
-     concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
-  end
-
   defp to_algebra({:tag_block, name, attrs, block, _meta}, context) when name in @languages do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
@@ -151,18 +144,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{mode: :preserve}}, context) do
-    children = block_to_algebra(block, %{context | mode: :preserve})
+  defp to_algebra({:tag_block, _name, _attrs, _block, _meta} = doc, %{mode: :preserve} = context) do
+    tag_block_preserve_to_algebra(doc, context)
+  end
 
-    tag =
-      concat([
-        format_tag_open(name, attrs, context),
-        nest(children, :reset),
-        "</#{name}>"
-      ])
-      |> group()
-
-    {:inline, tag}
+  defp to_algebra({:tag_block, _name, _attrs, _block, %{mode: :preserve}} = doc, context) do
+    tag_block_preserve_to_algebra(doc, context)
   end
 
   defp to_algebra({:tag_block, name, attrs, block, meta}, context) do
@@ -265,6 +252,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # Handle comment start and end in the same line: <!-- comment -->
   defp to_algebra({:comment, text}, _context) when is_binary(text) do
     {:block, text |> String.trim() |> string()}
+  end
+
+  # Preserve tag_block
+  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+    children = block_to_algebra(block, %{context | mode: :preserve})
+
+    tag =
+      concat([
+        format_tag_open(name, attrs, context),
+        nest(children, :reset),
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:inline, tag}
   end
 
   # Empty newline
