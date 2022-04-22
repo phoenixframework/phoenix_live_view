@@ -1047,24 +1047,32 @@ defmodule Phoenix.LiveView.Helpers do
         <%= text_input f, :name %>
       </.form>
 
-      <.form let={user_form} for={@changeset} multipart phx-submit="save_user">
+      <.form let={user_form} for={@changeset} multipart phx-change="change_user" phx-submit="save_user">
         <%= text_input user_form, :name %>
         <%= submit "Save" %>
       </.form>
 
-  The `:for` attribute can also be an atom, in case you don't have an
-  existing data layer but you want to use the existing form helpers:
+  Notice how both examples use `phx-change`. The LiveView must implement
+  the `phx-change` event and store the input values as they arrive on
+  change. This is important because, if an unrelated change happens on
+  the page, LiveView should re-render the inputs with their updated values.
+  Without `phx-change`, the inputs would otherwise be clearer. Alternatively,
+  you can use `phx-update="ignore"` on the form to discard any updates.
 
-      <.form let={user_form} for={:user} multipart phx-submit="save_user">
-        <%= text_input user_form, :name %>
+  The `:for` attribute can also be an atom, in case you don't have an
+  existing data layer but you want to use the existing form helpers.
+  In this case, you simply need to pass the input values explicitly:
+
+      <.form let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
+        <%= text_input user_form, :name, value: @user_name %>
         <%= submit "Save" %>
       </.form>
 
   However, if you don't have a data layer, it may be more straight-forward
   to drop this `form` component altogether and simply rely on HTML:
 
-      <form multipart phx-submit="save_user">
-        <input type="text" name="user[name]">
+      <form multipart phx-change="change_user" phx-submit="save_user">
+        <input type="text" name="user[name]" value={@user_name}>
         <input type="submit" name="Save">
       </form>
 
