@@ -1399,6 +1399,23 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "respect nesting of children when phx-no-format is present" do
+      assert_formatter_doesnt_change(
+        """
+        <ul class="root" phx-no-format><!-- comment
+        --><%= for user <- @users do %>
+            <li class="list">
+              <div class="child1">
+                <span class="child2">text</span>
+              </div>
+            </li>
+          <% end %><!-- comment
+        --></ul>
+        """,
+        line_length: 100
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
