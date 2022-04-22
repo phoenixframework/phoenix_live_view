@@ -1056,12 +1056,13 @@ defmodule Phoenix.LiveView.Helpers do
   the `phx-change` event and store the input values as they arrive on
   change. This is important because, if an unrelated change happens on
   the page, LiveView should re-render the inputs with their updated values.
-  Without `phx-change`, the inputs would otherwise be clearer. Alternatively,
+  Without `phx-change`, the inputs would otherwise be cleared. Alternatively,
   you can use `phx-update="ignore"` on the form to discard any updates.
 
   The `:for` attribute can also be an atom, in case you don't have an
   existing data layer but you want to use the existing form helpers.
-  In this case, you simply need to pass the input values explicitly:
+  In this case, you need to pass the input values explicitly as they
+  change (or use `phx-update="ignore"` as per the previous paragraph):
 
       <.form let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
         <%= text_input user_form, :name, value: @user_name %>
@@ -1069,7 +1070,7 @@ defmodule Phoenix.LiveView.Helpers do
       </.form>
 
   However, if you don't have a data layer, it may be more straight-forward
-  to drop this `form` component altogether and simply rely on HTML:
+  to drop the `form` component altogether and simply rely on HTML:
 
       <form multipart phx-change="change_user" phx-submit="save_user">
         <input type="text" name="user[name]" value={@user_name}>
