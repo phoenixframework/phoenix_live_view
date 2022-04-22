@@ -1313,6 +1313,33 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "preserve inline element when there aren't whitespaces" do
+      assert_formatter_doesnt_change(
+        """
+        <b>foo</b><i><span>bar</span></i><span>baz</span>
+        """,
+        line_length: 20
+      )
+
+      assert_formatter_output(
+        """
+        <b>Foo</b><i>bar</i> <span>baz</span>
+        """,
+        """
+        <b>Foo</b><i>bar</i>
+        <span>baz</span>
+        """,
+        line_length: 20
+      )
+
+      assert_formatter_doesnt_change(
+        """
+        <b>foo</b><i>bar</i><%= @user.name %><span>baz</span>
+        """,
+        line_length: 20
+      )
+    end
+
     test "preserve inline element on the same line when followed by a eex expression without whitespaces" do
       assert_formatter_doesnt_change(
         """

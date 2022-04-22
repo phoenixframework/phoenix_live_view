@@ -38,6 +38,13 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       |> maybe_force_unfit()
 
     Enum.reduce(tail, {head, type, doc}, fn next_node, {prev_node, prev_type, prev_doc} ->
+      context =
+        if inline?(prev_node) and inline?(next_node) do
+          %{context | mode: :preserve}
+        else
+          context
+        end
+
       {next_type, next_doc} =
         next_node
         |> to_algebra(context)
@@ -423,4 +430,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp remove_indentation(<<?\t, rest::binary>>, indent), do: remove_indentation(rest, indent - 2)
   defp remove_indentation(<<?\s, rest::binary>>, indent), do: remove_indentation(rest, indent - 1)
   defp remove_indentation(rest, _indent), do: rest
+
+  defp inline?({:tag_block, _, _, _, %{mode: :inline}}), do: true
+  defp inline?(_), do: false
 end
