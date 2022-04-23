@@ -35,6 +35,7 @@
   - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
   - Do not failsafe reload the page on push timeout if disconnected
   - Do not bubble navigation click events to regular phx-click's
+  - No longer generate `csrf_token` for forms without action, reducing the payload during phx-change/phx-submit events
 
 ## 0.17.7 (2022-02-07)
 
