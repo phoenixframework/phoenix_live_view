@@ -178,8 +178,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   ### Inline comments <%# comment %>
 
-  Inline comments `<%# comment %>` were deprecated and the formatter will remove them out silently
-  from the templates, consider changing manually to the multi-line comment `<%!-- comment --%>` on
+  Inline comments `<%# comment %>` are deprecated and the formatter will discard them silently
+  from templates. You must change them to the multi-line comment `<%!-- comment --%>` on
   Elixir v1.14+ or the regular line comment `<%= # comment %>`.
   """
 
