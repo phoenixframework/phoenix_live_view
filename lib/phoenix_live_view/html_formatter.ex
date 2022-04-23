@@ -175,6 +175,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```html
   <textarea>My content</textarea>
   ```
+
+  ### Inline comments <%# comment %>
+
+  Inline comments `<%# comment %>` were deprecated and the formatter will remove them out silently
+  from the templates, consider changing manually to the multi-line comment `<%!-- comment --%>` on
+  Elixir v1.14+ or the regular line comment `<%= # comment %>`.
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
