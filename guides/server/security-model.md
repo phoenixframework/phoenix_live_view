@@ -46,7 +46,7 @@ via Plugs, such as this:
 Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView
 should execute those same verifications:
 
-    def mount(params, %{"user_id" => user_id} = _session, socket) do
+    def mount(_params, %{"user_id" => user_id} = _session, socket) do
       socket = assign(socket, current_user: Accounts.get_user!(user_id))
 
       socket =
@@ -66,7 +66,7 @@ as you would with plug:
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.LiveView
 
-      def on_mount(:default, params, %{"user_id" => user_id} = _session, socket) do
+      def on_mount(:default, _params, %{"user_id" => user_id} = _session, socket) do
         socket = assign_new(socket, :current_user, fn ->
           Accounts.get_user!(user_id)
         end)
@@ -122,7 +122,7 @@ described, one might implement this:
 
     on_mount MyAppWeb.UserLiveAuth
 
-    def mount(_params, session, socket) do
+    def mount(_params, _session, socket) do
       {:ok, load_projects(socket)}
     end
 
