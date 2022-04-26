@@ -125,6 +125,11 @@ available options can be found on
 [MDN](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values)
 or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
 
+Note: it is possible for certain browser features like autofill to trigger key events
+with no `"key"` field present in the value map sent to the server. For this reason, we
+strongly recommend always having a fallback catch-all `_value` event handler for any
+LiveView key event binding.
+
 By default, the bound element will be the event listener, but a
 window-level binding may be provided via `phx-window-keydown` or `phx-window-keyup`,
 for example:
@@ -147,7 +152,7 @@ for example:
       {:noreply, assign(socket, :temperature, new_temp)}
     end
 
-    def handle_event("update_temp", _key, socket) do
+    def handle_event("update_temp", _value, socket) do
       {:noreply, socket}
     end
 
