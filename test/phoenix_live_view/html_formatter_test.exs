@@ -1311,6 +1311,16 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 50
       )
+
+      assert_formatter_doesnt_change(
+        """
+        <p>
+          long line of text <span>span 1</span>
+          more text <span>span 2</span>
+        </p>
+        """,
+        line_length: 45
+      )
     end
 
     test "preserve inline element when there aren't whitespaces" do
