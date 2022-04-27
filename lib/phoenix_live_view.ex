@@ -768,6 +768,13 @@ defmodule Phoenix.LiveView do
     end
   end
 
+  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
+    case assigns do
+      %{^key => _} -> assigns
+      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
+    end
+  end
+
   def assign_new(assigns, _key, fun) when is_function(fun, 0) do
     raise_bad_socket_or_assign!("assign_new/3", assigns)
   end

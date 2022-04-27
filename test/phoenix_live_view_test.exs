@@ -295,23 +295,23 @@ defmodule Phoenix.LiveViewUnitTest do
 
   describe "assign_new with assigns" do
     test "tracks changes" do
-      assigns = assign_new(@assigns_changes, :key, fn _ -> raise "won't be invoked" end)
+      assigns = assign_new(@assigns_changes, :key, fn -> raise "won't be invoked" end)
       assert assigns.key == "value"
       refute changed?(assigns, :key)
       refute assigns.__changed__[:key]
 
-      assigns = assign_new(@assigns_changes, :another, fn _ -> "changed" end)
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
       assert assigns.another == "changed"
       assert changed?(assigns, :another)
 
-      assigns = assign_new(@assigns_nil_changes, :another, fn _ -> "changed" end)
+      assigns = assign_new(@assigns_nil_changes, :another, fn -> "changed" end)
       assert assigns.another == "changed"
       assert changed?(assigns, :another)
       assert assigns.__changed__ == nil
     end
 
     test "has access to new assigns" do
-      assigns = assign_new(@assigns_changes, :another, fn _ -> "changed" end)
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
       |> assign_new(:and_another, fn %{another: another} -> another end)
 
       assert assigns.and_another == "changed"
