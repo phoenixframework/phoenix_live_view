@@ -11,7 +11,7 @@ defmodule Phoenix.ComponentTest do
 
   describe "rendering" do
     defp hello(assigns) do
-      assigns = assign_new(assigns, :name, fn -> "World" end)
+      assigns = assign_new(assigns, :name, fn _ -> "World" end)
       ~H"""
       Hello <%= @name %>
       """

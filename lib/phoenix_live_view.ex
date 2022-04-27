@@ -761,10 +761,10 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
+  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 1) do
     case assigns do
       %{^key => _} -> assigns
-      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
+      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.(assigns))
     end
   end
 
