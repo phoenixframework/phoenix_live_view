@@ -740,6 +740,12 @@ defmodule Phoenix.LiveView do
   also uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback,
   as above, the assign will be fetched from the parent LiveView, once again
   avoiding additional database queries.
+
+  assign_new also provides asscess to the new assigns in the fn when using an assigns:
+
+      assigns = assigns
+          |> assign_new(:foo, fn _ -> "foo")
+          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar")
   '''
   def assign_new(socket_or_assigns, key, fun)
 
