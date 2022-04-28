@@ -1495,7 +1495,7 @@ defmodule Phoenix.LiveViewTest do
   tuple.
 
   Imagine you have a LiveView that redirects on a `render_click`
-  event. You can make it sure it immediately redirects after the
+  event. You can make sure it immediately redirects after the
   `render_click` action by calling `follow_redirect/3`:
 
       live_view
