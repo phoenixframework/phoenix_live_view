@@ -741,9 +741,10 @@ defmodule Phoenix.LiveView do
   as above, the assign will be fetched from the parent LiveView, once again
   avoiding additional database queries.
 
-  assign_new also provides asscess to the new assigns in the fn:
+  Note that `fun` also provides access to the previously assigned values:
 
-      assigns = assigns
+      assigns =
+          assigns
           |> assign_new(:foo, fn -> "foo")
           |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar")
   '''
