@@ -93,7 +93,13 @@ Let's look at an annotated example:
     <progress value={entry.progress} max="100"> <%= entry.progress %>% </progress>
 
     <%# a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 %>
-    <button phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
+    <button
+      phx-click="cancel-upload"
+      phx-target={@myself}
+      phx-value-ref={entry.ref}
+      type="button"
+      aria-label="cancel"
+    >&times;</button>
 
     <%# Phoenix.LiveView.Helpers.upload_errors/2 returns a list of error atoms %>
     <%= for err <- upload_errors(@uploads.avatar, entry) do %>
