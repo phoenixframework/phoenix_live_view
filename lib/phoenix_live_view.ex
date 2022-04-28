@@ -745,8 +745,8 @@ defmodule Phoenix.LiveView do
 
       assigns =
           assigns
-          |> assign_new(:foo, fn -> "foo")
-          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar")
+          |> assign_new(:foo, fn -> "foo" end)
+          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar" end)
   '''
   def assign_new(socket_or_assigns, key, fun)
 
