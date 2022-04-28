@@ -150,7 +150,7 @@ for example:
       {:noreply, assign(socket, :temperature, new_temp)}
     end
 
-    def handle_event("update_temp", _value, socket) do
+    def handle_event("update_temp", _, socket) do
       {:noreply, socket}
     end
 
