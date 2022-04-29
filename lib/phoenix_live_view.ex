@@ -883,7 +883,7 @@ defmodule Phoenix.LiveView do
 
       iex> update(socket, :count, fn count -> count + 1 end)
       iex> update(socket, :count, &(&1 + 1))
-      iex> update(socket, :double_count, fn _, %{count: count} -> count * 2 end)
+      iex> update(socket, :max_users_this_session, fn current_max, %{users: users} -> max(current_max, length(users)) end)
   """
   def update(socket_or_assigns, key, fun)
 

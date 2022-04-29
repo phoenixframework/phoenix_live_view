@@ -346,8 +346,8 @@ defmodule Phoenix.LiveViewUnitTest do
     test "passes socket assigns to update function" do
       socket = @socket |> assign(key: "value", key2: "another") |> Utils.clear_changed()
 
-      socket = update(socket, :key2, fn _, %{key: key} -> key end)
-      assert socket.assigns.key2 == "value"
+      socket = update(socket, :key2, fn key2, %{key: key} -> key2 <> " " <> key end)
+      assert socket.assigns.key2 == "another value"
       assert changed?(socket, :key2)
     end
 
