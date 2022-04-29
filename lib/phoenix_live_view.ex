@@ -762,16 +762,15 @@ defmodule Phoenix.LiveView do
         # because maybe the controller doesn't have it but the view does.
         socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
 
-        # take only public assigns from `socket.assigns`
-        new_assigns =
-          socket.assigns
-          |> Map.take(Map.keys(socket.assigns.__changed__))
-          |> Map.merge(assigns)
 
         Phoenix.LiveView.Utils.force_assign(
           socket,
           key,
-          Map.get_lazy(assigns, key, fn -> fun.(new_assigns) end)
+          case assigns do
+            %{^key => value} -> value
+            %{} -> fun.(socket.assigns)
+          end
+        )
         )
 
       %{assigns: assigns} ->
