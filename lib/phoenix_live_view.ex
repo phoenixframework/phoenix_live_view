@@ -740,8 +740,41 @@ defmodule Phoenix.LiveView do
   also uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback,
   as above, the assign will be fetched from the parent LiveView, once again
   avoiding additional database queries.
+
+  Note that `fun` also provides access to the previously assigned values:
+
+      assigns =
+          assigns
+          |> assign_new(:foo, fn -> "foo" end)
+          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar" end)
   '''
   def assign_new(socket_or_assigns, key, fun)
+
+  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 1) do
+    validate_assign_key!(key)
+
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assign_new: {assigns, keys}}} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
+
+        Phoenix.LiveView.Utils.force_assign(
+          socket,
+          key,
+          case assigns do
+            %{^key => value} -> value
+            %{} -> fun.(socket.assigns)
+          end
+        )
+
+      %{assigns: assigns} ->
+        Phoenix.LiveView.Utils.force_assign(socket, key, fun.(assigns))
+    end
+  end
 
   def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
     validate_assign_key!(key)
@@ -761,6 +794,13 @@ defmodule Phoenix.LiveView do
     end
   end
 
+  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 1) do
+    case assigns do
+      %{^key => _} -> assigns
+      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.(assigns))
+    end
+  end
+
   def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
     case assigns do
       %{^key => _} -> assigns
@@ -768,7 +808,7 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  def assign_new(assigns, _key, fun) when is_function(fun, 0) do
+  def assign_new(assigns, _key, fun) when is_function(fun, 0) or is_function(fun, 1) do
     raise_bad_socket_or_assign!("assign_new/3", assigns)
   end
 

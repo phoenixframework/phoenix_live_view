@@ -291,6 +291,34 @@ defmodule Phoenix.LiveViewUnitTest do
                __changed__: %{existing: true, notexisting: true, existing2: true}
              }
     end
+
+    test "has access to assigns" do
+      socket =
+        put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn _ -> "new-existing" end)
+        |> assign_new(:existing2, fn _ -> "new-existing2" end)
+        |> assign_new(:notexisting, fn %{existing: existing} -> existing end)
+        |> assign_new(:notexisting2, fn %{existing2: existing2} -> existing2 end)
+        |> assign_new(:notexisting3, fn %{notexisting: notexisting} -> notexisting end)
+
+      assert socket.assigns == %{
+               existing: "existing-parent",
+               existing2: "existing2",
+               notexisting: "existing-parent",
+               notexisting2: "existing2",
+               notexisting3: "existing-parent",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{
+                 existing: true,
+                 existing2: true,
+                 notexisting: true,
+                 notexisting2: true,
+                 notexisting3: true
+               }
+             }
+    end
   end
 
   describe "assign_new with assigns" do
@@ -308,6 +336,15 @@ defmodule Phoenix.LiveViewUnitTest do
       assert assigns.another == "changed"
       assert changed?(assigns, :another)
       assert assigns.__changed__ == nil
+    end
+
+    test "has access to new assigns" do
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
+      |> assign_new(:and_another, fn %{another: another} -> another end)
+
+      assert assigns.and_another == "changed"
+      assert changed?(assigns, :another)
+      assert changed?(assigns, :and_another)
     end
   end
 
