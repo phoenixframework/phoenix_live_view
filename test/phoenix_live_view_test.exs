@@ -379,6 +379,22 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
+  describe "update with arity 2 function" do
+    test "passes socket assigns to update function" do
+      socket = @socket |> assign(key: "value", key2: "another") |> Utils.clear_changed()
+
+      socket = update(socket, :key2, fn key2, %{key: key} -> key2 <> " " <> key end)
+      assert socket.assigns.key2 == "another value"
+      assert changed?(socket, :key2)
+    end
+
+    test "passes assigns to update function" do
+      assigns = update(@assigns_changes, :key, fn _, %{map: %{foo: bar}} -> bar end)
+      assert assigns.key == :bar
+      assert changed?(assigns, :key)
+    end
+  end
+
   describe "redirect/2" do
     test "requires local path on to" do
       assert_raise ArgumentError, ~r"the :to option in redirect/2 expects a path", fn ->
