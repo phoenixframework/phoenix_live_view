@@ -875,18 +875,31 @@ defmodule Phoenix.LiveView do
   The update function receives the current key's value and
   returns the updated value. Raises if the key does not exist.
 
+  The update function may also be of arity 2, in which case it receives
+  the current key's value as the first argument and the current assigns
+  as the second argument.
+
   ## Examples
 
       iex> update(socket, :count, fn count -> count + 1 end)
       iex> update(socket, :count, &(&1 + 1))
+      iex> update(socket, :double_count, fn _, %{count: count} -> count * 2 end)
   """
   def update(socket_or_assigns, key, fun)
+
+  def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 2) do
+    update(socket, key, &fun.(&1, assigns))
+  end
 
   def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 1) do
     case assigns do
       %{^key => val} -> assign(socket, key, fun.(val))
       %{} -> raise KeyError, key: key, term: assigns
     end
+  end
+
+  def update(assigns, key, fun) when is_function(fun, 2) do
+    update(assigns, key, &fun.(&1, assigns))
   end
 
   def update(assigns, key, fun) when is_function(fun, 1) do
