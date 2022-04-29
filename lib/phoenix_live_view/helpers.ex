@@ -230,7 +230,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket] ++ exclude
+    excluded_keys = [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket, :live_action, :live_module] ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
