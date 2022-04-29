@@ -877,7 +877,7 @@ defmodule Phoenix.LiveView do
 
   The update function may also be of arity 2, in which case it receives
   the current key's value as the first argument and the current assigns
-  as the second argument.
+  as the second argument. Raises if the key does not exist.
 
   ## Examples
 
