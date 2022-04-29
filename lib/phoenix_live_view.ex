@@ -762,7 +762,6 @@ defmodule Phoenix.LiveView do
         # because maybe the controller doesn't have it but the view does.
         socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
 
-
         Phoenix.LiveView.Utils.force_assign(
           socket,
           key,
@@ -770,7 +769,6 @@ defmodule Phoenix.LiveView do
             %{^key => value} -> value
             %{} -> fun.(socket.assigns)
           end
-        )
         )
 
       %{assigns: assigns} ->
