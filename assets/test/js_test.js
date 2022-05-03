@@ -565,4 +565,61 @@ describe("JS", () => {
       expect(modal.getAttribute("aria-expanded")).toEqual("true")
     })
   })
+
+  describe("exec_toggle_attr", () => {
+    test("with defaults", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let modal = document.querySelector("#modal")
+      let toggle = document.querySelector("#toggle")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual("true")
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+
+    test("with no selector", () => {
+      let view = setupView(`
+      <div id="toggle" phx-click='[["toggle_attr", {"to": null, "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle = document.querySelector("#toggle")
+
+      expect(toggle.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(toggle.getAttribute("open")).toEqual("true")
+    })
+
+    test("toggling a pre-existing attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal" open="true">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle = document.querySelector("#toggle")
+
+      expect(modal.getAttribute("open")).toEqual("true")
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+
+    test("toggling a dynamically added attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="toggle1" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      <div id="toggle2" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle1 = document.querySelector("#toggle1")
+      let toggle2 = document.querySelector("#toggle2")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle1.getAttribute("phx-click"), view, toggle1)
+      expect(modal.getAttribute("open")).toEqual("true")
+      JS.exec("click", toggle2.getAttribute("phx-click"), view, toggle2)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+  })
 })

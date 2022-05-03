@@ -21,6 +21,7 @@ defmodule Phoenix.LiveView.JS do
     * `remove_class` - Remove classes from elements, with optional transitions
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
+    * `toggle_attribute` - Toggles an attribute from elements
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
@@ -594,6 +595,36 @@ defmodule Phoenix.LiveView.JS do
   def remove_attribute(%JS{} = js, attr, opts) when is_list(opts) do
     opts = validate_keys(opts, :remove_attribute, [:to])
     put_op(js, "remove_attr", %{to: opts[:to], attr: attr})
+  end
+
+  @doc """
+  Toggles an attribute from elements.
+
+    * `attr` - The string attribute name to remove.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to remove attributes from.
+      Defaults to the interacted element.
+
+  ## Examples
+
+      <button phx-click={JS.toggle_attribute({"aria-expanded", "true"}, to: "#dropdown")}>
+        toggle
+      </button>
+  """
+  def toggle_attribute({attr, val}), do: toggle_attribute(%JS{}, {attr, val}, [])
+
+  @doc "See `toggle_attribute/1`."
+  def toggle_attribute({attr, val}, opts) when is_list(opts),
+    do: toggle_attribute(%JS{}, {attr, val}, opts)
+
+  def toggle_attribute(%JS{} = js, {attr, val}), do: toggle_attribute(js, {attr, val}, [])
+
+  @doc "See `toggle_attribute/1`."
+  def toggle_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :toggle_attribute, [:to])
+    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val]})
   end
 
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do

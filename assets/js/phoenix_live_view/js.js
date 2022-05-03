@@ -86,6 +86,14 @@ let JS = {
     this.setOrRemoveAttrs(el, [], [attr])
   },
 
+  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val]}){
+    if (el.hasAttribute(attr)) {
+      this.setOrRemoveAttrs(el, [], [attr])
+    }  else {
+      this.setOrRemoveAttrs(el, [[attr, val]], [])
+    }
+  },
+
   // utils for commands
 
   show(eventType, view, el, display, transition, time){

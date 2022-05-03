@@ -727,6 +727,49 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "toggle_attribute" do
+    test "with defaults" do
+      assert JS.toggle_attribute({"open", "true"}) == %JS{
+               ops: [
+                 ["toggle_attr", %{attr: ["open", "true"], to: nil}]
+               ]
+             }
+
+      assert JS.toggle_attribute({"open", "true"}, to: "#dropdown") == %JS{
+               ops: [
+                 ["toggle_attr", %{attr: ["open", "true"], to: "#dropdown"}]
+               ]
+             }
+    end
+
+    test "composability" do
+      js =
+        {"expanded", "true"}
+        |> JS.toggle_attribute()
+        |> JS.toggle_attribute({"open", "true"})
+        |> JS.toggle_attribute({"disabled", "true"}, to: "#dropdown")
+
+      assert js == %JS{
+               ops: [
+                 ["toggle_attr", %{to: nil, attr: ["expanded", "true"]}],
+                 ["toggle_attr", %{to: nil, attr: ["open", "true"]}],
+                 ["toggle_attr", %{to: "#dropdown", attr: ["disabled", "true"]}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for toggle_attribute/, fn ->
+        JS.toggle_attribute({"disabled", "true"}, bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.toggle_attribute({"disabled", "true"})) ==
+               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+    end
+  end
+
   defp js_to_string(%JS{} = js) do
     js
     |> Phoenix.HTML.Safe.to_iodata()
