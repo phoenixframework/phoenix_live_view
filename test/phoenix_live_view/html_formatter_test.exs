@@ -111,6 +111,19 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 20
       )
+
+      assert_formatter_output(
+        """
+        <p>first<%= @name %> second<div>block</div></p>
+        """,
+        """
+        <p>
+          first<%= @name %> second
+          <div>block</div>
+        </p>
+        """,
+        line_length: 20
+      )
     end
 
     test "remove unwanted empty lines" do
