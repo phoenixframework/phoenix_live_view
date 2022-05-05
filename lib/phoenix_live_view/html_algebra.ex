@@ -91,10 +91,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp inline_break(head_node, prev_node, next_node) do
     cond do
-      is_eex_node?(prev_node) and is_text_node?(head_node) and text_starts_with_space?(next_node) ->
+      tag_inline?(prev_node) and is_text_node?(head_node) and
+          text_starts_with_space?(next_node) ->
         " "
 
-      is_eex_node?(next_node) and text_ends_with_space?(prev_node) ->
+      (block_preserve?(next_node) or tag_inline?(next_node)) and text_ends_with_space?(prev_node) ->
         " "
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
@@ -120,8 +121,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp is_text_node?({:text, _text, _meta}), do: true
   defp is_text_node?(_node), do: false
 
-  defp is_eex_node?({:eex, _expr, _meta}), do: true
-  defp is_eex_node?(_node), do: false
+  defp tag_inline?({_, _, %{mode: :inline}}), do: true
+  defp tag_inline?(_node), do: false
+
+  defp block_preserve?({:tag_block, _, _, _, %{mode: :preserve}}), do: true
+  defp block_preserve?(_node), do: false
 
   defp to_algebra({:html_comment, block}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})

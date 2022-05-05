@@ -97,7 +97,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
           first <%= @name %>second
         </p>
         """,
-        line_length: 20
+        line_length: 10
       )
 
       assert_formatter_output(
@@ -111,18 +111,31 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 20
       )
+    end
 
+    test "do not break between inline tags when there is no space before or after" do
       assert_formatter_output(
         """
-        <p>first<%= @name %> second<div>block</div></p>
+        <p>first <span>name</span>second</p>
         """,
         """
         <p>
-          first<%= @name %> second
-          <div>block</div>
+          first <span>name</span>second
         </p>
         """,
-        line_length: 20
+        line_length: 10
+      )
+
+      assert_formatter_output(
+        """
+        <p>first<span>name</span> second</p>
+        """,
+        """
+        <p>
+          first<span>name</span> second
+        </p>
+        """,
+        line_length: 40
       )
     end
 
@@ -156,7 +169,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
     test "texts with inline elements and block elements" do
       input = """
       <div>
-        Long long long loooooooooooong text: <i>...</i>.
+        Long long long loooooooooooong text: <i>...</i>
         <ul>
           <li>Item 1</li>
           <li>Item 2</li>
@@ -168,7 +181,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       expected = """
       <div>
         Long long long loooooooooooong text:
-        <i>...</i>.
+        <i>...</i>
         <ul>
           <li>Item 1</li>
           <li>Item 2</li>
@@ -1300,18 +1313,17 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(
         """
         <p>
-          text text <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+          first first <a class="text-blue-500" href="" target="_blank" attr1="">link</a>second.
         </p>
         """,
         """
         <p>
-          text text
-          <a
+          first first <a
             class="text-blue-500"
             href=""
             target="_blank"
             attr1=""
-          >link</a>text.
+          >link</a>second.
         </p>
         """,
         line_length: 50
