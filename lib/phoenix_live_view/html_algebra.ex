@@ -91,10 +91,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp inline_break(head_node, prev_node, next_node) do
     cond do
-      is_text_node?(head_node) and is_eex_node?(prev_node) and text_starts_with_space?(next_node) ->
+      is_eex_node?(prev_node) and is_text_node?(head_node) and text_starts_with_space?(next_node) ->
         " "
 
-      text_ends_with_space?(prev_node) and is_eex_node?(next_node) ->
+      is_eex_node?(next_node) and text_ends_with_space?(prev_node) ->
         " "
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
@@ -117,7 +117,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp text_ends_with_space?(_node), do: false
 
-  defp is_text_node?({:text, _expr, _meta}), do: true
+  defp is_text_node?({:text, _text, _meta}), do: true
   defp is_text_node?(_node), do: false
 
   defp is_eex_node?({:eex, _expr, _meta}), do: true
