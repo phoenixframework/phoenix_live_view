@@ -84,6 +84,7 @@ export default class DOMPatch {
     let appendPrependUpdates = []
     let pendingRemoves = []
     let externalFormTriggered = null
+    let streamUpdates = {}
 
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
@@ -92,7 +93,6 @@ export default class DOMPatch {
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
-    // console.log("streams", JSON.parse(JSON.stringify(this.streams)))
     liveSocket.time("morphdom", () => {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
@@ -105,6 +105,11 @@ export default class DOMPatch {
         },
         onNodeAdded: (el) => {
           // hack to fix Safari handling of img srcset and video tags
+          if(el.nodeType === Node.ELEMENT_NODE && el.parentElement.getAttribute("phx-stream")){
+            streamUpdates[el.parentElement.id] = streamUpdates[el.parentElement.id] || [el.parentElement, new Set()]
+            let [_parent, set] = streamUpdates[el.parentElement.id]
+            set.add([true, el])
+          }
           if(el instanceof HTMLImageElement && el.srcset){
             el.srcset = el.srcset
           } else if(el instanceof HTMLVideoElement && el.autoplay){
@@ -128,8 +133,8 @@ export default class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
-          if(el.parentNode !== null && el.parentNode.getAttribute("phx-stream") !== null){ return false }
-          if(el.parentNode !== null && DOM.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.parentElement !== null && el.parentElement.getAttribute("phx-stream") !== null){ return false }
+          if(el.parentElement !== null && DOM.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(el.getAttribute && el.getAttribute(phxRemove)){
             pendingRemoves.push(el)
             return false
@@ -141,9 +146,15 @@ export default class DOMPatch {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
+          if(el.nodeType === Node.ELEMENT_NODE && el.parentElement.getAttribute("phx-stream")){
+            streamUpdates[el.parentElement.id] = streamUpdates[el.parentElement.id] || [el.parentElement, new Set()]
+            let [_parent, set] = streamUpdates[el.parentElement.id]
+            set.add([false, el])
+          }
           updates.push(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          if(toEl.parentElement){ DOM.pushStreamId(toEl.parentElement, toEl.id) }
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(DOM.isPhxSticky(fromEl)){ return false }
@@ -197,6 +208,37 @@ export default class DOMPatch {
           }
         }
       })
+
+      for(let id in streamUpdates){
+        let ops = []
+        let [parent, childrenSet] = streamUpdates[id]
+        let sortAttr = parent.getAttribute("phx-stream")
+        let sortBy = (lhs, rhs) => {
+          console.log(`parseFloat(${lhs.getAttribute(sortAttr)}) < parseFloat(${rhs.getAttribute(sortAttr)})`)
+          return parseFloat(lhs.getAttribute(sortAttr)) < parseFloat(rhs.getAttribute(sortAttr))
+        }
+        if(sortAttr === null || sortAttr === "append"){
+          console.log(childrenSet)
+          childrenSet.forEach(([isNew, child]) => isNew && parent.appendChild(child))
+        } else if(sortAttr === "prepend"){
+          Array.from(childrenSet).reverse().forEach(([isNew, child]) => isNew && parent.insertBefore(child, parent.firstElementChild))
+        } else {
+          let sibling = parent.firstElementChild
+          while(sibling){
+            let next = sibling.nextElementSibling
+            childrenSet.forEach(item => {
+              let [_isNew, child] = item
+              if(!child.isSameNode(sibling) && sortBy(child, sibling)){
+                parent.insertBefore(child, sibling)
+                childrenSet.delete(item)
+                next = child
+              }
+            })
+            sibling = next
+          }
+          childrenSet.forEach(([_isNew, child]) => parent.appendChild(child))
+        }
+      }
     })
 
     if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
@@ -278,4 +320,6 @@ export default class DOMPatch {
       return diffContainer.outerHTML
     }
   }
+
+  indexOf(parent, child){ return Array.from(parent.children).indexOf(child) }
 }
