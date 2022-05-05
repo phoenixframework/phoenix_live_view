@@ -54,11 +54,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         cond do
           prev_type == :inline and next_type == :inline ->
             on_break =
-              if next_doc != empty() and
-                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
-                flex_break(" ")
-              else
+              if next_doc == empty() do
                 ""
+              else
+                inline_break(head, prev_node, next_node)
               end
 
             concat([prev_doc, on_break, next_doc])
@@ -85,6 +84,27 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
+  defp inline_break(_head_node, {_, _, %{newlines: newlines}}, {_, _, _, _, %{mode: :inline}})
+       when newlines > 0 do
+    flex_break(" ")
+  end
+
+  defp inline_break(head_node, prev_node, next_node) do
+    cond do
+      is_text_node?(head_node) and is_eex_node?(prev_node) and text_starts_with_space?(next_node) ->
+        " "
+
+      text_ends_with_space?(prev_node) and is_eex_node?(next_node) ->
+        " "
+
+      text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
+        flex_break(" ")
+
+      true ->
+        ""
+    end
+  end
+
   @codepoints '\s\n\r\t'
 
   defp text_starts_with_space?({:text, text, _meta}) when text != "",
@@ -96,6 +116,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     do: :binary.last(text) in @codepoints
 
   defp text_ends_with_space?(_node), do: false
+
+  defp is_text_node?({:text, _expr, _meta}), do: true
+  defp is_text_node?(_node), do: false
+
+  defp is_eex_node?({:eex, _expr, _meta}), do: true
+  defp is_eex_node?(_node), do: false
 
   defp to_algebra({:html_comment, block}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})

@@ -87,6 +87,32 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_doesnt_change(input)
     end
 
+    test "do not break between eex tags when there is no space before or after" do
+      assert_formatter_output(
+        """
+        <p>first <%= @name %>second</p>
+        """,
+        """
+        <p>
+          first <%= @name %>second
+        </p>
+        """,
+        line_length: 20
+      )
+
+      assert_formatter_output(
+        """
+        <p>first<%= @name %> second</p>
+        """,
+        """
+        <p>
+          first<%= @name %> second
+        </p>
+        """,
+        line_length: 20
+      )
+    end
+
     test "remove unwanted empty lines" do
       input = """
       <section>
@@ -743,13 +769,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
 
     test "keep intentional line breaks" do
       assert_formatter_doesnt_change("""
-      <div>
-        Should not <%= "line break" %>.
-        But it does.
-      </div>
-      """)
-
-      assert_formatter_doesnt_change("""
       <section>
         <h1>
           <b>
@@ -1220,19 +1239,11 @@ if Version.match?(System.version(), ">= 1.13.0") do
       </div>
       """)
 
-      assert_formatter_output(
-        """
-        <div>
-          _______________________________________________________ result <%= if(@row_count != 1, do: "s") %>
-        </div>
-        """,
-        """
-        <div>
-          _______________________________________________________ result
-          <%= if(@row_count != 1, do: "s") %>
-        </div>
-        """
-      )
+      assert_formatter_doesnt_change("""
+      <div>
+        _______________________________________________________ result <%= if(@row_count != 1, do: "s") %>
+      </div>
+      """)
     end
 
     test "keep single quote delimiter when value has quotes" do
