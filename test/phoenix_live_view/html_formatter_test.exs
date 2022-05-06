@@ -87,6 +87,58 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_doesnt_change(input)
     end
 
+    test "do not break between eex tags when there is no space before or after" do
+      assert_formatter_output(
+        """
+        <p>first <%= @name %>second</p>
+        """,
+        """
+        <p>
+          first <%= @name %>second
+        </p>
+        """,
+        line_length: 10
+      )
+
+      assert_formatter_output(
+        """
+        <p>first<%= @name %> second</p>
+        """,
+        """
+        <p>
+          first<%= @name %> second
+        </p>
+        """,
+        line_length: 20
+      )
+    end
+
+    test "do not break between inline tags when there is no space before or after" do
+      assert_formatter_output(
+        """
+        <p>first <span>name</span>second</p>
+        """,
+        """
+        <p>
+          first <span>name</span>second
+        </p>
+        """,
+        line_length: 10
+      )
+
+      assert_formatter_output(
+        """
+        <p>first<span>name</span> second</p>
+        """,
+        """
+        <p>
+          first<span>name</span> second
+        </p>
+        """,
+        line_length: 40
+      )
+    end
+
     test "remove unwanted empty lines" do
       input = """
       <section>
@@ -117,7 +169,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
     test "texts with inline elements and block elements" do
       input = """
       <div>
-        Long long long loooooooooooong text: <i>...</i>.
+        Long long long loooooooooooong text: <i>...</i>
         <ul>
           <li>Item 1</li>
           <li>Item 2</li>
@@ -129,7 +181,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       expected = """
       <div>
         Long long long loooooooooooong text:
-        <i>...</i>.
+        <i>...</i>
         <ul>
           <li>Item 1</li>
           <li>Item 2</li>
@@ -406,17 +458,32 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "format long lines splitting into multiple lines" do
+    test "lines with inline or eex tags" do
       assert_formatter_output(
         """
           <p><span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here</p>
         """,
         """
         <p>
-          <span>this is a long long long long long looooooong text</span> <%= @product.value %>
-          and more stuff over here
+          <span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here
         </p>
         """
+      )
+
+      assert_formatter_output(
+        """
+        <p>first <span>name</span> second</p>
+        """,
+        """
+        <p>
+          first
+          <span>
+            name
+          </span>
+          second
+        </p>
+        """,
+        line_length: 10
       )
     end
 
@@ -742,13 +809,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
     end
 
     test "keep intentional line breaks" do
-      assert_formatter_doesnt_change("""
-      <div>
-        Should not <%= "line break" %>.
-        But it does.
-      </div>
-      """)
-
       assert_formatter_doesnt_change("""
       <section>
         <h1>
@@ -1220,19 +1280,11 @@ if Version.match?(System.version(), ">= 1.13.0") do
       </div>
       """)
 
-      assert_formatter_output(
-        """
-        <div>
-          _______________________________________________________ result <%= if(@row_count != 1, do: "s") %>
-        </div>
-        """,
-        """
-        <div>
-          _______________________________________________________ result
-          <%= if(@row_count != 1, do: "s") %>
-        </div>
-        """
-      )
+      assert_formatter_doesnt_change("""
+      <div>
+        _______________________________________________________ result <%= if(@row_count != 1, do: "s") %>
+      </div>
+      """)
     end
 
     test "keep single quote delimiter when value has quotes" do
@@ -1276,18 +1328,17 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(
         """
         <p>
-          text text <a class="text-blue-500" href="" target="_blank" attr1="">link</a>text.
+          first first <a class="text-blue-500" href="" target="_blank" attr1="">link</a>second.
         </p>
         """,
         """
         <p>
-          text text
-          <a
+          first first <a
             class="text-blue-500"
             href=""
             target="_blank"
             attr1=""
-          >link</a>text.
+          >link</a>second.
         </p>
         """,
         line_length: 50
