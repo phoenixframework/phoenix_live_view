@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Helpers do
   # TODO: Convert all functions with the `live_` prefix to function components?
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.{Component, Socket, Static}
+  alias Phoenix.LiveView.{Component, Socket, Static, LiveStream}
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -1104,6 +1104,18 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
+
+  def stream(socket, name, items, opts) do
+    opts = Keyword.merge(opts, name: name)
+    LiveView.assign(socket, name, LiveStream.new(items, opts))
+  end
+
+  def delete_stream_item(socket, name, item) do
+    %LiveStream{} = stream = socket.assigns[name]
+    id = stream.item_id.(item)
+    new_stream = %LiveStream{stream | deletes: [id | stream.deletes]}
+    LiveView.assign(socket, name, new_stream)
+  end
 
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or

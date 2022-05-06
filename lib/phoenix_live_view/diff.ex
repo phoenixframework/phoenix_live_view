@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.Diff do
   @reply :r
   @title :t
   @template :p
-  @stream_id :id
+  @stream_id :stream
 
   # We use this to track which components have been marked
   # for deletion. If the component is used after being marked,

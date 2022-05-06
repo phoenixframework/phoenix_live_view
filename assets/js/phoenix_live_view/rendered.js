@@ -8,7 +8,7 @@ import {
   REPLY,
   STATIC,
   TITLE,
-  STREAM_ID,
+  STREAM,
 } from "./constants"
 
 import {
@@ -171,7 +171,8 @@ export default class Rendered {
   }
 
   comprehensionToBuffer(rendered, templates, output){
-    let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM_ID]: streamId} = rendered
+    let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
+    let [_parentId, _childIds, deleteIds] = stream || [null, null, []]
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
     for(let d = 0; d < dynamics.length; d++){
@@ -183,9 +184,9 @@ export default class Rendered {
       }
     }
 
-    if(streamId !== undefined && rendered[DYNAMICS].length > 0){
+    if(stream !== undefined && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0)){
       rendered[DYNAMICS] = []
-      output.streams.add(streamId)
+      output.streams.add(stream)
     }
   }
 

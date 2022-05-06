@@ -111,7 +111,7 @@ let DOM = {
     }
   },
 
-  private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
+  private(el, key){ return el[PHX_PRIVATE] ? el[PHX_PRIVATE][key] : null },
 
   deletePrivate(el, key){ el[PHX_PRIVATE] && delete (el[PHX_PRIVATE][key]) },
 
@@ -122,7 +122,7 @@ let DOM = {
 
   updatePrivate(el, key, defaultVal, updateFunc){
     let existing = this.private(el, key)
-    if(existing === undefined){
+    if(existing === null){
       this.putPrivate(el, key, updateFunc(defaultVal))
     } else {
       this.putPrivate(el, key, updateFunc(existing))
