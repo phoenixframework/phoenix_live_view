@@ -458,7 +458,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "long lines with inline and eex tags" do
+    test "lines with inline or eex tags" do
       assert_formatter_output(
         """
           <p><span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here</p>
