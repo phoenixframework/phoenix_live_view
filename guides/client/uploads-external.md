@@ -153,7 +153,7 @@ defp presign_upload(entry, socket) do
     SimpleS3Upload.sign_form_upload(config, bucket,
       key: key,
       content_type: entry.client_type,
-      max_file_size: uploads.avatar.max_file_size,
+      max_file_size: uploads[entry.upload_config].max_file_size,
       expires_in: :timer.hours(1)
     )
 
