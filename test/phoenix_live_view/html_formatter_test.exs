@@ -458,17 +458,32 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "format long lines splitting into multiple lines" do
+    test "long lines with inline and eex tags" do
       assert_formatter_output(
         """
           <p><span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here</p>
         """,
         """
         <p>
-          <span>this is a long long long long long looooooong text</span> <%= @product.value %>
-          and more stuff over here
+          <span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here
         </p>
         """
+      )
+
+      assert_formatter_output(
+        """
+        <p>first <span>name</span> second</p>
+        """,
+        """
+        <p>
+          first
+          <span>
+            name
+          </span>
+          second
+        </p>
+        """,
+        line_length: 10
       )
     end
 

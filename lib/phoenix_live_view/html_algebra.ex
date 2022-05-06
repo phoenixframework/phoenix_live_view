@@ -57,7 +57,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
               if next_doc == empty() do
                 ""
               else
-                inline_break(head, prev_node, next_node)
+                inline_break(prev_node, next_node)
               end
 
             concat([prev_doc, on_break, next_doc])
@@ -84,19 +84,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
-  defp inline_break(_head_node, {_, _, %{newlines: newlines}}, {_, _, _, _, %{mode: :inline}})
-       when newlines > 0 do
-    flex_break(" ")
-  end
-
-  defp inline_break(head_node, prev_node, next_node) do
+  defp inline_break(prev_node, next_node) do
     cond do
-      tag_inline?(prev_node) and is_text_node?(head_node) and
-          text_starts_with_space?(next_node) ->
-        " "
-
-      (block_preserve?(next_node) or tag_inline?(next_node)) and text_ends_with_space?(prev_node) ->
-        " "
+      block_preserve?(prev_node) or block_preserve?(next_node) ->
+        if text_ends_with_space?(prev_node) or text_starts_with_space?(next_node),
+          do: " ",
+          else: ""
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
         flex_break(" ")
@@ -118,13 +111,8 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp text_ends_with_space?(_node), do: false
 
-  defp is_text_node?({:text, _text, _meta}), do: true
-  defp is_text_node?(_node), do: false
-
-  defp tag_inline?({_, _, %{mode: :inline}}), do: true
-  defp tag_inline?(_node), do: false
-
   defp block_preserve?({:tag_block, _, _, _, %{mode: :preserve}}), do: true
+  defp block_preserve?({:eex, _, _}), do: true
   defp block_preserve?(_node), do: false
 
   defp to_algebra({:html_comment, block}, context) do

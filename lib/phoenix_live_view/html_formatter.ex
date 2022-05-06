@@ -495,7 +495,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack) do
-    meta = Map.put(meta, :mode, :inline)
     to_tree(tokens, [{:eex, expr, meta} | buffer], stack)
   end
 
