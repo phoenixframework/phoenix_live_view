@@ -246,7 +246,7 @@ The change is to define the `live_view` and `live_component` functions in your `
     quote do
       use Phoenix.View,
         root: "lib/<%= lib_web_name %>/templates",
-        namespace: <%= web_namespace %>
+        namespace: MyAppWeb
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
@@ -260,7 +260,7 @@ The change is to define the `live_view` and `live_component` functions in your `
   def live_view do
     quote do
       use Phoenix.LiveView,
-        layout: {<%= web_namespace %>.LayoutView, "live.html"}
+        layout: {MyAppWeb.LayoutView, "live.html"}
 
       unquote(view_helpers())
     end
@@ -296,7 +296,7 @@ Note that LiveViews are automatically configured to use a "live.html.heex" layou
 
 ```elixir
 use Phoenix.LiveView,
-  layout: {<%= web_namespace %>.LayoutView, "live.html"}
+  layout: {MyAppWeb.LayoutView, "live.html"}
 ```
 
 "layouts/root.html.heex" is shared by regular and live views, "app.html.heex" is rendered inside the root layout for regular views, and "live.html.heex" is rendered inside the root layout for LiveViews. "live.html.heex" typically starts out as a copy of "app.html.heex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
