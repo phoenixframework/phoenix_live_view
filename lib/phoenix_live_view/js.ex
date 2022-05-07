@@ -115,6 +115,8 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
+  @type t :: %__MODULE__{ops: [[String.t() | map()]]}
+
   @default_transition_time 200
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
