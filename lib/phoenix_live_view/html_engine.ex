@@ -266,6 +266,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          state
        )
        when first in ?A..?Z do
+    attrs = remove_phx_no_break(attrs)
     file = state.file
     {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
     {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
@@ -303,6 +304,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
+    attrs = remove_phx_no_break(attrs)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
@@ -324,6 +326,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          {:tag_open, "." <> name, attrs, %{self_close: true, line: line}},
          state
        ) do
+    attrs = remove_phx_no_break(attrs)
     fun = String.to_atom(name)
     {assigns, state} = build_self_close_component_assigns(attrs, line, state)
 
@@ -356,6 +359,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Slot (self close)
 
   defp handle_token({:tag_open, ":" <> slot_name, attrs, %{self_close: true} = tag_meta}, state) do
+    attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
     slot_key = String.to_atom(slot_name)
 
@@ -385,6 +389,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
+    attrs = remove_phx_no_break(attrs)
     slot_key = String.to_atom(slot_name)
 
     {let, roots, attrs} = split_component_attrs(attrs, state.file)
@@ -416,6 +421,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
+    attrs = remove_phx_no_break(attrs)
     fun = String.to_atom(fun_name)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
@@ -439,6 +445,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if void?(name), do: ">", else: "></#{name}>"
+    attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
     state
@@ -450,6 +457,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, name, attrs, tag_meta} = token, state) do
     validate_phx_attrs!(attrs, tag_meta, state)
+    attrs = remove_phx_no_break(attrs)
 
     state
     |> set_root_on_tag()
@@ -810,6 +818,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
+  end
+
+  defp remove_phx_no_break(attrs) do
+    List.keydelete(attrs, "phx-no-format", 0)
   end
 
   # Check if `phx-update` or `phx-hook` is present in attrs and raises in case

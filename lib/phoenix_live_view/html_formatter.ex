@@ -21,9 +21,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   > ### For umbrella projects {: .info}
   >
-  > In umbrella projects, you must also add `:phoenix_live_view` to your `deps`
-  > in the `mix.exs` file at the umbrella root. This is because the formatter
-  > does not attempt to load the dependencies of all children applications.
+  > In umbrella projects you must also change two files at the umbrella root,
+  > add `:phoenix_live_view` to your `deps` in the `mix.exs` file
+  > and add `plugins: [Phoenix.LiveView.HTMLFormatter]` in the `.formatter.exs` file.
+  > This is because the formatter does not attempt to load the dependencies of all children applications.
 
   ## Options
 
@@ -156,6 +157,30 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   This is the list of inline elements:
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+
+  ### Special attributes
+
+  In case you don't want part of your HTML to be automatically formatted. you
+  can use `phx-no-format` attr so that the formatter will skip the element block.
+  Note that this attribute will not be rendered.
+
+  Therefore:
+
+  ```eex
+  <.textarea phx-no-format>My content</.textarea>
+  ```
+
+  Will be kept as is your code editor, but rendered as:
+
+  ```html
+  <textarea>My content</textarea>
+  ```
+
+  ### Inline comments <%# comment %>
+
+  Inline comments `<%# comment %>` are deprecated and the formatter will discard them silently
+  from templates. You must change them to the multi-line comment `<%!-- comment --%>` on
+  Elixir v1.14+ or the regular line comment `<%= # comment %>`.
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
@@ -420,13 +445,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
     mode =
       cond do
-        name in ["pre", "textarea"] ->
-          :preserve
-
-        name in @inline_elements and head_is_text_ending_with_whitespace?(upper_buffer) ->
-          :preserve
-
-        contains_special_attrs?(attrs) ->
+        preserve_format?(name, upper_buffer, attrs) ->
           :preserve
 
         name in @inline_elements ->
@@ -502,23 +521,34 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
-  # In case the first element of the given buffer is a text and, this text
-  # ends with a whitespace, it wil return true. Otherwise false.
-  defp head_is_text_ending_with_whitespace?(upper_buffer) do
-    case List.first(upper_buffer) do
-      {:text, text, _meta} ->
-        if String.trim_leading(text) == "", do: false, else: :binary.last(text) in '\s\t'
-
-      _ ->
-        false
-    end
+  # We want to preserve the format:
+  #
+  # * In case the head is a text that doesn't end with whitespace.
+  # * In case the head is eex.
+  # * In case it contains special attrs such as contenteditable or phx-no-format.
+  defp preserve_format?(name, upper_buffer, attrs) do
+    name in ["pre", "textarea"] or
+      (name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)) or
+      contains_special_attrs?(attrs)
   end
+
+  defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
+    do: if(String.trim_leading(text) == "", do: false, else: !(:binary.last(text) in '\s\t'))
+
+  defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
+  defp head_may_not_have_whitespace?(_), do: false
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
   defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
-    mode = if :binary.first(text) not in '\s\t', do: :preserve, else: meta.mode
+    mode =
+      if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t\n\r' do
+        :preserve
+      else
+        meta.mode
+      end
+
     [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
@@ -528,6 +558,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     Enum.any?(attrs, fn
       {"contenteditable", {:string, "false", _meta}, _} -> false
       {"contenteditable", _v, _} -> true
+      {"phx-no-format", _v, _} -> true
       _ -> false
     end)
   end

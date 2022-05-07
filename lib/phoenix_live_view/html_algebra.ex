@@ -38,6 +38,13 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       |> maybe_force_unfit()
 
     Enum.reduce(tail, {head, type, doc}, fn next_node, {prev_node, prev_type, prev_doc} ->
+      context =
+        if inline?(prev_node) and inline?(next_node) do
+          %{context | mode: :preserve}
+        else
+          context
+        end
+
       {next_type, next_doc} =
         next_node
         |> to_algebra(context)
@@ -47,11 +54,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         cond do
           prev_type == :inline and next_type == :inline ->
             on_break =
-              if next_doc != empty() and
-                   (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
-                flex_break(" ")
-              else
+              if next_doc == empty() do
                 ""
+              else
+                inline_break(prev_node, next_node)
               end
 
             concat([prev_doc, on_break, next_doc])
@@ -78,6 +84,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
+  defp inline_break(prev_node, next_node) do
+    cond do
+      block_preserve?(prev_node) or block_preserve?(next_node) ->
+        if text_ends_with_space?(prev_node) or text_starts_with_space?(next_node),
+          do: " ",
+          else: ""
+
+      text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
+        flex_break(" ")
+
+      true ->
+        ""
+    end
+  end
+
   @codepoints '\s\n\r\t'
 
   defp text_starts_with_space?({:text, text, _meta}) when text != "",
@@ -90,16 +111,13 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp text_ends_with_space?(_node), do: false
 
+  defp block_preserve?({:tag_block, _, _, _, %{mode: :preserve}}), do: true
+  defp block_preserve?({:eex, _, _}), do: true
+  defp block_preserve?(_node), do: false
+
   defp to_algebra({:html_comment, block}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
     {:block, group(nest(children, :reset))}
-  end
-
-  defp to_algebra({:tag_block, name, attrs, block, _meta}, %{mode: :preserve} = context) do
-    children = block_to_algebra(block, context)
-
-    {:inline,
-     concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
   defp to_algebra({:tag_block, name, attrs, block, _meta}, context) when name in @languages do
@@ -151,21 +169,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{mode: :preserve}}, context) do
-    children = block_to_algebra(block, %{context | mode: :preserve})
-    attrs = Enum.reduce(attrs, empty(), &concat([&2, " ", render_attribute(&1, context.opts)]))
+  defp to_algebra({:tag_block, _name, _attrs, _block, _meta} = doc, %{mode: :preserve} = context) do
+    tag_block_preserve_to_algebra(doc, context)
+  end
 
-    tag =
-      concat([
-        "<#{name}",
-        attrs,
-        ">",
-        nest(children, :reset),
-        "</#{name}>"
-      ])
-      |> group()
-
-    {:inline, tag}
+  defp to_algebra({:tag_block, _name, _attrs, _block, %{mode: :preserve}} = doc, context) do
+    tag_block_preserve_to_algebra(doc, context)
   end
 
   defp to_algebra({:tag_block, name, attrs, block, meta}, context) do
@@ -179,18 +188,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
     children = if force_newline?, do: force_unfit(children), else: children
 
-    tag_open =
-      case attrs do
-        [attr] ->
-          concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
-
-        attrs ->
-          concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
-      end
-
     doc =
       concat([
-        tag_open,
+        format_tag_open(name, attrs, context),
         children,
         break(""),
         "</#{name}>"
@@ -279,6 +279,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, text |> String.trim() |> string()}
   end
 
+  # Preserve tag_block
+  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+    children = block_to_algebra(block, %{context | mode: :preserve})
+
+    tag =
+      concat([
+        format_tag_open(name, attrs, context),
+        nest(children, :reset),
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:inline, tag}
+  end
+
   # Empty newline
   defp text_to_algebra(["" | lines], newlines, acc),
     do: text_to_algebra(lines, newlines + 1, acc)
@@ -314,6 +329,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> concat(break(on_break))
     |> group()
   end
+
+  defp format_tag_open(name, [attr], context),
+    do: concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
+
+  defp format_tag_open(name, attrs, context),
+    do: concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
 
   defp render_attribute({:root, {:expr, expr, _}, _}, _opts), do: ~s({#{expr}})
 
@@ -427,4 +448,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp remove_indentation(<<?\t, rest::binary>>, indent), do: remove_indentation(rest, indent - 2)
   defp remove_indentation(<<?\s, rest::binary>>, indent), do: remove_indentation(rest, indent - 1)
   defp remove_indentation(rest, _indent), do: rest
+
+  defp inline?({:tag_block, _, _, _, %{mode: :inline}}), do: true
+  defp inline?(_), do: false
 end

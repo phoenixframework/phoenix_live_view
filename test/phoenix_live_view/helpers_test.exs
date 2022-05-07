@@ -148,7 +148,7 @@ defmodule Phoenix.LiveView.HelpersTest do
         """)
 
       assert [
-               {"form", [{"action", "#"}, {"method", "post"}],
+               {"form", [],
                 [
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
                 ]}
@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.HelpersTest do
         """)
 
       assert [
-               {"form", [{"action", "#"}, {"method", "post"}],
+               {"form", [],
                 [
                   {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
                 ]}
@@ -213,9 +213,9 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert [
                {"form",
                 [
+                  {"enctype", "multipart/form-data"},
                   {"action", "/"},
                   {"method", "post"},
-                  {"enctype", "multipart/form-data"},
                   {"class", "pretty"},
                   {"data-foo", "bar"},
                   {"id", "form"},

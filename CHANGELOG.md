@@ -4,11 +4,15 @@
 
 ### Bug fixes
   - [Formatter] Preserve single quote delimiter on attrs
-  - [Formatter] Fix inline elements surrounded by texts without whitespaces
+  - [Formatter] Do not format inline elements surrounded by texts without whitespaces
   - [Formatter] Keep text and eex along when there isn't a whitespace
   - [Formatter] Fix intentional line breaks after eex expressions
   - [Formatter] Handle self close tags as inline
+  - [Formatter] Do not format inline elements without whitespaces among them
+  - [Formatter] Do not format when attr contenteditable is present
 
+### Enhancements
+  - [Formatter] Introduce special attr phx-no-format to skip formatting
 
 ## 0.17.9 (2022-04-07)
 
@@ -31,6 +35,7 @@
   - Fix hook destroyed callback failing to be invoked for children of phx-remove in some cases
   - Do not failsafe reload the page on push timeout if disconnected
   - Do not bubble navigation click events to regular phx-click's
+  - No longer generate `csrf_token` for forms without action, reducing the payload during phx-change/phx-submit events
 
 ## 0.17.7 (2022-02-07)
 

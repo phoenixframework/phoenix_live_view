@@ -291,6 +291,34 @@ defmodule Phoenix.LiveViewUnitTest do
                __changed__: %{existing: true, notexisting: true, existing2: true}
              }
     end
+
+    test "has access to assigns" do
+      socket =
+        put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn _ -> "new-existing" end)
+        |> assign_new(:existing2, fn _ -> "new-existing2" end)
+        |> assign_new(:notexisting, fn %{existing: existing} -> existing end)
+        |> assign_new(:notexisting2, fn %{existing2: existing2} -> existing2 end)
+        |> assign_new(:notexisting3, fn %{notexisting: notexisting} -> notexisting end)
+
+      assert socket.assigns == %{
+               existing: "existing-parent",
+               existing2: "existing2",
+               notexisting: "existing-parent",
+               notexisting2: "existing2",
+               notexisting3: "existing-parent",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{
+                 existing: true,
+                 existing2: true,
+                 notexisting: true,
+                 notexisting2: true,
+                 notexisting3: true
+               }
+             }
+    end
   end
 
   describe "assign_new with assigns" do
@@ -308,6 +336,15 @@ defmodule Phoenix.LiveViewUnitTest do
       assert assigns.another == "changed"
       assert changed?(assigns, :another)
       assert assigns.__changed__ == nil
+    end
+
+    test "has access to new assigns" do
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
+      |> assign_new(:and_another, fn %{another: another} -> another end)
+
+      assert assigns.and_another == "changed"
+      assert changed?(assigns, :another)
+      assert changed?(assigns, :and_another)
     end
   end
 
@@ -339,6 +376,22 @@ defmodule Phoenix.LiveViewUnitTest do
       assert assigns.key == "changed"
       assert changed?(assigns, :key)
       assert assigns.__changed__ == nil
+    end
+  end
+
+  describe "update with arity 2 function" do
+    test "passes socket assigns to update function" do
+      socket = @socket |> assign(key: "value", key2: "another") |> Utils.clear_changed()
+
+      socket = update(socket, :key2, fn key2, %{key: key} -> key2 <> " " <> key end)
+      assert socket.assigns.key2 == "another value"
+      assert changed?(socket, :key2)
+    end
+
+    test "passes assigns to update function" do
+      assigns = update(@assigns_changes, :key, fn _, %{map: %{foo: bar}} -> bar end)
+      assert assigns.key == :bar
+      assert changed?(assigns, :key)
     end
   end
 

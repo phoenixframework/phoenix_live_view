@@ -1006,29 +1006,30 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Options
 
-  The following assign is required:
+  The following attribute is required:
 
     * `:for` - the form source data
 
-  The following assigns are optional:
+  The following attributes are optional:
 
-    * `:action` - the action to submit the form on. Defaults to "#".
+    * `:action` - the action to submit the form on. This attribute must be
+      given if you intend to submit the form to a URL without LiveView.
 
     * `:as` - the server side parameter in which all params for this
       form will be collected (i.e. `as: :user_params` would mean all fields
       for this form will be accessed as `conn.params.user_params` server
       side). Automatically inflected when a changeset is given.
 
-    * `:method` - the HTTP method. If the method is not "get" nor "post",
-      an input tag with name `_method` is generated along-side the form tag.
-      Defaults to "post".
-
     * `:multipart` - when true, sets enctype to "multipart/form-data".
       Required when uploading files
 
-    * `:csrf_token` - for "post" requests with an `:action`, the form tag
-      will automatically include an input tag with name `_csrf_token`.
-      When set to false, this is disabled
+    * `:method` - the HTTP method. It is only used if an `:action` is given.
+      If the method is not "get" nor "post", an input tag with name `_method`
+      is generated along-side the form tag. Defaults to "post".
+
+    * `:csrf_token` - a token to authenticate the validity of requests.
+      One is automatically generated when an action is given and the method
+      is not "get". When set to false, no token is generated.
 
     * `:errors` - use this to manually pass a keyword list of errors to the form
       (for example from `conn.assigns[:errors]`). This option is only used when a
@@ -1042,18 +1043,58 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <.form let={f} for={@changeset}>
+  ### Inside LiveView
+
+  The `:for` attribute is typically an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html):
+
+      <.form let={f} for={@changeset} phx-change="change_name">
         <%= text_input f, :name %>
       </.form>
 
-      <.form let={user_form} for={@changeset} as="user" multipart {@extra}>
+      <.form let={user_form} for={@changeset} multipart phx-change="change_user" phx-submit="save_user">
         <%= text_input user_form, :name %>
+        <%= submit "Save" %>
+      </.form>
+
+  Notice how both examples use `phx-change`. The LiveView must implement
+  the `phx-change` event and store the input values as they arrive on
+  change. This is important because, if an unrelated change happens on
+  the page, LiveView should re-render the inputs with their updated values.
+  Without `phx-change`, the inputs would otherwise be cleared. Alternatively,
+  you can use `phx-update="ignore"` on the form to discard any updates.
+
+  The `:for` attribute can also be an atom, in case you don't have an
+  existing data layer but you want to use the existing form helpers.
+  In this case, you need to pass the input values explicitly as they
+  change (or use `phx-update="ignore"` as per the previous paragraph):
+
+      <.form let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
+        <%= text_input user_form, :name, value: @user_name %>
+        <%= submit "Save" %>
+      </.form>
+
+  However, if you don't have a data layer, it may be more straight-forward
+  to drop the `form` component altogether and simply rely on HTML:
+
+      <form multipart phx-change="change_user" phx-submit="save_user">
+        <input type="text" name="user[name]" value={@user_name}>
+        <input type="submit" name="Save">
+      </form>
+
+  ### Outside LiveView
+
+  The `form` component can still be used to submit forms outside
+  of LiveView. In such cases, the `action` attribute MUST be given.
+  Without said attribute, the `form` method and csrf token are
+  discarded.
+
+      <.form let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
+        <%= text_input f, :body %>
       </.form>
   """
   def form(assigns) do
     # Extract options and then to the same call as form_for
-    assigns_action = assigns[:action]
-    action = assigns_action || "#"
+    action = assigns[:action]
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
     form_options = assigns_to_attributes(assigns, [:action, :for])
 
@@ -1061,33 +1102,40 @@ defmodule Phoenix.LiveView.Helpers do
     %{options: opts} =
       form = %Phoenix.HTML.Form{
         Phoenix.HTML.FormData.to_form(form_for, form_options)
-        | action: action
+        | action: action || "#"
       }
 
-    # And then process method, csrf_token, and multipart as in form_tag
-    {method, opts} = Keyword.pop(opts, :method, "post")
-    {method, hidden_method} = form_method(method)
+    # By default, we will ignore action, method, and csrf token
+    # unless the action is given.
+    {attrs, hidden_method, csrf_token} =
+      if action do
+        {method, opts} = Keyword.pop(opts, :method, "post")
+        {method, hidden_method} = form_method(method)
 
-    {csrf_token, opts} =
-      Keyword.pop_lazy(opts, :csrf_token, fn ->
-        if method == "post" and assigns_action != nil do
-          Plug.CSRFProtection.get_csrf_token_for(action)
-        end
-      end)
+        {csrf_token, opts} =
+          Keyword.pop_lazy(opts, :csrf_token, fn ->
+            if method == "post" do
+              Plug.CSRFProtection.get_csrf_token_for(action)
+            end
+          end)
 
-    opts =
-      case Keyword.pop(opts, :multipart, false) do
-        {false, opts} -> opts
-        {true, opts} -> Keyword.put(opts, :enctype, "multipart/form-data")
+        {[action: action, method: method] ++ opts, hidden_method, csrf_token}
+      else
+        {opts, nil, nil}
       end
 
-    # Finally we can render the form
+    attrs =
+      case Keyword.pop(attrs, :multipart, false) do
+        {false, attrs} -> attrs
+        {true, attrs} -> Keyword.put(attrs, :enctype, "multipart/form-data")
+      end
+
     assigns =
       LiveView.assign(assigns,
         form: form,
         csrf_token: csrf_token,
         hidden_method: hidden_method,
-        attrs: [action: action, method: method] ++ opts
+        attrs: attrs
       )
 
     ~H"""
