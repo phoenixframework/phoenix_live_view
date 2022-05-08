@@ -66,7 +66,7 @@ defmodule Mix.Tasks.Compile.LiveView do
     File.write!(manifest(), :erlang.term_to_binary({@manifest_version, diagnostics}))
   end
 
-  defp manifest_older?(version) do
+  defp manifest_older? do
     other_manifests = Mix.Tasks.Compile.Elixir.manifests()
     manifest_mtime = mtime(manifest())
     Enum.any?(other_manifests, fn m -> mtime(m) > manifest_mtime end)
