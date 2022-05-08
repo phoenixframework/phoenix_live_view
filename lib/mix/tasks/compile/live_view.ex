@@ -1,4 +1,12 @@
 defmodule Mix.Tasks.Compile.LiveView do
+  @moduledoc """
+  A LiveView compiler for component validation.
+  
+  You must add it to your `mix.exs` as:
+
+      compilers: Mix.compilers() ++ [:live_view]
+  
+  """
   use Mix.Task
 
   alias Mix.Task.Compiler.Diagnostic
