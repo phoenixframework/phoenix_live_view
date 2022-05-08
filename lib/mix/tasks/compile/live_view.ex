@@ -1,20 +1,78 @@
 defmodule Mix.Tasks.Compile.LiveView do
   use Mix.Task
-  @recursive true
 
   alias Mix.Task.Compiler.Diagnostic
 
+  @recursive true
+  @manifest ".compile_live_view_diagnostics"
+  @manifest_version 1
+
+  @switches [
+    return_errors: :boolean,
+    warnings_as_errors: :boolean,
+    all_warnings: :boolean,
+    force: :boolean
+  ]
+
   @doc false
   def run(args) do
-    {compile_opts, _argv, _errors} = OptionParser.parse(args, switches: [return_errors: :boolean])
+    {compile_opts, _argv, _errors} = OptionParser.parse(args, switches: @switches)
 
+    {version, diagnostics} = read_manifest()
+    manifest_outdated? = manifest_older?() or version != @manifest_version
+
+    cond do
+      manifest_outdated? || compile_opts[:force] ->
+        run_diagnostics(compile_opts)
+
+      compile_opts[:all_warnings] ->
+        handle_diagnostics(diagnostics, compile_opts, :noop)
+
+      true ->
+        {:noop, []}
+    end
+  end
+
+  defp run_diagnostics(compile_opts) do
     case validate_components_calls(project_modules()) do
       [] ->
         {:noop, []}
 
       diagnostics ->
-        if !compile_opts[:return_errors], do: print_diagnostics(diagnostics)
-        {:error, diagnostics}
+        write_manifest!(diagnostics)
+        handle_diagnostics(diagnostics, compile_opts, :ok)
+    end
+  end
+
+  defp handle_diagnostics(diagnostics, compile_opts, status) do
+    if !compile_opts[:return_errors], do: print_diagnostics(diagnostics)
+    status = status(compile_opts[:warnings_as_errors], diagnostics, status)
+    {status, diagnostics}
+  end
+
+  @doc false
+  def manifests, do: [manifest()]
+
+  defp manifest, do: Path.join(Mix.Project.manifest_path, @manifest)
+
+  defp read_manifest do
+    case File.read(manifest()) do
+      {:ok, contents} -> :erlang.binary_to_term(contents)
+      _ -> {:unknown, nil}
+    end
+  end
+
+  defp write_manifest!(diagnostics) do
+    File.write!(manifest(), :erlang.term_to_binary({@manifest_version, diagnostics}))
+  end
+
+  defp manifest_older? do
+    if File.exists?(manifest()) do
+      other_manifests = Mix.Tasks.Compile.Elixir.manifests()
+      manifest_mtime = mtime(manifest())
+      Enum.any?(other_manifests, fn m -> mtime(m) > manifest_mtime end)
+    else
+      true
     end
   end
 
@@ -81,7 +139,8 @@ defmodule Mix.Tasks.Compile.LiveView do
 
   defp print_diagnostics(diagnostics) do
     for %Diagnostic{file: file, position: line, message: message} <- diagnostics do
-      IO.puts(:stderr, "** (CompileError) #{Path.relative_to_cwd(file)}:#{line}: #{message}")
+      rel_file = file |> Path.relative_to_cwd() |> to_charlist()
+      IO.warn(message, [{nil, :__FILE__, 1, [file: rel_file, line: line]}])
     end
   end
 
@@ -92,7 +151,20 @@ defmodule Mix.Tasks.Compile.LiveView do
       file: file,
       message: message,
       position: line,
-      severity: :error
+      severity: :warning
     }
+  end
+
+  defp mtime(file) do
+    %File.Stat{mtime: mtime} = File.stat!(file)
+    mtime
+  end
+
+  defp status(warnings_as_errors, diagnostics, default) do
+    cond do
+      Enum.any?(diagnostics, &(&1.severity == :error)) -> :error
+      warnings_as_errors && Enum.any?(diagnostics, &(&1.severity == :warning)) -> :error
+      true -> default
+    end
   end
 end
