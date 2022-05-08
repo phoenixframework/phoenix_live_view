@@ -5,13 +5,19 @@ if Version.match?(System.version(), ">= 1.13.0") do
     alias Phoenix.LiveView.HTMLFormatter
 
     defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
-      formatted = HTMLFormatter.format(input, dot_formatter_opts)
-      assert formatted == expected
-      assert HTMLFormatter.format(formatted, dot_formatter_opts) == expected
+      first_pass = HTMLFormatter.format(input, dot_formatter_opts)
+      assert first_pass == expected
+
+      second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+      assert second_pass == expected
     end
 
     def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
-      assert HTMLFormatter.format(code, dot_formatter_opts) == code
+      first_pass = HTMLFormatter.format(code, dot_formatter_opts)
+      assert first_pass == code
+
+      second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+      assert second_pass == code
     end
 
     test "always break lines for block elements" do
@@ -484,6 +490,52 @@ if Version.match?(System.version(), ">= 1.13.0") do
         </p>
         """,
         line_length: 10
+      )
+    end
+
+    test "text between inline elements" do
+      assert_formatter_doesnt_change(
+        """
+        <span><%= @user_a %></span>
+        X
+        <span><%= @user_b %></span>
+        """,
+        line_length: 27
+      )
+
+      assert_formatter_doesnt_change(
+        """
+        <span><%= @user_a %></span>
+        X
+        <span><%= @user_b %></span>
+        """
+      )
+
+      assert_formatter_doesnt_change("""
+      <span><%= @user_a %></span> X <span><%= @user_b %></span>
+      """)
+
+      assert_formatter_output(
+        """
+        <span><%= @user_a %></span> X <span><%= @user_b %></span>
+        """,
+        """
+        <span>
+          <%= @user_a %>
+        </span>
+        X
+        <span>
+          <%= @user_b %>
+        </span>
+        """,
+        line_length: 5
+      )
+
+      assert_formatter_doesnt_change(
+        """
+        <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span> |
+        <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
+        """
       )
     end
 
