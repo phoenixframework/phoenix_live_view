@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Compile.LiveView do
   alias Mix.Task.Compiler.Diagnostic
 
   @recursive true
-  @manifest ".compile_live_view_diagnostics"
+  @manifest ".compile_live_view"
   @manifest_version 1
 
   @switches [
@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Compile.LiveView do
     {compile_opts, _argv, _errors} = OptionParser.parse(args, switches: @switches)
 
     {version, diagnostics} = read_manifest()
-    manifest_outdated? = manifest_older?() or version != @manifest_version
+    manifest_outdated? = version != @manifest_version or manifest_older?()
 
     cond do
       manifest_outdated? || compile_opts[:force] ->
@@ -66,14 +66,10 @@ defmodule Mix.Tasks.Compile.LiveView do
     File.write!(manifest(), :erlang.term_to_binary({@manifest_version, diagnostics}))
   end
 
-  defp manifest_older? do
-    if File.exists?(manifest()) do
-      other_manifests = Mix.Tasks.Compile.Elixir.manifests()
-      manifest_mtime = mtime(manifest())
-      Enum.any?(other_manifests, fn m -> mtime(m) > manifest_mtime end)
-    else
-      true
-    end
+  defp manifest_older?(version) do
+    other_manifests = Mix.Tasks.Compile.Elixir.manifests()
+    manifest_mtime = mtime(manifest())
+    Enum.any?(other_manifests, fn m -> mtime(m) > manifest_mtime end)
   end
 
   @doc false
