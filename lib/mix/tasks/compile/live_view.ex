@@ -78,7 +78,7 @@ defmodule Mix.Tasks.Compile.LiveView do
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
         %{component: {mod, fun}, attrs: attrs, file: file, line: line} <- module.__components_calls__(),
-        attrs_defs = callee_attrs_defs(mod, fun) do
+        attrs_defs = mod.__components__()[fun] do
       {dyn_attrs, static_attrs} = Enum.split_with(attrs, &match?({:root, _, _}, &1))
       meta = %{file: file, line: line, callee: "#{inspect(mod)}.#{fun}/1"}
 
@@ -102,7 +102,9 @@ defmodule Mix.Tasks.Compile.LiveView do
     %{callee: callee, file: file, line: line} = meta
     passed_attrs = Enum.map(static_attrs, &elem(&1, 0))
 
-    for %{name: name, opts: opts} <- attrs_defs, opts[:required], "#{name}" not in passed_attrs do
+    for %{name: name, opts: opts} <- attrs_defs,
+        opts[:required],
+        Atom.to_string(name) not in passed_attrs do
       message = "missing required attribute `#{name}` for component `#{callee}`"
       error(message, file, line)
     end
@@ -110,16 +112,12 @@ defmodule Mix.Tasks.Compile.LiveView do
 
   defp validate_undefined_attrs(static_attrs, attrs_defs, meta) do
     %{callee: callee, file: file} = meta
-    defined_attrs = Enum.map(attrs_defs, fn %{name: name} -> "#{name}" end)
+    defined_attrs = Enum.map(attrs_defs, fn %{name: name} -> Atom.to_string(name) end)
 
     for {name, _value, %{line: line}} <- static_attrs, name not in defined_attrs do
       message = "undefined attribute `#{name}` for component `#{callee}`"
       error(message, file, line)
     end
-  end
-
-  defp callee_attrs_defs(module, fun) do
-    module.__components__()[fun]
   end
 
   defp project_modules do
@@ -136,6 +134,7 @@ defmodule Mix.Tasks.Compile.LiveView do
   defp print_diagnostics(diagnostics) do
     for %Diagnostic{file: file, position: line, message: message} <- diagnostics do
       rel_file = file |> Path.relative_to_cwd() |> to_charlist()
+      # Use IO.warn(message, file: ..., line: ...) on Elixir v1.14+ 
       IO.warn(message, [{nil, :__FILE__, 1, [file: rel_file, line: line]}])
     end
   end
