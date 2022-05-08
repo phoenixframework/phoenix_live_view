@@ -98,8 +98,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             ""
         end
 
-      inline?(prev_node) and text_starts_with_line_break?(next_node) and
-          text_ends_with_line_break?(next_node) ->
+      text_starts_with_line_break?(next_node) and text_ends_with_line_break?(next_node) ->
         break(" ")
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
