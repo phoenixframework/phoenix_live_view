@@ -227,9 +227,7 @@ defmodule Phoenix.LiveView.Helpers do
       
   The above would result in the following rendered HTML:
   
-  ``` html
-  <a href="/" target="_blank" id="1" class="my-class">Home</a>
-  ```
+      <a href="/" target="_blank" id="1" class="my-class">Home</a>
 
   The second argument (optional) to `assigns_to_attributes` takes a list of keys that 
   will be excluded; typically reserved keys by the component itself which either
