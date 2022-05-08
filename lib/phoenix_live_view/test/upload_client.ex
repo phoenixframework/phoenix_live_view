@@ -148,7 +148,17 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
     stats = progress_stats(entry, percent)
-    :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, cid)
+
+    :ok =
+      ClientProxy.report_upload_progress(
+        proxy_pid,
+        from,
+        element,
+        entry.ref,
+        stats.new_percent,
+        cid
+      )
+
     update_entry_start(state, entry, stats.new_start)
   end
 
@@ -166,7 +176,16 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
     receive do
       %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
-        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, state.cid)
+        :ok =
+          ClientProxy.report_upload_progress(
+            proxy_pid,
+            from,
+            element,
+            entry.ref,
+            stats.new_percent,
+            state.cid
+          )
+
         update_entry_start(state, entry, stats.new_start)
     after
       1000 -> exit(:timeout)
@@ -174,14 +193,16 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   defp update_entry_start(state, entry, new_start) do
-    new_entries = Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)
+    new_entries =
+      Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)
+
     %{state | entries: new_entries}
   end
 
   defp get_entry!(state, name) do
     case Map.fetch(state.entries, name) do
       {:ok, entry} -> entry
-      :error ->  raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
+      :error -> raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
     end
   end
 

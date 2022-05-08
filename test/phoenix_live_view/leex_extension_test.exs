@@ -57,16 +57,14 @@ defmodule Phoenix.LiveView.LEEXTest do
                %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
                "post"
              ]
-           } =
-             Phoenix.View.render(View, "live_with_live.html", @assigns) |> expand_rendered(true)
+           } = Phoenix.View.render(View, "live_with_live.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders live engine with nested dead view" do
     assert %Rendered{
              static: ["pre: ", "\n", "\npost: ", ""],
              dynamic: ["pre", ["dead: ", "inner"], "post"]
-           } =
-             Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
+           } = Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders dead engine with nested live view" do

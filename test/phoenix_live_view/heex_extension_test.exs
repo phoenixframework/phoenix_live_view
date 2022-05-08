@@ -34,76 +34,83 @@ defmodule Phoenix.LiveView.HEExExtensionTest do
 
   test "renders live engine with live engine to string" do
     assert Phoenix.View.render_to_string(View, "live_with_live.html", @assigns) ==
-              "pre: pre\nlive: inner\npost: post"
+             "pre: pre\nlive: inner\npost: post"
   end
 
   test "renders live engine with comprehension to string" do
     assigns = Map.put(@assigns, :points, [])
 
     assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
-              "pre: pre\n\npost: post"
+             "pre: pre\n\npost: post"
 
     assigns = Map.put(@assigns, :points, [%{x: 1, y: 2}, %{x: 3, y: 4}])
 
     assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
-              "pre: pre\n\n  x: 1\n  live: inner\n  y: 2\n\n  x: 3\n  live: inner\n  y: 4\n\npost: post"
+             "pre: pre\n\n  x: 1\n  live: inner\n  y: 2\n\n  x: 3\n  live: inner\n  y: 4\n\npost: post"
   end
 
   test "renders live engine as is" do
     assert %Rendered{static: ["live: ", ""], dynamic: ["inner"]} =
-              Phoenix.View.render(View, "inner_live.html", @assigns) |> expand_rendered(true)
+             Phoenix.View.render(View, "inner_live.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders live engine with nested live view" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", ""],
-              dynamic: [
-                "pre",
-                %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
-                "post"
-              ]
-            } =
-              Phoenix.View.render(View, "live_with_live.html", @assigns) |> expand_rendered(true)
+             static: ["pre: ", "\n", "\npost: ", ""],
+             dynamic: [
+               "pre",
+               %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
+               "post"
+             ]
+           } = Phoenix.View.render(View, "live_with_live.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders live engine with nested dead view" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", ""],
-              dynamic: ["pre", ["dead: ", "inner"], "post"]
-            } =
-              Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
+             static: ["pre: ", "\n", "\npost: ", ""],
+             dynamic: ["pre", ["dead: ", "inner"], "post"]
+           } = Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
   end
 
   test "renders dead engine with nested live view" do
     assert Phoenix.View.render(View, "dead_with_live.html", @assigns) ==
-              {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
+             {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
   end
 
   test "renders dead engine with function component" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", ""],
-              dynamic: ["pre", %Rendered{dynamic: ["the value"], static: ["COMPONENT:", ""]}, "post"]
-            } =
-              Phoenix.View.render(View, "dead_with_function_component.html", @assigns) |> expand_rendered(true)
+             static: ["pre: ", "\n", "\npost: ", ""],
+             dynamic: [
+               "pre",
+               %Rendered{dynamic: ["the value"], static: ["COMPONENT:", ""]},
+               "post"
+             ]
+           } =
+             Phoenix.View.render(View, "dead_with_function_component.html", @assigns)
+             |> expand_rendered(true)
   end
 
   test "renders dead engine with function component with inner content" do
     assert %Rendered{
-              static: ["pre: ", "\n", "\npost: ", ""],
-              dynamic: [
-                "pre",
-                %Rendered{
-                  dynamic: [
-                    "the value",
-                    %Rendered{dynamic: [], static: ["\n  The inner content\n"]}
-                  ],
-                  static: ["COMPONENT:", ", Content: ", ""]
-                },
-                "post"
-              ]
-            } =
-              Phoenix.View.render(View, "dead_with_function_component_with_inner_content.html", @assigns)
-              |> expand_rendered(true)
+             static: ["pre: ", "\n", "\npost: ", ""],
+             dynamic: [
+               "pre",
+               %Rendered{
+                 dynamic: [
+                   "the value",
+                   %Rendered{dynamic: [], static: ["\n  The inner content\n"]}
+                 ],
+                 static: ["COMPONENT:", ", Content: ", ""]
+               },
+               "post"
+             ]
+           } =
+             Phoenix.View.render(
+               View,
+               "dead_with_function_component_with_inner_content.html",
+               @assigns
+             )
+             |> expand_rendered(true)
   end
 
   test "renders inside render_layout/4" do
@@ -111,13 +118,13 @@ defmodule Phoenix.LiveView.HEExExtensionTest do
     assigns = @assigns
 
     assert %Rendered{} =
-              compile("""
-              <%= render_layout(View, "inner_live.html", %{}) do %>
-                WITH COMPONENT:
-                <%= %Component{assigns: %{}, component: SampleComponent} %>
-              <% end %>
-              """)
-              |> expand_rendered(true)
+             compile("""
+             <%= render_layout(View, "inner_live.html", %{}) do %>
+               WITH COMPONENT:
+               <%= %Component{assigns: %{}, component: SampleComponent} %>
+             <% end %>
+             """)
+             |> expand_rendered(true)
   end
 
   defp expand_dynamic(dynamic, track_changes?) do

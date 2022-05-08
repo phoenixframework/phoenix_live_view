@@ -38,10 +38,14 @@ defmodule Phoenix.LiveView.ParamsTest do
       response = html_response(conn, 200)
 
       assert response =~
-               rendered_to_string(~s|params: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
+               rendered_to_string(
+                 ~s|params: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|
+               )
 
       assert response =~
-               rendered_to_string(~s|mount: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|)
+               rendered_to_string(
+                 ~s|mount: %{"id" => "123", "query1" => "query1", "query2" => "query2"}|
+               )
     end
 
     test "telemetry events are emitted on success", %{conn: conn} do
@@ -215,8 +219,12 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> live()
 
       response = render(counter_live)
-      assert response =~ rendered_to_string(~s|params: %{"from" => "rehandled_params", "id" => "123"}|)
-      assert response =~ rendered_to_string(~s|mount: %{"from" => "handle_params", "id" => "123"}|)
+
+      assert response =~
+               rendered_to_string(~s|params: %{"from" => "rehandled_params", "id" => "123"}|)
+
+      assert response =~
+               rendered_to_string(~s|mount: %{"from" => "handle_params", "id" => "123"}|)
     end
 
     test "push_redirect", %{conn: conn} do
@@ -291,14 +299,18 @@ defmodule Phoenix.LiveView.ParamsTest do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       send(counter_live.pid, {:push_patch, "/counter/123?from=handle_info"})
-      assert render(counter_live) =~ rendered_to_string(~s|%{"from" => "handle_info", "id" => "123"}|)
+
+      assert render(counter_live) =~
+               rendered_to_string(~s|%{"from" => "handle_info", "id" => "123"}|)
     end
 
     test "from handle_cast", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       :ok = GenServer.cast(counter_live.pid, {:push_patch, "/counter/123?from=handle_cast"})
-      assert render(counter_live) =~ rendered_to_string(~s|%{"from" => "handle_cast", "id" => "123"}|)
+
+      assert render(counter_live) =~
+               rendered_to_string(~s|%{"from" => "handle_cast", "id" => "123"}|)
     end
 
     test "from handle_call", %{conn: conn} do
@@ -309,7 +321,9 @@ defmodule Phoenix.LiveView.ParamsTest do
       end
 
       :ok = GenServer.call(counter_live.pid, {:push_patch, next})
-      assert render(counter_live) =~ rendered_to_string(~s|%{"from" => "handle_call", "id" => "123"}|)
+
+      assert render(counter_live) =~
+               rendered_to_string(~s|%{"from" => "handle_call", "id" => "123"}|)
     end
 
     test "from handle_params", %{conn: conn} do

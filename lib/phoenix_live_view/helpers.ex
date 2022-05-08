@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView.Helpers do
       end
       
   The above would result in the following rendered HTML:
-  
+
       <a href="/" target="_blank" id="1" class="my-class">Home</a>
 
   The second argument (optional) to `assigns_to_attributes` is a list of keys to

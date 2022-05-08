@@ -136,13 +136,13 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   def mount(_params, %{"names" => names, "from" => from} = session, socket) do
     {
       :ok,
-      assign(socket, [
+      assign(socket,
         names: names,
         from: from,
         disabled: [],
         message: nil,
         parent_selector: Map.get(session, "parent_selector", "#parent_id")
-      ])
+      )
     }
   end
 

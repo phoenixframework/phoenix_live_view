@@ -92,8 +92,8 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
     assert UploadLive.exits_with(lv, avatar, ArgumentError, fn ->
-      render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
-    end) =~ "external uploader metadata requires an :uploader key."
+             render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
+           end) =~ "external uploader metadata requires an :uploader key."
   end
 
   def error_preflight(%LiveView.UploadEntry{} = entry, socket) do
@@ -121,6 +121,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   test "consume_uploaded_entries", %{lv: lv} do
     upload_complete = "foo.jpeg:100%"
     parent = self()
+
     avatar =
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
@@ -130,6 +131,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn meta, entry ->
         {:ok, send(parent, {:consume, meta, entry.client_name})}
       end)
+
       {:reply, :ok, socket}
     end)
 
@@ -141,6 +143,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   test "consume_uploaded_entry", %{lv: lv} do
     upload_complete = "foo.jpeg:100%"
     parent = self()
+
     avatar =
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
@@ -148,9 +151,11 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     run(lv, fn socket ->
       {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+
       Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn meta ->
         {:ok, send(parent, {:individual_consume, meta, entry.client_name})}
       end)
+
       {:reply, :ok, socket}
     end)
 
@@ -158,7 +163,13 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     refute render(lv) =~ upload_complete
   end
 
-  @tag allow: [max_entries: 5, chunk_size: 20, accept: :any, external: :preflight, progress: :consume]
+  @tag allow: [
+         max_entries: 5,
+         chunk_size: 20,
+         accept: :any,
+         external: :preflight,
+         progress: :consume
+       ]
   test "consume_uploaded_entry/3 maintains entries state after drop", %{lv: lv} do
     parent = self()
 

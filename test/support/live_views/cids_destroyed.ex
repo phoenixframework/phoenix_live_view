@@ -18,7 +18,7 @@ defmodule Phoenix.LiveViewTest.CidsDestroyedLive do
     end
 
     def handle_event("bump", _, socket) do
-      {:noreply, update(socket, :counter, & &1 + 1)}
+      {:noreply, update(socket, :counter, &(&1 + 1))}
     end
   end
 

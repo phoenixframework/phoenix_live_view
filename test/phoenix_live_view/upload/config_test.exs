@@ -167,9 +167,14 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
 
       {:ok, socket} =
-        LiveView.Upload.put_entries(socket, socket.assigns.uploads.avatar, [
-          build_client_entry(:avatar, %{"size" => 1024})
-        ], nil)
+        LiveView.Upload.put_entries(
+          socket,
+          socket.assigns.uploads.avatar,
+          [
+            build_client_entry(:avatar, %{"size" => 1024})
+          ],
+          nil
+        )
 
       assert_raise RuntimeError, ~r/unable to disallow_upload/, fn ->
         LiveView.disallow_upload(socket, :avatar)
@@ -293,17 +298,16 @@ defmodule Phoenix.LiveView.UploadConfigTest do
                %UploadEntry{client_name: "photo.JPEG"}
              ] = config.entries
 
+      assert {:ok, config} =
+               UploadConfig.put_entries(socket.assigns.uploads.audio, [
+                 build_client_entry(:audio, %{"name" => "audio.wav", "type" => "audio/wav"}),
+                 build_client_entry(:audio, %{"name" => "audio.WAV", "type" => "audio/wav"})
+               ])
 
-    assert {:ok, config} =
-    UploadConfig.put_entries(socket.assigns.uploads.audio, [
-      build_client_entry(:audio, %{"name" => "audio.wav", "type" => "audio/wav"}),
-      build_client_entry(:audio, %{"name" => "audio.WAV", "type" => "audio/wav"})
-    ])
-
-    assert [
-              %UploadEntry{client_name: "audio.wav"},
-              %UploadEntry{client_name: "audio.WAV"}
-            ] = config.entries
+      assert [
+               %UploadEntry{client_name: "audio.wav"},
+               %UploadEntry{client_name: "audio.WAV"}
+             ] = config.entries
 
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "file.gif"})

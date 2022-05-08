@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.UploadChannel do
               return
 
             return ->
-              IO.warn """
+              IO.warn("""
               consuming uploads requires a return signature matching:
 
                   {:ok, value} | {:postpone, value}
@@ -38,7 +38,8 @@ defmodule Phoenix.LiveView.UploadChannel do
               got:
 
                   #{inspect(return)}
-              """
+              """)
+
               GenServer.call(pid, :consume_done, @timeout)
               return
           end

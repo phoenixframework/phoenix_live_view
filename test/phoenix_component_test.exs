@@ -12,6 +12,7 @@ defmodule Phoenix.ComponentTest do
   describe "rendering" do
     defp hello(assigns) do
       assigns = assign_new(assigns, :name, fn -> "World" end)
+
       ~H"""
       Hello <%= @name %>
       """
@@ -188,9 +189,7 @@ defmodule Phoenix.ComponentTest do
              ) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
-      assert eval(
-               ~H|<.inner_changed><%= @foo %></.inner_changed>|
-             ) ==
+      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) ==
                [["%{inner_block: true}", ["1"]]]
 
       assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
@@ -203,9 +202,7 @@ defmodule Phoenix.ComponentTest do
              ) ==
                [["%{foo: %{bar: true}, inner_block: true}", ["%{foo: %{bar: true}}"]]]
 
-      assert eval(
-               ~H|<.inner_changed><%= @foo %></.inner_changed>|
-             ) ==
+      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) ==
                [["%{inner_block: %{bar: true}}", ["1"]]]
     end
 

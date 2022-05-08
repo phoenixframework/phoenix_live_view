@@ -47,4 +47,3 @@ defmodule Phoenix.LiveViewTest.ComponentAndNestedInLive do
     {:noreply, assign(socket, :enabled, false)}
   end
 end
-

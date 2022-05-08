@@ -306,10 +306,10 @@ defmodule Phoenix.LiveView.EngineTest do
     test "does not render dynamic if it has variables as comprehension generators" do
       template = "<%= for x <- foo do %><%= x %><% end %>"
 
-      rendered = eval(template, %{__changed__: nil}, [foo: [1, 2, 3]])
+      rendered = eval(template, %{__changed__: nil}, foo: [1, 2, 3])
       assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
 
-      rendered = eval(template, %{__changed__: %{}}, [foo: [1, 2, 3]])
+      rendered = eval(template, %{__changed__: %{}}, foo: [1, 2, 3])
       assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
     end
 

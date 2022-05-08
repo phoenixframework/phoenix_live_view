@@ -261,9 +261,10 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleParamsNotDefined do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def mount(_, _, socket) do
-    {:ok, attach_hook(socket, :assign_url, :handle_params, fn _, url, socket ->
-      {:cont, assign(socket, :url, url)}
-    end)}
+    {:ok,
+     attach_hook(socket, :assign_url, :handle_params, fn _, url, socket ->
+       {:cont, assign(socket, :url, url)}
+     end)}
   end
 
   def render(assigns), do: ~H"url=<%= assigns[:url] %>"
@@ -275,10 +276,11 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleInfoNotDefined do
   def mount(_, _, socket) do
     send(self(), {:data, "somedata"})
 
-    {:ok, attach_hook(socket, :assign_url, :handle_info, fn message, socket ->
-      {:data, data} = message
-      {:cont, assign(socket, :data, data)}
-    end)}
+    {:ok,
+     attach_hook(socket, :assign_url, :handle_info, fn message, socket ->
+       {:data, data} = message
+       {:cont, assign(socket, :data, data)}
+     end)}
   end
 
   def render(assigns), do: ~H"data=<%= assigns[:data] %>"

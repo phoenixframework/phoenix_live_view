@@ -238,7 +238,12 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    Module.put_attribute(module, :phoenix_live_session_current, %{name: name, extra: extra, vsn: vsn})
+    Module.put_attribute(module, :phoenix_live_session_current, %{
+      name: name,
+      extra: extra,
+      vsn: vsn
+    })
+
     Module.put_attribute(module, :phoenix_live_sessions, %{name: name, extra: extra, vsn: vsn})
   end
 

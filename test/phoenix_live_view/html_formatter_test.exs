@@ -503,13 +503,11 @@ if Version.match?(System.version(), ">= 1.13.0") do
         line_length: 27
       )
 
-      assert_formatter_doesnt_change(
-        """
-        <span><%= @user_a %></span>
-        X
-        <span><%= @user_b %></span>
-        """
-      )
+      assert_formatter_doesnt_change("""
+      <span><%= @user_a %></span>
+      X
+      <span><%= @user_b %></span>
+      """)
 
       assert_formatter_doesnt_change("""
       <span><%= @user_a %></span> X <span><%= @user_b %></span>
@@ -531,12 +529,10 @@ if Version.match?(System.version(), ">= 1.13.0") do
         line_length: 5
       )
 
-      assert_formatter_doesnt_change(
-        """
-        <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span> |
-        <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
-        """
-      )
+      assert_formatter_doesnt_change("""
+      <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span> |
+      <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
+      """)
     end
 
     test "handle eex cond statement" do

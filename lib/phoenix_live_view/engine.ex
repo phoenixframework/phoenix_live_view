@@ -990,7 +990,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro __raise__(special_form, arity) do
-    message =  "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
+    message = "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
     reraise ArgumentError.exception(message), Macro.Env.stacktrace(__CALLER__)
   end
 
@@ -1019,8 +1019,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Calls to attributes escape is always safe
   defp to_safe(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} =
-           safe,
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} = safe,
          line,
          _extra_clauses?
        ) do

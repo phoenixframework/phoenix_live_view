@@ -33,9 +33,11 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
              {"div", _,
               [
                 _,
-                {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                {"div",
+                 [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                  ["\n  chris says hi\n  \n"]},
-                {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                {"div",
+                 [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                  ["\n  jose says hi\n  \n"]}
               ]}
            ] = DOM.parse(render(view))
@@ -70,14 +72,20 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     {:ok, view, html} = live(conn, "/components")
 
     assert [
-             {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _], ["\n  chris says" <> _]},
-             {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _], ["\n  jose says" <> _]}
+             {"div",
+              [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+              ["\n  chris says" <> _]},
+             {"div",
+              [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+              ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
-             {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _], ["\n  jose says" <> _]}
+             {"div",
+              [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+              ["\n  jose says" <> _]}
            ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
 
     refute view |> element("#chris") |> has_element?()
@@ -97,7 +105,9 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     refute render(view) =~ "Hello World"
   end
 
-  test "tracks removals of a nested LiveView alongside with a LiveComponent in the root view", %{conn: conn} do
+  test "tracks removals of a nested LiveView alongside with a LiveComponent in the root view", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/component_and_nested_in_live")
     html = render(view)
     assert html =~ "hello"
@@ -148,9 +158,11 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                _,
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 ["\n  jose says hi\n" <> _]}
              ] = DOM.parse(html)
 
@@ -158,9 +170,11 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                _,
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 ["\n  Jose says hi\n" <> _]}
              ] = DOM.parse(html)
 
@@ -168,13 +182,19 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                _,
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 [
                   "\n  Jose says hi\n  ",
-                  {"div", [{"data-phx-component", "3"}, {"phx-click", "transform"}, {"id", "Jose-dup"} | _],
-                   ["\n  Jose-dup says hi\n" <> _]}
+                  {"div",
+                   [
+                     {"data-phx-component", "3"},
+                     {"phx-click", "transform"},
+                     {"id", "Jose-dup"} | _
+                   ], ["\n  Jose-dup says hi\n" <> _]}
                 ]}
              ] = DOM.parse(html)
 
@@ -182,13 +202,19 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                _,
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 [
                   "\n  Jose says hi\n  ",
-                  {"div", [{"data-phx-component", "3"}, {"phx-click", "transform"}, {"id", "Jose-dup"} | _],
-                   ["\n  JOSE-DUP says hi\n" <> _]}
+                  {"div",
+                   [
+                     {"data-phx-component", "3"},
+                     {"phx-click", "transform"},
+                     {"id", "Jose-dup"} | _
+                   ], ["\n  JOSE-DUP says hi\n" <> _]}
                 ]}
              ] = DOM.parse(html)
 
@@ -203,9 +229,11 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                _,
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 ["\n  jose says hi\n" <> _]}
              ] = DOM.parse(html)
     end
@@ -219,17 +247,24 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                {"div", _,
-                 [
-                   {"div", [{"id", "parent_id"} | _],
-                    ["\n  Parent was updated\n" <> _,
-                   {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
-                    ["\n  CHRIS says hi\n" <> _]},
-                   {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
-                     ["\n  jose says hi\n" <> _]}
-                    ]
-                   }
-                 ]
-               }
+                [
+                  {"div", [{"id", "parent_id"} | _],
+                   [
+                     "\n  Parent was updated\n" <> _,
+                     {"div",
+                      [
+                        {"data-phx-component", "1"},
+                        {"phx-click", "transform"},
+                        {"id", "chris"} | _
+                      ], ["\n  CHRIS says hi\n" <> _]},
+                     {"div",
+                      [
+                        {"data-phx-component", "2"},
+                        {"phx-click", "transform"},
+                        {"id", "jose"} | _
+                      ], ["\n  jose says hi\n" <> _]}
+                   ]}
+                ]}
              ] = DOM.parse(html)
     end
 
@@ -245,17 +280,24 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                {"div", _,
-                 [
-                   {"div", [{"id", "parent_id"} | _],
-                    ["\n  Parent was updated\n" <> _,
-                   {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
-                    ["\n  CHRIS says hi\n" <> _]},
-                   {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
-                     ["\n  jose says hi\n" <> _]}
-                    ]
-                   }
-                 ]
-               }
+                [
+                  {"div", [{"id", "parent_id"} | _],
+                   [
+                     "\n  Parent was updated\n" <> _,
+                     {"div",
+                      [
+                        {"data-phx-component", "1"},
+                        {"phx-click", "transform"},
+                        {"id", "chris"} | _
+                      ], ["\n  CHRIS says hi\n" <> _]},
+                     {"div",
+                      [
+                        {"data-phx-component", "2"},
+                        {"phx-click", "transform"},
+                        {"id", "jose"} | _
+                      ], ["\n  jose says hi\n" <> _]}
+                   ]}
+                ]}
              ] = DOM.parse(html)
     end
   end
@@ -281,12 +323,14 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       refute_receive {:preload, _}
 
       assert [
-               {"div", [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+               {"div",
+                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
                 ["\n  NEW-chris says hi\n  \n"]}
              ] = view |> element("#chris") |> render() |> DOM.parse()
 
       assert [
-               {"div", [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+               {"div",
+                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
                 ["\n  NEW-jose says hi\n  \n"]}
              ] = view |> element("#jose") |> render() |> DOM.parse()
     end
@@ -294,8 +338,19 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     test "updates child from independent pid", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/components")
 
-      Phoenix.LiveView.send_update(view.pid, StatefulComponent, [id: "chris", name: "NEW-chris", from: self()])
-      Phoenix.LiveView.send_update_after(view.pid, StatefulComponent, [id: "jose", name: "NEW-jose", from: self()], 10)
+      Phoenix.LiveView.send_update(view.pid, StatefulComponent,
+        id: "chris",
+        name: "NEW-chris",
+        from: self()
+      )
+
+      Phoenix.LiveView.send_update_after(
+        view.pid,
+        StatefulComponent,
+        [id: "jose", name: "NEW-jose", from: self()],
+        10
+      )
+
       assert_receive {:updated, %{id: "chris", name: "NEW-chris"}}
       assert_receive {:updated, %{id: "jose", name: "NEW-jose"}}
       refute_receive {:updated, _}

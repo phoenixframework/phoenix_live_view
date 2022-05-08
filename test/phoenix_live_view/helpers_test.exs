@@ -129,6 +129,7 @@ defmodule Phoenix.LiveView.HelpersTest do
     test "raises when missing required assigns" do
       assert_raise ArgumentError, ~r/missing :for assign/, fn ->
         assigns = %{}
+
         parse(~H"""
         <.form let={f}>
           <%= text_input f, :foo %>
