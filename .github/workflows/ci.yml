@@ -82,6 +82,12 @@ jobs:
       env:
         MIX_ENV: test
 
+    - name: Check formatting
+      run: mix format --check-formatted
+      if: ${{ matrix.lint }}
+      env:
+        MIX_ENV: test
+
     - name: Run tests
       run: mix test
 
