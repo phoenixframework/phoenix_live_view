@@ -216,16 +216,16 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     else
       test "print diagnostics when --return-errors is not passed" do
         messages = """
-        \e[33mwarning: \e[0mmissing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
           test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
 
-        \e[33mwarning: \e[0mmissing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
           test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
 
-        \e[33mwarning: \e[0mmissing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
           test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
 
-        \e[33mwarning: \e[0mmissing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
           test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
 
         """
