@@ -229,8 +229,8 @@ defmodule Phoenix.LiveView.Helpers do
   
       <a href="/" target="_blank" id="1" class="my-class">Home</a>
 
-  The second argument (optional) to `assigns_to_attributes` takes a list of keys that 
-  will be excluded; typically reserved keys by the component itself which either
+  The second argument (optional) to `assigns_to_attributes` is a list of keys to
+  exclude. It typically includes reserved keys by the component itself, which either
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
