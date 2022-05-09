@@ -28,7 +28,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   defmacrop compile(string) do
     quote do
-      unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine, module: __MODULE__, caller: __CALLER__))
+      unquote(
+        EEx.compile_string(string,
+          file: __ENV__.file,
+          engine: HTMLEngine,
+          module: __MODULE__,
+          caller: __CALLER__
+        )
+      )
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
     end
@@ -493,7 +500,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on unclosed local call" do
-      message = ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
+      message =
+        ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -501,7 +509,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
+      message =
+        ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -995,7 +1004,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise if the slot entry is not a direct child of a component" do
-      message = ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1007,7 +1017,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1021,7 +1032,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1035,7 +1047,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <:sample>
@@ -1297,9 +1311,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "handle errors in expressions" do
-    if Version.match?(System.version(), ">= 1.12.0") do
-      test "inside attribute values" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','", fn ->
+    test "inside attribute values" do
+      assert_raise(
+        SyntaxError,
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','",
+        fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1311,11 +1327,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             [],
             opts
           )
-        end)
-      end
+        end
+      )
+    end
 
-      test "inside root attribute value" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','", fn ->
+    test "inside root attribute value" do
+      assert_raise(
+        SyntaxError,
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','",
+        fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1327,24 +1347,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             [],
             opts
           )
-        end)
-      end
-    else
-      test "older versions cannot provide correct line on errors" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:2", fn ->
-          opts = [line: 10, indentation: 8]
-
-          eval(
-            """
-            text
-            <%= "interpolation" %>
-            <div class={[,]}/>
-            """,
-            [],
-            opts
-          )
-        end)
-      end
+        end
+      )
     end
   end
 end
