@@ -360,16 +360,22 @@ defmodule Phoenix.Component do
   end
 
   def __on_definition__(env, _kind, name, args, _guards, _body) do
-    arity = length(args)
-    message = "cannot declare attributes for `#{name}/#{arity}`. Components must be functions with arity 1."
     attrs = pop_attrs(env)
-    validate_misplaced_attrs!(attrs, message, env.file)
+
+    validate_misplaced_attrs!(attrs, env.file, fn ->
+      arity = length(args)
+
+      "cannot declare attributes for `#{name}/#{arity}`. Components must be functions with arity 1"
+    end)
   end
 
   @doc false
   defmacro __before_compile__(env) do
     attrs = pop_attrs(env)
-    validate_misplaced_attrs!(attrs, "cannot define attributes without a related function component", env.file)
+
+    validate_misplaced_attrs!(attrs, env.file, fn ->
+      "cannot define attributes without a related function component"
+    end)
 
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
@@ -418,9 +424,9 @@ defmodule Phoenix.Component do
     Module.get_attribute(env.module, :__last_tracked_def__)
   end
 
-  defp validate_misplaced_attrs!(attrs, message, file) do
+  defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
-      raise CompileError, line: first_attr_line, file: file, description: message
+      raise CompileError, line: first_attr_line, file: file, description: message_fun.()
     end
   end
 

@@ -32,11 +32,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc ~S'''
   Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
 
-  > Note: `HEEx` requires Elixir >= `1.12.0` in order to provide accurate
-  > file:line:column information in error messages. Earlier Elixir versions will
-  > work but will show inaccurate error messages.
-
-  > Note: The HEEx HTML formatter requires Elixir >= 1.13.0. See the
+  > Note: The HEEx HTML formatter requires Elixir >= 1.13.4. See the
   > `Phoenix.LiveView.HTMLFormatter` for more information on template formatting.
 
   `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:

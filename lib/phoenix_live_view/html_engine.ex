@@ -65,8 +65,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
     opts = [root: token_state.root || false]
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
-    # Do not require if calling module is helpers. Fix for elixir < 1.12
-    # TODO remove after Elixir >= 1.12 support
     if state.module === Phoenix.LiveView.Helpers do
       ast
     else
@@ -142,15 +140,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp pop_substate_from_stack(%{stack: [{:substate, substate} | stack]} = state) do
     %{state | stack: stack, substate: substate}
-  end
-
-  defp invoke_subengine(%{subengine: subengine, substate: substate}, :handle_text, args) do
-    # TODO: Remove this once we require Elixir v1.12
-    if function_exported?(subengine, :handle_text, 3) do
-      apply(subengine, :handle_text, [substate | args])
-    else
-      apply(subengine, :handle_text, [substate | tl(args)])
-    end
   end
 
   defp invoke_subengine(%{subengine: subengine, substate: substate}, fun, args) do
@@ -581,9 +570,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp extract_binaries(value, false, acc), do: [{:binary, value} | acc]
   defp extract_binaries(_value, true, _acc), do: :error
 
-  # TODO: We can refactor the empty_attribute_encoder to simply return an atom
-  # but there is a bug in Elixir v1.12 and earlier where mixing `line: expr`
-  # with .unquote(fun) leads to bugs in line numbers.
+  # TODO: We can refactor the empty_attribute_encoder to simply return an atom on Elixir v1.13+
   defp empty_attribute_encoder("class", value, meta) do
     quote line: meta[:line], do: unquote(__MODULE__).class_attribute_encode(unquote(value))
   end
