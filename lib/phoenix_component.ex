@@ -137,7 +137,8 @@ defmodule Phoenix.Component do
   to render it.
 
   You can even have the component give a value back to the caller,
-  by using `:let`. Imagine this component:
+  by using the special attribute `:let` (note the leading `:`).
+  Imagine this component:
 
       def unordered_list(assigns) do
         ~H"""
