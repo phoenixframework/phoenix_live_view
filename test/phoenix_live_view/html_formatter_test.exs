@@ -1587,6 +1587,21 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "add attrs starting with `:` at the beginning" do
+      assert_formatter_output(
+        """
+        <.form for={@changeset} :let={f} class="form">
+          <%= input(f, :foo) %>
+        </.form>
+        """,
+        """
+        <.form :let={f} for={@changeset} class="form">
+          <%= input(f, :foo) %>
+        </.form>
+        """
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
