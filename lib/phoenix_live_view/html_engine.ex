@@ -353,7 +353,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: "cannot use `let` on a slot without inner content"
+        description: "cannot use `:let` on a slot without inner content"
     end
 
     attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
@@ -653,23 +653,26 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {let, [quoted_value | r], a}
   end
 
+  # TODO: deprecate "let" in favor of `:let` on LV v0.19.
   defp split_component_attr(
-         {"let", {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
+         {let, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
          {nil, r, a},
          file
-       ) do
+       )
+       when let in ["let", ":let"] do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     {{quoted_value, meta}, r, a}
   end
 
   defp split_component_attr(
-         {"let", {:expr, _value, previous_meta}, _attr_meta},
+         {let, {:expr, _value, previous_meta}, _attr_meta},
          {{_, meta}, _, _},
          file
-       ) do
+       )
+       when let in ["let", ":let"] do
     message = """
-    cannot define multiple `let` attributes. \
-    Another `let` has already been defined at line #{previous_meta.line}\
+    cannot define multiple `:let` attributes. \
+    Another `:let` has already been defined at line #{previous_meta.line}\
     """
 
     raise ParseError,
@@ -726,7 +729,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def __unmatched_let__!(pattern, value) do
     message = """
-    cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+    cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
 
     Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
     """
@@ -742,7 +745,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp raise_if_let!(let, file) do
     with {_pattern, %{line: line}} <- let do
-      message = "cannot use `let` on a component without inner content"
+      message = "cannot use `:let` on a component without inner content"
       raise CompileError, line: line, file: file, description: message
     end
   end
@@ -831,7 +834,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp validate_phx_attrs!([{"id", _, _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
 
-  defp validate_phx_attrs!([{"phx-update", {:string, value, _meta}, _} | t], meta, state, _attr, id?) do
+  defp validate_phx_attrs!(
+         [{"phx-update", {:string, value, _meta}, _} | t],
+         meta,
+         state,
+         _attr,
+         id?
+       ) do
     if value in ~w(ignore append prepend replace) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
