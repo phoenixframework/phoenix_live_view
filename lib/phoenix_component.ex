@@ -137,7 +137,7 @@ defmodule Phoenix.Component do
   to render it.
 
   You can even have the component give a value back to the caller,
-  by using `let`. Imagine this component:
+  by using `:let`. Imagine this component:
 
       def unordered_list(assigns) do
         ~H"""
@@ -151,7 +151,7 @@ defmodule Phoenix.Component do
 
   And now you can invoke it as:
 
-      <.unordered_list let={entry} entries={~w(apple banana cherry)}>
+      <.unordered_list :let={entry} entries={~w(apple banana cherry)}>
         I like <%= entry %>
       </.unordered_list>
 
@@ -170,7 +170,7 @@ defmodule Phoenix.Component do
 
   And now we can invoke it like this:
 
-      <.unordered_list let={%{entry: entry, gif_url: url}}>
+      <.unordered_list :let={%{entry: entry, gif_url: url}}>
         I like <%= entry %>. <img src={url} />
       </.unordered_list>
 
@@ -243,11 +243,11 @@ defmodule Phoenix.Component do
   For example, imagine a table component:
 
       <.table rows={@users}>
-        <:col let={user} label="Name">
+        <:col :let={user} label="Name">
           <%= user.name %>
         </:col>
 
-        <:col let={user} label="Address">
+        <:col :let={user} label="Address">
           <%= user.address %>
         </:col>
       </.table>

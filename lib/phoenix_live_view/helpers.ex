@@ -688,11 +688,11 @@ defmodule Phoenix.LiveView.Helpers do
   For example, imagine a table component:
 
       <.table rows={@users}>
-        <:col let={user} label="Name">
+        <:col :let={user} label="Name">
           <%= user.name %>
         </:col>
 
-        <:col let={user} label="Address">
+        <:col :let={user} label="Address">
           <%= user.address %>
         </:col>
       </.table>
@@ -1047,11 +1047,11 @@ defmodule Phoenix.LiveView.Helpers do
 
   The `:for` attribute is typically an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html):
 
-      <.form let={f} for={@changeset} phx-change="change_name">
+      <.form :let={f} for={@changeset} phx-change="change_name">
         <%= text_input f, :name %>
       </.form>
 
-      <.form let={user_form} for={@changeset} multipart phx-change="change_user" phx-submit="save_user">
+      <.form :let={user_form} for={@changeset} multipart phx-change="change_user" phx-submit="save_user">
         <%= text_input user_form, :name %>
         <%= submit "Save" %>
       </.form>
@@ -1068,7 +1068,7 @@ defmodule Phoenix.LiveView.Helpers do
   In this case, you need to pass the input values explicitly as they
   change (or use `phx-update="ignore"` as per the previous paragraph):
 
-      <.form let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
+      <.form :let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
         <%= text_input user_form, :name, value: @user_name %>
         <%= submit "Save" %>
       </.form>
@@ -1088,7 +1088,7 @@ defmodule Phoenix.LiveView.Helpers do
   Without said attribute, the `form` method and csrf token are
   discarded.
 
-      <.form let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
+      <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
         <%= text_input f, :body %>
       </.form>
   """
