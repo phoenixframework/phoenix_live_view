@@ -95,7 +95,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(%{subengine: subengine, substate: substate, file: file, module: module, caller: caller}, root) do
+  defp token_state(
+         %{subengine: subengine, substate: substate, file: file, module: module, caller: caller},
+         root
+       ) do
     %{
       subengine: subengine,
       substate: substate,
@@ -245,7 +248,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true, line: line} = tag_meta},
+         {:tag_open, <<first, _::binary>> = tag_name, attrs,
+          %{self_close: true, line: line} = tag_meta},
          state
        )
        when first in ?A..?Z do
@@ -628,8 +632,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     inner_block_assigns =
       quote line: line do
-        %{__slot__: :inner_block,
-          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))}
+        %{
+          __slot__: :inner_block,
+          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))
+        }
       end
 
     {slots, state} = pop_slots(state)
@@ -791,14 +797,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp actual_component_module(env, fun) do
     case lookup_import(env, {fun, 1}) do
-      [{_, module}| _] -> module
+      [{_, module} | _] -> module
       _ -> env.module
     end
   end
 
   # TODO: Use Macro.Env.lookup_import/2 when we require Elixir v1.13+
   defp lookup_import(%Macro.Env{functions: functions, macros: macros}, {name, arity} = pair)
-      when is_atom(name) and is_integer(arity) do
+       when is_atom(name) and is_integer(arity) do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
