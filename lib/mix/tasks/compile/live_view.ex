@@ -93,16 +93,31 @@ defmodule Mix.Tasks.Compile.LiveView do
 
   defp diagnostics(%{attrs: attrs, root: root} = call, attrs_defs) do
     {warnings, attrs} =
-      Enum.flat_map_reduce(attrs_defs, attrs, fn %{name: name, required: required}, attrs ->
+      Enum.flat_map_reduce(attrs_defs, attrs, fn attr_def, attrs ->
+        %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
 
         warnings =
-          cond do
-            not root and required and is_nil(value) ->
+          case value do
+            nil when not root and required ->
               message = "missing required attribute \"#{name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
-            true ->
+            {line, _column, string} when is_binary(string) and type not in [:any, :string] ->
+              message =
+                "attribute \"#{name}\" in component #{component(call)} must be a #{inspect(type)}, " <>
+                  "got string: #{inspect(string)}"
+
+              [error(message, call.file, line)]
+
+            {line, _column, nil} when type not in [:any, :boolean] ->
+              message =
+                "attribute \"#{name}\" in component #{component(call)} must be a #{inspect(type)}, " <>
+                  "got boolean: true"
+
+              [error(message, call.file, line)]
+
+            _ ->
               []
           end
 

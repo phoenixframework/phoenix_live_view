@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message: """
-                 missing required attribute "name" for component \
+                 missing required attribute "email" for component \
                  Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
@@ -43,7 +43,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message: """
-                 missing required attribute "email" for component \
+                 missing required attribute "name" for component \
                  Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
@@ -107,6 +107,49 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  message:
                    "undefined attribute \"width\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
                  position: line,
+                 severity: :warning
+               }
+             ]
+    end
+
+    defmodule TypeAttrs do
+      use Phoenix.Component
+
+      attr(:boolean, :boolean)
+      attr(:string, :string)
+      def func(assigns), do: ~H[]
+
+      def line, do: __ENV__.line + 4
+
+      def render(assigns) do
+        ~H"""
+        <.func boolean="btn"/>
+        <.func string/>
+        <.func boolean string="string"/>
+        <.func boolean={"can't validate"} string={:wont_validate}/>
+        """
+      end
+    end
+
+    test "validate literal types" do
+      line = get_line(TypeAttrs)
+      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([TypeAttrs])
+
+      assert diagnostics == [
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message:
+                    "attribute \"boolean\" in component Mix.Tasks.Compile.LiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
+                 position: line,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"string\" in component Mix.Tasks.Compile.LiveViewTest.TypeAttrs.func/1 must be a :string, got boolean: true",
+                 position: line + 1,
                  severity: :warning
                }
              ]

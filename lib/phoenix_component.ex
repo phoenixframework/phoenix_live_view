@@ -354,7 +354,7 @@ defmodule Phoenix.Component do
     })
   end
 
-  @builtin_types []
+  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map]
   @valid_types [:any] ++ @builtin_types
 
   defp validate_attr_type!(name, type, line, file) when is_atom(type) do
@@ -496,7 +496,8 @@ defmodule Phoenix.Component do
         components =
           env.module
           |> Module.get_attribute(:__components__)
-          |> Map.put(name, attrs)
+          # Sort by name as this is used when they are validated
+          |> Map.put(name, Enum.sort_by(attrs, & &1.name))
 
         Module.put_attribute(env.module, :__components__, components)
         Module.put_attribute(env.module, :__last_component__, name)

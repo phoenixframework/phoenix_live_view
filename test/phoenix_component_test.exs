@@ -309,8 +309,8 @@ defmodule Phoenix.ComponentTest do
 
       assert FunctionComponentWithAttrs.__components__() == %{
                func1: [
-                 %{name: :id, type: :any, opts: [], required: true, line: func1_line + 1},
-                 %{name: :email, type: :any, opts: [], required: false, line: func1_line + 2}
+                 %{name: :email, type: :any, opts: [], required: false, line: func1_line + 2},
+                 %{name: :id, type: :any, opts: [], required: true, line: func1_line + 1}
                ],
                func2: [
                  %{name: :name, type: :any, opts: [], required: true, line: func2_line + 1}
