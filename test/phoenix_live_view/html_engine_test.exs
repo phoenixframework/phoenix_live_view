@@ -582,7 +582,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <%= if true do %>
-          <.local_function_component value='1' let={var}>
+          <.local_function_component value='1' :let={var}>
         <% end %>
         """)
       end)
