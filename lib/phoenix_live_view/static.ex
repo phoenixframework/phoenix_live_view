@@ -199,7 +199,6 @@ defmodule Phoenix.LiveView.Static do
     session_token =
       if sticky?, do: sign_nested_session(parent, socket, view, to_sign_session, sticky?)
 
-
     if redir = socket.redirected do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
     end

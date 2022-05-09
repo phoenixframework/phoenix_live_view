@@ -289,17 +289,21 @@ defmodule Phoenix.Component do
   @doc false
   defmacro __using__(_) do
     quote do
+      import Kernel, except: [def: 2, defp: 2]
       import Phoenix.Component
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
-
-      Module.register_attribute(__MODULE__, :__attrs__, accumulate: true)
-      Module.register_attribute(__MODULE__, :__components_calls__, accumulate: true)
-      Module.put_attribute(__MODULE__, :__components__, %{})
-
-      @on_definition unquote(__MODULE__)
-      @before_compile unquote(__MODULE__)
+      unquote(__MODULE__).__setup__(__MODULE__)
     end
+  end
+
+  @doc false
+  def __setup__(module) do
+    Module.register_attribute(module, :__attrs__, accumulate: true)
+    Module.register_attribute(module, :__components_calls__, accumulate: true)
+    Module.put_attribute(module, :__components__, %{})
+    Module.put_attribute(module, :on_definition, __MODULE__)
+    Module.put_attribute(module, :before_compile, __MODULE__)
   end
 
   @doc """
@@ -307,12 +311,22 @@ defmodule Phoenix.Component do
 
   ## Validations
 
-  LiveView does not currently check the types of assigns,
-  neither at runtime or compile time. At the moment, they
-  are used minaly for documentation purposes.
+  LiveView performs limited validation of attributes via the `:live_view`
+  compiler.
 
-  `:required` fields are checked, however, both at compile-time
-  and runtime. `:default` fields are also added to assigns.
+    * LiveView will warn if a required attribute of a component is missing
+    * LiveView will warn if an unknown attribute is given
+
+  The type information, on the other hand, is mostly used for documentation
+  and reflection purposes. However, LiveView may warn in some situations,
+  such as:
+
+    * Required struct types are annotated and emit compilation warnings.
+      For example, if you specify `attr :user, User, required: true` and
+      then you write `@user.non_valid_field` in your template, a warning
+      will be emitted
+
+  This list may increase in the future.
   """
   defmacro attr(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
@@ -322,27 +336,57 @@ defmodule Phoenix.Component do
 
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
-    validate_attr_type!(name, type, line, file)
+    unless is_atom(name) do
+      message = "attribute names must be atoms, got: #{inspect(name)}"
+      raise CompileError, line: line, file: file, description: message
+    end
+
+    {required, opts} = Keyword.pop(opts, :required, false)
+    type = validate_attr_type!(name, type, line, file)
     validate_attr_opts!(name, opts, line, file)
-    Module.put_attribute(module, :__attrs__, %{name: name, type: type, opts: opts, line: line})
+
+    Module.put_attribute(module, :__attrs__, %{
+      name: name,
+      type: type,
+      required: required,
+      opts: opts,
+      line: line
+    })
   end
 
-  defp validate_attr_type!(name, type, line, file) do
-    if type != :any do
-      message = """
-      invalid type `#{inspect(type)}` for attr `#{inspect(name)}`. \
-      Currently, only type `:any` is supported.\
-      """
+  @builtin_types []
+  @valid_types [:any] ++ @builtin_types
 
-      raise CompileError, line: line, file: file, description: message
+  defp validate_attr_type!(name, type, line, file) when is_atom(type) do
+    case Atom.to_string(type) do
+      "Elixir." <> _ -> {:struct, type}
+      _ when type in @valid_types -> type
+      _ -> bad_type!(name, type, line, file)
     end
   end
 
+  defp validate_attr_type!(name, type, line, file) do
+    bad_type!(name, type, line, file)
+  end
+
+  defp bad_type!(name, type, line, file) do
+    message = """
+    invalid type #{inspect(type)} for attr #{inspect(name)}. \
+    The following types are supported:
+
+      * any Elixir struct, such as URI, MyApp.User, etc
+      * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
+      * :any for all other types
+    """
+
+    raise CompileError, line: line, file: file, description: message
+  end
+
   defp validate_attr_opts!(name, opts, line, file) do
-    for {key, _} <- opts, key != :required do
+    for {key, _} <- opts do
       message = """
-      invalid option `#{inspect(key)}` for attr `#{inspect(name)}`. \
-      Currently, only `:required` is supported.\
+      invalid option #{inspect(key)} for attr #{inspect(name)}. \
+      The supported options are: :required
       """
 
       raise CompileError, line: line, file: file, description: message
@@ -350,24 +394,66 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __on_definition__(env, kind, name, [_arg], _guards, _body) when kind in [:def, :defp] do
-    attrs = pop_attrs(env)
-
-    if attrs != [] do
-      register_component!(env, name, attrs)
+  defmacro def(expr, body) do
+    quote do
+      Kernel.def(unquote(annotate_def(:def, expr)), unquote(body))
     end
-
-    maybe_set_last_tracked_def(env, name)
   end
 
-  def __on_definition__(env, _kind, name, args, _guards, _body) do
-    attrs = pop_attrs(env)
+  @doc false
+  defmacro defp(expr, body) do
+    quote do
+      Kernel.defp(unquote(annotate_def(:defp, expr)), unquote(body))
+    end
+  end
 
-    validate_misplaced_attrs!(attrs, env.file, fn ->
-      arity = length(args)
+  defp annotate_def(kind, expr) do
+    case expr do
+      {:when, meta, [left, right]} -> {:when, meta, [annotate_call(kind, left), right]}
+      left -> annotate_call(kind, left)
+    end
+  end
 
-      "cannot declare attributes for `#{name}/#{arity}`. Components must be functions with arity 1"
-    end)
+  defp annotate_call(kind, {name, meta, [arg]}),
+    do: {name, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
+
+  defp annotate_call(_kind, left),
+    do: left
+
+  defmacro __pattern__!(_kind, arg) do
+    {name, 1} = __CALLER__.function
+
+    if attrs = register_component!(__CALLER__, name, true) do
+      fields =
+        for %{name: name, required: true, type: {:struct, struct}} <- attrs do
+          {name, quote(do: %unquote(struct){})}
+        end
+
+      quote(do: %{unquote_splicing(fields)} = unquote(arg))
+    else
+      arg
+    end
+  end
+
+  @doc false
+  def __on_definition__(env, _kind, name, args, _guards, body) do
+    case args do
+      [_] when body == nil ->
+        register_component!(env, name, false)
+
+      _ ->
+        attrs = pop_attrs(env)
+
+        validate_misplaced_attrs!(attrs, env.file, fn ->
+          case length(args) do
+            1 ->
+              "could not define attributes for function #{name}/1. Components cannot be dynamically defined functions"
+
+            arity ->
+              "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
+          end
+        end)
+    end
   end
 
   @doc false
@@ -400,29 +486,28 @@ defmodule Phoenix.Component do
     {def_components_ast, def_components_calls_ast}
   end
 
-  defp register_component!(env, name, attrs) do
-    with {^name, line} <- get_last_tracked_def(env) do
-      [%{line: first_attr_line} | _] = attrs
-      message = "attributes must be defined before the first function clause at line #{line}"
-      raise CompileError, line: first_attr_line, file: env.file, description: message
+  defp register_component!(env, name, check_if_defined?) do
+    attrs = pop_attrs(env)
+
+    cond do
+      attrs != [] ->
+        check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
+
+        components =
+          env.module
+          |> Module.get_attribute(:__components__)
+          |> Map.put(name, attrs)
+
+        Module.put_attribute(env.module, :__components__, components)
+        Module.put_attribute(env.module, :__last_component__, name)
+        attrs
+
+      Module.get_attribute(env.module, :__last_component__) == name ->
+        Module.get_attribute(env.module, :__components__)[name]
+
+      true ->
+        nil
     end
-
-    components =
-      env.module
-      |> Module.get_attribute(:__components__)
-      |> Map.put(name, attrs)
-
-    Module.put_attribute(env.module, :__components__, components)
-  end
-
-  defp maybe_set_last_tracked_def(env, name) do
-    if !match?({^name, _}, Module.get_attribute(env.module, :__last_tracked_def__)) do
-      Module.put_attribute(env.module, :__last_tracked_def__, {name, env.line})
-    end
-  end
-
-  defp get_last_tracked_def(env) do
-    Module.get_attribute(env.module, :__last_tracked_def__)
   end
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
@@ -439,5 +524,17 @@ defmodule Phoenix.Component do
 
     Module.delete_attribute(env.module, :__attrs__)
     attrs
+  end
+
+  defp raise_if_function_already_defined!(env, name, attrs) do
+    if Module.defines?(env.module, {name, 1}) do
+      {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
+      [%{line: first_attr_line} | _] = attrs
+
+      message =
+        "attributes must be defined before the first function clause at line #{meta[:line]}"
+
+      raise CompileError, line: first_attr_line, file: env.file, description: message
+    end
   end
 end

@@ -33,8 +33,8 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message: """
-                 missing required attribute `name` for component \
-                 `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
+                 missing required attribute "name" for component \
+                 Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
                  severity: :warning
@@ -43,8 +43,8 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message: """
-                 missing required attribute `email` for component \
-                 `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
+                 missing required attribute "email" for component \
+                 Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
                  severity: :warning
@@ -97,7 +97,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute `width` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
+                   "undefined attribute \"width\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                },
@@ -105,7 +105,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute `size` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
+                   "undefined attribute \"size\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                }
@@ -222,22 +222,22 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
         end)
 
       assert messages =~ """
-             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp1.func/1
                test/support/mix/tasks/compile/live_view_test_components.ex:9: (file)
              """
 
       assert messages =~ """
-             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp1.func/1
                test/support/mix/tasks/compile/live_view_test_components.ex:15: (file)
              """
 
       assert messages =~ """
-             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp2.func/1
                test/support/mix/tasks/compile/live_view_test_components.ex:28: (file)
              """
 
       assert messages =~ """
-             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp2.func/1
                test/support/mix/tasks/compile/live_view_test_components.ex:34: (file)
              """
     end

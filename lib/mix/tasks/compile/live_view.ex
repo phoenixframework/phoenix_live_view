@@ -1,11 +1,11 @@
 defmodule Mix.Tasks.Compile.LiveView do
   @moduledoc """
   A LiveView compiler for component validation.
-  
+
   You must add it to your `mix.exs` as:
 
       compilers: Mix.compilers() ++ [:live_view]
-  
+
   """
   use Mix.Task
 
@@ -88,7 +88,7 @@ defmodule Mix.Tasks.Compile.LiveView do
         %{component: {mod, fun}, attrs: attrs, file: file, line: line} <- module.__components_calls__(),
         attrs_defs = mod.__components__()[fun] do
       {dyn_attrs, static_attrs} = Enum.split_with(attrs, &match?({:root, _, _}, &1))
-      meta = %{file: file, line: line, callee: "#{inspect(mod)}.#{fun}/1"}
+      meta = %{file: file, line: line, callee: {mod, fun}}
 
       [
         maybe_validate_required_attrs(static_attrs, dyn_attrs, attrs_defs, meta),
@@ -110,10 +110,9 @@ defmodule Mix.Tasks.Compile.LiveView do
     %{callee: callee, file: file, line: line} = meta
     passed_attrs = Enum.map(static_attrs, &elem(&1, 0))
 
-    for %{name: name, opts: opts} <- attrs_defs,
-        opts[:required],
+    for %{name: name, required: true} <- attrs_defs,
         Atom.to_string(name) not in passed_attrs do
-      message = "missing required attribute `#{name}` for component `#{callee}`"
+      message = "missing required attribute \"#{name}\" for component #{callee(callee)}"
       error(message, file, line)
     end
   end
@@ -123,9 +122,13 @@ defmodule Mix.Tasks.Compile.LiveView do
     defined_attrs = Enum.map(attrs_defs, fn %{name: name} -> Atom.to_string(name) end)
 
     for {name, _value, %{line: line}} <- static_attrs, name not in defined_attrs do
-      message = "undefined attribute `#{name}` for component `#{callee}`"
+      message = "undefined attribute \"#{name}\" for component #{callee(callee)}"
       error(message, file, line)
     end
+  end
+
+  defp callee({mod, fun}) do
+    "#{inspect(mod)}.#{fun}/1"
   end
 
   defp project_modules do
@@ -142,7 +145,7 @@ defmodule Mix.Tasks.Compile.LiveView do
   defp print_diagnostics(diagnostics) do
     for %Diagnostic{file: file, position: line, message: message} <- diagnostics do
       rel_file = file |> Path.relative_to_cwd() |> to_charlist()
-      # Use IO.warn(message, file: ..., line: ...) on Elixir v1.14+ 
+      # Use IO.warn(message, file: ..., line: ...) on Elixir v1.14+
       IO.warn(message, [{nil, :__FILE__, 1, [file: rel_file, line: line]}])
     end
   end

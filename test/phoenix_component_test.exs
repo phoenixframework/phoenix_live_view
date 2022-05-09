@@ -9,18 +9,6 @@ defmodule Phoenix.ComponentTest do
     |> IO.iodata_to_binary()
   end
 
-  describe "attr" do
-    for {k, v} <- [one: 1, two: 2, three: 3] do
-      defp lookup(unquote(k)), do: unquote(v)
-    end
-
-    test "implementation does not change Elixir semantics" do
-      assert lookup(:one) == 1
-      assert lookup(:two) == 2
-      assert lookup(:three) == 3
-    end
-  end
-
   describe "rendering" do
     defp hello(assigns) do
       assigns = assign_new(assigns, :name, fn -> "World" end)
@@ -315,22 +303,22 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "store attributes definitions" do
+    test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
 
       assert FunctionComponentWithAttrs.__components__() == %{
                func1: [
-                 %{name: :id, type: :any, opts: [required: true], line: func1_line + 1},
-                 %{name: :email, type: :any, opts: [], line: func1_line + 2}
+                 %{name: :id, type: :any, opts: [], required: true, line: func1_line + 1},
+                 %{name: :email, type: :any, opts: [], required: false, line: func1_line + 2}
                ],
                func2: [
-                 %{name: :name, type: :any, opts: [required: true], line: func2_line + 1}
+                 %{name: :name, type: :any, opts: [], required: true, line: func2_line + 1}
                ]
              }
     end
 
-    test "store component calls" do
+    test "stores component calls" do
       render_line = FunctionComponentWithAttrs.render_line()
 
       call_1_line = render_line + 5
@@ -369,115 +357,121 @@ defmodule Phoenix.ComponentTest do
              ] = FunctionComponentWithAttrs.__components_calls__()
     end
 
-    test "do not generate __components_calls__ if there's no call" do
+    test "does not generate __components_calls__ if there's no call" do
       refute function_exported?(RemoteFunctionComponentWithAttrs, :__components_calls__, 0)
     end
 
+    test "stores components for bodyless clauses" do
+      defmodule Bodyless do
+        use Phoenix.Component
+
+        attr(:example, :any, required: true)
+        def example(assigns)
+
+        def example(_assigns) do
+          "hello"
+        end
+      end
+
+      assert Bodyless.__components__() == %{
+               example: [
+                 %{line: __ENV__.line - 10, name: :example, opts: [], required: true, type: :any}
+               ]
+             }
+    end
+
+    test "matches on struct types" do
+      defmodule StructTypes do
+        use Phoenix.Component
+
+        attr(:uri, URI, required: true)
+        attr(:other, :any)
+        def example(%{other: 1}), do: "one"
+        def example(%{other: 2}), do: "two"
+      end
+
+      assert_raise FunctionClauseError, fn -> StructTypes.example(%{other: 1, uri: :not_uri}) end
+      assert_raise FunctionClauseError, fn -> StructTypes.example(%{other: 2, uri: :not_uri}) end
+
+      uri = URI.parse("/relative")
+      assert StructTypes.example(%{other: 1, uri: uri}) == "one"
+      assert StructTypes.example(%{other: 2, uri: uri}) == "two"
+    end
+
     test "raise if attr is not declared before the first function definition" do
-      code = """
-      defmodule Phoenix.ComponentTest.MultiClause do
-        use Elixir.Phoenix.Component
+      assert_raise CompileError,
+                   ~r/attributes must be defined before the first function clause at line \d+/,
+                   fn ->
+                     defmodule Phoenix.ComponentTest.MultiClauseWrong do
+                       use Elixir.Phoenix.Component
 
-        attr :foo, :any
-        def func(assigns = %{foo: _}), do: ~H[]
-        def func(assigns = %{bar: _}), do: ~H[]
-      end
-      """
+                       attr(:foo, :any)
+                       def func(assigns = %{foo: _}), do: ~H[]
+                       def func(assigns = %{bar: _}), do: ~H[]
 
-      assert {{:module, _, _, _}, _} = Code.eval_string(code)
-
-      code = """
-      defmodule Phoenix.ComponentTest.MultiClauseWrong do
-        use Elixir.Phoenix.Component
-
-        attr :foo, :any
-        def func(assigns = %{foo: _}), do: ~H[]
-        def func(assigns = %{bar: _}), do: ~H[]
-
-        attr :bar, :any
-        def func(assigns = %{baz: _}), do: ~H[]
-      end
-      """
-
-      message = "code:8: attributes must be defined before the first function clause at line 5"
-
-      assert_raise(CompileError, message, fn ->
-        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
-      end)
+                       attr(:bar, :any)
+                       def func(assigns = %{baz: _}), do: ~H[]
+                     end
+                   end
     end
 
     test "raise if attr is declared on an invalid function" do
-      code = """
-      defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
-        use Elixir.Phoenix.Component
+      assert_raise CompileError,
+                   ~r/cannot declare attributes for function func\/2\. Components must be functions with arity 1/,
+                   fn ->
+                     defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+                       use Elixir.Phoenix.Component
 
-        attr :foo, :any
-        def func(a, b), do: a + b
-      end
-      """
-
-      message = """
-      code:4: cannot declare attributes for `func/2`. \
-      Components must be functions with arity 1\
-      """
-
-      assert_raise(CompileError, message, fn ->
-        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
-      end)
+                       attr(:foo, :any)
+                       def func(a, b), do: a + b
+                     end
+                   end
     end
 
     test "raise if attr is declared without a related function" do
-      code = """
-      defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
-        use Elixir.Phoenix.Component
+      assert_raise CompileError,
+                   ~r/cannot define attributes without a related function component/,
+                   fn ->
+                     defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+                       use Elixir.Phoenix.Component
 
-        def func(assigns = %{baz: _}), do: ~H[]
+                       def func(assigns = %{baz: _}), do: ~H[]
 
-        attr :foo, :any
-      end
-      """
-
-      message = "code:6: cannot define attributes without a related function component"
-
-      assert_raise(CompileError, message, fn ->
-        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
-      end)
+                       attr(:foo, :any)
+                     end
+                   end
     end
 
     test "raise if attr type is not supported" do
-      code = """
-      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
-        use Elixir.Phoenix.Component
+      assert_raise CompileError, ~r/invalid type :not_a_type for attr :foo/, fn ->
+        defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+          use Elixir.Phoenix.Component
 
-        attr :foo, :not_a_type
-        def func(assigns), do: ~H[]
+          attr(:foo, :not_a_type)
+          def func(assigns), do: ~H[]
+        end
       end
-      """
-
-      message =
-        "code:4: invalid type `:not_a_type` for attr `:foo`. Currently, only type `:any` is supported."
-
-      assert_raise(CompileError, message, fn ->
-        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
-      end)
     end
 
     test "raise if attr option is not supported" do
-      code = """
-      defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
-        use Elixir.Phoenix.Component
+      assert_raise CompileError, ~r"invalid option :not_an_opt for attr :foo", fn ->
+        defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
+          use Elixir.Phoenix.Component
 
-        attr :foo, :any, not_an_opt: true
-        def func(assigns), do: ~H[]
+          attr(:foo, :any, not_an_opt: true)
+          def func(assigns), do: ~H[]
+        end
       end
-      """
+    end
 
-      message =
-        "code:4: invalid option `:not_an_opt` for attr `:foo`. Currently, only `:required` is supported."
+    for {k, v} <- [one: 1, two: 2, three: 3] do
+      defp lookup(unquote(k)), do: unquote(v)
+    end
 
-      assert_raise(CompileError, message, fn ->
-        Code.eval_string(code, [], %{__ENV__ | file: "code", line: 1})
-      end)
+    test "does not change Elixir semantics" do
+      assert lookup(:one) == 1
+      assert lookup(:two) == 2
+      assert lookup(:three) == 3
     end
   end
 end
