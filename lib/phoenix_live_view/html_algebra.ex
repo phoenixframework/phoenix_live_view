@@ -356,9 +356,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp format_tag_open(name, attrs, context),
     do: concat(["<#{name}", build_attrs(attrs, "", context.opts), ">"])
 
-  defp render_attribute({:root, {:expr, expr, _}}, _opts), do: ~s({#{expr}})
+  defp render_attribute({:root, {:expr, expr, _}, _}, _opts), do: ~s({#{expr}})
 
-  defp render_attribute({attr, {:string, value, %{delimiter: ?'}}}, _opts) do
+  defp render_attribute({attr, {:string, value, %{delimiter: ?'}}, _}, _opts) do
     if String.contains?(value, ["\"", "'"]) do
       ~s(#{attr}='#{value}')
     else
@@ -366,9 +366,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     end
   end
 
-  defp render_attribute({attr, {:string, value, _meta}}, _opts), do: ~s(#{attr}="#{value}")
+  defp render_attribute({attr, {:string, value, _meta}, _}, _opts), do: ~s(#{attr}="#{value}")
 
-  defp render_attribute({attr, {:expr, value, meta}}, opts) do
+  defp render_attribute({attr, {:expr, value, meta}, _}, opts) do
     case Code.string_to_quoted(value) do
       {:ok, string} when is_binary(string) ->
         ~s(#{attr}="#{string}")
@@ -383,8 +383,8 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     end
   end
 
-  defp render_attribute({attr, {_, value, _meta}}, _opts), do: ~s(#{attr}=#{value})
-  defp render_attribute({attr, nil}, _opts), do: ~s(#{attr})
+  defp render_attribute({attr, {_, value, _meta}, _}, _opts), do: ~s(#{attr}=#{value})
+  defp render_attribute({attr, nil, _}, _opts), do: ~s(#{attr})
 
   # Handle EEx clauses
   #

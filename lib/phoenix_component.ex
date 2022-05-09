@@ -290,6 +290,138 @@ defmodule Phoenix.Component do
     quote do
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
+      import unquote(__MODULE__), only: [attr: 2, attr: 3]
+
+      Module.register_attribute(__MODULE__, :__attrs__, accumulate: true)
+      Module.register_attribute(__MODULE__, :__components_calls__, accumulate: true)
+      Module.put_attribute(__MODULE__, :__components__, %{})
+
+      @on_definition unquote(__MODULE__)
+      @before_compile unquote(__MODULE__)
     end
+  end
+
+  @doc "Defines an attribute for the component"
+  defmacro attr(name, type, opts \\ []) do
+    quote bind_quoted: [
+            name: name,
+            type: type,
+            opts: opts,
+            line: __CALLER__.line
+          ] do
+      Phoenix.Component.validate_attr!(name, type, opts, line, __ENV__.file)
+      Module.put_attribute(__MODULE__, :__attrs__, %{name: name, type: type, opts: opts, line: line})
+    end
+  end
+
+  @doc false
+  def validate_attr!(name, type, opts, line, file) do
+    validate_attr_type!(name, type, line, file)
+    validate_attr_opts!(name, opts, line, file)
+  end
+
+  defp validate_attr_type!(name, type, line, file) do
+    if type != :any do
+      message = """
+      invalid type `#{inspect(type)}` for attr `#{inspect(name)}`. \
+      Currently, only type `:any` is supported.\
+      """
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  defp validate_attr_opts!(name, opts, line, file) do
+    for {key, _} <- opts, key != :required do
+      message = """
+      invalid option `#{inspect(key)}` for attr `#{inspect(name)}`. \
+      Currently, only `:required` is supported.\
+      """
+
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  def __on_definition__(env, kind, name, [_arg], _guards, _body) when kind in [:def, :defp] do
+    attrs = pop_attrs(env)
+
+    if attrs != [] do
+      register_component!(env, name, attrs)
+    end
+
+    maybe_set_last_tracked_def(env, name)
+  end
+
+  def __on_definition__(env, _kind, name, args, _guards, _body) do
+    arity = length(args)
+    message = "cannot declare attributes for `#{name}/#{arity}`. Components must be functions with arity 1."
+    attrs = pop_attrs(env)
+    validate_misplaced_attrs!(attrs, message, env.file)
+  end
+
+  defmacro __before_compile__(env) do
+    attrs = pop_attrs(env)
+    validate_misplaced_attrs!(attrs, "cannot define attributes without a related function component", env.file)
+
+    components = Module.get_attribute(env.module, :__components__)
+    components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
+
+    def_components_ast =
+      quote do
+        def __components__() do
+          unquote(Macro.escape(components))
+        end
+      end
+
+    def_components_calls_ast =
+      if components_calls != [] do
+        quote do
+          def __components_calls__() do
+            unquote(Macro.escape(components_calls))
+          end
+        end
+      end
+
+    {def_components_ast, def_components_calls_ast}
+  end
+
+  defp register_component!(env, name, attrs) do
+    with {^name, line} <- get_last_tracked_def(env) do
+      [%{line: first_attr_line} | _] = attrs
+      message = "attributes must be defined before the first function clause at line #{line}"
+      raise CompileError, line: first_attr_line, file: env.file, description: message
+    end
+
+    components =
+      env.module
+      |> Module.get_attribute(:__components__)
+      |> Map.put(name, attrs)
+
+    Module.put_attribute(env.module, :__components__, components)
+  end
+
+  defp maybe_set_last_tracked_def(env, name) do
+    if !match?({^name, _}, Module.get_attribute(env.module, :__last_tracked_def__)) do
+      Module.put_attribute(env.module, :__last_tracked_def__, {name, env.line})
+    end
+  end
+
+  defp get_last_tracked_def(env) do
+    Module.get_attribute(env.module, :__last_tracked_def__)
+  end
+
+  defp validate_misplaced_attrs!(attrs, message, file) do
+    with [%{line: first_attr_line} | _] <- attrs do
+      raise CompileError, line: first_attr_line, file: file, description: message
+    end
+  end
+
+  defp pop_attrs(env) do
+    attrs =
+      env.module
+      |> Module.get_attribute(:__attrs__)
+      |> Enum.reverse()
+
+    Module.delete_attribute(env.module, :__attrs__)
+    attrs
   end
 end

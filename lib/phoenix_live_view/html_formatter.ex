@@ -556,9 +556,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn
-      {"contenteditable", {:string, "false", _meta}} -> false
-      {"contenteditable", _v} -> true
-      {"phx-no-format", _v} -> true
+      {"contenteditable", {:string, "false", _meta}, _} -> false
+      {"contenteditable", _v, _} -> true
+      {"phx-no-format", _v, _} -> true
       _ -> false
     end)
   end
