@@ -62,7 +62,6 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @too_many_files :too_many_files
 
-  if Version.match?(System.version(), ">= 1.8.0") do
     @derive {Inspect,
              only: [
                :name,
@@ -75,7 +74,6 @@ defmodule Phoenix.LiveView.UploadConfig do
                :auto_upload?,
                :progress_event
              ]}
-  end
 
   defstruct name: nil,
             cid: :unregistered,

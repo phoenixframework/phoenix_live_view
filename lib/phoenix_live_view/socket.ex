@@ -24,19 +24,17 @@ defmodule Phoenix.LiveView.Socket do
 
   require Logger
 
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect,
-             only: [
-               :id,
-               :endpoint,
-               :router,
-               :view,
-               :parent_pid,
-               :root_pid,
-               :assigns,
-               :transport_pid
-             ]}
-  end
+  @derive {Inspect,
+           only: [
+             :id,
+             :endpoint,
+             :router,
+             :view,
+             :parent_pid,
+             :root_pid,
+             :assigns,
+             :transport_pid
+           ]}
 
   defstruct id: nil,
             endpoint: nil,

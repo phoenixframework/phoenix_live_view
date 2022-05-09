@@ -288,9 +288,9 @@ defmodule Phoenix.Component do
   @doc false
   defmacro __using__(_) do
     quote do
+      import Phoenix.Component
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
-      import unquote(__MODULE__), only: [attr: 2, attr: 3]
 
       Module.register_attribute(__MODULE__, :__attrs__, accumulate: true)
       Module.register_attribute(__MODULE__, :__components_calls__, accumulate: true)
@@ -301,23 +301,29 @@ defmodule Phoenix.Component do
     end
   end
 
-  @doc "Defines an attribute for the component"
+  @doc """
+  TODO.
+
+  ## Validations
+
+  LiveView does not currently check the types of assigns,
+  neither at runtime or compile time. At the moment, they
+  are used minaly for documentation purposes.
+
+  `:required` fields are checked, however, both at compile-time
+  and runtime. `:default` fields are also added to assigns.
+  """
   defmacro attr(name, type, opts \\ []) do
-    quote bind_quoted: [
-            name: name,
-            type: type,
-            opts: opts,
-            line: __CALLER__.line
-          ] do
-      Phoenix.Component.validate_attr!(name, type, opts, line, __ENV__.file)
-      Module.put_attribute(__MODULE__, :__attrs__, %{name: name, type: type, opts: opts, line: line})
+    quote bind_quoted: [name: name, type: type, opts: opts] do
+      Phoenix.Component.__attr__!(__MODULE__, name, type, opts, __ENV__.line, __ENV__.file)
     end
   end
 
   @doc false
-  def validate_attr!(name, type, opts, line, file) do
+  def __attr__!(module, name, type, opts, line, file) do
     validate_attr_type!(name, type, line, file)
     validate_attr_opts!(name, opts, line, file)
+    Module.put_attribute(module, :__attrs__, %{name: name, type: type, opts: opts, line: line})
   end
 
   defp validate_attr_type!(name, type, line, file) do
@@ -326,6 +332,7 @@ defmodule Phoenix.Component do
       invalid type `#{inspect(type)}` for attr `#{inspect(name)}`. \
       Currently, only type `:any` is supported.\
       """
+
       raise CompileError, line: line, file: file, description: message
     end
   end
@@ -341,6 +348,7 @@ defmodule Phoenix.Component do
     end
   end
 
+  @doc false
   def __on_definition__(env, kind, name, [_arg], _guards, _body) when kind in [:def, :defp] do
     attrs = pop_attrs(env)
 
@@ -358,6 +366,7 @@ defmodule Phoenix.Component do
     validate_misplaced_attrs!(attrs, message, env.file)
   end
 
+  @doc false
   defmacro __before_compile__(env) do
     attrs = pop_attrs(env)
     validate_misplaced_attrs!(attrs, "cannot define attributes without a related function component", env.file)

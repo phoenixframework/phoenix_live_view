@@ -7,13 +7,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
   its "subengine".
   """
 
-  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
   alias Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   @behaviour Phoenix.Template.Engine
 
-  @doc false
+  @impl true
   def compile(path, _name) do
     # We need access for the caller, so we return a call to a macro.
     quote do
@@ -30,7 +29,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @behaviour EEx.Engine
 
-  @doc false
+  @impl true
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
     {module, opts} = Keyword.pop(opts, :module)
@@ -53,7 +52,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## These callbacks return AST
 
-  @doc false
+  @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
     tokens = HTMLTokenizer.finalize(tokens, file, cont)
 
@@ -89,7 +88,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
-  @doc false
+  @impl true
   def handle_end(state) do
     state
     |> token_state(false)
@@ -118,24 +117,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## These callbacks update the state
 
-  @doc false
+  @impl true
   def handle_begin(state) do
     update_subengine(%{state | tokens: []}, :handle_begin, [])
   end
 
-  @doc false
-  def handle_text(state, text) do
-    handle_text(state, [], text)
-  end
-
-  @doc false
+  @impl true
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
     {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
     %{state | tokens: tokens, cont: cont}
   end
 
-  @doc false
+  @impl true
   def handle_expr(%{tokens: tokens} = state, marker, expr) do
     %{state | tokens: [{:expr, marker, expr} | tokens]}
   end

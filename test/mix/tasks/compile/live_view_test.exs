@@ -9,13 +9,14 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     defmodule RequiredAttrs do
       use Phoenix.Component
 
-      attr :name, :any, required: true
-      attr :phone, :any
-      attr :email, :any, required: true
+      attr(:name, :any, required: true)
+      attr(:phone, :any)
+      attr(:email, :any, required: true)
 
       def func(assigns), do: ~H[]
 
-      def line, do: __ENV__.line + 3
+      def line, do: __ENV__.line + 4
+
       def render(assigns) do
         ~H"""
         <.func/>
@@ -28,33 +29,33 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrs])
 
       assert diagnostics == [
-        %Diagnostic{
-          compiler_name: "live_view",
-          file: __ENV__.file,
-          message: """
-          missing required attribute `name` for component \
-          `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
-          """,
-          position: line,
-          severity: :warning
-        },
-        %Diagnostic{
-          compiler_name: "live_view",
-          file: __ENV__.file,
-          message: """
-          missing required attribute `email` for component \
-          `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
-          """,
-          position: line,
-          severity: :warning
-        }
-      ]
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message: """
+                 missing required attribute `name` for component \
+                 `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
+                 """,
+                 position: line,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message: """
+                 missing required attribute `email` for component \
+                 `Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1`\
+                 """,
+                 position: line,
+                 severity: :warning
+               }
+             ]
     end
 
     defmodule RequiredAttrsWithDynamic do
       use Phoenix.Component
 
-      attr :name, :any, required: true
+      attr(:name, :any, required: true)
 
       def func(assigns), do: ~H[]
 
@@ -66,17 +67,20 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     end
 
     test "do not validate required attributes when passing dynamic attr" do
-      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrsWithDynamic])
+      diagnostics =
+        Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrsWithDynamic])
+
       assert diagnostics == []
     end
 
     defmodule UndefinedAttrs do
       use Phoenix.Component
 
-      attr :class, :any
+      attr(:class, :any)
       def func(assigns), do: ~H[]
 
-      def line, do: __ENV__.line + 3
+      def line, do: __ENV__.line + 4
+
       def render(assigns) do
         ~H"""
         <.func width="btn" size={@size}/>
@@ -89,21 +93,23 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([UndefinedAttrs])
 
       assert diagnostics == [
-        %Diagnostic{
-          compiler_name: "live_view",
-          file: __ENV__.file,
-          message: "undefined attribute `width` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
-          position: line,
-          severity: :warning
-        },
-        %Diagnostic{
-          compiler_name: "live_view",
-          file: __ENV__.file,
-          message: "undefined attribute `size` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
-          position: line,
-          severity: :warning
-        }
-      ]
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute `width` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
+                 position: line,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "live_view",
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute `size` for component `Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1`",
+                 position: line,
+                 severity: :warning
+               }
+             ]
     end
 
     defmodule NoAttrs do
@@ -125,7 +131,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     end
   end
 
-  describe "live_view compiler" do
+  describe "integration tests" do
     test "run validations for all project modules and return diagnostics" do
       {:ok, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force"])
       file = to_string(Mix.Tasks.Compile.LiveViewTest.Comp1.module_info(:compile)[:source])
@@ -184,64 +190,60 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       assert length(diagnostics) > 0
 
       assert {:noop, []} == Mix.Tasks.Compile.LiveView.run(["--return-errors"])
-      assert {:noop, ^diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--all-warnings"])
+
+      assert {:noop, ^diagnostics} =
+               Mix.Tasks.Compile.LiveView.run(["--return-errors", "--all-warnings"])
     end
 
     test "always return {:error. diagnostics} when --warnings-as-errors is passed" do
-      {:error, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force", "--warnings-as-errors"])
-      {:error, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--all-warnings", "--warnings-as-errors"])
+      {:error, _diagnostics} =
+        Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force", "--warnings-as-errors"])
+
+      {:error, _diagnostics} =
+        Mix.Tasks.Compile.LiveView.run([
+          "--return-errors",
+          "--all-warnings",
+          "--warnings-as-errors"
+        ])
     end
+  end
 
-    if Version.match?(System.version(), ">= 1.12.0") do
-      test "print diagnostics when --return-errors is not passed" do
-        messages = """
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:9: (file)
+  describe "integration warnings" do
+    # setup do
+    #   ansi_enabled? = Application.put_env(:elixir, :ansi_enabled, false)
+    #   Application.put_env(:elixir, :ansi_enabled, false)
+    #   on_exit(fn -> Application.put_env(:elixir, :ansi_enabled, ansi_enabled?) end)
+    # end
 
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:15: (file)
-
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:28: (file)
-
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:34: (file)
-
-        """
-
-        assert capture_io(:standard_error, fn ->
+    test "print diagnostics when --return-errors is not passed" do
+      messages =
+        capture_io(:stderr, fn ->
           Mix.Tasks.Compile.LiveView.run(["--force"])
-        end) == messages
-      end
-    else
-      test "print diagnostics when --return-errors is not passed" do
-        messages = """
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
+        end)
 
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
+      assert messages =~ """
+             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+               test/support/mix/tasks/compile/live_view_test_components.ex:9: (file)
+             """
 
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
+      assert messages =~ """
+             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp1.func/1`
+               test/support/mix/tasks/compile/live_view_test_components.ex:15: (file)
+             """
 
-        warning: missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
-          test/support/mix/tasks/compile/live_view_test_components.ex:1: (file)
+      assert messages =~ """
+             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+               test/support/mix/tasks/compile/live_view_test_components.ex:28: (file)
+             """
 
-        """
-
-        assert capture_io(:standard_error, fn ->
-          Mix.Tasks.Compile.LiveView.run(["--force"])
-        end) == messages
-      end
+      assert messages =~ """
+             missing required attribute `name` for component `Mix.Tasks.Compile.LiveViewTest.Comp2.func/1`
+               test/support/mix/tasks/compile/live_view_test_components.ex:34: (file)
+             """
     end
   end
 
   defp get_line(module) do
-    if Version.match?(System.version(), ">= 1.12.0") do
-      module.line()
-    else
-      1
-    end
+    module.line()
   end
 end

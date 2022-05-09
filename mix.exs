@@ -1,13 +1,13 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.17.9"
+  @version "0.18.0-dev"
 
   def project do
     [
       app: :phoenix_live_view,
       version: @version,
-      elixir: "~> 1.7",
+      elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: compilers(Mix.env()),
