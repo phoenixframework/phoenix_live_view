@@ -357,7 +357,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: "cannot use `:let` on a slot without inner content"
+        description: "cannot use :let on a slot without inner content"
     end
 
     attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
@@ -677,8 +677,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
        )
        when let in ["let", ":let"] do
     message = """
-    cannot define multiple `:let` attributes. \
-    Another `:let` has already been defined at line #{previous_meta.line}\
+    cannot define multiple :let attributes. \
+    Another :let has already been defined at line #{previous_meta.line}\
     """
 
     raise ParseError,
@@ -735,9 +735,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def __unmatched_let__!(pattern, value) do
     message = """
-    cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
+    cannot match arguments sent from render_slot/2 against the pattern in :let.
 
-    Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
+    Expected a value matching `#{pattern}`, got: #{inspect(value)}\
     """
 
     stacktrace =
@@ -751,7 +751,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp raise_if_let!(let, file) do
     with {_pattern, %{line: line}} <- let do
-      message = "cannot use `:let` on a component without inner content"
+      message = "cannot use :let on a component without inner content"
       raise CompileError, line: line, file: file, description: message
     end
   end

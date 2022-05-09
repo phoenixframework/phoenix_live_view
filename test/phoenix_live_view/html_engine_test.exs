@@ -385,9 +385,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on remote call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
+      cannot match arguments sent from render_slot/2 against the pattern in :let.
 
-      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      Expected a value matching `%{wrong: _}`, got: %{downcase: "abcd", upcase: "ABCD"}\
       """
 
       assigns = %{}
@@ -405,7 +405,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on remote call passing args to self close components" do
-      message = ~r".exs:2: cannot use `:let` on a component without inner content"
+      message = ~r".exs:2: cannot use :let on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
@@ -465,9 +465,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on local call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
+      cannot match arguments sent from render_slot/2 against the pattern in :let.
 
-      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      Expected a value matching `%{wrong: _}`, got: %{downcase: "abcd", upcase: "ABCD"}\
       """
 
       assigns = %{}
@@ -485,7 +485,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on local call passing args to self close components" do
-      message = ~r".exs:2: cannot use `:let` on a component without inner content"
+      message = ~r".exs:2: cannot use :let on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
@@ -495,9 +495,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "raise on duplicated `:let`" do
+    test "raise on duplicated :let" do
       message =
-        ~r".exs:4:(9:)? cannot define multiple `:let` attributes. Another `:let` has already been defined at line 3"
+        ~r".exs:4:(9:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -521,9 +521,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     # TODO: remove me once "let" is not supported anymore.
-    test "raise on duplicated old `let`" do
+    test "raise on duplicated old let" do
       message =
-        ~r".exs:4:(8:)? cannot define multiple `:let` attributes. Another `:let` has already been defined at line 3"
+        ~r".exs:4:(8:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1030,7 +1030,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise if self close slot uses :let" do
-      message = ~r".exs:2:(25:)? cannot use `:let` on a slot without inner content"
+      message = ~r".exs:2:(25:)? cannot use :let on a slot without inner content"
 
       assert_raise(ParseError, message, fn ->
         eval("""
