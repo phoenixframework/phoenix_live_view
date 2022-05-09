@@ -24,7 +24,7 @@ For example, to handle real-time form validation and saving, your form would
 use both `phx-change` and `phx-submit` bindings:
 
 ```
-<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
   <%= label f, :username %>
   <%= text_input f, :username %>
   <%= error_tag f, :username %>
@@ -83,7 +83,7 @@ a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```
-<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
   ...
   <%= label f, :county %>
   <%= text_input f, :email, phx_change: "email_changed", phx_target: @myself %>
@@ -193,7 +193,7 @@ Plug session mutation. For example, in your LiveView template you can
 annotate the `phx-trigger-action` with a boolean assign:
 
 ```heex
-<.form let={f} for={@changeset}
+<.form :let={f} for={@changeset}
   action={Routes.reset_password_path(@socket, :create)}
   phx-submit="save",
   phx-trigger-action={@trigger_submit}>

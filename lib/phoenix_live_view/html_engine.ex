@@ -95,7 +95,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(%{subengine: subengine, substate: substate, file: file, module: module, caller: caller}, root) do
+  defp token_state(
+         %{subengine: subengine, substate: substate, file: file, module: module, caller: caller},
+         root
+       ) do
     %{
       subengine: subengine,
       substate: substate,
@@ -245,7 +248,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:tag_open, <<first, _::binary>> = tag_name, attrs, %{self_close: true, line: line} = tag_meta},
+         {:tag_open, <<first, _::binary>> = tag_name, attrs,
+          %{self_close: true, line: line} = tag_meta},
          state
        )
        when first in ?A..?Z do
@@ -353,7 +357,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: "cannot use `let` on a slot without inner content"
+        description: "cannot use `:let` on a slot without inner content"
     end
 
     attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
@@ -628,8 +632,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     inner_block_assigns =
       quote line: line do
-        %{__slot__: :inner_block,
-          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))}
+        %{
+          __slot__: :inner_block,
+          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))
+        }
       end
 
     {slots, state} = pop_slots(state)
@@ -653,23 +659,26 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {let, [quoted_value | r], a}
   end
 
+  # TODO: deprecate "let" in favor of `:let` on LV v0.19.
   defp split_component_attr(
-         {"let", {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
+         {let, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
          {nil, r, a},
          file
-       ) do
+       )
+       when let in ["let", ":let"] do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     {{quoted_value, meta}, r, a}
   end
 
   defp split_component_attr(
-         {"let", {:expr, _value, previous_meta}, _attr_meta},
+         {let, {:expr, _value, previous_meta}, _attr_meta},
          {{_, meta}, _, _},
          file
-       ) do
+       )
+       when let in ["let", ":let"] do
     message = """
-    cannot define multiple `let` attributes. \
-    Another `let` has already been defined at line #{previous_meta.line}\
+    cannot define multiple `:let` attributes. \
+    Another `:let` has already been defined at line #{previous_meta.line}\
     """
 
     raise ParseError,
@@ -726,7 +735,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   def __unmatched_let__!(pattern, value) do
     message = """
-    cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+    cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
 
     Expected a value matching `#{pattern}`, got: `#{inspect(value)}`.
     """
@@ -742,7 +751,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp raise_if_let!(let, file) do
     with {_pattern, %{line: line}} <- let do
-      message = "cannot use `let` on a component without inner content"
+      message = "cannot use `:let` on a component without inner content"
       raise CompileError, line: line, file: file, description: message
     end
   end
@@ -788,14 +797,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp actual_component_module(env, fun) do
     case lookup_import(env, {fun, 1}) do
-      [{_, module}| _] -> module
+      [{_, module} | _] -> module
       _ -> env.module
     end
   end
 
   # TODO: Use Macro.Env.lookup_import/2 when we require Elixir v1.13+
   defp lookup_import(%Macro.Env{functions: functions, macros: macros}, {name, arity} = pair)
-      when is_atom(name) and is_integer(arity) do
+       when is_atom(name) and is_integer(arity) do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
@@ -831,7 +840,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp validate_phx_attrs!([{"id", _, _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
 
-  defp validate_phx_attrs!([{"phx-update", {:string, value, _meta}, _} | t], meta, state, _attr, id?) do
+  defp validate_phx_attrs!(
+         [{"phx-update", {:string, value, _meta}, _} | t],
+         meta,
+         state,
+         _attr,
+         id?
+       ) do
     if value in ~w(ignore append prepend replace) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else

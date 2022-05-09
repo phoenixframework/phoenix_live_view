@@ -129,8 +129,9 @@ defmodule Phoenix.LiveView.HelpersTest do
     test "raises when missing required assigns" do
       assert_raise ArgumentError, ~r/missing :for assign/, fn ->
         assigns = %{}
+
         parse(~H"""
-        <.form let={f}>
+        <.form :let={f}>
           <%= text_input f, :foo %>
         </.form>
         """)
@@ -142,7 +143,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-        <.form let={f} for={:myform}>
+        <.form :let={f} for={:myform}>
           <%= text_input f, :foo %>
         </.form>
         """)
@@ -160,7 +161,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-        <.form let={f} for={:myform} method="get" action="/">
+        <.form :let={f} for={:myform} method="get" action="/">
           <%= text_input f, :foo %>
         </.form>
         """)
@@ -174,7 +175,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-        <.form let={f} for={:myform}>
+        <.form :let={f} for={:myform}>
           <%= text_input f, :foo %>
         </.form>
         """)
@@ -192,7 +193,7 @@ defmodule Phoenix.LiveView.HelpersTest do
 
       html =
         parse(~H"""
-        <.form let={user_form}
+        <.form :let={user_form}
           for={%Plug.Conn{}}
           id="form"
           action="/"

@@ -341,6 +341,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
+    test "remote call with :let" do
+      expected = """
+      LOCAL COMPONENT WITH ARGS: Value: aBcD
+
+        Upcase: ABCD
+        Downcase: abcd
+      """
+
+      assigns = %{}
+
+      assert compile("""
+             <.local_function_component_with_inner_block_args
+               value="aBcD"
+               :let={%{upcase: upcase, downcase: downcase}}
+             >
+               Upcase: <%= upcase %>
+               Downcase: <%= downcase %>
+             </.local_function_component_with_inner_block_args>
+             """) =~ expected
+    end
+
     test "remote call with inner content with args" do
       expected = """
       REMOTE COMPONENT WITH ARGS: Value: aBcD
@@ -354,7 +375,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
                value="aBcD"
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -364,7 +385,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on remote call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+      cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
 
       Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
       """
@@ -375,7 +396,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         compile("""
         <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
           {[value: "aBcD"]}
-          let={%{wrong: _}}
+          :let={%{wrong: _}}
         >
           ...
         </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
@@ -384,12 +405,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on remote call passing args to self close components" do
-      message = ~r".exs:2: cannot use `let` on a component without inner content"
+      message = ~r".exs:2: cannot use `:let` on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
         <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' let={var}/>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let={var}/>
         """)
       end)
     end
@@ -424,7 +445,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <.local_function_component_with_inner_block_args
                value="aBcD"
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -434,7 +455,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <.local_function_component_with_inner_block_args
                {[value: "aBcD"]}
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -444,7 +465,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on local call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+      cannot match arguments sent from `render_slot/2` against the pattern in `:let`.
 
       Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
       """
@@ -455,7 +476,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         compile("""
         <.local_function_component_with_inner_block_args
           {[value: "aBcD"]}
-          let={%{wrong: _}}
+          :let={%{wrong: _}}
         >
           ...
         </.local_function_component_with_inner_block_args>
@@ -464,19 +485,45 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on local call passing args to self close components" do
-      message = ~r".exs:2: cannot use `let` on a component without inner content"
+      message = ~r".exs:2: cannot use `:let` on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
         <br>
-        <.local_function_component value='1' let={var}/>
+        <.local_function_component value='1' :let={var}/>
         """)
       end)
     end
 
-    test "raise on duplicated `let`" do
+    test "raise on duplicated `:let`" do
       message =
-        ~r".exs:4:(8:)? cannot define multiple `let` attributes. Another `let` has already been defined at line 3"
+        ~r".exs:4:(9:)? cannot define multiple `:let` attributes. Another `:let` has already been defined at line 3"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+          :let={var1}
+          :let={var2}
+        />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1'
+          :let={var1}
+          :let={var2}
+        />
+        """)
+      end)
+    end
+
+    # TODO: remove me once "let" is not supported anymore.
+    test "raise on duplicated old `let`" do
+      message =
+        ~r".exs:4:(8:)? cannot define multiple `:let` attributes. Another `:let` has already been defined at line 3"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -497,6 +544,26 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         />
         """)
       end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+          :let={var1}
+          let={var2}
+        />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1'
+          :let={var1}
+          let={var2}
+        />
+        """)
+      end)
     end
 
     test "raise on unclosed local call" do
@@ -505,7 +572,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(ParseError, message, fn ->
         eval("""
-        <.local_function_component value='1' let={var}>
+        <.local_function_component value='1' :let={var}>
         """)
       end)
 
@@ -515,7 +582,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <%= if true do %>
-          <.local_function_component value='1' let={var}>
+          <.local_function_component value='1' :let={var}>
         <% end %>
         """)
       end)
@@ -873,7 +940,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              COMPONENT WITH SLOTS:
              <.function_component_with_slots_and_args>
-               <:sample let={arg}>
+               <:sample :let={arg}>
                  The sample slot
                  Arg: <%= arg %>
                </:sample>
@@ -883,7 +950,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              COMPONENT WITH SLOTS:
              <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
-               <:sample let={arg}>
+               <:sample :let={arg}>
                  The sample slot
                  Arg: <%= arg %>
                </:sample>
@@ -962,13 +1029,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == expected
     end
 
-    test "raise if self close slot uses let" do
-      message = ~r".exs:2:(24:)? cannot use `let` on a slot without inner content"
+    test "raise if self close slot uses :let" do
+      message = ~r".exs:2:(25:)? cannot use `:let` on a slot without inner content"
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <.function_component_with_self_close_slots>
-          <:sample id="1" let={var}/>
+          <:sample id="1" :let={var}/>
         </.function_component_with_self_close_slots>
         """)
       end)

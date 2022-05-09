@@ -220,25 +220,25 @@ defmodule Phoenix.ComponentTest do
 
     test "with let" do
       assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) == [nil]
+      assert eval(~H|<.inner_changed :let={_foo} foo={@foo}></.inner_changed>|) == [nil]
 
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
-      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) ==
+      assert eval(~H|<.inner_changed :let={_foo} foo={@foo}></.inner_changed>|) ==
                [["%{foo: true}", nil]]
 
       assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
+               ~H|<.inner_changed :let={_foo} foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
+               ~H|<.inner_changed :let={_foo} foo={@foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
+               ~H|<.inner_changed :let={foo} foo={@foo}><.inner_changed :let={_bar} bar={foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [
@@ -248,12 +248,12 @@ defmodule Phoenix.ComponentTest do
                ]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
+               ~H|<.inner_changed :let={foo} foo={@foo}><%= foo %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
 
       assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
+               ~H|<.inner_changed :let={foo} foo={@foo}><.inner_changed :let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
              ) ==
                [
                  [

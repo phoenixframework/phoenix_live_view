@@ -475,7 +475,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <.live_component module={SlotComponent} let={%{value: value}} id="WORLD">
+      <.live_component module={SlotComponent} :let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
       </.live_component>
       """
@@ -634,7 +634,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp function_tracking(assigns) do
       ~H"""
-      <FunctionComponent.render_inner_block let={value} id={@id}>
+      <FunctionComponent.render_inner_block :let={value} id={@id}>
         WITH VALUE <%= value %> - <%= @value %>
       </FunctionComponent.render_inner_block>
       """
@@ -1521,7 +1521,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <.live_component module={SlotComponent} let={%{value: value}} id="TRACKING">
+      <.live_component module={SlotComponent} :let={%{value: value}} id="TRACKING">
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= value %>
       </.live_component>
