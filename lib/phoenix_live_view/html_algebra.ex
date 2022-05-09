@@ -369,6 +369,13 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp render_attribute({attr, {:string, value, _meta}, _}, _opts), do: ~s(#{attr}="#{value}")
 
   defp render_attribute({attr, {:expr, value, meta}, _}, opts) do
+    # TODO: remove me when "let" is not supported anymore.
+    attr =
+      case attr do
+        "let" -> ":let"
+        attr -> attr
+      end
+
     case Code.string_to_quoted(value) do
       {:ok, string} when is_binary(string) ->
         ~s(#{attr}="#{string}")
