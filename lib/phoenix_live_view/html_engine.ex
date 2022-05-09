@@ -780,10 +780,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp store_component_call(module, component, attrs, file, line) do
     if Module.open?(module) do
-      call = %{component: component, attrs: attrs, file: file, line: line}
+      pruned_attrs =
+        for {attr, value, meta} <- attrs,
+            is_binary(attr) and not String.starts_with?(attr, ":"),
+            do: {String.to_atom(attr), {meta[:line], meta[:column], component_call_value(value)}},
+            into: %{}
+
+      root = List.keymember?(attrs, :root, 0)
+      call = %{component: component, attrs: pruned_attrs, file: file, line: line, root: root}
       Module.put_attribute(module, :__components_calls__, call)
     end
   end
+
+  defp component_call_value({:expr, _, _}), do: :expr
+  defp component_call_value({:string, string, _}), do: string
+  defp component_call_value(nil), do: nil
 
   ## Helpers
 

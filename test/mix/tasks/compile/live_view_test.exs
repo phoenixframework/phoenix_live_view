@@ -97,7 +97,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute \"width\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
+                   "undefined attribute \"size\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                },
@@ -105,7 +105,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
                  compiler_name: "live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute \"size\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
+                   "undefined attribute \"width\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                }

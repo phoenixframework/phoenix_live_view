@@ -290,7 +290,7 @@ defmodule Phoenix.ComponentTest do
         <!-- local -->
         <.func1 id="1"/>
         <!-- local with inner content -->
-        <.func1 id="2">CONTENT</.func1>
+        <.func1 id="2" email>CONTENT</.func1>
         <!-- imported -->
         <.remote id="3"/>
         <!-- remote -->
@@ -298,7 +298,7 @@ defmodule Phoenix.ComponentTest do
         <!-- remote with inner content -->
         <RemoteFunctionComponentWithAttrs.remote id="5">CONTENT</RemoteFunctionComponentWithAttrs.remote>
         <!-- remote and aliased -->
-        <Remote.remote id="6"/>
+        <Remote.remote id="6" {[dynamic: :values]}/>
         """
       end
     end
@@ -328,31 +328,33 @@ defmodule Phoenix.ComponentTest do
       assert [
                %{
                  component: {FunctionComponentWithAttrs, :func1},
-                 attrs: [{"id", {:string, "1", %{}}, %{}}],
+                 attrs: %{id: {_, _, "1"}},
                  file: ^file,
                  line: ^call_1_line
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
-                 attrs: [{"id", {:string, "2", %{}}, %{}}]
+                 attrs: %{id: {_, _, "2"}, email: {_, _, nil}},
                },
                %{
-                 attrs: [{"id", {:string, "3", %{}}, %{}}],
+                 attrs: %{id: {_, _, "3"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  file: ^file,
                  line: ^call_3_line
                },
                %{
-                 attrs: [{"id", {:string, "4", %{}}, %{}}],
+                 attrs: %{id: {_, _, "4"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote}
                },
                %{
-                 attrs: [{"id", {:string, "5", %{}}, %{}}],
-                 component: {RemoteFunctionComponentWithAttrs, :remote}
+                 attrs: %{id: {_, _, "5"}},
+                 component: {RemoteFunctionComponentWithAttrs, :remote},
+                 root: false
                },
                %{
-                 attrs: [{"id", {:string, "6", %{}}, %{}}],
-                 component: {RemoteFunctionComponentWithAttrs, :remote}
+                 attrs: %{id: {_, _, "6"}},
+                 component: {RemoteFunctionComponentWithAttrs, :remote},
+                 root: true
                }
              ] = FunctionComponentWithAttrs.__components_calls__()
     end
