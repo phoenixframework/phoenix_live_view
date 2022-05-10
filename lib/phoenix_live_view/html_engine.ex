@@ -450,6 +450,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       {{":for", expr, _meta}, attrs} ->
         state
         |> update_subengine(:handle_begin, [])
+        # TODO: test me
         |> set_root_on_not_tag()
         |> push_tag({:tag_open, name, attrs, Map.put(tag_meta, :for, {expr, state})})
         |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
@@ -467,13 +468,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state = update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
 
     case tag_open_meta[:for] do
-      {{:expr, expr, _meta}, outer_state} ->
+      {{:expr, _, _} = expr, outer_state} ->
+        expr = parse_expr!(expr, state)
+        state = invoke_subengine(state, :handle_end, [])
+
         ast =
           quote do
-            for unquote(expr), do: unquote(update_subengine(state, :handle_end, []))
+            for unquote(expr), do: unquote(state)
           end
 
         update_subengine(outer_state, :handle_expr, ["=", ast])
+
+      {_, _} ->
+        # TODO: test me
+        raise ParseError,
+          line: tag_open_meta.line,
+          column: tag_open_meta.column,
+          file: state.file,
+          description: ":for must be an expresion between {...}"
 
       nil ->
         state
@@ -509,13 +521,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
-      {:root, {:expr, value, %{line: line, column: col}}, _attr_meta}, state ->
-        attrs = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
-        handle_attrs_escape(state, meta, attrs)
+      # TODO: test me
+      {":" <> _ = name, expr, meta}, state ->
+        raise ParseError,
+          line: meta.line,
+          column: meta.column,
+          file: state.file,
+          description: "unsupported attribute #{inspect(name)} in tags"
 
-      {name, {:expr, value, %{line: line, column: col}}, _attr_meta}, state ->
-        attr = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
-        handle_attr_escape(state, meta, name, attr)
+      {:root, {:expr, _, _} = expr, _attr_meta}, state ->
+        handle_attrs_escape(state, meta, parse_expr!(expr, state))
+
+      {name, {:expr, _, _} = expr, _attr_meta}, state ->
+        handle_attr_escape(state, meta, name, parse_expr!(expr, state))
 
       {name, {:string, value, %{delimiter: ?"}}, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
@@ -526,6 +544,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
       {name, nil, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, " #{name}"])
     end)
+  end
+
+  defp parse_expr!({:expr, value, %{line: line, column: col}}, state) do
+    Code.string_to_quoted!(value, line: line, column: col, file: state.file)
   end
 
   defp handle_attrs_escape(state, meta, attrs) do
@@ -709,6 +731,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
       column: meta.column,
       file: file,
       description: message
+  end
+
+  defp split_component_attr({":let", _, meta}, _state, file) do
+    # TODO: test me
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: file,
+      description: ":let must be an expresion between {...}"
+  end
+
+  defp split_component_attr({":" <> _ = name, _, meta}, _state, file) do
+    # TODO: test me
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: file,
+      description: "unsupported attribute #{inspect(name)} in component"
   end
 
   defp split_component_attr(
