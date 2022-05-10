@@ -448,6 +448,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     case List.keytake(attrs, ":for", 0) do
       {{":for", expr, _meta}, attrs} ->
+        expr = parse_expr!(expr, state)
+
         state
         |> update_subengine(:handle_begin, [])
         # TODO: test me
@@ -468,24 +470,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     state = update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
 
     case tag_open_meta[:for] do
-      {{:expr, _, _} = expr, outer_state} ->
-        expr = parse_expr!(expr, state)
-        state = invoke_subengine(state, :handle_end, [])
-
+      {expr, outer_state} ->
         ast =
           quote do
-            for unquote(expr), do: unquote(state)
+            for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
           end
 
         update_subengine(outer_state, :handle_expr, ["=", ast])
-
-      {_, _} ->
-        # TODO: test me
-        raise ParseError,
-          line: tag_open_meta.line,
-          column: tag_open_meta.column,
-          file: state.file,
-          description: ":for must be an expresion between {...}"
 
       nil ->
         state
@@ -521,14 +512,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
-      # TODO: test me
-      {":" <> _ = name, expr, meta}, state ->
-        raise ParseError,
-          line: meta.line,
-          column: meta.column,
-          file: state.file,
-          description: "unsupported attribute #{inspect(name)} in tags"
-
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
         handle_attrs_escape(state, meta, parse_expr!(expr, state))
 
@@ -739,7 +722,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: file,
-      description: ":let must be an expresion between {...}"
+      description: ":let must be a pattern between {...}"
   end
 
   defp split_component_attr({":" <> _ = name, _, meta}, _state, file) do
@@ -915,7 +898,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     do: validate_phx_attrs!(t, meta, state, attr, true)
 
   defp validate_phx_attrs!(
-         [{"phx-update", {:string, value, _meta}, _} | t],
+         [{"phx-update", {:string, value, _meta}, attr_meta} | t],
          meta,
          state,
          _attr,
@@ -927,8 +910,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
 
       raise ParseError,
-        line: meta.line,
-        column: meta.column,
+        line: attr_meta.line,
+        column: attr_meta.column,
         file: state.file,
         description: message
     end
@@ -940,6 +923,31 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([{"phx-hook", _, _} | t], meta, state, _attr, id?),
     do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
+
+  @loop [":for"]
+
+  defp validate_phx_attrs!([{loop, {:expr, _, _}, _} | t], meta, state, attr, id?)
+       when loop in @loop,
+       do: validate_phx_attrs!(t, meta, state, attr, id?)
+
+  defp validate_phx_attrs!([{loop, _, attr_meta} | _], _meta, state, _attr, _id?)
+       when loop in @loop do
+    # TODO: test me
+    raise ParseError,
+      line: attr_meta.line,
+      column: attr_meta.column,
+      file: state.file,
+      description: "#{loop} must be a generator expresion between {...}"
+  end
+
+  defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
+    # TODO: test me
+    raise ParseError,
+      line: attr_meta.line,
+      column: attr_meta.column,
+      file: state.file,
+      description: "unsupported attribute #{inspect(name)} in tags"
+  end
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
     do: validate_phx_attrs!(t, meta, state, attr, id?)

@@ -1337,7 +1337,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "validates phx-update values" do
       message =
-        ~r/.exs:1:(1:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+        ~r/.exs:1:(14:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
 
       assert_raise(ParseError, message, fn ->
         eval("""
