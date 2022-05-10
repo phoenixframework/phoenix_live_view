@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Compile.LiveViewTest do
+defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
   use ExUnit.Case, async: true
   use Phoenix.Component
 
@@ -26,25 +26,25 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
 
     test "validate required attributes" do
       line = get_line(RequiredAttrs)
-      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrs])
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([RequiredAttrs])
 
       assert diagnostics == [
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message: """
                  missing required attribute "email" for component \
-                 Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
+                 Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
                  severity: :warning
                },
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message: """
                  missing required attribute "name" for component \
-                 Mix.Tasks.Compile.LiveViewTest.RequiredAttrs.func/1\
+                 Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredAttrs.func/1\
                  """,
                  position: line,
                  severity: :warning
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
 
     test "do not validate required attributes when passing dynamic attr" do
       diagnostics =
-        Mix.Tasks.Compile.LiveView.validate_components_calls([RequiredAttrsWithDynamic])
+        Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([RequiredAttrsWithDynamic])
 
       assert diagnostics == []
     end
@@ -90,22 +90,22 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
 
     test "validate undefined attributes" do
       line = get_line(UndefinedAttrs)
-      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([UndefinedAttrs])
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([UndefinedAttrs])
 
       assert diagnostics == [
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute \"size\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
+                   "undefined attribute \"size\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                },
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message:
-                   "undefined attribute \"width\" for component Mix.Tasks.Compile.LiveViewTest.UndefinedAttrs.func/1",
+                   "undefined attribute \"width\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1",
                  position: line,
                  severity: :warning
                }
@@ -133,22 +133,22 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
 
     test "validate literal types" do
       line = get_line(TypeAttrs)
-      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([TypeAttrs])
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([TypeAttrs])
 
       assert diagnostics == [
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message:
-                    "attribute \"boolean\" in component Mix.Tasks.Compile.LiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
+                    "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
                  position: line,
                  severity: :warning
                },
                %Diagnostic{
-                 compiler_name: "live_view",
+                 compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message:
-                   "attribute \"string\" in component Mix.Tasks.Compile.LiveViewTest.TypeAttrs.func/1 must be a :string, got boolean: true",
+                   "attribute \"string\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :string, got boolean: true",
                  position: line + 1,
                  severity: :warning
                }
@@ -168,7 +168,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     end
 
     test "do not validate if component doesn't have any attr declared" do
-      diagnostics = Mix.Tasks.Compile.LiveView.validate_components_calls([NoAttrs])
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([NoAttrs])
 
       assert diagnostics == []
     end
@@ -176,30 +176,30 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
 
   describe "integration tests" do
     test "run validations for all project modules and return diagnostics" do
-      {:ok, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force"])
-      file = to_string(Mix.Tasks.Compile.LiveViewTest.Comp1.module_info(:compile)[:source])
+      {:ok, diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force"])
+      file = to_string(Mix.Tasks.Compile.PhoenixLiveViewTest.Comp1.module_info(:compile)[:source])
 
       assert Enum.all?(diagnostics, &match?(%Diagnostic{file: ^file}, &1))
     end
 
     test "create manifest with diagnostics if file doesn't exist" do
-      [manifest] = Mix.Tasks.Compile.LiveView.manifests()
+      [manifest] = Mix.Tasks.Compile.PhoenixLiveView.manifests()
       File.rm(manifest)
 
       refute File.exists?(manifest)
 
-      {:ok, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      {:ok, diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
 
       assert {1, ^diagnostics} = manifest |> File.read!() |> :erlang.binary_to_term()
     end
 
     test "update manifest if file is older than other manifests" do
-      {:ok, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force"])
+      {:ok, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force"])
 
       # Doesn't update it as the modification time is newer
-      assert {:noop, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      assert {:noop, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
 
-      [manifest] = Mix.Tasks.Compile.LiveView.manifests()
+      [manifest] = Mix.Tasks.Compile.PhoenixLiveView.manifests()
       [other_manifest | _] = Mix.Tasks.Compile.Elixir.manifests()
 
       new_manifest_mtime =
@@ -211,39 +211,39 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
       File.touch!(manifest, new_manifest_mtime)
 
       # Update it as the modification time is older now
-      assert {:ok, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      assert {:ok, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
     end
 
     test "update manifest if the version differs" do
-      {:ok, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force"])
+      {:ok, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force"])
 
       # Doesn't update it as the version is the same
-      assert {:noop, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      assert {:noop, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
 
-      [manifest] = Mix.Tasks.Compile.LiveView.manifests()
+      [manifest] = Mix.Tasks.Compile.PhoenixLiveView.manifests()
       {version, diagnostics} = File.read!(manifest) |> :erlang.binary_to_term()
       File.write!(manifest, :erlang.term_to_binary({version + 1, diagnostics}))
 
       # Update it as the version changed
-      assert {:ok, _diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      assert {:ok, _diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
     end
 
     test "read diagnostics from manifest only when --all-warnings is passed" do
-      {:ok, diagnostics} = Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force"])
+      {:ok, diagnostics} = Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force"])
       assert length(diagnostics) > 0
 
-      assert {:noop, []} == Mix.Tasks.Compile.LiveView.run(["--return-errors"])
+      assert {:noop, []} == Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors"])
 
       assert {:noop, ^diagnostics} =
-               Mix.Tasks.Compile.LiveView.run(["--return-errors", "--all-warnings"])
+               Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--all-warnings"])
     end
 
     test "always return {:error. diagnostics} when --warnings-as-errors is passed" do
       {:error, _diagnostics} =
-        Mix.Tasks.Compile.LiveView.run(["--return-errors", "--force", "--warnings-as-errors"])
+        Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force", "--warnings-as-errors"])
 
       {:error, _diagnostics} =
-        Mix.Tasks.Compile.LiveView.run([
+        Mix.Tasks.Compile.PhoenixLiveView.run([
           "--return-errors",
           "--all-warnings",
           "--warnings-as-errors"
@@ -261,27 +261,27 @@ defmodule Mix.Tasks.Compile.LiveViewTest do
     test "print diagnostics when --return-errors is not passed" do
       messages =
         capture_io(:stderr, fn ->
-          Mix.Tasks.Compile.LiveView.run(["--force"])
+          Mix.Tasks.Compile.PhoenixLiveView.run(["--force"])
         end)
 
       assert messages =~ """
-             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp1.func/1
-               test/support/mix/tasks/compile/live_view_test_components.ex:9: (file)
+             missing required attribute "name" for component Mix.Tasks.Compile.PhoenixLiveViewTest.Comp1.func/1
+               test/support/mix/tasks/compile/phoenix_live_view_test_components.ex:9: (file)
              """
 
       assert messages =~ """
-             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp1.func/1
-               test/support/mix/tasks/compile/live_view_test_components.ex:15: (file)
+             missing required attribute "name" for component Mix.Tasks.Compile.PhoenixLiveViewTest.Comp1.func/1
+               test/support/mix/tasks/compile/phoenix_live_view_test_components.ex:15: (file)
              """
 
       assert messages =~ """
-             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp2.func/1
-               test/support/mix/tasks/compile/live_view_test_components.ex:28: (file)
+             missing required attribute "name" for component Mix.Tasks.Compile.PhoenixLiveViewTest.Comp2.func/1
+               test/support/mix/tasks/compile/phoenix_live_view_test_components.ex:28: (file)
              """
 
       assert messages =~ """
-             missing required attribute "name" for component Mix.Tasks.Compile.LiveViewTest.Comp2.func/1
-               test/support/mix/tasks/compile/live_view_test_components.ex:34: (file)
+             missing required attribute "name" for component Mix.Tasks.Compile.PhoenixLiveViewTest.Comp2.func/1
+               test/support/mix/tasks/compile/phoenix_live_view_test_components.ex:34: (file)
              """
     end
   end

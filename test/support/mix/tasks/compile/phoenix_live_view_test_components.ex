@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Compile.LiveViewTest.Comp1 do
+defmodule Mix.Tasks.Compile.PhoenixLiveViewTest.Comp1 do
   use Phoenix.Component
 
   attr :name, :any, required: true
@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Compile.LiveViewTest.Comp1 do
   end
 end
 
-defmodule Mix.Tasks.Compile.LiveViewTest.Comp2 do
+defmodule Mix.Tasks.Compile.PhoenixLiveViewTest.Comp2 do
   use Phoenix.Component
 
   attr :name, :any, required: true
