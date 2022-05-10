@@ -442,6 +442,8 @@ defmodule Phoenix.Component do
     end
   end
 
+  defp annotate_call(_kind, {name, meta, [{:\\, _, _} = arg]}), do: {name, meta, [arg]}
+
   defp annotate_call(kind, {name, meta, [arg]}),
     do: {name, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
 
@@ -476,7 +478,8 @@ defmodule Phoenix.Component do
         validate_misplaced_attrs!(attrs, env.file, fn ->
           case length(args) do
             1 ->
-              "could not define attributes for function #{name}/1. Components cannot be dynamically defined functions"
+              "could not define attributes for function #{name}/1. " <>
+                "Components cannot be dynamically defined or have default arguments"
 
             arity ->
               "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"

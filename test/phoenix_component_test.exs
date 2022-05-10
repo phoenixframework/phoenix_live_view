@@ -519,12 +519,14 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    defp lookup(_key \\ :one)
+
     for {k, v} <- [one: 1, two: 2, three: 3] do
       defp lookup(unquote(k)), do: unquote(v)
     end
 
     test "does not change Elixir semantics" do
-      assert lookup(:one) == 1
+      assert lookup() == 1
       assert lookup(:two) == 2
       assert lookup(:three) == 3
     end
