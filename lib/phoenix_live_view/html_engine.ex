@@ -717,7 +717,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr({":let", _, meta}, _state, file) do
-    # TODO: test me
     raise ParseError,
       line: meta.line,
       column: meta.column,
@@ -726,7 +725,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr({":" <> _ = name, _, meta}, _state, file) do
-    # TODO: test me
     raise ParseError,
       line: meta.line,
       column: meta.column,
@@ -932,7 +930,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([{loop, _, attr_meta} | _], _meta, state, _attr, _id?)
        when loop in @loop do
-    # TODO: test me
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
@@ -941,7 +938,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
-    # TODO: test me
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
