@@ -452,7 +452,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
         state
         |> update_subengine(:handle_begin, [])
-        # TODO: test me
         |> set_root_on_not_tag()
         |> push_tag({:tag_open, name, attrs, Map.put(tag_meta, :for, {expr, state})})
         |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
