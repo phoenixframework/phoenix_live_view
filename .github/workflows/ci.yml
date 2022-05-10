@@ -27,7 +27,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up Elixir
-      uses: erlef/setup-elixir@v1
+      uses: erlef/setup-beam@v1
       with:
         elixir-version: ${{ matrix.elixir }}
         otp-version: ${{ matrix.otp }}
@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Elixir
-        uses: erlef/setup-elixir@v1
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: 1.11.4
           otp-version: 23.3.1
