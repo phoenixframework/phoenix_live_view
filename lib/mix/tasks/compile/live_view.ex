@@ -86,12 +86,12 @@ defmodule Mix.Tasks.Compile.LiveView do
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
         %{component: {mod, fun}} = call <- module.__components_calls__(),
-        attrs_defs = mod.__components__()[fun],
-        diagnostic <- diagnostics(call, attrs_defs),
+        component = mod.__components__()[fun],
+        diagnostic <- diagnostics(call, component),
         do: diagnostic
   end
 
-  defp diagnostics(%{attrs: attrs, root: root} = call, attrs_defs) do
+  defp diagnostics(%{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
     {warnings, attrs} =
       Enum.flat_map_reduce(attrs_defs, attrs, fn attr_def, attrs ->
         %{name: name, required: required, type: type} = attr_def

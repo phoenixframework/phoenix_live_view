@@ -309,17 +309,32 @@ defmodule Phoenix.Component do
   @doc """
   TODO.
 
+  ## Options
+
+    * `:required` - TODO
+    * `:default` - TODO
+
   ## Validations
 
-  LiveView performs limited validation of attributes via the `:live_view`
-  compiler.
+  LiveView performs some validation of attributes via the `:live_view`
+  compiler. When attributes are defined, LiveView will warn at compilation
+  time on the caller if:
 
-    * LiveView will warn if a required attribute of a component is missing
-    * LiveView will warn if an unknown attribute is given
+    * if a required attribute of a component is missing
 
-  The type information, on the other hand, is mostly used for documentation
-  and reflection purposes. However, LiveView may warn in some situations,
-  such as:
+    * if an unknown attribute is given
+
+    * if you specify a literal attribute (such as `value="string"` or `value`,
+      but not `value={expr}`) and the type does not match
+
+  Livebook does not perform any validation at runtime. This means the type
+  information is mostly used for documentation and reflection purposes.
+
+  On the side of the LiveView component itself, defining attributes provides
+  the following quality of life improvements:
+
+    * The default value of all attributes will be added to the `assigns`
+      map upfront
 
     * Required struct types are annotated and emit compilation warnings.
       For example, if you specify `attr :user, User, required: true` and
@@ -342,6 +357,18 @@ defmodule Phoenix.Component do
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
+    {default, opts} = Keyword.pop(opts, :default, nil)
+
+    unless is_boolean(required) do
+      message = ":required must be a boolean, got: #{inspect(required)}"
+      raise CompileError, line: line, file: file, description: message
+    end
+
+    if required and default != nil do
+      message = "only one of :required or :default must be given"
+      raise CompileError, line: line, file: file, description: message
+    end
+
     type = validate_attr_type!(name, type, line, file)
     validate_attr_opts!(name, opts, line, file)
 
@@ -349,6 +376,7 @@ defmodule Phoenix.Component do
       name: name,
       type: type,
       required: required,
+      default: default,
       opts: opts,
       line: line
     })
@@ -386,7 +414,7 @@ defmodule Phoenix.Component do
     for {key, _} <- opts do
       message = """
       invalid option #{inspect(key)} for attr #{inspect(name)}. \
-      The supported options are: :required
+      The supported options are: :required and :default
       """
 
       raise CompileError, line: line, file: file, description: message
@@ -420,26 +448,27 @@ defmodule Phoenix.Component do
   defp annotate_call(_kind, left),
     do: left
 
-  defmacro __pattern__!(_kind, arg) do
+  defmacro __pattern__!(kind, arg) do
     {name, 1} = __CALLER__.function
+    attrs = register_component!(kind, __CALLER__, name, true)
 
-    if attrs = register_component!(__CALLER__, name, true) do
-      fields =
-        for %{name: name, required: true, type: {:struct, struct}} <- attrs do
-          {name, quote(do: %unquote(struct){})}
-        end
+    fields =
+      for %{name: name, required: true, type: {:struct, struct}} <- attrs do
+        {name, quote(do: %unquote(struct){})}
+      end
 
-      quote(do: %{unquote_splicing(fields)} = unquote(arg))
-    else
+    if fields == [] do
       arg
+    else
+      quote(do: %{unquote_splicing(fields)} = unquote(arg))
     end
   end
 
   @doc false
-  def __on_definition__(env, _kind, name, args, _guards, body) do
+  def __on_definition__(env, kind, name, args, _guards, body) do
     case args do
       [_] when body == nil ->
-        register_component!(env, name, false)
+        register_component!(kind, env, name, false)
 
       _ ->
         attrs = pop_attrs(env)
@@ -467,6 +496,32 @@ defmodule Phoenix.Component do
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
+    names_and_defs =
+      for {name, %{kind: kind, attrs: attrs}} <- components do
+        defaults =
+          for %{name: name, required: false, default: default} <- attrs do
+            {name, Macro.escape(default)}
+          end
+
+        merge =
+          quote do
+            Kernel.unquote(kind)(unquote(name)(assigns)) do
+              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+            end
+          end
+
+        {{name, 1}, merge}
+      end
+
+    {names, defs} = Enum.unzip(names_and_defs)
+
+    overridable =
+      if names != [] do
+        quote do
+          defoverridable unquote(names)
+        end
+      end
+
     def_components_ast =
       quote do
         def __components__() do
@@ -483,10 +538,10 @@ defmodule Phoenix.Component do
         end
       end
 
-    {def_components_ast, def_components_calls_ast}
+    {:__block__, [], [def_components_ast, def_components_calls_ast, overridable | defs]}
   end
 
-  defp register_component!(env, name, check_if_defined?) do
+  defp register_component!(kind, env, name, check_if_defined?) do
     attrs = pop_attrs(env)
 
     cond do
@@ -497,17 +552,17 @@ defmodule Phoenix.Component do
           env.module
           |> Module.get_attribute(:__components__)
           # Sort by name as this is used when they are validated
-          |> Map.put(name, Enum.sort_by(attrs, & &1.name))
+          |> Map.put(name, %{kind: kind, attrs: Enum.sort_by(attrs, & &1.name)})
 
         Module.put_attribute(env.module, :__components__, components)
         Module.put_attribute(env.module, :__last_component__, name)
         attrs
 
       Module.get_attribute(env.module, :__last_component__) == name ->
-        Module.get_attribute(env.module, :__components__)[name]
+        Module.get_attribute(env.module, :__components__)[name].attrs
 
       true ->
-        nil
+        []
     end
   end
 
