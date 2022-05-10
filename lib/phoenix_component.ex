@@ -442,6 +442,8 @@ defmodule Phoenix.Component do
     end
   end
 
+  defp annotate_call(_kind, {name, meta, [{:\\, _, _} = arg]}), do: {name, meta, [arg]}
+
   defp annotate_call(kind, {name, meta, [arg]}),
     do: {name, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
 

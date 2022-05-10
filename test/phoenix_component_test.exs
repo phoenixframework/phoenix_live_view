@@ -3,6 +3,8 @@ defmodule Phoenix.ComponentTest do
 
   use Phoenix.Component
 
+  def test_single_arg_with_defaults(js \\ %Phoenix.LiveView.JS{}), do: js
+
   defp h2s(template) do
     template
     |> Phoenix.HTML.Safe.to_iodata()
