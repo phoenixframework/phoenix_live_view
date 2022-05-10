@@ -1418,4 +1418,30 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       )
     end
   end
+
+  describe ":for attr" do
+    test "handle :for attr" do
+      expected = """
+      <table id="table">
+        <%= for user <- @users do %>
+          <tr>
+            <td>foo</td>
+            <td>bar</td>
+            <td>baz</td>
+          </tr>
+        <% end %>
+      </table>
+      """
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+             <table id="table">
+               <tr :for={item <- @items}>
+                 <td><%= @item %></td>
+               </tr>
+             </table>
+             """) =~ expected
+    end
+  end
 end

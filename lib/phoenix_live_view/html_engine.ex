@@ -446,15 +446,38 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
-    state
-    |> set_root_on_tag()
-    |> push_tag(token)
-    |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+    case List.keytake(attrs, ":for", 0) do
+      {{":for", expr, _meta}, attrs} ->
+        state
+        |> update_subengine(:handle_begin, [])
+        |> set_root_on_not_tag()
+        |> push_tag({:tag_open, name, attrs, Map.put(tag_meta, :for, {expr, state})})
+        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+
+      _ ->
+        state
+        |> set_root_on_tag()
+        |> push_tag(token)
+        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+    end
   end
 
   defp handle_token({:tag_close, name, tag_meta} = token, state) do
-    {{:tag_open, _name, _attrs, _tag_meta}, state} = pop_tag!(state, token)
-    update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
+    {{:tag_open, _name, _attrs, tag_open_meta}, state} = pop_tag!(state, token)
+    state = update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
+
+    case tag_open_meta[:for] do
+      {{:expr, expr, _meta}, outer_state} ->
+        ast =
+          quote do
+            for unquote(expr), do: unquote(update_subengine(state, :handle_end, []))
+          end
+
+        update_subengine(outer_state, :handle_expr, ["=", ast])
+
+      nil ->
+        state
+    end
   end
 
   # Root tracking
