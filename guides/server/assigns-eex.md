@@ -6,16 +6,10 @@ functions help store those values. Those values can be accessed
 in the LiveView as `socket.assigns.name` but they are accessed
 inside LiveView templates as `@name`.
 
-`Phoenix.LiveView`'s built-in templates are identified by the `.heex`
-extension (HTML EEx) or `~H` sigil. You can learn more about them
-by checking the docs for `Phoenix.LiveView.Helpers.sigil_H/2`.
-They are an extension of regular `.eex` templates with additional
-features such as:
-
-  * validation of HTML
-  * friendly-syntax for defining HTML components
-  * minimize the amount of data sent over the wire by splitting static and dynamic parts
-  * provide change tracking to avoid recomputing parts of the template that did not change
+Phoenix template language is called HEEx (HTML+EEx). Those templates
+are either files with the `.heex` extension or they are created
+directly in source files via the `~H` sigil. You can learn more about
+the HEEx syntax by checking the docs for [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`).
 
 In this section, we are going to cover how LiveView minimizes
 the payload over the wire by understanding the interplay between
