@@ -30,12 +30,13 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc ~S'''
-  Provides `~H` sigil with HTML-safe and HTML-aware syntax inside source files.
+  The `~H` sigil for writing HEEx templates inside source files.
 
   > Note: The HEEx HTML formatter requires Elixir >= 1.13.4. See the
   > `Phoenix.LiveView.HTMLFormatter` for more information on template formatting.
 
-  `HEEx` is a HTML-aware and component-friendly extension of `EEx` that provides:
+  `HEEx` is a HTML-aware and component-friendly extension of Elixir Embedded
+  language (`EEx`) that provides:
 
     * Built-in handling of HTML attributes
     * An HTML-like notation for injecting function components
@@ -53,9 +54,8 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Syntax
 
-  `HEEx` is built on top of Embedded Elixir (`EEx`), a templating syntax that uses
-  `<%= ... %>` for interpolating results. In this section, we are going to cover the
-  basic constructs in `HEEx` templates as well as its syntax extensions.
+  `HEEx` is built on top of Embedded Elixir (`EEx`). In this section, we are going to
+  cover the basic constructs in `HEEx` templates as well as its syntax extensions.
 
   ### Interpolation
 
