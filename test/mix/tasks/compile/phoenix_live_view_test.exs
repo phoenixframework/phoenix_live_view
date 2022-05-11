@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       def render(assigns) do
         ~H"""
-        <.func width="btn" size={@size}/>
+        <.func width="btn" size={@size} phx-no-format />
         """
       end
     end

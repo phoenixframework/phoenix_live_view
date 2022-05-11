@@ -158,11 +158,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
-  ### Special attributes
+  ### Skip formatting
 
   In case you don't want part of your HTML to be automatically formatted. you
-  can use `phx-no-format` attr so that the formatter will skip the element block.
-  Note that this attribute will not be rendered.
+  can use the special `phx-no-format` attribute so that the formatter will skip
+  the element block. Note that this attribute will not be rendered.
 
   Therefore:
 
