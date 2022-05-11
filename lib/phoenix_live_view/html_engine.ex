@@ -435,7 +435,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
-    case pop_special_attr(attrs, "for") do
+    case pop_special_attr!(attrs, "for", state) do
       {{":for", expr, _meta}, attrs} ->
         ast =
           state
@@ -458,7 +458,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
-    case pop_special_attr(attrs, "for") do
+    case pop_special_attr!(attrs, "for", state) do
       {{":for", expr, _meta}, attrs} ->
         state
         |> update_subengine(:handle_begin, [])
@@ -488,21 +488,44 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  # Pop the given attr from attrs.
+  # Pop the given attr from attrs. Raises if the given attr is duplicated within
+  # attrs.
   #
-  # Examples
+  # Examples:
   #
   #   attrs = [{":for", {...}}, {"class", {...}}]
-  #   pop_special_attr(attrs, "for")
+  #   pop_special_attr!(state, attrs, "for")
   #   => {{":for", {...}}, [{"class", {...}]}
   #
   #   attrs = [{"class", {...}}]
-  #   pop_special_attr(attrs, "for")
+  #   pop_special_attr!(state, attrs, "for")
   #   => nil
-  defp pop_special_attr(attrs, attr), do: List.keytake(attrs, ":" <> attr, 0)
+  defp pop_special_attr!(attrs, attr, state) do
+    attrs
+    |> List.keytake(":" <> attr, 0)
+    |> raise_if_duplicated_special_attr!(state)
+  end
+
+  defp raise_if_duplicated_special_attr!({{attr, _expr, _meta}, attrs} = result, state) do
+    case List.keytake(attrs, attr, 0) do
+      {{attr, _expr, meta}, _attrs} ->
+        message =
+          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line 3"
+
+        raise ParseError,
+          line: meta.line,
+          column: meta.column,
+          file: state.file,
+          description: message
+
+      nil ->
+        result
+    end
+  end
+
+  defp raise_if_duplicated_special_attr!(nil, _state), do: nil
 
   # Root tracking
-
   defp set_root_on_not_tag(%{root: root, tags: tags} = state) do
     if tags == [] and root != false do
       %{state | root: false}

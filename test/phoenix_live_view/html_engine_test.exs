@@ -1501,7 +1501,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) =~ expected
     end
 
-    test "raise on invalid :for" do
+    test "raise on invalid :for expr" do
       message = ~r/for comprehensions must start with a generator/
 
       assert_raise(CompileError, message, fn ->
@@ -1515,6 +1515,34 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <div :for="1">Content</div>
+        """)
+      end)
+    end
+
+    test "raise when used in components" do
+      message = ~r/unsupported attribute \":for\" in component/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component :for={item <- [1, 2]} />")
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :for={item <- [1, 2]}/>
+        """)
+      end)
+    end
+
+    test "raise on duplicated :for" do
+      message =
+        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 3/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
         """)
       end)
     end
