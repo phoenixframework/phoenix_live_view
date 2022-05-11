@@ -180,10 +180,10 @@ defmodule Phoenix.LiveView.Helpers do
 
   #### :for
 
-  It is a syntax sugar for `<%= for .. do %>` that can used only in normal HTML
-  tags. Therefore `:for` will not work on components.
+  It is a syntax sugar for `<%= for .. do %>` that can be used only in normal HTML
+  tags, therefore `:for` will not work on components.
 
-  ```eex
+  ```heex
   <table id="my-table">
     <tr :for={user <- @users}>
       <td><%= user.name %>
@@ -197,10 +197,10 @@ defmodule Phoenix.LiveView.Helpers do
 
   Useful for binding variables that will be used by the children elements.
 
-  ```eex
+  ```heex
   <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
-    <%= label f, :username %>
-    <%= text_input f, :username %>
+    <%= label(f, :username) %>
+    <%= text_input(f, :username) %>
     ...
   </.form>
   ```
