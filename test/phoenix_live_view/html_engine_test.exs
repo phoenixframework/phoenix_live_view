@@ -1481,13 +1481,23 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe ":for attr" do
-    test "handle :for attr" do
+    test "handle :for attr on HTML element" do
       expected = "<div>foo</div><div>bar</div><div>baz</div>"
 
       assigns = %{items: ["foo", "bar", "baz"]}
 
       assert compile("""
                <div :for={item <- @items}><%= item %></div>
+             """) =~ expected
+    end
+
+    test "handle :for attr on self closed HTML element" do
+      expected = ~s(<div class="foo"></div><div class="foo"></div><div class="foo"></div>)
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+               <div class="foo" :for={_item <- @items} />
              """) =~ expected
     end
 

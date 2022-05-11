@@ -435,9 +435,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
-    state
-    |> set_root_on_tag()
-    |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+    case pop_special_attr(attrs, "for") do
+      {{":for", expr, _meta}, attrs} ->
+        ast =
+          state
+          |> set_root_on_not_tag()
+          |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+          |> handle_for_expr(expr)
+
+        update_subengine(state, :handle_expr, ["=", ast])
+
+      nil ->
+        state
+        |> set_root_on_tag()
+        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+    end
   end
 
   # HTML element
@@ -446,17 +458,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
-    case List.keytake(attrs, ":for", 0) do
+    case pop_special_attr(attrs, "for") do
       {{":for", expr, _meta}, attrs} ->
-        expr = parse_expr!(expr, state)
-
         state
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
         |> push_tag({:tag_open, name, attrs, Map.put(tag_meta, :for, {expr, state})})
         |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
 
-      _ ->
+      nil ->
         state
         |> set_root_on_tag()
         |> push_tag(token)
@@ -470,17 +480,26 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     case tag_open_meta[:for] do
       {expr, outer_state} ->
-        ast =
-          quote do
-            for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
-          end
-
+        ast = handle_for_expr(state, expr)
         update_subengine(outer_state, :handle_expr, ["=", ast])
 
       nil ->
         state
     end
   end
+
+  # Pop the given attr from attrs.
+  #
+  # Examples
+  #
+  #   attrs = [{":for", {...}}, {"class", {...}}]
+  #   pop_special_attr(attrs, "for")
+  #   => {{":for", {...}}, [{"class", {...}]}
+  #
+  #   attrs = [{"class", {...}}]
+  #   pop_special_attr(attrs, "for")
+  #   => nil
+  defp pop_special_attr(attrs, attr), do: List.keytake(attrs, ":" <> attr, 0)
 
   # Root tracking
 
@@ -526,6 +545,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
       {name, nil, _attr_meta}, state ->
         update_subengine(state, :handle_text, [meta, " #{name}"])
     end)
+  end
+
+  defp handle_for_expr(state, expr) do
+    expr = parse_expr!(expr, state)
+
+    quote do
+      for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
+    end
   end
 
   defp parse_expr!({:expr, value, %{line: line, column: col}}, state) do
