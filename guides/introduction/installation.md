@@ -23,7 +23,8 @@ If installing from Hex, use the latest version from there:
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.17.6"},
+    # TODO bump to released vsn for 0.18
+    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
     {:floki, ">= 0.30.0", only: :test}
   ]
 end
@@ -37,6 +38,17 @@ def deps do
     {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
     {:floki, ">= 0.30.0", only: :test}
   ]
+```
+
+Next, add the the `:phoenix_live_view` compiler to your `:compiler` options in your `mix.exs`'s `project` configuration:
+
+```elixir
+def project do
+  [
+    ...,
+    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
+  ]
+end
 ```
 
 Once installed, update your endpoint's configuration to include a signing salt.
