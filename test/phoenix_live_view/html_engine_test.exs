@@ -1538,7 +1538,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on duplicated :for" do
       message =
-        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 3/
+        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1/
 
       assert_raise(ParseError, message, fn ->
         eval("""

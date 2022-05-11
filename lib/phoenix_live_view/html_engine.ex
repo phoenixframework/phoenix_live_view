@@ -507,7 +507,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     case List.keytake(attrs, attr, 0) do
       {{attr, _expr, meta}, _attrs} ->
         message =
-          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line 3"
+          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line #{meta.line}"
 
         raise ParseError,
           line: meta.line,
