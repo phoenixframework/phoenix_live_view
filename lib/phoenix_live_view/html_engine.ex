@@ -435,7 +435,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
-    case pop_special_attr!(attrs, "for", state) do
+    case pop_special_attr!(attrs, ":for", state) do
       {{":for", expr, _meta}, attrs} ->
         ast =
           state
@@ -458,7 +458,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
-    case pop_special_attr!(attrs, "for", state) do
+    case pop_special_attr!(attrs, ":for", state) do
       {{":for", expr, _meta}, attrs} ->
         state
         |> update_subengine(:handle_begin, [])
@@ -494,15 +494,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Examples:
   #
   #   attrs = [{":for", {...}}, {"class", {...}}]
-  #   pop_special_attr!(state, attrs, "for")
+  #   pop_special_attr!(state, attrs, ":for")
   #   => {{":for", {...}}, [{"class", {...}]}
   #
   #   attrs = [{"class", {...}}]
-  #   pop_special_attr!(state, attrs, "for")
+  #   pop_special_attr!(state, attrs, ":for")
   #   => nil
   defp pop_special_attr!(attrs, attr, state) do
     attrs
-    |> List.keytake(":" <> attr, 0)
+    |> List.keytake(attr, 0)
     |> raise_if_duplicated_special_attr!(state)
   end
 
