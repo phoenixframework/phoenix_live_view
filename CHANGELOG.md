@@ -13,6 +13,7 @@
 
 ### Enhancements
   - [Formatter] Introduce special attr phx-no-format to skip formatting
+  - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
 
 ## 0.17.9 (2022-04-07)
 

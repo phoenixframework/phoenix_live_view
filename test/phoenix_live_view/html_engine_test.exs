@@ -520,6 +520,48 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "invalid :let expr" do
+      message = ~r"let must be a pattern between {...}"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let="1"
+        />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1' :let="1"
+        />
+        """)
+      end)
+    end
+
+    test "raise when it is not let" do
+      message = ~r"unsupported attribute \":for\" in component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :for={item <- [1]}
+        />
+        """)
+      end)
+
+      message = ~r"unsupported attribute \":bar\" in component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1' :bar="1"}
+        />
+        """)
+      end)
+    end
+
     # TODO: remove me once "let" is not supported anymore.
     test "raise on duplicated old let" do
       message =
@@ -1156,6 +1198,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<.to_string></.to_string>").root == false
       assert eval("<Kernel.to_string />").root == false
       assert eval("<Kernel.to_string></Kernel.to_string>").root == false
+      assert eval("<div :for={item <- @items}><%= item %></div>").root == false
     end
   end
 
@@ -1337,7 +1380,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "validates phx-update values" do
       message =
-        ~r/.exs:1:(1:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+        ~r/.exs:1:(14:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1374,6 +1417,24 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("""
              <div phx-update="ignore" {@some_var}>Content</div>
              """)
+    end
+
+    test "raise on unsupported special attrs" do
+      message = ~r/.exs:1:(6:)? unsupported attribute \":let\" in tags/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :let={@user}>Content</div>
+        """)
+      end)
+
+      message = ~r/.exs:1:(6:)? unsupported attribute \":foo\" in tags/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :foo="something" />
+        """)
+      end)
     end
   end
 
@@ -1416,6 +1477,74 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           )
         end
       )
+    end
+  end
+
+  describe ":for attr" do
+    test "handle :for attr on HTML element" do
+      expected = "<div>foo</div><div>bar</div><div>baz</div>"
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+               <div :for={item <- @items}><%= item %></div>
+             """) =~ expected
+    end
+
+    test "handle :for attr on self closed HTML element" do
+      expected = ~s(<div class="foo"></div><div class="foo"></div><div class="foo"></div>)
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+               <div class="foo" :for={_item <- @items} />
+             """) =~ expected
+    end
+
+    test "raise on invalid :for expr" do
+      message = ~r/for comprehensions must start with a generator/
+
+      assert_raise(CompileError, message, fn ->
+        eval("""
+        <div :for={@user}>Content</div>
+        """)
+      end)
+
+      message = ~r/:for must be a generator expresion between {...}/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for="1">Content</div>
+        """)
+      end)
+    end
+
+    test "raise when used in components" do
+      message = ~r/unsupported attribute \":for\" in component/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component :for={item <- [1, 2]} />")
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :for={item <- [1, 2]}/>
+        """)
+      end)
+    end
+
+    test "raise on duplicated :for" do
+      message =
+        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
+        """)
+      end)
     end
   end
 end
