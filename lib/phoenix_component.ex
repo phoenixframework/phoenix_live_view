@@ -356,6 +356,11 @@ defmodule Phoenix.Component do
       raise CompileError, line: line, file: file, description: message
     end
 
+    unless is_list(opts) do
+      message = "expected attr/3 to receive keyword list of options, but got #{inspect(opts)}"
+      raise CompileError, line: line, file: file, description: message
+    end
+
     {required, opts} = Keyword.pop(opts, :required, false)
     {default, opts} = Keyword.pop(opts, :default, nil)
 
