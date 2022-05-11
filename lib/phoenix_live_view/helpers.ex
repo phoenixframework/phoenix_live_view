@@ -176,11 +176,28 @@ defmodule Phoenix.LiveView.Helpers do
   ### HEEx extension: special attributes
 
   Apart from normal HTML attributes, HEEx also support some special attributes
-  such as `:for` and `:let`.
+  such as `:let` and `:for`.
+
+  #### :let
+
+  This is used by components and slots that want to yield a value back to the
+  caller. For an example, see how `form/1` works:
+
+  ```heex
+  <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
+    <%= label(f, :username) %>
+    <%= text_input(f, :username) %>
+    ...
+  </.form>
+  ```
+
+  Notice how the variable `f`, defined by `.form`, is used by `label` and
+  `text_input`. The `Phoenix.Component` module has detailed documentation on
+  how to use and implement such functionality.
 
   #### :for
 
-  It is a syntax sugar for `<%= for .. do %>` that can be used only in normal HTML
+  It is a syntax sugar for `<%= for .. do %>` that can be used only in regular HTML
   tags, therefore `:for` will not work on components.
 
   ```heex
@@ -191,21 +208,7 @@ defmodule Phoenix.LiveView.Helpers do
   <table>
   ```
 
-  The snippet above will generate a list of `td` as you would expect.
-
-  #### :let
-
-  Useful for binding variables that will be used by the children elements.
-
-  ```heex
-  <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
-    <%= label(f, :username) %>
-    <%= text_input(f, :username) %>
-    ...
-  </.form>
-  ```
-
-  Notice how the variable `f` is used by `label` and `text_input`.
+  The snippet above will generate a `tr` per user as you would expect.
   '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
