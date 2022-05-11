@@ -362,14 +362,13 @@ defmodule Phoenix.Component do
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
-    {default, opts} = Keyword.pop(opts, :default, nil)
 
     unless is_boolean(required) do
       message = ":required must be a boolean, got: #{inspect(required)}"
       raise CompileError, line: line, file: file, description: message
     end
 
-    if required and default != nil do
+    if required and Keyword.has_key?(opts, :default) do
       message = "only one of :required or :default must be given"
       raise CompileError, line: line, file: file, description: message
     end
@@ -381,7 +380,6 @@ defmodule Phoenix.Component do
       name: name,
       type: type,
       required: required,
-      default: default,
       opts: opts,
       line: line
     })
@@ -415,11 +413,12 @@ defmodule Phoenix.Component do
     raise CompileError, line: line, file: file, description: message
   end
 
+  @valid_opts [:required, :default]
   defp validate_attr_opts!(name, opts, line, file) do
-    for {key, _} <- opts do
+    for {key, _} <- opts, key not in @valid_opts do
       message = """
       invalid option #{inspect(key)} for attr #{inspect(name)}. \
-      The supported options are: :required and :default
+      The supported options are: #{inspect(@valid_opts)}
       """
 
       raise CompileError, line: line, file: file, description: message
@@ -507,8 +506,9 @@ defmodule Phoenix.Component do
     names_and_defs =
       for {name, %{kind: kind, attrs: attrs}} <- components do
         defaults =
-          for %{name: name, required: false, default: default} <- attrs do
-            {name, Macro.escape(default)}
+          for %{name: name, required: false, opts: opts} <- attrs,
+              Keyword.has_key?(opts, :default) do
+            {name, Macro.escape(opts[:default])}
           end
 
         merge =

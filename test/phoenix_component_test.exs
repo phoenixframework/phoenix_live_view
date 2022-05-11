@@ -265,7 +265,7 @@ defmodule Phoenix.ComponentTest do
     defmodule RemoteFunctionComponentWithAttrs do
       use Phoenix.Component
 
-      attr(:id, :any, required: true)
+      attr :id, :any, required: true
       def remote(assigns), do: ~H[]
     end
 
@@ -275,12 +275,13 @@ defmodule Phoenix.ComponentTest do
       alias RemoteFunctionComponentWithAttrs, as: Remote
 
       def func1_line, do: __ENV__.line
-      attr(:id, :any, required: true)
-      attr(:email, :any)
+      attr :id, :any, required: true
+      attr :email, :any, default: nil
       def func1(assigns), do: ~H[]
 
       def func2_line, do: __ENV__.line
-      attr(:name, :any, required: true)
+      attr :name, :any, required: true
+      attr :age, :integer, default: 0
       def func2(assigns), do: ~H[]
 
       def render_line, do: __ENV__.line
@@ -314,18 +315,16 @@ defmodule Phoenix.ComponentTest do
                    %{
                      name: :email,
                      type: :any,
-                     opts: [],
+                     opts: [default: nil],
                      required: false,
-                     line: func1_line + 2,
-                     default: nil
+                     line: func1_line + 2
                    },
                    %{
                      name: :id,
                      type: :any,
                      opts: [],
                      required: true,
-                     line: func1_line + 1,
-                     default: nil
+                     line: func1_line + 1
                    }
                  ]
                },
@@ -333,12 +332,18 @@ defmodule Phoenix.ComponentTest do
                  kind: :def,
                  attrs: [
                    %{
+                     name: :age,
+                     type: :integer,
+                     opts: [default: 0],
+                     required: false,
+                     line: func2_line + 2
+                   },
+                   %{
                      name: :name,
                      type: :any,
                      opts: [],
                      required: true,
-                     line: func2_line + 1,
-                     default: nil
+                     line: func2_line + 1
                    }
                  ]
                }
@@ -394,7 +399,7 @@ defmodule Phoenix.ComponentTest do
       defmodule Bodyless do
         use Phoenix.Component
 
-        attr(:example, :any, required: true)
+        attr :example, :any, required: true
         def example(assigns)
 
         def example(_assigns) do
@@ -411,8 +416,7 @@ defmodule Phoenix.ComponentTest do
                      name: :example,
                      opts: [],
                      required: true,
-                     type: :any,
-                     default: nil
+                     type: :any
                    }
                  ]
                }
@@ -423,8 +427,8 @@ defmodule Phoenix.ComponentTest do
       defmodule StructTypes do
         use Phoenix.Component
 
-        attr(:uri, URI, required: true)
-        attr(:other, :any)
+        attr :uri, URI, required: true
+        attr :other, :any
         def example(%{other: 1}), do: "one"
         def example(%{other: 2}), do: "two"
       end
@@ -441,16 +445,24 @@ defmodule Phoenix.ComponentTest do
       defmodule Defaults do
         use Phoenix.Component
 
-        attr(:one, :integer, default: 1)
-        attr(:two, :integer, default: 2)
+        attr :one, :integer, default: 1
+        attr :two, :integer, default: 2
         def add(assigns), do: ~H[<%= @one + @two %>]
 
-        attr(:implicit_default, :string)
-        def example(assigns), do: ~H[<%= inspect @implicit_default %>]
+        attr :nil_default, :string, default: nil
+        def example(assigns), do: ~H[<%= inspect @nil_default %>]
+
+        attr :value, :string
+        def no_default(assigns), do: ~H[<%= inspect @value %>]
       end
 
       assert Defaults.add(%{}) |> h2s() == "3"
       assert Defaults.example(%{}) |> h2s() == "nil"
+      assert Defaults.no_default(%{value: 123}) |> h2s() == "123"
+
+      assert_raise KeyError, ~r/:value not found/, fn ->
+        Defaults.no_default(%{}) |> h2s()
+      end
     end
 
     test "raise if attr is not declared before the first function definition" do
@@ -460,11 +472,11 @@ defmodule Phoenix.ComponentTest do
                      defmodule Phoenix.ComponentTest.MultiClauseWrong do
                        use Elixir.Phoenix.Component
 
-                       attr(:foo, :any)
+                       attr :foo, :any
                        def func(assigns = %{foo: _}), do: ~H[]
                        def func(assigns = %{bar: _}), do: ~H[]
 
-                       attr(:bar, :any)
+                       attr :bar, :any
                        def func(assigns = %{baz: _}), do: ~H[]
                      end
                    end
@@ -477,7 +489,7 @@ defmodule Phoenix.ComponentTest do
                      defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
                        use Elixir.Phoenix.Component
 
-                       attr(:foo, :any)
+                       attr :foo, :any
                        def func(a, b), do: a + b
                      end
                    end
@@ -492,7 +504,7 @@ defmodule Phoenix.ComponentTest do
 
                        def func(assigns = %{baz: _}), do: ~H[]
 
-                       attr(:foo, :any)
+                       attr :foo, :any
                      end
                    end
     end
@@ -502,7 +514,7 @@ defmodule Phoenix.ComponentTest do
         defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
           use Elixir.Phoenix.Component
 
-          attr(:foo, :not_a_type)
+          attr :foo, :not_a_type
           def func(assigns), do: ~H[]
         end
       end
@@ -513,7 +525,7 @@ defmodule Phoenix.ComponentTest do
         defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
           use Elixir.Phoenix.Component
 
-          attr(:foo, :any, not_an_opt: true)
+          attr :foo, :any, not_an_opt: true
           def func(assigns), do: ~H[]
         end
       end
