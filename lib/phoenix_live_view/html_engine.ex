@@ -437,13 +437,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     case pop_special_attr!(attrs, ":for", state) do
       {{":for", expr, _meta}, attrs} ->
-        ast =
-          state
-          |> set_root_on_not_tag()
-          |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
-          |> handle_for_expr(expr)
-
-        update_subengine(state, :handle_expr, ["=", ast])
+        state
+        |> update_subengine(:handle_begin, [])
+        |> set_root_on_not_tag()
+        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        |> handle_for_expr(expr, state)
 
       nil ->
         state
@@ -480,8 +478,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     case tag_open_meta[:for] do
       {expr, outer_state} ->
-        ast = handle_for_expr(state, expr)
-        update_subengine(outer_state, :handle_expr, ["=", ast])
+        handle_for_expr(state, expr, outer_state)
 
       nil ->
         state
@@ -570,12 +567,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp handle_for_expr(state, expr) do
+  defp handle_for_expr(state, expr, outer_state) do
     expr = parse_expr!(expr, state)
 
-    quote do
-      for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
-    end
+    ast =
+      quote do
+        for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
+      end
+
+    update_subengine(outer_state, :handle_expr, ["=", ast])
   end
 
   defp parse_expr!({:expr, value, %{line: line, column: col}}, state) do
