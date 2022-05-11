@@ -172,6 +172,40 @@ defmodule Phoenix.LiveView.Helpers do
   opposed to having many modules with a single `render/1` function. Function
   components support other important features, such as slots. You can learn
   more about components in `Phoenix.Component`.
+
+  ### HEEx extension: special attributes
+
+  Apart from normal HTML attributes, HEEx also support some special attributes
+  such as `:for` and `:let`.
+
+  #### :for
+
+  It is a syntax sugar for `<%= for .. do %>` that can used only in normal HTML
+  tags. Therefore `:for` will not work on components.
+
+  ```eex
+  <table id="my-table">
+    <tr :for={user <- @users}>
+      <td><%= user.name %>
+    </tr>
+  <table>
+  ```
+
+  The snippet above will generate a list of `td` as you would expect.
+
+  #### :let
+
+  Useful for binding variables that will be used by the children elements.
+
+  ```eex
+  <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
+    <%= label f, :username %>
+    <%= text_input f, :username %>
+    ...
+  </.form>
+  ```
+
+  Notice how the variable `f` is used by `label` and `text_input`.
   '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
@@ -221,9 +255,9 @@ defmodule Phoenix.LiveView.Helpers do
         </a>
         """
       end
-      
+
   The above would result in the following rendered HTML:
-  
+
       <a href="/" target="_blank" id="1" class="my-class">Home</a>
 
   The second argument (optional) to `assigns_to_attributes` is a list of keys to
