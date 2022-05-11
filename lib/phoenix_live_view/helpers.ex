@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.Helpers do
 
   The above would add all caller attributes into the HTML, but strip out LiveView
   assigns like slots, as well as user-defined assigns like `:visible` that are not
-  meant to be added to the HTML itself. This appraoch is useful to allow a component
+  meant to be added to the HTML itself. This approach is useful to allow a component
   to accept arbitrary HTML attributes like class, ARIA attributes, etc.
 
   ### HEEx extension: Defining function components
