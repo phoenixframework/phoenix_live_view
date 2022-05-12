@@ -1,6 +1,18 @@
 locals_without_parens = [
   attr: 2,
-  attr: 3
+  attr: 3,
+  form: 1,
+  link: 2,
+  live_file_input: 1,
+  live_file_input: 2,
+  live_img_preview: 1,
+  live_img_preview: 2,
+  live_patch: 2,
+  live_redirect: 2,
+  live_render: 2,
+  live_render: 3,
+  live_title_tag: 1,
+  live_title_tag: 2
 ]
 
 [
