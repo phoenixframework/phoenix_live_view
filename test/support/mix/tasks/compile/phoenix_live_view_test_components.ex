@@ -35,3 +35,19 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest.Comp2 do
     """
   end
 end
+
+defmodule Mix.Tasks.Compile.WithoutDiagnostics do
+  import Phoenix.LiveView.Helpers
+
+
+  def subtitle(assigns), do: ~H[<%= @str %>]
+end
+
+defmodule Mix.Tasks.Compile.WithDiagnostics do
+  use Phoenix.Component
+
+  alias Mix.Tasks.Compile.WithoutDiagnostics
+
+  attr :str, :string
+  def title(assigns), do: ~H[<WithoutDiagnostics.subtitle str={@str}/>]
+end

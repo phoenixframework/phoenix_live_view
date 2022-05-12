@@ -140,7 +140,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
                  message:
-                    "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
+                   "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
                  position: line,
                  severity: :warning
                },
@@ -240,7 +240,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
     test "always return {:error. diagnostics} when --warnings-as-errors is passed" do
       {:error, _diagnostics} =
-        Mix.Tasks.Compile.PhoenixLiveView.run(["--return-errors", "--force", "--warnings-as-errors"])
+        Mix.Tasks.Compile.PhoenixLiveView.run([
+          "--return-errors",
+          "--force",
+          "--warnings-as-errors"
+        ])
 
       {:error, _diagnostics} =
         Mix.Tasks.Compile.PhoenixLiveView.run([
@@ -284,6 +288,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                test/support/mix/tasks/compile/phoenix_live_view_test_components.ex:34: (file)
              """
     end
+  end
+
+  test "only runs diagnostics on Phoenix.Component modules" do
+    alias Mix.Tasks.Compile.WithDiagnostics
+    diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([WithDiagnostics])
+    assert diagnostics == []
   end
 
   defp get_line(module) do

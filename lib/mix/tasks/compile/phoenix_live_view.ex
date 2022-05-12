@@ -85,9 +85,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     for module <- modules,
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
-        %{component: {mod, fun}} = call <- module.__components_calls__(),
-        function_exported?(mod, :__components__, 0),
-        component = mod.__components__()[fun],
+        %{component: {submod, fun}} = call <- module.__components_calls__(),
+        function_exported?(submod, :__components_calls__, 0),
+        component = submod.__components__()[fun],
         diagnostic <- diagnostics(call, component),
         do: diagnostic
   end
