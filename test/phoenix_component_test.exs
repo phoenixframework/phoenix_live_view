@@ -284,6 +284,11 @@ defmodule Phoenix.ComponentTest do
       attr :age, :integer, default: 0
       def func2(assigns), do: ~H[]
 
+      def with_rest_line, do: __ENV__.line
+      attr :id, :string, default: "container"
+      attr :rest, :global
+      def with_rest(assigns), do: ~H[<div id={@id} {@rest}/>]
+
       def render_line, do: __ENV__.line
 
       def render(assigns) do
@@ -307,6 +312,7 @@ defmodule Phoenix.ComponentTest do
     test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
+      with_rest_line = FunctionComponentWithAttrs.with_rest_line()
 
       assert FunctionComponentWithAttrs.__components__() == %{
                func1: %{
@@ -346,6 +352,25 @@ defmodule Phoenix.ComponentTest do
                      line: func2_line + 1
                    }
                  ]
+               },
+               with_rest: %{
+                 attrs: [
+                   %{
+                     line: with_rest_line + 1,
+                     name: :id,
+                     opts: [default: "container"],
+                     required: false,
+                     type: :string
+                   },
+                   %{
+                     line: with_rest_line + 2,
+                     name: :rest,
+                     opts: [],
+                     required: false,
+                     type: :global
+                   }
+                 ],
+                 kind: :def
                }
              }
     end
@@ -526,6 +551,32 @@ defmodule Phoenix.ComponentTest do
           use Elixir.Phoenix.Component
 
           attr :foo, :any, not_an_opt: true
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if attr is duplicated" do
+      assert_raise CompileError, ~r"a duplicate attribute with name :foo already exists", fn ->
+        defmodule Phoenix.ComponentTest.AttrDup do
+          use Elixir.Phoenix.Component
+
+          attr :foo, :any, required: true
+          attr :foo, :string
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise on more than one :global attr" do
+      msg = ~r"cannot define global attribute :rest2 because one is already defined under :rest"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.MultiGlobal do
+          use Elixir.Phoenix.Component
+
+          attr :rest, :global
+          attr :rest2, :global
           def func(assigns), do: ~H[]
         end
       end

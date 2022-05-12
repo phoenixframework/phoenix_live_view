@@ -352,28 +352,26 @@ defmodule Phoenix.Component do
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
     unless is_atom(name) do
-      message = "attribute names must be atoms, got: #{inspect(name)}"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
     end
 
     unless is_list(opts) do
-      message = "expected attr/3 to receive keyword list of options, but got #{inspect(opts)}"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, """
+      expected attr/3 to receive keyword list of options, but got #{inspect(opts)}")
+      """)
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
 
     unless is_boolean(required) do
-      message = ":required must be a boolean, got: #{inspect(required)}"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
     if required and Keyword.has_key?(opts, :default) do
-      message = "only one of :required or :default must be given"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    type = validate_attr_type!(name, type, line, file)
+    type = validate_attr_type!(module, name, type, line, file)
     validate_attr_opts!(name, opts, line, file)
 
     Module.put_attribute(module, :__attrs__, %{
@@ -385,43 +383,67 @@ defmodule Phoenix.Component do
     })
   end
 
-  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map]
+  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(name, type, line, file) when is_atom(type) do
+  defp validate_attr_type!(module, name, type, line, file) when is_atom(type) do
+    if Enum.find(get_attrs(module), fn attr -> attr.name == name end) do
+      compile_error!(line, file, """
+      a duplicate attribute with name #{inspect(name)} already exists"
+      """)
+    end
+
     case Atom.to_string(type) do
-      "Elixir." <> _ -> {:struct, type}
-      _ when type in @valid_types -> type
-      _ -> bad_type!(name, type, line, file)
+      "Elixir." <> _ ->
+        {:struct, type}
+
+      "global" ->
+        existing = Enum.find(get_attrs(module), fn attr -> attr.type === :global end)
+
+        if existing do
+          compile_error!(line, file, """
+          cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
+
+          Only a single global attribute may be defined.
+          """)
+        end
+
+        :global
+
+      _ when type in @valid_types ->
+        type
+
+      _ ->
+        bad_type!(name, type, line, file)
     end
   end
 
-  defp validate_attr_type!(name, type, line, file) do
+  defp validate_attr_type!(_module, name, type, line, file) do
     bad_type!(name, type, line, file)
   end
 
+  defp compile_error!(line, file, msg) do
+    raise CompileError, line: line, file: file, description: msg
+  end
+
   defp bad_type!(name, type, line, file) do
-    message = """
+    compile_error!(line, file, """
     invalid type #{inspect(type)} for attr #{inspect(name)}. \
     The following types are supported:
 
       * any Elixir struct, such as URI, MyApp.User, etc
       * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
       * :any for all other types
-    """
-
-    raise CompileError, line: line, file: file, description: message
+    """)
   end
 
   @valid_opts [:required, :default]
   defp validate_attr_opts!(name, opts, line, file) do
     for {key, _} <- opts, key not in @valid_opts do
-      message = """
+      compile_error!(line, file, """
       invalid option #{inspect(key)} for attr #{inspect(name)}. \
       The supported options are: #{inspect(@valid_opts)}
-      """
-
-      raise CompileError, line: line, file: file, description: message
+      """)
     end
   end
 
@@ -576,8 +598,12 @@ defmodule Phoenix.Component do
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
-      raise CompileError, line: first_attr_line, file: file, description: message_fun.()
+      compile_error!(first_attr_line, file, message_fun.())
     end
+  end
+
+  defp get_attrs(module) do
+    Module.get_attribute(module, :__attrs__) || []
   end
 
   defp pop_attrs(env) do
@@ -595,10 +621,9 @@ defmodule Phoenix.Component do
       {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
       [%{line: first_attr_line} | _] = attrs
 
-      message =
-        "attributes must be defined before the first function clause at line #{meta[:line]}"
-
-      raise CompileError, line: first_attr_line, file: env.file, description: message
+      compile_error!(first_attr_line, env.file, """
+      attributes must be defined before the first function clause at line #{meta[:line]}
+      """)
     end
   end
 end
