@@ -387,34 +387,29 @@ defmodule Phoenix.Component do
   @valid_types [:any] ++ @builtin_types
 
   defp validate_attr_type!(module, name, type, line, file) when is_atom(type) do
-    if Enum.find(get_attrs(module), fn attr -> attr.name == name end) do
-      compile_error!(line, file, """
-      a duplicate attribute with name #{inspect(name)} already exists"
-      """)
+    attrs = get_attrs(module)
+
+    cond do
+      Enum.find(attrs, fn attr -> attr.name == name end) ->
+        compile_error!(line, file, """
+        a duplicate attribute with name #{inspect(name)} already exists"
+        """)
+
+      existing = type == :global && Enum.find(attrs, fn attr -> attr.type === :global end) ->
+        compile_error!(line, file, """
+        cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
+
+        Only a single global attribute may be defined.
+        """)
+
+      true ->
+        :ok
     end
 
     case Atom.to_string(type) do
-      "Elixir." <> _ ->
-        {:struct, type}
-
-      "global" ->
-        existing = Enum.find(get_attrs(module), fn attr -> attr.type === :global end)
-
-        if existing do
-          compile_error!(line, file, """
-          cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
-
-          Only a single global attribute may be defined.
-          """)
-        end
-
-        :global
-
-      _ when type in @valid_types ->
-        type
-
-      _ ->
-        bad_type!(name, type, line, file)
+      "Elixir." <> _ -> {:struct, type}
+      _ when type in @valid_types -> type
+      _ -> bad_type!(name, type, line, file)
     end
   end
 
