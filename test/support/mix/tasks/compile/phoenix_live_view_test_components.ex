@@ -39,7 +39,6 @@ end
 defmodule Mix.Tasks.Compile.WithoutDiagnostics do
   import Phoenix.LiveView.Helpers
 
-
   def subtitle(assigns), do: ~H[<%= @str %>]
 end
 
