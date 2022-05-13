@@ -3,10 +3,27 @@ defmodule Phoenix.ComponentTest do
 
   use Phoenix.Component
 
+  defp render(mod, func, assigns) do
+    mod
+    |> apply(func, [Map.put(assigns, :__changed__, %{})])
+    |> h2s()
+  end
+
   defp h2s(template) do
     template
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  test "__global__?" do
+    assert Phoenix.Component.__global__?("id")
+    refute Phoenix.Component.__global__?("idnope")
+    refute Phoenix.Component.__global__?("not-global")
+
+    # prefixes
+    assert Phoenix.Component.__global__?("aria-label")
+    assert Phoenix.Component.__global__?("data-whatever")
+    assert Phoenix.Component.__global__?("phx-click")
   end
 
   describe "rendering" do
@@ -284,6 +301,18 @@ defmodule Phoenix.ComponentTest do
       attr :age, :integer, default: 0
       def func2(assigns), do: ~H[]
 
+      def with_global_line, do: __ENV__.line
+      attr :id, :string, default: "container"
+      def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true"/>]
+
+      attr :id, :string, required: true
+      attr :rest, :global
+      def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+
+      def button_with_defaults_line, do: __ENV__.line
+      attr :rest, :global, default: %{class: "primary"}
+      def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
+
       def render_line, do: __ENV__.line
 
       def render(assigns) do
@@ -307,6 +336,8 @@ defmodule Phoenix.ComponentTest do
     test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
+      with_global_line = FunctionComponentWithAttrs.with_global_line()
+      button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
 
       assert FunctionComponentWithAttrs.__components__() == %{
                func1: %{
@@ -346,18 +377,69 @@ defmodule Phoenix.ComponentTest do
                      line: func2_line + 1
                    }
                  ]
+               },
+               with_global: %{
+                 attrs: [
+                   %{
+                     line: with_global_line + 1,
+                     name: :id,
+                     opts: [default: "container"],
+                     required: false,
+                     type: :string
+                   }
+                 ],
+                 kind: :def
+               },
+               button_with_defaults: %{
+                 attrs: [
+                   %{
+                     line: button_with_defaults_line + 1,
+                     name: :rest,
+                     opts: [default: %{class: "primary"}],
+                     required: false,
+                     type: :global
+                   }
+                 ],
+                 kind: :def
+               },
+               button: %{
+                 attrs: [
+                   %{
+                     line: with_global_line + 4,
+                     name: :id,
+                     opts: [],
+                     required: true,
+                     type: :string
+                   },
+                   %{
+                     line: with_global_line + 5,
+                     name: :rest,
+                     opts: [],
+                     required: false,
+                     type: :global
+                   }
+                 ],
+                 kind: :def
                }
              }
     end
 
     test "stores component calls" do
       render_line = FunctionComponentWithAttrs.render_line()
+      with_global_line = FunctionComponentWithAttrs.with_global_line() + 3
 
       call_1_line = render_line + 5
       call_3_line = render_line + 9
       file = __ENV__.file
 
       assert [
+               %{
+                 attrs: %{id: {_, _, :expr}},
+                 component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
+                 file: ^file,
+                 line: ^with_global_line,
+                 root: false
+               },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  attrs: %{id: {_, _, "1"}},
@@ -447,7 +529,11 @@ defmodule Phoenix.ComponentTest do
 
         attr :one, :integer, default: 1
         attr :two, :integer, default: 2
-        def add(assigns), do: ~H[<%= @one + @two %>]
+
+        def add(assigns) do
+          assigns = Phoenix.LiveView.assign(assigns, :foo, :bar)
+          ~H[<%= @one + @two %>]
+        end
 
         attr :nil_default, :string, default: nil
         def example(assigns), do: ~H[<%= inspect @nil_default %>]
@@ -456,57 +542,58 @@ defmodule Phoenix.ComponentTest do
         def no_default(assigns), do: ~H[<%= inspect @value %>]
       end
 
-      assert Defaults.add(%{}) |> h2s() == "3"
-      assert Defaults.example(%{}) |> h2s() == "nil"
-      assert Defaults.no_default(%{value: 123}) |> h2s() == "123"
+      assert render(Defaults, :add, %{}) == "3"
+      assert render(Defaults, :example, %{}) == "nil"
+      assert render(Defaults, :no_default, %{value: 123}) == "123"
 
       assert_raise KeyError, ~r/:value not found/, fn ->
-        Defaults.no_default(%{}) |> h2s()
+        render(Defaults, :no_default, %{})
       end
     end
 
     test "raise if attr is not declared before the first function definition" do
-      assert_raise CompileError,
-                   ~r/attributes must be defined before the first function clause at line \d+/,
-                   fn ->
-                     defmodule Phoenix.ComponentTest.MultiClauseWrong do
-                       use Elixir.Phoenix.Component
+      msg = ~r/attributes must be defined before the first function clause at line \d+/
 
-                       attr :foo, :any
-                       def func(assigns = %{foo: _}), do: ~H[]
-                       def func(assigns = %{bar: _}), do: ~H[]
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.MultiClauseWrong do
+          use Elixir.Phoenix.Component
 
-                       attr :bar, :any
-                       def func(assigns = %{baz: _}), do: ~H[]
-                     end
-                   end
+          attr :foo, :any
+          def func(assigns = %{foo: _}), do: ~H[]
+          def func(assigns = %{bar: _}), do: ~H[]
+
+          attr :bar, :any
+          def func(assigns = %{baz: _}), do: ~H[]
+        end
+      end
     end
 
     test "raise if attr is declared on an invalid function" do
-      assert_raise CompileError,
-                   ~r/cannot declare attributes for function func\/2\. Components must be functions with arity 1/,
-                   fn ->
-                     defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
-                       use Elixir.Phoenix.Component
+      msg =
+        ~r/cannot declare attributes for function func\/2\. Components must be functions with arity 1/
 
-                       attr :foo, :any
-                       def func(a, b), do: a + b
-                     end
-                   end
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+          use Elixir.Phoenix.Component
+
+          attr :foo, :any
+          def func(a, b), do: a + b
+        end
+      end
     end
 
     test "raise if attr is declared without a related function" do
-      assert_raise CompileError,
-                   ~r/cannot define attributes without a related function component/,
-                   fn ->
-                     defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
-                       use Elixir.Phoenix.Component
+      msg = ~r/cannot define attributes without a related function component/
 
-                       def func(assigns = %{baz: _}), do: ~H[]
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
+          use Elixir.Phoenix.Component
 
-                       attr :foo, :any
-                     end
-                   end
+          def func(assigns = %{baz: _}), do: ~H[]
+
+          attr :foo, :any
+        end
+      end
     end
 
     test "raise if attr type is not supported" do
@@ -529,6 +616,64 @@ defmodule Phoenix.ComponentTest do
           def func(assigns), do: ~H[]
         end
       end
+    end
+
+    test "raise if attr is duplicated" do
+      assert_raise CompileError, ~r"a duplicate attribute with name :foo already exists", fn ->
+        defmodule Phoenix.ComponentTest.AttrDup do
+          use Elixir.Phoenix.Component
+
+          attr :foo, :any, required: true
+          attr :foo, :string
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise on more than one :global attr" do
+      msg = ~r"cannot define global attribute :rest2 because one is already defined under :rest"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.MultiGlobal do
+          use Elixir.Phoenix.Component
+
+          attr :rest, :global
+          attr :rest2, :global
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if global provides :required" do
+      msg = ~r/global attributes do not support the :required option/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.GlobalOpts do
+          use Elixir.Phoenix.Component
+
+          attr :rest, :global, required: true
+          def func(assigns), do: ~H[<%= @rest %>]
+        end
+      end
+    end
+
+    test "merges globals" do
+      assert render(FunctionComponentWithAttrs, :with_global, %{}) ==
+               "<button id=\"container\" aria-hidden=\"true\" class=\"btn\"></button>"
+    end
+
+    test "merges globals with defaults" do
+      assigns = %{id: "btn", style: "display: none;"}
+
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
+               "<button class=\"primary\" id=\"btn\" style=\"display: none;\"></button>"
+
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
+               "<button class=\"hidden\"></button>"
+
+      # caller passes no globals
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
+               "<button class=\"primary\"></button>"
     end
 
     defp lookup(_key \\ :one)

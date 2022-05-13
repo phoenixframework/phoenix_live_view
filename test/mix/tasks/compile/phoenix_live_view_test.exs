@@ -9,9 +9,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule RequiredAttrs do
       use Phoenix.Component
 
-      attr(:name, :any, required: true)
-      attr(:phone, :any)
-      attr(:email, :any, required: true)
+      attr :name, :any, required: true
+      attr :phone, :any
+      attr :email, :any, required: true
 
       def func(assigns), do: ~H[]
 
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule RequiredAttrsWithDynamic do
       use Phoenix.Component
 
-      attr(:name, :any, required: true)
+      attr :name, :any, required: true
 
       def func(assigns), do: ~H[]
 
@@ -76,7 +76,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule UndefinedAttrs do
       use Phoenix.Component
 
-      attr(:class, :any)
+      attr :class, :any
       def func(assigns), do: ~H[]
 
       def line, do: __ENV__.line + 4
@@ -112,12 +112,23 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
              ]
     end
 
-    defmodule TypeAttrs do
+    defmodule External do
       use Phoenix.Component
+      attr :id, :string, required: true
+      attr :rest, :global
+      def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+    end
 
-      attr(:boolean, :boolean)
-      attr(:string, :string)
+    defmodule TypeAttrs do
+      use Phoenix.Component, global_prefixes: ~w(myprefix-)
+
+      attr :boolean, :boolean
+      attr :string, :string
       def func(assigns), do: ~H[]
+
+      attr :id, :string, required: true
+      attr :rest, :global
+      def local_button(assigns), do: ~H[<button id={@id} {@rest}/>]
 
       def line, do: __ENV__.line + 4
 
@@ -127,6 +138,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func string/>
         <.func boolean string="string"/>
         <.func boolean={"can't validate"} string={:wont_validate}/>
+        <.local_button id="foo" class="my-class" myprefix-thing="value"/>
+        <.local_button id="foo" unknown-global="bad"/>
+        <.local_button id="foo" rest="nope"/>
+        <External.button id="foo" class="external" myprefix-external="value"/>
+        <External.button id="foo" unknown-global-external="bad"/>
         """
       end
     end
@@ -150,6 +166,31 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  message:
                    "attribute \"string\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :string, got boolean: true",
                  position: line + 1,
+                 severity: :warning
+               },
+               %Mix.Task.Compiler.Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute \"unknown-global\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1",
+                 position: line + 5,
+                 severity: :warning
+               },
+               %Mix.Task.Compiler.Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 file: __ENV__.file,
+                 message:
+                   "global attribute \"rest\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1 may not be provided directly",
+                 position: line + 6,
+                 severity: :warning
+               },
+               %Mix.Task.Compiler.Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute \"unknown-global-external\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.button/1",
+                 position: line + 8,
                  severity: :warning
                }
              ]

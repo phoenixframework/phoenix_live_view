@@ -86,15 +86,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
         %{component: {submod, fun}} = call <- module.__components_calls__(),
-        function_exported?(submod, :__components_calls__, 0),
+        function_exported?(submod, :__components__, 0),
         component = submod.__components__()[fun],
-        diagnostic <- diagnostics(call, component),
+        diagnostic <- diagnostics(module, call, component),
         do: diagnostic
   end
 
-  defp diagnostics(%{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
-    {warnings, attrs} =
-      Enum.flat_map_reduce(attrs_defs, attrs, fn attr_def, attrs ->
+  defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
+    {warnings, {attrs, has_global?}} =
+      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
 
@@ -103,6 +103,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
             nil when not root and required ->
               message = "missing required attribute \"#{name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
+
+            {line, _column, _val} when type == :global ->
+              message =
+                "global attribute \"#{name}\" in component #{component(call)} may not be provided directly"
+
+              [error(message, call.file, line)]
 
             {line, _column, string} when is_binary(string) and type not in [:any, :string] ->
               message =
@@ -122,11 +128,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               []
           end
 
-        {warnings, attrs}
+        {warnings, {attrs, has_global? || type == :global}}
       end)
 
     missing =
-      for {name, {line, _column, _value}} <- attrs do
+      for {name, {line, _column, _value}} <- attrs,
+          not (has_global? and Phoenix.Component.__global__?(caller_module, Atom.to_string(name))) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end

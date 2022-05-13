@@ -284,26 +284,188 @@ defmodule Phoenix.Component do
   where the map contains all slot attributes, allowing us to access
   the label as `col.label`. This gives us complete control over how
   we render them.
+
+  ## Attributes
+  TODO
+
+  ### Global Attributes
+
+  Global attributes may be provided to any component that declares a
+  `:global` attribute. By default, the supported global attributes are
+  those common to all HTML elements. The full list can be found
+  [here](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
+
+  Custom attribute prefixes can be provided by the caller module with
+  the `:global_prefixes` option to `use Phoenix.Component`. For example, the
+  following would allow Alpine JS annotations, such as `x-on:click`,
+  `x-data`, etc:
+
+      use Phoenix.Component, global_prefixes: ~w(x-)
   '''
 
+  @global_prefixes ~w(
+    phx-
+    aria-
+    data-
+  )
+  @globals ~w(
+    xml:lang
+    xml:base
+    onabort
+    onautocomplete
+    onautocompleteerror
+    onblur
+    oncancel
+    oncanplay
+    oncanplaythrough
+    onchange
+    onclick
+    onclose
+    oncontextmenu
+    oncuechange
+    ondblclick
+    ondrag
+    ondragend
+    ondragenter
+    ondragleave
+    ondragover
+    ondragstart
+    ondrop
+    ondurationchange
+    onemptied
+    onended
+    onerror
+    onfocus
+    oninput
+    oninvalid
+    onkeydown
+    onkeypress
+    onkeyup
+    onload
+    onloadeddata
+    onloadedmetadata
+    onloadstart
+    onmousedown
+    onmouseenter
+    onmouseleave
+    onmousemove
+    onmouseout
+    onmouseover
+    onmouseup
+    onmousewheel
+    onpause
+    onplay
+    onplaying
+    onprogress
+    onratechange
+    onreset
+    onresize
+    onscroll
+    onseeked
+    onseeking
+    onselect
+    onshow
+    onsort
+    onstalled
+    onsubmit
+    onsuspend
+    ontimeupdate
+    ontoggle
+    onvolumechange
+    onwaiting
+    accesskey
+    autocapitalize
+    autofocus
+    class
+    contenteditable
+    contextmenu
+    dir
+    draggable
+    enterkeyhint
+    exportparts
+    hidden
+    id
+    inputmode
+    is
+    itemid
+    itemprop
+    itemref
+    itemscope
+    itemtype
+    lang
+    nonce
+    part
+    slot
+    spellcheck
+    style
+    tabindex
+    title
+    translate
+  )
+
   @doc false
-  defmacro __using__(_) do
-    quote do
+  def __global__?(module, name) when is_atom(module) and is_binary(name) do
+    if function_exported?(module, :__global__?, 1) do
+      module.__global__?(name) or __global__?(name)
+    else
+      __global__?(name)
+    end
+  end
+
+  for prefix <- @global_prefixes do
+    def __global__?(unquote(prefix) <> _), do: true
+  end
+
+  for name <- @globals do
+    def __global__?(unquote(name)), do: true
+  end
+
+  def __global__?(_), do: false
+
+  @doc false
+  defmacro __using__(opts \\ []) do
+    quote bind_quoted: [opts: opts] do
       import Kernel, except: [def: 2, defp: 2]
       import Phoenix.Component
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
-      unquote(__MODULE__).__setup__(__MODULE__)
+      global_prefixes = Phoenix.Component.__setup__(__MODULE__, opts)
+      @doc false
+      for prefix <- global_prefixes do
+        def __global__?(unquote(prefix) <> _), do: true
+      end
+
+      def __global__?(_), do: false
     end
   end
 
   @doc false
-  def __setup__(module) do
+  @valid_opts [:global_prefixes]
+  def __setup__(module, opts) do
+    {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    for prefix <- prefixes do
+      unless String.ends_with?(prefix, "-") do
+        raise ArgumentError,
+              "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
+      end
+    end
+
+    if invalid_opts != [] do
+      raise ArgumentError, """
+      invalid options passed to #{inspect(__MODULE__)}.
+
+      The following options are supported: #{inspect(@valid_opts)}, got: #{inspect(invalid_opts)}
+      """
+    end
+
     Module.register_attribute(module, :__attrs__, accumulate: true)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
+
+    prefixes
   end
 
   @doc """
@@ -351,29 +513,33 @@ defmodule Phoenix.Component do
 
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
-    unless is_atom(name) do
-      message = "attribute names must be atoms, got: #{inspect(name)}"
-      raise CompileError, line: line, file: file, description: message
-    end
+    cond do
+      not is_atom(name) ->
+        compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
 
-    unless is_list(opts) do
-      message = "expected attr/3 to receive keyword list of options, but got #{inspect(opts)}"
-      raise CompileError, line: line, file: file, description: message
+      not is_list(opts) ->
+        compile_error!(line, file, """
+        expected attr/3 to receive keyword list of options, but got #{inspect(opts)}\
+        """)
+
+      type == :global and Keyword.has_key?(opts, :required) ->
+        compile_error!(line, file, "global attributes do not support the :required option")
+
+      true ->
+        :ok
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
 
     unless is_boolean(required) do
-      message = ":required must be a boolean, got: #{inspect(required)}"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
     if required and Keyword.has_key?(opts, :default) do
-      message = "only one of :required or :default must be given"
-      raise CompileError, line: line, file: file, description: message
+      compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    type = validate_attr_type!(name, type, line, file)
+    type = validate_attr_type!(module, name, type, line, file)
     validate_attr_opts!(name, opts, line, file)
 
     Module.put_attribute(module, :__attrs__, %{
@@ -385,10 +551,29 @@ defmodule Phoenix.Component do
     })
   end
 
-  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map]
+  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(name, type, line, file) when is_atom(type) do
+  defp validate_attr_type!(module, name, type, line, file) when is_atom(type) do
+    attrs = get_attrs(module)
+
+    cond do
+      Enum.find(attrs, fn attr -> attr.name == name end) ->
+        compile_error!(line, file, """
+        a duplicate attribute with name #{inspect(name)} already exists\
+        """)
+
+      existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
+        compile_error!(line, file, """
+        cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
+
+        Only a single global attribute may be defined.
+        """)
+
+      true ->
+        :ok
+    end
+
     case Atom.to_string(type) do
       "Elixir." <> _ -> {:struct, type}
       _ when type in @valid_types -> type
@@ -396,32 +581,32 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp validate_attr_type!(name, type, line, file) do
+  defp validate_attr_type!(_module, name, type, line, file) do
     bad_type!(name, type, line, file)
   end
 
+  defp compile_error!(line, file, msg) do
+    raise CompileError, line: line, file: file, description: msg
+  end
+
   defp bad_type!(name, type, line, file) do
-    message = """
+    compile_error!(line, file, """
     invalid type #{inspect(type)} for attr #{inspect(name)}. \
     The following types are supported:
 
       * any Elixir struct, such as URI, MyApp.User, etc
       * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
       * :any for all other types
-    """
-
-    raise CompileError, line: line, file: file, description: message
+    """)
   end
 
   @valid_opts [:required, :default]
   defp validate_attr_opts!(name, opts, line, file) do
     for {key, _} <- opts, key not in @valid_opts do
-      message = """
+      compile_error!(line, file, """
       invalid option #{inspect(key)} for attr #{inspect(name)}. \
       The supported options are: #{inspect(@valid_opts)}
-      """
-
-      raise CompileError, line: line, file: file, description: message
+      """)
     end
   end
 
@@ -511,10 +696,33 @@ defmodule Phoenix.Component do
             {name, Macro.escape(opts[:default])}
           end
 
+        {global_name, global_default} =
+          case Enum.find(attrs, fn attr -> attr.type == :global end) do
+            %{name: name, opts: opts} -> {name, Macro.escape(Keyword.get(opts, :default, %{}))}
+            nil -> {nil, nil}
+          end
+
+        known_keys =
+          for(attr <- attrs, do: attr.name) ++ Phoenix.LiveView.Helpers.__reserved_assigns__()
+
+        def_body =
+          if global_name do
+            quote do
+              {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
+              globals = Map.merge(unquote(global_default), caller_globals)
+              merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
+              super(Phoenix.LiveView.assign(merged, unquote(global_name), globals))
+            end
+          else
+            quote do
+              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+            end
+          end
+
         merge =
           quote do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
-              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+              unquote(def_body)
             end
           end
 
@@ -576,8 +784,12 @@ defmodule Phoenix.Component do
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
-      raise CompileError, line: first_attr_line, file: file, description: message_fun.()
+      compile_error!(first_attr_line, file, message_fun.())
     end
+  end
+
+  defp get_attrs(module) do
+    Module.get_attribute(module, :__attrs__) || []
   end
 
   defp pop_attrs(env) do
@@ -595,10 +807,9 @@ defmodule Phoenix.Component do
       {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
       [%{line: first_attr_line} | _] = attrs
 
-      message =
-        "attributes must be defined before the first function clause at line #{meta[:line]}"
-
-      raise CompileError, line: first_attr_line, file: env.file, description: message
+      compile_error!(first_attr_line, env.file, """
+      attributes must be defined before the first function clause at line #{meta[:line]}
+      """)
     end
   end
 end
