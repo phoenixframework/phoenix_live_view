@@ -404,7 +404,7 @@ defmodule Phoenix.Component do
   )
 
   @doc false
-  def __global__?(module, name) do
+  def __global__?(module, name) when is_atom(module) and is_binary(name) do
     if function_exported?(module, :__global__?, 1) do
       module.__global__?(name) or __global__?(name)
     else

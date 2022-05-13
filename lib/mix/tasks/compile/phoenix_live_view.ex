@@ -93,8 +93,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
-    {warnings, {attrs, has_global_def?}} =
-      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global_def?} ->
+    {warnings, {attrs, has_global?}} =
+      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
 
@@ -128,21 +128,17 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               []
           end
 
-        {warnings, {attrs, has_global_def? || type == :global}}
+        {warnings, {attrs, has_global? || type == :global}}
       end)
 
     missing =
       for {name, {line, _column, _value}} <- attrs,
-          not (has_global_def? and global?(caller_module, name)) do
+          not (has_global? and Phoenix.Component.__global__?(caller_module, Atom.to_string(name))) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
 
     warnings ++ missing
-  end
-
-  defp global?(module, name) do
-    Phoenix.Component.__global__?(module, to_string(name))
   end
 
   defp component(%{component: {mod, fun}}) do
