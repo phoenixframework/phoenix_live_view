@@ -670,6 +670,10 @@ defmodule Phoenix.ComponentTest do
 
       assert render(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
                "<button class=\"hidden\"></button>"
+
+      # caller passes no globals
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
+               "<button class=\"primary\"></button>"
     end
 
     defp lookup(_key \\ :one)
