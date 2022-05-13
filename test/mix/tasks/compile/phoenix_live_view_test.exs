@@ -182,7 +182,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                    "/Users/chris/oss/phoenix_live_view/test/mix/tasks/compile/phoenix_live_view_test.exs",
                  message:
                    "undefined attribute \"unknown-global-external\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.button/1",
-                 position: 144,
+                 position: line + 7,
                  severity: :warning
                }
              ]
