@@ -92,7 +92,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         do: diagnostic
   end
 
-  defp diagnostics(module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
+  defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
     has_global_def? = !is_nil(Enum.find(attrs_defs, fn attr -> attr.type == :global end))
 
     {warnings, attrs} =
@@ -129,7 +129,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
     missing =
       for {name, {line, _column, _value}} <- attrs,
-          not (has_global_def? and global?(module, name)) do
+          not (has_global_def? and global?(caller_module, name)) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
