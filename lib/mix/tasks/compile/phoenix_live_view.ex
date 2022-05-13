@@ -86,13 +86,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         Code.ensure_loaded?(module),
         function_exported?(module, :__components_calls__, 0),
         %{component: {submod, fun}} = call <- module.__components_calls__(),
-        function_exported?(submod, :__components_calls__, 0),
+        function_exported?(submod, :__components__, 0),
         component = submod.__components__()[fun],
-        diagnostic <- diagnostics(call, component),
+        diagnostic <- diagnostics(module, call, component),
         do: diagnostic
   end
 
-  defp diagnostics(%{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
+  defp diagnostics(module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
+    has_global_def? = !is_nil(Enum.find(attrs_defs, fn attr -> attr.type == :global end))
+
     {warnings, attrs} =
       Enum.flat_map_reduce(attrs_defs, attrs, fn attr_def, attrs ->
         %{name: name, required: required, type: type} = attr_def
@@ -126,12 +128,17 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       end)
 
     missing =
-      for {name, {line, _column, _value}} <- attrs do
+      for {name, {line, _column, _value}} <- attrs,
+          not (has_global_def? and global?(module, name)) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
 
     warnings ++ missing
+  end
+
+  defp global?(module, name) do
+    Phoenix.Component.__global__?(module, to_string(name))
   end
 
   defp component(%{component: {mod, fun}}) do

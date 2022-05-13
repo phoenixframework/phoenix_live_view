@@ -284,16 +284,163 @@ defmodule Phoenix.Component do
   where the map contains all slot attributes, allowing us to access
   the label as `col.label`. This gives us complete control over how
   we render them.
+
+  ## Attributes
+  TODO
+
+  ### Global Attributes
+  Global attributes may be provided to any component that declares a
+  `:global` attribute. By default, the supported global attributes are
+  those common to all HTML elements. The full list can be found
+  [here](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
+
+  Custom attribute prefixes can be provided by the caller module with
+  the `:globals` option to `use Phoenix.Component`. For example, the
+  following would allow Alpine JS annotations, such as `x-on:click`,
+  `x-data`, etc:
+
+      use Phoenix.Component, globals: ~w(x-)
   '''
 
+  @global_prefixes ~w(
+    phx-
+    xml:lang
+    xml:base
+    aria-
+    onabort
+    onautocomplete
+    onautocompleteerror
+    onblur
+    oncancel
+    oncanplay
+    oncanplaythrough
+    onchange
+    onclick
+    onclose
+    oncontextmenu
+    oncuechange
+    ondblclick
+    ondrag
+    ondragend
+    ondragenter
+    ondragleave
+    ondragover
+    ondragstart
+    ondrop
+    ondurationchange
+    onemptied
+    onended
+    onerror
+    onfocus
+    oninput
+    oninvalid
+    onkeydown
+    onkeypress
+    onkeyup
+    onload
+    onloadeddata
+    onloadedmetadata
+    onloadstart
+    onmousedown
+    onmouseenter
+    onmouseleave
+    onmousemove
+    onmouseout
+    onmouseover
+    onmouseup
+    onmousewheel
+    onpause
+    onplay
+    onplaying
+    onprogress
+    onratechange
+    onreset
+    onresize
+    onscroll
+    onseeked
+    onseeking
+    onselect
+    onshow
+    onsort
+    onstalled
+    onsubmit
+    onsuspend
+    ontimeupdate
+    ontoggle
+    onvolumechange
+    onwaiting
+    accesskey
+    autocapitalize
+    autofocus
+    class
+    contenteditable
+    contextmenu
+    data-
+    dir
+    draggable
+    enterkeyhint
+    exportparts
+    hidden
+    id
+    inputmode
+    is
+    itemid
+    itemprop
+    itemref
+    itemscope
+    itemtype
+    lang
+    nonce
+    part
+    slot
+    spellcheck
+    style
+    tabindex
+    title
+    translate
+  )
+
   @doc false
-  defmacro __using__(_) do
+  def __global__?(module, name) do
+    if function_exported?(module, :__global__?, 1) do
+      module.__global__?(name) or __global__?(name)
+    else
+      __global__?(name)
+    end
+  end
+
+  for prefix <- @global_prefixes do
+    def __global__?(unquote(prefix) <> _), do: true
+  end
+
+  def __global__?(_), do: false
+
+  @doc false
+  defmacro __using__(opts \\ []) do
     quote do
       import Kernel, except: [def: 2, defp: 2]
       import Phoenix.Component
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
       unquote(__MODULE__).__setup__(__MODULE__)
+      @doc false
+      for prefix <- unquote(opts[:globals] || []) do
+        @phoenix_global_prefix prefix
+        def __global__?(@phoenix_global_prefix <> _), do: true
+      end
+
+      def __global__?(_), do: false
+    end
+  end
+
+  @doc false
+  def __prepare_assigns__(assigns, defaults, known_keys, global_name) do
+    merged = Map.merge(defaults, assigns)
+    if global_name do
+      globals = Phoenix.LiveView.Helpers.assigns_to_attributes(assigns, known_keys)
+      Phoenix.LiveView.assign(merged, global_name, globals)
+    else
+      merged
     end
   end
 
@@ -528,10 +675,20 @@ defmodule Phoenix.Component do
             {name, Macro.escape(opts[:default])}
           end
 
+        global_name = Enum.find_value(attrs, fn attr -> attr.type == :global && attr.name end)
+        known_keys = for(attr <- attrs, do: attr.name)
+
         merge =
           quote do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
-              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+              super(
+                Phoenix.Component.__prepare_assigns__(
+                  assigns,
+                  %{unquote_splicing(defaults)},
+                  unquote(known_keys),
+                  unquote(global_name)
+                )
+              )
             end
           end
 
