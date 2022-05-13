@@ -550,7 +550,7 @@ defmodule Phoenix.Component do
         a duplicate attribute with name #{inspect(name)} already exists\
         """)
 
-      existing = type == :global && Enum.find(attrs, fn attr -> attr.type === :global end) ->
+      existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
         compile_error!(line, file, """
         cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
 
