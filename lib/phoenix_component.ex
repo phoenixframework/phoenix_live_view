@@ -708,7 +708,7 @@ defmodule Phoenix.Component do
         def_body =
           if global_name do
             quote do
-              {assgins, caller_globals} = Map.split(assigns, unquote(known_keys))
+              {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
               globals = Map.merge(unquote(global_default), caller_globals)
               merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
               super(Phoenix.LiveView.assign(merged, unquote(global_name), globals))
