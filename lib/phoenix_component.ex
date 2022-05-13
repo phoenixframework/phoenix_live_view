@@ -512,7 +512,7 @@ defmodule Phoenix.Component do
 
     unless is_list(opts) do
       compile_error!(line, file, """
-      expected attr/3 to receive keyword list of options, but got #{inspect(opts)}")
+      expected attr/3 to receive keyword list of options, but got #{inspect(opts)}"\
       """)
     end
 
