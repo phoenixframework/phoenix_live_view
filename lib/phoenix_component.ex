@@ -547,7 +547,7 @@ defmodule Phoenix.Component do
     cond do
       Enum.find(attrs, fn attr -> attr.name == name end) ->
         compile_error!(line, file, """
-        a duplicate attribute with name #{inspect(name)} already exists"
+        a duplicate attribute with name #{inspect(name)} already exists\
         """)
 
       existing = type == :global && Enum.find(attrs, fn attr -> attr.type === :global end) ->
