@@ -8,6 +8,10 @@ defmodule Phoenix.LiveView.Helpers do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
 
+
+  @doc false
+  def __reserved_assigns__, do: [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket]
+
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
 
@@ -268,7 +272,7 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket] ++ exclude
+    excluded_keys = __reserved_assigns__() ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 

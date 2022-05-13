@@ -440,18 +440,6 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __prepare_assigns__(assigns, defaults, known_keys, global_name) do
-    merged = Map.merge(defaults, assigns)
-
-    if global_name do
-      globals = Phoenix.LiveView.Helpers.assigns_to_attributes(assigns, known_keys)
-      Phoenix.LiveView.assign(merged, global_name, Enum.into(globals, %{}))
-    else
-      merged
-    end
-  end
-
-  @doc false
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
     {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
@@ -696,19 +684,27 @@ defmodule Phoenix.Component do
           end
 
         global_name = Enum.find_value(attrs, fn attr -> attr.type == :global && attr.name end)
-        known_keys = for(attr <- attrs, do: attr.name)
+
+        known_keys =
+          for(attr <- attrs, do: attr.name) ++ Phoenix.LiveView.Helpers.__reserved_assigns__()
+
+        def_body =
+          if global_name do
+            quote do
+              {assgins, globals} = Map.split(assigns, unquote(known_keys))
+              merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
+              super(Phoenix.LiveView.assign(merged, unquote(global_name), globals))
+            end
+          else
+            quote do
+              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+            end
+          end
 
         merge =
           quote do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
-              super(
-                Phoenix.Component.__prepare_assigns__(
-                  assigns,
-                  %{unquote_splicing(defaults)},
-                  unquote(known_keys),
-                  unquote(global_name)
-                )
-              )
+              unquote(def_body)
             end
           end
 
