@@ -289,6 +289,7 @@ defmodule Phoenix.Component do
   TODO
 
   ### Global Attributes
+
   Global attributes may be provided to any component that declares a
   `:global` attribute. By default, the supported global attributes are
   those common to all HTML elements. The full list can be found
