@@ -93,10 +93,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
-    has_global_def? = !is_nil(Enum.find(attrs_defs, fn attr -> attr.type == :global end))
-
-    {warnings, attrs} =
-      Enum.flat_map_reduce(attrs_defs, attrs, fn attr_def, attrs ->
+    {warnings, {attrs, has_global_def?}} =
+      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global_def?} ->
         %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
 
@@ -105,6 +103,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
             nil when not root and required ->
               message = "missing required attribute \"#{name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
+
+            {line, _column, _val} when type == :global ->
+              message =
+                "global attribute \"#{name}\" in component #{component(call)} may not be provided directly"
+
+              [error(message, call.file, line)]
 
             {line, _column, string} when is_binary(string) and type not in [:any, :string] ->
               message =
@@ -124,7 +128,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               []
           end
 
-        {warnings, attrs}
+        {warnings, {attrs, has_global_def? || type == :global}}
       end)
 
     missing =

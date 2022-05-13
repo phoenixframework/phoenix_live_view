@@ -140,6 +140,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func boolean={"can't validate"} string={:wont_validate}/>
         <.local_button id="foo" class="my-class" myprefix-thing="value"/>
         <.local_button id="foo" unknown-global="bad"/>
+        <.local_button id="foo" rest="nope"/>
         <External.button id="foo" class="external" myprefix-external="value"/>
         <External.button id="foo" unknown-global-external="bad"/>
         """
@@ -175,13 +176,20 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  position: line + 5,
                  severity: :warning
                },
+              %Mix.Task.Compiler.Diagnostic{
+                compiler_name: "phoenix_live_view",
+                file: __ENV__.file,
+                message: "global attribute \"rest\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1 may not be provided directly",
+                position: line + 6,
+                severity: :warning
+              },
                %Mix.Task.Compiler.Diagnostic{
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
                  message:
                    "undefined attribute \"unknown-global-external\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.button/1",
-                 position: line + 7,
+                 position: line + 8,
                  severity: :warning
                }
              ]
