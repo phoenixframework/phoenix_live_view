@@ -178,8 +178,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                %Mix.Task.Compiler.Diagnostic{
                  compiler_name: "phoenix_live_view",
                  details: nil,
-                 file:
-                   "/Users/chris/oss/phoenix_live_view/test/mix/tasks/compile/phoenix_live_view_test.exs",
+                 file: __ENV__.file,
                  message:
                    "undefined attribute \"unknown-global-external\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.button/1",
                  position: line + 7,
