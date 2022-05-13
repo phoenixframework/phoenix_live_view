@@ -424,16 +424,15 @@ defmodule Phoenix.Component do
 
   @doc false
   defmacro __using__(opts \\ []) do
-    quote do
+    quote bind_quoted: [opts: opts] do
       import Kernel, except: [def: 2, defp: 2]
       import Phoenix.Component
       import Phoenix.LiveView
       import Phoenix.LiveView.Helpers
-      unquote(__MODULE__).__setup__(__MODULE__)
+      global_prefixes = Phoenix.Component.__setup__(__MODULE__, opts)
       @doc false
-      for prefix <- unquote(opts[:global_prefixes] || []) do
-        @phoenix_global_prefix prefix
-        def __global__?(@phoenix_global_prefix <> _), do: true
+      for prefix <- global_prefixes do
+        def __global__?(unquote(prefix) <> _), do: true
       end
 
       def __global__?(_), do: false
@@ -453,12 +452,25 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __setup__(module) do
+  @valid_opts [:global_prefixes]
+  def __setup__(module, opts) do
+    {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    if invalid_opts != [] do
+      raise ArgumentError, """
+      invalid options passed to #{inspect(__MODULE__)}.
+
+      The following options are supported: #{inspect(@valid_opts)}, got: #{inspect(invalid_opts)}
+      """
+    end
+
     Module.register_attribute(module, :__attrs__, accumulate: true)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
+
+    prefixes
   end
 
   @doc """
