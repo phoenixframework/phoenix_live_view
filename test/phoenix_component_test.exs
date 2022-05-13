@@ -301,13 +301,17 @@ defmodule Phoenix.ComponentTest do
       attr :age, :integer, default: 0
       def func2(assigns), do: ~H[]
 
-      def with_rest_line, do: __ENV__.line
+      def with_global_line, do: __ENV__.line
       attr :id, :string, default: "container"
-      def with_rest(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true"/>]
+      def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true"/>]
 
       attr :id, :string, required: true
       attr :rest, :global
       def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+
+      def button_with_defaults_line, do: __ENV__.line
+      attr :rest, :global, default: %{class: "primary"}
+      def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
 
       def render_line, do: __ENV__.line
 
@@ -332,7 +336,8 @@ defmodule Phoenix.ComponentTest do
     test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
-      with_rest_line = FunctionComponentWithAttrs.with_rest_line()
+      with_global_line = FunctionComponentWithAttrs.with_global_line()
+      button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
 
       assert FunctionComponentWithAttrs.__components__() == %{
                func1: %{
@@ -373,10 +378,10 @@ defmodule Phoenix.ComponentTest do
                    }
                  ]
                },
-               with_rest: %{
+               with_global: %{
                  attrs: [
                    %{
-                     line: with_rest_line + 1,
+                     line: with_global_line + 1,
                      name: :id,
                      opts: [default: "container"],
                      required: false,
@@ -385,17 +390,29 @@ defmodule Phoenix.ComponentTest do
                  ],
                  kind: :def
                },
+               button_with_defaults: %{
+                 attrs: [
+                   %{
+                     line: button_with_defaults_line + 1,
+                     name: :rest,
+                     opts: [default: %{class: "primary"}],
+                     required: false,
+                     type: :global
+                   }
+                 ],
+                 kind: :def
+               },
                button: %{
                  attrs: [
                    %{
-                     line: with_rest_line + 4,
+                     line: with_global_line + 4,
                      name: :id,
                      opts: [],
                      required: true,
                      type: :string
                    },
                    %{
-                     line: with_rest_line + 5,
+                     line: with_global_line + 5,
                      name: :rest,
                      opts: [],
                      required: false,
@@ -409,7 +426,7 @@ defmodule Phoenix.ComponentTest do
 
     test "stores component calls" do
       render_line = FunctionComponentWithAttrs.render_line()
-      with_rest_line = FunctionComponentWithAttrs.with_rest_line() + 3
+      with_global_line = FunctionComponentWithAttrs.with_global_line() + 3
 
       call_1_line = render_line + 5
       call_3_line = render_line + 9
@@ -420,7 +437,7 @@ defmodule Phoenix.ComponentTest do
                  attrs: %{id: {_, _, :expr}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
-                 line: ^with_rest_line,
+                 line: ^with_global_line,
                  root: false
                },
                %{
@@ -627,9 +644,32 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if global provides :required" do
+      msg = ~r/global attributes do not support the :required option/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.GlobalOpts do
+          use Elixir.Phoenix.Component
+
+          attr :rest, :global, required: true
+          def func(assigns), do: ~H[<%= @rest %>]
+        end
+      end
+    end
+
     test "merges globals" do
-      assert render(FunctionComponentWithAttrs, :with_rest, %{}) ==
+      assert render(FunctionComponentWithAttrs, :with_global, %{}) ==
                "<button id=\"container\" aria-hidden=\"true\" class=\"btn\"></button>"
+    end
+
+    test "merges globals with defaults" do
+      assigns = %{id: "btn", style: "display: none;"}
+
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
+               "<button class=\"primary\" id=\"btn\" style=\"display: none;\"></button>"
+
+      assert render(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
+               "<button class=\"hidden\"></button>"
     end
 
     defp lookup(_key \\ :one)

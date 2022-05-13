@@ -513,14 +513,20 @@ defmodule Phoenix.Component do
 
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
-    unless is_atom(name) do
-      compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
-    end
+    cond do
+      not is_atom(name) ->
+        compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
 
-    unless is_list(opts) do
-      compile_error!(line, file, """
-      expected attr/3 to receive keyword list of options, but got #{inspect(opts)}"\
-      """)
+      not is_list(opts) ->
+        compile_error!(line, file, """
+        expected attr/3 to receive keyword list of options, but got #{inspect(opts)}\
+        """)
+
+      type == :global and Keyword.has_key?(opts, :required) ->
+        compile_error!(line, file, "global attributes do not support the :required option")
+
+      true ->
+        :ok
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
@@ -690,7 +696,11 @@ defmodule Phoenix.Component do
             {name, Macro.escape(opts[:default])}
           end
 
-        global_name = Enum.find_value(attrs, fn attr -> attr.type == :global && attr.name end)
+        {global_name, global_default} =
+          case Enum.find(attrs, fn attr -> attr.type == :global end) do
+            %{name: name, opts: opts} -> {name, Macro.escape(Keyword.get(opts, :default, %{}))}
+            nil -> {nil, nil}
+          end
 
         known_keys =
           for(attr <- attrs, do: attr.name) ++ Phoenix.LiveView.Helpers.__reserved_assigns__()
@@ -698,7 +708,8 @@ defmodule Phoenix.Component do
         def_body =
           if global_name do
             quote do
-              {assgins, globals} = Map.split(assigns, unquote(known_keys))
+              {assgins, caller_globals} = Map.split(assigns, unquote(known_keys))
+              globals = Map.merge(unquote(global_default), caller_globals)
               merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
               super(Phoenix.LiveView.assign(merged, unquote(global_name), globals))
             end
