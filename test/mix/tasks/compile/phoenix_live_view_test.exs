@@ -120,7 +120,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     end
 
     defmodule TypeAttrs do
-      use Phoenix.Component, globals: ~w(myprefix-)
+      use Phoenix.Component, global_prefixes: ~w(myprefix-)
 
       attr :boolean, :boolean
       attr :string, :string

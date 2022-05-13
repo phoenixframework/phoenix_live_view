@@ -17,6 +17,7 @@ defmodule Phoenix.ComponentTest do
 
   test "__global__?" do
     assert Phoenix.Component.__global__?("id")
+    refute Phoenix.Component.__global__?("idnope")
     refute Phoenix.Component.__global__?("not-global")
 
     # prefixes

@@ -295,18 +295,21 @@ defmodule Phoenix.Component do
   [here](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
 
   Custom attribute prefixes can be provided by the caller module with
-  the `:globals` option to `use Phoenix.Component`. For example, the
+  the `:global_prefixes` option to `use Phoenix.Component`. For example, the
   following would allow Alpine JS annotations, such as `x-on:click`,
   `x-data`, etc:
 
-      use Phoenix.Component, globals: ~w(x-)
+      use Phoenix.Component, global_prefixes: ~w(x-)
   '''
 
   @global_prefixes ~w(
     phx-
+    aria-
+    data-
+  )
+  @globals ~w(
     xml:lang
     xml:base
-    aria-
     onabort
     onautocomplete
     onautocompleteerror
@@ -375,7 +378,6 @@ defmodule Phoenix.Component do
     class
     contenteditable
     contextmenu
-    data-
     dir
     draggable
     enterkeyhint
@@ -413,6 +415,10 @@ defmodule Phoenix.Component do
     def __global__?(unquote(prefix) <> _), do: true
   end
 
+  for name <- @globals do
+    def __global__?(unquote(name)), do: true
+  end
+
   def __global__?(_), do: false
 
   @doc false
@@ -424,7 +430,7 @@ defmodule Phoenix.Component do
       import Phoenix.LiveView.Helpers
       unquote(__MODULE__).__setup__(__MODULE__)
       @doc false
-      for prefix <- unquote(opts[:globals] || []) do
+      for prefix <- unquote(opts[:global_prefixes] || []) do
         @phoenix_global_prefix prefix
         def __global__?(@phoenix_global_prefix <> _), do: true
       end
@@ -436,6 +442,7 @@ defmodule Phoenix.Component do
   @doc false
   def __prepare_assigns__(assigns, defaults, known_keys, global_name) do
     merged = Map.merge(defaults, assigns)
+
     if global_name do
       globals = Phoenix.LiveView.Helpers.assigns_to_attributes(assigns, known_keys)
       Phoenix.LiveView.assign(merged, global_name, Enum.into(globals, %{}))
