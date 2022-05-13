@@ -9,9 +9,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule RequiredAttrs do
       use Phoenix.Component
 
-      attr(:name, :any, required: true)
-      attr(:phone, :any)
-      attr(:email, :any, required: true)
+      attr :name, :any, required: true
+      attr :phone, :any
+      attr :email, :any, required: true
 
       def func(assigns), do: ~H[]
 
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule RequiredAttrsWithDynamic do
       use Phoenix.Component
 
-      attr(:name, :any, required: true)
+      attr :name, :any, required: true
 
       def func(assigns), do: ~H[]
 
@@ -76,7 +76,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule UndefinedAttrs do
       use Phoenix.Component
 
-      attr(:class, :any)
+      attr :class, :any
       def func(assigns), do: ~H[]
 
       def line, do: __ENV__.line + 4
@@ -176,13 +176,14 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  position: line + 5,
                  severity: :warning
                },
-              %Mix.Task.Compiler.Diagnostic{
-                compiler_name: "phoenix_live_view",
-                file: __ENV__.file,
-                message: "global attribute \"rest\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1 may not be provided directly",
-                position: line + 6,
-                severity: :warning
-              },
+               %Mix.Task.Compiler.Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 file: __ENV__.file,
+                 message:
+                   "global attribute \"rest\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1 may not be provided directly",
+                 position: line + 6,
+                 severity: :warning
+               },
                %Mix.Task.Compiler.Diagnostic{
                  compiler_name: "phoenix_live_view",
                  details: nil,

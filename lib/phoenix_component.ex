@@ -444,6 +444,13 @@ defmodule Phoenix.Component do
   def __setup__(module, opts) do
     {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
 
+    for prefix <- prefixes do
+      unless String.ends_with?(prefix, "-") do
+        raise ArgumentError,
+              "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
+      end
+    end
+
     if invalid_opts != [] do
       raise ArgumentError, """
       invalid options passed to #{inspect(__MODULE__)}.
