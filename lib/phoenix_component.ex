@@ -438,7 +438,7 @@ defmodule Phoenix.Component do
     merged = Map.merge(defaults, assigns)
     if global_name do
       globals = Phoenix.LiveView.Helpers.assigns_to_attributes(assigns, known_keys)
-      Phoenix.LiveView.assign(merged, global_name, globals)
+      Phoenix.LiveView.assign(merged, global_name, Enum.into(globals, %{}))
     else
       merged
     end
