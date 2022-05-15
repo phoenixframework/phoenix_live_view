@@ -5,9 +5,6 @@ defmodule Phoenix.LiveView.Logger do
 
   require Logger
 
-  # TODO: need to determine log level from socket, is that possible?
-  @level :info
-
   @doc false
   def install do
     handlers = %{
@@ -24,12 +21,17 @@ defmodule Phoenix.LiveView.Logger do
     end
   end
 
+  defp log_level(socket) do
+    socket.view.__live__()[:log_level]
+  end
+
   @doc false
   def live_view_mount_stop(_event, measurement, metadata, _config) do
     %{socket: socket, params: params, session: session, uri: _uri} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket)
 
-    Logger.log(@level, fn ->
+    Logger.log(level, fn ->
       [
         "MOUNTED ",
         inspect(socket.view),
@@ -51,8 +53,9 @@ defmodule Phoenix.LiveView.Logger do
   def live_view_handle_params_stop(_event, measurement, metadata, _config) do
     %{socket: socket, params: params, uri: _uri} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket)
 
-    Logger.log(@level, fn ->
+    Logger.log(level, fn ->
       [
         "HANDLED PARAMS in ",
         duration(duration),
@@ -72,8 +75,9 @@ defmodule Phoenix.LiveView.Logger do
   def live_view_handle_event_stop(_event, measurement, metadata, _config) do
     %{socket: socket, event: event, params: params} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket)
 
-    Logger.log(@level, fn ->
+    Logger.log(level, fn ->
       [
         "HANDLED EVENT in ",
         duration(duration),
@@ -96,8 +100,9 @@ defmodule Phoenix.LiveView.Logger do
   def live_view_handle_info_stop(_event, measurement, metadata, _config) do
     %{socket: socket, message: message} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket)
 
-    Logger.log(@level, fn ->
+    Logger.log(level, fn ->
       [
         "HANDLED INFO in ",
         duration(duration),
@@ -106,7 +111,7 @@ defmodule Phoenix.LiveView.Logger do
         inspect(socket.view),
         ?\n,
         "  Message: ",
-        inspect(message),
+        inspect(message)
       ]
     end)
 
@@ -117,8 +122,9 @@ defmodule Phoenix.LiveView.Logger do
   def live_component_handle_event_stop(_event, measurement, metadata, _config) do
     %{socket: socket, component: component, event: event, params: params} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket)
 
-    Logger.log(@level, fn ->
+    Logger.log(level, fn ->
       [
         "HANDLED EVENT in ",
         duration(duration),

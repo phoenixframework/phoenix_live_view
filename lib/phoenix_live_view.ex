@@ -508,6 +508,19 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
+    log_level =
+      case opts[:log_level] do
+        level when is_atom(level) ->
+          level
+
+        nil ->
+          nil
+
+        other ->
+          raise ArgumentError,
+                ":log_level expects an atom, got: #{inspect(other)}"
+      end
+
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
     lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
 
@@ -523,7 +536,8 @@ defmodule Phoenix.LiveView do
       kind: :view,
       module: env.module,
       layout: layout,
-      lifecycle: lifecycle
+      lifecycle: lifecycle,
+      log_level: log_level
     }
 
     quote do
