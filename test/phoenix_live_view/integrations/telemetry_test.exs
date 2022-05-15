@@ -161,6 +161,49 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.event == "crash"
       assert metadata.params == %{"foo" => "bar"}
     end
+
+    test "receiving a message with a successful handle_info callback emits telemetry metrics", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_info])
+
+      {:ok, view, _} = live(conn, "/clock")
+
+      send(view.pid, :snooze)
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.message == :snooze
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.message == :snooze
+    end
+
+    test "receiving a message with a crashing handle_info callback emits telemetry metrics", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      attach_telemetry([:phoenix, :live_view, :handle_info])
+
+      {:ok, view, _} = live(conn, "/errors")
+
+      send(view.pid, :crash)
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.message == :crash
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_info, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.kind == :error
+      assert %RuntimeError{} = metadata.reason
+      assert metadata.message == :crash
+    end
   end
 
   describe "live components" do
