@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("patch", text, opts)
   end
 
-  @doc deprecated: "Use link/1 instead"
+  @doc deprecated: "Use <.link> instead"
   # TODO @deprecate in 0.19, remove in 0.20
   def live_redirect(opts) when is_list(opts) do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
@@ -967,7 +967,7 @@ defmodule Phoenix.LiveView.Helpers do
       <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
   """
   @doc deprecated: "Use <.live_title> instead"
-  # TODO remove in 0.19
+  # TODO deprecate in 0.19, remove in 0.20
   def live_title_tag(title, opts \\ []) do
     title_tag(title, opts[:prefix], opts[:suffix], opts)
   end
