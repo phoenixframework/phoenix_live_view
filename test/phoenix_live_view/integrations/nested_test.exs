@@ -150,7 +150,7 @@ defmodule Phoenix.LiveView.NestedTest do
 
   describe "navigation helpers" do
     @tag session: %{nest: []}
-    test "push_redirect", %{conn: conn} do
+    test "push_navigate", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
 
@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.NestedTest do
         clock_view.pid,
         {:run,
          fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=push")}
+           {:noreply, LiveView.push_navigate(socket, to: "/thermo?redirect=push")}
          end}
       )
 
@@ -177,7 +177,7 @@ defmodule Phoenix.LiveView.NestedTest do
         clock_view.pid,
         {:run,
          fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/some_url")}
+           {:noreply, LiveView.push_navigate(socket, to: "/some_url")}
          end}
       )
 
@@ -187,7 +187,7 @@ defmodule Phoenix.LiveView.NestedTest do
         clock_view.pid,
         {:run,
          fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/another_url")}
+           {:noreply, LiveView.push_navigate(socket, to: "/another_url")}
          end}
       )
 
@@ -201,7 +201,7 @@ defmodule Phoenix.LiveView.NestedTest do
     end
 
     @tag session: %{nest: []}
-    test "push_redirect with destination that can vary", %{conn: conn} do
+    test "push_navigate with destination that can vary", %{conn: conn} do
       {:ok, thermo_view, html} = live(conn, "/thermo")
       assert html =~ "Redirect: none"
 
@@ -213,7 +213,7 @@ defmodule Phoenix.LiveView.NestedTest do
         clock_view.pid,
         {:run,
          fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/thermo?redirect=#{id}")}
+           {:noreply, LiveView.push_navigate(socket, to: "/thermo?redirect=#{id}")}
          end}
       )
 
@@ -310,7 +310,7 @@ defmodule Phoenix.LiveView.NestedTest do
         clock_view.pid,
         {:run,
          fn socket ->
-           {:noreply, LiveView.push_redirect(socket, to: "/clock?sticky=true&redirected=true")}
+           {:noreply, LiveView.push_navigate(socket, to: "/clock?sticky=true&redirected=true")}
          end}
       )
 

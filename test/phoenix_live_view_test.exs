@@ -414,17 +414,17 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
-  describe "push_redirect/2" do
+  describe "push_navigate/2" do
     test "requires local path on to" do
-      assert_raise ArgumentError, ~r"the :to option in push_redirect/2 expects a path", fn ->
-        push_redirect(@socket, to: "http://foo.com")
+      assert_raise ArgumentError, ~r"the :to option in push_navigate/2 expects a path", fn ->
+        push_navigate(@socket, to: "http://foo.com")
       end
 
-      assert_raise ArgumentError, ~r"the :to option in push_redirect/2 expects a path", fn ->
-        push_redirect(@socket, to: "//foo.com")
+      assert_raise ArgumentError, ~r"the :to option in push_navigate/2 expects a path", fn ->
+        push_navigate(@socket, to: "//foo.com")
       end
 
-      assert push_redirect(@socket, to: "/counter/123").redirected ==
+      assert push_navigate(@socket, to: "/counter/123").redirected ==
                {:live, :redirect, %{kind: :push, to: "/counter/123"}}
     end
   end

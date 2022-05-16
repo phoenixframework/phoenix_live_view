@@ -1257,7 +1257,7 @@ defmodule Phoenix.LiveView do
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
-  For live redirects to another LiveView, use `push_redirect/2`.
+  For live navigation to another LiveView, use `push_navigate/2`.
 
   ## Options
 
@@ -1293,10 +1293,37 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
+      {:noreply, push_navigate(socket, to: "/")}
+      {:noreply, push_navigate(socket, to: "/", replace: true)}
+
+  """
+  def push_navigate(%Socket{} = socket, opts) do
+    opts = push_opts!(opts, "push_navigate/2")
+    put_redirect(socket, {:live, :redirect, opts})
+  end
+
+  @doc """
+  Annotates the socket for navigation to another LiveView.
+
+  The current LiveView will be shutdown and a new one will be mounted
+  in its place, without reloading the whole page. This can
+  also be used to remount the same LiveView, in case you want to start
+  fresh. If you want to navigate to the same LiveView without remounting
+  it, use `push_patch/2` instead.
+
+  ## Options
+
+    * `:to` - the required path to link to. It must always be a local path
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
       {:noreply, push_redirect(socket, to: "/")}
       {:noreply, push_redirect(socket, to: "/", replace: true)}
 
   """
+  # TODO remove in 0.19
   def push_redirect(%Socket{} = socket, opts) do
     opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})

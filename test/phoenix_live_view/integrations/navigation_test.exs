@@ -18,29 +18,29 @@ defmodule Phoenix.LiveView.NavigationTest do
 
   # Nested used of navigation helpers go to nested_test.exs
 
-  describe "push_redirect" do
+  describe "push_navigate" do
     test "when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
+      conn = get(conn, "/redir?during=disconnected&kind=push_navigate&to=/thermo")
       assert redirected_to(conn) == "/thermo"
 
       {:error, {:live_redirect, %{to: "/thermo"}}} =
-        live(conn, "/redir?during=disconnected&kind=push_redirect&to=/thermo")
+        live(conn, "/redir?during=disconnected&kind=push_navigate&to=/thermo")
     end
 
     test "when connected", %{conn: conn} do
-      conn = get(conn, "/redir?during=connected&kind=push_redirect&to=/thermo")
+      conn = get(conn, "/redir?during=connected&kind=push_navigate&to=/thermo")
       assert html_response(conn, 200) =~ "parent_content"
       assert {:error, {:live_redirect, %{kind: :push, to: "/thermo"}}} = live(conn)
     end
 
     test "child when disconnected", %{conn: conn} do
-      conn = get(conn, "/redir?during=disconnected&kind=push_redirect&child_to=/thermo")
+      conn = get(conn, "/redir?during=disconnected&kind=push_navigate&child_to=/thermo")
       assert redirected_to(conn) == "/thermo"
     end
 
     test "child when connected", %{conn: conn} do
       conn =
-        get(conn, "/redir?during=connected&kind=push_redirect&child_to=/thermo?from_child=true")
+        get(conn, "/redir?during=connected&kind=push_navigate&child_to=/thermo?from_child=true")
 
       assert html_response(conn, 200) =~ "child_content"
       assert {:error, {:live_redirect, %{to: "/thermo?from_child=true"}}} = live(conn)

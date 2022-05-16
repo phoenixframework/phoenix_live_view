@@ -341,12 +341,12 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   end
 
   describe "redirects" do
-    test "push_redirect", %{conn: conn} do
+    test "push_navigate", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
       assert {:error, {:live_redirect, %{to: "/components?redirect=push"}}} =
-               view |> element("#chris") |> render_click(%{"op" => "push_redirect"})
+               view |> element("#chris") |> render_click(%{"op" => "push_navigate"})
 
       assert_redirect(view, "/components?redirect=push")
     end

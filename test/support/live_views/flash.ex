@@ -30,8 +30,8 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
   end
 
-  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
-    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  def handle_event("push_navigate", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_navigate(to: to)}
   end
 
   def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do
@@ -60,8 +60,8 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
   end
 
-  def handle_event("click", %{"type" => "push_redirect", "to" => to, "info" => info}, socket) do
-    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  def handle_event("click", %{"type" => "push_navigate", "to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_navigate(to: to)}
   end
 
   def handle_event("click", %{"type" => "push_patch", "to" => to, "info" => info}, socket) do
@@ -104,8 +104,8 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
     {:ok, socket |> redirect(to: "/flash-root") |> put_flash(:info, message)}
   end
 
-  def mount(%{"mount_push_redirect" => message}, _uri, socket) do
-    {:ok, socket |> push_redirect(to: "/flash-root") |> put_flash(:info, message)}
+  def mount(%{"mount_push_navigate" => message}, _uri, socket) do
+    {:ok, socket |> push_navigate(to: "/flash-root") |> put_flash(:info, message)}
   end
 
   def mount(_params, _session, socket), do: {:ok, socket}
@@ -118,8 +118,8 @@ defmodule Phoenix.LiveViewTest.FlashChildLive do
     {:noreply, socket |> put_flash(:info, info) |> redirect(to: to)}
   end
 
-  def handle_event("push_redirect", %{"to" => to, "info" => info}, socket) do
-    {:noreply, socket |> put_flash(:info, info) |> push_redirect(to: to)}
+  def handle_event("push_navigate", %{"to" => to, "info" => info}, socket) do
+    {:noreply, socket |> put_flash(:info, info) |> push_navigate(to: to)}
   end
 
   def handle_event("push_patch", %{"to" => to, "info" => info}, socket) do

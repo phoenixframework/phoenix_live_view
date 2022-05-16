@@ -280,7 +280,7 @@ defmodule Phoenix.LiveView.Utils do
     attempted to live patch while mounting.
 
     a LiveView cannot be mounted while issuing a live patch to the client. \
-    Use push_redirect/2 or redirect/2 instead if you wish to mount and redirect.
+    Use push_navigate/2 or redirect/2 instead if you wish to mount and redirect.
     """
   end
 

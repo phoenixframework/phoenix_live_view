@@ -2,15 +2,12 @@ defmodule Phoenix.LiveView.Helpers do
   @moduledoc """
   A collection of helpers to be imported into your views.
   """
+  use Phoenix.Component
 
   # TODO: Convert all functions with the `live_` prefix to function components?
 
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static}
-
-
-  @doc false
-  def __reserved_assigns__, do: [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket]
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -272,11 +269,12 @@ defmodule Phoenix.LiveView.Helpers do
   do not belong in the markup, or are already handled explicitly by the component.
   '''
   def assigns_to_attributes(assigns, exclude \\ []) do
-    excluded_keys = __reserved_assigns__() ++ exclude
+    excluded_keys = Phoenix.Component.__reserved_assigns__() ++ exclude
     for {key, val} <- assigns, key not in excluded_keys, into: [], do: {key, val}
   end
 
   @doc false
+  # TODO remove in 0.19
   def live_patch(opts) when is_list(opts) do
     live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
@@ -328,6 +326,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
+  # TODO remove in 0.19
   def live_redirect(opts) when is_list(opts) do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
@@ -1194,6 +1193,61 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
+
+  @doc """
+  Generates a link for live and href navigation.
+
+  ## Attributes
+    * `:navigate` - navigates to the new location via a live redirect
+    * `:patch` - navigates to the new location via a live patch
+    * `:replace` - when using `:patch`, whether to replace the pushState history.
+      Default false.
+    * `:href` - uses traditional browser navigation to the new location
+
+  Arbitrary global attributes, such as `class`, `id`, etc, will be applied to the
+  generated `a` tag.
+  """
+  attr :navigate, :string
+  attr :patch, :string
+  attr :href, :string, default: nil
+  attr :replace, :string, default: false
+  attr :rest, :global
+
+  def link(%{navigate: _to} = assigns) do
+    ~H"""
+    <a
+      href={@navigate}
+      data-phx-link="redirect"
+      data-phx-link-state="push"
+      data-phx-link-state={if @replace, do: "replace", else: "push"}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </a>
+    """
+  end
+
+  def link(%{patch: _to} = assigns) do
+    ~H"""
+    <a
+      href={@patch}
+      data-phx-link="patch"
+      data-phx-link-state={if @replace, do: "replace", else: "push"}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </a>
+    """
+  end
+
+  def link(%{} = assigns) do
+    ~H"""
+    <a href={@href || "#"} {@rest}>
+      <%= render_slot(@inner_block) %>
+    </a>
+    """
+  end
+
 
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
