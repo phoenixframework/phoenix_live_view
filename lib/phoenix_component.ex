@@ -428,25 +428,26 @@ defmodule Phoenix.Component do
 
   @doc false
   defmacro __using__(opts \\ []) do
-    helpers =
+    conditional =
       if __CALLER__.module != Phoenix.LiveView.Helpers do
         quote do: import(Phoenix.LiveView.Helpers)
       end
 
-    quote do
-      import Kernel, except: [def: 2, defp: 2]
-      import Phoenix.Component
-      import Phoenix.LiveView
-      unquote(helpers)
-      global_prefixes = Phoenix.Component.__setup__(__MODULE__, unquote(opts))
-      @doc false
-      for prefix <- global_prefixes do
-        @phoenix_global_prefix prefix
-        def __global__?(@phoenix_global_prefix <> _), do: true
+    imports =
+      quote bind_quoted: [opts: opts] do
+        import Kernel, except: [def: 2, defp: 2]
+        import Phoenix.Component
+        import Phoenix.LiveView
+
+        @doc false
+        for prefix <- Phoenix.Component.__setup__(__MODULE__, opts) do
+          def __global__?(unquote(prefix) <> _), do: true
+        end
+
+        def __global__?(_), do: false
       end
 
-      def __global__?(_), do: false
-    end
+    [conditional, imports]
   end
 
   @doc false

@@ -274,7 +274,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc deprecated: "Use link/1 instead"
-  # TODO remove in 0.19
+  # TODO @deprecate in 0.19, remove in 0.20
   def live_patch(opts) when is_list(opts) do
     live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
@@ -300,7 +300,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc deprecated: "Use link/1 instead"
-  # TODO remove in 0.19
+  # TODO @deprecate in 0.19, remove in 0.20
   def live_redirect(opts) when is_list(opts) do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
@@ -1150,36 +1150,43 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Generates a link for live and href navigation.
 
+  There are three possible types of links, in the order of efficiency:
+
+    * `:href` - uses traditional browser navigation to the new location.
+      This means the whole page is reloaded on the browser.
+
+    * `:navigate` - navigates from a LiveView to a new LiveView. The browser
+      page is kept, but a new LiveView process is mounted and its content
+      on the page reloaded. It is only possible to navigate between LiveViews
+      declared under the same router `Phoenix.LiveView.Router.live_session/3`.
+      Otherwise a full browser redirect is used.
+
+    * `:patch` - patches the current LiveView. The `handle_params` callback
+      of the current LiveView will be invoked and the minimum content will be
+      sent over there wire, as any other LiveView diff.
+
   ## Attributes
-    * `:navigate` - navigates to the new location via a live redirect for LiveViews
-      within the same live session.
-    * `:patch` - navigates to the new location via a live patch
-    * `:replace` - when using `:patch`, whether to replace the pushState history.
-      Default false.
-    * `:href` - uses traditional browser navigation to the new location
+
+     * `:replace` - when using `:patch` or `:navigate`, whether to replace the
+       browser's pushState history. Default false.
 
   Arbitrary global attributes, such as `class`, `id`, etc, will be applied to the
   generated `a` tag.
 
-  For `:navigate`, the current LiveView will be shut down and a new one will be mounted
-  in its place, without reloading the whole page. This can
-  also be used to remount the same LiveView, in case you want to start
-  fresh. If you want to navigate to the same LiveView without remounting
-  it, use `:patch` instead.
-
-  *Note*: The same navigations are only supported between two LiveViews defined
-  under the same live session. See `Phoenix.LiveView.Router.live_session/3` for
-  more details.
-
   ## Examples
 
+      <.link href="/">Regular anchor link</.link>
+
       <.link navigate={Routes.page_path(@socket, :index)} class="underline">home</.link>
+
       <.link navigate={Routes.live_path(@socket, MyLive, dir: :asc)} replace={false}>
         Sort By Price
       </.link>
+
       <.link patch={Routes.page_path(@socket, :index, :details)}>view details</.link>
-      <.link href="/">Regular anchor link</.link>
+
   """
+
   attr :navigate, :string
   attr :patch, :string
   attr :href, :string, default: nil
