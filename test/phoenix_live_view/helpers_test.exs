@@ -2,7 +2,6 @@ defmodule Phoenix.LiveView.HelpersTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveView.Helpers
-  import Phoenix.HTML
   import Phoenix.HTML.Form
 
   defp render(template) do
@@ -55,31 +54,29 @@ defmodule Phoenix.LiveView.HelpersTest do
     end
   end
 
-  describe "live_title_tag/2" do
+  describe "live_title/2" do
     test "prefix only" do
-      assert safe_to_string(live_title_tag("My Title", prefix: "MyApp – ")) ==
+      assigns = %{}
+      assert render(~H|<.live_title prefix="MyApp – ">My Title</.live_title>|) ==
                ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
     end
 
     test "suffix only" do
-      assert safe_to_string(live_title_tag("My Title", suffix: " – MyApp")) ==
-               ~s|<title data-suffix=" – MyApp">My Title – MyApp</title>|
+      assigns = %{}
+      assert render(~H|<.live_title suffix=" – MyApp">My Title</.live_title>|) ==
+               ~s|<title data-suffix=" – MyApp">My Title – MyApp</title>|
     end
 
     test "prefix and suffix" do
-      assert safe_to_string(live_title_tag("My Title", prefix: "Welcome: ", suffix: " – MyApp")) ==
+      assigns = %{}
+      assert render(~H|<.live_title prefix="Welcome: " suffix=" – MyApp">My Title</.live_title>|) ==
                ~s|<title data-prefix="Welcome: " data-suffix=" – MyApp">Welcome: My Title – MyApp</title>|
     end
 
     test "without prefix or suffix" do
-      assert safe_to_string(live_title_tag("My Title")) ==
+      assigns = %{}
+      assert render(~H|<.live_title>My Title</.live_title>|) ==
                ~s|<title>My Title</title>|
-    end
-
-    test "bad options" do
-      assert_raise ArgumentError, ~r/expects a :prefix and\/or :suffix/, fn ->
-        live_title_tag("bad", bad: :bad)
-      end
     end
   end
 

@@ -279,7 +279,7 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc deprecated: "Use link/1 instead"
+  @doc deprecated: "Use <.link> instead"
   def live_patch(text, opts)
 
   def live_patch(%Socket{}, _) do
@@ -305,7 +305,7 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc deprecated: "Use link/1 instead"
+  @doc deprecated: "Use <.link> instead"
   def live_redirect(text, opts)
 
   def live_redirect(%Socket{}, _) do
@@ -948,6 +948,15 @@ defmodule Phoenix.LiveView.Helpers do
     )
   end
 
+  attr :prefix, :string, default: false
+  attr :suffix, :string, default: false
+
+  def live_title(assigns) do
+    ~H"""
+    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix || "" %><%= render_slot(@inner_block) %><%= @suffix || "" %></title>
+    """
+  end
+
   @doc """
   Renders a title tag with automatic prefix/suffix on `@page_title` updates.
 
@@ -957,6 +966,8 @@ defmodule Phoenix.LiveView.Helpers do
 
       <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
   """
+  @doc deprecated: "Use <.live_title> instead"
+  # TODO remove in 0.19
   def live_title_tag(title, opts \\ []) do
     title_tag(title, opts[:prefix], opts[:suffix], opts)
   end
