@@ -395,6 +395,7 @@ defmodule Phoenix.Component do
     lang
     nonce
     part
+    role
     slot
     spellcheck
     style
