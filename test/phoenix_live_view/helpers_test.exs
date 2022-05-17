@@ -100,6 +100,18 @@ defmodule Phoenix.LiveView.HelpersTest do
       end
     end
 
+    test "does not raise when missing method" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.form for={:myform} action="/">
+        </.form>
+        """)
+
+        assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
+    end
+
     test "generates form with no options" do
       assigns = %{}
 
