@@ -1069,10 +1069,10 @@ defmodule Phoenix.LiveView.Helpers do
         <%= submit "Save" %>
       </.form>
 
-  However, if you don't have a data layer, it may be more straight-forward
-  to drop the `form` component altogether and simply rely on HTML:
+  In those cases, it may be more straight-forward to drop `:let` altogether
+  and simply rely on HTML to generate inputs:
 
-      <form multipart phx-change="change_user" phx-submit="save_user">
+      <.form for={:form} multipart phx-change="change_user" phx-submit="save_user">
         <input type="text" name="user[name]" value={@user_name}>
         <input type="submit" name="Save">
       </form>
