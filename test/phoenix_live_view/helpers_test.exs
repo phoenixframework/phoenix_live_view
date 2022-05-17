@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView.HelpersTest do
         </.form>
         """)
 
-        assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
+      assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
     end
 
     test "generates form with no options" do
