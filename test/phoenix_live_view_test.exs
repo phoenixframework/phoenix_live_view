@@ -112,7 +112,7 @@ defmodule Phoenix.LiveViewUnitTest do
                [{"tracestate", "one"}, {"traceparent", "two"}]
 
       assert get_connect_info(socket, :peer_data) ==
-               %{address: {127, 0, 0, 1}, port: 111317, ssl_cert: nil}
+               %{address: {127, 0, 0, 1}, port: 111_317, ssl_cert: nil}
 
       assert get_connect_info(socket, :uri) ==
                %URI{host: "www.example.com", path: "/", port: 80, query: "", scheme: "http"}
@@ -339,8 +339,9 @@ defmodule Phoenix.LiveViewUnitTest do
     end
 
     test "has access to new assigns" do
-      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
-      |> assign_new(:and_another, fn %{another: another} -> another end)
+      assigns =
+        assign_new(@assigns_changes, :another, fn -> "changed" end)
+        |> assign_new(:and_another, fn %{another: another} -> another end)
 
       assert assigns.and_another == "changed"
       assert changed?(assigns, :another)
@@ -411,6 +412,19 @@ defmodule Phoenix.LiveViewUnitTest do
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
                {:redirect, %{external: "http://foo.com/bar"}}
+    end
+
+    test "disallows insecure external paths" do
+      msg =
+        ~r/expected :external option in redirect\/2 to be valid URL, got: {:javascript, "alert\('xss'\)"}/
+
+      assert_raise ArgumentError, msg, fn ->
+        redirect(@socket, external: {:javascript, "alert('xss')"})
+      end
+
+      assert_raise ArgumentError, ~r/unsupported scheme given to redirect\/2/, fn ->
+        redirect(@socket, external: "javascript:alert('xss');")
+      end
     end
   end
 

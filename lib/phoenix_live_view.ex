@@ -1243,7 +1243,15 @@ defmodule Phoenix.LiveView do
   end
 
   def redirect(%Socket{} = socket, external: url) do
-    put_redirect(socket, {:redirect, %{external: url}})
+    case url do
+      url when is_binary(url) ->
+        external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
+        put_redirect(socket, {:redirect, %{external: external_url}})
+
+      other ->
+        raise ArgumentError,
+              "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
+    end
   end
 
   def redirect(%Socket{}, _) do

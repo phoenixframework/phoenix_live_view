@@ -400,6 +400,7 @@ defmodule Phoenix.Component do
     spellcheck
     style
     tabindex
+    target
     title
     translate
   )

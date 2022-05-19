@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.Helpers do
   # TODO: Convert all functions with the `live_` prefix to function components?
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.{Component, Socket, Static}
+  alias Phoenix.LiveView.{Component, Socket, Static, Utils}
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -1095,12 +1095,13 @@ defmodule Phoenix.LiveView.Helpers do
   attr :method, :string
   attr :csrf_token, :boolean
   attr :errors, :list
+  attr :rest, :global
 
   def form(assigns) do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-    form_options = assigns_to_attributes(assigns, [:action, :for])
+    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
@@ -1178,6 +1179,14 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Attributes
 
+    * `:method` - the method to use with the link. In case the method is not
+      `:get`, the link is generated inside the form which sets the proper
+      information. In order to submit the form, JavaScript must be enabled.
+
+    * `:csrf_token` - a custom token to use for links with a method
+      other than `:get`.
+
+
      * `:replace` - when using `:patch` or `:navigate`, whether to replace the
        browser's pushState history. Default false.
 
@@ -1196,12 +1205,78 @@ defmodule Phoenix.LiveView.Helpers do
 
       <.link patch={Routes.page_path(@socket, :index, :details)}>view details</.link>
 
+      <.link href={URI.parse("https://elixir-lang.org")}>hello</.link>
+
+      <.link href="/the_world" method={:delete} data-confirm="Really?">delete</.link>
+
+  ## JavaScript dependency
+
+  In order to support links where `:method` is not `:get` or use the above
+  data attributes, `Phoenix.HTML` relies on JavaScript. You can load
+  `priv/static/phoenix_html.js` into your build tool.
+
+  ### Data attributes
+
+  Data attributes are added as a keyword list passed to the `data` key.
+  The following data attributes are supported:
+
+    * `data-confirm` - shows a confirmation prompt before
+      generating and submitting the form when `:method`
+      is not `:get`.
+
+  ### Overriding the default confirm behaviour
+
+  `phoenix_html.js` does trigger a custom event `phoenix.link.click` on the
+  clicked DOM element when a click happened. This allows you to intercept the
+  event on it's way bubbling up to `window` and do your own custom logic to
+  enhance or replace how the `data-confirm` attribute is handled.
+  You could for example replace the browsers `confirm()` behavior with a
+  custom javascript implementation:
+
+  ```javascript
+  // listen on document.body, so it's executed before the default of
+  // phoenix_html, which is listening on the window object
+  document.body.addEventListener('phoenix.link.click', function (e) {
+    // Prevent default implementation
+    e.stopPropagation();
+    // Introduce alternative implementation
+    var message = e.target.getAttribute("data-confirm");
+    if(!message){ return true; }
+    vex.dialog.confirm({
+      message: message,
+      callback: function (value) {
+        if (value == false) { e.preventDefault(); }
+      }
+    })
+  }, false);
+  ```
+
+  Or you could attach your own custom behavior.
+
+  ```javascript
+  window.addEventListener('phoenix.link.click', function (e) {
+    // Introduce custom behaviour
+    var message = e.target.getAttribute("data-prompt");
+    var answer = e.target.getAttribute("data-prompt-answer");
+    if(message && answer && (answer != window.prompt(message))) {
+      e.preventDefault();
+    }
+  }, false);
+  ```
+
+  The latter could also be bound to any `click` event, but this way you can be
+  sure your custom code is only executed when the code of `phoenix_html.js` is run.
+
+  ## CSRF Protection
+  By default, CSRF tokens are generated through `Plug.CSRFProtection`.
   """
 
   attr :navigate, :string
   attr :patch, :string
-  attr :href, :string, default: nil
+  attr :href, :any
   attr :replace, :string, default: false
+  attr :method, :atom, default: false
+  attr :csrf_token, :string
   attr :rest, :global
 
   def link(%{navigate: _to} = assigns) do
@@ -1227,9 +1302,33 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
+  def link(%{href: href} = assigns) when href != "#" do
+    if is_nil(href), do: raise(ArgumentError, "expected non-nil value for :href in <.link>")
+
+    assigns =
+      case Utils.valid_destination!(href, "<.link>") do
+        href when is_binary(href) ->
+          assigns
+          |> assign(:href, href)
+          |> assign_new(:csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(href) end)
+
+        href ->
+          assign(assigns, :href, href)
+      end
+
+    ~H"""
+    <a
+      href={@href || "#"}
+      data-method={@method != :get && @method}
+      data-csrf={@method && @method != :get && @csrf_token}
+      {@rest}
+    ><%= render_slot(@inner_block) %></a>
+    """
+  end
+
   def link(%{} = assigns) do
     ~H"""
-    <a href={@href || "#"} {@rest}><%= render_slot(@inner_block) %></a>
+    <a href="#" {@rest}><%= render_slot(@inner_block) %></a>
     """
   end
 

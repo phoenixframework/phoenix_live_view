@@ -23,7 +23,9 @@ defmodule Phoenix.LiveView.HelpersTest do
 
     test "forwards global dom attributes" do
       assigns = %{}
-      dom = render(~H|<.link patch="/" class="btn btn-large" data={[page_number: 2]}>next</.link>|)
+
+      dom =
+        render(~H|<.link patch="/" class="btn btn-large" data={[page_number: 2]}>next</.link>|)
 
       assert dom =~ ~s|class="btn btn-large"|
       assert dom =~ ~s|data-page-number="2"|
@@ -45,7 +47,9 @@ defmodule Phoenix.LiveView.HelpersTest do
 
     test "forwards global dom attributes" do
       assigns = %{}
-      dom = render(~H|<.link navigate="/" class="btn btn-large" data={[page_number: 2]}>text</.link>|)
+
+      dom =
+        render(~H|<.link navigate="/" class="btn btn-large" data={[page_number: 2]}>text</.link>|)
 
       assert dom =~ ~s|class="btn btn-large"|
       assert dom =~ ~s|data-page-number="2"|
@@ -54,27 +58,113 @@ defmodule Phoenix.LiveView.HelpersTest do
     end
   end
 
+  describe "link href" do
+    test "basic usage" do
+      assigns = %{}
+      assert render(~H|<.link href="/">text</.link>|) == ~s|<a href="/">text</a>|
+    end
+
+    test "arbitrary attrs" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/" class="foo">text</.link>|) ==
+               ~s|<a href="/" class=\"foo\">text</a>|
+    end
+
+    test "with no href or # href" do
+      assigns = %{}
+
+      assert render(~H|<.link phx-click="click">text</.link>|) ==
+               ~s|<a href="#" phx-click="click">text</a>|
+
+      assert render(~H|<.link href="#" phx-click="click">text</.link>|) ==
+               ~s|<a href="#" phx-click="click">text</a>|
+    end
+
+    test "with nil href" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/expected non-nil value for :href in <.link>/, fn ->
+        render(~H|<.link href={nil}>text</.link>|)
+      end
+    end
+
+    test "csrf with :get method" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/" method={:get}>text</.link>|) ==
+               ~s|<a href="/">text</a>|
+
+      assert render(~H|<.link href="/" method={:get} csrf_token="123">text</.link>|) ==
+               ~s|<a href="/">text</a>|
+    end
+
+    test "csrf with non-get method" do
+      assigns = %{}
+      csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
+
+      assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
+               "<a href=\"/users\" data-method=\"delete\" data-csrf=\"#{csrf}\">delete</a>"
+    end
+
+    test "csrf with custom token" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/users" method={:post} csrf_token="123">delete</.link>|) ==
+               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+    end
+
+    test "csrf with confirm" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.link href="/users" method={:post} csrf_token="123" data-confirm="are you sure?">delete</.link>|
+             ) ==
+               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-confirm=\"are you sure?\">delete</a>"
+    end
+
+    test "invalid schemes" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/unsupported scheme given to <.link>/, fn ->
+        render(~H|<.link href="javascript:alert('bad')">bad</.link>|) ==
+          "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+      end
+    end
+
+    test "js schemes" do
+      assigns = %{}
+
+      assert render(~H|<.link href={{:javascript, "alert('bad')"}}>js</.link>|) ==
+               "<a href=\"javascript:alert(&#39;bad&#39;)\">js</a>"
+    end
+  end
+
   describe "live_title/2" do
     test "prefix only" do
       assigns = %{}
+
       assert render(~H|<.live_title prefix="MyApp – ">My Title</.live_title>|) ==
                ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
     end
 
     test "suffix only" do
       assigns = %{}
+
       assert render(~H|<.live_title suffix=" – MyApp">My Title</.live_title>|) ==
                ~s|<title data-suffix=" – MyApp">My Title – MyApp</title>|
     end
 
     test "prefix and suffix" do
       assigns = %{}
+
       assert render(~H|<.live_title prefix="Welcome: " suffix=" – MyApp">My Title</.live_title>|) ==
                ~s|<title data-prefix="Welcome: " data-suffix=" – MyApp">Welcome: My Title – MyApp</title>|
     end
 
     test "without prefix or suffix" do
       assigns = %{}
+
       assert render(~H|<.live_title>My Title</.live_title>|) ==
                ~s|<title>My Title</title>|
     end
