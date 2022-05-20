@@ -1332,6 +1332,58 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
+  @doc """
+  Generates a dynamically named HTML tag.
+
+  Raises ArgumentError if the tag name is found to be unsafe HTML.
+
+  ## Attributes
+
+    * `:name` - The required  name of the tag, such as: "div"
+
+  All other attributes are added to the generated tag, ensuring
+  proper HTML escaping.
+
+  ## Examples
+
+      <.dynamic_tag name="input" type="text"/>
+      => "<input type="text"/>
+
+      <.dynamic_tag name="p">content</.dynamic_tag>
+      => "<p>content</p>"
+  """
+  attr :name, :string, required: true
+  attr :rest, :global
+
+  def dynamic_tag(%{name: name, rest: rest} = assigns) do
+    tag_name = to_string(name)
+
+    tag =
+      case Phoenix.HTML.html_escape(tag_name) do
+        {:safe, ^tag_name} ->
+          tag_name
+
+        {:safe, _escaped} ->
+          raise ArgumentError,
+                "expected dynamic_tag name to be safe HTML, got: #{inspect(tag_name)}"
+      end
+
+    assigns =
+      assigns
+      |> assign(:tag, tag)
+      |> assign(:escaped_attrs, Phoenix.HTML.attributes_escape(rest))
+
+    if Map.has_key?(assigns, :inner_block) do
+      ~H"""
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
+      """
+    else
+      ~H"""
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?/, ?>]} %>
+      """
+    end
+  end
+
   defp is_assign?(assign_name, expression) do
     match?({:@, _, [{^assign_name, _, _}]}, expression) or
       match?({^assign_name, _, _}, expression) or

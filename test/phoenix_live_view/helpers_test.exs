@@ -177,6 +177,57 @@ defmodule Phoenix.LiveView.HelpersTest do
     |> Phoenix.LiveViewTest.DOM.parse()
   end
 
+  describe "dynamic_tag/1" do
+    test "ensures HTML safe tag names" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/expected dynamic_tag name to be safe HTML/, fn ->
+        render(~H|<.dynamic_tag name="p><script>alert('nice try');</script>"/>|)
+      end
+    end
+
+    test "escapes attribute values" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.dynamic_tag name="p" class="<script>alert('nice try');</script>"></.dynamic_tag>|
+             ) == ~s|<p class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;"></p>|
+    end
+
+    test "escapes attribute names" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.dynamic_tag name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
+             ) == ~s|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=\"\"></p>|
+    end
+
+    test "with empty inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="tr"></.dynamic_tag>|) == ~s|<tr></tr>|
+
+      assert render(~H|<.dynamic_tag name="tr" class="foo"></.dynamic_tag>|) ==
+               ~s|<tr class="foo"></tr>|
+    end
+
+    test "with inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="tr">content</.dynamic_tag>|) == ~s|<tr>content</tr>|
+
+      assert render(~H|<.dynamic_tag name="tr" class="foo">content</.dynamic_tag>|) ==
+               ~s|<tr class="foo">content</tr>|
+    end
+
+    test "self closing without inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="br"/>|) == ~s|<br/>|
+      assert render(~H|<.dynamic_tag name="input" type="text"/>|) == ~s|<input type="text"/>|
+    end
+  end
+
   describe "form" do
     test "raises when missing required assigns" do
       assert_raise ArgumentError, ~r/missing :for assign/, fn ->
