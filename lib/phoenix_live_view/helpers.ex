@@ -1075,7 +1075,7 @@ defmodule Phoenix.LiveView.Helpers do
       <.form for={:form} multipart phx-change="change_user" phx-submit="save_user">
         <input type="text" name="user[name]" value={@user_name}>
         <input type="submit" name="Save">
-      </form>
+      </.form>
 
   ### Outside LiveView
 
