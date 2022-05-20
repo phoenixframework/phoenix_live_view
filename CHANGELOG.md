@@ -7,6 +7,10 @@
   - `live_patch` - deprecate in favor of new `<link patch={..}>` component of `Phoenix.LiveView.Helpers`
   - `push_redirect` - deprecate in favor of new `push_navigate` function on `Phoenix.LiveView`
 
+### Enhancements
+  - [Helpers] Add `dynamic_tag` function component
+  - [Helpers] Add `link` function component
+
 ## 0.17.10 (Unreleased)
 
 ### Bug fixes
