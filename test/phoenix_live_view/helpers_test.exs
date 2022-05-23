@@ -141,6 +141,13 @@ defmodule Phoenix.LiveView.HelpersTest do
   end
 
   describe "live_title/2" do
+    test "dynamic attrs" do
+      assigns = %{prefix: "MyApp – ", title: "My Title"}
+
+      assert render(~H|<.live_title prefix={@prefix}><%= @title %></.live_title>|) ==
+               ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
+    end
+
     test "prefix only" do
       assigns = %{}
 
@@ -200,6 +207,16 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert render(
                ~H|<.dynamic_tag name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
              ) == ~s|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=\"\"></p>|
+    end
+
+    # TODO remove in 0.20 when non-function component form is removed
+    test "deprecated live_file_input escapes attributes" do
+      assigns = %{}
+
+      assert render(
+               ~H|<%= live_file_input %Phoenix.LiveView.UploadConfig{}, class: "<script>alert('nice try');</script>" %>|
+             ) ==
+               ~s|<input type="file" accept="" phx-hook="Elixir.Phoenix.LiveFileUpload" class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;" data-phx-update="ignore" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="">|
     end
 
     test "with empty inner block" do

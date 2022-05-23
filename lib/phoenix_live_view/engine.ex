@@ -726,6 +726,7 @@ defmodule Phoenix.LiveView.Engine do
   defp slots_to_rendered(static, vars) do
     Macro.postwalk(static, fn
       {call, meta, [name, [do: block]]} = node ->
+        IO.inspect(call)
         if extract_call(call) == :inner_block do
           {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
         else

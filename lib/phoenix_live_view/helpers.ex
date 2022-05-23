@@ -30,6 +30,48 @@ defmodule Phoenix.LiveView.Helpers do
     EEx.compile_string(expr, options)
   end
 
+  @doc """
+  Define a inner block, generally used by slots.
+
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly. The
+  `name` must be the assign name the slot/block will be stored
+  under.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
+  """
+  defmacro inner_block(name, do: do_block) do
+    rewrite_do(do_block, name)
+  end
+
+  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
+    inner_fun = {:fn, meta, do_block}
+
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(inner_fun).(arg)
+      end
+    end
+  end
+
+  defp rewrite_do(do_block, key) do
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(do_block)
+      end
+    end
+  end
+
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
 
@@ -336,8 +378,11 @@ defmodule Phoenix.LiveView.Helpers do
       opts
       |> Keyword.update(:data, data, &Keyword.merge(&1, data))
       |> Keyword.put(:href, uri)
+      |> Keyword.delete(:to)
 
-    Phoenix.HTML.Tag.content_tag(:a, Keyword.delete(opts, :to), do: block_or_text)
+    assigns = %{opts: opts, content: block_or_text}
+
+    ~H|<a {@opts}><%= @content %></a>|
   end
 
   @doc """
@@ -748,48 +793,6 @@ defmodule Phoenix.LiveView.Helpers do
     entry.inner_block.(changed, argument)
   end
 
-  @doc """
-  Define a inner block, generally used by slots.
-
-  This macro is mostly used by HTML engines that provides
-  a `slot` implementation and rarely called directly. The
-  `name` must be the assign name the slot/block will be stored
-  under.
-
-  If you're using HEEx templates, you should use its higher
-  level `<:slot>` notation instead. See `Phoenix.Component`
-  for more information.
-  """
-  defmacro inner_block(name, do: do_block) do
-    rewrite_do(do_block, name)
-  end
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
-    inner_fun = {:fn, meta, do_block}
-
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, key) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(do_block)
-      end
-    end
-  end
-
   @doc false
   def __assigns__(assigns, key, parent_changed) do
     # If the component is in its initial render (parent_changed == nil)
@@ -898,7 +901,12 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Builds a file input tag for a LiveView upload.
 
-  Options may be passed through to the tag builder for custom attributes.
+
+  ## Attributes
+
+    * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
+
+  Arbitrary attributes may be passed to be applied to the file input tag.
 
   ## Drag and Drop
 
@@ -908,36 +916,51 @@ defmodule Phoenix.LiveView.Helpers do
 
       <div class="container" phx-drop-target={@uploads.avatar.ref}>
           ...
-          <%= live_file_input @uploads.avatar %>
+          <.live_file_input upload={@uploads.avatar} />
       </div>
 
   ## Examples
 
-      <%= live_file_input @uploads.avatar %>
+      <.live_file_input upload={@uploads.avatar} />
   """
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
-    if opts[:id], do: raise(ArgumentError, "the :id cannot be overridden on a live_file_input")
+  # TODO deprecated, remove non-function component form in in 0.20
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
+    require Phoenix.LiveViewTest
+    assigns = Enum.into(opts, %{upload: conf})
+    {:safe, Phoenix.LiveViewTest.render_component(&live_file_input/1, assigns)}
+  end
 
-    opts =
+  # TODO deprecated, remove non-function component form in in 0.20
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
+    live_file_input(conf, [])
+  end
+
+  # attr :upload, Phoenix.LiveView.UploadConfig, required: true
+  # attr :rest, :global
+  # TODO define attrs after we remove deprecated form in 0.20
+  def live_file_input(%{} = assigns) do
+    conf =
+      case assigns do
+        %{id: _} -> raise ArgumentError, "the :id cannot be overridden on a live_file_input"
+        %{upload: %Phoenix.LiveView.UploadConfig{} = conf} -> conf
+        %{} -> raise ArgumentError, "missing required :upload attribute to <.live_file_input/>"
+      end
+
+    rest = assigns_to_attributes(assigns, [:upload])
+
+    rest =
       if conf.max_entries > 1 do
-        Keyword.put(opts, :multiple, true)
+        Keyword.put(rest, :multiple, true)
       else
-        opts
+        rest
       end
 
     preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
     done_entries = for entry <- conf.entries, entry.done?, do: entry
     valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
 
-    Phoenix.HTML.Tag.content_tag(
-      :input,
-      "",
-      Keyword.merge(opts,
-        type: "file",
-        id: conf.ref,
-        name: conf.name,
-        accept: if(conf.accept != :any, do: conf.accept),
-        phx_hook: "Phoenix.LiveFileUpload",
+    rest =
+      Keyword.merge(rest,
         data_phx_update: "ignore",
         data_phx_upload_ref: conf.ref,
         data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
@@ -945,7 +968,19 @@ defmodule Phoenix.LiveView.Helpers do
         data_phx_preflighted_refs: Enum.map_join(preflighted_entries, ",", & &1.ref),
         data_phx_auto_upload: valid? && conf.auto_upload?
       )
-    )
+
+    assigns = assign(assigns, :rest, rest)
+
+    ~H"""
+    <input
+      id={@upload.ref}
+      type="file"
+      name={@upload.name}
+      accept={@upload.accept != :any && @upload.accept}
+      phx-hook={Phoenix.LiveFileUpload}
+      {@rest}
+    />
+    """
   end
 
   attr :prefix, :string, default: false
@@ -969,33 +1004,15 @@ defmodule Phoenix.LiveView.Helpers do
   @doc deprecated: "Use <.live_title> instead"
   # TODO deprecate in 0.19, remove in 0.20
   def live_title_tag(title, opts \\ []) do
-    title_tag(title, opts[:prefix], opts[:suffix], opts)
-  end
+    assigns = %{title: title, prefix: opts[:prefix], suffix: opts[:suffix]}
 
-  defp title_tag(title, nil = _prefix, "" <> suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, title <> suffix, data: [suffix: suffix])
-  end
-
-  defp title_tag(title, "" <> prefix, nil = _suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, prefix <> title, data: [prefix: prefix])
-  end
-
-  defp title_tag(title, "" <> pre, "" <> post, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, suffix: post])
-  end
-
-  defp title_tag(title, _prefix = nil, _postfix = nil, []) do
-    Phoenix.HTML.Tag.content_tag(:title, title)
-  end
-
-  defp title_tag(_title, _prefix = nil, _suffix = nil, opts) do
-    raise ArgumentError,
-          "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
+    ~H"""
+    <.live_title prefix={@prefix} suffix={@suffix}><%= @title %></.live_title>
+    """
   end
 
   @doc """
-  Renders a form function component.
-
+  Renders a
   This function is built on top of `Phoenix.HTML.Form.form_for/4`. For
   more information about options and how to build inputs, see
   `Phoenix.HTML.Form`.
