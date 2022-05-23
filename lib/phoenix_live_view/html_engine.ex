@@ -7,6 +7,67 @@ defmodule Phoenix.LiveView.HTMLEngine do
   its "subengine".
   """
 
+  @doc """
+  Define a inner block, generally used by slots.
+
+  This macro is mostly used by HTML engines that provides
+  a `slot` implementation and rarely called directly. The
+  `name` must be the assign name the slot/block will be stored
+  under.
+
+  If you're using HEEx templates, you should use its higher
+  level `<:slot>` notation instead. See `Phoenix.Component`
+  for more information.
+  """
+  defmacro inner_block(name, do: do_block) do
+    __inner_block__(do_block, name)
+  end
+
+  @doc false
+  def __inner_block__([{:->, meta, _} | _] = do_block, key) do
+    inner_fun = {:fn, meta, do_block}
+
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(inner_fun).(arg)
+      end
+    end
+  end
+
+  def __inner_block__(do_block, key) do
+    quote do
+      fn parent_changed, arg ->
+        var!(assigns) =
+          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+
+        _ = var!(assigns)
+        unquote(do_block)
+      end
+    end
+  end
+
+  @doc false
+  def __assigns__(assigns, key, parent_changed) do
+    # If the component is in its initial render (parent_changed == nil)
+    # or the slot/block key is in parent_changed, then we render the
+    # function with the assigns as is.
+    #
+    # Otherwise, we will set changed to an empty list, which is the same
+    # as marking everything as not changed. This is correct because
+    # parent_changed will always be marked as changed whenever any of the
+    # assigns it references inside is changed. It will also be marked as
+    # changed if it has any variable (such as the ones coming from let).
+    if is_nil(parent_changed) or Map.has_key?(parent_changed, key) do
+      assigns
+    else
+      Map.put(assigns, :__changed__, %{})
+    end
+  end
+
   alias Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
@@ -65,13 +126,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     opts = [root: token_state.root || false]
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
-    if state.module === Phoenix.LiveView.Helpers do
-      ast
-    else
-      quote do
-        require Phoenix.LiveView.Helpers
-        unquote(ast)
-      end
+    quote do
+      require Phoenix.LiveView.HTMLEngine
+      unquote(ast)
     end
   end
 
@@ -384,7 +441,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.Helpers.inner_block(unquote(slot_key), do: unquote(clauses))
+        Phoenix.LiveView.HTMLEngine.inner_block(unquote(slot_key), do: unquote(clauses))
       end
 
     attrs = [__slot__: slot_key, inner_block: ast] ++ attrs
@@ -711,7 +768,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       quote line: line do
         %{
           __slot__: :inner_block,
-          inner_block: Phoenix.LiveView.Helpers.inner_block(:inner_block, do: unquote(clauses))
+          inner_block: Phoenix.LiveView.HTMLEngine.inner_block(:inner_block, do: unquote(clauses))
         }
       end
 

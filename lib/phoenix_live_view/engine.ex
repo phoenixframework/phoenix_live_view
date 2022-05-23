@@ -498,7 +498,11 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
+  # TODO: Remove me when live_component/2/3 are removed
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
+    do: func
+
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :HTMLEngine]}, func]}),
     do: func
 
   defp extract_call(call),
@@ -726,7 +730,6 @@ defmodule Phoenix.LiveView.Engine do
   defp slots_to_rendered(static, vars) do
     Macro.postwalk(static, fn
       {call, meta, [name, [do: block]]} = node ->
-        IO.inspect(call)
         if extract_call(call) == :inner_block do
           {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
         else
