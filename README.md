@@ -6,12 +6,12 @@ Phoenix LiveView enables rich, real-time user experiences
 with server-rendered HTML.
 
 Visit the [https://livebeats.fly.dev](https://livebeats.fly.dev/) demo to see the kinds of applications
-you can build, or see a sneak peak below:
+you can build, or see a sneak peek below:
 
 https://user-images.githubusercontent.com/576796/162234098-31b580fe-e424-47e6-b01d-cd2cfcf823a9.mp4
 
 After you [install Elixir](https://elixir-lang.org/install.html)
-in your machine, you can create your first LiveView app in two
+on your machine, you can create your first LiveView app in two
 steps:
 
     $ mix archive.install hex phx_new
@@ -25,7 +25,7 @@ steps:
   * A rich templating language, called HEEx, with support
     for function components, slots, HTML validation, and more
 
-  * Smart change tracking - after connected, LiveView sends
+  * Smart change tracking - once connected, LiveView sends
     only what changed to the client, skipping the template
     markup and reducing the payload. This makes LiveView
     payloads much smaller than server-rendered HTML and on
@@ -76,7 +76,7 @@ given in the markdown file [here](guides/introduction/installation.md).
 
 ## What makes LiveView unique?
 
-LiveView is server centric. You no longer have to worry about managing
+LiveView is server-centric. You no longer have to worry about managing
 both client and server to keep things in sync. LiveView automatically
 updates the client as changes happen on the server.
 
@@ -91,7 +91,7 @@ stateless requests that have to authenticate, decode, load, and encode
 data on every request.
 
 When LiveView was first announced, many developers from different
-backgrounds got inspired about the potential unlocked by LiveView to
+backgrounds got inspired by the potential unlocked by LiveView to
 build rich, real-time user experiences. We believe LiveView is built
 on top of a solid foundation that makes LiveView hard to replicate
 anywhere else:
@@ -109,9 +109,9 @@ anywhere else:
   * LiveView applications are *distributed and real-time*. A LiveView
     app can push events to users as those events happen anywhere in
     the system. Do you want to notify a user that their best friend
-    just connected? This is easily done without a single-line of
+    just connected? This is easily done without a single line of
     custom JavaScript and with no extra external dependencies
-    (no extra databases, no extra message queues, etc).
+    (no extra databases, no extra message queues, etc.).
 
   * LiveView performs change tracking: whenever you change a value on
     the server, LiveView will send to the client only the values that
