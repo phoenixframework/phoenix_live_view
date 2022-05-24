@@ -76,7 +76,7 @@ given in the markdown file [here](guides/introduction/installation.md).
 
 ## What makes LiveView unique?
 
-LiveView is server centric. You no longer have to worry about managing
+LiveView is server-centric. You no longer have to worry about managing
 both client and server to keep things in sync. LiveView automatically
 updates the client as changes happen on the server.
 
