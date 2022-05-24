@@ -11,7 +11,7 @@ you can build, or see a sneak peek below:
 https://user-images.githubusercontent.com/576796/162234098-31b580fe-e424-47e6-b01d-cd2cfcf823a9.mp4
 
 After you [install Elixir](https://elixir-lang.org/install.html)
-in your machine, you can create your first LiveView app in two
+on your machine, you can create your first LiveView app in two
 steps:
 
     $ mix archive.install hex phx_new
