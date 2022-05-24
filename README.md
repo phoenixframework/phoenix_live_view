@@ -109,7 +109,7 @@ anywhere else:
   * LiveView applications are *distributed and real-time*. A LiveView
     app can push events to users as those events happen anywhere in
     the system. Do you want to notify a user that their best friend
-    just connected? This is easily done without a single-line of
+    just connected? This is easily done without a single line of
     custom JavaScript and with no extra external dependencies
     (no extra databases, no extra message queues, etc).
 
