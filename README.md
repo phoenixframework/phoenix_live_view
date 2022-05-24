@@ -6,7 +6,7 @@ Phoenix LiveView enables rich, real-time user experiences
 with server-rendered HTML.
 
 Visit the [https://livebeats.fly.dev](https://livebeats.fly.dev/) demo to see the kinds of applications
-you can build, or see a sneak peak below:
+you can build, or see a sneak peek below:
 
 https://user-images.githubusercontent.com/576796/162234098-31b580fe-e424-47e6-b01d-cd2cfcf823a9.mp4
 
