@@ -25,7 +25,7 @@ steps:
   * A rich templating language, called HEEx, with support
     for function components, slots, HTML validation, and more
 
-  * Smart change tracking - after connected, LiveView sends
+  * Smart change tracking - once connected, LiveView sends
     only what changed to the client, skipping the template
     markup and reducing the payload. This makes LiveView
     payloads much smaller than server-rendered HTML and on
