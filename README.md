@@ -91,7 +91,7 @@ stateless requests that have to authenticate, decode, load, and encode
 data on every request.
 
 When LiveView was first announced, many developers from different
-backgrounds got inspired about the potential unlocked by LiveView to
+backgrounds got inspired by the potential unlocked by LiveView to
 build rich, real-time user experiences. We believe LiveView is built
 on top of a solid foundation that makes LiveView hard to replicate
 anywhere else:
