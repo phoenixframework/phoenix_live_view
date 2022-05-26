@@ -235,13 +235,23 @@ defmodule Phoenix.LiveView.Static do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, "", attrs)
+    {:safe, dynamic_tag_to_iodata(tag, attrs, "")}
   end
+
+  import Phoenix.LiveView.Helpers
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
     rendered = Utils.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
-    Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
+    {:safe, dynamic_tag_to_iodata(tag, attrs, {:safe, Diff.to_iodata(diff)})}
+  end
+
+  defp dynamic_tag_to_iodata(tag, attrs, content) do
+    assigns = %{tag: tag, attrs: attrs, content: content}
+
+    Phoenix.HTML.Safe.to_iodata(
+      ~H|<.dynamic_tag name={@tag} {@attrs}><%= @content %></.dynamic_tag>|
+    )
   end
 
   defp load_live!(view_or_component, kind) do

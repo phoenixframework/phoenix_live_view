@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.Helpers do
   # TODO: Convert all functions with the `live_` prefix to function components?
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveView.{Component, Socket, Static}
+  alias Phoenix.LiveView.{Component, Socket, Static, Utils}
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -336,8 +336,11 @@ defmodule Phoenix.LiveView.Helpers do
       opts
       |> Keyword.update(:data, data, &Keyword.merge(&1, data))
       |> Keyword.put(:href, uri)
+      |> Keyword.delete(:to)
 
-    Phoenix.HTML.Tag.content_tag(:a, Keyword.delete(opts, :to), do: block_or_text)
+    assigns = %{opts: opts, content: block_or_text}
+
+    ~H|<a {@opts}><%= @content %></a>|
   end
 
   @doc """
@@ -588,7 +591,8 @@ defmodule Phoenix.LiveView.Helpers do
 
   defp rewrite_do!(do_block, key, caller) do
     if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      rewrite_do(do_block, key)
+      # TODO: make __inner_block__ private once this is removed.
+      Phoenix.LiveView.HTMLEngine.__inner_block__(do_block, key)
     else
       raise ArgumentError,
             "cannot use live_component because the assigns var is unbound/unset"
@@ -749,66 +753,6 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Define a inner block, generally used by slots.
-
-  This macro is mostly used by HTML engines that provides
-  a `slot` implementation and rarely called directly. The
-  `name` must be the assign name the slot/block will be stored
-  under.
-
-  If you're using HEEx templates, you should use its higher
-  level `<:slot>` notation instead. See `Phoenix.Component`
-  for more information.
-  """
-  defmacro inner_block(name, do: do_block) do
-    rewrite_do(do_block, name)
-  end
-
-  defp rewrite_do([{:->, meta, _} | _] = do_block, key) do
-    inner_fun = {:fn, meta, do_block}
-
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
-
-  defp rewrite_do(do_block, key) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(do_block)
-      end
-    end
-  end
-
-  @doc false
-  def __assigns__(assigns, key, parent_changed) do
-    # If the component is in its initial render (parent_changed == nil)
-    # or the slot/block key is in parent_changed, then we render the
-    # function with the assigns as is.
-    #
-    # Otherwise, we will set changed to an empty list, which is the same
-    # as marking everything as not changed. This is correct because
-    # parent_changed will always be marked as changed whenever any of the
-    # assigns it references inside is changed. It will also be marked as
-    # changed if it has any variable (such as the ones coming from let).
-    if is_nil(parent_changed) or Map.has_key?(parent_changed, key) do
-      assigns
-    else
-      Map.put(assigns, :__changed__, %{})
-    end
-  end
-
-  @doc """
   Returns the flash message from the LiveView flash assign.
 
   ## Examples
@@ -898,7 +842,12 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Builds a file input tag for a LiveView upload.
 
-  Options may be passed through to the tag builder for custom attributes.
+
+  ## Attributes
+
+    * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
+
+  Arbitrary attributes may be passed to be applied to the file input tag.
 
   ## Drag and Drop
 
@@ -908,36 +857,51 @@ defmodule Phoenix.LiveView.Helpers do
 
       <div class="container" phx-drop-target={@uploads.avatar.ref}>
           ...
-          <%= live_file_input @uploads.avatar %>
+          <.live_file_input upload={@uploads.avatar} />
       </div>
 
   ## Examples
 
-      <%= live_file_input @uploads.avatar %>
+      <.live_file_input upload={@uploads.avatar} />
   """
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts \\ []) do
-    if opts[:id], do: raise(ArgumentError, "the :id cannot be overridden on a live_file_input")
+  # TODO deprecated, remove non-function component form in in 0.20
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
+    require Phoenix.LiveViewTest
+    assigns = Enum.into(opts, %{upload: conf})
+    {:safe, Phoenix.LiveViewTest.render_component(&live_file_input/1, assigns)}
+  end
 
-    opts =
+  # TODO deprecated, remove non-function component form in in 0.20
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
+    live_file_input(conf, [])
+  end
+
+  # attr :upload, Phoenix.LiveView.UploadConfig, required: true
+  # attr :rest, :global
+  # TODO define attrs after we remove deprecated form in 0.20
+  def live_file_input(%{} = assigns) do
+    conf =
+      case assigns do
+        %{id: _} -> raise ArgumentError, "the :id cannot be overridden on a live_file_input"
+        %{upload: %Phoenix.LiveView.UploadConfig{} = conf} -> conf
+        %{} -> raise ArgumentError, "missing required :upload attribute to <.live_file_input/>"
+      end
+
+    rest = assigns_to_attributes(assigns, [:upload])
+
+    rest =
       if conf.max_entries > 1 do
-        Keyword.put(opts, :multiple, true)
+        Keyword.put(rest, :multiple, true)
       else
-        opts
+        rest
       end
 
     preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
     done_entries = for entry <- conf.entries, entry.done?, do: entry
     valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
 
-    Phoenix.HTML.Tag.content_tag(
-      :input,
-      "",
-      Keyword.merge(opts,
-        type: "file",
-        id: conf.ref,
-        name: conf.name,
-        accept: if(conf.accept != :any, do: conf.accept),
-        phx_hook: "Phoenix.LiveFileUpload",
+    rest =
+      Keyword.merge(rest,
         data_phx_update: "ignore",
         data_phx_upload_ref: conf.ref,
         data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
@@ -945,7 +909,19 @@ defmodule Phoenix.LiveView.Helpers do
         data_phx_preflighted_refs: Enum.map_join(preflighted_entries, ",", & &1.ref),
         data_phx_auto_upload: valid? && conf.auto_upload?
       )
-    )
+
+    assigns = assign(assigns, :rest, rest)
+
+    ~H"""
+    <input
+      id={@upload.ref}
+      type="file"
+      name={@upload.name}
+      accept={@upload.accept != :any && @upload.accept}
+      phx-hook={Phoenix.LiveFileUpload}
+      {@rest}
+    />
+    """
   end
 
   attr :prefix, :string, default: false
@@ -969,33 +945,15 @@ defmodule Phoenix.LiveView.Helpers do
   @doc deprecated: "Use <.live_title> instead"
   # TODO deprecate in 0.19, remove in 0.20
   def live_title_tag(title, opts \\ []) do
-    title_tag(title, opts[:prefix], opts[:suffix], opts)
-  end
+    assigns = %{title: title, prefix: opts[:prefix], suffix: opts[:suffix]}
 
-  defp title_tag(title, nil = _prefix, "" <> suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, title <> suffix, data: [suffix: suffix])
-  end
-
-  defp title_tag(title, "" <> prefix, nil = _suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, prefix <> title, data: [prefix: prefix])
-  end
-
-  defp title_tag(title, "" <> pre, "" <> post, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, suffix: post])
-  end
-
-  defp title_tag(title, _prefix = nil, _postfix = nil, []) do
-    Phoenix.HTML.Tag.content_tag(:title, title)
-  end
-
-  defp title_tag(_title, _prefix = nil, _suffix = nil, opts) do
-    raise ArgumentError,
-          "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
+    ~H"""
+    <.live_title prefix={@prefix} suffix={@suffix}><%= @title %></.live_title>
+    """
   end
 
   @doc """
-  Renders a form function component.
-
+  Renders a
   This function is built on top of `Phoenix.HTML.Form.form_for/4`. For
   more information about options and how to build inputs, see
   `Phoenix.HTML.Form`.
@@ -1069,13 +1027,13 @@ defmodule Phoenix.LiveView.Helpers do
         <%= submit "Save" %>
       </.form>
 
-  However, if you don't have a data layer, it may be more straight-forward
-  to drop the `form` component altogether and simply rely on HTML:
+  In those cases, it may be more straight-forward to drop `:let` altogether
+  and simply rely on HTML to generate inputs:
 
-      <form multipart phx-change="change_user" phx-submit="save_user">
+      <.form for={:form} multipart phx-change="change_user" phx-submit="save_user">
         <input type="text" name="user[name]" value={@user_name}>
         <input type="submit" name="Save">
-      </form>
+      </.form>
 
   ### Outside LiveView
 
@@ -1095,12 +1053,13 @@ defmodule Phoenix.LiveView.Helpers do
   attr :method, :string
   attr :csrf_token, :boolean
   attr :errors, :list
+  attr :rest, :global
 
   def form(assigns) do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-    form_options = assigns_to_attributes(assigns, [:action, :for])
+    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
@@ -1178,6 +1137,14 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Attributes
 
+    * `:method` - the method to use with the link. In case the method is not
+      `:get`, the link is generated inside the form which sets the proper
+      information. In order to submit the form, JavaScript must be enabled.
+
+    * `:csrf_token` - a custom token to use for links with a method
+      other than `:get`.
+
+
      * `:replace` - when using `:patch` or `:navigate`, whether to replace the
        browser's pushState history. Default false.
 
@@ -1196,12 +1163,78 @@ defmodule Phoenix.LiveView.Helpers do
 
       <.link patch={Routes.page_path(@socket, :index, :details)}>view details</.link>
 
+      <.link href={URI.parse("https://elixir-lang.org")}>hello</.link>
+
+      <.link href="/the_world" method={:delete} data-confirm="Really?">delete</.link>
+
+  ## JavaScript dependency
+
+  In order to support links where `:method` is not `:get` or use the above
+  data attributes, `Phoenix.HTML` relies on JavaScript. You can load
+  `priv/static/phoenix_html.js` into your build tool.
+
+  ### Data attributes
+
+  Data attributes are added as a keyword list passed to the `data` key.
+  The following data attributes are supported:
+
+    * `data-confirm` - shows a confirmation prompt before
+      generating and submitting the form when `:method`
+      is not `:get`.
+
+  ### Overriding the default confirm behaviour
+
+  `phoenix_html.js` does trigger a custom event `phoenix.link.click` on the
+  clicked DOM element when a click happened. This allows you to intercept the
+  event on it's way bubbling up to `window` and do your own custom logic to
+  enhance or replace how the `data-confirm` attribute is handled.
+  You could for example replace the browsers `confirm()` behavior with a
+  custom javascript implementation:
+
+  ```javascript
+  // listen on document.body, so it's executed before the default of
+  // phoenix_html, which is listening on the window object
+  document.body.addEventListener('phoenix.link.click', function (e) {
+    // Prevent default implementation
+    e.stopPropagation();
+    // Introduce alternative implementation
+    var message = e.target.getAttribute("data-confirm");
+    if(!message){ return true; }
+    vex.dialog.confirm({
+      message: message,
+      callback: function (value) {
+        if (value == false) { e.preventDefault(); }
+      }
+    })
+  }, false);
+  ```
+
+  Or you could attach your own custom behavior.
+
+  ```javascript
+  window.addEventListener('phoenix.link.click', function (e) {
+    // Introduce custom behaviour
+    var message = e.target.getAttribute("data-prompt");
+    var answer = e.target.getAttribute("data-prompt-answer");
+    if(message && answer && (answer != window.prompt(message))) {
+      e.preventDefault();
+    }
+  }, false);
+  ```
+
+  The latter could also be bound to any `click` event, but this way you can be
+  sure your custom code is only executed when the code of `phoenix_html.js` is run.
+
+  ## CSRF Protection
+  By default, CSRF tokens are generated through `Plug.CSRFProtection`.
   """
 
   attr :navigate, :string
   attr :patch, :string
-  attr :href, :string, default: nil
+  attr :href, :any
   attr :replace, :string, default: false
+  attr :method, :atom, default: false
+  attr :csrf_token, :string
   attr :rest, :global
 
   def link(%{navigate: _to} = assigns) do
@@ -1227,10 +1260,86 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
+  def link(%{href: href} = assigns) when href != "#" do
+    if is_nil(href), do: raise(ArgumentError, "expected non-nil value for :href in <.link>")
+
+    assigns =
+      case Utils.valid_destination!(href, "<.link>") do
+        href when is_binary(href) ->
+          assigns
+          |> assign(:href, href)
+          |> assign_new(:csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(href) end)
+
+        href ->
+          assign(assigns, :href, href)
+      end
+
+    ~H"""
+    <a
+      href={@href || "#"}
+      data-method={@method != :get && @method}
+      data-csrf={@method && @method != :get && @csrf_token}
+      {@rest}
+    ><%= render_slot(@inner_block) %></a>
+    """
+  end
+
   def link(%{} = assigns) do
     ~H"""
-    <a href={@href || "#"} {@rest}><%= render_slot(@inner_block) %></a>
+    <a href="#" {@rest}><%= render_slot(@inner_block) %></a>
     """
+  end
+
+  @doc """
+  Generates a dynamically named HTML tag.
+
+  Raises ArgumentError if the tag name is found to be unsafe HTML.
+
+  ## Attributes
+
+    * `:name` - The required  name of the tag, such as: "div"
+
+  All other attributes are added to the generated tag, ensuring
+  proper HTML escaping.
+
+  ## Examples
+
+      <.dynamic_tag name="input" type="text"/>
+      => "<input type="text"/>
+
+      <.dynamic_tag name="p">content</.dynamic_tag>
+      => "<p>content</p>"
+  """
+  attr :name, :string, required: true
+  attr :rest, :global
+
+  def dynamic_tag(%{name: name, rest: rest} = assigns) do
+    tag_name = to_string(name)
+
+    tag =
+      case Phoenix.HTML.html_escape(tag_name) do
+        {:safe, ^tag_name} ->
+          tag_name
+
+        {:safe, _escaped} ->
+          raise ArgumentError,
+                "expected dynamic_tag name to be safe HTML, got: #{inspect(tag_name)}"
+      end
+
+    assigns =
+      assigns
+      |> assign(:tag, tag)
+      |> assign(:escaped_attrs, Phoenix.HTML.attributes_escape(rest))
+
+    if Map.has_key?(assigns, :inner_block) do
+      ~H"""
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
+      """
+    else
+      ~H"""
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?/, ?>]} %>
+      """
+    end
   end
 
   defp is_assign?(assign_name, expression) do

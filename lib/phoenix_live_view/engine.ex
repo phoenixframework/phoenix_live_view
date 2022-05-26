@@ -498,7 +498,11 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
+  # TODO: Remove me when live_component/2/3 are removed
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
+    do: func
+
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :HTMLEngine]}, func]}),
     do: func
 
   defp extract_call(call),

@@ -23,7 +23,9 @@ defmodule Phoenix.LiveView.HelpersTest do
 
     test "forwards global dom attributes" do
       assigns = %{}
-      dom = render(~H|<.link patch="/" class="btn btn-large" data={[page_number: 2]}>next</.link>|)
+
+      dom =
+        render(~H|<.link patch="/" class="btn btn-large" data={[page_number: 2]}>next</.link>|)
 
       assert dom =~ ~s|class="btn btn-large"|
       assert dom =~ ~s|data-page-number="2"|
@@ -45,7 +47,9 @@ defmodule Phoenix.LiveView.HelpersTest do
 
     test "forwards global dom attributes" do
       assigns = %{}
-      dom = render(~H|<.link navigate="/" class="btn btn-large" data={[page_number: 2]}>text</.link>|)
+
+      dom =
+        render(~H|<.link navigate="/" class="btn btn-large" data={[page_number: 2]}>text</.link>|)
 
       assert dom =~ ~s|class="btn btn-large"|
       assert dom =~ ~s|data-page-number="2"|
@@ -54,27 +58,120 @@ defmodule Phoenix.LiveView.HelpersTest do
     end
   end
 
+  describe "link href" do
+    test "basic usage" do
+      assigns = %{}
+      assert render(~H|<.link href="/">text</.link>|) == ~s|<a href="/">text</a>|
+    end
+
+    test "arbitrary attrs" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/" class="foo">text</.link>|) ==
+               ~s|<a href="/" class=\"foo\">text</a>|
+    end
+
+    test "with no href or # href" do
+      assigns = %{}
+
+      assert render(~H|<.link phx-click="click">text</.link>|) ==
+               ~s|<a href="#" phx-click="click">text</a>|
+
+      assert render(~H|<.link href="#" phx-click="click">text</.link>|) ==
+               ~s|<a href="#" phx-click="click">text</a>|
+    end
+
+    test "with nil href" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/expected non-nil value for :href in <.link>/, fn ->
+        render(~H|<.link href={nil}>text</.link>|)
+      end
+    end
+
+    test "csrf with :get method" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/" method={:get}>text</.link>|) ==
+               ~s|<a href="/">text</a>|
+
+      assert render(~H|<.link href="/" method={:get} csrf_token="123">text</.link>|) ==
+               ~s|<a href="/">text</a>|
+    end
+
+    test "csrf with non-get method" do
+      assigns = %{}
+      csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
+
+      assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
+               "<a href=\"/users\" data-method=\"delete\" data-csrf=\"#{csrf}\">delete</a>"
+    end
+
+    test "csrf with custom token" do
+      assigns = %{}
+
+      assert render(~H|<.link href="/users" method={:post} csrf_token="123">delete</.link>|) ==
+               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+    end
+
+    test "csrf with confirm" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.link href="/users" method={:post} csrf_token="123" data-confirm="are you sure?">delete</.link>|
+             ) ==
+               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-confirm=\"are you sure?\">delete</a>"
+    end
+
+    test "invalid schemes" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/unsupported scheme given to <.link>/, fn ->
+        render(~H|<.link href="javascript:alert('bad')">bad</.link>|) ==
+          "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+      end
+    end
+
+    test "js schemes" do
+      assigns = %{}
+
+      assert render(~H|<.link href={{:javascript, "alert('bad')"}}>js</.link>|) ==
+               "<a href=\"javascript:alert(&#39;bad&#39;)\">js</a>"
+    end
+  end
+
   describe "live_title/2" do
+    test "dynamic attrs" do
+      assigns = %{prefix: "MyApp – ", title: "My Title"}
+
+      assert render(~H|<.live_title prefix={@prefix}><%= @title %></.live_title>|) ==
+               ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
+    end
+
     test "prefix only" do
       assigns = %{}
+
       assert render(~H|<.live_title prefix="MyApp – ">My Title</.live_title>|) ==
                ~s|<title data-prefix="MyApp – ">MyApp – My Title</title>|
     end
 
     test "suffix only" do
       assigns = %{}
+
       assert render(~H|<.live_title suffix=" – MyApp">My Title</.live_title>|) ==
                ~s|<title data-suffix=" – MyApp">My Title – MyApp</title>|
     end
 
     test "prefix and suffix" do
       assigns = %{}
+
       assert render(~H|<.live_title prefix="Welcome: " suffix=" – MyApp">My Title</.live_title>|) ==
                ~s|<title data-prefix="Welcome: " data-suffix=" – MyApp">Welcome: My Title – MyApp</title>|
     end
 
     test "without prefix or suffix" do
       assigns = %{}
+
       assert render(~H|<.live_title>My Title</.live_title>|) ==
                ~s|<title>My Title</title>|
     end
@@ -85,6 +182,67 @@ defmodule Phoenix.LiveView.HelpersTest do
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
     |> Phoenix.LiveViewTest.DOM.parse()
+  end
+
+  describe "dynamic_tag/1" do
+    test "ensures HTML safe tag names" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/expected dynamic_tag name to be safe HTML/, fn ->
+        render(~H|<.dynamic_tag name="p><script>alert('nice try');</script>"/>|)
+      end
+    end
+
+    test "escapes attribute values" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.dynamic_tag name="p" class="<script>alert('nice try');</script>"></.dynamic_tag>|
+             ) == ~s|<p class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;"></p>|
+    end
+
+    test "escapes attribute names" do
+      assigns = %{}
+
+      assert render(
+               ~H|<.dynamic_tag name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
+             ) == ~s|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=\"\"></p>|
+    end
+
+    # TODO remove in 0.20 when non-function component form is removed
+    test "deprecated live_file_input escapes attributes" do
+      assigns = %{}
+
+      assert render(
+               ~H|<%= live_file_input %Phoenix.LiveView.UploadConfig{}, class: "<script>alert('nice try');</script>" %>|
+             ) ==
+               ~s|<input type="file" accept="" phx-hook="Elixir.Phoenix.LiveFileUpload" class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;" data-phx-update="ignore" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="">|
+    end
+
+    test "with empty inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="tr"></.dynamic_tag>|) == ~s|<tr></tr>|
+
+      assert render(~H|<.dynamic_tag name="tr" class="foo"></.dynamic_tag>|) ==
+               ~s|<tr class="foo"></tr>|
+    end
+
+    test "with inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="tr">content</.dynamic_tag>|) == ~s|<tr>content</tr>|
+
+      assert render(~H|<.dynamic_tag name="tr" class="foo">content</.dynamic_tag>|) ==
+               ~s|<tr class="foo">content</tr>|
+    end
+
+    test "self closing without inner block" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="br"/>|) == ~s|<br/>|
+      assert render(~H|<.dynamic_tag name="input" type="text"/>|) == ~s|<input type="text"/>|
+    end
   end
 
   describe "form" do
