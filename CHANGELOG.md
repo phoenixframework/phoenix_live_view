@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.17.10 (Unreleased)
+## 0.17.10 (2022-05-25)
 
 ### Bug fixes
   - [Formatter] Preserve single quote delimiter on attrs
