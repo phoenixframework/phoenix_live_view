@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   defp log_level(socket) do
-    socket.view.__live__()[:log_level]
+    socket.view.__live__()[:log_level] || :info
   end
 
   @doc false
