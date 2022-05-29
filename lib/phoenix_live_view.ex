@@ -458,14 +458,15 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, "live.html"}
+        layout: {MyAppWeb.LayoutView, "live.html"},
+        log: :info
 
   ## Options
 
     * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
     * `:layout` - configures the layout the `LiveView` will be rendered in
-
+    * `:log` - configures the log level for the `LiveView`
   """
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
@@ -508,17 +509,17 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
-    log_level =
-      case opts[:log_level] do
+    log =
+      case Keyword.get(opts, :log, :info) do
         level when is_atom(level) ->
           level
 
-        nil ->
-          nil
+        false ->
+          false
 
         other ->
           raise ArgumentError,
-                ":log_level expects an atom, got: #{inspect(other)}"
+                ":log expects an atom or false, got: #{inspect(other)}"
       end
 
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
@@ -537,7 +538,7 @@ defmodule Phoenix.LiveView do
       module: env.module,
       layout: layout,
       lifecycle: lifecycle,
-      log_level: log_level
+      log: log
     }
 
     quote do
