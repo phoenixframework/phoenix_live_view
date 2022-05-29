@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.Logger do
   @moduledoc false
 
-  import Phoenix.Logger, only: [duration: 1]
+  import Phoenix.Logger, only: [duration: 1, filter_values: 1]
 
   require Logger
 
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.Logger do
         duration(duration),
         ?\n,
         "  Parameters: ",
-        inspect(params),
+        inspect(filter_values(params)),
         ?\n,
         "  Session: ",
         inspect(session)
@@ -64,7 +64,7 @@ defmodule Phoenix.LiveView.Logger do
         inspect(socket.view),
         ?\n,
         "  Parameters: ",
-        inspect(params)
+        inspect(filter_values(params))
       ]
     end)
 
@@ -89,7 +89,7 @@ defmodule Phoenix.LiveView.Logger do
         inspect(event),
         ?\n,
         "  Parameters: ",
-        inspect(params)
+        inspect(filter_values(params))
       ]
     end)
 
@@ -139,7 +139,7 @@ defmodule Phoenix.LiveView.Logger do
         inspect(event),
         ?\n,
         "  Parameters: ",
-        inspect(params)
+        inspect(filter_values(params))
       ]
     end)
 
