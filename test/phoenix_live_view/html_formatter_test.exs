@@ -448,7 +448,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
 
         """,
         """
-        <button class="btn-primary" autofocus disabled>Submit</button>
+        <button class="btn-primary" autofocus disabled> Submit </button>
         """
       )
     end
@@ -1283,6 +1283,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """
 
       assert_formatter_output(input, expected)
+    end
+
+    test "keep text when inside inline elements and on the the same line" do
+      assert_formatter_doesnt_change("""
+      <b>text: </b>
+      """)
     end
 
     test "does not keep empty lines on script and styles tags" do

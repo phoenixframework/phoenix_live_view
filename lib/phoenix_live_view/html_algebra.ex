@@ -202,8 +202,14 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
     children =
       case block do
-        [] -> empty()
-        _ -> nest(concat(break(""), block_to_algebra(block, context)), 2)
+        [] ->
+          empty()
+
+        _ ->
+          context =
+            if inline_text?(block, meta[:mode]), do: %{context | mode: :inline}, else: context
+
+          nest(concat(break(""), block_to_algebra(block, context)), 2)
       end
 
     children = if force_newline?, do: force_unfit(children), else: children
@@ -276,6 +282,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   # Handle text within other tags.
+  defp to_algebra({:text, text, _meta}, %{mode: :inline}) when is_binary(text) do
+    {:inline, text}
+  end
+
   defp to_algebra({:text, text, _meta}, _context) when is_binary(text) do
     case classify_leading(text) do
       :spaces ->
@@ -313,6 +323,12 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
     {:inline, tag}
   end
+
+  defp inline_text?([{:text, _, _} = text], :inline) do
+    !(text_starts_with_line_break?(text) || text_ends_with_line_break?(text))
+  end
+
+  defp inline_text?(_block, _mode), do: false
 
   # Empty newline
   defp text_to_algebra(["" | lines], newlines, acc),
