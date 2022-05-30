@@ -1285,7 +1285,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(input, expected)
     end
 
-    test "keep text when inside inline elements and on the the same line" do
+    test "keep text when inside inline elements without line breaks" do
       assert_formatter_doesnt_change("""
       <b>text: </b>
       """)
