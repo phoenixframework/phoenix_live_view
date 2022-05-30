@@ -1,5 +1,47 @@
 defmodule Phoenix.LiveView.Logger do
-  @moduledoc false
+  @moduledoc """
+  Instrumenter to handle logging of `Phoenix.LiveView` life-cycle events.
+
+  ## Installation
+
+  Add the following line to your `application.ex`:
+
+  ```elixir
+  Phoenix.LiveView.Logger.install()
+  ```
+
+  By default, all `Phoenix.LiveView` and `Phoenix.LiveComponent` life-cycle events are logged as level `:info`.
+
+  ## Configuration
+
+  The log level is configurable for each `Phoenix.LiveView` and `Phoenix.LiveComponent` module:
+
+  ```elixir
+  use Phoenix.LiveView, log: :info
+  ```
+
+  To disable `Phoenix.LiveView` and `Phoenix.LiveComponent` module logging entirely:
+
+  ```elixir
+  use Phoenix.LiveView, log: false
+  ```
+
+  ## Telemetry
+
+  The following `Phoenix.LiveView` `:telemetry` events are logged:
+
+  - [:phoenix, :live_view, :mount, :stop]
+  - [:phoenix, :live_view, :handle_params, :stop]
+  - [:phoenix, :live_view, :handle_event, :stop]
+  - [:phoenix, :live_view, :handle_info, :stop]
+  - [:phoenix, :live_component, :handle_event, :stop]
+  
+  See [Telemetry](./guides/server/telemetry.md) for more information.
+
+  ## Parameter filtering
+
+  If enabled, `Phoenix.LiveView.Logger` will filter parameters based on the configuration of `Phoenix.Logger`. 
+  """
 
   import Phoenix.Logger, only: [duration: 1, filter_values: 1]
 
