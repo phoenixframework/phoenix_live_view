@@ -315,7 +315,7 @@ use Phoenix.LiveView,
 
 ## LiveView life-cycle event logging
 
-If you would like logs emitted for supported LiveView life-cycle events, you can add the following line to your `lib/my_app/application.ex`:
+If you would like logs emitted for supported LiveView life-cycle events, you can add the following line to your `lib/my_app/application.ex` in the `start/2` function:
 
 ```elixir
 Phoenix.LiveView.Logger.install()
