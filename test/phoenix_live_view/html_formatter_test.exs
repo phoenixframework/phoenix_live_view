@@ -1341,6 +1341,37 @@ if Version.match?(System.version(), ">= 1.13.0") do
         <b>Foo:</b><%= some_var %>
       </p>
       """)
+
+      assert_formatter_output(
+        """
+        <b>      Foo  Bar    </b>
+        """,
+        """
+        <b> Foo  Bar </b>
+        """
+      )
+
+      assert_formatter_doesnt_change("""
+      <b> Foo Bar </b>
+      """)
+
+      assert_formatter_output(
+        """
+        <b>Foo:    </b>
+        """,
+        """
+        <b>Foo: </b>
+        """
+      )
+
+      assert_formatter_output(
+        """
+        <b>        Foo: </b>
+        """,
+        """
+        <b> Foo: </b>
+        """
+      )
     end
 
     test "does not keep empty lines on script and styles tags" do

@@ -414,7 +414,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
-    buffer = may_set_preserve(buffer, text)
+    buffer = may_set_preserve_on_block(buffer, text)
 
     if line_html_comment?(text) do
       to_tree(tokens, [{:comment, text} | buffer], stack)
@@ -455,7 +455,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           :block
       end
 
-    buffer = buffer |> Enum.reverse() |> may_set_preserve_on_text(name)
+    buffer = buffer |> Enum.reverse() |> may_set_preserve_on_text(mode, name)
 
     tag_block = {:tag_block, name, attrs, buffer, %{mode: mode}}
 
@@ -542,7 +542,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
-  defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
+  defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
     mode =
       if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t\n\r' do
@@ -554,23 +554,42 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
-  defp may_set_preserve(buffer, _text), do: buffer
+  @non_ws_preserving_elements ["button"]
 
-  defp may_set_preserve_on_text([{:text, text, meta}], tag_name)
-       when tag_name in @inline_elements and tag_name != "button" do
-    mode =
-      if whitespace_around?(text) and meta.newlines == 0 do
-        :preserve
+  defp may_set_preserve_on_block(buffer, _text), do: buffer
+
+  defp may_set_preserve_on_text([{:text, text, meta}], :inline, tag_name)
+       when tag_name not in @non_ws_preserving_elements do
+    {mode, text} =
+      if meta.newlines == 0 and whitespace_around?(text) do
+        {:preserve, cleanup_extra_spaces(text)}
       else
-        :normal
+        {:normal, text}
       end
 
     [{:text, text, Map.put(meta, :mode, mode)}]
   end
 
-  defp may_set_preserve_on_text(buffer, _tag_name), do: buffer
+  defp may_set_preserve_on_text(buffer, _mode, _tag_name), do: buffer
 
   defp whitespace_around?(text), do: :binary.first(text) in '\s\t' or :binary.last(text) in '\s\t'
+
+  defp cleanup_extra_spaces(text) do
+    text
+    |> cleanup_extra_spaces(0)
+    |> String.reverse()
+    |> cleanup_extra_spaces(0)
+    |> String.reverse()
+  end
+
+  defp cleanup_extra_spaces(<<char, rest::binary>>, count) when char in '\s\t',
+    do: cleanup_extra_spaces(rest, count + 1)
+
+  defp cleanup_extra_spaces(<<char, rest::binary>>, count) when count >= 1,
+    do: IO.iodata_to_binary([" ", char, rest])
+
+  defp cleanup_extra_spaces(<<char, rest::binary>>, _count),
+    do: IO.iodata_to_binary([char, rest])
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn
