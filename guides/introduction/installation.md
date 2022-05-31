@@ -313,6 +313,14 @@ use Phoenix.LiveView,
 
 "layouts/root.html.heex" is shared by regular and live views, "app.html.heex" is rendered inside the root layout for regular views, and "live.html.heex" is rendered inside the root layout for LiveViews. "live.html.heex" typically starts out as a copy of "app.html.heex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
 
+## LiveView life-cycle event logging
+
+If you would like logs emitted for supported LiveView life-cycle events, you can add the following line to your `lib/my_app/application.ex`:
+
+```elixir
+Phoenix.LiveView.Logger.install()
+```
+
 ## Progress animation
 
 If you want to show a progress bar as users perform live actions, we recommend using [`topbar`](https://github.com/buunguyen/topbar).
