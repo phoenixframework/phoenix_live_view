@@ -275,6 +275,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, string(text)}
   end
 
+  defp to_algebra({:text, text, %{mode: :preserve}}, _context) when is_binary(text) do
+    {:inline, string(text)}
+  end
+
   # Handle text within other tags.
   defp to_algebra({:text, text, _meta}, _context) when is_binary(text) do
     case classify_leading(text) do

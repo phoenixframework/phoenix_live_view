@@ -455,7 +455,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           :block
       end
 
-    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{mode: mode}}
+    buffer = buffer |> Enum.reverse() |> may_set_preserve_on_text(name)
+
+    tag_block = {:tag_block, name, attrs, buffer, %{mode: mode}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
   end
@@ -553,6 +555,22 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp may_set_preserve(buffer, _text), do: buffer
+
+  defp may_set_preserve_on_text([{:text, text, meta}], tag_name)
+       when tag_name in @inline_elements and tag_name != "button" do
+    mode =
+      if whitespace_around?(text) and meta.newlines == 0 do
+        :preserve
+      else
+        :normal
+      end
+
+    [{:text, text, Map.put(meta, :mode, mode)}]
+  end
+
+  defp may_set_preserve_on_text(buffer, _tag_name), do: buffer
+
+  defp whitespace_around?(text), do: :binary.first(text) in '\s\t' or :binary.last(text) in '\s\t'
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn

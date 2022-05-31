@@ -1285,6 +1285,64 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_output(input, expected)
     end
 
+    test "keep at least one space around inline tags" do
+      assert_formatter_doesnt_change("""
+      <b>Foo: </b>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <b> Foo: </b>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <b> Foo:</b>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <p>
+        <b>Foo: </b>bar
+      </p>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <p>
+        <b>Foo: </b><span>bar</span>
+      </p>
+      """)
+
+      assert_formatter_output(
+        """
+        <p> <span>bar </span> </p>
+        """,
+        """
+        <p><span>bar </span></p>
+        """
+      )
+
+      assert_formatter_output(
+        """
+        <p><b>Foo: </b><span>bar</span></p>
+        """,
+        """
+        <p>
+          <b>Foo: </b><span>bar</span>
+        </p>
+        """
+      )
+
+      assert_formatter_doesnt_change("""
+      <p>
+        <b>Foo: </b><%= some_var %>
+      </p>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <p>
+        <b>Foo:</b><%= some_var %>
+      </p>
+      """)
+    end
+
     test "does not keep empty lines on script and styles tags" do
       input = """
       <script>
