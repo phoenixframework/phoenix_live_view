@@ -562,7 +562,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
        when tag_name not in @non_ws_preserving_elements do
     {mode, text} =
       if meta.newlines == 0 and whitespace_around?(text) do
-        {:preserve, cleanup_extra_spaces(text)}
+        text =
+          text
+          |> cleanup_extra_spaces_leading()
+          |> cleanup_extra_spaces_trailing()
+
+        {:preserve, text}
       else
         {:normal, text}
       end
