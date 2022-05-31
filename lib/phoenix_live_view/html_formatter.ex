@@ -574,22 +574,21 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp whitespace_around?(text), do: :binary.first(text) in '\s\t' or :binary.last(text) in '\s\t'
 
-  defp cleanup_extra_spaces(text) do
-    text
-    |> cleanup_extra_spaces(0)
-    |> String.reverse()
-    |> cleanup_extra_spaces(0)
-    |> String.reverse()
+  defp cleanup_extra_spaces_leading(text) do
+    if :binary.first(text) in '\s\t' do
+      " " <> String.trim_leading(text)
+    else
+      text
+    end
   end
 
-  defp cleanup_extra_spaces(<<char, rest::binary>>, count) when char in '\s\t',
-    do: cleanup_extra_spaces(rest, count + 1)
-
-  defp cleanup_extra_spaces(<<char, rest::binary>>, count) when count >= 1,
-    do: IO.iodata_to_binary([" ", char, rest])
-
-  defp cleanup_extra_spaces(<<char, rest::binary>>, _count),
-    do: IO.iodata_to_binary([char, rest])
+  defp cleanup_extra_spaces_trailing(text) do
+    if :binary.last(text) in '\s\t' do
+      String.trim_trailing(text) <> " "
+    else
+      text
+    end
+  end
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn
