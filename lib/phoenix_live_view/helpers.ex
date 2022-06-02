@@ -918,7 +918,7 @@ defmodule Phoenix.LiveView.Helpers do
       type="file"
       name={@upload.name}
       accept={@upload.accept != :any && @upload.accept}
-      phx-hook={Phoenix.LiveFileUpload}
+      phx-hook="Phoenix.LiveFileUpload"
       {@rest}
     />
     """
