@@ -1,42 +1,49 @@
 defmodule Phoenix.LiveView.Logger do
   @moduledoc """
-  Instrumenter to handle logging of `Phoenix.LiveView` life-cycle events.
+  Instrumenter to handle logging of `Phoenix.LiveView` and `Phoenix.LiveComponent` life-cycle events.
 
   ## Installation
 
   Add the following line to your `application.ex`:
 
   ```elixir
-  Phoenix.LiveView.Logger.install()
-  ```
+  # lib/my_app/application.ex
 
-  By default, all `Phoenix.LiveView` and `Phoenix.LiveComponent` life-cycle events are logged as level `:info`.
+  @impl true
+  def start(_type, _args) do
+    # ...
+    Phoenix.LiveView.Logger.install()
+    # ...
+  end
+  ```
 
   ## Configuration
 
-  The log level is configurable for each `Phoenix.LiveView` and `Phoenix.LiveComponent` module:
+  The log level is configurable for each `Phoenix.LiveView` module:
 
   ```elixir
-  use Phoenix.LiveView, log: :info
+  use Phoenix.LiveView, log: :debug
   ```
 
-  To disable `Phoenix.LiveView` and `Phoenix.LiveComponent` module logging entirely:
+  To disable logging entirely:
 
   ```elixir
   use Phoenix.LiveView, log: false
   ```
 
+  By default, all life-cycle events are logged as `:info`.
+
   ## Telemetry
 
-  The following `Phoenix.LiveView` `:telemetry` events are logged:
+  The following `Phoenix.LiveView` and `Phoenix.LiveComponent` events are logged:
 
-  - [:phoenix, :live_view, :mount, :stop]
-  - [:phoenix, :live_view, :handle_params, :stop]
-  - [:phoenix, :live_view, :handle_event, :stop]
-  - [:phoenix, :live_view, :handle_info, :stop]
-  - [:phoenix, :live_component, :handle_event, :stop]
-  
-  See [Telemetry](./guides/server/telemetry.md) for more information.
+  - `[:phoenix, :live_view, :mount, :stop]`
+  - `[:phoenix, :live_view, :handle_params, :stop]`
+  - `[:phoenix, :live_view, :handle_event, :stop]`
+  - `[:phoenix, :live_view, :handle_info, :stop]`
+  - `[:phoenix, :live_component, :handle_event, :stop]`
+
+  See the [Telemetry](./guides/server/telemetry.md) guide for more information.
 
   ## Parameter filtering
 
@@ -50,12 +57,11 @@ defmodule Phoenix.LiveView.Logger do
   @doc false
   def install do
     handlers = %{
-      [:phoenix, :live_view, :mount, :stop] => &__MODULE__.live_view_mount_stop/4,
-      [:phoenix, :live_view, :handle_params, :stop] => &__MODULE__.live_view_handle_params_stop/4,
-      [:phoenix, :live_view, :handle_event, :stop] => &__MODULE__.live_view_handle_event_stop/4,
-      [:phoenix, :live_view, :handle_info, :stop] => &__MODULE__.live_view_handle_info_stop/4,
-      [:phoenix, :live_component, :handle_event, :stop] =>
-        &__MODULE__.live_component_handle_event_stop/4
+      [:phoenix, :live_view, :mount, :stop] => &live_view_mount_stop/4,
+      [:phoenix, :live_view, :handle_params, :stop] => &live_view_handle_params_stop/4,
+      [:phoenix, :live_view, :handle_event, :stop] => &live_view_handle_event_stop/4,
+      [:phoenix, :live_view, :handle_info, :stop] => &live_view_handle_info_stop/4,
+      [:phoenix, :live_component, :handle_event, :stop] => &live_component_handle_event_stop/4
     }
 
     for {key, fun} <- handlers do
