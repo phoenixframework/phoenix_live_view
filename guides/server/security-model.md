@@ -46,14 +46,14 @@ via Plugs, such as this:
 Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView
 should execute those same verifications:
 
-    def mount(_params, %{"user_id" => user_id} = _session, socket) do
-      socket = assign(socket, current_user: Accounts.get_user!(user_id))
+    def mount(_params, %{"user_token" => user_token} = _session, socket) do
+      socket = assign(socket, current_user: Accounts.get_user_by_session_token(user_token))
 
       socket =
         if socket.assigns.current_user.confirmed_at do
           socket
         else
-          redirect(socket, to: "/login")
+          redirect(socket, to: Routes.user_session_path(socket, :new))
         end
 
       {:ok, socket}
@@ -65,16 +65,19 @@ as you would with plug:
 
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.LiveView
+      
+      alias MyAppWeb.Accounts
+      alias MyAppWeb.Router.Helpers, as: Routes
 
-      def on_mount(:default, _params, %{"user_id" => user_id} = _session, socket) do
+      def on_mount(:default, _params, %{"user_token" => user_token} = _session, socket) do
         socket = assign_new(socket, :current_user, fn ->
-          Accounts.get_user!(user_id)
+          Accounts.get_user_by_session_token(user_token)
         end)
 
         if socket.assigns.current_user.confirmed_at do
           {:cont, socket}
         else
-          {:halt, redirect(socket, to: "/login")}
+          {:halt, redirect(socket, to: Routes.user_session_path(socket, :new))}
         end
       end
     end
