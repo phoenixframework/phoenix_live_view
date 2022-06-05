@@ -25,6 +25,11 @@ its attributes can still be updated.
 The "append" and "prepend" feature is often used with "Temporary assigns"
 to work with large amounts of data. Let's learn more.
 
+To react to elements being mounted to the DOM, the `phx-mounted` binding
+can be used. For example, to animate an element on mount:
+
+    <div phx-mounted={JS.transition("animate-ping", time: 500)}>
+
 To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
 

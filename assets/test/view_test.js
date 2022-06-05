@@ -659,6 +659,35 @@ describe("View Hooks", function(){
     global.document.body.innerHTML = ""
   })
 
+  test("phx-mounted", done => {
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+
+    let html = "<h2 id=\"test\" phx-mounted=\"[[&quot;add_class&quot;,{&quot;names&quot;:[&quot;new-class&quot;],&quot;time&quot;:200,&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]\">test mounted</h2>"
+    el.innerHTML = html
+
+    let view = simulateJoinedView(el, liveSocket)
+
+    view.onJoin({
+      rendered: {
+        s: [html],
+        fingerprint: 123
+      }
+    })
+    window.requestAnimationFrame(() => {
+      expect(document.getElementById("test").getAttribute("class")).toBe("new-class")
+      view.update({
+        s: [html + "<h2 id=\"test2\" phx-mounted=\"[[&quot;add_class&quot;,{&quot;names&quot;:[&quot;new-class2&quot;],&quot;time&quot;:200,&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]\">test mounted</h2>"],
+        fingerprint: 123
+      }, [])
+      window.requestAnimationFrame(() => {
+        expect(document.getElementById("test").getAttribute("class")).toBe("new-class")
+        expect(document.getElementById("test2").getAttribute("class")).toBe("new-class2")
+        done()
+      })
+    })
+  })
+
   test("hooks", async () => {
     let upcaseWasDestroyed = false
     let upcaseBeforeUpdate = false

@@ -74,6 +74,7 @@ var PHX_LV_DEBUG = "phx:live-socket:debug";
 var PHX_LV_PROFILE = "phx:live-socket:profiling";
 var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
 var PHX_PROGRESS = "progress";
+var PHX_MOUNTED = "mounted";
 var LOADER_TIMEOUT = 1;
 var BEFORE_UNLOAD_LOADER_TIMEOUT = 200;
 var BINDING_PREFIX = "phx-";
@@ -2385,11 +2386,9 @@ var View = class {
     this.performPatch(patch, false);
     this.joinNewChildren();
     dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
-      let hook = this.addHook(hookEl);
-      if (hook) {
-        hook.__mounted();
-      }
+      this.maybeAddNewHook(hookEl);
     });
+    dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => this.maybeMounted(el));
     this.joinPending = false;
     this.liveSocket.dispatchEvents(events);
     this.applyPendingUpdates();
@@ -2412,15 +2411,29 @@ var View = class {
       return hook;
     }
   }
+  maybeMounted(el) {
+    let phxMounted = el.getAttribute(this.binding(PHX_MOUNTED));
+    let hasBeenInvoked = phxMounted && dom_default.private(el, "mounted");
+    if (phxMounted && !hasBeenInvoked) {
+      this.liveSocket.execJS(el, phxMounted);
+      dom_default.putPrivate(el, "mounted", true);
+    }
+  }
+  maybeAddNewHook(el, force) {
+    let newHook = this.addHook(el);
+    if (newHook) {
+      newHook.__mounted();
+    }
+  }
   performPatch(patch, pruneCids) {
     let removedEls = [];
     let phxChildrenAdded = false;
     let updatedHookIds = new Set();
     patch.after("added", (el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
-      let newHook = this.addHook(el);
-      if (newHook) {
-        newHook.__mounted();
+      this.maybeAddNewHook(el);
+      if (el.getAttribute) {
+        this.maybeMounted(el);
       }
     });
     patch.after("phxChildAdded", (el) => {

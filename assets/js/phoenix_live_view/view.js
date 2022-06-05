@@ -28,8 +28,9 @@ import {
   PHX_UPDATE,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
-  PUSH_TIMEOUT,
   PHX_MAIN,
+  PHX_MOUNTED,
+  PUSH_TIMEOUT,
 } from "./constants"
 
 import {
@@ -310,9 +311,9 @@ export default class View {
     this.performPatch(patch, false)
     this.joinNewChildren()
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
-      let hook = this.addHook(hookEl)
-      if(hook){ hook.__mounted() }
+      this.maybeAddNewHook(hookEl)
     })
+    DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => this.maybeMounted(el))
 
     this.joinPending = false
     this.liveSocket.dispatchEvents(events)
@@ -337,6 +338,20 @@ export default class View {
     }
   }
 
+  maybeMounted(el){
+    let phxMounted = el.getAttribute(this.binding(PHX_MOUNTED))
+    let hasBeenInvoked = phxMounted && DOM.private(el, "mounted")
+    if(phxMounted && !hasBeenInvoked){
+      this.liveSocket.execJS(el, phxMounted)
+      DOM.putPrivate(el, "mounted", true)
+    }
+  }
+
+  maybeAddNewHook(el, force){
+    let newHook = this.addHook(el)
+    if(newHook){ newHook.__mounted() }
+  }
+
   performPatch(patch, pruneCids){
     let removedEls = []
     let phxChildrenAdded = false
@@ -344,9 +359,8 @@ export default class View {
 
     patch.after("added", el => {
       this.liveSocket.triggerDOM("onNodeAdded", [el])
-
-      let newHook = this.addHook(el)
-      if(newHook){ newHook.__mounted() }
+      this.maybeAddNewHook(el)
+      if(el.getAttribute){ this.maybeMounted(el) }
     })
 
     patch.after("phxChildAdded", el => {
