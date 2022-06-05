@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
-  Toggles elements.
+  Toggles element visibility.
 
   ## Options
 
