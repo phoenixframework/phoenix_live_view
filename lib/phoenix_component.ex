@@ -610,6 +610,12 @@ defmodule Phoenix.Component do
       true ->
         :ok
     end
+    
+    {desc, opts} = Keyword.pop(opts, :desc, "")
+    
+    unless is_binary(desc) do
+      compile_error!(line, file, ":desc must be a string, got: #{inspect(desc)}")
+    end
 
     {required, opts} = Keyword.pop(opts, :required, false)
 
@@ -629,6 +635,7 @@ defmodule Phoenix.Component do
       type: type,
       required: required,
       opts: opts,
+      desc: desc,
       line: line
     })
   end
