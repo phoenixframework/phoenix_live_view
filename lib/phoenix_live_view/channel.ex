@@ -401,6 +401,13 @@ defmodule Phoenix.LiveView.Channel do
       {:cont, %Socket{} = socket} when exported? ->
         view.handle_info(msg, socket)
 
+      {:cont, %Socket{} = socket} when not exported? ->
+        Logger.debug(
+          "warning: undefined handle_info in #{inspect(view)}. Unhandled message: #{inspect(msg)}"
+        )
+
+        {:noreply, socket}
+
       {_, %Socket{} = socket} ->
         {:noreply, socket}
     end
