@@ -14,6 +14,30 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
   end
 end
 
+defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
+  use Phoenix.Component
+
+  attr :value, :any, doc: "a value"
+
+  @doc "a function component"
+  def func_with_attrs(assigns) do
+    ~H"""
+    COMPONENT: <%= @value %>
+    """
+  end
+
+  attr :value1, :any, doc: "a value"
+  attr :value2, :any, doc: "another value"
+
+  @doc "a second function component"
+  @spec func_with_attrs2(map) :: any()
+  def func_with_attrs2(assigns) do
+    ~H"""
+    COMPONENT: <%= @value %>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
@@ -136,13 +160,13 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   def mount(_params, %{"names" => names, "from" => from} = session, socket) do
     {
       :ok,
-      assign(socket, [
+      assign(socket,
         names: names,
         from: from,
         disabled: [],
         message: nil,
         parent_selector: Map.get(session, "parent_selector", "#parent_id")
-      ])
+      )
     }
   end
 

@@ -585,6 +585,7 @@ defmodule Phoenix.ComponentTest do
 
         attr :no_doc, :any
 
+        @doc "my function component with attrs"
         def func_with_attr_descs(assigns), do: ~H[]
       end
 
@@ -637,7 +638,7 @@ defmodule Phoenix.ComponentTest do
              }
     end
 
-    test "raise if :desc is not a stirng" do
+    test "raise if :desc is not a string" do
       msg = ~r/desc must be a string, got: :foo/
 
       assert_raise CompileError, msg, fn ->
@@ -648,6 +649,24 @@ defmodule Phoenix.ComponentTest do
           def func(assigns), do: ~H[]
         end
       end
+    end
+
+    test "appends attr docs to function component @doc string if present" do
+      # Code.fetch_docs/1 needs a compiled BEAM file
+      assert {:docs_v1, _, :elixir, "text/markdown", :none, %{},
+              [
+                _,
+                _,
+                {{:function, :func_with_attrs, 1}, _, ["func_with_attrs(assigns)"],
+                 %{
+                   "en" => "a function component\n## Attributes\n* value: optional(any) - a value"
+                 }, %{}},
+                {{:function, :func_with_attrs2, 1}, _, ["func_with_attrs2(assigns)"],
+                 %{
+                   "en" =>
+                     "a second function component\n## Attributes\n* value1: optional(any) - a value\n* value2: optional(any) - another value"
+                 }, %{}}
+              ]} = Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
     end
 
     test "raise if attr is not declared before the first function definition" do

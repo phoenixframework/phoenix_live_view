@@ -610,11 +610,11 @@ defmodule Phoenix.Component do
       true ->
         :ok
     end
-    
-    {desc, opts} = Keyword.pop(opts, :desc, "")
-    
-    unless is_binary(desc) do
-      compile_error!(line, file, ":desc must be a string, got: #{inspect(desc)}")
+
+    {doc, opts} = Keyword.pop(opts, :doc, nil)
+
+    unless is_binary(doc) or is_nil(doc) or not doc do
+      compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
@@ -635,7 +635,7 @@ defmodule Phoenix.Component do
       type: type,
       required: required,
       opts: opts,
-      desc: desc,
+      doc: doc,
       line: line
     })
   end
@@ -852,6 +852,20 @@ defmodule Phoenix.Component do
       attrs != [] ->
         check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
 
+        case Module.get_attribute(env.module, :doc) do
+          # @doc false
+          {_line, false} ->
+            :ok
+
+          # @doc "some function documentation"
+          {line, doc} ->
+            Module.put_attribute(env.module, :doc, {line, component_doc(doc, attrs)})
+
+          # no @doc specified"
+          nil ->
+            Module.put_attribute(env.module, :doc, {env.line, component_doc(attrs)})
+        end
+
         components =
           env.module
           |> Module.get_attribute(:__components__)
@@ -869,6 +883,64 @@ defmodule Phoenix.Component do
         []
     end
   end
+
+  # TODO: should the function that formats component documentation be configurable?
+  # One way could be through Application configuration
+
+  # TODO: support a placeholder for attr doc injection, what should that be?
+  # One option is to use HTML-style markdown comment like this:
+  # <!--- ATTRDOC -->
+
+  defp component_doc(doc, attrs) do
+    to_string([
+      doc,
+      ?\n,
+      "## Attributes",
+      ?\n,
+      build_attr_docs(attrs)
+    ])
+  end
+
+  defp component_doc(attrs) do
+    to_string([
+      "## Attributes",
+      ?\n,
+      build_attr_docs(attrs)
+    ])
+  end
+
+  defp build_attr_docs(attrs) do
+    attrs
+    |> Enum.reject(&(&1.doc == false))
+    |> Enum.map_join("\n", &build_attr_doc/1)
+  end
+
+  defp build_attr_doc(attr) do
+    [
+      "* ",
+      name_doc(attr.name),
+      " - _",
+      type_doc(attr.type),
+      required_doc(attr.required),
+      default_doc(attr.opts),
+      "_",
+      attr_doc(attr.doc)
+    ]
+  end
+
+  defp name_doc(name), do: "**#{name}**"
+
+  defp type_doc({:struct, type}), do: type_doc(type)
+  defp type_doc(type), do: inspect(type)
+
+  defp required_doc(true), do: ", required"
+  defp required_doc(false), do: ""
+
+  defp default_doc(default: default), do: ", default: `#{inspect(default)}`"
+  defp default_doc(_), do: ""
+
+  defp attr_doc(nil), do: ""
+  defp attr_doc(doc), do: " - #{doc}"
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
