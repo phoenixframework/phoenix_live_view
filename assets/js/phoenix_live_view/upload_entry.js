@@ -69,6 +69,7 @@ export default class UploadEntry {
   isDone(){ return this._isDone }
 
   error(reason = "failed"){
+    this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
     this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
     LiveUploader.clearFiles(this.fileEl)
   }
