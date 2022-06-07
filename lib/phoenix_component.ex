@@ -286,7 +286,42 @@ defmodule Phoenix.Component do
   we render them.
 
   ## Attributes
-  TODO
+
+  Function components support declarative assigns with compile-time
+  verification and validation. For example a progress bar function
+  component may declare its attributes like so:
+
+      attr :id, :string, required: true
+      attr :min, :integer, default: 0
+      attr :max, :integer, default: 100
+      attr :val, :integer, default: nil
+      attr :rest, :global, default: %{class: "w-4 h-4 inline-block"}
+
+      def progress_bar(assigns) do
+        ~H"""
+        <div id={@id} data-min={@min} data-max={@max} data-val={@val || @min} {@rest}></div>
+        """
+      end
+
+  And a caller rendering such a component would receive helpful errors by the
+  LiveView compiler if they rendered it incorrectly:
+
+      <.progress_bar value={@percent} />
+
+      warning: missing required attribute "id" for component MyAppWeb.LiveHelpers.progress_bar/1
+               lib/app_web/live_helpers.ex:15
+
+  *Note*: Declarative assigns requires the `:phoenix_live_view` compiler to be added
+  to your `:compiler` options in your `mix.exs`'s `project` configuration:
+
+      def project do
+        [
+          ...,
+          compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
+        ]
+      end
+
+  See `attr/3` for full usage details.
 
   ### Global Attributes
 
@@ -301,6 +336,11 @@ defmodule Phoenix.Component do
   `x-data`, etc:
 
       use Phoenix.Component, global_prefixes: ~w(x-)
+
+  Global attribute defaults are merged with caller attributes. For example
+  you may declare a default class if the caller does not provide one:
+
+      attr :rest, :global, default: %{class: "w-4 h-4 inline-block"}
   '''
 
   @global_prefixes ~w(
@@ -480,13 +520,29 @@ defmodule Phoenix.Component do
     prefixes
   end
 
-  @doc """
-  TODO.
+  @doc ~S'''
+  Declares attributes for a HEEx templates with compile-time verification.
 
   ## Options
 
-    * `:required` - TODO
-    * `:default` - TODO
+    * `:required` - marks an attribute as required. If a caller does not pass
+      the given attribute, a compile warning is issued
+    * `:default` - the default value for the attribute if not provided
+
+  ## Types
+
+  An attribute is declared by its name, type, and options. The following
+  types are supported:
+
+    * `:any` - any term
+    * `:string` - any binary string
+    * `:list` - a List of any aribitrary types
+    * `:global` - represents all other undefined attributes
+      passed by the caller that match common HTML attributes as well as
+      those defined via the `:global_prefixes` option to `use Phoenix.Component`.
+      The optional map of global attribute defaults are merged with caller attributes.
+      See the `Phoenix.Component` module documenation for full details.
+    * Any struct module
 
   ## Validations
 
@@ -516,7 +572,21 @@ defmodule Phoenix.Component do
       will be emitted
 
   This list may increase in the future.
-  """
+
+  ## Examples
+
+      attr :id, :string, required: true
+      attr :min, :integer, default: 0
+      attr :max, :integer, default: 100
+      attr :val, :integer, default: nil
+      attr :rest, :global, default: %{class: "w-4 h-4 inline-block"}
+
+      def progress_bar(assigns) do
+        ~H"""
+        <div id={@id} data-min={@min} data-max={@max} data-val={@val || @min} {@rest}></div>
+        """
+      end
+  '''
   defmacro attr(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.__attr__!(__MODULE__, name, type, opts, __ENV__.line, __ENV__.file)
