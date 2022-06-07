@@ -1072,7 +1072,7 @@ defmodule Phoenix.LiveView.Helpers do
     # unless the action is given.
     {attrs, hidden_method, csrf_token} =
       if action do
-        {method, opts} = Keyword.pop(opts, :method)
+        {method, opts} = Keyword.pop(opts, :method, "post")
         {method, hidden_method} = form_method(method)
 
         {csrf_token, opts} =
