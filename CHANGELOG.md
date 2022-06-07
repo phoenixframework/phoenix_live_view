@@ -2,12 +2,38 @@
 
 ## 0.18.0
 
+0.18.0 includes a major new feature in the form of delcarative assigns with a new `attr`
+macro for specifying which attributes a function component supports, the type, and default values.
+Attributes are compile-time verified with warnings. To support `attr` in your existing applications
+add the `:phoenix_live_view` compiler to your `mix.exs`'s `project` configuration:
+
+```elixir
+def project do
+  [
+    ...,
+    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
+  ]
+end
+```
+
+0.18.0 includes a number of new function components which replace their EEx expression counterparts `<%= ... %>`.
+For example, `live_rediret`, `live_patch`, and Phoenix.HTML's `link` have been replaced by a unified
+`Phoenix.LiveView.Helpers.link/1` function component:
+
+    <.link href="https://myapp.com">my app</.link>
+    <.link navigate={@path}>remount</.link>
+    <.link patch={@path}>patch</.link>
+
+Additionally, the special `let` attribute on function components have been deprecated by a `:let` usage.
+
+
 ### Deprecations
   - `live_redirect` - deprecate in favor of new `<link redirect={..}>` component of `Phoenix.LiveView.Helpers`
   - `live_patch` - deprecate in favor of new `<link patch={..}>` component of `Phoenix.LiveView.Helpers`
   - `push_redirect` - deprecate in favor of new `push_navigate` function on `Phoenix.LiveView`
 
 ### Enhancements
+  - Add declarative assigns with compile-time verifications and warnings via `attr` macro above function components
   - [Helpers] Add `dynamic_tag` function component
   - [Helpers] Add `link` function component
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
