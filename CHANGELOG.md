@@ -17,7 +17,7 @@ end
 ```
 
 0.18.0 includes a number of new function components which replace their EEx expression counterparts `<%= ... %>`.
-For example, `live_rediret`, `live_patch`, and Phoenix.HTML's `link` have been replaced by a unified
+For example, `live_redirect`, `live_patch`, and Phoenix.HTML's `link` have been replaced by a unified
 `Phoenix.LiveView.Helpers.link/1` function component:
 
     <.link href="https://myapp.com">my app</.link>
