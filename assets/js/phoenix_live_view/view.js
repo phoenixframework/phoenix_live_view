@@ -470,7 +470,7 @@ export default class View {
   }
 
   update(diff, events){
-    if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && this.root.isMain() && !DOM.isPhxSticky(this.el))){
+    if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && this.root.isMain())){
       return this.pendingDiffs.push({diff, events})
     }
 
