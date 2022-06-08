@@ -104,14 +104,17 @@ defmodule Phoenix.LiveView.HelpersTest do
       csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
 
       assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
-               "<a href=\"/users\" data-method=\"delete\" data-csrf=\"#{csrf}\">delete</a>"
+               "<a href=\"#\" data-method=\"delete\" data-csrf=\"#{csrf}\" data-to=\"/users\">delete</a>"
+
+      assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
+               "<a href=\"#\" data-method=\"delete\" data-csrf=\"#{csrf}\" data-to=\"/users\">delete</a>"
     end
 
     test "csrf with custom token" do
       assigns = %{}
 
       assert render(~H|<.link href="/users" method={:post} csrf_token="123">delete</.link>|) ==
-               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+               "<a href=\"#\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\">delete</a>"
     end
 
     test "csrf with confirm" do
@@ -120,7 +123,7 @@ defmodule Phoenix.LiveView.HelpersTest do
       assert render(
                ~H|<.link href="/users" method={:post} csrf_token="123" data-confirm="are you sure?">delete</.link>|
              ) ==
-               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-confirm=\"are you sure?\">delete</a>"
+               "<a href=\"#\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
     end
 
     test "invalid schemes" do

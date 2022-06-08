@@ -1233,7 +1233,7 @@ defmodule Phoenix.LiveView.Helpers do
   attr :patch, :string
   attr :href, :any
   attr :replace, :string, default: false
-  attr :method, :atom, default: false
+  attr :method, :atom, default: "get"
   attr :csrf_token, :string
   attr :rest, :global
 
@@ -1274,11 +1274,14 @@ defmodule Phoenix.LiveView.Helpers do
           assign(assigns, :href, href)
       end
 
+    assigns = assign(assigns, :method, to_string(assigns.method))
+
     ~H"""
     <a
-      href={@href || "#"}
-      data-method={@method != :get && @method}
-      data-csrf={@method && @method != :get && @csrf_token}
+      href={if @method == "get", do: @href, else: "#"}
+      data-method={if @method != "get", do: @method}
+      data-csrf={if @method != "get", do: @csrf_token}
+      data-to={if @method != "get", do: @href}
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
