@@ -101,44 +101,23 @@ defmodule Phoenix.LiveView.Socket do
       channel "lvu:*", Phoenix.LiveView.UploadChannel
       channel "lv:*", Phoenix.LiveView.Channel
 
-      @phoenix_connect false
-      @phoenix_id false
+      def connect(params, socket, info), do: {:ok, socket}
+      defdelegate id(socket), to: unquote(__MODULE__)
+
+      defoverridable connect: 3, id: 1
 
       @before_compile unquote(__MODULE__)
-      @on_definition unquote(__MODULE__)
     end
   end
 
-  def __on_definition__(env, :def, :connect, [_, _, _], _guards, _body) do
-    Module.put_attribute(env.module, :phoenix_connect, true)
-  end
-
-  def __on_definition__(env, :def, :id, [_], _guards, _body) do
-    Module.put_attribute(env.module, :phoenix_id, true)
-  end
-
-  def __on_definition__(_env, _kind, _name, _args, _guards, _body), do: :ok
-
   defmacro __before_compile__(_env) do
     quote do
-      if @phoenix_connect do
-        defoverridable connect: 3
+      defoverridable connect: 3, id: 1
 
-        def connect(params, %Phoenix.Socket{} = socket, connect_info) do
-          case super(params, socket, connect_info) do
-            {:ok, %Phoenix.Socket{} = new_socket} ->
-              Phoenix.LiveView.Socket.connect(params, new_socket, connect_info)
-
-            other ->
-              other
-          end
+      def connect(params, %Phoenix.Socket{} = socket, connect_info) do
+        with {:ok, %Phoenix.Socket{} = new_socket} <- super(params, socket, connect_info) do
+          Phoenix.LiveView.Socket.connect(params, new_socket, connect_info)
         end
-      else
-        defdelegate connect(params, socket, info), to: unquote(__MODULE__)
-      end
-
-      unless @phoenix_id do
-        defdelegate id(socket), to: unquote(__MODULE__)
       end
     end
   end
