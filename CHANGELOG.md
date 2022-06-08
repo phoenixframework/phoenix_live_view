@@ -37,6 +37,7 @@ Additionally, the special `let` attribute on function components have been depre
   - [Helpers] Add `dynamic_tag` function component
   - [Helpers] Add `link` function component
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
+  - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
 
 ## 0.17.10 (2022-05-25)
 
