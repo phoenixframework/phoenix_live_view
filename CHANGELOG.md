@@ -39,6 +39,9 @@ Additionally, the special `let` attribute on function components have been depre
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
   - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
 
+### Bug fixes
+  - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client
+
 ## 0.17.10 (2022-05-25)
 
 ### Bug fixes
