@@ -79,7 +79,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       %Phoenix.Socket.Reply{ref: ^ref, status: status, payload: payload} ->
         {:stop, :normal, {status, payload}, state}
     after
-      1000 -> exit(:timeout)
+      get_chunk_timeout(state) -> exit(:timeout)
     end
   end
 
@@ -154,7 +154,6 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   defp do_chunk(state, from, entry, proxy_pid, element, percent) do
     stats = progress_stats(entry, percent)
-
     chunk =
       if stats.start + stats.chunk_size > entry.size do
         :binary.part(entry.content, stats.start, entry.size - stats.start)
@@ -169,7 +168,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, state.cid)
         update_entry_start(state, entry, stats.new_start)
     after
-      1000 -> exit(:timeout)
+      get_chunk_timeout(state) -> exit(:timeout)
     end
   end
 
@@ -183,6 +182,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       {:ok, entry} -> entry
       :error ->  raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
     end
+  end
+
+  defp get_chunk_timeout(state) do
+    state.socket.assigns[:chunk_timeout] || 10_000
   end
 
   def handle_info(:garbage_collect, state) do
