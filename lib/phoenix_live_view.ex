@@ -1619,7 +1619,7 @@ defmodule Phoenix.LiveView do
         ...
         pid = self()
 
-        Task.async(fn ->
+        Task.start(fn ->
           # Do something asynchronously
           send_update(pid, Cart, id: "cart", status: "cancelled")
         end)
@@ -1652,7 +1652,7 @@ defmodule Phoenix.LiveView do
         ...
         pid = self()
 
-        Task.async(fn ->
+        Task.start(fn ->
           # Do something asynchronously
           send_update_after(pid, Cart, [id: "cart", status: "cancelled"], 3000)
         end)
