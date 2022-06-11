@@ -168,6 +168,28 @@ requires explicitly setting the `:value` in your markup, for example:
 <%= error_tag f, :password_confirmation %>
 ```
 
+## Nested inputs
+
+Nested inputs are handled using `inputs_for` form helpers. There are two versions
+of `inputs_for` - one that takes an anonymous function and one that doesn't. The version
+that takes an anonymous function won't work properly with LiveView as it prevents rendering
+of LiveComponents. Instead of using this form:
+
+```heex
+<%= inputs_for f, :friend, fn fp -> %>
+  <%= text_input fp, :url %>
+<% end %>
+```
+
+you should use this:
+
+```heex
+<%= for fp <- inputs_for(f, :friends) do %>
+  <%= text_input fp, :name %>
+<% end %>
+```
+
+
 ## File inputs
 
 LiveView forms support [reactive file inputs](uploads.md),
