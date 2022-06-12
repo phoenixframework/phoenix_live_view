@@ -132,14 +132,9 @@ if Version.match?(System.version(), ">= 1.13.0") do
         line_length: 10
       )
 
-      assert_formatter_output(
+      assert_formatter_doesnt_change(
         """
         <p>first<span>name</span> second</p>
-        """,
-        """
-        <p>
-          first<span>name</span> second
-        </p>
         """,
         line_length: 40
       )
@@ -503,11 +498,16 @@ if Version.match?(System.version(), ">= 1.13.0") do
         line_length: 27
       )
 
-      assert_formatter_doesnt_change("""
-      <span><%= @user_a %></span>
-      X
-      <span><%= @user_b %></span>
-      """)
+      assert_formatter_output(
+        """
+        <span><%= @user_a %></span>
+        X
+        <span><%= @user_b %></span>
+        """,
+        """
+        <span><%= @user_a %></span> X <span><%= @user_b %></span>
+        """
+      )
 
       assert_formatter_doesnt_change("""
       <span><%= @user_a %></span> X <span><%= @user_b %></span>
@@ -1319,16 +1319,9 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """
       )
 
-      assert_formatter_output(
-        """
-        <p><b>Foo: </b><span>bar</span></p>
-        """,
-        """
-        <p>
-          <b>Foo: </b><span>bar</span>
-        </p>
-        """
-      )
+      assert_formatter_doesnt_change("""
+      <p><b>Foo: </b><span>bar</span></p>
+      """)
 
       assert_formatter_doesnt_change("""
       <p>
@@ -1641,6 +1634,17 @@ if Version.match?(System.version(), ">= 1.13.0") do
         <.textarea phx-no-format>My content</.textarea>
         """,
         line_length: 5
+      )
+    end
+
+    test "respects heex_line_length" do
+      assert_formatter_doesnt_change(
+        """
+        <p>
+          <strong>Please let me be in the same line</strong> Value <strong>Please let me be in the same line</strong>.
+        </p>
+        """,
+        heex_line_length: 1000
       )
     end
 

@@ -22,13 +22,23 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp block_to_algebra([], _opts), do: empty()
 
   defp block_to_algebra(block, %{mode: :preserve} = context) do
-    block
-    |> Enum.reduce(empty(), fn node, doc ->
-      {_type, next_doc} = to_algebra(node, context)
-      concat(doc, next_doc)
-    end)
-    |> force_unfit()
-    |> group()
+    concat =
+      Enum.reduce(block, empty(), fn node, doc ->
+        {_type, next_doc} = to_algebra(node, context)
+        concat(doc, next_doc)
+      end)
+
+    force_unfit? =
+      Enum.any?(block, fn
+        {:text, text, %{newlines: newlines}} -> newlines > 0 or String.contains?(text, "\n")
+        _ -> false
+      end)
+
+    if force_unfit? do
+      concat |> force_unfit() |> group()
+    else
+      concat |> group()
+    end
   end
 
   defp block_to_algebra([head | tail], context) do
