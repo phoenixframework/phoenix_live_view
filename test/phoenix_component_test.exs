@@ -348,7 +348,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [default: nil],
                      required: false,
-                     desc: "",
+                     doc: nil,
                      line: func1_line + 2
                    },
                    %{
@@ -356,7 +356,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [],
                      required: true,
-                     desc: "",
+                     doc: nil,
                      line: func1_line + 1
                    }
                  ]
@@ -369,7 +369,7 @@ defmodule Phoenix.ComponentTest do
                      type: :integer,
                      opts: [default: 0],
                      required: false,
-                     desc: "",
+                     doc: nil,
                      line: func2_line + 2
                    },
                    %{
@@ -377,7 +377,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [],
                      required: true,
-                     desc: "",
+                     doc: nil,
                      line: func2_line + 1
                    }
                  ]
@@ -389,7 +389,7 @@ defmodule Phoenix.ComponentTest do
                      name: :id,
                      opts: [default: "container"],
                      required: false,
-                     desc: "",
+                     doc: nil,
                      type: :string
                    }
                  ],
@@ -402,7 +402,7 @@ defmodule Phoenix.ComponentTest do
                      name: :rest,
                      opts: [default: %{class: "primary"}],
                      required: false,
-                     desc: "",
+                     doc: nil,
                      type: :global
                    }
                  ],
@@ -415,15 +415,15 @@ defmodule Phoenix.ComponentTest do
                      name: :id,
                      opts: [],
                      required: true,
-                     type: :string,
-                     desc: ""
+                     doc: nil,
+                     type: :string
                    },
                    %{
                      line: with_global_line + 5,
                      name: :rest,
                      opts: [],
                      required: false,
-                     desc: "",
+                     doc: nil,
                      type: :global
                    }
                  ],
@@ -505,7 +505,7 @@ defmodule Phoenix.ComponentTest do
                      line: __ENV__.line - 13,
                      name: :example,
                      opts: [],
-                     desc: "",
+                     doc: nil,
                      required: true,
                      type: :any
                    }
@@ -564,20 +564,20 @@ defmodule Phoenix.ComponentTest do
       defmodule Descriptions do
         use Phoenix.Component
 
-        attr :single, :any, desc: "a single line description"
+        attr :single, :any, doc: "a single line description"
 
-        attr :break, :any, desc: "a description
+        attr :break, :any, doc: "a description
         with a line break"
 
         attr :multi, :any,
-          desc: """
+          doc: """
           a description
           that spans
           multiple lines
           """
 
         attr :sigil, :any,
-          desc: ~S"""
+          doc: ~S"""
           a description
           within a multi-line
           sigil
@@ -586,11 +586,11 @@ defmodule Phoenix.ComponentTest do
         attr :no_doc, :any
 
         @doc "my function component with attrs"
-        def func_with_attr_descs(assigns), do: ~H[]
+        def func_with_attr_docs(assigns), do: ~H[]
       end
 
       assert Descriptions.__components__() == %{
-               func_with_attr_descs: %{
+               func_with_attr_docs: %{
                  kind: :def,
                  attrs: [
                    %{
@@ -599,7 +599,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      type: :any,
-                     desc: "a description\n        with a line break"
+                     doc: "a description\n        with a line break"
                    },
                    %{
                      line: 572,
@@ -607,7 +607,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      type: :any,
-                     desc: "a description\nthat spans\nmultiple lines\n"
+                     doc: "a description\nthat spans\nmultiple lines\n"
                    },
                    %{
                      line: 586,
@@ -615,7 +615,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      type: :any,
-                     desc: ""
+                     doc: nil
                    },
                    %{
                      line: 579,
@@ -623,7 +623,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      type: :any,
-                     desc: "a description\nwithin a multi-line\nsigil\n"
+                     doc: "a description\nwithin a multi-line\nsigil\n"
                    },
                    %{
                      line: 567,
@@ -631,21 +631,21 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      type: :any,
-                     desc: "a single line description"
+                     doc: "a single line description"
                    }
                  ]
                }
              }
     end
 
-    test "raise if :desc is not a string" do
-      msg = ~r/desc must be a string, got: :foo/
+    test "raise if :doc is not a string" do
+      msg = ~r/doc must be a string or false, got: :foo/
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrDescInvalidType do
           use Elixir.Phoenix.Component
 
-          attr :invalid, :any, desc: :foo
+          attr :invalid, :any, doc: :foo
           def func(assigns), do: ~H[]
         end
       end
@@ -659,12 +659,11 @@ defmodule Phoenix.ComponentTest do
                 _,
                 {{:function, :func_with_attrs, 1}, _, ["func_with_attrs(assigns)"],
                  %{
-                   "en" => "a function component\n## Attributes\n* value: optional(any) - a value"
+                   "en" => "a function component"
                  }, %{}},
                 {{:function, :func_with_attrs2, 1}, _, ["func_with_attrs2(assigns)"],
                  %{
-                   "en" =>
-                     "a second function component\n## Attributes\n* value1: optional(any) - a value\n* value2: optional(any) - another value"
+                   "en" => "a second function componentdoc"
                  }, %{}}
               ]} = Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
     end

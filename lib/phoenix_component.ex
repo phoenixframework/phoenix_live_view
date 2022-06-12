@@ -613,7 +613,7 @@ defmodule Phoenix.Component do
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
-    unless is_binary(doc) or is_nil(doc) or not doc do
+    unless is_binary(doc) or is_nil(doc) or doc == false do
       compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
     end
 
@@ -859,11 +859,11 @@ defmodule Phoenix.Component do
 
           # @doc "some function documentation"
           {line, doc} ->
-            Module.put_attribute(env.module, :doc, {line, component_doc(doc, attrs)})
+            Module.put_attribute(env.module, :doc, {line, inject_attr_docs(doc, attrs)})
 
           # no @doc specified"
           nil ->
-            Module.put_attribute(env.module, :doc, {env.line, component_doc(attrs)})
+            Module.put_attribute(env.module, :doc, {env.line, inject_attr_docs(attrs)})
         end
 
         components =
@@ -889,58 +889,79 @@ defmodule Phoenix.Component do
 
   # TODO: support a placeholder for attr doc injection, what should that be?
   # One option is to use HTML-style markdown comment like this:
-  # <!--- ATTRDOC -->
-
-  defp component_doc(doc, attrs) do
-    to_string([
+  # <!-- ATTRDOC -->
+  defp inject_attr_docs(doc \\ "", attrs) do
+    :erlang.iolist_to_binary([
       doc,
       ?\n,
       "## Attributes",
       ?\n,
-      build_attr_docs(attrs)
+      for attr <- attrs, attr.doc != false, into: [] do
+        [
+          "* ",
+          build_attr_name(attr),
+          " - ",
+          build_attr_type(attr),
+          build_attr_meta(attr),
+          " - ",
+          build_attr_doc(attr),
+          ?\n
+        ]
+      end
     ])
   end
 
-  defp component_doc(attrs) do
-    to_string([
-      "## Attributes",
-      ?\n,
-      build_attr_docs(attrs)
-    ])
-  end
-
-  defp build_attr_docs(attrs) do
-    attrs
-    |> Enum.reject(&(&1.doc == false))
-    |> Enum.map_join("\n", &build_attr_doc/1)
-  end
-
-  defp build_attr_doc(attr) do
+  defp build_attr_name(%{name: name}) do
     [
-      "* ",
-      name_doc(attr.name),
-      " - _",
-      type_doc(attr.type),
-      required_doc(attr.required),
-      default_doc(attr.opts),
-      "_",
-      attr_doc(attr.doc)
+      "`",
+      inspect(name),
+      "`"
     ]
   end
 
-  defp name_doc(name), do: "**#{name}**"
+  defp build_attr_type(%{type: {:struct, type}}) do
+    [
+      "`",
+      inspect(type),
+      "`"
+    ]
+  end
 
-  defp type_doc({:struct, type}), do: type_doc(type)
-  defp type_doc(type), do: inspect(type)
+  defp build_attr_type(%{type: type}) do
+    [
+      "`",
+      inspect(type),
+      "`"
+    ]
+  end
 
-  defp required_doc(true), do: ", required"
-  defp required_doc(false), do: ""
+  defp build_attr_meta(%{required: true}) do
+    [
+      ", _required_"
+    ]
+  end
 
-  defp default_doc(default: default), do: ", default: `#{inspect(default)}`"
-  defp default_doc(_), do: ""
+  defp build_attr_meta(%{opts: [default: default]}) do
+    [
+      ", _default: `",
+      inspect(default),
+      "`_"
+    ]
+  end
 
-  defp attr_doc(nil), do: ""
-  defp attr_doc(doc), do: " - #{doc}"
+  defp build_attr_meta(_attr) do
+    []
+  end
+
+  defp build_attr_doc(%{doc: nil}) do
+    []
+  end
+
+  defp build_attr_doc(%{doc: doc}) do
+    [
+      doc
+    ]
+  end
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
