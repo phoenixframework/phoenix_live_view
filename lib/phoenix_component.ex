@@ -852,16 +852,7 @@ defmodule Phoenix.Component do
       attrs != [] ->
         check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
 
-        case Module.get_attribute(env.module, :doc) do
-          {_line, false} ->
-            :ok
-
-          {line, doc} ->
-            Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
-
-          nil ->
-            Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
-        end
+        register_component_doc(env, kind, attrs)
 
         components =
           env.module
@@ -879,6 +870,23 @@ defmodule Phoenix.Component do
       true ->
         []
     end
+  end
+
+  defp register_component_doc(env, :def, attrs) do
+    case Module.get_attribute(env.module, :doc) do
+      {_line, false} ->
+        :ok
+
+      {line, doc} ->
+        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
+
+      nil ->
+        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
+    end
+  end
+
+  defp register_component_doc(_env, :defp, _attrs) do
+    :ok
   end
 
   defp build_component_doc(doc \\ "", attrs) do

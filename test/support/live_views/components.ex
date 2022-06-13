@@ -62,6 +62,9 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :any
   @doc false
   def fun_doc_false(assigns), do: ~H[]
+
+  attr :attr, :any
+  defp private_fun(assigns), do: ~H[]
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do

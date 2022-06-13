@@ -652,11 +652,37 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "appends attr docs to function component @doc string if present" do
-      # Code.fetch_docs/1 needs a compiled BEAM file
       {_, _, :elixir, "text/markdown", _, _, docs} =
         Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
-      # TODO: assertions for docs
+      assert [
+               _,
+               _,
+               {{:function, :fun_attr_any, 1}, _, ["fun_attr_any(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:any`_\n"}, _},
+               {{:function, :fun_attr_default, 1}, _, ["fun_attr_default(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:any`, default: `%{}`_\n"}, _},
+               {{:function, :fun_attr_global, 1}, _, ["fun_attr_global(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:global`_\n"}, _},
+               {{:function, :fun_attr_list, 1}, _, ["fun_attr_list(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:list`_\n"}, _},
+               {{:function, :fun_attr_required, 1}, _, ["fun_attr_required(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:any`, required: `true`_\n"}, _},
+               {{:function, :fun_attr_string, 1}, _, ["fun_attr_string(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr* _`:string`_\n"}, _},
+               {{:function, :fun_attr_struct, 1}, _, ["fun_attr_struct(assigns)"],
+                %{
+                  "en" =>
+                    "## Attributes\n\n* *attr* _`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`_\n"
+                }, _},
+               {{:function, :fun_doc_false, 1}, _, ["fun_doc_false(assigns)"], :hidden, _},
+               {{:function, :fun_doc_injection, 1}, _, ["fun_doc_injection(assigns)"],
+                %{"en" => "fun docs\n\n## Attributes\n\n* *attr* _`:any`_\n\nfun docs\n"}, _},
+               {{:function, :fun_multiple_attr, 1}, _, ["fun_multiple_attr(assigns)"],
+                %{"en" => "## Attributes\n\n* *attr1* _`:any`_\n* *attr2* _`:any`_\n"}, _},
+               {{:function, :fun_with_doc, 1}, _, ["fun_with_doc(assigns)"],
+                %{"en" => "fun docs\n## Attributes\n\n* *attr* _`:any`_\n"}, _}
+             ] = docs
     end
 
     test "raise if attr is not declared before the first function definition" do
