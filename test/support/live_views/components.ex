@@ -17,25 +17,51 @@ end
 defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   use Phoenix.Component
 
-  attr :value, :any, doc: "a value"
-
-  @doc "a function component"
-  def func_with_attrs(assigns) do
-    ~H"""
-    COMPONENT: <%= @value %>
-    """
+  defmodule Struct do
+    defstruct []
   end
 
-  attr :value1, :any, doc: "a value"
-  attr :value2, :any, doc: "another value"
+  attr :attr, :any
+  def fun_attr_any(assigns), do: ~H[]
 
-  @doc "a second function component"
-  @spec func_with_attrs2(map) :: any()
-  def func_with_attrs2(assigns) do
-    ~H"""
-    COMPONENT: <%= @value %>
-    """
-  end
+  attr :attr, :string
+  def fun_attr_string(assigns), do: ~H[]
+
+  attr :attr, :list
+  def fun_attr_list(assigns), do: ~H[]
+
+  attr :attr, :global
+  def fun_attr_global(assigns), do: ~H[]
+
+  attr :attr, Struct
+  def fun_attr_struct(assigns), do: ~H[]
+
+  attr :attr, :any, required: true
+  def fun_attr_required(assigns), do: ~H[]
+
+  attr :attr, :any, default: %{}
+  def fun_attr_default(assigns), do: ~H[]
+
+  attr :attr1, :any
+  attr :attr2, :any
+  def fun_multiple_attr(assigns), do: ~H[]
+
+  attr :attr, :any
+  @doc "fun docs"
+  def fun_with_doc(assigns), do: ~H[]
+
+  attr :attr, :any
+
+  @doc """
+  fun docs
+  [[INSERT ATTRDOCS]]
+  fun docs
+  """
+  def fun_doc_injection(assigns), do: ~H[]
+
+  attr :attr, :any
+  @doc false
+  def fun_doc_false(assigns), do: ~H[]
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do

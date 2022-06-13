@@ -853,17 +853,14 @@ defmodule Phoenix.Component do
         check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
 
         case Module.get_attribute(env.module, :doc) do
-          # @doc false
           {_line, false} ->
             :ok
 
-          # @doc "some function documentation"
           {line, doc} ->
-            Module.put_attribute(env.module, :doc, {line, inject_attr_docs(doc, attrs)})
+            Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
 
-          # no @doc specified"
           nil ->
-            Module.put_attribute(env.module, :doc, {env.line, inject_attr_docs(attrs)})
+            Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
         end
 
         components =
@@ -884,69 +881,61 @@ defmodule Phoenix.Component do
     end
   end
 
-  # TODO: should the function that formats component documentation be configurable?
-  # One way could be through Application configuration
+  defp build_component_doc(doc \\ "", attrs) do
+    [left | right] = String.split(doc, "[[INSERT ATTRDOCS]]")
 
-  # TODO: support a placeholder for attr doc injection, what should that be?
-  # One option is to use HTML-style markdown comment like this:
-  # <!-- ATTRDOC -->
-  defp inject_attr_docs(doc \\ "", attrs) do
     :erlang.iolist_to_binary([
-      doc,
-      ?\n,
+      build_left_doc(left),
+      build_attr_docs(attrs),
+      build_right_doc(right)
+    ])
+  end
+
+  defp build_left_doc("") do
+    [""]
+  end
+
+  defp build_left_doc(left) do
+    [left, ?\n]
+  end
+
+  defp build_attr_docs(attrs) do
+    [
       "## Attributes",
       ?\n,
       for attr <- attrs, attr.doc != false, into: [] do
         [
+          ?\n,
           "* ",
           build_attr_name(attr),
-          " - ",
+          "_",
           build_attr_type(attr),
           build_attr_meta(attr),
-          " - ",
-          build_attr_doc(attr),
-          ?\n
+          "_",
+          build_attr_doc(attr)
         ]
       end
-    ])
+    ]
   end
 
   defp build_attr_name(%{name: name}) do
-    [
-      "`",
-      inspect(name),
-      "`"
-    ]
+    ["*", Atom.to_string(name), "* "]
   end
 
   defp build_attr_type(%{type: {:struct, type}}) do
-    [
-      "`",
-      inspect(type),
-      "`"
-    ]
+    ["`", inspect(type), "`"]
   end
 
   defp build_attr_type(%{type: type}) do
-    [
-      "`",
-      inspect(type),
-      "`"
-    ]
+    ["`", inspect(type), "`"]
   end
 
   defp build_attr_meta(%{required: true}) do
-    [
-      ", _required_"
-    ]
+    [", required: `true`"]
   end
 
   defp build_attr_meta(%{opts: [default: default]}) do
-    [
-      ", _default: `",
-      inspect(default),
-      "`_"
-    ]
+    [", default: `", inspect(default), "`"]
   end
 
   defp build_attr_meta(_attr) do
@@ -958,9 +947,15 @@ defmodule Phoenix.Component do
   end
 
   defp build_attr_doc(%{doc: doc}) do
-    [
-      doc
-    ]
+    [", ", doc]
+  end
+
+  defp build_right_doc("") do
+    [""]
+  end
+
+  defp build_right_doc(right) do
+    [?\n, right]
   end
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
