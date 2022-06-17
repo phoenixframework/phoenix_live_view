@@ -244,5 +244,46 @@ defmodule MyAppWeb.UploadLive do
 end
 ```
 
+Along with its template:
+
+```elixir
+# lib/my_app_web/live/upload_live.html.heex
+<form
+  phx-submit="save"
+  phx-change="validate">
+
+  <%= live_file_input @uploads.avatar %>
+
+  <%= for err <- upload_errors(@uploads.avatar) do %>
+    <p class="alert alert-danger"> <%= error_to_string(err) %> </p>
+  <% end %>
+
+  <%= for entry <- @uploads.avatar.entries do %>
+      <div class="row">
+        <div class="column">
+          <%= live_img_preview entry, height: 200 %>
+        </div>
+        <div class="column">
+          <progress max="100" value={entry.progress} />
+        </div>
+        <div class="column">
+          <a href="#" phx-click="cancel-upload" phx-value-ref={entry.ref}>
+            cancel
+          </a>
+        </div>
+      </div>
+
+     <%= for err <- upload_errors(@uploads.avatar, entry) do %>
+       <div class="alert alert-danger">
+         <%= error_to_string(err) %>
+       </div>
+     <% end %>
+  <% end %>
+
+  <%= submit "Save", phx_disable_with: "Saving..." %>
+</form>
+
+```
+
 [`allow_upload/3`]: `Phoenix.LiveView.allow_upload/3`
 [`live_file_input/2`]: `Phoenix.LiveView.Helpers.live_file_input/2`
