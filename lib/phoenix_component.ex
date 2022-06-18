@@ -521,13 +521,14 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
-  Declares attributes for a HEEx templates with compile-time verification.
+  Declares attributes for a HEEx function components with compile-time verification and documentation generation.
 
   ## Options
 
     * `:required` - marks an attribute as required. If a caller does not pass
-      the given attribute, a compile warning is issued
+      the given attribute, a compile warning is issued.
     * `:default` - the default value for the attribute if not provided
+    * `:doc` - documentation for the attribute
 
   ## Types
 
@@ -536,6 +537,10 @@ defmodule Phoenix.Component do
 
     * `:any` - any term
     * `:string` - any binary string
+    * `:atom` - any atom
+    * `:boolean` - any boolean
+    * `:integer` - any integer
+    * `:float` - any float
     * `:list` - a List of any aribitrary types
     * `:global` - represents all other undefined attributes
       passed by the caller that match common HTML attributes as well as
@@ -557,7 +562,7 @@ defmodule Phoenix.Component do
     * if you specify a literal attribute (such as `value="string"` or `value`,
       but not `value={expr}`) and the type does not match
 
-  Livebook does not perform any validation at runtime. This means the type
+  LiveView does not perform any validation at runtime. This means the type
   information is mostly used for documentation and reflection purposes.
 
   On the side of the LiveView component itself, defining attributes provides
@@ -572,6 +577,32 @@ defmodule Phoenix.Component do
       will be emitted
 
   This list may increase in the future.
+
+  ## Documentation
+
+  Public function components that define attributes will have their attribute 
+  types and docs injected into the function's documentation, depending on the 
+  value of the `@doc` module attribute:
+
+    * if `@doc` is a string, the attribute docs are injected into that string. 
+      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where 
+      in the string the docs are injected. Otherwise, the docs are appended 
+      to the end of the `@doc` string.
+      
+    * if `@doc` is unspecified, the attribute docs are used as the 
+      default `@doc` string.
+      
+    * if `@doc` is false, the attribute docs are omitted entirely.
+    
+  The injected attribute docs are formatted as a markdown list:
+
+    ```markdown
+    * *name* _`:type, opts`_, doc
+    ```
+    
+  By default, all attributes will have their types and docs injected into
+  the function `@doc` string. To hide a specific attribute, you can set 
+  the value of `:doc` to `false`.
 
   ## Examples
 

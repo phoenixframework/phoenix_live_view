@@ -651,38 +651,34 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "appends attr docs to function component @doc string if present" do
+    test "injects attr docs to function component @doc string" do
       {_, _, :elixir, "text/markdown", _, _, docs} =
         Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
-      assert [
-               _,
-               _,
-               {{:function, :fun_attr_any, 1}, _, ["fun_attr_any(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:any`_\n"}, _},
-               {{:function, :fun_attr_default, 1}, _, ["fun_attr_default(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:any`, default: `%{}`_\n"}, _},
-               {{:function, :fun_attr_global, 1}, _, ["fun_attr_global(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:global`_\n"}, _},
-               {{:function, :fun_attr_list, 1}, _, ["fun_attr_list(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:list`_\n"}, _},
-               {{:function, :fun_attr_required, 1}, _, ["fun_attr_required(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:any`, required: `true`_\n"}, _},
-               {{:function, :fun_attr_string, 1}, _, ["fun_attr_string(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr* _`:string`_\n"}, _},
-               {{:function, :fun_attr_struct, 1}, _, ["fun_attr_struct(assigns)"],
-                %{
-                  "en" =>
-                    "## Attributes\n\n* *attr* _`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`_\n"
-                }, _},
-               {{:function, :fun_doc_false, 1}, _, ["fun_doc_false(assigns)"], :hidden, _},
-               {{:function, :fun_doc_injection, 1}, _, ["fun_doc_injection(assigns)"],
-                %{"en" => "fun docs\n\n## Attributes\n\n* *attr* _`:any`_\n\nfun docs\n"}, _},
-               {{:function, :fun_multiple_attr, 1}, _, ["fun_multiple_attr(assigns)"],
-                %{"en" => "## Attributes\n\n* *attr1* _`:any`_\n* *attr2* _`:any`_\n"}, _},
-               {{:function, :fun_with_doc, 1}, _, ["fun_with_doc(assigns)"],
-                %{"en" => "fun docs\n## Attributes\n\n* *attr* _`:any`_\n"}, _}
-             ] = docs
+      components = %{
+        fun_attr_any: "## Attributes\n\n* *attr* _`:any`_\n",
+        fun_attr_string: "## Attributes\n\n* *attr* _`:string`_\n",
+        fun_attr_atom: "## Attributes\n\n* *attr* _`:atom`_\n",
+        fun_attr_boolean: "## Attributes\n\n* *attr* _`:boolean`_\n",
+        fun_attr_integer: "## Attributes\n\n* *attr* _`:integer`_\n",
+        fun_attr_float: "## Attributes\n\n* *attr* _`:float`_\n",
+        fun_attr_list: "## Attributes\n\n* *attr* _`:list`_\n",
+        fun_attr_global: "## Attributes\n\n* *attr* _`:global`_\n",
+        fun_attr_struct:
+          "## Attributes\n\n* *attr* _`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`_\n",
+        fun_attr_required: "## Attributes\n\n* *attr* _`:any`, required: `true`_\n",
+        fun_attr_default: "## Attributes\n\n* *attr* _`:any`, default: `%{}`_\n",
+        fun_doc_false: :hidden,
+        fun_doc_injection: "fun docs\n\n## Attributes\n\n* *attr* _`:any`_\n\nfun docs\n",
+        fun_multiple_attr: "## Attributes\n\n* *attr1* _`:any`_\n* *attr2* _`:any`_\n",
+        fun_with_attr_doc: "## Attributes\n\n* *attr* _`:any`_, attr docs\n",
+        fun_with_hidden_attr: "## Attributes\n\n* *attr1* _`:any`_\n",
+        fun_with_doc: "fun docs\n## Attributes\n\n* *attr* _`:any`_\n"
+      }
+
+      for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
+        assert components[fun] == doc
+      end
     end
 
     test "raise if attr is not declared before the first function definition" do

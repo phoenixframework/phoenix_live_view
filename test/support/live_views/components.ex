@@ -27,6 +27,18 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :string
   def fun_attr_string(assigns), do: ~H[]
 
+  attr :attr, :atom
+  def fun_attr_atom(assigns), do: ~H[]
+
+  attr :attr, :boolean
+  def fun_attr_boolean(assigns), do: ~H[]
+
+  attr :attr, :integer
+  def fun_attr_integer(assigns), do: ~H[]
+
+  attr :attr, :float
+  def fun_attr_float(assigns), do: ~H[]
+
   attr :attr, :list
   def fun_attr_list(assigns), do: ~H[]
 
@@ -45,6 +57,13 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr1, :any
   attr :attr2, :any
   def fun_multiple_attr(assigns), do: ~H[]
+
+  attr :attr, :any, doc: "attr docs"
+  def fun_with_attr_doc(assigns), do: ~H[]
+
+  attr :attr1, :any
+  attr :attr2, :any, doc: false
+  def fun_with_hidden_attr(assigns), do: ~H[]
 
   attr :attr, :any
   @doc "fun docs"
