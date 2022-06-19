@@ -597,7 +597,7 @@ defmodule Phoenix.Component do
   The injected attribute docs are formatted as a markdown list:
 
     ```markdown
-    * *name* _`:type, opts`_, doc
+    * `name` (`:type`) (required) - attr docs. Defaults to `:default`.
     ```
     
   By default, all attributes will have their types and docs injected into
@@ -923,7 +923,7 @@ defmodule Phoenix.Component do
   defp build_component_doc(doc \\ "", attrs) do
     [left | right] = String.split(doc, "[[INSERT ATTRDOCS]]")
 
-    :erlang.iolist_to_binary([
+    IO.iodata_to_binary([
       build_left_doc(left),
       build_attr_docs(attrs),
       build_right_doc(right)
@@ -947,46 +947,48 @@ defmodule Phoenix.Component do
           ?\n,
           "* ",
           build_attr_name(attr),
-          "_",
           build_attr_type(attr),
-          build_attr_meta(attr),
-          "_",
-          build_attr_doc(attr)
+          build_attr_required(attr),
+          build_attr_doc_and_default(attr)
         ]
       end
     ]
   end
 
   defp build_attr_name(%{name: name}) do
-    ["*", Atom.to_string(name), "* "]
+    ["`", Atom.to_string(name), "` "]
   end
 
   defp build_attr_type(%{type: {:struct, type}}) do
-    ["`", inspect(type), "`"]
+    ["(`", inspect(type), "`)"]
   end
 
   defp build_attr_type(%{type: type}) do
-    ["`", inspect(type), "`"]
+    ["(`", inspect(type), "`)"]
   end
 
-  defp build_attr_meta(%{required: true}) do
-    [", required: `true`"]
+  defp build_attr_required(%{required: true}) do
+    [" (required)"]
   end
 
-  defp build_attr_meta(%{opts: [default: default]}) do
-    [", default: `", inspect(default), "`"]
-  end
-
-  defp build_attr_meta(_attr) do
+  defp build_attr_required(_attr) do
     []
   end
 
-  defp build_attr_doc(%{doc: nil}) do
+  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}) do
+    [" - Defaults to `", inspect(default), "`."]
+  end
+
+  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
+    [" - ", doc, " Defaults to `", inspect(default), "`."]
+  end
+
+  defp build_attr_doc_and_default(%{doc: nil}) do
     []
   end
 
-  defp build_attr_doc(%{doc: doc}) do
-    [", ", doc]
+  defp build_attr_doc_and_default(%{doc: doc}) do
+    [" - ", doc]
   end
 
   defp build_right_doc("") do

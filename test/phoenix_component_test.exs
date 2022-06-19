@@ -656,24 +656,24 @@ defmodule Phoenix.ComponentTest do
         Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
       components = %{
-        fun_attr_any: "## Attributes\n\n* *attr* _`:any`_\n",
-        fun_attr_string: "## Attributes\n\n* *attr* _`:string`_\n",
-        fun_attr_atom: "## Attributes\n\n* *attr* _`:atom`_\n",
-        fun_attr_boolean: "## Attributes\n\n* *attr* _`:boolean`_\n",
-        fun_attr_integer: "## Attributes\n\n* *attr* _`:integer`_\n",
-        fun_attr_float: "## Attributes\n\n* *attr* _`:float`_\n",
-        fun_attr_list: "## Attributes\n\n* *attr* _`:list`_\n",
-        fun_attr_global: "## Attributes\n\n* *attr* _`:global`_\n",
+        fun_attr_any: "## Attributes\n\n* `attr` (`:any`)\n",
+        fun_attr_string: "## Attributes\n\n* `attr` (`:string`)\n",
+        fun_attr_atom: "## Attributes\n\n* `attr` (`:atom`)\n",
+        fun_attr_boolean: "## Attributes\n\n* `attr` (`:boolean`)\n",
+        fun_attr_integer: "## Attributes\n\n* `attr` (`:integer`)\n",
+        fun_attr_float: "## Attributes\n\n* `attr` (`:float`)\n",
+        fun_attr_list: "## Attributes\n\n* `attr` (`:list`)\n",
+        fun_attr_global: "## Attributes\n\n* `attr` (`:global`)\n",
         fun_attr_struct:
-          "## Attributes\n\n* *attr* _`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`_\n",
-        fun_attr_required: "## Attributes\n\n* *attr* _`:any`, required: `true`_\n",
-        fun_attr_default: "## Attributes\n\n* *attr* _`:any`, default: `%{}`_\n",
+          "## Attributes\n\n* `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)\n",
+        fun_attr_required: "## Attributes\n\n* `attr` (`:any`) (required)\n",
+        fun_attr_default: "## Attributes\n\n* `attr` (`:any`) - Defaults to `%{}`.\n",
         fun_doc_false: :hidden,
-        fun_doc_injection: "fun docs\n\n## Attributes\n\n* *attr* _`:any`_\n\nfun docs\n",
-        fun_multiple_attr: "## Attributes\n\n* *attr1* _`:any`_\n* *attr2* _`:any`_\n",
-        fun_with_attr_doc: "## Attributes\n\n* *attr* _`:any`_, attr docs\n",
-        fun_with_hidden_attr: "## Attributes\n\n* *attr1* _`:any`_\n",
-        fun_with_doc: "fun docs\n## Attributes\n\n* *attr* _`:any`_\n"
+        fun_doc_injection: "fun docs\n\n## Attributes\n\n* `attr` (`:any`)\n\nfun docs\n",
+        fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
+        fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs\n",
+        fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
+        fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n"
       }
 
       for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
