@@ -521,13 +521,14 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
-  Declares attributes for a HEEx templates with compile-time verification.
+  Declares attributes for a HEEx function components with compile-time verification and documentation generation.
 
   ## Options
 
     * `:required` - marks an attribute as required. If a caller does not pass
-      the given attribute, a compile warning is issued
+      the given attribute, a compile warning is issued.
     * `:default` - the default value for the attribute if not provided
+    * `:doc` - documentation for the attribute
 
   ## Types
 
@@ -536,6 +537,10 @@ defmodule Phoenix.Component do
 
     * `:any` - any term
     * `:string` - any binary string
+    * `:atom` - any atom
+    * `:boolean` - any boolean
+    * `:integer` - any integer
+    * `:float` - any float
     * `:list` - a List of any aribitrary types
     * `:global` - represents all other undefined attributes
       passed by the caller that match common HTML attributes as well as
@@ -557,7 +562,7 @@ defmodule Phoenix.Component do
     * if you specify a literal attribute (such as `value="string"` or `value`,
       but not `value={expr}`) and the type does not match
 
-  Livebook does not perform any validation at runtime. This means the type
+  LiveView does not perform any validation at runtime. This means the type
   information is mostly used for documentation and reflection purposes.
 
   On the side of the LiveView component itself, defining attributes provides
@@ -572,6 +577,32 @@ defmodule Phoenix.Component do
       will be emitted
 
   This list may increase in the future.
+
+  ## Documentation
+
+  Public function components that define attributes will have their attribute 
+  types and docs injected into the function's documentation, depending on the 
+  value of the `@doc` module attribute:
+
+    * if `@doc` is a string, the attribute docs are injected into that string. 
+      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where 
+      in the string the docs are injected. Otherwise, the docs are appended 
+      to the end of the `@doc` string.
+      
+    * if `@doc` is unspecified, the attribute docs are used as the 
+      default `@doc` string.
+      
+    * if `@doc` is false, the attribute docs are omitted entirely.
+    
+  The injected attribute docs are formatted as a markdown list:
+
+    ```markdown
+    * `name` (`:type`) (required) - attr docs. Defaults to `:default`.
+    ```
+    
+  By default, all attributes will have their types and docs injected into
+  the function `@doc` string. To hide a specific attribute, you can set 
+  the value of `:doc` to `false`.
 
   ## Examples
 
@@ -611,6 +642,12 @@ defmodule Phoenix.Component do
         :ok
     end
 
+    {doc, opts} = Keyword.pop(opts, :doc, nil)
+
+    unless is_binary(doc) or is_nil(doc) or doc == false do
+      compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
+    end
+
     {required, opts} = Keyword.pop(opts, :required, false)
 
     unless is_boolean(required) do
@@ -629,6 +666,7 @@ defmodule Phoenix.Component do
       type: type,
       required: required,
       opts: opts,
+      doc: doc,
       line: line
     })
   end
@@ -845,6 +883,8 @@ defmodule Phoenix.Component do
       attrs != [] ->
         check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
 
+        register_component_doc(env, kind, attrs)
+
         components =
           env.module
           |> Module.get_attribute(:__components__)
@@ -861,6 +901,102 @@ defmodule Phoenix.Component do
       true ->
         []
     end
+  end
+
+  defp register_component_doc(env, :def, attrs) do
+    case Module.get_attribute(env.module, :doc) do
+      {_line, false} ->
+        :ok
+
+      {line, doc} ->
+        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
+
+      nil ->
+        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
+    end
+  end
+
+  defp register_component_doc(_env, :defp, _attrs) do
+    :ok
+  end
+
+  defp build_component_doc(doc \\ "", attrs) do
+    [left | right] = String.split(doc, "[[INSERT ATTRDOCS]]")
+
+    IO.iodata_to_binary([
+      build_left_doc(left),
+      build_attr_docs(attrs),
+      build_right_doc(right)
+    ])
+  end
+
+  defp build_left_doc("") do
+    [""]
+  end
+
+  defp build_left_doc(left) do
+    [left, ?\n]
+  end
+
+  defp build_attr_docs(attrs) do
+    [
+      "## Attributes",
+      ?\n,
+      for attr <- attrs, attr.doc != false, into: [] do
+        [
+          ?\n,
+          "* ",
+          build_attr_name(attr),
+          build_attr_type(attr),
+          build_attr_required(attr),
+          build_attr_doc_and_default(attr)
+        ]
+      end
+    ]
+  end
+
+  defp build_attr_name(%{name: name}) do
+    ["`", Atom.to_string(name), "` "]
+  end
+
+  defp build_attr_type(%{type: {:struct, type}}) do
+    ["(`", inspect(type), "`)"]
+  end
+
+  defp build_attr_type(%{type: type}) do
+    ["(`", inspect(type), "`)"]
+  end
+
+  defp build_attr_required(%{required: true}) do
+    [" (required)"]
+  end
+
+  defp build_attr_required(_attr) do
+    []
+  end
+
+  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}) do
+    [" - Defaults to `", inspect(default), "`."]
+  end
+
+  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
+    [" - ", doc, " Defaults to `", inspect(default), "`."]
+  end
+
+  defp build_attr_doc_and_default(%{doc: nil}) do
+    []
+  end
+
+  defp build_attr_doc_and_default(%{doc: doc}) do
+    [" - ", doc]
+  end
+
+  defp build_right_doc("") do
+    [""]
+  end
+
+  defp build_right_doc(right) do
+    [?\n, right]
   end
 
   defp validate_misplaced_attrs!(attrs, file, message_fun) do

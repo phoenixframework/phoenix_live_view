@@ -348,6 +348,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [default: nil],
                      required: false,
+                     doc: nil,
                      line: func1_line + 2
                    },
                    %{
@@ -355,6 +356,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [],
                      required: true,
+                     doc: nil,
                      line: func1_line + 1
                    }
                  ]
@@ -367,6 +369,7 @@ defmodule Phoenix.ComponentTest do
                      type: :integer,
                      opts: [default: 0],
                      required: false,
+                     doc: nil,
                      line: func2_line + 2
                    },
                    %{
@@ -374,6 +377,7 @@ defmodule Phoenix.ComponentTest do
                      type: :any,
                      opts: [],
                      required: true,
+                     doc: nil,
                      line: func2_line + 1
                    }
                  ]
@@ -385,6 +389,7 @@ defmodule Phoenix.ComponentTest do
                      name: :id,
                      opts: [default: "container"],
                      required: false,
+                     doc: nil,
                      type: :string
                    }
                  ],
@@ -397,6 +402,7 @@ defmodule Phoenix.ComponentTest do
                      name: :rest,
                      opts: [default: %{class: "primary"}],
                      required: false,
+                     doc: nil,
                      type: :global
                    }
                  ],
@@ -409,6 +415,7 @@ defmodule Phoenix.ComponentTest do
                      name: :id,
                      opts: [],
                      required: true,
+                     doc: nil,
                      type: :string
                    },
                    %{
@@ -416,6 +423,7 @@ defmodule Phoenix.ComponentTest do
                      name: :rest,
                      opts: [],
                      required: false,
+                     doc: nil,
                      type: :global
                    }
                  ],
@@ -497,6 +505,7 @@ defmodule Phoenix.ComponentTest do
                      line: __ENV__.line - 13,
                      name: :example,
                      opts: [],
+                     doc: nil,
                      required: true,
                      type: :any
                    }
@@ -548,6 +557,127 @@ defmodule Phoenix.ComponentTest do
 
       assert_raise KeyError, ~r/:value not found/, fn ->
         render(Defaults, :no_default, %{})
+      end
+    end
+
+    test "supports :doc for attr documentation" do
+      defmodule AttrDocs do
+        use Phoenix.Component
+
+        attr :single, :any, doc: "a single line description"
+
+        attr :break, :any, doc: "a description
+        with a line break"
+
+        attr :multi, :any,
+          doc: """
+          a description
+          that spans
+          multiple lines
+          """
+
+        attr :sigil, :any,
+          doc: ~S"""
+          a description
+          within a multi-line
+          sigil
+          """
+
+        attr :no_doc, :any
+
+        @doc "my function component with attrs"
+        def func_with_attr_docs(assigns), do: ~H[]
+      end
+
+      assert AttrDocs.__components__() == %{
+               func_with_attr_docs: %{
+                 kind: :def,
+                 attrs: [
+                   %{
+                     line: 569,
+                     name: :break,
+                     opts: [],
+                     required: false,
+                     type: :any,
+                     doc: "a description\n        with a line break"
+                   },
+                   %{
+                     line: 572,
+                     name: :multi,
+                     opts: [],
+                     required: false,
+                     type: :any,
+                     doc: "a description\nthat spans\nmultiple lines\n"
+                   },
+                   %{
+                     line: 586,
+                     name: :no_doc,
+                     opts: [],
+                     required: false,
+                     type: :any,
+                     doc: nil
+                   },
+                   %{
+                     line: 579,
+                     name: :sigil,
+                     opts: [],
+                     required: false,
+                     type: :any,
+                     doc: "a description\nwithin a multi-line\nsigil\n"
+                   },
+                   %{
+                     line: 567,
+                     name: :single,
+                     opts: [],
+                     required: false,
+                     type: :any,
+                     doc: "a single line description"
+                   }
+                 ]
+               }
+             }
+    end
+
+    test "raise if :doc is not a string" do
+      msg = ~r/doc must be a string or false, got: :foo/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrDocsInvalidType do
+          use Elixir.Phoenix.Component
+
+          attr :invalid, :any, doc: :foo
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "injects attr docs to function component @doc string" do
+      {_, _, :elixir, "text/markdown", _, _, docs} =
+        Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+
+      components = %{
+        fun_attr_any: "## Attributes\n\n* `attr` (`:any`)\n",
+        fun_attr_string: "## Attributes\n\n* `attr` (`:string`)\n",
+        fun_attr_atom: "## Attributes\n\n* `attr` (`:atom`)\n",
+        fun_attr_boolean: "## Attributes\n\n* `attr` (`:boolean`)\n",
+        fun_attr_integer: "## Attributes\n\n* `attr` (`:integer`)\n",
+        fun_attr_float: "## Attributes\n\n* `attr` (`:float`)\n",
+        fun_attr_list: "## Attributes\n\n* `attr` (`:list`)\n",
+        fun_attr_global: "## Attributes\n\n* `attr` (`:global`)\n",
+        fun_attr_struct:
+          "## Attributes\n\n* `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)\n",
+        fun_attr_required: "## Attributes\n\n* `attr` (`:any`) (required)\n",
+        fun_attr_default: "## Attributes\n\n* `attr` (`:any`) - Defaults to `%{}`.\n",
+        fun_doc_false: :hidden,
+        fun_doc_injection: "fun docs\n\n## Attributes\n\n* `attr` (`:any`)\n\nfun docs\n",
+        fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
+        fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs\n",
+        fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
+        fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n"
+      }
+
+      for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
+        assert components[fun] == doc
       end
     end
 

@@ -14,6 +14,78 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
   end
 end
 
+defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
+  use Phoenix.Component
+
+  defmodule Struct do
+    defstruct []
+  end
+
+  attr :attr, :any
+  def fun_attr_any(assigns), do: ~H[]
+
+  attr :attr, :string
+  def fun_attr_string(assigns), do: ~H[]
+
+  attr :attr, :atom
+  def fun_attr_atom(assigns), do: ~H[]
+
+  attr :attr, :boolean
+  def fun_attr_boolean(assigns), do: ~H[]
+
+  attr :attr, :integer
+  def fun_attr_integer(assigns), do: ~H[]
+
+  attr :attr, :float
+  def fun_attr_float(assigns), do: ~H[]
+
+  attr :attr, :list
+  def fun_attr_list(assigns), do: ~H[]
+
+  attr :attr, :global
+  def fun_attr_global(assigns), do: ~H[]
+
+  attr :attr, Struct
+  def fun_attr_struct(assigns), do: ~H[]
+
+  attr :attr, :any, required: true
+  def fun_attr_required(assigns), do: ~H[]
+
+  attr :attr, :any, default: %{}
+  def fun_attr_default(assigns), do: ~H[]
+
+  attr :attr1, :any
+  attr :attr2, :any
+  def fun_multiple_attr(assigns), do: ~H[]
+
+  attr :attr, :any, doc: "attr docs"
+  def fun_with_attr_doc(assigns), do: ~H[]
+
+  attr :attr1, :any
+  attr :attr2, :any, doc: false
+  def fun_with_hidden_attr(assigns), do: ~H[]
+
+  attr :attr, :any
+  @doc "fun docs"
+  def fun_with_doc(assigns), do: ~H[]
+
+  attr :attr, :any
+
+  @doc """
+  fun docs
+  [[INSERT ATTRDOCS]]
+  fun docs
+  """
+  def fun_doc_injection(assigns), do: ~H[]
+
+  attr :attr, :any
+  @doc false
+  def fun_doc_false(assigns), do: ~H[]
+
+  attr :attr, :any
+  defp private_fun(assigns), do: ~H[]
+end
+
 defmodule Phoenix.LiveViewTest.StatefulComponent do
   use Phoenix.LiveComponent
 
@@ -136,13 +208,13 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   def mount(_params, %{"names" => names, "from" => from} = session, socket) do
     {
       :ok,
-      assign(socket, [
+      assign(socket,
         names: names,
         from: from,
         disabled: [],
         message: nil,
         parent_selector: Map.get(session, "parent_selector", "#parent_id")
-      ])
+      )
     }
   end
 
