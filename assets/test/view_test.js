@@ -976,6 +976,71 @@ describe("View + Component", function(){
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })
 
+  test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(){
+    // a multiple select name attribute contains trailing square brackets [] to capture multiple options
+    let multiple_select_name = "user[allergies][]"
+    // the phx-feedback-for attribute typically doesn't contain trailing brackets
+    // because its value is often set with the result of Phoenix.HTML.input_name/2
+    let multiple_select_phx_feedback_for_name = "user[allergies]"
+    let html =
+      `<form id="form" phx-change="validate">
+      <label for="first_name">First Name</label>
+      <input id="first_name" value="" name="user[first_name]" />
+
+      <label for="allergies">Allergies</label>
+      <select id="allergies" name="${multiple_select_name}" multiple="">
+        <option value="milk">Milk</option>
+        <option value="peanuts">Peanuts</option>
+        <option value="wheat">Wheat</option>
+      </select>
+    </form>`
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = simulateJoinedView(el, liveSocket, html)
+    let channelStub = {
+      push(_evt, _payload, _timeout){
+        return {
+          receive(_status, cb){
+            let diff = {
+              s: [`
+              <form id="form" phx-change="validate">
+                <label for="first_name">First Name</label>
+                <input id="first_name" value="" name="user[first_name]" />
+                <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+
+                <label for="allergies">Allergies</label>
+                <select id="allergies" name="${multiple_select_name}" multiple="">
+                  <option value="milk">Milk</option>
+                  <option value="peanuts">Peanuts</option>
+                  <option value="wheat">Wheat</option>
+                </select>
+                <span class="feedback" phx-feedback-for="${multiple_select_phx_feedback_for_name}">can't be blank</span>
+              </form>
+              `],
+              fingerprint: 345
+            }
+            cb({diff})
+            return this
+          }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    let first_name_input = view.el.querySelector("input#first_name")
+    let allergies_select = view.el.querySelector("select#allergies")
+    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
+    DOM.putPrivate(first_name_input, "phx-has-focused", true)
+    view.pushInput(first_name_input, el, null, "validate", {_target: "user[first_name]"})
+    expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
+
+    DOM.putPrivate(allergies_select, "phx-has-focused", true)
+    view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
+    expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+  })
+
   test("adds auto ID to prevent teardown/re-add", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
