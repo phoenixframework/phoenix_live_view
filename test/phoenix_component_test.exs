@@ -352,6 +352,29 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    defmodule FunctionComponentWithSlots do
+      use Phoenix.Component
+
+      slot :header
+      def func_with_slot(assigns), do: ~H[]
+
+      slot :header do
+        attr :name, :any
+      end
+
+      def func_with_slot_attr(assigns), do: ~H[]
+
+      slot :header do
+        attr :name, :any
+        attr :color, :any
+      end
+
+      def func_with_slot_attrs(assigns), do: ~H[]
+
+      slot :slot, required: true
+      def func_with_required_slot(assigns), do: ~H[]
+    end
+
     test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
@@ -368,6 +391,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [default: nil],
                      required: false,
                      doc: nil,
+                     slot: nil,
                      line: func1_line + 2
                    },
                    %{
@@ -376,9 +400,11 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: true,
                      doc: nil,
+                     slot: nil,
                      line: func1_line + 1
                    }
-                 ]
+                 ],
+                 slots: []
                },
                func2: %{
                  kind: :def,
@@ -389,6 +415,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [default: 0],
                      required: false,
                      doc: nil,
+                     slot: nil,
                      line: func2_line + 2
                    },
                    %{
@@ -397,11 +424,14 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: true,
                      doc: nil,
+                     slot: nil,
                      line: func2_line + 1
                    }
-                 ]
+                 ],
+                 slots: []
                },
                with_global: %{
+                 kind: :def,
                  attrs: [
                    %{
                      line: with_global_line + 1,
@@ -409,12 +439,14 @@ defmodule Phoenix.ComponentTest do
                      opts: [default: "container"],
                      required: false,
                      doc: nil,
+                     slot: nil,
                      type: :string
                    }
                  ],
-                 kind: :def
+                 slots: []
                },
                button_with_defaults: %{
+                 kind: :def,
                  attrs: [
                    %{
                      line: button_with_defaults_line + 1,
@@ -422,12 +454,14 @@ defmodule Phoenix.ComponentTest do
                      opts: [default: %{class: "primary"}],
                      required: false,
                      doc: nil,
+                     slot: nil,
                      type: :global
                    }
                  ],
-                 kind: :def
+                 slots: []
                },
                button: %{
+                 kind: :def,
                  attrs: [
                    %{
                      line: with_global_line + 4,
@@ -435,6 +469,7 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: true,
                      doc: nil,
+                     slot: nil,
                      type: :string
                    },
                    %{
@@ -443,10 +478,65 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      required: false,
                      doc: nil,
+                     slot: nil,
                      type: :global
                    }
                  ],
-                 kind: :def
+                 slots: []
+               }
+             }
+    end
+
+    test "stores slots definitions" do
+      assert FunctionComponentWithSlots.__components__() == %{
+               func_with_required_slot: %{
+                 attrs: [],
+                 kind: :def,
+                 slots: [%{doc: nil, line: 374, name: :slot, opts: [], required: true}]
+               },
+               func_with_slot: %{
+                 attrs: [],
+                 kind: :def,
+                 slots: [%{doc: nil, line: 358, name: :header, opts: [], required: false}]
+               },
+               func_with_slot_attr: %{
+                 attrs: [
+                   %{
+                     doc: nil,
+                     line: 362,
+                     name: :name,
+                     opts: [],
+                     required: false,
+                     slot: :header,
+                     type: :any
+                   }
+                 ],
+                 kind: :def,
+                 slots: [%{doc: nil, line: 361, name: :header, opts: [], required: false}]
+               },
+               func_with_slot_attrs: %{
+                 attrs: [
+                   %{
+                     doc: nil,
+                     line: 369,
+                     name: :color,
+                     opts: [],
+                     required: false,
+                     slot: :header,
+                     type: :any
+                   },
+                   %{
+                     doc: nil,
+                     line: 368,
+                     name: :name,
+                     opts: [],
+                     required: false,
+                     slot: :header,
+                     type: :any
+                   }
+                 ],
+                 kind: :def,
+                 slots: [%{doc: nil, line: 367, name: :header, opts: [], required: false}]
                }
              }
     end
@@ -526,9 +616,11 @@ defmodule Phoenix.ComponentTest do
                      opts: [],
                      doc: nil,
                      required: true,
-                     type: :any
+                     type: :any,
+                     slot: nil
                    }
-                 ]
+                 ],
+                 slots: []
                }
              }
     end
@@ -613,49 +705,55 @@ defmodule Phoenix.ComponentTest do
 
       assert AttrDocs.__components__() == %{
                func_with_attr_docs: %{
-                 kind: :def,
                  attrs: [
                    %{
                      line: line + 3,
+                     doc: "a description\n        with a line break",
+                     slot: nil,
                      name: :break,
                      opts: [],
                      required: false,
-                     type: :any,
-                     doc: "a description\n        with a line break"
+                     type: :any
                    },
                    %{
                      line: line + 6,
+                     doc: "a description\nthat spans\nmultiple lines\n",
+                     slot: nil,
                      name: :multi,
                      opts: [],
                      required: false,
-                     type: :any,
-                     doc: "a description\nthat spans\nmultiple lines\n"
+                     type: :any
                    },
                    %{
                      line: line + 20,
+                     doc: nil,
+                     slot: nil,
                      name: :no_doc,
                      opts: [],
                      required: false,
-                     type: :any,
-                     doc: nil
+                     type: :any
                    },
                    %{
                      line: line + 13,
+                     doc: "a description\nwithin a multi-line\nsigil\n",
+                     slot: nil,
                      name: :sigil,
                      opts: [],
                      required: false,
-                     type: :any,
-                     doc: "a description\nwithin a multi-line\nsigil\n"
+                     type: :any
                    },
                    %{
                      line: line + 1,
+                     doc: "a single line description",
+                     slot: nil,
                      name: :single,
                      opts: [],
                      required: false,
-                     type: :any,
-                     doc: "a single line description"
+                     type: :any
                    }
-                 ]
+                 ],
+                 kind: :def,
+                 slots: []
                }
              }
     end

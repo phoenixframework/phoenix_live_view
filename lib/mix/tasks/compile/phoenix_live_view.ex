@@ -92,7 +92,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         do: diagnostic
   end
 
-  defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{attrs: attrs_defs}) do
+  defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{
+         attrs: attrs_defs,
+         slots: _slots_defs
+       }) do
+    # TODO: provide diagnostics for slots
     {warnings, {attrs, has_global?}} =
       Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
