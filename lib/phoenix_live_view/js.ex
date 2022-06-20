@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.JS do
 
       <div phx-click={
         JS.push("inc", loading: ".thermo", target: @myself)
-        |> JS.add_class(".warmer", to: ".thermo")
+        |> JS.add_class("warmer", to: ".thermo")
       }>+</div>
 
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
