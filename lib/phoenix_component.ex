@@ -136,9 +136,14 @@ defmodule Phoenix.Component do
   the `@inner_block` assign and then we use `Phoenix.LiveView.Helpers.render_slot/2`
   to render it.
 
-  You can even have the component give a value back to the caller,
-  by using the special attribute `:let` (note the leading `:`).
-  Imagine this component:
+  This gives us a separation of concerns: the component specifies reusable
+  markup for a button, and the caller specifies the contents for a specific
+  button.
+
+  But what if the contents themselves need to be dynamic?
+
+  In that case, you can have the component give a value back to the caller
+  by passing it as the second argument to `render_slot/2`:
 
       def unordered_list(assigns) do
         ~H"""
@@ -150,11 +155,17 @@ defmodule Phoenix.Component do
         """
       end
 
-  And now you can invoke it as:
+  When calling the component, you can use the special attribute `:let` (note
+  the leading `:`) to take the value that the component passes back and bind it
+  to a variable:
 
-      <.unordered_list :let={entry} entries={~w(apple banana cherry)}>
-        I like <%= entry %>
+      <.unordered_list :let={an_entry} entries={~w(apple banana cherry)}>
+        I like <%= an_entry %>
       </.unordered_list>
+
+  In this way, the separation of concerns is maintained: the caller can specify
+  multiple items of dynamic content without having to specify the markup that
+  surrounds and separates them.
 
   You can also pattern match the arguments provided to the render block. Let's
   make our `unordered_list` component fancier:
@@ -171,8 +182,8 @@ defmodule Phoenix.Component do
 
   And now we can invoke it like this:
 
-      <.unordered_list :let={%{entry: entry, gif_url: url}}>
-        I like <%= entry %>. <img src={url} />
+      <.unordered_list :let={%{entry: an_entry, gif_url: url}} entries={~w(apple banana cherry)}>
+        I like <%= an_entry %>. <img src={url} />
       </.unordered_list>
 
   ### Named slots
@@ -193,6 +204,8 @@ defmodule Phoenix.Component do
         <:footer>
           <button>Save</button>
         </:footer>
+
+        This is also included in @inner_block.
       </.modal>
 
   The component itself could be implemented like this:
