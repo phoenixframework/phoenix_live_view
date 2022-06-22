@@ -516,6 +516,7 @@ defmodule Phoenix.LiveView.Utils do
   defp layout(socket, view) do
     case socket.private do
       %{phoenix_live_layout: layout} -> layout
+      %{connect_info: %{private: %{phoenix_live_layout: layout}}} -> layout
       %{} -> view.__live__()[:layout] || false
     end
   end

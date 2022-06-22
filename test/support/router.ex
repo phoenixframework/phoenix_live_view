@@ -162,6 +162,10 @@ defmodule Phoenix.LiveViewTest.Router do
       ] do
       live "/lifecycle/mount-mods-args", HooksLive.Noop
     end
+
+    live_session :layout, layout: {Phoenix.LiveViewTest.LayoutView, "live-override.html"} do
+      live "/dashboard-live-session-layout", LayoutLive
+    end
   end
 
   scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
