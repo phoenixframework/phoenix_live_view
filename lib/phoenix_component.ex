@@ -298,6 +298,44 @@ defmodule Phoenix.Component do
   the label as `col.label`. This gives us complete control over how
   we render them.
 
+  What if you need to conditionally render a slot - for example, to only render
+  the user's address if the current user is an admin?
+  You can't wrap a conditional around a slot because a slot entry must be
+  a direct child of a component.
+  But you can accomplish this by passing an attribute.
+
+      <.table rows={@users}>
+        <:col :let={user} label="Name">
+          <%= user.name %>
+        </:col>
+
+        <:col :let={user} label="Address" if={ @current_user.role == :admin }>
+          <%= user.address %>
+        </:col>
+      </.table>
+
+
+  Then you can check for that attribute within the component:
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <tr>
+            <%= for col <- @col, col[:if] != false do %>
+              <th><%= col.label %></th>
+            <% end %>
+          </tr>
+          <%= for row <- @rows do %>
+            <tr>
+              <%= for col <- @col, col[:if] != false do %>
+                <td><%= render_slot(col, row) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </table>
+        """
+      end
+
   ## Attributes
 
   Function components support declarative assigns with compile-time
