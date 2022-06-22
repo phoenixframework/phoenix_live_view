@@ -143,6 +143,8 @@ defmodule Phoenix.LiveView.Router do
       each LiveView in the session_. See `Phoenix.LiveView.on_mount/1`. Passing a
       single value is also accepted.
 
+    * `:layout` - The optional layout the LiveView will be rendered in.
+
   ## Examples
 
       scope "/", MyAppWeb do
@@ -242,7 +244,7 @@ defmodule Phoenix.LiveView.Router do
     Module.put_attribute(module, :phoenix_live_sessions, %{name: name, extra: extra, vsn: vsn})
   end
 
-  @live_session_opts [:on_mount, :root_layout, :session]
+  @live_session_opts [:layout, :on_mount, :root_layout, :session]
   defp validate_live_session_opts(opts, module, _name) when is_list(opts) do
     opts
     |> Keyword.put_new(:session, %{})
@@ -269,6 +271,22 @@ defmodule Phoenix.LiveView.Router do
       {:root_layout, bad_layout}, _acc ->
         raise ArgumentError, """
         invalid live_session :root_layout
+
+        expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
+        """
+
+      {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
+        Map.put(acc, :layout, {mod, template})
+
+      {:layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
+        Map.put(acc, :layout, {mod, "#{template}.html"})
+
+      {:layout, false}, acc ->
+        Map.put(acc, :layout, false)
+
+      {:layout, bad_layout}, _acc ->
+        raise ArgumentError, """
+        invalid live_session :layout
 
         expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
         """
