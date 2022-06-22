@@ -720,11 +720,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp empty_attribute_encoder(_, _, _), do: nil
 
   @doc false
-  def class_attribute_encode([_ | _] = list),
-    do: list |> Enum.filter(& &1) |> Enum.join(" ") |> Phoenix.HTML.Engine.encode_to_iodata!()
+  def class_attribute_encode(list) when is_list(list),
+    do: list |> class_attribute_list() |> Phoenix.HTML.Engine.encode_to_iodata!()
 
   def class_attribute_encode(other),
     do: empty_attribute_encode(other)
+
+  defp class_attribute_list(value) do
+    value
+    |> Enum.flat_map(fn
+      nil -> []
+      false -> []
+      inner when is_list(inner) -> [class_attribute_list(inner)]
+      other -> [other]
+    end)
+    |> Enum.join(" ")
+  end
 
   @doc false
   def empty_attribute_encode(nil), do: ""

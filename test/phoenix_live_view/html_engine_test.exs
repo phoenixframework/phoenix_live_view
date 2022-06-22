@@ -233,7 +233,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       false_assign: false,
       unsafe: "<foo>",
       safe: {:safe, "<foo>"},
-      list: ["safe", false, nil, "<unsafe>"]
+      list: ["safe", false, nil, "<unsafe>"],
+      recursive_list: ["safe", false, [nil, "<unsafe>"]]
     }
 
     assert %Phoenix.LiveView.Rendered{static: ["<div class=\"", "\"></div>"]} =
@@ -255,6 +256,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(template, assigns) == ~S(<div class="<foo>"></div>)
 
     template = ~S(<div class={@list} />)
+    assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
+
+    template = ~S(<div class={@recursive_list} />)
     assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
   end
 
