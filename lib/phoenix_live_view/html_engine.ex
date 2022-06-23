@@ -107,7 +107,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       module: module,
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
-      caller: Keyword.get(opts, :caller)
+      caller: Keyword.get(opts, :caller),
+      previous_token_slot?: false
     }
   end
 
@@ -165,7 +166,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       slots: [],
       module: module,
       caller: caller,
-      root: root
+      root: root,
+      previous_token_slot?: false
     }
   end
 
@@ -207,7 +209,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp update_subengine(state, fun, args) do
-    %{state | substate: invoke_subengine(state, fun, args)}
+    %{state | substate: invoke_subengine(state, fun, args), previous_token_slot?: false}
   end
 
   defp init_slots(state) do
@@ -221,7 +223,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _meta
        )
        when first in ?A..?Z or first == ?. do
-    %{state | slots: [[slot | slots] | other_slots]}
+    %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
   end
 
   defp add_slot!(state, slot, meta) do
@@ -297,9 +299,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Text
 
   defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
-    state
-    |> set_root_on_not_tag()
-    |> update_subengine(:handle_text, [[line: line, column: column], text])
+    text = if state.previous_token_slot?, do: String.trim_leading(text), else: text
+
+    if text == "" do
+      state
+    else
+      state
+      |> set_root_on_not_tag()
+      |> update_subengine(:handle_text, [[line: line, column: column], text])
+    end
   end
 
   # Remote function component (self close)

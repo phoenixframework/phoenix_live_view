@@ -207,7 +207,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_open(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc = if strip_tag?(name), do: strip_text_token_partially(acc), else: acc
         acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
@@ -222,7 +221,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, ">" <> rest} ->
         acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
-        rest = if strip_tag?(name), do: String.trim_leading(rest), else: rest
         handle_text(rest, line, new_column + 1, [], acc, state)
 
       {:ok, _, new_column, _} ->
@@ -592,23 +590,10 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     {pos, %{state | braces: braces}}
   end
 
-  # Strip space before slots
-  defp strip_tag?(":" <> _), do: true
-  defp strip_tag?(_), do: false
-
   defp strip_text_token_fully(tokens) do
     with [{:text, text, _} | rest] <- tokens,
          "" <- String.trim_leading(text) do
       strip_text_token_fully(rest)
-    else
-      _ -> tokens
-    end
-  end
-
-  defp strip_text_token_partially(tokens) do
-    with [{:text, text, _meta} | rest] <- tokens,
-         "" <- String.trim_leading(text) do
-      strip_text_token_partially(rest)
     else
       _ -> tokens
     end

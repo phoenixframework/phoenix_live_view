@@ -1708,6 +1708,36 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "keep intentional lines breakes between slots" do
+      assert_formatter_doesnt_change("""
+      <.component>
+        <:title>Guides & Docs</:title>
+
+        <:desc>View our step-by-step guides, or browse the comprehensive API docs</:desc>
+      </.component>
+      """)
+
+      assert_formatter_output(
+        """
+        <.component>
+
+          <:title>Guides & Docs</:title>
+
+
+          <:desc>View our step-by-step guides, or browse the comprehensive API docs</:desc>
+
+        </.component>
+        """,
+        """
+        <.component>
+          <:title>Guides & Docs</:title>
+
+          <:desc>View our step-by-step guides, or browse the comprehensive API docs</:desc>
+        </.component>
+        """
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
