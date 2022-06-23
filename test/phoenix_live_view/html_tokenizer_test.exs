@@ -50,7 +50,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   describe "comment" do
     test "generated as text" do
       assert tokenize("Begin<!-- comment -->End") == [
-               {:text, "Begin<!-- comment -->End", %{line_end: 1, column_end: 25}}
+               {:text, "Begin<!-- comment -->End",
+                %{line_end: 1, column_end: 25, context: [:comment_start, :comment_end]}}
              ]
     end
 
@@ -378,7 +379,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}], %{}},
+               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}],
+                %{}},
                {:tag_open, "span", [], %{line: 3, column: 8}}
              ] = tokens
     end
@@ -424,7 +426,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}], %{}},
+               {:tag_open, "div", [{"title", {:string, "first\n  second\nthird", _meta}, %{}}],
+                %{}},
                {:tag_open, "span", [], %{line: 3, column: 8}}
              ] = tokens
     end
@@ -561,8 +564,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
 
       assert [
-               {:root, {:expr, "@root1", %{line: 2, column: 4}},%{line: 2, column: 4}},
-               {:root, {:expr, "\n      @root2\n    ", %{line: 3, column: 6}}, %{line: 3, column: 6}},
+               {:root, {:expr, "@root1", %{line: 2, column: 4}}, %{line: 2, column: 4}},
+               {:root, {:expr, "\n      @root2\n    ", %{line: 3, column: 6}},
+                %{line: 3, column: 6}},
                {:root, {:expr, "@root3", %{line: 6, column: 4}}, %{line: 6, column: 4}}
              ] = attrs
     end
@@ -622,7 +626,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       assert tokenize("""
              <script src="foo.js" />
              """) == [
-               {:tag_open, "script", [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 9, line: 1}}],
+               {:tag_open, "script",
+                [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 9, line: 1}}],
                 %{column: 1, line: 1, self_close: true}},
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]
@@ -647,7 +652,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       assert tokenize("""
              <style src="foo.js" />
              """) == [
-               {:tag_open, "style", [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 8, line: 1}}],
+               {:tag_open, "style",
+                [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 8, line: 1}}],
                 %{column: 1, line: 1, self_close: true}},
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]

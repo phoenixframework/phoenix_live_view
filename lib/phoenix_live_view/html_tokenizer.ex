@@ -103,8 +103,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     handle_text(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_text(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column, []), :text)
+  defp handle_text(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, state.context), :text)
   end
 
   ## handle_doctype
