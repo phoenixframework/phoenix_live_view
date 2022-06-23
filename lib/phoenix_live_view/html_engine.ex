@@ -301,9 +301,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
     text = if state.previous_token_slot?, do: String.trim_leading(text), else: text
 
-    state
-    |> set_root_on_not_tag()
-    |> update_subengine(:handle_text, [[line: line, column: column], text])
+    if text == "" do
+      state
+    else
+      state
+      |> set_root_on_not_tag()
+      |> update_subengine(:handle_text, [[line: line, column: column], text])
+    end
   end
 
   # Remote function component (self close)
