@@ -193,6 +193,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "-pos\"></div>"]} =
              eval(template, assigns)
 
+    # binaries in lists for classes are extracted out
+    template = ~S(<div class={["<bar>", "<foo>"]} />)
+    assert render(template, assigns) == ~S(<div class="&lt;bar&gt; &lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div class=\"&lt;bar&gt; &lt;foo&gt;\"></div>"]} =
+             eval(template, assigns)
+
+    # binaries in lists for classes are extracted out even with dynamic bits
+    template = ~S(<div class={["<bar>", @unsafe]} />)
+    assert render(template, assigns) == ~S(<div class="&lt;bar&gt; &lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div class=\"&lt;bar&gt; ", "\"></div>"]} =
+             eval(template, assigns)
+
     # raises if not a binary
     assert_raise ArgumentError, "expected a binary in <>, got: {:safe, \"<foo>\"}", fn ->
       render(~S(<div id={"pre-" <> @safe} />), assigns)
