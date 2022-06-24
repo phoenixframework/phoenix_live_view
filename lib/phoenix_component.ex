@@ -1012,7 +1012,7 @@ defmodule Phoenix.Component do
   defp pop_attrs(env) do
     attrs =
       env.module
-      |> Module.get_attribute(:__attrs__)
+      |> get_attrs()
       |> Enum.reverse()
 
     Module.delete_attribute(env.module, :__attrs__)
