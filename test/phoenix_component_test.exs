@@ -817,5 +817,17 @@ defmodule Phoenix.ComponentTest do
       assert lookup(:two) == 2
       assert lookup(:three) == 3
     end
+
+    test "does not raise when there is a nested module" do
+      Code.compile_string("""
+        defmodule NestedModules do
+          use Phoenix.Component
+
+          defmodule Nested do
+            def fun(arg), do: arg
+          end
+        end
+      """)
+    end
   end
 end
