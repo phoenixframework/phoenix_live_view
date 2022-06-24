@@ -463,7 +463,7 @@ var DOM = {
   },
   discardError(container, el, phxFeedbackFor) {
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor);
-    let input = field && container.querySelector(`[id="${field}"], [name="${field}"]`);
+    let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`);
     if (!input) {
       return;
     }
@@ -861,6 +861,62 @@ var LiveUploader = class {
   }
 };
 
+// js/phoenix_live_view/aria.js
+var ARIA = {
+  focusMain() {
+    let target = document.querySelector("main h1, main, h1");
+    if (target) {
+      let origTabIndex = target.tabIndex;
+      target.tabIndex = -1;
+      target.focus();
+      target.tabIndex = origTabIndex;
+    }
+  },
+  anyOf(instance, classes) {
+    return classes.find((name) => instance instanceof name);
+  },
+  isFocusable(el, interactiveOnly) {
+    return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.tabIndex === 0 && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
+  },
+  attemptFocus(el, interactiveOnly) {
+    if (this.isFocusable(el, interactiveOnly)) {
+      try {
+        el.focus();
+      } catch (e) {
+      }
+    }
+    return !!document.activeElement && document.activeElement.isSameNode(el);
+  },
+  focusFirstInteractive(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child, true) || this.focusFirstInteractive(child, true)) {
+        return true;
+      }
+      child = child.nextElementSibling;
+    }
+  },
+  focusFirst(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusFirst(child)) {
+        return true;
+      }
+      child = child.nextElementSibling;
+    }
+  },
+  focusLast(el) {
+    let child = el.lastElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusLast(child)) {
+        return true;
+      }
+      child = child.previousElementSibling;
+    }
+  }
+};
+var aria_default = ARIA;
+
 // js/phoenix_live_view/hooks.js
 var Hooks = {
   LiveFileUpload: {
@@ -898,6 +954,18 @@ var Hooks = {
     },
     destroyed() {
       URL.revokeObjectURL(this.url);
+    }
+  },
+  FocusWrap: {
+    mounted() {
+      this.focusStart = this.el.firstElementChild;
+      this.focusEnd = this.el.lastElementChild;
+      this.focusStart.addEventListener("focus", () => aria_default.focusLast(this.el));
+      this.focusEnd.addEventListener("focus", () => aria_default.focusFirst(this.el));
+      this.el.addEventListener("phx:show-end", () => this.el.focus());
+      if (window.getComputedStyle(this.el).display !== "none") {
+        aria_default.focusFirst(this.el);
+      }
     }
   }
 };
@@ -1971,6 +2039,7 @@ var ViewHook = class {
 };
 
 // js/phoenix_live_view/js.js
+var focusStack = null;
 var JS = {
   exec(eventType, phxEvent, view, sourceEl, defaults) {
     let [defaultKind, defaultArgs] = defaults || [null, {}];
@@ -2013,6 +2082,23 @@ var JS = {
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts);
       }
+    });
+  },
+  exec_focus(eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+  },
+  exec_focus_first(eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+  },
+  exec_push_focus(eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => focusStack = el || sourceEl);
+  },
+  exec_pop_focus(eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => {
+      if (focusStack) {
+        focusStack.focus();
+      }
+      focusStack = null;
     });
   },
   exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {

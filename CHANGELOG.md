@@ -36,6 +36,8 @@ Additionally, the special `let` attribute on function components have been depre
   - Add declarative assigns with compile-time verifications and warnings via `attr` macro above function components
   - [Helpers] Add `dynamic_tag` function component
   - [Helpers] Add `link` function component
+  - [Helpers] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessbility
+  - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessbility
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
   - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
 
