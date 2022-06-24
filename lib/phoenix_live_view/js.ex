@@ -596,6 +596,79 @@ defmodule Phoenix.LiveView.JS do
     put_op(js, "remove_attr", %{to: opts[:to], attr: attr})
   end
 
+  @doc """
+  Sends focus to a selector.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to remove attributes from.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.focus(to: "main")
+  """
+  def focus(), do: focus(%JS{}, [])
+  def focus(%JS{} = js), do: focus(js, [])
+  def focus(opts) when is_list(opts), do: focus(%JS{}, opts)
+  def focus(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :focus, [:to])
+    put_op(js, "focus", %{to: opts[:to]})
+  end
+
+  @doc """
+  Sends focus to the first focusable child in selector.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to focus.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.focus_first(to: "#modal")
+  """
+  def focus_first(), do: focus_first(%JS{}, [])
+  def focus_first(%JS{} = js), do: focus_first(js, [])
+  def focus_first(opts) when is_list(opts), do: focus_first(%JS{}, opts)
+  def focus_first(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :focus_first, [:to])
+    put_op(js, "focus_first", %{to: opts[:to]})
+  end
+
+  @doc """
+  Pushes focus from the source element to be later popped.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to push focus to.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.push_focus()
+      JS.push_focus(to: "#my-button")
+  """
+  def push_focus(), do: push_focus(%JS{}, [])
+  def push_focus(%JS{} = js), do: push_focus(js, [])
+  def push_focus(opts) when is_list(opts), do: push_focus(%JS{}, opts)
+  def push_focus(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :push_focus, [:to])
+    put_op(js, "push_focus", %{to: opts[:to]})
+  end
+
+  @doc """
+  Focuses the last pushed element.
+
+  ## Examples
+
+      JS.pop_focus()
+  """
+  def pop_focus(), do: pop_focus(%JS{})
+  def pop_focus(%JS{} = js) do
+    put_op(js, "pop_focus", %{})
+  end
+
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do
     %JS{js | ops: ops ++ [[kind, args]]}
   end

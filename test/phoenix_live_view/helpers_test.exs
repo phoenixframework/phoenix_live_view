@@ -143,6 +143,23 @@ defmodule Phoenix.LiveView.HelpersTest do
     end
   end
 
+  describe "focus_wrap" do
+    test "basic usage" do
+      assigns = %{}
+
+      template = ~H"""
+      <.focus_wrap id="wrap" class="foo">
+        <div>content</div>
+      </.focus_wrap>
+      """
+
+      dom = render(template)
+
+      assert dom ==
+               "<div id=\"wrap\" phx-hook=\"Phoenix.FocusWrap\" class=\"foo\">\n  <span id=\"wrap-start\" tabindex=\"0\" aria-hidden=\"true\"></span>\n  \n  <div>content</div>\n\n  <span id=\"wrap-end\" tabindex=\"0\" aria-hidden=\"true\"></span>\n</div>"
+    end
+  end
+
   describe "live_title/2" do
     test "dynamic attrs" do
       assigns = %{prefix: "MyApp – ", title: "My Title"}

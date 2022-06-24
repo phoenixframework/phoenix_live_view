@@ -1294,6 +1294,45 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
+  Wraps tab focus around a container for accessibility.
+
+  This is an essential accessibility feature for interfaces
+  such as modals, dialogs, and menus.
+
+  ## Attributes
+
+    * `:id` - The required string container ID
+
+  All other HTML attributes are applied to the rendered container.
+
+  ## Examples
+
+  Simply render your inner content within this component and
+  focus will be wrapped around the container as the user tabs
+  through the containers content.
+
+      <.focus_wrap id="my-modal" class="bg-white">
+        <div id="modal-content">
+          Are you sure?
+          <button phx-click="cancel">Cancel</button>
+          <button phx-click="confirm">OK</button>
+        </div>
+      </.focus_wrap>
+  """
+  attr :id, :string, required: true
+  attr :rest, :global
+
+  def focus_wrap(assigns) do
+    ~H"""
+    <div id={@id} phx-hook="Phoenix.FocusWrap" {@rest}>
+      <span id={"#{@id}-start"} tabindex="0" aria-hidden="true"></span>
+      <%= render_slot(@inner_block) %>
+      <span id={"#{@id}-end"} tabindex="0" aria-hidden="true"></span>
+    </div>
+    """
+  end
+
+  @doc """
   Generates a dynamically named HTML tag.
 
   Raises ArgumentError if the tag name is found to be unsafe HTML.

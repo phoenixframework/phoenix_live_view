@@ -1,4 +1,7 @@
 import DOM from "./dom"
+import ARIA from "./aria"
+
+let focusStack = null
 
 let JS = {
   exec(eventType, phxEvent, view, sourceEl, defaults){
@@ -48,6 +51,25 @@ let JS = {
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts)
       }
+    })
+  },
+
+  exec_focus(eventType, phxEvent, view, sourceEl, el){
+    window.requestAnimationFrame(() => ARIA.attemptFocus(el))
+  },
+
+  exec_focus_first(eventType, phxEvent, view, sourceEl, el){
+    window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
+  },
+
+  exec_push_focus(eventType, phxEvent, view, sourceEl, el){
+    window.requestAnimationFrame(() => focusStack = el || sourceEl)
+  },
+
+  exec_pop_focus(eventType, phxEvent, view, sourceEl, el){
+    window.requestAnimationFrame(() => {
+      if(focusStack){ focusStack.focus() }
+      focusStack = null
     })
   },
 
