@@ -49,9 +49,8 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.uri == "http://www.example.com/thermo?foo=bar"
         end)
 
-      assert log =~ "MOUNTED Phoenix.LiveViewTest.ThermostatLive in "
-      assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
-      assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
+      refute log =~ "MOUNTED Phoenix.LiveViewTest.ThermostatLive in "
+      refute log =~ "HANDLED PARAMS in "
     end
 
     @tag session: %{current_user_id: "1"}

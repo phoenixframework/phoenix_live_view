@@ -49,6 +49,8 @@ defmodule Phoenix.LiveView.Logger do
   If enabled, `Phoenix.LiveView.Logger` will filter parameters based on the configuration of `Phoenix.Logger`. 
   """
 
+  import Phoenix.LiveView, only: [connected?: 1]
+
   import Phoenix.Logger, only: [duration: 1, filter_values: 1]
 
   require Logger
@@ -76,22 +78,26 @@ defmodule Phoenix.LiveView.Logger do
   def live_view_mount_stop(_event, measurement, metadata, _config) do
     %{socket: socket, params: params, session: session, uri: _uri} = metadata
     %{duration: duration} = measurement
-    level = log_level(socket)
 
-    Logger.log(level, fn ->
-      [
-        "MOUNTED ",
-        inspect(socket.view),
-        " in ",
-        duration(duration),
-        ?\n,
-        "  Parameters: ",
-        inspect(filter_values(params)),
-        ?\n,
-        "  Session: ",
-        inspect(session)
-      ]
-    end)
+    # avoid duplicate logs by skipping dead render events
+    if connected?(socket) do
+      level = log_level(socket)
+
+      Logger.log(level, fn ->
+        [
+          "MOUNTED ",
+          inspect(socket.view),
+          " in ",
+          duration(duration),
+          ?\n,
+          "  Parameters: ",
+          inspect(filter_values(params)),
+          ?\n,
+          "  Session: ",
+          inspect(session)
+        ]
+      end)
+    end
 
     :ok
   end
@@ -102,18 +108,21 @@ defmodule Phoenix.LiveView.Logger do
     %{duration: duration} = measurement
     level = log_level(socket)
 
-    Logger.log(level, fn ->
-      [
-        "HANDLED PARAMS in ",
-        duration(duration),
-        ?\n,
-        "  View: ",
-        inspect(socket.view),
-        ?\n,
-        "  Parameters: ",
-        inspect(filter_values(params))
-      ]
-    end)
+    # avoid duplicate logs by skipping dead render events
+    if connected?(socket) do
+      Logger.log(level, fn ->
+        [
+          "HANDLED PARAMS in ",
+          duration(duration),
+          ?\n,
+          "  View: ",
+          inspect(socket.view),
+          ?\n,
+          "  Parameters: ",
+          inspect(filter_values(params))
+        ]
+      end)
+    end
 
     :ok
   end
