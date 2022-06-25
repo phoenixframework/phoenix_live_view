@@ -56,10 +56,11 @@ defmodule Phoenix.LiveView.Logger do
   @doc false
   def install do
     handlers = %{
-      [:phoenix, :live_view, :mount, :stop] => &live_view_mount_stop/4,
-      [:phoenix, :live_view, :handle_params, :stop] => &live_view_handle_params_stop/4,
-      [:phoenix, :live_view, :handle_event, :stop] => &live_view_handle_event_stop/4,
-      [:phoenix, :live_component, :handle_event, :stop] => &live_component_handle_event_stop/4
+      [:phoenix, :live_view, :mount, :stop] => &__MODULE__.live_view_mount_stop/4,
+      [:phoenix, :live_view, :handle_params, :stop] => &__MODULE__.live_view_handle_params_stop/4,
+      [:phoenix, :live_view, :handle_event, :stop] => &__MODULE__.live_view_handle_event_stop/4,
+      [:phoenix, :live_component, :handle_event, :stop] =>
+        &__MODULE__.live_component_handle_event_stop/4
     }
 
     for {key, fun} <- handlers do
