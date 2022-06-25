@@ -40,7 +40,6 @@ defmodule Phoenix.LiveView.Logger do
   - `[:phoenix, :live_view, :mount, :stop]`
   - `[:phoenix, :live_view, :handle_params, :stop]`
   - `[:phoenix, :live_view, :handle_event, :stop]`
-  - `[:phoenix, :live_view, :handle_info, :stop]`
   - `[:phoenix, :live_component, :handle_event, :stop]`
 
   See the [Telemetry](./guides/server/telemetry.md) guide for more information.
@@ -60,7 +59,6 @@ defmodule Phoenix.LiveView.Logger do
       [:phoenix, :live_view, :mount, :stop] => &live_view_mount_stop/4,
       [:phoenix, :live_view, :handle_params, :stop] => &live_view_handle_params_stop/4,
       [:phoenix, :live_view, :handle_event, :stop] => &live_view_handle_event_stop/4,
-      [:phoenix, :live_view, :handle_info, :stop] => &live_view_handle_info_stop/4,
       [:phoenix, :live_component, :handle_event, :stop] => &live_component_handle_event_stop/4
     }
 
@@ -138,28 +136,6 @@ defmodule Phoenix.LiveView.Logger do
         ?\n,
         "  Parameters: ",
         inspect(filter_values(params))
-      ]
-    end)
-
-    :ok
-  end
-
-  @doc false
-  def live_view_handle_info_stop(_event, measurement, metadata, _config) do
-    %{socket: socket, message: message} = metadata
-    %{duration: duration} = measurement
-    level = log_level(socket)
-
-    Logger.log(level, fn ->
-      [
-        "HANDLED INFO in ",
-        duration(duration),
-        ?\n,
-        "  View: ",
-        inspect(socket.view),
-        ?\n,
-        "  Message: ",
-        inspect(message)
       ]
     end)
 
