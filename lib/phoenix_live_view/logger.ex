@@ -4,28 +4,23 @@ defmodule Phoenix.LiveView.Logger do
 
   ## Installation
 
-  Add the following line to your `application.ex`:
+  By default, the logger is installed when Live View starts.
+
+  To disable logging entirely, add the following to your `config/config.exs`:
 
   ```elixir
-  # lib/my_app/application.ex
-
-  @impl true
-  def start(_type, _args) do
-    # ...
-    Phoenix.LiveView.Logger.install()
-    # ...
-  end
+  config :phoenix_live_view, :logger, false
   ```
 
   ## Configuration
 
-  The log level is configurable for each `Phoenix.LiveView` module:
+  The log level is configurable for each Live View:
 
   ```elixir
   use Phoenix.LiveView, log: :debug
   ```
 
-  To disable logging entirely:
+  To disable logging for the Live View:
 
   ```elixir
   use Phoenix.LiveView, log: false

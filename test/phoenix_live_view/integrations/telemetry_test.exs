@@ -14,11 +14,6 @@ defmodule Phoenix.LiveView.TelemtryTest do
   @endpoint Endpoint
   @moduletag session: %{names: ["chris", "jose"], from: nil}
 
-  setup_all do
-    Phoenix.LiveView.Logger.install()
-    :ok
-  end
-
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
