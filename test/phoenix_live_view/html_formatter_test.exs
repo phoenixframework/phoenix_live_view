@@ -1738,6 +1738,26 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "does not not break lines for long css lines when there are interpolation" do
+      assert_formatter_doesnt_change(
+        ~S"""
+        <div class={"#{@errors} mt-1 block w-full"}>
+          Hi
+        </div>
+        """,
+        heex_line_length: 10
+      )
+
+      assert_formatter_doesnt_change(
+        """
+        <div class={@errors <> "mt-1 block w-full"}>
+          Hi
+        </div>
+        """,
+        heex_line_length: 10
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do

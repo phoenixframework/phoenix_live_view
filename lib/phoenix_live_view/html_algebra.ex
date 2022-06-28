@@ -399,6 +399,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       {:ok, string} when is_binary(string) ->
         ~s(#{attr}="#{string}")
 
+      {:ok, {atom, _, _}} when atom in [:<<>>, :<>] ->
+        concat(["#{attr}={", string(value), "}"])
+
       _ ->
         expr =
           break("")
