@@ -1242,7 +1242,6 @@ defmodule Phoenix.LiveView.Helpers do
     <a
       href={@navigate}
       data-phx-link="redirect"
-      data-phx-link-state="push"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
     ><%= render_slot(@inner_block) %></a>
