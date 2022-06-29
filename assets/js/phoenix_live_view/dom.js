@@ -141,6 +141,23 @@ let DOM = {
     document.title = `${prefix || ""}${str}${suffix || ""}`
   },
 
+  putFavicon(href) {
+    let linkEl = document.querySelector("link[rel*='icon']")
+    if (linkEl !== null) {
+      linkEl.href = href;
+    } else {
+      this.addFavicon(href);
+    }
+  },
+
+  addFavicon(href) {
+      let linkEl = document.createElement('link');
+      linkEl.type = 'image/x-icon';
+      linkEl.rel = 'icon';
+      linkEl.href = href;
+      document.getElementsByTagName('head')[0].appendChild(linkEl);
+  },
+
   debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)

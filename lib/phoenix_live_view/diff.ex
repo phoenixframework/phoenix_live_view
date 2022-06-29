@@ -12,6 +12,7 @@ defmodule Phoenix.LiveView.Diff do
   @events :e
   @reply :r
   @title :t
+  @favicon :f
   @template :p
 
   # We use this to track which components have been marked
@@ -145,7 +146,7 @@ defmodule Phoenix.LiveView.Diff do
       render_pending_components(socket, pending, cid_to_component, %{}, components)
 
     socket = %{socket | fingerprints: prints}
-    diff = maybe_put_title(diff, socket)
+    diff = diff |> maybe_put_title(socket) |> maybe_put_favicon(socket)
     {diff, cdiffs} = extract_events({diff, cdiffs})
 
     if map_size(cdiffs) == 0 do
@@ -158,6 +159,14 @@ defmodule Phoenix.LiveView.Diff do
   defp maybe_put_title(diff, socket) do
     if Utils.changed?(socket.assigns, :page_title) do
       Map.put(diff, @title, socket.assigns.page_title)
+    else
+      diff
+    end
+  end
+
+  defp maybe_put_favicon(diff, socket) do
+    if Utils.changed?(socket.assigns, :favicon) do
+      Map.put(diff, @favicon, socket.assigns.favicon)
     else
       diff
     end

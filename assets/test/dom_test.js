@@ -5,6 +5,8 @@ describe("DOM", () => {
   beforeEach(() => {
     let curTitle = document.querySelector("title")
     curTitle && curTitle.remove()
+    let curFavicon = document.querySelector("link[rel*='icon']")
+    curFavicon && curFavicon.remove()
   })
 
   describe("putTitle", () => {
@@ -30,6 +32,27 @@ describe("DOM", () => {
       appendTitle({prefix: "PRE ", suffix: " POST"})
       DOM.putTitle("My Title")
       expect(document.title).toBe("PRE My Title POST")
+    })
+  })
+
+  describe("putFavicon", () => {
+    test("with existing icon link", () => {
+      DOM.addFavicon("/images/existing.ico")
+      let curLinkEl = document.querySelector("link[rel*='icon']")
+      let curHrefValue = curLinkEl.getAttribute("href")
+      expect(curHrefValue).toBe("/images/existing.ico")
+
+      DOM.putFavicon("/images/test_favicon_update.ico")
+      let linkEl = document.querySelector("link[rel*='icon']")
+      let hrefValue = linkEl.getAttribute("href")
+      expect(hrefValue).toBe("/images/test_favicon_update.ico")
+    })
+
+    test("without existing icon link", () => {
+      DOM.putFavicon("/images/test_new_favicon.ico")
+      let linkEl = document.querySelector("link[rel*='icon']")
+      let hrefValue = linkEl.getAttribute("href")
+      expect(hrefValue).toBe("/images/test_new_favicon.ico")
     })
   })
 

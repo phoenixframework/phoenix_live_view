@@ -222,8 +222,9 @@ export default class View {
 
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
-    let {diff, reply, events, title} = Rendered.extract(rawDiff)
+    let {diff, reply, events, title, favicon} = Rendered.extract(rawDiff)
     if(title){ DOM.putTitle(title) }
+    if(favicon){ DOM.putFavicon(favicon) }
 
     callback({diff, reply, events})
     return reply

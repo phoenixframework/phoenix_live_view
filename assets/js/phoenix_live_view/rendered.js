@@ -7,7 +7,8 @@ import {
   PHX_SKIP,
   REPLY,
   STATIC,
-  TITLE
+  TITLE,
+  FAVICON
 } from "./constants"
 
 import {
@@ -18,11 +19,12 @@ import {
 
 export default class Rendered {
   static extract(diff){
-    let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
+    let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title, [FAVICON]: favicon} = diff
     delete diff[REPLY]
     delete diff[EVENTS]
     delete diff[TITLE]
-    return {diff, title, reply: reply || null, events: events || []}
+    delete diff[FAVICON]
+    return {diff, title, favicon, reply: reply || null, events: events || []}
   }
 
   constructor(viewId, rendered){
