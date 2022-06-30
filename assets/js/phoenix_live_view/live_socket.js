@@ -657,7 +657,7 @@ export default class LiveSocket {
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
-      e.stopImmediatePropagation() // do not bubble click to regular phx-click bindings
+      e.stopPropagation() // do not bubble click to regular phx-click bindings
       if(this.pendingLink === href){ return }
 
       this.requestDOMUpdate(() => {

@@ -3801,7 +3801,7 @@ var LiveSocket = class {
       let href = target.href;
       let linkState = target.getAttribute(PHX_LINK_STATE);
       e.preventDefault();
-      e.stopImmediatePropagation();
+      e.stopPropagation();
       if (this.pendingLink === href) {
         return;
       }
