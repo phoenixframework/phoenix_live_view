@@ -657,7 +657,7 @@ export default class LiveSocket {
       let href = target.href
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
-      e.stopPropagation() // do not bubble click to regular phx-click bindings
+      e.stopImmediatePropagation() // do not bubble click to regular phx-click bindings
       if(this.pendingLink === href){ return }
 
       this.requestDOMUpdate(() => {
@@ -667,6 +667,10 @@ export default class LiveSocket {
           this.historyRedirect(href, linkState)
         } else {
           throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`)
+        }
+        let phxClick = target.getAttribute(this.binding("click"))
+        if(phxClick){
+          this.requestDOMUpdate(() => this.execJS(target, phxClick, "click"))
         }
       })
     }, false)

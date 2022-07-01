@@ -3788,7 +3788,7 @@ var LiveSocket = class {
       let href = target.href;
       let linkState = target.getAttribute(PHX_LINK_STATE);
       e.preventDefault();
-      e.stopPropagation();
+      e.stopImmediatePropagation();
       if (this.pendingLink === href) {
         return;
       }
@@ -3799,6 +3799,10 @@ var LiveSocket = class {
           this.historyRedirect(href, linkState);
         } else {
           throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`);
+        }
+        let phxClick = target.getAttribute(this.binding("click"));
+        if (phxClick) {
+          this.requestDOMUpdate(() => this.execJS(target, phxClick, "click"));
         }
       });
     }, false);
