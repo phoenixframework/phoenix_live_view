@@ -354,3 +354,30 @@ You can show and hide content with the following markup:
 Additionally, we strongly recommend including a unique HTML "id" attribute on the form.
 When DOM siblings change, elements without an ID will be replaced rather than moved,
 which can cause issues such as form fields losing focus.
+
+## Triggering `phx-` form events with JavaScript
+
+Often it is desirable to trigger an event on a DOM element without explicit
+user interaction on the element. For example, a custom form element such as a
+date picker or custom select input which utilizes a hidden input element to
+store the selected state.
+
+In these cases, the event functions on the DOM API can be used, for example
+to trigger a `phx-change` event:
+
+```
+document.getElementById("my-select").dispatchEvent(
+  new Event("input", {bubbles: true})
+)
+```
+
+When using a client hook, `this.el` can be used to determine the element as
+outlined in the "Client hooks" documentation.
+
+It is also possible to trigger a `phx-submit` using a "submit" event:
+
+```
+document.getElementById("my-form").dispatchEvent(
+  new Event("submit", {bubbles: true, cancelable: true})
+)
+```
