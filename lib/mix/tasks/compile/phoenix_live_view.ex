@@ -92,9 +92,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         do: diagnostic
   end
 
-  defp diagnostics(caller_module, %{attrs: attrs, root: root} = call, %{
-         attrs: attrs_defs,
-         slots: _slots_defs
+  defp diagnostics(caller_module, %{slots: _slots, attrs: attrs, root: root} = call, %{
+         slots: _slots_defs,
+         attrs: attrs_defs
        }) do
     # TODO: provide diagnostics for slots
     {warnings, {attrs, has_global?}} =

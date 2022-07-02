@@ -262,6 +262,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | slots: [[] | state.slots]}
   end
 
+  # TODO: grab line and column from meta and push that into slots stack
   defp add_slot!(
          %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
            state,
@@ -283,14 +284,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
-  defp pop_slots(%{slots: [slots | other_slots]} = state) do
-    grouped =
-      slots
-      |> Enum.reverse()
-      |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
-      |> Map.to_list()
+  defp get_slots(%{slots: [slots | _other_slots]} = _state) do
+    group_slots(slots)
+  end
 
-    {grouped, %{state | slots: other_slots}}
+  defp pop_slots(%{slots: [slots | other_slots]} = state) do
+    {group_slots(slots), %{state | slots: other_slots}}
+  end
+
+  defp group_slots(slots) do
+    slots
+    |> Enum.reverse()
+    |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
+    |> Map.to_list()
   end
 
   defp push_tag(state, token) do
@@ -365,12 +371,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
        )
        when first in ?A..?Z do
     attrs = remove_phx_no_break(attrs)
+    slots = %{}
     file = state.file
     {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
     {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
 
     ast =
       quote line: tag_meta.line do
@@ -406,11 +413,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
+    slots = get_slots(state)
     attrs = remove_phx_no_break(attrs)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -433,11 +441,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
          state
        ) do
     attrs = remove_phx_no_break(attrs)
+    slots = %{}
     fun = String.to_atom(name)
     {assigns, state} = build_self_close_component_assigns(attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -529,11 +538,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
     attrs = remove_phx_no_break(attrs)
+    slots = get_slots(state)
     fun = String.to_atom(fun_name)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -1040,8 +1050,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp store_component_call(module, component, attrs, file, line) do
+  defp store_component_call(module, component, slots, attrs, file, line) do
     if Module.open?(module) do
+      pruned_slots =
+        for {slot, values} <- slots,
+            do: {slot, Enum.map(values, &slot_call_value/1)},
+            into: %{}
+
       pruned_attrs =
         for {attr, value, meta} <- attrs,
             is_binary(attr) and not String.starts_with?(attr, ":"),
@@ -1049,8 +1064,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
             into: %{}
 
       root = List.keymember?(attrs, :root, 0)
-      call = %{component: component, attrs: pruned_attrs, file: file, line: line, root: root}
+
+      call = %{
+        component: component,
+        slots: pruned_slots,
+        attrs: pruned_attrs,
+        file: file,
+        line: line,
+        root: root
+      }
+
       Module.put_attribute(module, :__components_calls__, call)
+    end
+  end
+
+  # TODO: once line and col is added, return the following: {name, {line, column, value}}
+  defp slot_call_value({_, _, assigns}) do
+    for {name, value} <- assigns, name != :__slot__, into: %{} do
+      case value do
+        {_, _, _} -> {name, :expr}
+        value -> {name, value}
+      end
     end
   end
 

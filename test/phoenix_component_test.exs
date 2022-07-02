@@ -352,29 +352,6 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    defmodule FunctionComponentWithSlots do
-      use Phoenix.Component
-
-      slot :header
-      def func_with_slot(assigns), do: ~H[]
-
-      slot :header do
-        attr :name, :any
-      end
-
-      def func_with_slot_attr(assigns), do: ~H[]
-
-      slot :header do
-        attr :name, :any
-        attr :color, :any
-      end
-
-      def func_with_slot_attrs(assigns), do: ~H[]
-
-      slot :slot, required: true
-      def func_with_required_slot(assigns), do: ~H[]
-    end
-
     test "stores attributes definitions" do
       func1_line = FunctionComponentWithAttrs.func1_line()
       func2_line = FunctionComponentWithAttrs.func2_line()
@@ -487,60 +464,6 @@ defmodule Phoenix.ComponentTest do
              }
     end
 
-    test "stores slots definitions" do
-      assert FunctionComponentWithSlots.__components__() == %{
-               func_with_required_slot: %{
-                 attrs: [],
-                 kind: :def,
-                 slots: [%{doc: nil, line: 374, name: :slot, opts: [], required: true}]
-               },
-               func_with_slot: %{
-                 attrs: [],
-                 kind: :def,
-                 slots: [%{doc: nil, line: 358, name: :header, opts: [], required: false}]
-               },
-               func_with_slot_attr: %{
-                 attrs: [
-                   %{
-                     doc: nil,
-                     line: 362,
-                     name: :name,
-                     opts: [],
-                     required: false,
-                     slot: :header,
-                     type: :any
-                   }
-                 ],
-                 kind: :def,
-                 slots: [%{doc: nil, line: 361, name: :header, opts: [], required: false}]
-               },
-               func_with_slot_attrs: %{
-                 attrs: [
-                   %{
-                     doc: nil,
-                     line: 369,
-                     name: :color,
-                     opts: [],
-                     required: false,
-                     slot: :header,
-                     type: :any
-                   },
-                   %{
-                     doc: nil,
-                     line: 368,
-                     name: :name,
-                     opts: [],
-                     required: false,
-                     slot: :header,
-                     type: :any
-                   }
-                 ],
-                 kind: :def,
-                 slots: [%{doc: nil, line: 367, name: :header, opts: [], required: false}]
-               }
-             }
-    end
-
     test "stores component calls" do
       render_line = FunctionComponentWithAttrs.render_line()
       with_global_line = FunctionComponentWithAttrs.with_global_line() + 3
@@ -551,6 +474,7 @@ defmodule Phoenix.ComponentTest do
 
       assert [
                %{
+                 slots: %{},
                  attrs: %{id: {_, _, :expr}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
@@ -559,35 +483,264 @@ defmodule Phoenix.ComponentTest do
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
+                 slots: %{},
                  attrs: %{id: {_, _, "1"}},
                  file: ^file,
                  line: ^call_1_line
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
+                 slots: %{},
                  attrs: %{id: {_, _, "2"}, email: {_, _, nil}}
                },
                %{
+                 slots: %{},
                  attrs: %{id: {_, _, "3"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  file: ^file,
                  line: ^call_3_line
                },
                %{
+                 slots: %{},
                  attrs: %{id: {_, _, "4"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote}
                },
                %{
+                 slots: %{},
                  attrs: %{id: {_, _, "5"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: false
                },
                %{
+                 slots: %{},
                  attrs: %{id: {_, _, "6"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: true
                }
              ] = FunctionComponentWithAttrs.__components_calls__()
+    end
+
+    defmodule FunctionComponentWithSlots do
+      use Phoenix.Component
+
+      def fun_with_slot_line, do: __ENV__.line + 3
+
+      slot :default
+      def fun_with_slot(assigns), do: ~H[]
+
+      def fun_with_named_slots_line, do: __ENV__.line + 4
+
+      slot :header
+      slot :footer
+      def fun_with_named_slots(assigns), do: ~H[]
+
+      def fun_with_slot_attrs_line, do: __ENV__.line + 6
+
+      slot :slot do
+        attr :attr, :any
+      end
+
+      def fun_with_slot_attrs(assigns), do: ~H[]
+
+      def table_line, do: __ENV__.line + 8
+
+      slot :col do
+        attr :label, :string
+      end
+
+      attr :rows, :list
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <tr>
+            <%= for col <- @col do %>
+              <th><%= col.label %></th>
+            <% end %>
+          </tr>
+          <%= for row <- @rows do %>
+            <tr>
+              <%= for col <- @col do %>
+                <td><%= render_slot(col, row) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </table>
+        """
+      end
+
+      def render_line, do: __ENV__.line + 2
+
+      def render(assigns) do
+        ~H"""
+        <.fun_with_slot>
+          Hello, World
+        </.fun_with_slot>
+
+        <.fun_with_named_slots>
+          <:header>
+            This is a header.
+          </:header>
+
+          Hello, World
+
+          <:footer>
+            This is a footer.
+          </:footer>
+        </.fun_with_named_slots>
+
+        <.fun_with_slot_attrs>
+          <:slot attr="1" />
+        </.fun_with_slot_attrs>
+
+        <.table rows={@users}>
+          <:col :let={user} label={@name}>
+            <%= user.name %>
+          </:col>
+
+          <:col :let={user} label="Address">
+            <%= user.address %>
+          </:col>
+        </.table>        
+        """
+      end
+    end
+
+    test "stores slots definitions" do
+      assert FunctionComponentWithSlots.__components__() == %{
+               fun_with_slot: %{
+                 attrs: [],
+                 kind: :def,
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_slot_line() - 1,
+                     name: :default,
+                     opts: [],
+                     required: false
+                   }
+                 ]
+               },
+               fun_with_named_slots: %{
+                 attrs: [],
+                 kind: :def,
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_named_slots_line() - 1,
+                     name: :footer,
+                     opts: [],
+                     required: false
+                   },
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_named_slots_line() - 2,
+                     name: :header,
+                     opts: [],
+                     required: false
+                   }
+                 ]
+               },
+               fun_with_slot_attrs: %{
+                 attrs: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 3,
+                     name: :attr,
+                     opts: [],
+                     required: false,
+                     slot: :slot,
+                     type: :any
+                   }
+                 ],
+                 kind: :def,
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 4,
+                     name: :slot,
+                     opts: [],
+                     required: false
+                   }
+                 ]
+               },
+               table: %{
+                 attrs: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.table_line() - 5,
+                     name: :label,
+                     opts: [],
+                     required: false,
+                     slot: :col,
+                     type: :string
+                   },
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.table_line() - 2,
+                     name: :rows,
+                     opts: [],
+                     required: false,
+                     slot: nil,
+                     type: :list
+                   }
+                 ],
+                 kind: :def,
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.table_line() - 6,
+                     name: :col,
+                     opts: [],
+                     required: false
+                   }
+                 ]
+               }
+             }
+    end
+
+    test "stores component calls with slots" do
+      assert FunctionComponentWithSlots.__components_calls__() == [
+               %{
+                 attrs: %{},
+                 component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
+                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 line: 576,
+                 root: false,
+                 slots: %{}
+               },
+               %{
+                 attrs: %{},
+                 component:
+                   {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
+                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 line: 580,
+                 root: false,
+                 slots: %{footer: [%{inner_block: :expr}], header: [%{inner_block: :expr}]}
+               },
+               %{
+                 attrs: %{},
+                 component:
+                   {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
+                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 line: 592,
+                 root: false,
+                 slots: %{slot: [%{attr: "1", inner_block: nil}]}
+               },
+               %{
+                 attrs: %{rows: {596, 17, :expr}},
+                 component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
+                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 line: 596,
+                 root: false,
+                 slots: %{
+                   col: [
+                     %{inner_block: :expr, label: :expr},
+                     %{inner_block: :expr, label: "Address"}
+                   ]
+                 }
+               }
+             ]
     end
 
     test "does not generate __components_calls__ if there's no call" do
