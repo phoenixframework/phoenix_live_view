@@ -445,7 +445,7 @@ defmodule Phoenix.LiveView.Engine do
     call = extract_call(left)
 
     args =
-      if classify_taint(call, args) in [:live, :render] do
+      if classify_taint(call, args) == :live do
         {args, [opts]} = Enum.split(args, -1)
 
         # The reason we can safely ignore assigns here is because
@@ -906,19 +906,18 @@ defmodule Phoenix.LiveView.Engine do
         code = quote do: unquote(__MODULE__).__raise__(unquote(call), unquote(length(args)))
         {code, vars, assigns}
 
-      :render ->
-        {args, [opts]} = Enum.split(args, -1)
-        {args, vars, assigns} = analyze_list(args, vars, assigns, [])
-        {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns)
-        {{left, meta, args ++ [opts]}, vars, assigns}
-
       :none ->
         {left, vars, assigns} = analyze(left, vars, assigns)
         {args, vars, assigns} = analyze_list(args, vars, assigns, [])
         {{left, meta, args}, vars, assigns}
 
-      # :never or :live
-      _ ->
+      :live ->
+        {args, [opts]} = Enum.split(args, -1)
+        {args, vars, assigns} = analyze_skip_assignment_list(args, vars, assigns, [])
+        {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns)
+        {{left, meta, args ++ [opts]}, vars, assigns}
+
+      :never ->
         {args, vars, assigns} = analyze_with_restricted_vars(args, vars, assigns)
         {{left, meta, args}, vars, assigns}
     end
@@ -944,6 +943,20 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp analyze_list([], vars, assigns, acc) do
+    {Enum.reverse(acc), vars, assigns}
+  end
+
+  defp analyze_skip_assignment_list([{:=, meta, [left, right]} | tail], vars, assigns, acc) do
+    {right, vars, assigns} = analyze(right, vars, assigns)
+    analyze_skip_assignment_list(tail, vars, assigns, [{:=, meta, [left, right]} | acc])
+  end
+
+  defp analyze_skip_assignment_list([head | tail], vars, assigns, acc) do
+    {head, vars, assigns} = analyze(head, vars, assigns)
+    analyze_skip_assignment_list(tail, vars, assigns, [head | acc])
+  end
+
+  defp analyze_skip_assignment_list([], vars, assigns, acc) do
     {Enum.reverse(acc), vars, assigns}
   end
 
@@ -1122,23 +1135,30 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  # For case/if/unless, we are not leaking the variable given as argument,
-  # such as `if var = ... do`. This does not follow Elixir semantics, but
-  # yields better optimizations.
+  # For case/if/unless in particular, we are not leaking the
+  # variables defined in arguments, such as `if var = ... do`.
+  # This does not follow Elixir semantics, but yields better
+  # optimizations.
   defp classify_taint(:case, [_, _]), do: :live
   defp classify_taint(:if, [_, _]), do: :live
   defp classify_taint(:unless, [_, _]), do: :live
   defp classify_taint(:cond, [_]), do: :live
   defp classify_taint(:try, [_]), do: :live
   defp classify_taint(:receive, [_]), do: :live
+
+  # with/for are specially handled during analyze
   defp classify_taint(:with, _), do: :live
+  defp classify_taint(:for, _), do: :live
+
+  # Constructs from Phoenix and HTMLEngine
+  defp classify_taint(:inner_block, [_, [do: _]]), do: :live
+  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 
   # TODO: Remove me when live_component/2/3 are removed
-  defp classify_taint(:live_component, [_, [do: _]]), do: :render
-  defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  defp classify_taint(:inner_block, [_, [do: _]]), do: :render
-  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
+  defp classify_taint(:live_component, [_, [do: _]]), do: :live
+  defp classify_taint(:live_component, [_, _, [do: _]]), do: :live
 
+  # Special forms are forbidden and raise.
   defp classify_taint(:alias, [_]), do: :special_form
   defp classify_taint(:import, [_]), do: :special_form
   defp classify_taint(:require, [_]), do: :special_form
@@ -1148,7 +1168,5 @@ defmodule Phoenix.LiveView.Engine do
 
   defp classify_taint(:&, [_]), do: :never
   defp classify_taint(:fn, _), do: :never
-  defp classify_taint(:for, _), do: :never
-
   defp classify_taint(_, _), do: :none
 end

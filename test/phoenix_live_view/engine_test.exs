@@ -428,7 +428,7 @@ defmodule Phoenix.LiveView.EngineTest do
                [""]
     end
 
-    test "converts if-do with var into rendered" do
+    test "converts if-do with var assignments into rendered" do
       template = "<%= if var = @foo do %>one<%= var %>two<% end %>"
 
       assert [%Rendered{dynamic: ["true"], static: ["one", "two"]}] =
@@ -436,6 +436,19 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert changed(template, %{foo: true}, %{}) == [nil]
       assert changed(template, %{foo: false}, %{foo: true}) == [""]
+    end
+
+    test "converts if-do with external var assignments into rendered but tainted" do
+      template = "<%= var = @foo %><%= if var do %>one<%= var %>two<% end %>"
+
+      assert ["true", %Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, nil)
+
+      assert ["true", %Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, %{})
+
+      assert ["false", ""] =
+               changed(template, %{foo: false}, %{foo: true})
     end
 
     test "converts if-do-else into rendered with dynamic condition" do
@@ -501,7 +514,7 @@ defmodule Phoenix.LiveView.EngineTest do
              ] = changed(template, %{foo: 123}, %{foo: true})
     end
 
-    test "converts if-do if-do with var into rendered" do
+    test "converts if-do if-do with var assignment into rendered" do
       template = "<%= if var = @foo do %>one<%= if var do %>uno<%= var %>dos<% end %>two<% end %>"
 
       assert [
