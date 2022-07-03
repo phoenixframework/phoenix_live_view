@@ -496,6 +496,9 @@ defmodule Phoenix.LiveView.ElementsTest do
       # Select
       assert form =~ ~s|"selected" => "1"|
       assert form =~ ~s|"not-selected" => "blank"|
+      assert form =~ ~s|"not-selected-treeorder" => "blank"|
+      refute form =~ ~s|"not-selected-size"|
+      assert form =~ ~s|"invalid-multiple-selected" => "3"|
 
       # Multiple Select
       assert form =~ ~s|"multiple-select" => ["2", "3"]|

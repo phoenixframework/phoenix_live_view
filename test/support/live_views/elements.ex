@@ -80,6 +80,20 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[multiple-checkbox][]" type="checkbox" value="2" checked>
       <input name="hello[multiple-checkbox][]" type="checkbox" value="3" checked>
       <select name="hello[not-selected]">
+        <option value="" disabled>Disabled Prompt</option>
+        <option value="blank">None</option>
+        <option value="1">One</option>
+        <option value="2">Two</option>
+      </select>
+      <select name="hello[not-selected-treeorder]">
+        <option value="" disabled>Disabled Prompt</option>
+        <optgroup label="Nested">
+          <option value="blank">None</option>
+          <option value="1">One</option>
+        </optgroup>
+        <option value="2">Two</option>
+      </select>
+      <select name="hello[not-selected-size]" size="3">
         <option value="blank">None</option>
         <option value="1">One</option>
         <option value="2">Two</option>
@@ -88,6 +102,11 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
         <option value="blank">None</option>
         <option value="1" selected>One</option>
         <option value="2">Two</option>
+      </select>
+      <select name="hello[invalid-multiple-selected]">
+        <option value="1">One</option>
+        <option value="2" selected>Two</option>
+        <option value="3" selected>Three</option>
       </select>
       <select name="hello[multiple-select][]" multiple>
         <option value="1">One</option>
