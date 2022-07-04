@@ -44,8 +44,11 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.uri == "http://www.example.com/thermo?foo=bar"
         end)
 
-      refute log =~ "MOUNTED Phoenix.LiveViewTest.ThermostatLive in "
-      refute log =~ "HANDLED PARAMS in "
+      refute log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
+      refute log =~ "Replied in "
+
+      refute log =~ "HANDLE PARAMS"
+      refute log =~ "Replied in "
     end
 
     @tag session: %{current_user_id: "1"}
@@ -100,13 +103,15 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.uri == "http://www.example.com/thermo?foo=bar"
         end)
 
-      assert log =~ "MOUNTED Phoenix.LiveViewTest.ThermostatLive in "
+      assert log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
       assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
+      assert log =~ "Replied in"
 
-      assert log =~ "HANDLED PARAMS in "
+      assert log =~ "HANDLE PARAMS"
       assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
+      assert log =~ "Replied in"
     end
 
     @tag session: %{current_user_id: "1"}
@@ -159,10 +164,11 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.params == %{"temp" => "20"}
         end)
 
-      assert log =~ "HANDLED EVENT in "
+      assert log =~ "HANDLE EVENT"
       assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
       assert log =~ "  Event: \"save\""
       assert log =~ "  Parameters: %{\"temp\" => \"20\"}"
+      assert log =~ "Replied in"
     end
 
     test "render_* with crashing handle_event callback emits telemetry metrics", %{conn: conn} do
@@ -217,11 +223,12 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.params == %{"op" => "upcase"}
         end)
 
-      assert log =~ "HANDLED EVENT in "
+      assert log =~ "HANDLE EVENT"
       assert log =~ "  Component: Phoenix.LiveViewTest.StatefulComponent"
       assert log =~ "  View: Phoenix.LiveViewTest.WithComponentLive"
       assert log =~ "  Event: \"transform\""
       assert log =~ "  Parameters: %{\"op\" => \"upcase\"}"
+      assert log =~ "Replied in"
     end
 
     test "emits telemetry events when callback fails", %{conn: conn} do

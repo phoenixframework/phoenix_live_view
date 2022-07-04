@@ -32,9 +32,13 @@ defmodule Phoenix.LiveView.Logger do
 
   The following `Phoenix.LiveView` and `Phoenix.LiveComponent` events are logged:
 
+  - `[:phoenix, :live_view, :mount, :start]`
   - `[:phoenix, :live_view, :mount, :stop]`
+  - `[:phoenix, :live_view, :handle_params, :start]`
   - `[:phoenix, :live_view, :handle_params, :stop]`
+  - `[:phoenix, :live_view, :handle_event, :start]`
   - `[:phoenix, :live_view, :handle_event, :stop]`
+  - `[:phoenix, :live_component, :handle_event, :start]`
   - `[:phoenix, :live_component, :handle_event, :stop]`
 
   See the [Telemetry](./guides/server/telemetry.md) guide for more information.
@@ -53,9 +57,15 @@ defmodule Phoenix.LiveView.Logger do
   @doc false
   def install do
     handlers = %{
+      [:phoenix, :live_view, :mount, :start] => &__MODULE__.live_view_mount_start/4,
       [:phoenix, :live_view, :mount, :stop] => &__MODULE__.live_view_mount_stop/4,
+      [:phoenix, :live_view, :handle_params, :start] =>
+        &__MODULE__.live_view_handle_params_start/4,
       [:phoenix, :live_view, :handle_params, :stop] => &__MODULE__.live_view_handle_params_stop/4,
+      [:phoenix, :live_view, :handle_event, :start] => &__MODULE__.live_view_handle_event_start/4,
       [:phoenix, :live_view, :handle_event, :stop] => &__MODULE__.live_view_handle_event_stop/4,
+      [:phoenix, :live_component, :handle_event, :start] =>
+        &__MODULE__.live_component_handle_event_start/4,
       [:phoenix, :live_component, :handle_event, :stop] =>
         &__MODULE__.live_component_handle_event_stop/4
     }
@@ -70,9 +80,9 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_mount_stop(_event, measurement, metadata, _config) do
+  def live_view_mount_start(_event, measurement, metadata, _config) do
     %{socket: socket, params: params, session: session, uri: _uri} = metadata
-    %{duration: duration} = measurement
+    %{system_time: _system_time} = measurement
 
     # avoid duplicate logs by skipping dead render events
     if connected?(socket) do
@@ -80,10 +90,8 @@ defmodule Phoenix.LiveView.Logger do
 
       Logger.log(level, fn ->
         [
-          "MOUNTED ",
+          "MOUNT ",
           inspect(socket.view),
-          " in ",
-          duration(duration),
           ?\n,
           "  Parameters: ",
           inspect(filter_values(params)),
@@ -98,17 +106,36 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_handle_params_stop(_event, measurement, metadata, _config) do
-    %{socket: socket, params: params, uri: _uri} = metadata
+  def live_view_mount_stop(_event, measurement, metadata, _config) do
+    %{socket: socket, params: _params, session: _session, uri: _uri} = metadata
     %{duration: duration} = measurement
+
+    # avoid duplicate logs by skipping dead render events
+    if connected?(socket) do
+      level = log_level(socket)
+
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
+
+    :ok
+  end
+
+  @doc false
+  def live_view_handle_params_start(_event, measurement, metadata, _config) do
+    %{socket: socket, params: params, uri: _uri} = metadata
+    %{system_time: _system_time} = measurement
     level = log_level(socket)
 
     # avoid duplicate logs by skipping dead render events
     if connected?(socket) do
       Logger.log(level, fn ->
         [
-          "HANDLED PARAMS in ",
-          duration(duration),
+          "HANDLE PARAMS",
           ?\n,
           "  View: ",
           inspect(socket.view),
@@ -123,15 +150,76 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_handle_event_stop(_event, measurement, metadata, _config) do
+  def live_view_handle_params_stop(_event, measurement, metadata, _config) do
+    %{socket: socket, params: _params, uri: _uri} = metadata
+    %{duration: duration} = measurement
+    level = log_level(socket)
+
+    # avoid duplicate logs by skipping dead render events
+    if connected?(socket) do
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
+
+    :ok
+  end
+
+  @doc false
+  def live_view_handle_event_start(_event, measurement, metadata, _config) do
     %{socket: socket, event: event, params: params} = metadata
+    %{system_time: _system_time} = measurement
+    level = log_level(socket)
+
+    Logger.log(level, fn ->
+      [
+        "HANDLE EVENT",
+        ?\n,
+        "  View: ",
+        inspect(socket.view),
+        ?\n,
+        "  Event: ",
+        inspect(event),
+        ?\n,
+        "  Parameters: ",
+        inspect(filter_values(params))
+      ]
+    end)
+
+    :ok
+  end
+
+  @doc false
+  def live_view_handle_event_stop(_event, measurement, metadata, _config) do
+    %{socket: socket, event: _event, params: _params} = metadata
     %{duration: duration} = measurement
     level = log_level(socket)
 
     Logger.log(level, fn ->
       [
-        "HANDLED EVENT in ",
-        duration(duration),
+        "Replied in ",
+        duration(duration)
+      ]
+    end)
+
+    :ok
+  end
+
+  @doc false
+  def live_component_handle_event_start(_event, measurement, metadata, _config) do
+    %{socket: socket, component: component, event: event, params: params} = metadata
+    %{system_time: _system_time} = measurement
+    level = log_level(socket)
+
+    Logger.log(level, fn ->
+      [
+        "HANDLE EVENT",
+        ?\n,
+        "  Component: ",
+        inspect(component),
         ?\n,
         "  View: ",
         inspect(socket.view),
@@ -149,26 +237,14 @@ defmodule Phoenix.LiveView.Logger do
 
   @doc false
   def live_component_handle_event_stop(_event, measurement, metadata, _config) do
-    %{socket: socket, component: component, event: event, params: params} = metadata
+    %{socket: socket, component: _component, event: _event, params: _params} = metadata
     %{duration: duration} = measurement
     level = log_level(socket)
 
     Logger.log(level, fn ->
       [
-        "HANDLED EVENT in ",
-        duration(duration),
-        ?\n,
-        "  Component: ",
-        inspect(component),
-        ?\n,
-        "  View: ",
-        inspect(socket.view),
-        ?\n,
-        "  Event: ",
-        inspect(event),
-        ?\n,
-        "  Parameters: ",
-        inspect(filter_values(params))
+        "Replied in ",
+        duration(duration)
       ]
     end)
 
