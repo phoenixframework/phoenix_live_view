@@ -495,7 +495,7 @@ defmodule Phoenix.LiveViewTest do
   Converts a rendered template to a string.
 
   ## Examples
-      
+
       iex> import Phoenix.LiveView.Helpers
       iex> assigns = []
       iex> ~H"""
@@ -1646,12 +1646,6 @@ defmodule Phoenix.LiveViewTest do
   def __render_trigger_event__(%Element{} = form) do
     case render_tree(form) do
       {"form", attrs, _child_nodes} ->
-        unless List.keymember?(attrs, "phx-trigger-action", 0) do
-          raise ArgumentError,
-                "could not follow trigger action because form #{inspect(form.selector)} " <>
-                  "does not have phx-trigger-action attribute, got: #{inspect(attrs)}"
-        end
-
         {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
         {"method", method} = List.keyfind(attrs, "method", 0) || {"method", "get"}
         {method, path, form.form_data || %{}}

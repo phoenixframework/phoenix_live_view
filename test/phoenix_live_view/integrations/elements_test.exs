@@ -435,13 +435,6 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("#a-no-form") |> follow_trigger_action(conn) end
     end
 
-    test "raises if element doesn't set phx-trigger-action on the form element",
-         %{live: view, conn: conn} do
-      assert_raise ArgumentError,
-                   ~r"\"#empty-form\" does not have phx-trigger-action attribute",
-                   fn -> view |> element("#empty-form") |> follow_trigger_action(conn) end
-    end
-
     test "uses default method and request path", %{live: view, conn: conn} do
       view |> element("#trigger-form-default") |> render_submit()
 
