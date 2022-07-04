@@ -733,6 +733,22 @@ export default class LiveSocket {
 
   bindForms(){
     let iterations = 0
+    let externalFormSubmitted = false
+
+    // disable forms on submit that track phx-change but perform external submit
+    this.on("submit", e => {
+      let phxSubmit = e.target.getAttribute(this.binding("submit"))
+      let phxChange = e.target.getAttribute(this.binding("change"))
+      if(!externalFormSubmitted && phxChange && !phxSubmit){
+        externalFormSubmitted = true
+        e.preventDefault()
+        this.withinOwners(e.target, view => {
+          view.disableForm(e.target)
+          window.requestAnimationFrame(() => e.target.submit()) // safari needs next tick
+        })
+      }
+    }, true)
+
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
       if(!phxEvent){ return }
