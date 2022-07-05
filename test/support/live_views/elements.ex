@@ -134,6 +134,8 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
           phx-trigger-action={@trigger_action}>
     </form>
 
+    <form id="submit-form-default" action="/not_found"></form>
+
     <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
           phx-trigger-action={@trigger_action}>
     </form>

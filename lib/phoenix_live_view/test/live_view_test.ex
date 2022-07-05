@@ -495,7 +495,7 @@ defmodule Phoenix.LiveViewTest do
   Converts a rendered template to a string.
 
   ## Examples
-      
+
       iex> import Phoenix.LiveView.Helpers
       iex> assigns = []
       iex> ~H"""
@@ -1638,18 +1638,55 @@ defmodule Phoenix.LiveViewTest do
   """
   defmacro follow_trigger_action(form, conn) do
     quote bind_quoted: binding() do
-      {method, path, form_data} = Phoenix.LiveViewTest.__render_trigger_event__(form)
+      {method, path, form_data} =
+        Phoenix.LiveViewTest.__render_trigger_submit__(
+          form,
+          :follow_trigger_action,
+          "phx-trigger-action",
+          "could not follow trigger action because form #{inspect(form.selector)} " <>
+            "does not have a phx-trigger-action attribute"
+        )
+
       dispatch(conn, @endpoint, method, path, form_data)
     end
   end
 
-  def __render_trigger_event__(%Element{} = form) do
+  @doc """
+  Receives a form element and submits the HTTP request through the plug pipeline.
+
+  Imagine you have a LiveView that validates form data, but submits the form to
+  a controller via the normal form `action` attribute. This is especially useful
+  in scenarios where the result of a form submit needs to write to the plug session.
+
+  You can follow submit the form with the `%Plug.Conn{}`, like this:
+
+      form = form(live_view, selector, %{"form" => "data"})
+
+      # Now submit the LiveView form to the plug pipeline
+      conn = submit_form(form, conn)
+      assert conn.method == "POST"
+      assert conn.params == %{"form" => "data"}
+  """
+  defmacro submit_form(form, conn) do
+    quote bind_quoted: binding() do
+      {method, path, form_data} =
+        Phoenix.LiveViewTest.__render_trigger_submit__(
+          form,
+          :submit_form,
+          "action",
+          "could not submit form because form #{inspect(form.selector)} " <>
+            "does not have an action attribute"
+        )
+
+      dispatch(conn, @endpoint, method, path, form_data)
+    end
+  end
+
+  def __render_trigger_submit__(%Element{} = form, name, required_attr, error_msg) do
     case render_tree(form) do
       {"form", attrs, _child_nodes} ->
-        unless List.keymember?(attrs, "phx-trigger-action", 0) do
-          raise ArgumentError,
-                "could not follow trigger action because form #{inspect(form.selector)} " <>
-                  "does not have phx-trigger-action attribute, got: #{inspect(attrs)}"
+        unless List.keymember?(attrs, required_attr, 0) do
+          raise ArgumentError, error_msg <> ", got: #{inspect(attrs)}"
         end
 
         {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
@@ -1658,7 +1695,7 @@ defmodule Phoenix.LiveViewTest do
 
       {tag, _, _} ->
         raise ArgumentError,
-              "could not follow trigger action because given element did not return a form, " <>
+              "could not #{name} because given element did not return a form, " <>
                 "got #{inspect(tag)} instead"
     end
   end
