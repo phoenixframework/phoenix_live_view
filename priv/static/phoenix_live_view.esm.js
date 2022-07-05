@@ -1613,7 +1613,7 @@ var DOMPatch = class {
           if (dom_default.isPhxSticky(fromEl)) {
             return false;
           }
-          if (dom_default.isIgnored(fromEl, phxUpdate)) {
+          if (dom_default.isIgnored(fromEl, phxUpdate) || fromEl.form && fromEl.form.isSameNode(externalFormTriggered)) {
             this.trackBefore("updated", fromEl, toEl);
             dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
             updates.push(fromEl);
@@ -2388,7 +2388,6 @@ var View = class {
       dom_default.putTitle(title);
     }
     callback({ diff, reply, events });
-    return reply;
   }
   onJoin(resp) {
     let { rendered, container } = resp;
@@ -2814,9 +2813,6 @@ var View = class {
     }
     return this.liveSocket.wrapPush(this, { timeout: true }, () => {
       return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
-        if (ref !== null) {
-          this.undoRefs(ref);
-        }
         let finish = (hookReply) => {
           if (resp.redirect) {
             this.onRedirect(resp.redirect);
@@ -2827,15 +2823,18 @@ var View = class {
           if (resp.live_redirect) {
             this.onLiveRedirect(resp.live_redirect);
           }
+          if (ref !== null) {
+            this.undoRefs(ref);
+          }
           onLoadingDone();
           onReply(resp, hookReply);
         };
         if (resp.diff) {
           this.liveSocket.requestDOMUpdate(() => {
-            let hookReply = this.applyDiff("update", resp.diff, ({ diff, events }) => {
+            this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
               this.update(diff, events);
+              finish(reply);
             });
-            finish(hookReply);
           });
         } else {
           finish(null);
@@ -2844,6 +2843,9 @@ var View = class {
     });
   }
   undoRefs(ref) {
+    if (!this.isConnected()) {
+      return;
+    }
     dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
       let disabledVal = el.getAttribute(PHX_DISABLED);
       el.removeAttribute(PHX_REF);
@@ -3049,7 +3051,7 @@ var View = class {
       }
     });
   }
-  pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply) {
+  disableForm(formEl, opts = {}) {
     let filterIgnored = (el) => {
       let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form);
       return !(userIgnored || closestPhxBinding(el, "data-phx-update=ignore", el.form));
@@ -3059,26 +3061,27 @@ var View = class {
     };
     let filterButton = (el) => el.tagName == "BUTTON";
     let filterInput = (el) => ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
-    let refGenerator = () => {
-      let formElements = Array.from(formEl.elements);
-      let disables = formElements.filter(filterDisables);
-      let buttons = formElements.filter(filterButton).filter(filterIgnored);
-      let inputs = formElements.filter(filterInput).filter(filterIgnored);
-      buttons.forEach((button) => {
-        button.setAttribute(PHX_DISABLED, button.disabled);
-        button.disabled = true;
-      });
-      inputs.forEach((input) => {
-        input.setAttribute(PHX_READONLY, input.readOnly);
-        input.readOnly = true;
-        if (input.files) {
-          input.setAttribute(PHX_DISABLED, input.disabled);
-          input.disabled = true;
-        }
-      });
-      formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
-      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
-    };
+    let formElements = Array.from(formEl.elements);
+    let disables = formElements.filter(filterDisables);
+    let buttons = formElements.filter(filterButton).filter(filterIgnored);
+    let inputs = formElements.filter(filterInput).filter(filterIgnored);
+    buttons.forEach((button) => {
+      button.setAttribute(PHX_DISABLED, button.disabled);
+      button.disabled = true;
+    });
+    inputs.forEach((input) => {
+      input.setAttribute(PHX_READONLY, input.readOnly);
+      input.readOnly = true;
+      if (input.files) {
+        input.setAttribute(PHX_DISABLED, input.disabled);
+        input.disabled = true;
+      }
+    });
+    formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
+    return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
+  }
+  pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply) {
+    let refGenerator = () => this.disableForm(formEl, opts);
     let cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       let [ref, _els] = refGenerator();
@@ -3857,6 +3860,19 @@ var LiveSocket = class {
   }
   bindForms() {
     let iterations = 0;
+    let externalFormSubmitted = false;
+    this.on("submit", (e) => {
+      let phxSubmit = e.target.getAttribute(this.binding("submit"));
+      let phxChange = e.target.getAttribute(this.binding("change"));
+      if (!externalFormSubmitted && phxChange && !phxSubmit) {
+        externalFormSubmitted = true;
+        e.preventDefault();
+        this.withinOwners(e.target, (view) => {
+          view.disableForm(e.target);
+          window.requestAnimationFrame(() => e.target.submit());
+        });
+      }
+    }, true);
     this.on("submit", (e) => {
       let phxEvent = e.target.getAttribute(this.binding("submit"));
       if (!phxEvent) {
