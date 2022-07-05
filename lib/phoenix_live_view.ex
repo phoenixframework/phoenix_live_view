@@ -509,13 +509,19 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
-    level = Keyword.get(opts, :log, :info)
-    
     log =
-      if not is_atom(level) or level == true do
-        raise ArgumentError, ":log expects an atom or false, got: #{inspect(level)}"
-      else
-        level
+      case opts[:log] do
+        nil ->
+          nil
+
+        false ->
+          false
+
+        log when is_atom(log) ->
+          log
+
+        other ->
+          raise ArgumentError, ":log expects an atom or false, got: #{inspect(other)}"
       end
 
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)

@@ -258,4 +258,28 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.params == %{"op" => "boom"}
     end
   end
+
+  describe "logging configuration" do
+    @tag session: %{current_user_id: "1"}
+    test "log level can be overridden for an individual Live View module", %{conn: conn} do
+      log =
+        capture_log([level: :warn], fn ->
+          {:ok, _view, _html} = live(conn, "/log-override")
+        end)
+
+      assert log =~ "MOUNT Phoenix.LiveViewTest.WithLogOverride"
+      assert log =~ "Replied in "
+    end
+
+    @tag session: %{current_user_id: "1"}
+    test "logging can be disabled for an individual Live View module", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          {:ok, _view, _html} = live(conn, "/log-disabled")
+        end)
+
+      refute log =~ "MOUNT Phoenix.LiveViewTest.WithLogDisabled"
+      refute log =~ "Replied in "
+    end
+  end
 end

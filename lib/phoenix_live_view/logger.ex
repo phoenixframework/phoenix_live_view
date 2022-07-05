@@ -4,29 +4,37 @@ defmodule Phoenix.LiveView.Logger do
 
   ## Installation
 
-  By default, the logger is installed when Live View starts.
+  The logger is installed automatically when Live View starts.
 
-  To disable logging entirely, add the following to your `config/config.exs`:
+  ## Application configuration
+
+  To configure the application log level, add the following to your `config/config.exs`:
 
   ```elixir
-  config :phoenix_live_view, :logger, false
+  config :phoenix_live_view, :log_level, :debug
   ```
 
-  ## Configuration
+  By default, the application log level is set to `:info`.
 
-  The log level is configurable for each Live View:
+  To disable application logging entirely, add the following to your `config/config.exs`:
+
+  ```elixir
+  config :phoenix_live_view, :log_level, false
+  ```
+
+  ## Module configuration
+
+  The log level can be overriden for an individual Live View module:
 
   ```elixir
   use Phoenix.LiveView, log: :debug
   ```
 
-  To disable logging for the Live View:
+  To disable logging for an individual Live View module:
 
   ```elixir
   use Phoenix.LiveView, log: false
   ```
-
-  By default, all life-cycle events are logged as `:info`.
 
   ## Telemetry
 
@@ -55,7 +63,7 @@ defmodule Phoenix.LiveView.Logger do
   require Logger
 
   @doc false
-  def install do
+  def install(log_level) do
     handlers = %{
       [:phoenix, :live_view, :mount, :start] => &__MODULE__.live_view_mount_start/4,
       [:phoenix, :live_view, :mount, :stop] => &__MODULE__.live_view_mount_stop/4,
@@ -71,23 +79,30 @@ defmodule Phoenix.LiveView.Logger do
     }
 
     for {key, fun} <- handlers do
-      :telemetry.attach({__MODULE__, key}, key, fun, :ok)
+      :telemetry.attach({__MODULE__, key}, key, fun, log_level: log_level)
     end
   end
 
-  defp log_level(socket) do
-    socket.view.__live__()[:log]
+  defp log_level(socket, log_level: log_level) do
+    case socket.view.__live__()[:log] do
+      nil ->
+        log_level
+
+      false ->
+        false
+
+      mod_level ->
+        mod_level
+    end
   end
 
   @doc false
-  def live_view_mount_start(_event, measurement, metadata, _config) do
+  def live_view_mount_start(_event, measurement, metadata, config) do
     %{socket: socket, params: params, session: session, uri: _uri} = metadata
     %{system_time: _system_time} = measurement
+    level = log_level(socket, config)
 
-    # avoid duplicate logs by skipping dead render events
-    if connected?(socket) do
-      level = log_level(socket)
-
+    if level && connected?(socket) do
       Logger.log(level, fn ->
         [
           "MOUNT ",
@@ -106,14 +121,12 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_mount_stop(_event, measurement, metadata, _config) do
+  def live_view_mount_stop(_event, measurement, metadata, config) do
     %{socket: socket, params: _params, session: _session, uri: _uri} = metadata
     %{duration: duration} = measurement
+    level = log_level(socket, config)
 
-    # avoid duplicate logs by skipping dead render events
-    if connected?(socket) do
-      level = log_level(socket)
-
+    if level && connected?(socket) do
       Logger.log(level, fn ->
         [
           "Replied in ",
@@ -126,13 +139,12 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_handle_params_start(_event, measurement, metadata, _config) do
+  def live_view_handle_params_start(_event, measurement, metadata, config) do
     %{socket: socket, params: params, uri: _uri} = metadata
     %{system_time: _system_time} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    # avoid duplicate logs by skipping dead render events
-    if connected?(socket) do
+    if level && connected?(socket) do
       Logger.log(level, fn ->
         [
           "HANDLE PARAMS",
@@ -150,13 +162,12 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_handle_params_stop(_event, measurement, metadata, _config) do
+  def live_view_handle_params_stop(_event, measurement, metadata, config) do
     %{socket: socket, params: _params, uri: _uri} = metadata
     %{duration: duration} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    # avoid duplicate logs by skipping dead render events
-    if connected?(socket) do
+    if level && connected?(socket) do
       Logger.log(level, fn ->
         [
           "Replied in ",
@@ -169,84 +180,92 @@ defmodule Phoenix.LiveView.Logger do
   end
 
   @doc false
-  def live_view_handle_event_start(_event, measurement, metadata, _config) do
+  def live_view_handle_event_start(_event, measurement, metadata, config) do
     %{socket: socket, event: event, params: params} = metadata
     %{system_time: _system_time} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    Logger.log(level, fn ->
-      [
-        "HANDLE EVENT",
-        ?\n,
-        "  View: ",
-        inspect(socket.view),
-        ?\n,
-        "  Event: ",
-        inspect(event),
-        ?\n,
-        "  Parameters: ",
-        inspect(filter_values(params))
-      ]
-    end)
+    if level do
+      Logger.log(level, fn ->
+        [
+          "HANDLE EVENT",
+          ?\n,
+          "  View: ",
+          inspect(socket.view),
+          ?\n,
+          "  Event: ",
+          inspect(event),
+          ?\n,
+          "  Parameters: ",
+          inspect(filter_values(params))
+        ]
+      end)
+    end
 
     :ok
   end
 
   @doc false
-  def live_view_handle_event_stop(_event, measurement, metadata, _config) do
+  def live_view_handle_event_stop(_event, measurement, metadata, config) do
     %{socket: socket, event: _event, params: _params} = metadata
     %{duration: duration} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    Logger.log(level, fn ->
-      [
-        "Replied in ",
-        duration(duration)
-      ]
-    end)
+    if level do
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
 
     :ok
   end
 
   @doc false
-  def live_component_handle_event_start(_event, measurement, metadata, _config) do
+  def live_component_handle_event_start(_event, measurement, metadata, config) do
     %{socket: socket, component: component, event: event, params: params} = metadata
     %{system_time: _system_time} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    Logger.log(level, fn ->
-      [
-        "HANDLE EVENT",
-        ?\n,
-        "  Component: ",
-        inspect(component),
-        ?\n,
-        "  View: ",
-        inspect(socket.view),
-        ?\n,
-        "  Event: ",
-        inspect(event),
-        ?\n,
-        "  Parameters: ",
-        inspect(filter_values(params))
-      ]
-    end)
+    if level do
+      Logger.log(level, fn ->
+        [
+          "HANDLE EVENT",
+          ?\n,
+          "  Component: ",
+          inspect(component),
+          ?\n,
+          "  View: ",
+          inspect(socket.view),
+          ?\n,
+          "  Event: ",
+          inspect(event),
+          ?\n,
+          "  Parameters: ",
+          inspect(filter_values(params))
+        ]
+      end)
+    end
 
     :ok
   end
 
   @doc false
-  def live_component_handle_event_stop(_event, measurement, metadata, _config) do
+  def live_component_handle_event_stop(_event, measurement, metadata, config) do
     %{socket: socket, component: _component, event: _event, params: _params} = metadata
     %{duration: duration} = measurement
-    level = log_level(socket)
+    level = log_level(socket, config)
 
-    Logger.log(level, fn ->
-      [
-        "Replied in ",
-        duration(duration)
-      ]
-    end)
+    if level do
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
 
     :ok
   end
