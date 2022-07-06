@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             ""
         end
 
-      text_starts_with_line_break?(next_node) and text_ends_with_line_break?(next_node) ->
+      tag_block?(prev_node) and not tag_block?(next_node) ->
         break(" ")
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
@@ -118,6 +118,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         ""
     end
   end
+
+  defp tag_block?({:tag_block, _, _, _, _}), do: true
+  defp tag_block?(_node), do: false
 
   @codepoints '\s\n\r\t'
 
@@ -130,11 +133,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     do: :binary.last(text) in @codepoints
 
   defp text_ends_with_space?(_node), do: false
-
-  defp text_starts_with_line_break?({:text, text, _meta}) when text != "",
-    do: :binary.first(text) in '\n\r'
-
-  defp text_starts_with_line_break?(_node), do: false
 
   defp text_ends_with_line_break?({:text, text, _meta}) when text != "",
     do: :binary.last(text) in '\n\r'

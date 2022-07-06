@@ -530,8 +530,8 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
 
       assert_formatter_doesnt_change("""
-      <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span> |
-      <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
+      <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span>
+      | <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
       """)
     end
 
@@ -1755,6 +1755,24 @@ if Version.match?(System.version(), ">= 1.13.0") do
         </div>
         """,
         heex_line_length: 10
+      )
+    end
+
+    test "break text to next line when previous inline element is indented" do
+      assert_formatter_output(
+        """
+        <p>foo <strong class="foo bar baz"> <%= some_function() %></strong> baz</p>
+        """,
+        """
+        <p>
+          foo
+          <strong class="foo bar baz">
+            <%= some_function() %>
+          </strong>
+          baz
+        </p>
+        """,
+        heex_line_length: 15
       )
     end
 
