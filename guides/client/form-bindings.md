@@ -124,7 +124,7 @@ For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
 Now, any DOM container with the `phx-feedback-for` attribute will receive a
 `phx-no-feedback` class in cases where the form fields has yet to receive
-user input/focus. The following css rules are generated in new projects
+user input/focus. The following CSS rules are generated in new projects
 to hide the errors:
 
     .phx-no-feedback.invalid-feedback, .phx-no-feedback .invalid-feedback {
@@ -291,7 +291,7 @@ errors, or additive UX around the user's input values as they fill out a form.
 For these use cases, the `phx-change` input does not concern itself with disabling
 input editing while an event to the server is in flight. When a `phx-change` event
 is sent to the server, the input tag and parent form tag receive the
-`phx-change-loading` css class, then the payload is pushed to the server with a
+`phx-change-loading` CSS class, then the payload is pushed to the server with a
 `"_target"` param in the root payload containing the keyspace of the input name
 which triggered the change event.
 
