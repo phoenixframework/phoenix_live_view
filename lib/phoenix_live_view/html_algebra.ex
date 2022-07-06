@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             ""
         end
 
-      tag_block?(prev_node) and !tag_block?(next_node) ->
+      tag_block?(prev_node) and not tag_block?(next_node) ->
         break(" ")
 
       text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
