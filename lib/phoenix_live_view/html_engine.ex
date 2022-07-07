@@ -262,22 +262,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | slots: [[] | state.slots]}
   end
 
-  # TODO: grab line and column from meta and push that into slots stack
   defp add_slot!(
          %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
            state,
-         slot,
-         _meta
+         slot_name,
+         slot_ast,
+         tag_meta
        )
        when first in ?A..?Z or first == ?. do
+    slot = {slot_name, slot_ast, tag_meta}
     %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
   end
 
-  defp add_slot!(state, slot, meta) do
-    %{line: line, column: column} = meta
-    {slot_name, _} = slot
-    file = state.file
-
+  defp add_slot!(
+         %{file: file} = _state,
+         slot_name,
+         _slot_ast,
+         %{line: line, column: column} = _tag_meta
+       ) do
     message =
       "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
 
@@ -295,7 +297,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp group_slots(slots) do
     slots
     |> Enum.reverse()
-    |> Enum.group_by(&elem(&1, 0), fn {_name, slot_ast} -> slot_ast end)
+    |> Enum.group_by(&elem(&1, 0), fn {_slot_name, slot_ast, tag_meta} -> {slot_ast, tag_meta} end)
     |> Map.to_list()
   end
 
@@ -477,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_open, ":" <> slot_name, attrs, %{self_close: true} = tag_meta}, state) do
     attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
-    slot_key = String.to_atom(slot_name)
+    slot_name = String.to_atom(slot_name)
 
     {let, roots, attrs} = split_component_attrs(attrs, state.file)
 
@@ -489,9 +491,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
         description: "cannot use :let on a slot without inner content"
     end
 
-    attrs = [__slot__: slot_key, inner_block: nil] ++ attrs
+    attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
     assigns = merge_component_attrs(roots, attrs, line)
-    add_slot!(state, {slot_key, assigns}, tag_meta)
+    add_slot!(state, slot_name, assigns, tag_meta)
   end
 
   # Slot (with inner content)
@@ -506,21 +508,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp handle_token({:tag_close, ":" <> slot_name, _tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
     attrs = remove_phx_no_break(attrs)
-    slot_key = String.to_atom(slot_name)
+    slot_name = String.to_atom(slot_name)
 
     {let, roots, attrs} = split_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.inner_block(unquote(slot_key), do: unquote(clauses))
+        Phoenix.LiveView.HTMLEngine.inner_block(unquote(slot_name), do: unquote(clauses))
       end
 
-    attrs = [__slot__: slot_key, inner_block: ast] ++ attrs
+    attrs = [__slot__: slot_name, inner_block: ast] ++ attrs
     assigns = merge_component_attrs(roots, attrs, line)
 
     state
-    |> add_slot!({slot_key, assigns}, tag_meta)
+    |> add_slot!(slot_name, assigns, tag_meta)
     |> pop_substate_from_stack()
   end
 
@@ -890,7 +892,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     {slots, state} = pop_slots(state)
-    attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slots]
+
+    slot_assigns =
+      for {slot_name, slot_values} <- slots,
+          do: {slot_name, Enum.map(slot_values, &elem(&1, 0))}
+
+    attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
     {merge_component_attrs(roots, attrs, line), state}
   end
 
@@ -1053,8 +1060,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp store_component_call(module, component, slots, attrs, file, line) do
     if Module.open?(module) do
       pruned_slots =
-        for {slot, values} <- slots,
-            do: {slot, Enum.map(values, &slot_call_value/1)},
+        for {slot_name, slot_values} <- slots,
+            do: {slot_name, Enum.map(slot_values, &slot_call_value/1)},
             into: %{}
 
       pruned_attrs =
@@ -1078,12 +1085,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  # TODO: once line and col is added, return the following: {name, {line, column, value}}
-  defp slot_call_value({_, _, assigns}) do
-    for {name, value} <- assigns, name != :__slot__, into: %{} do
+  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
+    for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       case value do
-        {_, _, _} -> {name, :expr}
-        value -> {name, value}
+        {_, _, _} ->
+          {name, {line, column, :expr}}
+
+        value ->
+          {name, {line, column, value}}
       end
     end
   end

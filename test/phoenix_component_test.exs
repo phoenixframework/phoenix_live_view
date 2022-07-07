@@ -716,7 +716,10 @@ defmodule Phoenix.ComponentTest do
                  file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
                  line: 580,
                  root: false,
-                 slots: %{footer: [%{inner_block: :expr}], header: [%{inner_block: :expr}]}
+                 slots: %{
+                   footer: [%{inner_block: {587, 11, :expr}}],
+                   header: [%{inner_block: {581, 11, :expr}}]
+                 }
                },
                %{
                  attrs: %{},
@@ -725,20 +728,20 @@ defmodule Phoenix.ComponentTest do
                  file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
                  line: 592,
                  root: false,
-                 slots: %{slot: [%{attr: "1", inner_block: nil}]}
+                 slots: %{slot: [%{attr: {593, 11, "1"}, inner_block: {593, 11, nil}}]}
                },
                %{
                  attrs: %{rows: {596, 17, :expr}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
-                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
                  line: 596,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: :expr, label: :expr},
-                     %{inner_block: :expr, label: "Address"}
+                     %{inner_block: {597, 11, :expr}, label: {597, 11, :expr}},
+                     %{inner_block: {601, 11, :expr}, label: {601, 11, "Address"}}
                    ]
-                 }
+                 },
+                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs"
                }
              ]
     end
