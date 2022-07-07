@@ -215,7 +215,10 @@ export default class LiveSocket {
     }
   }
 
-  disconnect(callback){ this.socket.disconnect(callback) }
+  disconnect(callback){
+    this.socket.disconnect(callback)
+    this.destroyAllViews()
+  }
 
   execJS(el, encodedJS, eventType = null){
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
@@ -407,6 +410,7 @@ export default class LiveSocket {
       this.roots[id].destroy()
       delete this.roots[id]
     }
+    this.main = null
   }
 
   destroyViewByEl(el){
