@@ -1,8 +1,8 @@
 
 export const CONSECUTIVE_RELOADS = "consecutive-reloads"
 export const MAX_RELOADS = 10
-export const RELOAD_JITTER_MIN = 1000
-export const RELOAD_JITTER_MAX = 3000
+export const RELOAD_JITTER_MIN = 5000
+export const RELOAD_JITTER_MAX = 10000
 export const FAILSAFE_JITTER = 30000
 export const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
