@@ -31,8 +31,8 @@ var LiveView = (() => {
   // js/phoenix_live_view/constants.js
   var CONSECUTIVE_RELOADS = "consecutive-reloads";
   var MAX_RELOADS = 10;
-  var RELOAD_JITTER_MIN = 1e3;
-  var RELOAD_JITTER_MAX = 3e3;
+  var RELOAD_JITTER_MIN = 5e3;
+  var RELOAD_JITTER_MAX = 1e4;
   var FAILSAFE_JITTER = 3e4;
   var PHX_EVENT_CLASSES = [
     "phx-click-loading",
@@ -3273,6 +3273,7 @@ within:
     }
     disconnect(callback) {
       this.socket.disconnect(callback);
+      this.destroyAllViews();
     }
     execJS(el, encodedJS, eventType = null) {
       this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
@@ -3462,6 +3463,7 @@ within:
         this.roots[id].destroy();
         delete this.roots[id];
       }
+      this.main = null;
     }
     destroyViewByEl(el) {
       let root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
