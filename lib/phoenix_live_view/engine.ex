@@ -734,7 +734,7 @@ defmodule Phoenix.LiveView.Engine do
           for maybe_slot <- value do
             with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <- maybe_slot,
                  {call, meta, [^key, [do: block]]} <- inner_block,
-                 extract_call(call) == :inner_block do
+                 :inner_block <- extract_call(call) do
               inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars)]]}
               {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
             else
