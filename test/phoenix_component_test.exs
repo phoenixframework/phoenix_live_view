@@ -184,6 +184,12 @@ defmodule Phoenix.ComponentTest do
                [["%{a: true, b: true, bar: true}"]]
     end
 
+    defp wrapper(assigns) do
+      ~H"""
+      <div><%= render_slot(@inner_block) %></div>
+      """
+    end
+
     defp inner_changed(assigns) do
       ~H"""
       <%= inspect(Map.get(assigns, :__changed__)) %>
@@ -266,6 +272,19 @@ defmodule Phoenix.ComponentTest do
                    [["%{bar: true, inner_block: true}", ["var", "%{foo: true}"]]]
                  ]
                ]
+    end
+
+    test "with :let inside @inner_block" do
+      assigns = %{foo: 1, bar: 2, __changed__: %{foo: true}}
+
+      assert eval(~H"""
+             <.wrapper>
+               <%= @foo %>
+               <.inner_changed foo={@bar} :let={var}>
+                 <%= var %>
+               </.inner_changed>
+             </.wrapper>
+             """) == [[["1", nil]]]
     end
   end
 
@@ -564,6 +583,7 @@ defmodule Phoenix.ComponentTest do
       defmodule AttrDocs do
         use Phoenix.Component
 
+        def attr_line, do: __ENV__.line
         attr :single, :any, doc: "a single line description"
 
         attr :break, :any, doc: "a description
@@ -589,12 +609,14 @@ defmodule Phoenix.ComponentTest do
         def func_with_attr_docs(assigns), do: ~H[]
       end
 
+      line = AttrDocs.attr_line()
+
       assert AttrDocs.__components__() == %{
                func_with_attr_docs: %{
                  kind: :def,
                  attrs: [
                    %{
-                     line: 569,
+                     line: line + 3,
                      name: :break,
                      opts: [],
                      required: false,
@@ -602,7 +624,7 @@ defmodule Phoenix.ComponentTest do
                      doc: "a description\n        with a line break"
                    },
                    %{
-                     line: 572,
+                     line: line + 6,
                      name: :multi,
                      opts: [],
                      required: false,
@@ -610,7 +632,7 @@ defmodule Phoenix.ComponentTest do
                      doc: "a description\nthat spans\nmultiple lines\n"
                    },
                    %{
-                     line: 586,
+                     line: line + 20,
                      name: :no_doc,
                      opts: [],
                      required: false,
@@ -618,7 +640,7 @@ defmodule Phoenix.ComponentTest do
                      doc: nil
                    },
                    %{
-                     line: 579,
+                     line: line + 13,
                      name: :sigil,
                      opts: [],
                      required: false,
@@ -626,7 +648,7 @@ defmodule Phoenix.ComponentTest do
                      doc: "a description\nwithin a multi-line\nsigil\n"
                    },
                    %{
-                     line: 567,
+                     line: line + 1,
                      name: :single,
                      opts: [],
                      required: false,

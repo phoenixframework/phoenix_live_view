@@ -728,17 +728,25 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp slots_to_rendered(static, vars) do
-    Macro.postwalk(static, fn
-      {call, meta, [name, [do: block]]} = node ->
-        if extract_call(call) == :inner_block do
-          {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
+    for {key, value} <- static do
+      value =
+        if is_list(value) do
+          for maybe_slot <- value do
+            with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <- maybe_slot,
+                 {call, meta, [^key, [do: block]]} <- inner_block,
+                 extract_call(call) == :inner_block do
+              inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars)]]}
+              {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
+            else
+              _ -> maybe_slot
+            end
+          end
         else
-          node
+          value
         end
 
-      node ->
-        node
-    end)
+      {key, value}
+    end
   end
 
   ## Extracts binaries and variable from iodata
@@ -786,8 +794,14 @@ defmodule Phoenix.LiveView.Engine do
     {ast, keys, vars}
   end
 
-  # Expanded assign access. The non-expanded form is handled on root,
-  # then all further traversals happen on the expanded form
+  # @name
+  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
+       when is_atom(name) and is_atom(context) do
+    expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
+    {expr, vars, Map.put(assigns, [name | nest], true)}
+  end
+
+  # assigns.name
   defp analyze_assign(
          {{:., _, [{:assigns, _, nil}, name]}, _, args} = expr,
          vars,
@@ -798,7 +812,7 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
-  # Nested assign
+  # Maybe: assigns.foo[:bar]
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
     {args, vars, assigns} =
       if Macro.quoted_literal?(right) do
@@ -813,17 +827,11 @@ defmodule Phoenix.LiveView.Engine do
     {{{:., dot_meta, [Access, :get]}, meta, args}, vars, assigns}
   end
 
+  # Maybe: assigns.foo.bar
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, args}, vars, assigns, nest)
        when args in [[], nil] do
     {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
-  end
-
-  # Non-expanded assign
-  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
-       when is_atom(name) and is_atom(context) do
-    expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
-    {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
   defp analyze_assign(expr, vars, assigns, _nest) do
@@ -1000,7 +1008,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro __raise__(special_form, arity) do
-    message =  "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
+    message = "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
     reraise ArgumentError.exception(message), Macro.Env.stacktrace(__CALLER__)
   end
 
@@ -1029,8 +1037,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Calls to attributes escape is always safe
   defp to_safe(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} =
-           safe,
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} = safe,
          line,
          _extra_clauses?
        ) do
