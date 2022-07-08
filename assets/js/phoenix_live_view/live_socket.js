@@ -223,6 +223,12 @@ export default class LiveSocket {
     this.socket.disconnect(callback)
   }
 
+  replaceTransport(transport){
+    clearTimeout(this.reloadWithJitterTimer)
+    this.socket.replaceTransport(transport)
+    this.connect()
+  }
+
   execJS(el, encodedJS, eventType = null){
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
