@@ -2666,13 +2666,15 @@ var View = class {
       return this.onLiveRedirect(resp.live_redirect);
     }
     this.log("error", () => ["unable to join", resp]);
-    return this.liveSocket.reloadWithJitter(this);
+    if (this.liveSocket.isConnected()) {
+      this.liveSocket.reloadWithJitter(this);
+    }
   }
   onClose(reason) {
     if (this.isDestroyed()) {
       return;
     }
-    if (this.isJoinPending() && document.visibilityState !== "hidden" || this.liveSocket.hasPendingLink() && reason !== "leave") {
+    if (this.liveSocket.hasPendingLink() && reason !== "leave") {
       return this.liveSocket.reloadWithJitter(this);
     }
     this.destroyAllChildren();
@@ -2686,7 +2688,9 @@ var View = class {
   }
   onError(reason) {
     this.onClose(reason);
-    this.log("error", () => ["view crashed", reason]);
+    if (this.liveSocket.isConnected()) {
+      this.log("error", () => ["view crashed", reason]);
+    }
     if (!this.liveSocket.isUnloaded()) {
       this.displayError();
     }
@@ -3171,6 +3175,7 @@ var LiveSocket = class {
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
+    this.reloadWithJitterTimer = null;
     this.maxReloads = opts.maxReloads || MAX_RELOADS;
     this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN;
     this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX;
@@ -3233,6 +3238,8 @@ var LiveSocket = class {
       if (this.joinRootViews()) {
         this.bindTopLevelEvents();
         this.socket.connect();
+      } else if (this.main) {
+        this.socket.connect();
       }
     };
     if (["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0) {
@@ -3242,8 +3249,8 @@ var LiveSocket = class {
     }
   }
   disconnect(callback) {
+    clearTimeout(this.reloadWithJitterTimer);
     this.socket.disconnect(callback);
-    this.destroyAllViews();
   }
   execJS(el, encodedJS, eventType = null) {
     this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
@@ -3319,18 +3326,24 @@ var LiveSocket = class {
     return fakePush;
   }
   reloadWithJitter(view, log) {
-    view.destroy();
+    clearTimeout(this.reloadWithJitterTimer);
     this.disconnect();
     let minMs = this.reloadJitterMin;
     let maxMs = this.reloadJitterMax;
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
     let tries = browser_default.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, (count) => count + 1);
-    log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
     if (tries > this.maxReloads) {
-      this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`]);
       afterMs = this.failsafeJitter;
     }
-    setTimeout(() => {
+    this.reloadWithJitterTimer = setTimeout(() => {
+      if (view.isDestroyed() || view.isConnected()) {
+        return;
+      }
+      view.destroy();
+      log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
+      if (tries > this.maxReloads) {
+        this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`]);
+      }
       if (this.hasPendingLink()) {
         window.location = this.pendingLink;
       } else {
