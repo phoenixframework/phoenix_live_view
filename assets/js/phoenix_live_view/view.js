@@ -616,14 +616,12 @@ export default class View {
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.log("error", () => ["unable to join", resp])
-    return this.liveSocket.reloadWithJitter(this)
+    if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
   }
 
   onClose(reason){
     if(this.isDestroyed()){ return }
-    if((this.isJoinPending() && document.visibilityState !== "hidden") ||
-      (this.liveSocket.hasPendingLink() && reason !== "leave")){
-
+    if(this.liveSocket.hasPendingLink() && reason !== "leave"){
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()
@@ -637,7 +635,7 @@ export default class View {
 
   onError(reason){
     this.onClose(reason)
-    this.log("error", () => ["view crashed", reason])
+    if(this.liveSocket.isConnected()){ this.log("error", () => ["view crashed", reason]) }
     if(!this.liveSocket.isUnloaded()){ this.displayError() }
   }
 
