@@ -3252,6 +3252,11 @@ var LiveSocket = class {
     clearTimeout(this.reloadWithJitterTimer);
     this.socket.disconnect(callback);
   }
+  replaceTransport(transport) {
+    clearTimeout(this.reloadWithJitterTimer);
+    this.socket.replaceTransport(transport);
+    this.connect();
+  }
   execJS(el, encodedJS, eventType = null) {
     this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
   }
