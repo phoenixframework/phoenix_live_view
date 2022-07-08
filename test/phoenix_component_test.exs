@@ -166,6 +166,12 @@ defmodule Phoenix.ComponentTest do
                [["%{a: true, b: true, bar: true}"]]
     end
 
+    defp wrapper(assigns) do
+      ~H"""
+      <div><%= render_slot(@inner_block) %></div>
+      """
+    end
+
     defp inner_changed(assigns) do
       ~H"""
       <%= inspect(Map.get(assigns, :__changed__)) %>
@@ -252,6 +258,19 @@ defmodule Phoenix.ComponentTest do
                    [["%{bar: true, inner_block: true}", ["var", "%{foo: true}"]]]
                  ]
                ]
+    end
+
+    test "with let inside @inner_block" do
+      assigns = %{foo: 1, bar: 2, __changed__: %{foo: true}}
+
+      assert eval(~H"""
+             <.wrapper>
+               <%= @foo %>
+               <.inner_changed foo={@bar} let={var}>
+                 <%= var %>
+               </.inner_changed>
+             </.wrapper>
+             """) == [[["1", nil]]]
     end
   end
 

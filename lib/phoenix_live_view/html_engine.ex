@@ -352,7 +352,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         description: "cannot use `let` on a slot without inner content"
     end
 
-    attrs = [inner_block: nil, __slot__: slot_key] ++ attrs
+    attrs = [__slot__: slot_key, inner_block: nil] ++ attrs
     assigns = merge_component_attrs(roots, attrs, line)
     add_slot!(state, {slot_key, assigns}, tag_meta)
   end
@@ -744,10 +744,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp build_component_clauses(let, state) do
     case let do
+      # If we have a var, we can skip the catch-all clause
+      {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
+        quote line: line do
+          unquote(pattern) -> unquote(invoke_subengine(state, :handle_end, []))
+        end
+
       {pattern, %{line: line}} ->
         quote line: line do
-          unquote(pattern) ->
-            unquote(invoke_subengine(state, :handle_end, []))
+          unquote(pattern) -> unquote(invoke_subengine(state, :handle_end, []))
         end ++
           quote line: line, generated: true do
             other ->
