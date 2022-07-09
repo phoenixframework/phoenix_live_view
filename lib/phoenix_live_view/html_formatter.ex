@@ -185,6 +185,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   alias Phoenix.LiveView.HTMLAlgebra
   alias Phoenix.LiveView.HTMLTokenizer
+  alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
@@ -219,8 +220,16 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       contents
       |> tokenize()
       |> to_tree([], [])
-      |> HTMLAlgebra.build(opts)
-      |> Inspect.Algebra.format(line_length)
+      |> case do
+        {:ok, nodes} ->
+          nodes
+          |> HTMLAlgebra.build(opts)
+          |> Inspect.Algebra.format(line_length)
+
+        {:error, line, column, message} ->
+          file = opts[:file] || "nofile"
+          raise ParseError, line: line, column: column, file: file, description: message
+      end
 
     # If the opening delimiter is a single character, such as ~H"...",
     # do not add trailing newline.
@@ -389,16 +398,23 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # ]
   # ```
   defp to_tree([], buffer, []) do
-    Enum.reverse(buffer)
+    {:ok, Enum.reverse(buffer)}
+  end
+
+  defp to_tree([], _buffer, [{name, _, %{line: line, column: column}, _} | _]) do
+    message = "end of template reached without closing tag for <#{name}>"
+    {:error, line, column, message}
   end
 
   defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack) do
     to_tree(tokens, [], [{:comment, text, buffer} | stack])
   end
 
-  defp to_tree([{:text, text, %{context: [:comment_end]}} | tokens], buffer, [
-         {:comment, start_text, upper_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:text, text, %{context: [:comment_end]}} | tokens],
+         buffer,
+         [{:comment, start_text, upper_buffer} | stack]
+       ) do
     buffer = Enum.reverse([{:text, String.trim_trailing(text), %{}} | buffer])
 
     text = {:text, String.trim_leading(start_text), %{}}
@@ -410,7 +426,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          buffer,
          stack
        ) do
-    to_tree(tokens, [{:comment, text} | buffer], stack)
+    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), %{}}]} | buffer], stack)
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
@@ -438,25 +454,23 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack)
   end
 
-  defp to_tree([{:tag_open, name, attrs, _meta} | tokens], buffer, stack) do
-    to_tree(tokens, [], [{name, attrs, buffer} | stack])
+  defp to_tree([{:tag_open, name, attrs, meta} | tokens], buffer, stack) do
+    to_tree(tokens, [], [{name, attrs, meta, buffer} | stack])
   end
 
-  defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
+  defp to_tree(
+         [{:tag_close, name, _close_meta} | tokens],
+         buffer,
+         [{name, attrs, _open_meta, upper_buffer} | stack]
+       ) do
     mode =
       cond do
-        preserve_format?(name, upper_buffer, attrs) ->
-          :preserve
-
-        name in @inline_elements ->
-          :inline
-
-        true ->
-          :block
+        preserve_format?(name, upper_buffer, attrs) -> :preserve
+        name in @inline_elements -> :inline
+        true -> :block
       end
 
     buffer = buffer |> Enum.reverse() |> may_set_preserve_on_text(mode, name)
-
     tag_block = {:tag_block, name, attrs, buffer, %{mode: mode}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
@@ -475,23 +489,29 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp to_tree([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :middle_expr, middle_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer} | stack]
+       ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
     to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp to_tree([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer, middle_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :end_expr, end_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer, middle_buffer} | stack]
+       ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
     to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
-  defp to_tree([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :end_expr, end_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer} | stack]
+       ) do
     block = [{Enum.reverse(buffer), end_expr}]
     to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end

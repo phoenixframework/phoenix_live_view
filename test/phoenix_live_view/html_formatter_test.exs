@@ -20,6 +20,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert second_pass == code
     end
 
+    test "errors on invalid HTML" do
+      assert_raise Phoenix.LiveView.HTMLTokenizer.ParseError,
+                   ~r/end of template reached without closing tag for <style>/,
+                   fn -> assert_formatter_doesnt_change("<style>foo") end
+    end
+
     test "always break lines for block elements" do
       input = """
         <section><h1><%= @user.name %></h1></section>
@@ -1628,15 +1634,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
-    test "does not format when phx-no-format attr is present" do
-      assert_formatter_doesnt_change(
-        """
-        <.textarea phx-no-format>My content</.textarea>
-        """,
-        line_length: 5
-      )
-    end
-
     test "respects heex_line_length" do
       assert_formatter_doesnt_change(
         """
@@ -1645,6 +1642,15 @@ if Version.match?(System.version(), ">= 1.13.0") do
         </p>
         """,
         heex_line_length: 1000
+      )
+    end
+
+    test "does not format when phx-no-format attr is present" do
+      assert_formatter_doesnt_change(
+        """
+        <.textarea phx-no-format>My content</.textarea>
+        """,
+        line_length: 5
       )
     end
 
@@ -1774,6 +1780,34 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         heex_line_length: 15
       )
+    end
+
+    test "format attrs from self tag close correclty within preserve mode" do
+      assert_formatter_doesnt_change("""
+      <button>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fill-rule="evenodd"
+            d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z"
+            clip-rule="evenodd"
+          />
+        </svg>Back to previous page
+      </button>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <button>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <nest>
+            <path
+              fill-rule="evenodd"
+              d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z"
+              clip-rule="evenodd"
+            />
+          </nest>
+        </svg>Back to previous page
+      </button>
+      """)
     end
 
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no

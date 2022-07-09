@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, group(doc)}
   end
 
-  # Handle EEX blocks within `pre` tag
+  # Handle EEX blocks within preserve tags
   defp to_algebra({:eex_block, expr, block}, %{mode: :preserve} = context) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
@@ -306,19 +306,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     end
   end
 
-  # Handle comment start and end in the same line: <!-- comment -->
-  defp to_algebra({:comment, text}, _context) when is_binary(text) do
-    {:block, text |> String.trim() |> string()}
-  end
-
   # Preserve tag_block
-  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, meta}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
+
+    children =
+      if meta.mode == :inline do
+        children
+      else
+        nest(children, 2)
+      end
 
     tag =
       concat([
         format_tag_open(name, attrs, context),
-        nest(children, :reset),
+        children,
         "</#{name}>"
       ])
       |> group()
