@@ -810,6 +810,7 @@ defmodule Phoenix.Component do
   @doc false
   defmacro __before_compile__(env) do
     attrs = pop_attrs(env)
+    # TODO: validate_misplaced_slots!
     _slots = pop_slots(env)
 
     validate_misplaced_attrs!(attrs, env.file, fn ->

@@ -92,12 +92,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         do: diagnostic
   end
 
-  defp diagnostics(caller_module, %{slots: _slots, attrs: attrs, root: root} = call, %{
-         slots: _slots_defs,
+  defp diagnostics(caller_module, %{slots: slots, attrs: attrs, root: root} = call, %{
+         slots: slots_defs,
          attrs: attrs_defs
        }) do
-    # TODO: provide diagnostics for slots
-    {warnings, {attrs, has_global?}} =
+    {attrs_warnings, {attrs, has_global?}} =
       Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
@@ -135,14 +134,34 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         {warnings, {attrs, has_global? || type == :global}}
       end)
 
-    missing =
+    attrs_missing =
       for {name, {line, _column, _value}} <- attrs,
           not (has_global? and Phoenix.Component.__global__?(caller_module, Atom.to_string(name))) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
 
-    warnings ++ missing
+    {slots_warnings, _slots} =
+      Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
+        %{name: name, required: required} = slot_def
+        {value, slots} = Map.pop(slots, name)
+
+        warnings =
+          case value do
+            nil when required ->
+              message = "missing required slot \"#{name}\" for component #{component(call)}"
+              [error(message, call.file, call.line)]
+
+            # TODO: validate attr types for slots
+
+            _ ->
+              []
+          end
+
+        {warnings, slots}
+      end)
+
+    slots_warnings ++ attrs_warnings ++ attrs_missing
   end
 
   defp component(%{component: {mod, fun}}) do

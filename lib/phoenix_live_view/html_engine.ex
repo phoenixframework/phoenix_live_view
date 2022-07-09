@@ -286,6 +286,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
+  defp merge_default_slot(slots, {_, _, asts}, tag_meta) when is_list(asts) do
+    slot_ast = asts[:inner_block]
+
+    if slot_ast do
+      Keyword.put(slots, :inner_block, [{hd(slot_ast), tag_meta}])
+    else
+      slots
+    end
+  end
+
+  defp merge_default_slot(slots, _, _) do
+    slots
+  end
+
   defp get_slots(%{slots: [slots | _other_slots]} = _state) do
     group_slots(slots)
   end
@@ -410,17 +424,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
+  defp handle_token({:tag_close, <<first, _::binary>>, tag_close_meta} = token, state)
        when first in ?A..?Z do
     {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
-    slots = get_slots(state)
+    named_slots = get_slots(state)
     attrs = remove_phx_no_break(attrs)
     {assigns, state} = build_component_assigns(attrs, line, state)
+    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -537,15 +552,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
+  defp handle_token({:tag_close, "." <> fun_name, tag_close_meta} = token, state) do
     {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
     attrs = remove_phx_no_break(attrs)
-    slots = get_slots(state)
+    named_slots = get_slots(state)
     fun = String.to_atom(fun_name)
     {assigns, state} = build_component_assigns(attrs, line, state)
 
+    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
+
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line)
 
     ast =
       quote line: line do
@@ -1085,7 +1102,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
+  # TODO: do we really need both function heads here?
   defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
+    for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
+      case value do
+        {_, _, _} ->
+          {name, {line, column, :expr}}
+
+        value ->
+          {name, {line, column, value}}
+      end
+    end
+  end
+
+  defp slot_call_value({[{_, _, slot_attrs}], %{line: line, column: column}}) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       case value do
         {_, _, _} ->

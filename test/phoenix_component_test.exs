@@ -525,7 +525,7 @@ defmodule Phoenix.ComponentTest do
 
       def fun_with_slot_line, do: __ENV__.line + 3
 
-      slot :default
+      slot :inner_block
       def fun_with_slot(assigns), do: ~H[]
 
       def fun_with_named_slots_line, do: __ENV__.line + 4

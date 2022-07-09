@@ -213,6 +213,41 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       assert diagnostics == []
     end
+
+    defmodule RequiredSlots do
+      use Phoenix.Component
+
+      slot :inner_block, required: true
+
+      def func(assigns), do: ~H[]
+
+      def line, do: __ENV__.line + 4
+
+      def render(assigns) do
+        ~H"""
+        <.func/>
+        <.func>
+        </.func>
+        """
+      end
+    end
+
+    test "validate required slots" do
+      line = get_line(RequiredAttrs)
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([RequiredSlots])
+
+      assert diagnostics == [
+               %Mix.Task.Compiler.Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "missing required slot \"inner_block\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func/1",
+                 position: line,
+                 severity: :warning
+               }
+             ]
+    end
   end
 
   describe "integration tests" do
