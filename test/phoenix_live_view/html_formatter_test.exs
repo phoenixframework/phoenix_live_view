@@ -1606,6 +1606,20 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 5
       )
+
+      assert_formatter_doesnt_change(
+        """
+        <textarea>
+          <div
+          class="one"
+          id="two"
+        >
+        <outside />
+          </div>
+        </textarea>
+        """,
+        line_length: 5
+      )
     end
 
     test "keeps right format for inline elements within block elements" do
@@ -1628,15 +1642,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
-    test "does not format when phx-no-format attr is present" do
-      assert_formatter_doesnt_change(
-        """
-        <.textarea phx-no-format>My content</.textarea>
-        """,
-        line_length: 5
-      )
-    end
-
     test "respects heex_line_length" do
       assert_formatter_doesnt_change(
         """
@@ -1648,7 +1653,30 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "does not format when phx-no-format attr is present" do
+      assert_formatter_doesnt_change(
+        """
+        <.textarea phx-no-format>My content</.textarea>
+        """,
+        line_length: 5
+      )
+    end
+
     test "respect nesting of children when phx-no-format is present" do
+      assert_formatter_doesnt_change(
+        """
+        <ul class="root" phx-no-format>
+        <li class="list">
+            <div
+            class="child1">
+          <span class="child2">text</span>
+            </div>
+        </li>
+        </ul>
+        """,
+        line_length: 100
+      )
+
       assert_formatter_doesnt_change(
         """
         <ul class="root" phx-no-format><!-- comment
@@ -1785,6 +1813,20 @@ if Version.match?(System.version(), ">= 1.13.0") do
             d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z"
             clip-rule="evenodd"
           />
+        </svg>Back to previous page
+      </button>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <button>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <nest>
+            <path
+              fill-rule="evenodd"
+              d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z"
+              clip-rule="evenodd"
+            />
+          </nest>
         </svg>Back to previous page
       </button>
       """)

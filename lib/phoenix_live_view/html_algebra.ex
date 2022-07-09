@@ -239,18 +239,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
           concat(["<#{name} ", render_attribute(attr, context.opts), " />"])
 
         attrs ->
-          attrs = build_attrs(attrs, " ", context.opts)
-
-          # We need to nest 4 here because within preserve mode we set :reset
-          # in the tag block for all children. See tag_block_preserve_to_algebra/2.
-          attrs =
-            if context.mode == :preserve do
-              nest(attrs, 4)
-            else
-              attrs
-            end
-
-          concat(["<#{name}", attrs, "/>"])
+          concat(["<#{name}", build_attrs(attrs, " ", context.opts), "/>"])
       end
 
     {:inline, group(doc)}
@@ -323,13 +312,20 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   # Preserve tag_block
-  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+  defp tag_block_preserve_to_algebra({:tag_block, name, attrs, block, meta}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
+
+    children =
+      if meta.mode == :inline or name in ~w(pre textarea) or attrs do
+        children
+      else
+        nest(children, 2)
+      end
 
     tag =
       concat([
         format_tag_open(name, attrs, context),
-        nest(children, :reset),
+        children,
         "</#{name}>"
       ])
       |> group()
