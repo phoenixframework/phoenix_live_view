@@ -96,6 +96,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
          slots: slots_defs,
          attrs: attrs_defs
        }) do
+    {attrs_defs, slots_attrs_defs} = pop_and_group_slots_attrs_defs(attrs_defs)
+
     {attrs_warnings, {attrs, has_global?}} =
       Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
@@ -141,27 +143,79 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         error(message, call.file, line)
       end
 
-    {slots_warnings, _slots} =
-      Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
-        %{name: name, required: required} = slot_def
-        {value, slots} = Map.pop(slots, name)
+    {slots_warnings, {slots, slots_attrs_defs}} =
+      Enum.flat_map_reduce(slots_defs, {slots, slots_attrs_defs}, fn slot_def,
+                                                                     {slots, slots_attrs_defs} ->
+        %{name: slot_name, required: required} = slot_def
+
+        {slot_attrs_defs, slots_attrs_defs} =
+          pop_and_group_slot_attrs_defs(slots_attrs_defs, slot_name)
+
+        {slot_values, slots} = Map.pop(slots, slot_name)
 
         warnings =
-          case value do
-            nil when required ->
-              message = "missing required slot \"#{name}\" for component #{component(call)}"
+          case {slot_values, slot_attrs_defs} do
+            {nil, _} when required ->
+              message = "missing required slot \"#{slot_name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
-            # TODO: validate attr types for slots
+            {slot_values, slot_attrs_defs} ->
+              for slot_value <- slot_values,
+                  {attr_name, {line, _column, attr_value}} <- slot_value,
+                  attr_def = slot_attrs_defs[attr_name],
+                  slot_name != :inner_block,
+                  reduce: [] do
+                errors ->
+                  case {attr_def, attr_value} do
+                    {%{type: _attr_type}, :expr} ->
+                      errors
 
-            _ ->
-              []
+                    {%{type: :string}, attr_value} when not is_binary(attr_value) ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a :string, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    {%{type: :atom}, attr_value} when not is_atom(attr_value) ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be an :atom, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    {%{type: attr_type}, nil} when attr_type not in [:any, :boolean] ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a #{inspect(attr_type)}, got boolean: true"
+
+                      [error(message, call.file, line) | errors]
+
+                    {_, _} ->
+                      errors
+                  end
+              end
           end
 
-        {warnings, slots}
+        {warnings, {slots, slots_attrs_defs}}
       end)
 
-    slots_warnings ++ attrs_warnings ++ attrs_missing
+    # IO.inspect({slots_warnings, slots, slots_attrs_defs}, label: "slot missing and warnings")
+
+    # TODO: validate missing/unexpected slots
+    slots_missing = []
+
+    slots_warnings ++ slots_missing ++ attrs_warnings ++ attrs_missing
+  end
+
+  defp pop_and_group_slots_attrs_defs(attrs_defs) do
+    {attrs_defs, slots_attrs_defs} = Enum.split_with(attrs_defs, &is_nil(&1.slot))
+    {attrs_defs, Enum.group_by(slots_attrs_defs, & &1.slot)}
+  end
+
+  defp pop_and_group_slot_attrs_defs(slots_attrs_defs, slot_name) do
+    {slot_attrs_defs, slots_attrs_defs} = Map.pop(slots_attrs_defs, slot_name, [])
+    {Enum.into(slot_attrs_defs, %{}, &{&1.name, &1}), slots_attrs_defs}
   end
 
   defp component(%{component: {mod, fun}}) do

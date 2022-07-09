@@ -221,29 +221,125 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       def func(assigns), do: ~H[]
 
-      def line, do: __ENV__.line + 4
+      slot :named, required: true
+
+      def func_named_slot(assigns), do: ~H[]
+
+      def render_line, do: __ENV__.line + 2
 
       def render(assigns) do
         ~H"""
+        <!-- no default slot provided -->
         <.func/>
-        <.func>
-        </.func>
+
+        <!-- with an empty default slot -->
+        <.func></.func>
+
+        <!-- with content in the default slot -->
+        <.func>Hello!</.func>
+
+        <!-- no named slots provided -->
+        <.func_named_slot/>
+
+        <!-- with an empty named slot -->
+        <.func_named_slot>
+          <:named />
+        </.func_named_slot>
+
+        <!-- with content in the named slots -->
+        <.func_named_slot>
+          <:named>
+            Hello!
+          </:named>
+        </.func_named_slot>
+
+        <!-- with entires for the named slot -->
+        <.func_named_slot>
+          <:named>
+            Hello,
+          </:named>
+          <:named>
+            World!
+          </:named>
+        </.func_named_slot>
         """
       end
     end
 
     test "validate required slots" do
-      line = get_line(RequiredAttrs)
+      line = RequiredSlots.render_line()
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([RequiredSlots])
 
       assert diagnostics == [
-               %Mix.Task.Compiler.Diagnostic{
+               %Diagnostic{
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
                  message:
                    "missing required slot \"inner_block\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func/1",
-                 position: line,
+                 position: line + 3,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "missing required slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func_named_slot/1",
+                 position: line + 12,
+                 severity: :warning
+               }
+             ]
+    end
+
+    defmodule SlotAttrs do
+      use Phoenix.Component
+
+      slot :named do
+        attr :label, :string
+      end
+
+      def func(assigns), do: ~H[]
+
+      def render_line, do: __ENV__.line + 2
+
+      def render(assigns) do
+        ~H"""
+        <.func>
+          <!-- correct type literal provided -->
+          <:named label="Label"/>
+          <!-- incorrect type literal provided -->
+          <:named label={:boom} />
+          <!-- no value provided (boolean: true) -->
+          <:named label />
+          <!-- expression provided -->
+          <:named label={@label} />
+        </.func>
+        """
+      end
+    end
+
+    test "validate slot attrs" do
+      line = SlotAttrs.render_line()
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([SlotAttrs])
+
+      assert diagnostics == [
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"label\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: true",
+                 position: line + 8,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"label\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: :boom",
+                 position: line + 6,
                  severity: :warning
                }
              ]

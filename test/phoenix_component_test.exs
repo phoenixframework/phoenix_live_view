@@ -615,7 +615,7 @@ defmodule Phoenix.ComponentTest do
                    %{
                      doc: nil,
                      line: FunctionComponentWithSlots.fun_with_slot_line() - 1,
-                     name: :default,
+                     name: :inner_block,
                      opts: [],
                      required: false
                    }
@@ -704,31 +704,35 @@ defmodule Phoenix.ComponentTest do
                %{
                  attrs: %{},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
-                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 file: __ENV__.file,
                  line: 576,
                  root: false,
-                 slots: %{}
+                 slots: %{inner_block: [%{inner_block: {578, 9, :expr}}]}
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
-                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 file: __ENV__.file,
                  line: 580,
                  root: false,
                  slots: %{
                    footer: [%{inner_block: {587, 11, :expr}}],
-                   header: [%{inner_block: {581, 11, :expr}}]
+                   header: [%{inner_block: {581, 11, :expr}}],
+                   inner_block: [%{inner_block: {590, 9, :expr}}]
                  }
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
-                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs",
+                 file: __ENV__.file,
                  line: 592,
                  root: false,
-                 slots: %{slot: [%{attr: {593, 11, "1"}, inner_block: {593, 11, nil}}]}
+                 slots: %{
+                   inner_block: [%{inner_block: {594, 9, :expr}}],
+                   slot: [%{attr: {593, 11, "1"}, inner_block: {593, 11, nil}}]
+                 }
                },
                %{
                  attrs: %{rows: {596, 17, :expr}},
@@ -739,9 +743,10 @@ defmodule Phoenix.ComponentTest do
                    col: [
                      %{inner_block: {597, 11, :expr}, label: {597, 11, :expr}},
                      %{inner_block: {601, 11, :expr}, label: {601, 11, "Address"}}
-                   ]
+                   ],
+                   inner_block: [%{inner_block: {604, 9, :expr}}]
                  },
-                 file: "/home/connorlay/Code/phoenix_live_view/test/phoenix_component_test.exs"
+                 file: __ENV__.file
                }
              ]
     end
