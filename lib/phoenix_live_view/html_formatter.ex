@@ -410,7 +410,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          buffer,
          stack
        ) do
-    to_tree(tokens, [{:comment, text} | buffer], stack)
+    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), %{}}]} | buffer], stack)
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
