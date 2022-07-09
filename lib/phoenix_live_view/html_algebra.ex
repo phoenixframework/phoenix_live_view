@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, group(doc)}
   end
 
-  # Handle EEX blocks within `pre` tag
+  # Handle EEX blocks within preserve tags
   defp to_algebra({:eex_block, expr, block}, %{mode: :preserve} = context) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
@@ -316,7 +316,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     children =
-      if meta.mode == :inline or name in ~w(pre textarea) or attrs do
+      if meta.mode == :inline do
         children
       else
         nest(children, 2)

@@ -1606,20 +1606,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 5
       )
-
-      assert_formatter_doesnt_change(
-        """
-        <textarea>
-          <div
-          class="one"
-          id="two"
-        >
-        <outside />
-          </div>
-        </textarea>
-        """,
-        line_length: 5
-      )
     end
 
     test "keeps right format for inline elements within block elements" do
@@ -1663,20 +1649,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
     end
 
     test "respect nesting of children when phx-no-format is present" do
-      assert_formatter_doesnt_change(
-        """
-        <ul class="root" phx-no-format>
-        <li class="list">
-            <div
-            class="child1">
-          <span class="child2">text</span>
-            </div>
-        </li>
-        </ul>
-        """,
-        line_length: 100
-      )
-
       assert_formatter_doesnt_change(
         """
         <ul class="root" phx-no-format><!-- comment
