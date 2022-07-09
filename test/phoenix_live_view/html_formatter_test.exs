@@ -20,6 +20,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert second_pass == code
     end
 
+    test "errors on invalid HTML" do
+      assert_raise Phoenix.LiveView.HTMLTokenizer.ParseError,
+                   ~r/end of template reached without closing tag for <style>/,
+                   fn -> assert_formatter_doesnt_change("<style>foo") end
+    end
+
     test "always break lines for block elements" do
       input = """
         <section><h1><%= @user.name %></h1></section>
