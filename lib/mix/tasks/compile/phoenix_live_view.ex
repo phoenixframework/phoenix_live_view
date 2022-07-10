@@ -96,8 +96,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
          slots: slots_defs,
          attrs: attrs_defs
        }) do
-    {attrs_defs, slots_attrs_defs} = pop_and_group_slots_attrs_defs(attrs_defs)
-
     {attrs_warnings, {attrs, has_global?}} =
       Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
@@ -143,33 +141,44 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         error(message, call.file, line)
       end
 
-    {slots_warnings, {slots, slots_attrs_defs}} =
-      Enum.flat_map_reduce(slots_defs, {slots, slots_attrs_defs}, fn slot_def,
-                                                                     {slots, slots_attrs_defs} ->
+    {slots_warnings, slots} =
+      Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
         %{name: slot_name, required: required} = slot_def
-
-        {slot_attrs_defs, slots_attrs_defs} =
-          pop_and_group_slot_attrs_defs(slots_attrs_defs, slot_name)
-
+        slot_attr_defs = get_slot_attr_defs(attrs_defs, slot_name)
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         warnings =
-          case {slot_values, slot_attrs_defs} do
+          case {slot_values, slot_attr_defs} do
+            # missing required slot
             {nil, _} when required ->
               message = "missing required slot \"#{slot_name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
-            {slot_values, slot_attrs_defs} ->
+            # missing optional slot
+            {nil, _} ->
+              []
+
+            # slot with attributes
+            {slot_values, slot_attr_defs} ->
               for slot_value <- slot_values,
                   {attr_name, {line, _column, attr_value}} <- slot_value,
-                  attr_def = slot_attrs_defs[attr_name],
-                  slot_name != :inner_block,
+                  attr_name != :inner_block,
+                  attr_def = Map.get(slot_attr_defs, attr_name, :undef),
                   reduce: [] do
                 errors ->
                   case {attr_def, attr_value} do
+                    # undefined attribute
+                    {:undef, _attr_value} ->
+                      message =
+                        "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    # attribute with an expression for its value
                     {%{type: _attr_type}, :expr} ->
                       errors
 
+                    # string attribute type mismatch
                     {%{type: :string}, attr_value} when not is_binary(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
@@ -177,6 +186,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                       [error(message, call.file, line) | errors]
 
+                    # atom attribute type mismatch
                     {%{type: :atom}, attr_value} when not is_atom(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
@@ -184,6 +194,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                       [error(message, call.file, line) | errors]
 
+                    # nil attribute value type mismatch
                     {%{type: attr_type}, nil} when attr_type not in [:any, :boolean] ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
@@ -191,31 +202,32 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                       [error(message, call.file, line) | errors]
 
-                    {_, _} ->
+                    # attribute type and value match
+                    {%{type: _attr_type}, _attr_value} ->
                       errors
                   end
               end
           end
 
-        {warnings, {slots, slots_attrs_defs}}
+        {warnings, slots}
       end)
 
-    # IO.inspect({slots_warnings, slots, slots_attrs_defs}, label: "slot missing and warnings")
-
-    # TODO: validate missing/unexpected slots
-    slots_missing = []
+    slots_missing =
+      for {slot_name, slot_values} <- slots,
+          slot_name != :inner_block,
+          %{inner_block: {line, _, _}} <- slot_values do
+        message = "undefined slot \"#{slot_name}\" for component #{component(call)}"
+        error(message, call.file, line)
+      end
 
     slots_warnings ++ slots_missing ++ attrs_warnings ++ attrs_missing
   end
 
-  defp pop_and_group_slots_attrs_defs(attrs_defs) do
-    {attrs_defs, slots_attrs_defs} = Enum.split_with(attrs_defs, &is_nil(&1.slot))
-    {attrs_defs, Enum.group_by(slots_attrs_defs, & &1.slot)}
-  end
-
-  defp pop_and_group_slot_attrs_defs(slots_attrs_defs, slot_name) do
-    {slot_attrs_defs, slots_attrs_defs} = Map.pop(slots_attrs_defs, slot_name, [])
-    {Enum.into(slot_attrs_defs, %{}, &{&1.name, &1}), slots_attrs_defs}
+  defp get_slot_attr_defs(attr_defs, slot_name) do
+    for attr_def <- attr_defs,
+        attr_def.slot == slot_name,
+        into: %{},
+        do: {attr_def.name, attr_def}
   end
 
   defp component(%{component: {mod, fun}}) do

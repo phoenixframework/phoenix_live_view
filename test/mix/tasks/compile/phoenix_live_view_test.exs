@@ -344,6 +344,60 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                }
              ]
     end
+
+    defmodule UndefinedSlots do
+      use Phoenix.Component
+
+      slot :inner_block
+
+      def func(assigns), do: ~H[]
+
+      slot :named
+
+      def func_undefined_slot_attrs(assigns), do: ~H[]
+
+      def render_line, do: __ENV__.line + 2
+
+      def render(assigns) do
+        ~H"""
+        <!-- undefined slot -->
+        <.func>
+          <:undefined />
+        </.func>
+
+        <!-- slot with undefined attrs -->
+        <.func_undefined_slot_attrs>
+          <:named undefined="undefined" />
+        </.func_undefined_slot_attrs>
+        """
+      end
+    end
+
+    test "validates undefined slots" do
+      line = UndefinedSlots.render_line()
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([UndefinedSlots])
+
+      assert diagnostics == [
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "undefined slot \"undefined\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func/1",
+                 position: line + 4,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute \"undefined\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1",
+                 position: line + 9,
+                 severity: :warning
+               }
+             ]
+    end
   end
 
   describe "integration tests" do
