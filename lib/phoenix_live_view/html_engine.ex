@@ -1102,25 +1102,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  # TODO: do we really need both function heads here?
   defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       case value do
+        # lists
+        {ast, _, _} when is_list(ast) ->
+          {name, {line, column, :list}}
+
+        # structs
+        {:%, _, _} ->
+          {name, {line, column, :struct}}
+
+        # expressions
         {_, _, _} ->
           {name, {line, column, :expr}}
 
-        value ->
-          {name, {line, column, value}}
-      end
-    end
-  end
-
-  defp slot_call_value({[{_, _, slot_attrs}], %{line: line, column: column}}) do
-    for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
-      case value do
-        {_, _, _} ->
-          {name, {line, column, :expr}}
-
+        # literals
         value ->
           {name, {line, column, value}}
       end

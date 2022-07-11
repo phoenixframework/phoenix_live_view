@@ -295,8 +295,19 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule SlotAttrs do
       use Phoenix.Component
 
-      slot :named do
-        attr :label, :string
+      defmodule Struct do
+        defstruct []
+      end
+
+      slot :slot do
+        attr :any, :any
+        attr :string, :string
+        attr :atom, :atom
+        attr :boolean, :boolean
+        attr :integer, :integer
+        attr :float, :float
+        attr :list, :list
+        attr :struct, Struct
       end
 
       def func(assigns), do: ~H[]
@@ -306,20 +317,45 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       def render(assigns) do
         ~H"""
         <.func>
-          <!-- correct type literal provided -->
-          <:named label="Label"/>
-          <!-- incorrect type literal provided -->
-          <:named label={:boom} />
-          <!-- no value provided (boolean: true) -->
-          <:named label />
-          <!-- expression provided -->
-          <:named label={@label} />
+          <!-- any type should never raise a warning -->
+          <:slot any="any" />
+          <:slot any={:any} />
+          <:slot any={true} />
+          <:slot any={1} />
+          <:slot any={1.0} />
+          <:slot any={[]} />
+          <:slot any={%Struct{}} />
+
+          <!-- string warnings -->
+          <:slot string={:string} />
+
+          <!-- atom warnings -->
+          <:slot atom="atom" />
+
+          <!-- boolean warnings -->
+          <:slot boolean="boolean" />
+
+          <!-- integer warnings -->
+          <:slot integer="integer" />
+
+          <!-- float warnings -->
+          <:slot float="float" />
+
+          <!-- list warnings -->
+          <:slot list="list" />
+
+          <!-- struct warnings -->
+          <:slot struct="struct" />
+          
+          <!-- attrs with no expression -->
+          <:slot boolean />
+          <:slot string />
         </.func>
         """
       end
     end
 
-    test "validate slot attrs" do
+    test "validate slot attr types" do
       line = SlotAttrs.render_line()
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([SlotAttrs])
 
@@ -329,8 +365,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  details: nil,
                  file: __ENV__.file,
                  message:
-                   "attribute \"label\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: true",
-                 position: line + 8,
+                   "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: true",
+                 position: line + 35,
                  severity: :warning
                },
                %Diagnostic{
@@ -338,8 +374,62 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  details: nil,
                  file: __ENV__.file,
                  message:
-                   "attribute \"label\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: :boom",
-                 position: line + 6,
+                   "attribute \"struct\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, got: \"struct\"",
+                 position: line + 31,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"list\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :list, got: \"list\"",
+                 position: line + 28,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"float\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :float, got: \"float\"",
+                 position: line + 25,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"integer\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :integer, got: \"integer\"",
+                 position: line + 22,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"boolean\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :boolean, got: \"boolean\"",
+                 position: line + 19,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"atom\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be an :atom, got: \"atom\"",
+                 position: line + 16,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: :string",
+                 position: line + 13,
                  severity: :warning
                }
              ]

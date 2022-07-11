@@ -174,10 +174,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                       [error(message, call.file, line) | errors]
 
-                    # attribute with an expression for its value
-                    {%{type: _attr_type}, :expr} ->
-                      errors
-
                     # string attribute type mismatch
                     {%{type: :string}, attr_value} when not is_binary(attr_value) ->
                       message =
@@ -194,15 +190,47 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                       [error(message, call.file, line) | errors]
 
-                    # nil attribute value type mismatch
-                    {%{type: attr_type}, nil} when attr_type not in [:any, :boolean] ->
+                    # boolean attribute type mismatch
+                    {%{type: :boolean}, attr_value} when not is_boolean(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
-                          "must be a #{inspect(attr_type)}, got boolean: true"
+                          "must be a :boolean, got: #{inspect(attr_value)}"
 
                       [error(message, call.file, line) | errors]
 
-                    # attribute type and value match
+                    # integer attribute type mismatch
+                    {%{type: :integer}, attr_value} when not is_integer(attr_value) ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a :integer, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    # float attribute type mismatch
+                    {%{type: :float}, attr_value} when not is_float(attr_value) ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a :float, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    # struct attribute type mismatch
+                    {%{type: :list}, attr_value} when attr_value != :list ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a :list, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    # struct attribute type mismatch
+                    {%{type: {:struct, mod}}, attr_value} when attr_value != :struct ->
+                      message =
+                        "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
+                          "must be a #{inspect(mod)}, got: #{inspect(attr_value)}"
+
+                      [error(message, call.file, line) | errors]
+
+                    # attribute type and value match, or an expression
                     {%{type: _attr_type}, _attr_value} ->
                       errors
                   end
