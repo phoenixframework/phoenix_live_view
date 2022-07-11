@@ -580,28 +580,28 @@ defmodule Phoenix.Component do
 
   ## Documentation
 
-  Public function components that define attributes will have their attribute 
-  types and docs injected into the function's documentation, depending on the 
+  Public function components that define attributes will have their attribute
+  types and docs injected into the function's documentation, depending on the
   value of the `@doc` module attribute:
 
-    * if `@doc` is a string, the attribute docs are injected into that string. 
-      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where 
-      in the string the docs are injected. Otherwise, the docs are appended 
+    * if `@doc` is a string, the attribute docs are injected into that string.
+      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where
+      in the string the docs are injected. Otherwise, the docs are appended
       to the end of the `@doc` string.
-      
-    * if `@doc` is unspecified, the attribute docs are used as the 
+
+    * if `@doc` is unspecified, the attribute docs are used as the
       default `@doc` string.
-      
+
     * if `@doc` is false, the attribute docs are omitted entirely.
-    
+
   The injected attribute docs are formatted as a markdown list:
 
     ```markdown
     * `name` (`:type`) (required) - attr docs. Defaults to `:default`.
     ```
-    
+
   By default, all attributes will have their types and docs injected into
-  the function `@doc` string. To hide a specific attribute, you can set 
+  the function `@doc` string. To hide a specific attribute, you can set
   the value of `:doc` to `false`.
 
   ## Examples
@@ -828,7 +828,13 @@ defmodule Phoenix.Component do
           if global_name do
             quote do
               {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
-              globals = Map.merge(unquote(global_default), caller_globals)
+
+              globals =
+                case Map.fetch(assigns, unquote(global_name)) do
+                  {:ok, explicit_global_assign} -> explicit_global_assign
+                  :error -> Map.merge(unquote(global_default), caller_globals)
+                end
+
               merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
               super(Phoenix.LiveView.assign(merged, unquote(global_name), globals))
             end
