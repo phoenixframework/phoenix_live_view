@@ -157,7 +157,10 @@ for example:
 ## Rate limiting events with Debounce and Throttle
 
 All events can be rate-limited on the client by using the
-`phx-debounce` and `phx-throttle` bindings, with the following behavior:
+`phx-debounce` and `phx-throttle` bindings, with the exception of the `phx-blur`
+binding, which is fired immediately.
+
+Rate limited and debounced events have the following behavior:
 
   * `phx-debounce` - Accepts either an integer timeout value (in milliseconds),
     or `"blur"`. When an integer is provided, emitting the event is delayed by

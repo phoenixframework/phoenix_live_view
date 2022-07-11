@@ -141,7 +141,7 @@ let DOM = {
     document.title = `${prefix || ""}${str}${suffix || ""}`
   },
 
-  debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback){
+  debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
     if(debounce === ""){ debounce = defaultDebounce }
@@ -174,12 +174,15 @@ let DOM = {
           } else {
             callback()
             this.putPrivate(el, THROTTLED, true)
-            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout)
+            setTimeout(() => {
+              if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER) }
+            }, timeout)
           }
         } else {
-          setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout)
+          setTimeout(() => {
+            if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle) }
+          }, timeout)
         }
-
 
         let form = el.form
         if(form && this.once(form, "bind-debounce")){

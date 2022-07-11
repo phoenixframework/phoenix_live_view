@@ -31,7 +31,7 @@ describe("debounce", function (){
     let calls = 0
     let el = container().querySelector("input[name=blur]")
 
-    DOM.debounce(el, {}, "phx-debounce", 100, "phx-throttle", 200, () => calls++)
+    DOM.debounce(el, {}, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
     DOM.dispatchEvent(el, "blur")
     expect(calls).toBe(1)
 
@@ -46,7 +46,7 @@ describe("debounce", function (){
     let el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => true, () => calls++)
     })
     simulateInput(el, "one")
     simulateInput(el, "two")
@@ -61,7 +61,7 @@ describe("debounce", function (){
     let el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => true, () => calls++)
     })
     simulateInput(el, "one")
     simulateInput(el, "two")
@@ -76,7 +76,7 @@ describe("debounce", function (){
     let el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
     })
     simulateKeyDown(el, "1")
     simulateKeyDown(el, "2")
@@ -108,7 +108,7 @@ describe("debounce", function (){
     el.setAttribute("phx-debounce", "")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 500, "phx-throttle", 200, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 500, "phx-throttle", 200, () => true, () => calls++)
     })
     simulateInput(el, "one")
     simulateInput(el, "two")
@@ -133,7 +133,7 @@ describe("debounce", function (){
     let el = parent.querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
     })
     el.form.addEventListener("submit", () => {
       el.value = "submitted"
@@ -159,7 +159,7 @@ describe("throttle", function (){
     let el = container().querySelector("#throttle-200")
 
     el.addEventListener("click", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
         calls++
         el.innerText = `now:${calls}`
       })
@@ -189,7 +189,7 @@ describe("throttle", function (){
     el.setAttribute("phx-throttle", "")
 
     el.addEventListener("click", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 500, () => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 500, () => true, () => {
         calls++
         el.innerText = `now:${calls}`
       })
@@ -218,7 +218,7 @@ describe("throttle", function (){
     let el = container().querySelector("input[name=throttle-200]")
 
     el.addEventListener("input", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => calls++)
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
     })
     el.form.addEventListener("submit", () => {
       el.value = "submitted"
@@ -244,7 +244,7 @@ describe("throttle keydown", function (){
     let el = container().querySelector("#throttle-keydown")
 
     el.addEventListener("keydown", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
         keyPresses[e.key] = (keyPresses[e.key] || 0) + 1
       })
     })
@@ -270,7 +270,7 @@ describe("throttle keydown", function (){
     let el = container().querySelector("#throttle-keydown")
 
     el.addEventListener("keydown", e => {
-      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
         keyPresses[e.key] = (keyPresses[e.key] || 0) + 1
       })
     })

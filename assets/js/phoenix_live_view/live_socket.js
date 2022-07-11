@@ -573,7 +573,7 @@ export default class LiveSocket {
         let windowBinding = this.binding(`window-${event}`)
         let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding)
         if(targetPhxEvent){
-          this.debounce(e.target, e, () => {
+          this.debounce(e.target, e, browserEventName, () => {
             this.withinOwners(e.target, view => {
               callback(e, event, view, e.target, targetPhxEvent, null)
             })
@@ -581,7 +581,7 @@ export default class LiveSocket {
         } else {
           DOM.all(document, `[${windowBinding}]`, el => {
             let phxEvent = el.getAttribute(windowBinding)
-            this.debounce(el, e, () => {
+            this.debounce(el, e, browserEventName, () => {
               this.withinOwners(el, view => {
                 callback(e, event, view, el, phxEvent, "window")
               })
@@ -614,7 +614,7 @@ export default class LiveSocket {
       if(!phxEvent){ return }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
-      this.debounce(target, e, () => {
+      this.debounce(target, e, "click", () => {
         this.withinOwners(target, view => {
           JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
@@ -796,7 +796,7 @@ export default class LiveSocket {
 
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
-        this.debounce(input, e, () => {
+        this.debounce(input, e, type, () => {
           this.withinOwners(dispatcher, view => {
             DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
             if(!DOM.isTextualInput(input)){
@@ -809,15 +809,18 @@ export default class LiveSocket {
     }
   }
 
-  debounce(el, event, callback){
+  debounce(el, event, eventType, callback){
+    if(eventType === "blur" || eventType === "focusout"){ return callback() }
+
     let phxDebounce = this.binding(PHX_DEBOUNCE)
     let phxThrottle = this.binding(PHX_THROTTLE)
     let defaultDebounce = this.defaults.debounce.toString()
     let defaultThrottle = this.defaults.throttle.toString()
 
     this.withinOwners(el, view => {
-      DOM.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, () => {
-        if(!view.isDestroyed() && document.body.contains(el)){ callback() }
+      let asyncFilter = () => !view.isDestroyed() && document.body.contains(el)
+      DOM.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, () => {
+        callback()
       })
     })
   }
