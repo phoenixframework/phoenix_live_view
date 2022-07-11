@@ -814,7 +814,12 @@ export default class LiveSocket {
     let phxThrottle = this.binding(PHX_THROTTLE)
     let defaultDebounce = this.defaults.debounce.toString()
     let defaultThrottle = this.defaults.throttle.toString()
-    DOM.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback)
+
+    this.withinOwners(el, view => {
+      DOM.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, () => {
+        if(!view.isDestroyed() && document.body.contains(el)){ callback() }
+      })
+    })
   }
 
   silenceEvents(callback){
