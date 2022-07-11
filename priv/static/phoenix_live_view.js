@@ -396,7 +396,7 @@ var LiveView = (() => {
       let { prefix, suffix } = titleEl.dataset;
       document.title = `${prefix || ""}${str}${suffix || ""}`;
     },
-    debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback) {
+    debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback) {
       let debounce = el.getAttribute(phxDebounce);
       let throttle = el.getAttribute(phxThrottle);
       if (debounce === "") {
@@ -433,10 +433,18 @@ var LiveView = (() => {
             } else {
               callback();
               this.putPrivate(el, THROTTLED, true);
-              setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout);
+              setTimeout(() => {
+                if (asyncFilter()) {
+                  this.triggerCycle(el, DEBOUNCE_TRIGGER);
+                }
+              }, timeout);
             }
           } else {
-            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout);
+            setTimeout(() => {
+              if (asyncFilter()) {
+                this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle);
+              }
+            }, timeout);
           }
           let form = el.form;
           if (form && this.once(form, "bind-debounce")) {
@@ -3629,7 +3637,7 @@ within:
           let windowBinding = this.binding(`window-${event}`);
           let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding);
           if (targetPhxEvent) {
-            this.debounce(e.target, e, () => {
+            this.debounce(e.target, e, browserEventName, () => {
               this.withinOwners(e.target, (view) => {
                 callback(e, event, view, e.target, targetPhxEvent, null);
               });
@@ -3637,7 +3645,7 @@ within:
           } else {
             dom_default.all(document, `[${windowBinding}]`, (el) => {
               let phxEvent = el.getAttribute(windowBinding);
-              this.debounce(el, e, () => {
+              this.debounce(el, e, browserEventName, () => {
                 this.withinOwners(el, (view) => {
                   callback(e, event, view, el, phxEvent, "window");
                 });
@@ -3671,7 +3679,7 @@ within:
         if (target.getAttribute("href") === "#") {
           e.preventDefault();
         }
-        this.debounce(target, e, () => {
+        this.debounce(target, e, "click", () => {
           this.withinOwners(target, (view) => {
             js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
           });
@@ -3835,7 +3843,7 @@ within:
             return;
           }
           dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });
-          this.debounce(input, e, () => {
+          this.debounce(input, e, type, () => {
             this.withinOwners(dispatcher, (view) => {
               dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
               if (!dom_default.isTextualInput(input)) {
@@ -3847,12 +3855,20 @@ within:
         }, false);
       }
     }
-    debounce(el, event, callback) {
+    debounce(el, event, eventType, callback) {
+      if (eventType === "blur" || eventType === "focusout") {
+        return callback();
+      }
       let phxDebounce = this.binding(PHX_DEBOUNCE);
       let phxThrottle = this.binding(PHX_THROTTLE);
       let defaultDebounce = this.defaults.debounce.toString();
       let defaultThrottle = this.defaults.throttle.toString();
-      dom_default.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback);
+      this.withinOwners(el, (view) => {
+        let asyncFilter = () => !view.isDestroyed() && document.body.contains(el);
+        dom_default.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, () => {
+          callback();
+        });
+      });
     }
     silenceEvents(callback) {
       this.silenced = true;
