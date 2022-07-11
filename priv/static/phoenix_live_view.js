@@ -3445,7 +3445,7 @@ within:
             dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
             this.outgoingMainEl.replaceWith(newMainEl);
             this.outgoingMainEl = null;
-            callback && callback();
+            callback && requestAnimationFrame(callback);
             onDone();
           });
         }
