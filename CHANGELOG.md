@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.17.11 (2022-07-11)
+
+### Enhancements
+  - Add `replaceTransport` to LiveSocket
+
+### Bug fixes
+  - Cancel debounced events from firing after a live navigation event
+  - Fix hash anchor failing to scroll to anchor element on live navigation
+  - Do not debounce `phx-blur` events
+
+
 ## 0.17.10 (2022-05-25)
 
 ### Bug fixes

@@ -1,6 +1,6 @@
 {
   "name": "phoenix_live_view",
-  "version": "0.17.10",
+  "version": "0.17.11",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
   "repository": {},
