@@ -2,7 +2,7 @@
 
 ## 0.18.0
 
-0.18.0 includes a major new feature in the form of delcarative assigns with a new `attr`
+0.18.0 includes a major new feature in the form of declarative assigns with a new `attr`
 macro for specifying which attributes a function component supports, the type, and default values.
 Attributes are compile-time verified with warnings. To support `attr` in your existing applications
 add the `:phoenix_live_view` compiler to your `mix.exs`'s `project` configuration:
