@@ -510,18 +510,11 @@ defmodule Phoenix.LiveView do
       end
 
     log =
-      case opts[:log] do
-        nil ->
-          nil
-
-        false ->
-          false
-
-        log when is_atom(log) ->
-          log
-
-        other ->
-          raise ArgumentError, ":log expects an atom or false, got: #{inspect(other)}"
+      case Keyword.fetch(opts, :log) do
+        {:ok, false} -> false
+        {:ok, log} when is_atom(log) -> log
+        :error -> :debug
+        _ -> raise ArgumentError, ":log expects an atom or false, got: #{inspect(opts[:log])}"
       end
 
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
