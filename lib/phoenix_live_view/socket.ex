@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.Socket do
 
   To share an underlying transport connection between regular
   Phoenix channels and LiveView processes, `use Phoenix.LiveView.Socket`
-  form your own `MyAppWeb.UserSocket` module.
+  from your own `MyAppWeb.UserSocket` module.
 
   Next, declare your `channel` definitions and optional `connect/3`, and
   `id/1` callbacks to handle your channel specific needs, then mount
