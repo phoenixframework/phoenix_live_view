@@ -2,6 +2,8 @@ defmodule Phoenix.LiveView.TelemtryTest do
   # Telemetry tests need to run synchronously
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
@@ -21,23 +23,32 @@ defmodule Phoenix.LiveView.TelemtryTest do
     test "static mount emits telemetry events are emitted on successful callback", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :mount])
 
-      conn
-      |> get("/thermo?foo=bar")
-      |> html_response(200)
+      log =
+        capture_log(fn ->
+          conn
+          |> get("/thermo?foo=bar")
+          |> html_response(200)
 
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
+          assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
+                          %{socket: %Socket{transport_pid: nil}} = metadata}
 
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+          assert metadata.params == %{"foo" => "bar"}
+          assert metadata.session == %{"current_user_id" => "1"}
+          assert metadata.uri == "http://www.example.com/thermo?foo=bar"
 
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %Socket{transport_pid: nil}} = metadata}
+          assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
+                          %{socket: %Socket{transport_pid: nil}} = metadata}
 
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+          assert metadata.params == %{"foo" => "bar"}
+          assert metadata.session == %{"current_user_id" => "1"}
+          assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+        end)
+
+      refute log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
+      refute log =~ "Replied in "
+
+      refute log =~ "HANDLE PARAMS"
+      refute log =~ "Replied in "
     end
 
     @tag session: %{current_user_id: "1"}
@@ -69,25 +80,38 @@ defmodule Phoenix.LiveView.TelemtryTest do
     test "live mount emits telemetry events are emitted on successful callback", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :mount])
 
-      {:ok, _view, _html} = live(conn, "/thermo?foo=bar")
+      log =
+        capture_log(fn ->
+          {:ok, _view, _html} = live(conn, "/thermo?foo=bar")
 
-      assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
+          assert_receive {:event, [:phoenix, :live_view, :mount, :start], %{system_time: _},
+                          %{socket: %{transport_pid: pid}} = metadata}
+                         when is_pid(pid)
 
-      assert metadata.socket.transport_pid
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+          assert metadata.socket.transport_pid
+          assert metadata.params == %{"foo" => "bar"}
+          assert metadata.session == %{"current_user_id" => "1"}
+          assert metadata.uri == "http://www.example.com/thermo?foo=bar"
 
-      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
-                      %{socket: %{transport_pid: pid}} = metadata}
-                     when is_pid(pid)
+          assert_receive {:event, [:phoenix, :live_view, :mount, :stop], %{duration: _},
+                          %{socket: %{transport_pid: pid}} = metadata}
+                         when is_pid(pid)
 
-      assert metadata.socket.transport_pid
-      assert metadata.params == %{"foo" => "bar"}
-      assert metadata.session == %{"current_user_id" => "1"}
-      assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+          assert metadata.socket.transport_pid
+          assert metadata.params == %{"foo" => "bar"}
+          assert metadata.session == %{"current_user_id" => "1"}
+          assert metadata.uri == "http://www.example.com/thermo?foo=bar"
+        end)
+
+      assert log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
+      assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
+      assert log =~ "Replied in"
+
+      assert log =~ "HANDLE PARAMS"
+      assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
+      assert log =~ "Replied in"
     end
 
     @tag session: %{current_user_id: "1"}
@@ -120,22 +144,31 @@ defmodule Phoenix.LiveView.TelemtryTest do
     test "render_* with a successful handle_event callback emits telemetry metrics", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :handle_event])
 
-      {:ok, view, _} = live(conn, "/thermo")
-      render_submit(view, :save, %{temp: 20})
+      log =
+        capture_log(fn ->
+          {:ok, view, _} = live(conn, "/thermo")
+          render_submit(view, :save, %{temp: 20})
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :start], %{system_time: _},
-                      metadata}
+          assert_receive {:event, [:phoenix, :live_view, :handle_event, :start],
+                          %{system_time: _}, metadata}
 
-      assert metadata.socket.transport_pid
-      assert metadata.event == "save"
-      assert metadata.params == %{"temp" => "20"}
+          assert metadata.socket.transport_pid
+          assert metadata.event == "save"
+          assert metadata.params == %{"temp" => "20"}
 
-      assert_receive {:event, [:phoenix, :live_view, :handle_event, :stop], %{duration: _},
-                      metadata}
+          assert_receive {:event, [:phoenix, :live_view, :handle_event, :stop], %{duration: _},
+                          metadata}
 
-      assert metadata.socket.transport_pid
-      assert metadata.event == "save"
-      assert metadata.params == %{"temp" => "20"}
+          assert metadata.socket.transport_pid
+          assert metadata.event == "save"
+          assert metadata.params == %{"temp" => "20"}
+        end)
+
+      assert log =~ "HANDLE EVENT"
+      assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "  Event: \"save\""
+      assert log =~ "  Parameters: %{\"temp\" => \"20\"}"
+      assert log =~ "Replied in"
     end
 
     test "render_* with crashing handle_event callback emits telemetry metrics", %{conn: conn} do
@@ -166,25 +199,36 @@ defmodule Phoenix.LiveView.TelemtryTest do
   describe "live components" do
     test "emits telemetry events when callback is successful", %{conn: conn} do
       attach_telemetry([:phoenix, :live_component, :handle_event])
-      {:ok, view, _html} = live(conn, "/components")
 
-      view |> element("#chris") |> render_click(%{"op" => "upcase"})
+      log =
+        capture_log(fn ->
+          {:ok, view, _html} = live(conn, "/components")
 
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
-                      %{system_time: _}, metadata}
+          view |> element("#chris") |> render_click(%{"op" => "upcase"})
 
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "upcase"}
+          assert_receive {:event, [:phoenix, :live_component, :handle_event, :start],
+                          %{system_time: _}, metadata}
 
-      assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop], %{duration: _},
-                      metadata}
+          assert metadata.socket.transport_pid
+          assert metadata.event == "transform"
+          assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+          assert metadata.params == %{"op" => "upcase"}
 
-      assert metadata.socket.transport_pid
-      assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert metadata.params == %{"op" => "upcase"}
+          assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop],
+                          %{duration: _}, metadata}
+
+          assert metadata.socket.transport_pid
+          assert metadata.event == "transform"
+          assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+          assert metadata.params == %{"op" => "upcase"}
+        end)
+
+      assert log =~ "HANDLE EVENT"
+      assert log =~ "  Component: Phoenix.LiveViewTest.StatefulComponent"
+      assert log =~ "  View: Phoenix.LiveViewTest.WithComponentLive"
+      assert log =~ "  Event: \"transform\""
+      assert log =~ "  Parameters: %{\"op\" => \"upcase\"}"
+      assert log =~ "Replied in"
     end
 
     test "emits telemetry events when callback fails", %{conn: conn} do
@@ -212,6 +256,30 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
+    end
+  end
+
+  describe "logging configuration" do
+    @tag session: %{current_user_id: "1"}
+    test "log level can be overridden for an individual Live View module", %{conn: conn} do
+      log =
+        capture_log([level: :warn], fn ->
+          {:ok, _view, _html} = live(conn, "/log-override")
+        end)
+
+      assert log =~ "MOUNT Phoenix.LiveViewTest.WithLogOverride"
+      assert log =~ "Replied in "
+    end
+
+    @tag session: %{current_user_id: "1"}
+    test "logging can be disabled for an individual Live View module", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          {:ok, _view, _html} = live(conn, "/log-disabled")
+        end)
+
+      refute log =~ "MOUNT Phoenix.LiveViewTest.WithLogDisabled"
+      refute log =~ "Replied in "
     end
   end
 end

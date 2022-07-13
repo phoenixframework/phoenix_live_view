@@ -234,3 +234,23 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
     {:noreply, assign(socket, :message, "Parent was updated")}
   end
 end
+
+defmodule Phoenix.LiveViewTest.WithLogOverride do
+  use Phoenix.LiveView, log: :warn
+
+  def mount(_params, _session, socket) do
+    {:ok, socket}
+  end
+
+  def render(assigns), do: ~H[]
+end
+
+defmodule Phoenix.LiveViewTest.WithLogDisabled do
+  use Phoenix.LiveView, log: false
+
+  def mount(_params, _session, socket) do
+    {:ok, socket}
+  end
+
+  def render(assigns), do: ~H[]
+end
