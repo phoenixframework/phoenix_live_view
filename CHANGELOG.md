@@ -34,6 +34,7 @@ Additionally, the special `let` attribute on function components have been depre
 
 ### Enhancements
   - Add declarative assigns with compile-time verifications and warnings via `attr` macro above function components
+  - [Logger] Add new LiveView logger with telemetry instrumentation for lifecyce events
   - [Helpers] Add `dynamic_tag` function component
   - [Helpers] Add `link` function component
   - [Helpers] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessbility
