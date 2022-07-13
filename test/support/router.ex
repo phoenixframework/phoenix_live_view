@@ -41,6 +41,8 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/components", WithComponentLive
     live "/multi-targets", WithMultipleTargets
     live "/assigns-not-in-socket", AssignsNotInSocketLive
+    live "/log-override", WithLogOverride
+    live "/log-disabled", WithLogDisabled
     live "/errors", ErrorsLive
 
     # controller test

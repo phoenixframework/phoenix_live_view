@@ -43,6 +43,8 @@ def deps do
 Next, add the the `:phoenix_live_view` compiler to your `:compiler` options in your `mix.exs`'s `project` configuration:
 
 ```elixir
+# mix.exs
+
 def project do
   [
     ...,
@@ -68,14 +70,14 @@ Next, add the following imports to your web file in `lib/my_app_web.ex`:
 
 def view do
   quote do
-    ...
+    # ...
     import Phoenix.LiveView.Helpers
   end
 end
 
 def router do
   quote do
-    ...
+    # ...
     import Phoenix.LiveView.Router
   end
 end
@@ -87,7 +89,7 @@ Then add the `Phoenix.LiveView.Router.fetch_live_flash/2` plug to your browser p
 # lib/my_app_web/router.ex
 
 pipeline :browser do
-  ...
+  # ...
   plug :fetch_session
 - plug :fetch_flash
 + plug :fetch_live_flash
@@ -147,7 +149,7 @@ Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your 
 
 and enable connecting to a LiveView socket in your `app.js` file.
 
-```
+```js
 // assets/js/app.js
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
@@ -213,15 +215,16 @@ npm install --force phoenix_live_view --prefix assets
 LiveView does not use the default app layout. Instead, you typically call `put_root_layout` in your router to specify a layout that is used by both "regular" views and live views. In your router, do:
 
 ```elixir
+# lib/my_app_web/router.ex
+
 pipeline :browser do
-  ...
+  # ...
   plug :put_root_layout, {MyAppWeb.LayoutView, :root}
-  ...
+  # ...
 end
 ```
 
-The layout given to `put_root_layout` is typically very barebones, with mostly
-`<head>` and `<body>` tags. For example:
+The layout given to `put_root_layout` is typically very barebones, with mostly `<head>` and `<body>` tags. For example:
 
 ```heex
 <!DOCTYPE html>
@@ -238,7 +241,7 @@ The layout given to `put_root_layout` is typically very barebones, with mostly
 </html>
 ```
 
-Once you have specified a root layout, "app.html.heex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.heex" layout to be used across all LiveViews, as we will describe in the next section.
+Once you have specified a root layout, `app.html.heex` will be rendered within your root layout for all non-LiveViews. You may also optionally define a `live.html.heex` layout to be used across all LiveViews, as we will describe in the next section.
 
 Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements in your layout that use `src` and `href`. This way you can detect when new assets have been deployed by calling `static_changed?`.
 
@@ -254,6 +257,8 @@ While the above instructions are enough to install LiveView in a Phoenix app, if
 The change is to define the `live_view` and `live_component` functions in your `my_app_web.ex` file, while refactoring the `view` function. At the end, they will look like this:
 
 ```elixir
+  # lib/my_app_web.ex
+
   def view do
     quote do
       use Phoenix.View,
@@ -304,14 +309,14 @@ The change is to define the `live_view` and `live_component` functions in your `
   end
 ```
 
-Note that LiveViews are automatically configured to use a "live.html.heex" layout in this line:
+Note that LiveViews are automatically configured to use a `live.html.heex` layout in this line:
 
 ```elixir
 use Phoenix.LiveView,
   layout: {MyAppWeb.LayoutView, "live.html"}
 ```
 
-"layouts/root.html.heex" is shared by regular and live views, "app.html.heex" is rendered inside the root layout for regular views, and "live.html.heex" is rendered inside the root layout for LiveViews. "live.html.heex" typically starts out as a copy of "app.html.heex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
+`layouts/root.html.heex` is shared by regular and live views, `app.html.heex` is rendered inside the root layout for regular views, and `live.html.heex` is rendered inside the root layout for LiveViews. `live.html.heex` typically starts out as a copy of `app.html.heex`, but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
 
 ## Progress animation
 

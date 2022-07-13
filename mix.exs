@@ -32,6 +32,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   def application do
     [
+      mod: {Phoenix.LiveView.Application, []},
       extra_applications: [:logger]
     ]
   end
