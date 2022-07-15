@@ -312,12 +312,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       def func(assigns), do: ~H[]
 
-      def render_line, do: __ENV__.line + 2
+      def render_any_line, do: __ENV__.line + 5
 
-      def render(assigns) do
+      def render_any(assigns) do
         ~H"""
         <.func>
-          <!-- any type should never raise a warning -->
+          <:slot any />
           <:slot any="any" />
           <:slot any={:any} />
           <:slot any={true} />
@@ -325,114 +325,296 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot any={1.0} />
           <:slot any={[]} />
           <:slot any={%Struct{}} />
+        </.func>
+        """
+      end
 
-          <!-- string warnings -->
+      def render_string_line, do: __ENV__.line + 5
+
+      def render_string(assigns) do
+        ~H"""
+        <.func>
+          <:slot string="string" />
           <:slot string={:string} />
+          <:slot string={true} />
+          <:slot string={1} />
+          <:slot string={1.0} />
+          <:slot string={[]} />
+          <:slot string={%Struct{}} />
+          <:slot string={nil} />
+        </.func>
+        """
+      end
 
-          <!-- atom warnings -->
+      def render_atom_line, do: __ENV__.line + 5
+
+      def render_atom(assigns) do
+        ~H"""
+        <.func>
           <:slot atom="atom" />
+          <:slot atom={:atom} />
+          <:slot atom={true} />
+          <:slot atom={1} />
+          <:slot atom={1.0} />
+          <:slot atom={[]} />
+          <:slot atom={%Struct{}} />
+          <:slot atom={nil} />
+        </.func>
+        """
+      end
 
-          <!-- boolean warnings -->
+      def render_boolean_line, do: __ENV__.line + 5
+
+      def render_boolean(assigns) do
+        ~H"""
+        <.func>
           <:slot boolean="boolean" />
+          <:slot boolean={:boolean} />
+          <:slot boolean={true} />
+          <:slot boolean={1} />
+          <:slot boolean={1.0} />
+          <:slot boolean={[]} />
+          <:slot boolean={%Struct{}} />
+          <:slot boolean={nil} />
+        </.func>
+        """
+      end
 
-          <!-- integer warnings -->
+      def render_integer_line, do: __ENV__.line + 5
+
+      def render_integer(assigns) do
+        ~H"""
+        <.func>
           <:slot integer="integer" />
+          <:slot integer={:integer} />
+          <:slot integer={true} />
+          <:slot integer={1} />
+          <:slot integer={1.0} />
+          <:slot integer={[]} />
+          <:slot integer={%Struct{}} />
+          <:slot integer={nil} />
+        </.func>
+        """
+      end
 
-          <!-- float warnings -->
+      def render_float_line, do: __ENV__.line + 5
+
+      def render_float(assigns) do
+        ~H"""
+        <.func>
           <:slot float="float" />
+          <:slot float={:float} />
+          <:slot float={true} />
+          <:slot float={1} />
+          <:slot float={1.0} />
+          <:slot float={[]} />
+          <:slot float={%Struct{}} />
+          <:slot float={nil} />
+        </.func>
+        """
+      end
 
-          <!-- list warnings -->
+      def render_list_line, do: __ENV__.line + 5
+
+      def render_list(assigns) do
+        ~H"""
+        <.func>
           <:slot list="list" />
+          <:slot list={:list} />
+          <:slot list={true} />
+          <:slot list={1} />
+          <:slot list={1.0} />
+          <:slot list={[]} />
+          <:slot list={%Struct{}} />
+          <:slot list={nil} />
+        </.func>
+        """
+      end
 
-          <!-- struct warnings -->
+      def render_struct_line, do: __ENV__.line + 5
+
+      def render_struct(assigns) do
+        ~H"""
+        <.func>
           <:slot struct="struct" />
-          
-          <!-- attrs with no expression -->
-          <:slot boolean />
-          <:slot string />
+          <:slot struct={:struct} />
+          <:slot struct={true} />
+          <:slot struct={1} />
+          <:slot struct={1.0} />
+          <:slot struct={[]} />
+          <:slot struct={%Struct{}} />
+          <:slot struct={nil} />
         </.func>
         """
       end
     end
 
     test "validate slot attr types" do
-      line = SlotAttrs.render_line()
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([SlotAttrs])
 
-      assert diagnostics == [
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: true",
-                 position: line + 35,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"struct\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, got: \"struct\"",
-                 position: line + 31,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"list\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :list, got: \"list\"",
-                 position: line + 28,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"float\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :float, got: \"float\"",
-                 position: line + 25,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"integer\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :integer, got: \"integer\"",
-                 position: line + 22,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"boolean\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :boolean, got: \"boolean\"",
-                 position: line + 19,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"atom\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be an :atom, got: \"atom\"",
-                 position: line + 16,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: :string",
-                 position: line + 13,
-                 severity: :warning
-               }
-             ]
+      string_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              {:struct, 6},
+              {[], 5},
+              {1.0, 4},
+              {1, 3},
+              {true, 2},
+              {:string, 1}
+              # {"string", 0},
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_string_line() + line,
+            message:
+              "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: #{inspect(value)}"
+          }
+        end
+
+      atom_warnings =
+        for {value, line} <- [
+              # {nil, 7},
+              # {:struct, 6}, # TODO: this should not cause a warning
+              {[], 5},
+              {1.0, 4},
+              {1, 3},
+              # {true, 2},
+              # {:atom, 1},
+              {"atom", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_atom_line() + line,
+            message:
+              "attribute \"atom\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be an :atom, got: #{inspect(value)}"
+          }
+        end
+
+      boolean_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              {:struct, 6},
+              {[], 5},
+              {1.0, 4},
+              {1, 3},
+              # {true, 2},
+              {:boolean, 1},
+              {"boolean", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_boolean_line() + line,
+            message:
+              "attribute \"boolean\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :boolean, got: #{inspect(value)}"
+          }
+        end
+
+      integer_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              {:struct, 6},
+              {[], 5},
+              {1.0, 4},
+              # {1, 3},
+              {true, 2},
+              {:integer, 1},
+              {"integer", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_integer_line() + line,
+            message:
+              "attribute \"integer\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :integer, got: #{inspect(value)}"
+          }
+        end
+
+      float_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              {:struct, 6},
+              {[], 5},
+              # {1.0, 4},
+              {1, 3},
+              {true, 2},
+              {:float, 1},
+              {"float", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_float_line() + line,
+            message:
+              "attribute \"float\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :float, got: #{inspect(value)}"
+          }
+        end
+
+      list_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              {:struct, 6},
+              # TODO: this should not cause a warning
+              {[], 5},
+              {1.0, 4},
+              {1, 3},
+              {true, 2},
+              # {:list, 1},
+              {"list", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_list_line() + line,
+            message:
+              "attribute \"list\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :list, got: #{inspect(value)}"
+          }
+        end
+
+      struct_warnings =
+        for {value, line} <- [
+              {nil, 7},
+              # {:struct, 6},
+              {[], 5},
+              {1.0, 4},
+              {1, 3},
+              {true, 2},
+              # {:struct, 1}, # TODO: fix this, should be a warning
+              {"struct", 0}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: SlotAttrs.render_struct_line() + line,
+            message:
+              "attribute \"struct\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, got: #{inspect(value)}"
+          }
+        end
+
+      assert diagnostics ==
+               string_warnings ++
+                 atom_warnings ++
+                 boolean_warnings ++
+                 integer_warnings ++
+                 float_warnings ++
+                 list_warnings ++
+                 struct_warnings
     end
 
     defmodule UndefinedSlots do
@@ -457,6 +639,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
         <!-- slot with undefined attrs -->
         <.func_undefined_slot_attrs>
+          <:named undefined />
           <:named undefined="undefined" />
         </.func_undefined_slot_attrs>
         """
@@ -475,6 +658,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  message:
                    "undefined slot \"undefined\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func/1",
                  position: line + 4,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 message:
+                   "undefined attribute \"undefined\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1",
+                 position: line + 10,
                  severity: :warning
                },
                %Diagnostic{
