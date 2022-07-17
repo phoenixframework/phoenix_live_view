@@ -484,36 +484,36 @@ defmodule Phoenix.ComponentTest do
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, "1"}},
+                 attrs: %{id: {_, _, {:lit, "1"}}},
                  file: ^file,
                  line: ^call_1_line
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, "2"}, email: {_, _, nil}}
+                 attrs: %{id: {_, _, {:lit, "2"}}, email: {_, _, nil}}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, "3"}},
+                 attrs: %{id: {_, _, {:lit, "3"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  file: ^file,
                  line: ^call_3_line
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, "4"}},
+                 attrs: %{id: {_, _, {:lit, "4"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, "5"}},
+                 attrs: %{id: {_, _, {:lit, "5"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: false
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, "6"}},
+                 attrs: %{id: {_, _, {:lit, "6"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: true
                }

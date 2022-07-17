@@ -435,7 +435,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line, state.caller)
+
+    store_component_call(
+      state.module,
+      {mod, fun},
+      all_slots,
+      attrs,
+      state.file,
+      line,
+      state.caller
+    )
 
     ast =
       quote line: line do
@@ -562,7 +571,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line, state.caller)
+
+    store_component_call(
+      state.module,
+      {mod, fun},
+      all_slots,
+      attrs,
+      state.file,
+      line,
+      state.caller
+    )
 
     ast =
       quote line: line do
@@ -1084,7 +1102,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
       pruned_attrs =
         for {attr, value, meta} <- attrs,
             is_binary(attr) and not String.starts_with?(attr, ":"),
-            do: {String.to_atom(attr), {meta[:line], meta[:column], component_call_value(value)}},
+            do:
+              {String.to_atom(attr),
+               {meta[:line], meta[:column], component_call_value(value, env)}},
             into: %{}
 
       root = List.keymember?(attrs, :root, 0)
@@ -1099,6 +1119,34 @@ defmodule Phoenix.LiveView.HTMLEngine do
       }
 
       Module.put_attribute(module, :__components_calls__, call)
+    end
+  end
+
+  defp component_call_value({:string, value, _meta}, _env) do
+    {:lit, value}
+  end
+
+  defp component_call_value(nil, _env) do
+    nil
+  end
+
+  defp component_call_value({:expr, value, %{line: line, column: column}}, env) do
+    case Code.string_to_quoted!(value, line: line, column: column, file: env.file) do
+      # lists
+      {ast, _, _} = value when is_list(ast) ->
+        {:list, value}
+
+      # structs
+      {:%, _, [{_, _, [mod]} | _]} ->
+        {:struct, lookup_alias(env, mod)}
+
+      # expressions
+      {_, _, _} = value ->
+        {:expr, value}
+
+      # literals
+      value ->
+        {:lit, value}
     end
   end
 
@@ -1124,10 +1172,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp component_call_value({:expr, value, _}), do: value
-  defp component_call_value({:string, string, _}), do: string
-  defp component_call_value(nil), do: nil
-
   ## Helpers
 
   for void <- ~w(area base br col hr img input link meta param command keygen source) do
@@ -1152,7 +1196,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
   end
-  
+
   # TODO: Use Macro.Env.fetch_alias/2 when we require Elixir v1.13+
   defp lookup_alias(%Macro.Env{aliases: aliases}, mod) do
     case Keyword.fetch(aliases, :"Elixir.#{mod}") do

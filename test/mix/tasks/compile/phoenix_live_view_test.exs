@@ -122,78 +122,310 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule TypeAttrs do
       use Phoenix.Component, global_prefixes: ~w(myprefix-)
 
-      attr :boolean, :boolean
+      defmodule Struct do
+        defstruct []
+      end
+
+      attr :any, :any
       attr :string, :string
+      attr :atom, :atom
+      attr :boolean, :boolean
+      attr :integer, :integer
+      attr :float, :float
+      attr :list, :list
+      attr :struct, Struct
+      attr :global, :global
+
       def func(assigns), do: ~H[]
 
-      attr :id, :string, required: true
-      attr :rest, :global
-      def local_button(assigns), do: ~H[<button id={@id} {@rest}/>]
+      def any_line, do: __ENV__.line + 4
 
-      def line, do: __ENV__.line + 4
-
-      def render(assigns) do
+      def any_render(assigns) do
         ~H"""
-        <.func boolean="btn"/>
-        <.func string/>
-        <.func boolean string="string"/>
-        <!-- <.func boolean={"can't validate"} string={:wont_validate}/> -->
-        <.local_button id="foo" class="my-class" myprefix-thing="value"/>
-        <.local_button id="foo" unknown-global="bad"/>
-        <.local_button id="foo" rest="nope"/>
-        <External.button id="foo" class="external" myprefix-external="value"/>
-        <External.button id="foo" unknown-global-external="bad"/>
+        <.func any="any" />
+        <.func any={:any} />
+        <.func any={true} />
+        <.func any={1} />
+        <.func any={1.0} />
+        <.func any={[]} />
+        <.func any={%Struct{}} />
+        <.func any={nil} />
+        """
+      end
+
+      def render_string_line, do: __ENV__.line + 4
+
+      def string_render(assigns) do
+        ~H"""
+        <.func string="string" />
+        <.func string={:string} />
+        <.func string={true} />
+        <.func string={1} />
+        <.func string={1.0} />
+        <.func string={[]} />
+        <.func string={%Struct{}} />
+        <.func string={nil} />
+        """
+      end
+
+      def render_atom_line, do: __ENV__.line + 4
+
+      def atom_render(assigns) do
+        ~H"""
+        <.func atom="atom" />
+        <.func atom={:atom} />
+        <.func atom={true} />
+        <.func atom={1} />
+        <.func atom={1.0} />
+        <.func atom={[]} />
+        <.func atom={%Struct{}} />
+        <.func atom={nil} />
+        """
+      end
+
+      def render_boolean_line, do: __ENV__.line + 4
+
+      def boolean_render(assigns) do
+        ~H"""
+        <.func boolean="boolean" />
+        <.func boolean={:boolean} />
+        <.func boolean={true} />
+        <.func boolean={1} />
+        <.func boolean={1.0} />
+        <.func boolean={[]} />
+        <.func boolean={%Struct{}} />
+        <.func boolean={nil} />
+        """
+      end
+
+      def render_integer_line, do: __ENV__.line + 4
+
+      def integer_render(assigns) do
+        ~H"""
+        <.func integer="integer" />
+        <.func integer={:integer} />
+        <.func integer={true} />
+        <.func integer={1} />
+        <.func integer={1.0} />
+        <.func integer={[]} />
+        <.func integer={%Struct{}} />
+        <.func integer={nil} />
+        """
+      end
+
+      def render_float_line, do: __ENV__.line + 4
+
+      def float_render(assigns) do
+        ~H"""
+        <.func float="float" />
+        <.func float={:float} />
+        <.func float={true} />
+        <.func float={1} />
+        <.func float={1.0} />
+        <.func float={[]} />
+        <.func float={%Struct{}} />
+        <.func float={nil} />
+        """
+      end
+
+      def render_list_line, do: __ENV__.line + 4
+
+      def list_render(assigns) do
+        ~H"""
+        <.func list="list" />
+        <.func list={:list} />
+        <.func list={true} />
+        <.func list={1} />
+        <.func list={1.0} />
+        <.func list={[]} />
+        <.func list={%Struct{}} />
+        <.func list={nil} />
+        """
+      end
+
+      def render_struct_line, do: __ENV__.line + 4
+
+      def struct_render(assigns) do
+        ~H"""
+        <.func struct="struct" />
+        <.func struct={:struct} />
+        <.func struct={true} />
+        <.func struct={1} />
+        <.func struct={1.0} />
+        <.func struct={[]} />
+        <.func struct={%Struct{}} />
+        <.func struct={nil} />
         """
       end
     end
 
     test "validate literal types" do
-      line = get_line(TypeAttrs)
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([TypeAttrs])
 
-      assert diagnostics == [
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got string: \"btn\"",
-                 position: line,
-                 severity: :warning
-               },
-               %Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 file: __ENV__.file,
-                 message:
-                   "attribute \"string\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :string, got boolean: true",
-                 position: line + 1,
-                 severity: :warning
-               },
-               %Mix.Task.Compiler.Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 file: __ENV__.file,
-                 message:
-                   "undefined attribute \"unknown-global\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1",
-                 position: line + 5,
-                 severity: :warning
-               },
-               %Mix.Task.Compiler.Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 file: __ENV__.file,
-                 message:
-                   "global attribute \"rest\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.local_button/1 may not be provided directly",
-                 position: line + 6,
-                 severity: :warning
-               },
-               %Mix.Task.Compiler.Diagnostic{
-                 compiler_name: "phoenix_live_view",
-                 details: nil,
-                 file: __ENV__.file,
-                 message:
-                   "undefined attribute \"unknown-global-external\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.button/1",
-                 position: line + 8,
-                 severity: :warning
-               }
-             ]
+      string_warnings =
+        for {value, line} <- [
+              # {"string", 0},
+              {:string, 1},
+              {true, 2},
+              {1, 3},
+              {1.0, 4},
+              {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_string_line() + line,
+            message:
+              "attribute \"string\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :string, got: #{inspect(value)}"
+          }
+        end
+
+      atom_warnings =
+        for {value, line} <- [
+              {"atom", 0},
+              # {:atom, 1},
+              # {true, 2},
+              {1, 3},
+              {1.0, 4},
+              {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6}
+              # {nil, 7},
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_atom_line() + line,
+            message:
+              "attribute \"atom\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be an :atom, got: #{inspect(value)}"
+          }
+        end
+
+      boolean_warnings =
+        for {value, line} <- [
+              {"boolean", 0},
+              {:boolean, 1},
+              # {true, 2},
+              {1, 3},
+              {1.0, 4},
+              {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_boolean_line() + line,
+            message:
+              "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got: #{inspect(value)}"
+          }
+        end
+
+      integer_warnings =
+        for {value, line} <- [
+              {"integer", 0},
+              {:integer, 1},
+              {true, 2},
+              # {1, 3},
+              {1.0, 4},
+              {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_integer_line() + line,
+            message:
+              "attribute \"integer\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be an :integer, got: #{inspect(value)}"
+          }
+        end
+
+      float_warnings =
+        for {value, line} <- [
+              {"float", 0},
+              {:float, 1},
+              {true, 2},
+              {1, 3},
+              # {1.0, 4},
+              {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_float_line() + line,
+            message:
+              "attribute \"float\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :float, got: #{inspect(value)}"
+          }
+        end
+
+      list_warnings =
+        for {value, line} <- [
+              {"list", 0},
+              {:list, 1},
+              {true, 2},
+              {1, 3},
+              {1.0, 4},
+              # {[], 5},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_list_line() + line,
+            message:
+              "attribute \"list\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :list, got: #{inspect(value)}"
+          }
+        end
+
+      struct_warnings =
+        for {value, line} <- [
+              {"struct", 0},
+              {:struct, 1},
+              {true, 2},
+              {1, 3},
+              {1.0, 4},
+              {[], 5},
+              # {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
+              {nil, 7}
+            ] do
+          %Diagnostic{
+            compiler_name: "phoenix_live_view",
+            details: nil,
+            file: __ENV__.file,
+            severity: :warning,
+            position: TypeAttrs.render_struct_line() + line,
+            message:
+              "attribute \"struct\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, got: #{inspect(value)}"
+          }
+        end
+
+      assert diagnostics ==
+               List.flatten([
+                 string_warnings,
+                 atom_warnings,
+                 boolean_warnings,
+                 integer_warnings,
+                 float_warnings,
+                 list_warnings,
+                 struct_warnings
+               ])
     end
 
     defmodule NoAttrs do
@@ -444,6 +676,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot struct={[]} />
           <:slot struct={%Struct{}} />
           <:slot struct={nil} />
+          <:slot struct={%Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct{}} />
         </.func>
         """
       end
@@ -599,13 +832,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         end
 
       assert diagnostics ==
-               string_warnings ++
-                 atom_warnings ++
-                 boolean_warnings ++
-                 integer_warnings ++
-                 float_warnings ++
-                 list_warnings ++
+               List.flatten([
+                 string_warnings,
+                 atom_warnings,
+                 boolean_warnings,
+                 integer_warnings,
+                 float_warnings,
+                 list_warnings,
                  struct_warnings
+               ])
     end
 
     defmodule UndefinedSlots do
