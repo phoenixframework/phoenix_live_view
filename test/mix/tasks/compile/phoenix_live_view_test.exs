@@ -455,13 +455,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       string_warnings =
         for {value, line} <- [
               {nil, 7},
-              # {:struct, 6},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
               {true, 2},
               {:string, 1}
-              # {"string", 0},
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -476,13 +475,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       atom_warnings =
         for {value, line} <- [
-              # {nil, 7},
-              # {:struct, 6}, # TODO: this should not cause a warning
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
-              # {true, 2},
-              # {:atom, 1},
               {"atom", 0}
             ] do
           %Diagnostic{
@@ -499,11 +495,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       boolean_warnings =
         for {value, line} <- [
               {nil, 7},
-              # {:struct, 6},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
-              # {true, 2},
               {:boolean, 1},
               {"boolean", 0}
             ] do
@@ -521,10 +516,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       integer_warnings =
         for {value, line} <- [
               {nil, 7},
-              # {:struct, 6},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
-              # {1, 3},
               {true, 2},
               {:integer, 1},
               {"integer", 0}
@@ -543,9 +537,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       float_warnings =
         for {value, line} <- [
               {nil, 7},
-              # {:struct, 6},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
-              # {1.0, 4},
               {1, 3},
               {true, 2},
               {:float, 1},
@@ -565,8 +558,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       list_warnings =
         for {value, line} <- [
               {nil, 7},
-              {{:%, [line: 428],
-                [{:__aliases__, [line: 428], [:Struct]}, {:%{}, [line: 428], []}]}, 6},
+              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -592,7 +584,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {1.0, 4},
               {1, 3},
               {true, 2},
-              # TODO: fix this, should be a warning
               {:struct, 1},
               {"struct", 0}
             ] do

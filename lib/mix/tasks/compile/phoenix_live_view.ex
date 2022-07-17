@@ -176,7 +176,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       errors
 
                     # string attribute type mismatch
-                    {%{type: :string}, :lit, attr_value} when not is_binary(attr_value) ->
+                    {%{type: :string}, attr_kind, attr_value} when attr_kind != :lit or not is_binary(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
                           "must be a :string, got: #{inspect(attr_value)}"
@@ -184,7 +184,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       [error(message, call.file, line) | errors]
 
                     # atom attribute type mismatch
-                    {%{type: :atom}, :lit, attr_value} when not is_atom(attr_value) ->
+                    {%{type: :atom}, attr_kind, attr_value} when attr_kind != :lit or not is_atom(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
                           "must be an :atom, got: #{inspect(attr_value)}"
@@ -192,7 +192,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       [error(message, call.file, line) | errors]
 
                     # boolean attribute type mismatch
-                    {%{type: :boolean}, :lit, attr_value} when not is_boolean(attr_value) ->
+                    {%{type: :boolean}, attr_kind, attr_value} when attr_kind != :lit or not is_boolean(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
                           "must be a :boolean, got: #{inspect(attr_value)}"
@@ -200,7 +200,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       [error(message, call.file, line) | errors]
 
                     # integer attribute type mismatch
-                    {%{type: :integer}, :lit, attr_value} when not is_integer(attr_value) ->
+                    {%{type: :integer}, attr_kind, attr_value} when attr_kind != :lit or not is_integer(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
                           "must be a :integer, got: #{inspect(attr_value)}"
@@ -208,7 +208,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       [error(message, call.file, line) | errors]
 
                     # float attribute type mismatch
-                    {%{type: :float}, :lit, attr_value} when not is_float(attr_value) ->
+                    {%{type: :float}, attr_kind, attr_value} when attr_kind != :lit or not is_float(attr_value) ->
                       message =
                         "attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)} " <>
                           "must be a :float, got: #{inspect(attr_value)}"

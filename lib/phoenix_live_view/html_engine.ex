@@ -393,7 +393,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line, state.caller)
 
     ast =
       quote line: tag_meta.line do
@@ -435,7 +435,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line, state.caller)
 
     ast =
       quote line: line do
@@ -463,7 +463,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {assigns, state} = build_self_close_component_assigns(attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line, state.caller)
 
     ast =
       quote line: line do
@@ -562,7 +562,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line)
+    store_component_call(state.module, {mod, fun}, all_slots, attrs, state.file, line, state.caller)
 
     ast =
       quote line: line do
@@ -1074,11 +1074,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp store_component_call(module, component, slots, attrs, file, line) do
+  defp store_component_call(module, component, slots, attrs, file, line, env) do
     if Module.open?(module) do
       pruned_slots =
         for {slot_name, slot_values} <- slots,
-            do: {slot_name, Enum.map(slot_values, &slot_call_value/1)},
+            do: {slot_name, Enum.map(slot_values, &slot_call_value(&1, env))},
             into: %{}
 
       pruned_attrs =
@@ -1102,7 +1102,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
+  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}, env) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       case value do
         # lists
@@ -1110,8 +1110,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
           {name, {line, column, :list, value}}
 
         # structs
-        {:%, _, _} = value ->
-          {name, {line, column, :struct, value}}
+        {:%, _, [{_, _, [mod]} | _]} ->
+          {name, {line, column, :struct, lookup_alias(env, mod)}}
 
         # expressions
         {_, _, _} = value ->
@@ -1151,6 +1151,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
+  end
+  
+  # TODO: Use Macro.Env.fetch_alias/2 when we require Elixir v1.13+
+  defp lookup_alias(%Macro.Env{aliases: aliases}, mod) do
+    case Keyword.fetch(aliases, :"Elixir.#{mod}") do
+      {:ok, alias} -> alias
+      :error -> mod
+    end
   end
 
   defp remove_phx_no_break(attrs) do
