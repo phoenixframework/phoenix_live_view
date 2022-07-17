@@ -1106,25 +1106,25 @@ defmodule Phoenix.LiveView.HTMLEngine do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       case value do
         # lists
-        {ast, _, _} when is_list(ast) ->
-          {name, {line, column, :list}}
+        {ast, _, _} = value when is_list(ast) ->
+          {name, {line, column, :list, value}}
 
         # structs
-        {:%, _, _} ->
-          {name, {line, column, :struct}}
+        {:%, _, _} = value ->
+          {name, {line, column, :struct, value}}
 
         # expressions
-        {_, _, _} ->
-          {name, {line, column, :expr}}
+        {_, _, _} = value ->
+          {name, {line, column, :expr, value}}
 
         # literals
         value ->
-          {name, {line, column, value}}
+          {name, {line, column, :lit, value}}
       end
     end
   end
 
-  defp component_call_value({:expr, _, _}), do: :expr
+  defp component_call_value({:expr, value, _}), do: value
   defp component_call_value({:string, string, _}), do: string
   defp component_call_value(nil), do: nil
 

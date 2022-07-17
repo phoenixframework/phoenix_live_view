@@ -475,7 +475,7 @@ defmodule Phoenix.ComponentTest do
       assert [
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, :expr}},
+                 attrs: %{id: {_, _, _}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
                  line: ^with_global_line,
@@ -700,55 +700,56 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "stores component calls with slots" do
-      assert FunctionComponentWithSlots.__components_calls__() == [
+      file = __ENV__.file
+      assert [
                %{
                  attrs: %{},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
-                 file: __ENV__.file,
+                 file: ^file,
                  line: 576,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {578, 9, :expr}}]}
+                 slots: %{inner_block: [%{inner_block: {578, 9, :expr, _}}]}
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
-                 file: __ENV__.file,
+                 file: ^file,
                  line: 580,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {587, 11, :expr}}],
-                   header: [%{inner_block: {581, 11, :expr}}],
-                   inner_block: [%{inner_block: {590, 9, :expr}}]
+                   footer: [%{inner_block: {587, 11, :expr, _}}],
+                   header: [%{inner_block: {581, 11, :expr, _}}],
+                   inner_block: [%{inner_block: {590, 9, :expr, _}}]
                  }
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
-                 file: __ENV__.file,
+                 file: ^file,
                  line: 592,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {594, 9, :expr}}],
-                   slot: [%{attr: {593, 11, "1"}, inner_block: {593, 11, nil}}]
+                   inner_block: [%{inner_block: {594, 9, :expr, _}}],
+                   slot: [%{attr: {593, 11, :lit, "1"}, inner_block: {593, 11, :lit, nil}}]
                  }
                },
                %{
-                 attrs: %{rows: {596, 17, :expr}},
+                 attrs: %{rows: {596, 17, _ast}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
+                 file: ^file,
                  line: 596,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {597, 11, :expr}, label: {597, 11, :expr}},
-                     %{inner_block: {601, 11, :expr}, label: {601, 11, "Address"}}
+                     %{inner_block: {597, 11, :expr, _}, label: {597, 11, :expr, _}},
+                     %{inner_block: {601, 11, :expr, _}, label: {601, 11, :lit, "Address"}}
                    ],
-                   inner_block: [%{inner_block: {604, 9, :expr}}]
+                   inner_block: [%{inner_block: {604, 9, :expr, _}}]
                  },
-                 file: __ENV__.file
                }
-             ]
+             ] = FunctionComponentWithSlots.__components_calls__() 
     end
 
     test "does not generate __components_calls__ if there's no call" do

@@ -137,7 +137,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func boolean="btn"/>
         <.func string/>
         <.func boolean string="string"/>
-        <.func boolean={"can't validate"} string={:wont_validate}/>
+        <!-- <.func boolean={"can't validate"} string={:wont_validate}/> -->
         <.local_button id="foo" class="my-class" myprefix-thing="value"/>
         <.local_button id="foo" unknown-global="bad"/>
         <.local_button id="foo" rest="nope"/>
@@ -455,7 +455,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       string_warnings =
         for {value, line} <- [
               {nil, 7},
-              {:struct, 6},
+              # {:struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -499,7 +499,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       boolean_warnings =
         for {value, line} <- [
               {nil, 7},
-              {:struct, 6},
+              # {:struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -521,7 +521,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       integer_warnings =
         for {value, line} <- [
               {nil, 7},
-              {:struct, 6},
+              # {:struct, 6},
               {[], 5},
               {1.0, 4},
               # {1, 3},
@@ -543,7 +543,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       float_warnings =
         for {value, line} <- [
               {nil, 7},
-              {:struct, 6},
+              # {:struct, 6},
               {[], 5},
               # {1.0, 4},
               {1, 3},
@@ -565,13 +565,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       list_warnings =
         for {value, line} <- [
               {nil, 7},
-              {:struct, 6},
-              # TODO: this should not cause a warning
+              {{:%, [line: 428],
+                [{:__aliases__, [line: 428], [:Struct]}, {:%{}, [line: 428], []}]}, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
               {true, 2},
-              # {:list, 1},
+              {:list, 1},
               {"list", 0}
             ] do
           %Diagnostic{
@@ -588,12 +588,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       struct_warnings =
         for {value, line} <- [
               {nil, 7},
-              # {:struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
               {true, 2},
-              # {:struct, 1}, # TODO: fix this, should be a warning
+              # TODO: fix this, should be a warning
+              {:struct, 1},
               {"struct", 0}
             ] do
           %Diagnostic{
