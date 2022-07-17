@@ -459,9 +459,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree(
-         [{:tag_close, name, _close_meta} | tokens],
+         [{:tag_close, name, close_meta} | tokens],
          buffer,
-         [{name, attrs, _open_meta, upper_buffer} | stack]
+         [{name, attrs, open_meta, upper_buffer} | stack]
        ) do
     mode =
       cond do
@@ -471,7 +471,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       end
 
     buffer = buffer |> Enum.reverse() |> may_set_preserve_on_text(mode, name)
-    tag_block = {:tag_block, name, attrs, buffer, %{mode: mode}}
+    meta = %{mode: mode, offset_start: open_meta.offset, offset_end: close_meta.offset}
+    tag_block = {:tag_block, name, attrs, buffer, meta}
 
     to_tree(tokens, [tag_block | upper_buffer], stack)
   end
