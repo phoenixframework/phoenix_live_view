@@ -963,7 +963,7 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "raise if attr is not declared before the first function definition" do
+    test "raise if attr is declared between multiple function heads" do
       msg = ~r/attributes must be defined before the first function clause at line \d+/
 
       assert_raise CompileError, msg, fn ->
@@ -975,6 +975,23 @@ defmodule Phoenix.ComponentTest do
           def func(assigns = %{bar: _}), do: ~H[]
 
           attr :bar, :any
+          def func(assigns = %{baz: _}), do: ~H[]
+        end
+      end
+    end
+
+  test "raise if slot is declared between multiple function heads" do
+      msg = ~r/slots must be defined before the first function clause at line \d+/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.MultiClauseWrong do
+          use Elixir.Phoenix.Component
+
+          slot :inner_block
+          def func(assigns = %{foo: _}), do: ~H[]
+          def func(assigns = %{bar: _}), do: ~H[]
+
+          slot :named
           def func(assigns = %{baz: _}), do: ~H[]
         end
       end

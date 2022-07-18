@@ -1058,15 +1058,25 @@ defmodule Phoenix.Component do
     slots
   end
 
-  defp raise_if_function_already_defined!(env, name, _slots, attrs) do
-    # TODO: handle first_slot_line
+  defp raise_if_function_already_defined!(env, name, slots, attrs) do
     if Module.defines?(env.module, {name, 1}) do
       {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
-      [%{line: first_attr_line} | _] = attrs
 
-      compile_error!(first_attr_line, env.file, """
-      attributes must be defined before the first function clause at line #{meta[:line]}
-      """)
+      unless Enum.empty?(attrs) do
+        [%{line: first_attr_line} | _] = attrs
+
+        compile_error!(first_attr_line, env.file, """
+        attributes must be defined before the first function clause at line #{meta[:line]}
+        """)
+      end
+
+      unless Enum.empty?(slots) do
+        [%{line: first_slot_line} | _] = slots
+
+        compile_error!(first_slot_line, env.file, """
+        slots must be defined before the first function clause at line #{meta[:line]}
+        """)
+      end
     end
   end
 
