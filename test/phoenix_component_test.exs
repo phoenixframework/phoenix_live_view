@@ -1153,6 +1153,57 @@ defmodule Phoenix.ComponentTest do
              """)
     end
 
+    test "raise if an unknown expression is encountered in a slot block" do
+      msg =
+        ~r"unexpected expression encountered in slot :named, got: foobar\(\). The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.UnexpectedExpressionInSlotBlock do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            foobar()
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if an unknown literal is encountered in a slot block" do
+      msg =
+        ~r"unexpected literal encountered in slot :named, got: :ok. The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.UnexpectedLiteralInSlotBlock2 do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            :ok
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "does not raise if code comments are in a slot block" do
+      assert Code.compile_string("""
+               defmodule CodeCommentsInSlotBlock do
+                 use Phoenix.Component
+                 
+                 slot :named do
+                   # a comment
+                   attr :foo, :any
+                   # another comment
+                   attr :bar, :any
+                 end
+
+                 def func(assigns), do: ~H[]
+               end
+             """)
+    end
+
     test "raise on more than one :global attr" do
       msg = ~r"cannot define global attribute :rest2 because one is already defined under :rest"
 

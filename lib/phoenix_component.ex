@@ -1134,7 +1134,7 @@ defmodule Phoenix.Component do
     # TODO: implement required in opts
     {block, opts} = Keyword.pop(opts, :do, nil)
 
-    slot_attrs_ast = build_slot_attrs_ast(name, block)
+    slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
     quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
       Phoenix.Component.__slot__!(__MODULE__, name, opts, __ENV__.line, __ENV__.file)
@@ -1142,20 +1142,38 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp build_slot_attrs_ast(_slot, nil) do
+  defp build_slot_attrs_ast(_slot, nil, _caller) do
     nil
   end
 
-  defp build_slot_attrs_ast(slot, {:__block__, line, attr_asts}) do
-    [do: {:__block__, line, Enum.map(attr_asts, &build_slot_attr_ast(slot, &1))}]
+  defp build_slot_attrs_ast(slot, {:__block__, line, attr_asts}, caller) do
+    [do: {:__block__, line, Enum.map(attr_asts, &build_slot_attr_ast(slot, &1, caller))}]
   end
 
-  defp build_slot_attrs_ast(slot, attr_ast) do
-    [do: build_slot_attr_ast(slot, attr_ast)]
+  defp build_slot_attrs_ast(slot, attr_ast, caller) do
+    [do: build_slot_attr_ast(slot, attr_ast, caller)]
   end
 
-  defp build_slot_attr_ast(slot, {:attr, line, args}) do
+  defp build_slot_attr_ast(slot, {:attr, line, args}, _caller) do
     {:slot_attr, line, [slot | args]}
+  end
+
+  defp build_slot_attr_ast(slot, {_, [line: line], _} = expression, caller) do
+    compile_error!(
+      line,
+      caller.file,
+      "unexpected expression encountered in slot #{inspect(slot)}, got: #{Macro.to_string(expression)}. " <>
+        "The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
+    )
+  end
+
+  defp build_slot_attr_ast(slot, literal, caller) do
+    compile_error!(
+      caller.line,
+      caller.file,
+      "unexpected literal encountered in slot #{inspect(slot)}, got: #{Macro.to_string(literal)}. " <>
+        "The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
+    )
   end
 
   @doc false
