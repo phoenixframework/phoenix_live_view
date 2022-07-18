@@ -1065,6 +1065,20 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if slot attr type is not supported" do
+      assert_raise CompileError, ~r/invalid type :not_a_type for attr :foo in slot :named/, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            attr :foo, :not_a_type
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
     test "raise if attr option is not supported" do
       assert_raise CompileError, ~r"invalid option :not_an_opt for attr :foo", fn ->
         defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
@@ -1074,6 +1088,22 @@ defmodule Phoenix.ComponentTest do
           def func(assigns), do: ~H[]
         end
       end
+    end
+
+    test "raise if slot attr option is not supported" do
+      assert_raise CompileError,
+                   ~r"invalid option :not_an_opt for attr :foo in slot :named",
+                   fn ->
+                     defmodule Phoenix.ComponentTest.SlotAttrOptionNotSupported do
+                       use Elixir.Phoenix.Component
+
+                       slot :named do
+                         attr :foo, :any, not_an_opt: true
+                       end
+
+                       def func(assigns), do: ~H[]
+                     end
+                   end
     end
 
     test "raise if attr is duplicated" do
@@ -1086,6 +1116,41 @@ defmodule Phoenix.ComponentTest do
           def func(assigns), do: ~H[]
         end
       end
+    end
+
+    test "raise if slot attr is duplicated" do
+      assert_raise CompileError,
+                   ~r"a duplicate attribute with name :foo in slot :named already exists",
+                   fn ->
+                     defmodule Phoenix.ComponentTest.SlotAttrDup do
+                       use Elixir.Phoenix.Component
+
+                       slot :named do
+                         attr :foo, :any, required: true
+                         attr :foo, :string
+                       end
+
+                       def func(assigns), do: ~H[]
+                     end
+                   end
+    end
+
+    test "does not raise if multiple slots with different names share the same attr names" do
+      assert Code.compile_string("""
+               defmodule MultipleSlotAttrs do
+                 use Phoenix.Component
+                 
+                 slot :foo do
+                   attr :attr, :any
+                 end
+
+                 slot :bar do
+                   attr :attr, :any
+                 end
+                 
+                 def func(assigns), do: ~H[]
+               end
+             """)
     end
 
     test "raise on more than one :global attr" do
@@ -1147,15 +1212,15 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "does not raise when there is a nested module" do
-      Code.compile_string("""
-        defmodule NestedModules do
-          use Phoenix.Component
+      assert Code.compile_string("""
+               defmodule NestedModules do
+                 use Phoenix.Component
 
-          defmodule Nested do
-            def fun(arg), do: arg
-          end
-        end
-      """)
+                 defmodule Nested do
+                   def fun(arg), do: arg
+                 end
+               end
+             """)
     end
   end
 end

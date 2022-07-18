@@ -666,8 +666,8 @@ defmodule Phoenix.Component do
       compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    type = validate_attr_type!(module, name, type, line, file)
-    validate_attr_opts!(name, opts, line, file)
+    type = validate_attr_type!(module, slot, name, type, line, file)
+    validate_attr_opts!(slot, name, opts, line, file)
 
     Module.put_attribute(module, :__attrs__, %{
       slot: slot,
@@ -683,15 +683,21 @@ defmodule Phoenix.Component do
   @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(module, name, type, line, file) when is_atom(type) do
+  defp validate_attr_type!(module, slot, name, type, line, file) when is_atom(type) do
     attrs = get_attrs(module)
 
     cond do
-      Enum.find(attrs, fn attr -> attr.name == name end) ->
+      Enum.find(attrs, fn attr -> attr.name == name and attr.slot == slot end) && slot ->
+        compile_error!(line, file, """
+        a duplicate attribute with name #{inspect(name)} in slot #{inspect(slot)} already exists\
+        """)
+
+      Enum.find(attrs, fn attr -> attr.name == name end) && is_nil(slot) ->
         compile_error!(line, file, """
         a duplicate attribute with name #{inspect(name)} already exists\
         """)
 
+      # TODO: can slot attributes be global?
       existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
         compile_error!(line, file, """
         cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
@@ -706,19 +712,19 @@ defmodule Phoenix.Component do
     case Atom.to_string(type) do
       "Elixir." <> _ -> {:struct, type}
       _ when type in @valid_types -> type
-      _ -> bad_type!(name, type, line, file)
+      _ -> bad_type!(slot, name, type, line, file)
     end
   end
 
-  defp validate_attr_type!(_module, name, type, line, file) do
-    bad_type!(name, type, line, file)
+  defp validate_attr_type!(_module, slot, name, type, line, file) do
+    bad_type!(slot, name, type, line, file)
   end
 
   defp compile_error!(line, file, msg) do
     raise CompileError, line: line, file: file, description: msg
   end
 
-  defp bad_type!(name, type, line, file) do
+  defp bad_type!(nil, name, type, line, file) do
     compile_error!(line, file, """
     invalid type #{inspect(type)} for attr #{inspect(name)}. \
     The following types are supported:
@@ -729,11 +735,31 @@ defmodule Phoenix.Component do
     """)
   end
 
+  defp bad_type!(slot, name, type, line, file) do
+    compile_error!(line, file, """
+    invalid type #{inspect(type)} for attr #{inspect(name)} in slot #{inspect(slot)}. \
+    The following types are supported:
+
+      * any Elixir struct, such as URI, MyApp.User, etc
+      * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
+      * :any for all other types
+    """)
+  end
+
   @valid_opts [:required, :default]
-  defp validate_attr_opts!(name, opts, line, file) do
+  defp validate_attr_opts!(nil, name, opts, line, file) do
     for {key, _} <- opts, key not in @valid_opts do
       compile_error!(line, file, """
       invalid option #{inspect(key)} for attr #{inspect(name)}. \
+      The supported options are: #{inspect(@valid_opts)}
+      """)
+    end
+  end
+
+  defp validate_attr_opts!(slot, name, opts, line, file) do
+    for {key, _} <- opts, key not in @valid_opts do
+      compile_error!(line, file, """
+      invalid option #{inspect(key)} for attr #{inspect(name)} in slot #{inspect(slot)}. \
       The supported options are: #{inspect(@valid_opts)}
       """)
     end
