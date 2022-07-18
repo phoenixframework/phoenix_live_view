@@ -791,19 +791,35 @@ defmodule Phoenix.Component do
         register_component!(kind, env, name, false)
 
       _ ->
-        # TODO: raise if misplaced slot funs: this is where we raise if there is no function body
         attrs = pop_attrs(env)
 
-        validate_misplaced_attrs!(attrs, env.file, fn ->
-          case length(args) do
-            1 ->
-              "could not define attributes for function #{name}/1. " <>
-                "Components cannot be dynamically defined or have default arguments"
+        unless Enum.empty?(attrs) do
+          validate_misplaced_attrs!(attrs, env.file, fn ->
+            case length(args) do
+              1 ->
+                "could not define attributes for function #{name}/1. " <>
+                  "Components cannot be dynamically defined or have default arguments"
 
-            arity ->
-              "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
-          end
-        end)
+              arity ->
+                "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
+            end
+          end)
+        end
+
+        slots = pop_slots(env)
+
+        unless Enum.empty?(slots) do
+          validate_misplaced_slots!(slots, env.file, fn ->
+            case length(args) do
+              1 ->
+                "could not define slots for function #{name}/1. " <>
+                  "Components cannot be dynamically defined or have default arguments"
+
+              arity ->
+                "cannot declare slots for function #{name}/#{arity}. Components must be functions with arity 1"
+            end
+          end)
+        end
     end
   end
 
@@ -1027,6 +1043,12 @@ defmodule Phoenix.Component do
   defp validate_misplaced_attrs!(attrs, file, message_fun) do
     with [%{line: first_attr_line} | _] <- attrs do
       compile_error!(first_attr_line, file, message_fun.())
+    end
+  end
+
+  defp validate_misplaced_slots!(slots, file, message_fun) do
+    with [%{line: first_slot_line} | _] <- slots do
+      compile_error!(first_slot_line, file, message_fun.())
     end
   end
 

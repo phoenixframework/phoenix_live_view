@@ -701,6 +701,7 @@ defmodule Phoenix.ComponentTest do
 
     test "stores component calls with slots" do
       file = __ENV__.file
+
       assert [
                %{
                  attrs: %{},
@@ -747,9 +748,9 @@ defmodule Phoenix.ComponentTest do
                      %{inner_block: {601, 11, :expr, _}, label: {601, 11, :lit, "Address"}}
                    ],
                    inner_block: [%{inner_block: {604, 9, :expr, _}}]
-                 },
+                 }
                }
-             ] = FunctionComponentWithSlots.__components_calls__() 
+             ] = FunctionComponentWithSlots.__components_calls__()
     end
 
     test "does not generate __components_calls__ if there's no call" do
@@ -980,7 +981,7 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-  test "raise if slot is declared between multiple function heads" do
+    test "raise if slot is declared between multiple function heads" do
       msg = ~r/slots must be defined before the first function clause at line \d+/
 
       assert_raise CompileError, msg, fn ->
@@ -1006,6 +1007,20 @@ defmodule Phoenix.ComponentTest do
           use Elixir.Phoenix.Component
 
           attr :foo, :any
+          def func(a, b), do: a + b
+        end
+      end
+    end
+
+    test "raise if slot is declared on an invalid function" do
+      msg =
+        ~r/cannot declare slots for function func\/2\. Components must be functions with arity 1/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotOnInvalidFunction do
+          use Elixir.Phoenix.Component
+
+          slot :inner_block
           def func(a, b), do: a + b
         end
       end
