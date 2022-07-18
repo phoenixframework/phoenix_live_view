@@ -1040,6 +1040,20 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if slot is declared without a related function" do
+      msg = ~r/cannot define slots without a related function component/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotOnInvalidFunction do
+          use Elixir.Phoenix.Component
+
+          def func(assigns = %{baz: _}), do: ~H[]
+
+          slot :inner_block
+        end
+      end
+    end
+
     test "raise if attr type is not supported" do
       assert_raise CompileError, ~r/invalid type :not_a_type for attr :foo/, fn ->
         defmodule Phoenix.ComponentTest.AttrTypeNotSupported do

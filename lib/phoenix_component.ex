@@ -793,44 +793,44 @@ defmodule Phoenix.Component do
       _ ->
         attrs = pop_attrs(env)
 
-        unless Enum.empty?(attrs) do
-          validate_misplaced_attrs!(attrs, env.file, fn ->
-            case length(args) do
-              1 ->
-                "could not define attributes for function #{name}/1. " <>
-                  "Components cannot be dynamically defined or have default arguments"
+        validate_misplaced_attrs!(attrs, env.file, fn ->
+          case length(args) do
+            1 ->
+              "could not define attributes for function #{name}/1. " <>
+                "Components cannot be dynamically defined or have default arguments"
 
-              arity ->
-                "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
-            end
-          end)
-        end
+            arity ->
+              "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
+          end
+        end)
 
         slots = pop_slots(env)
 
-        unless Enum.empty?(slots) do
-          validate_misplaced_slots!(slots, env.file, fn ->
-            case length(args) do
-              1 ->
-                "could not define slots for function #{name}/1. " <>
-                  "Components cannot be dynamically defined or have default arguments"
+        validate_misplaced_slots!(slots, env.file, fn ->
+          case length(args) do
+            1 ->
+              "could not define slots for function #{name}/1. " <>
+                "Components cannot be dynamically defined or have default arguments"
 
-              arity ->
-                "cannot declare slots for function #{name}/#{arity}. Components must be functions with arity 1"
-            end
-          end)
-        end
+            arity ->
+              "cannot declare slots for function #{name}/#{arity}. Components must be functions with arity 1"
+          end
+        end)
     end
   end
 
   @doc false
   defmacro __before_compile__(env) do
     attrs = pop_attrs(env)
-    # TODO: validate_misplaced_slots!
-    _slots = pop_slots(env)
 
     validate_misplaced_attrs!(attrs, env.file, fn ->
       "cannot define attributes without a related function component"
+    end)
+
+    slots = pop_slots(env)
+
+    validate_misplaced_slots!(slots, env.file, fn ->
+      "cannot define slots without a related function component"
     end)
 
     components = Module.get_attribute(env.module, :__components__)
