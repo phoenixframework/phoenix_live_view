@@ -1136,21 +1136,23 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "does not raise if multiple slots with different names share the same attr names" do
-      assert Code.compile_string("""
-               defmodule MultipleSlotAttrs do
-                 use Phoenix.Component
-                 
-                 slot :foo do
-                   attr :attr, :any
-                 end
+      mod = fn ->
+        defmodule MultipleSlotAttrs do
+          use Phoenix.Component
 
-                 slot :bar do
-                   attr :attr, :any
-                 end
-                 
-                 def func(assigns), do: ~H[]
-               end
-             """)
+          slot :foo do
+            attr :attr, :any
+          end
+
+          slot :bar do
+            attr :attr, :any
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+
+      assert mod.()
     end
 
     test "raise if an unknown expression is encountered in a slot block" do
@@ -1188,20 +1190,22 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "does not raise if code comments are in a slot block" do
-      assert Code.compile_string("""
-               defmodule CodeCommentsInSlotBlock do
-                 use Phoenix.Component
-                 
-                 slot :named do
-                   # a comment
-                   attr :foo, :any
-                   # another comment
-                   attr :bar, :any
-                 end
+      mod = fn ->
+        defmodule CodeCommentsInSlotBlock do
+          use Phoenix.Component
 
-                 def func(assigns), do: ~H[]
-               end
-             """)
+          slot :named do
+            # a comment
+            attr :foo, :any
+            # another comment
+            attr :bar, :any
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+
+      assert mod.()
     end
 
     test "raise on more than one :global attr" do
@@ -1263,15 +1267,17 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "does not raise when there is a nested module" do
-      assert Code.compile_string("""
-               defmodule NestedModules do
-                 use Phoenix.Component
+      mod = fn ->
+        defmodule NestedModules do
+          use Phoenix.Component
 
-                 defmodule Nested do
-                   def fun(arg), do: arg
-                 end
-               end
-             """)
+          defmodule Nested do
+            def fun(arg), do: arg
+          end
+        end
+      end
+
+      assert mod.()
     end
   end
 end
