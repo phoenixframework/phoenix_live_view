@@ -921,19 +921,6 @@ defmodule Phoenix.ComponentTest do
              }
     end
 
-    test "raise if :doc is not a string" do
-      msg = ~r/doc must be a string or false, got: :foo/
-
-      assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.AttrDocsInvalidType do
-          use Elixir.Phoenix.Component
-
-          attr :invalid, :any, doc: :foo
-          def func(assigns), do: ~H[]
-        end
-      end
-    end
-
     test "injects attr docs to function component @doc string" do
       {_, _, :elixir, "text/markdown", _, _, docs} =
         Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
@@ -961,6 +948,45 @@ defmodule Phoenix.ComponentTest do
 
       for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
         assert components[fun] == doc
+      end
+    end
+
+    test "raise if :doc is not a string" do
+      msg = ~r/doc must be a string or false, got: :foo/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrDocsInvalidType do
+          use Elixir.Phoenix.Component
+
+          attr :invalid, :any, doc: :foo
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if attr name is not an atom" do
+      msg = ~r/attribute names must be atoms, got: "not_an_atom"/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrNameInvalidType do
+          use Elixir.Phoenix.Component
+
+          attr "not_an_atom", :any
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if slot name is not an atom" do
+      msg = ~r/slot names must be atoms, got: "not_an_atom"/
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotNameInvalidType do
+          use Elixir.Phoenix.Component
+
+          slot "not_an_atom"
+          def func(assigns), do: ~H[]
+        end
       end
     end
 
