@@ -619,7 +619,7 @@ defmodule Phoenix.Component do
         """
       end
   '''
-  defmacro attr(name, type, opts \\ []) do
+  defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.__attr__!(__MODULE__, nil, name, type, opts, __ENV__.line, __ENV__.file)
     end
@@ -634,20 +634,8 @@ defmodule Phoenix.Component do
 
   @doc false
   def __attr__!(module, slot \\ nil, name, type, opts, line, file) do
-    cond do
-      not is_atom(name) ->
-        compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
-
-      not is_list(opts) ->
-        compile_error!(line, file, """
-        expected attr/3 to receive keyword list of options, but got #{inspect(opts)}\
-        """)
-
-      type == :global and Keyword.has_key?(opts, :required) ->
-        compile_error!(line, file, "global attributes do not support the :required option")
-
-      true ->
-        :ok
+    if type == :global and Keyword.has_key?(opts, :required) do
+      compile_error!(line, file, "global attributes do not support the :required option")
     end
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
@@ -1128,12 +1116,13 @@ defmodule Phoenix.Component do
     end
   end
 
-  # TODO: add docs
-  defmacro slot(name, opts \\ []) do
-    # TODO: raise compile error if unexpected expressions are encountered
-    # TODO: implement required in opts
-    {block, opts} = Keyword.pop(opts, :do, nil)
+  @doc """
+  Defines a declarative slot.
 
+  DOCS WIP
+  """
+  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
+    {block, opts} = Keyword.pop(opts, :do, nil)
     slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
     quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
@@ -1178,20 +1167,6 @@ defmodule Phoenix.Component do
 
   @doc false
   def __slot__!(module, name, opts, line, file) do
-    # TODO: add tests covering these compile time validations
-    cond do
-      not is_atom(name) ->
-        compile_error!(line, file, "slot names must be atoms, got: #{inspect(name)}")
-
-      not is_list(opts) ->
-        compile_error!(line, file, """
-        expected slot/3 to receive keyword list of options, but got #{inspect(opts)}\
-        """)
-
-      true ->
-        :ok
-    end
-
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do

@@ -964,27 +964,41 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "raise if attr name is not an atom" do
-      msg = ~r/attribute names must be atoms, got: "not_an_atom"/
-
-      assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.AttrNameInvalidType do
+    test "raise on invalid attr/2 args" do
+      assert_raise FunctionClauseError, fn ->
+        defmodule Phoenix.ComponentTest.AttrMacroInvalidName do
           use Elixir.Phoenix.Component
 
-          attr "not_an_atom", :any
+          attr "not an atom", :any
+          def func(assigns), do: ~H[]
+        end
+      end
+
+      assert_raise FunctionClauseError, fn ->
+        defmodule Phoenix.ComponentTest.AttrMacroInvalidOpts do
+          use Elixir.Phoenix.Component
+
+          attr :attr, :any, "not a list"
           def func(assigns), do: ~H[]
         end
       end
     end
 
-    test "raise if slot name is not an atom" do
-      msg = ~r/slot names must be atoms, got: "not_an_atom"/
-
-      assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.SlotNameInvalidType do
+    test "raise on invalid slot/3 args" do
+      assert_raise FunctionClauseError, fn ->
+        defmodule Phoenix.ComponentTest.SlotMacroInvalidName do
           use Elixir.Phoenix.Component
 
-          slot "not_an_atom"
+          slot "not an atom"
+          def func(assigns), do: ~H[]
+        end
+      end
+
+      assert_raise FunctionClauseError, fn ->
+        defmodule Phoenix.ComponentTest.SlotMacroInvalidOpts do
+          use Elixir.Phoenix.Component
+
+          slot :slot, "not a list"
           def func(assigns), do: ~H[]
         end
       end
