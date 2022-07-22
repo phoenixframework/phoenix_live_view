@@ -115,8 +115,49 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule External do
       use Phoenix.Component
       attr :id, :string, required: true
-      attr :rest, :global
-      def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+
+      slot :named do
+        attr :attr, :any, required: true
+      end
+
+      def render(assigns), do: ~H[]
+    end
+
+    defmodule ExternalCalls do
+      use Phoenix.Component
+
+      def line, do: __ENV__.line + 4
+
+      def render(assigns) do
+        ~H"""
+        <External.render>
+          <:named />
+        </External.render>
+        """
+      end
+    end
+
+    test "validates attrs and slots for external function components" do
+      diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([ExternalCalls])
+
+      assert diagnostics == [
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 file: __ENV__.file,
+                 message:
+                   "missing required attribute \"attr\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1",
+                 position: ExternalCalls.line() + 1,
+                 severity: :warning
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 file: __ENV__.file,
+                 message:
+                   "missing required attribute \"id\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1",
+                 position: ExternalCalls.line(),
+                 severity: :warning
+               }
+             ]
     end
 
     defmodule TypeAttrs do
