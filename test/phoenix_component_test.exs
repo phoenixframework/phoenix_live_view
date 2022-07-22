@@ -761,11 +761,22 @@ defmodule Phoenix.ComponentTest do
       defmodule Bodyless do
         use Phoenix.Component
 
+        def example_line, do: __ENV__.line + 2
+
         attr :example, :any, required: true
         def example(assigns)
 
         def example(_assigns) do
           "hello"
+        end
+
+        def example2_line, do: __ENV__.line + 2
+
+        slot :slot
+        def example2(assigns)
+
+        def example2(_assigns) do
+          "world"
         end
       end
 
@@ -774,7 +785,7 @@ defmodule Phoenix.ComponentTest do
                  kind: :def,
                  attrs: [
                    %{
-                     line: __ENV__.line - 13,
+                     line: Bodyless.example_line(),
                      name: :example,
                      opts: [],
                      doc: nil,
@@ -784,6 +795,19 @@ defmodule Phoenix.ComponentTest do
                    }
                  ],
                  slots: []
+               },
+               example2: %{
+                 kind: :def,
+                 attrs: [],
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: Bodyless.example2_line(),
+                     name: :slot,
+                     opts: [],
+                     required: false
+                   }
+                 ]
                }
              }
     end
@@ -1158,6 +1182,18 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if slot is duplicated" do
+      assert_raise CompileError, ~r"a duplicate slot with name :foo already exists", fn ->
+        defmodule Phoenix.ComponentTest.SlotDup do
+          use Elixir.Phoenix.Component
+
+          slot :foo
+          slot :foo
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
     test "raise if slot attr is duplicated" do
       assert_raise CompileError,
                    ~r"a duplicate attribute with name :foo in slot :named already exists",
@@ -1246,6 +1282,22 @@ defmodule Phoenix.ComponentTest do
       end
 
       assert mod.()
+    end
+
+    test "raise if slot with name :inner_block has slot attrs" do
+      msg = ~r"cannot define attributes for the slot :inner_block"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule AttrsInDefaultSlot do
+          use Elixir.Phoenix.Component
+
+          slot :inner_block do
+            attr :attr, :any
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
     end
 
     test "raise on more than one :global attr" do

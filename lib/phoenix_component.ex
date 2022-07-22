@@ -1123,6 +1123,13 @@ defmodule Phoenix.Component do
   """
   defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
+
+    if name == :inner_block && block do
+      compile_error!(__ENV__.line, __ENV__.file, """
+      cannot define attributes for the slot :inner_block
+      """)
+    end
+
     slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
     quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
@@ -1179,6 +1186,8 @@ defmodule Phoenix.Component do
       compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
+    validate_slot!(module, name, line, file)
+
     Module.put_attribute(module, :__slots__, %{
       name: name,
       required: required,
@@ -1186,5 +1195,15 @@ defmodule Phoenix.Component do
       doc: doc,
       line: line
     })
+  end
+
+  defp validate_slot!(module, name, line, file) do
+    slots = get_slots(module)
+
+    if Enum.find(slots, fn slot -> slot.name == name end) do
+      compile_error!(line, file, """
+      a duplicate slot with name #{inspect(name)} already exists
+      """)
+    end
   end
 end
