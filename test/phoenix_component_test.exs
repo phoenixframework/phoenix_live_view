@@ -853,7 +853,7 @@ defmodule Phoenix.ComponentTest do
       assert render(Defaults, :example, %{}) == "nil"
       assert render(Defaults, :no_default, %{value: 123}) == "123"
 
-      assert_raise KeyError, ~r/:value not found/, fn ->
+      assert_raise KeyError, ~r":value not found", fn ->
         render(Defaults, :no_default, %{})
       end
     end
@@ -976,7 +976,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if :doc is not a string" do
-      msg = ~r/doc must be a string or false, got: :foo/
+      msg = ~r"doc must be a string or false, got: :foo"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrDocsInvalidType do
@@ -1029,7 +1029,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if attr is declared between multiple function heads" do
-      msg = ~r/attributes must be defined before the first function clause at line \d+/
+      msg = ~r"attributes must be defined before the first function clause at line \d+"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.MultiClauseWrong do
@@ -1046,7 +1046,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot is declared between multiple function heads" do
-      msg = ~r/slots must be defined before the first function clause at line \d+/
+      msg = ~r"slots must be defined before the first function clause at line \d+"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.MultiClauseWrong do
@@ -1064,7 +1064,7 @@ defmodule Phoenix.ComponentTest do
 
     test "raise if attr is declared on an invalid function" do
       msg =
-        ~r/cannot declare attributes for function func\/2\. Components must be functions with arity 1/
+        ~r"cannot declare attributes for function func\/2\. Components must be functions with arity 1"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
@@ -1078,7 +1078,7 @@ defmodule Phoenix.ComponentTest do
 
     test "raise if slot is declared on an invalid function" do
       msg =
-        ~r/cannot declare slots for function func\/2\. Components must be functions with arity 1/
+        ~r"cannot declare slots for function func\/2\. Components must be functions with arity 1"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.SlotOnInvalidFunction do
@@ -1091,7 +1091,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if attr is declared without a related function" do
-      msg = ~r/cannot define attributes without a related function component/
+      msg = ~r"cannot define attributes without a related function component"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrOnInvalidFunction do
@@ -1105,7 +1105,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot is declared without a related function" do
-      msg = ~r/cannot define slots without a related function component/
+      msg = ~r"cannot define slots without a related function component"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.SlotOnInvalidFunction do
@@ -1119,7 +1119,9 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if attr type is not supported" do
-      assert_raise CompileError, ~r/invalid type :not_a_type for attr :foo/, fn ->
+      msg = ~r"invalid type :not_a_type for attr :foo"
+
+      assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
           use Elixir.Phoenix.Component
 
@@ -1130,7 +1132,9 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot attr type is not supported" do
-      assert_raise CompileError, ~r/invalid type :not_a_type for attr :foo in slot :named/, fn ->
+      msg = ~r"invalid type :not_a_type for attr :foo in slot :named"
+
+      assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
           use Elixir.Phoenix.Component
 
@@ -1144,7 +1148,9 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if attr option is not supported" do
-      assert_raise CompileError, ~r"invalid option :not_an_opt for attr :foo", fn ->
+      msg = ~r"invalid option :not_an_opt for attr :foo"
+
+      assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrOptionNotSupported do
           use Elixir.Phoenix.Component
 
@@ -1155,23 +1161,25 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot attr option is not supported" do
-      assert_raise CompileError,
-                   ~r"invalid option :not_an_opt for attr :foo in slot :named",
-                   fn ->
-                     defmodule Phoenix.ComponentTest.SlotAttrOptionNotSupported do
-                       use Elixir.Phoenix.Component
+      msg = ~r"invalid option :not_an_opt for attr :foo in slot :named"
 
-                       slot :named do
-                         attr :foo, :any, not_an_opt: true
-                       end
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrOptionNotSupported do
+          use Elixir.Phoenix.Component
 
-                       def func(assigns), do: ~H[]
-                     end
-                   end
+          slot :named do
+            attr :foo, :any, not_an_opt: true
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
     end
 
     test "raise if attr is duplicated" do
-      assert_raise CompileError, ~r"a duplicate attribute with name :foo already exists", fn ->
+      msg = ~r"a duplicate attribute with name :foo already exists"
+
+      assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrDup do
           use Elixir.Phoenix.Component
 
@@ -1183,7 +1191,9 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot is duplicated" do
-      assert_raise CompileError, ~r"a duplicate slot with name :foo already exists", fn ->
+      msg = ~r"a duplicate slot with name :foo already exists"
+
+      assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.SlotDup do
           use Elixir.Phoenix.Component
 
@@ -1195,20 +1205,20 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot attr is duplicated" do
-      assert_raise CompileError,
-                   ~r"a duplicate attribute with name :foo in slot :named already exists",
-                   fn ->
-                     defmodule Phoenix.ComponentTest.SlotAttrDup do
-                       use Elixir.Phoenix.Component
+      msg = ~r"a duplicate attribute with name :foo in slot :named already exists"
 
-                       slot :named do
-                         attr :foo, :any, required: true
-                         attr :foo, :string
-                       end
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrDup do
+          use Elixir.Phoenix.Component
 
-                       def func(assigns), do: ~H[]
-                     end
-                   end
+          slot :named do
+            attr :foo, :any, required: true
+            attr :foo, :string
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
     end
 
     test "does not raise if multiple slots with different names share the same attr names" do
@@ -1315,7 +1325,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if global provides :required" do
-      msg = ~r/global attributes do not support the :required option/
+      msg = ~r"global attributes do not support the :required option"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.GlobalOpts do
