@@ -1626,6 +1626,14 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 5
       )
+
+      assert_formatter_doesnt_change("""
+      <textarea />
+      """)
+
+      assert_formatter_doesnt_change("""
+      <textarea></textarea>
+      """)
     end
 
     test "keeps right format for inline elements within block elements" do

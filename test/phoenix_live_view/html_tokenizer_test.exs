@@ -42,7 +42,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     test "multiple lines" do
       assert tokenize("<!DOCTYPE\nhtml\n>  <br />") == [
                {:text, "<!DOCTYPE\nhtml\n>  ", %{line_end: 3, column_end: 4}},
-               {:tag_open, "br", [], %{column: 4, line: 3, self_close: true, offset: {3, 10}}}
+               {:tag_open, "br", [],
+                %{column: 4, line: 3, self_close: true, inner_location: {3, 10}}}
              ]
     end
   end
@@ -93,19 +94,19 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       {tokens, :text} = HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont)
 
       assert Enum.reverse(tokens) == [
-               {:tag_open, "p", [], %{column: 1, line: 1, offset: {1, 4}}},
+               {:tag_open, "p", [], %{column: 1, line: 1, inner_location: {1, 4}}},
                {:text, "\n<!--\n<div>\n",
                 %{column_end: 1, context: [:comment_start], line_end: 4}},
                {:text, "</div>\n-->\n", %{column_end: 1, context: [:comment_end], line_end: 3}},
-               {:tag_close, "p", %{column: 1, line: 3, offset: {3, 1}}},
+               {:tag_close, "p", %{column: 1, line: 3, inner_location: {3, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 4}},
-               {:tag_open, "div", [], %{column: 1, line: 4, offset: {4, 6}}},
+               {:tag_open, "div", [], %{column: 1, line: 4, inner_location: {4, 6}}},
                {:text, "\n  ", %{column_end: 3, line_end: 5}},
-               {:tag_open, "p", [], %{column: 3, line: 5, offset: {5, 6}}},
+               {:tag_open, "p", [], %{column: 3, line: 5, inner_location: {5, 6}}},
                {:text, "Hello", %{column_end: 11, line_end: 5}},
-               {:tag_close, "p", %{column: 11, line: 5, offset: {5, 11}}},
+               {:tag_close, "p", %{column: 11, line: 5, inner_location: {5, 11}}},
                {:text, "\n", %{column_end: 1, line_end: 6}},
-               {:tag_close, "div", %{column: 1, line: 6, offset: {6, 1}}},
+               {:tag_close, "div", %{column: 1, line: 6, inner_location: {6, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 7}}
              ]
     end
@@ -138,19 +139,19 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       {tokens, :text} = HTMLTokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont)
 
       assert Enum.reverse(tokens) == [
-               {:tag_open, "p", [], %{column: 1, line: 1, offset: {1, 4}}},
+               {:tag_open, "p", [], %{column: 1, line: 1, inner_location: {1, 4}}},
                {:text, "\n<!--\n<%= \"Hello\" %>\n",
                 %{column_end: 1, context: [:comment_start], line_end: 4}},
                {:text, "-->\n<!--\n<p><%= \"World\"</p>\n",
                 %{column_end: 1, context: [:comment_end, :comment_start], line_end: 4}},
                {:text, "-->\n", %{column_end: 1, context: [:comment_end], line_end: 2}},
-               {:tag_open, "div", [], %{column: 1, line: 2, offset: {2, 6}}},
+               {:tag_open, "div", [], %{column: 1, line: 2, inner_location: {2, 6}}},
                {:text, "\n  ", %{column_end: 3, line_end: 3}},
-               {:tag_open, "p", [], %{column: 3, line: 3, offset: {3, 6}}},
+               {:tag_open, "p", [], %{column: 3, line: 3, inner_location: {3, 6}}},
                {:text, "Hi", %{column_end: 8, line_end: 3}},
-               {:tag_close, "p", %{column: 8, line: 3, offset: {3, 8}}},
+               {:tag_close, "p", %{column: 8, line: 3, inner_location: {3, 8}}},
                {:text, "\n", %{column_end: 1, line_end: 4}},
-               {:tag_close, "p", %{column: 1, line: 4, offset: {4, 1}}},
+               {:tag_close, "p", %{column: 1, line: 4, inner_location: {4, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 5}}
              ]
     end
@@ -628,7 +629,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
              """) == [
                {:tag_open, "script",
                 [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 9, line: 1}}],
-                %{column: 1, line: 1, self_close: true, offset: {1, 24}}},
+                %{column: 1, line: 1, self_close: true, inner_location: {1, 24}}},
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]
     end
@@ -639,9 +640,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
                a = "<a>Link</a>"
              </script>
              """) == [
-               {:tag_open, "script", [], %{column: 1, line: 1, offset: {1, 9}}},
+               {:tag_open, "script", [], %{column: 1, line: 1, inner_location: {1, 9}}},
                {:text, "\n  a = \"<a>Link</a>\"\n", %{column_end: 1, line_end: 3}},
-               {:tag_close, "script", %{column: 1, line: 3, offset: {3, 1}}},
+               {:tag_close, "script", %{column: 1, line: 3, inner_location: {3, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 4}}
              ]
     end
@@ -654,7 +655,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
              """) == [
                {:tag_open, "style",
                 [{"src", {:string, "foo.js", %{delimiter: 34}}, %{column: 8, line: 1}}],
-                %{column: 1, line: 1, self_close: true, offset: {1, 23}}},
+                %{column: 1, line: 1, self_close: true, inner_location: {1, 23}}},
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]
     end
@@ -665,9 +666,9 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
                a = "<a>Link</a>"
              </style>
              """) == [
-               {:tag_open, "style", [], %{column: 1, line: 1, offset: {1, 8}}},
+               {:tag_open, "style", [], %{column: 1, line: 1, inner_location: {1, 8}}},
                {:text, "\n  a = \"<a>Link</a>\"\n", %{column_end: 1, line_end: 3}},
-               {:tag_close, "style", %{column: 1, line: 3, offset: {3, 1}}},
+               {:tag_close, "style", %{column: 1, line: 3, inner_location: {3, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 4}}
              ]
     end

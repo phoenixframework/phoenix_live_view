@@ -224,7 +224,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       |> case do
         {:ok, nodes} ->
           nodes
-          |> HTMLAlgebra.build(source, opts)
+          |> HTMLAlgebra.build(opts)
           |> Inspect.Algebra.format(line_length)
 
         {:error, line, column, message} ->
@@ -277,7 +277,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
 
     defp do_tokenize({:text, text, meta}, {tokens, cont}) do
-      # TODO: passar meta direto?
       text
       |> List.to_string()
       |> HTMLTokenizer.tokenize("nofile", 0, [line: meta.line, column: meta.column], tokens, cont)
@@ -468,13 +467,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          source
        ) do
     {mode, block} =
-      if name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
-        content = content_from_source(source, open_meta.offset, close_meta.offset)
+      if (name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+        content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else
         mode =
           cond do
-            preserve?(name, upper_buffer) -> :preserve
+            preserve_format?(name, upper_buffer) -> :preserve
             name in @inline_elements -> :inline
             true -> :block
           end
@@ -499,9 +498,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
-         [
-           {:eex_block, expr, upper_buffer, middle_buffer} | stack
-         ],
+         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
          source
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
@@ -569,7 +566,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #
   # * In case the head is a text that doesn't end with whitespace.
   # * In case the head is eex.
-  defp preserve?(name, upper_buffer) do
+  defp preserve_format?(name, upper_buffer) do
     name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)
   end
 
