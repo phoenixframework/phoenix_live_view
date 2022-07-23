@@ -13,9 +13,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # * :normal
   # * :preserve - for preserving text in <pre>, <script>, <style> and HTML Comment tags
   #
-  def build(tree, opts) when is_list(tree) do
+  def build(tree, source, opts) when is_list(tree) do
     tree
-    |> block_to_algebra(%{mode: :normal, opts: opts})
+    |> block_to_algebra(%{mode: :normal, opts: opts, source: source})
     |> group()
   end
 
@@ -195,6 +195,31 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       |> group()
 
     {:block, group}
+  end
+
+  defp to_algebra(
+         {:tag_block, "textarea", _attrs, _block,
+          %{
+            mode: :preserve,
+            offset_start: {line_start, column_start},
+            offset_end: {line_end, column_end}
+          }},
+         context
+       ) do
+    [last_line | lines] =
+      String.split(context.source, ["\r\n", "\n"])
+      |> Enum.slice((line_start - 1)..(line_end - 1))
+      |> Enum.reverse()
+
+    last_line = String.slice(last_line, 0, column_end - 1)
+
+    [first_line | lines] = Enum.reverse([last_line | lines])
+
+    first_line = String.slice(first_line, (column_start - 1)..-1)
+
+    result = Enum.join([first_line | lines], "\n")
+
+    {:inline, concat(["<textarea>", string(result), "</textarea>"])}
   end
 
   defp to_algebra({:tag_block, _name, _attrs, _block, _meta} = doc, %{mode: :preserve} = context) do

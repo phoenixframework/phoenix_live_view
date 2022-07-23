@@ -223,7 +223,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       |> case do
         {:ok, nodes} ->
           nodes
-          |> HTMLAlgebra.build(opts)
+          |> HTMLAlgebra.build(contents, opts)
           |> Inspect.Algebra.format(line_length)
 
         {:error, line, column, message} ->
@@ -275,10 +275,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       HTMLTokenizer.finalize(tokens, "nofile", cont)
     end
 
-    defp do_tokenize({:text, text, _meta}, {tokens, cont}) do
+    defp do_tokenize({:text, text, meta}, {tokens, cont}) do
+      # TODO: passar meta direto?
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+      |> HTMLTokenizer.tokenize("nofile", 0, [line: meta.line, column: meta.column], tokens, cont)
     end
 
     defp do_tokenize({:comment, text, meta}, {tokens, cont}) do
@@ -292,15 +293,15 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   else
     defp tokenize(contents) do
-      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
+      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
       HTMLTokenizer.finalize(tokens, "nofile", cont)
     end
 
-    defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
+    defp do_tokenize({:text, line, column, text}, {tokens, cont}) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+      |> HTMLTokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont)
     end
 
     defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do

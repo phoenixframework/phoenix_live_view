@@ -217,8 +217,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_open(text, {line, offset}, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        meta = %{line: line, column: column - 1, offset: offset}
+        meta = %{line: line, column: column - 1, offset: nil}
         acc = [{:tag_open, name, [], meta} | acc]
+
         handle_maybe_tag_open_end(rest, {line, offset}, new_column, acc, state)
 
       {:error, message} ->
@@ -231,11 +232,15 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_close(text, {line, offset}, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, ">" <> rest} ->
-        acc = [{:tag_close, name, %{line: line, column: column - 2, offset: offset}} | acc]
+        acc = [
+          {:tag_close, name, %{line: line, column: column - 2, offset: {line, column - 2}}} | acc
+        ]
+
         handle_text(rest, {line, offset}, new_column + 1, [], acc, state)
 
       {:ok, _, new_column, _} ->
         message = "expected closing `>`"
+
         raise ParseError, file: state.file, line: line, column: new_column, description: message
 
       {:error, message} ->
@@ -284,12 +289,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end("/>" <> rest, line_offset, column, acc, state) do
-    acc = reverse_attrs(acc)
+    acc = reverse_attrs(acc, line_offset, column + 2)
     handle_text(rest, line_offset, column + 2, [], put_self_close(acc), state)
   end
 
   defp handle_maybe_tag_open_end(">" <> rest, line_offset, column, acc, state) do
-    case reverse_attrs(acc) do
+    case reverse_attrs(acc, line_offset, column + 1) do
       [{:tag_open, "script", _, _} | _] = acc ->
         handle_script(rest, line_offset, column + 1, [], acc, state)
 
@@ -633,8 +638,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     [{:tag_open, name, attrs, meta} | acc]
   end
 
-  defp reverse_attrs([{:tag_open, name, attrs, meta} | acc]) do
+  defp reverse_attrs([{:tag_open, name, attrs, meta} | acc], {line, _offset}, column) do
     attrs = Enum.reverse(attrs)
+    meta = %{meta | offset: {line, column}}
     [{:tag_open, name, attrs, meta} | acc]
   end
 
