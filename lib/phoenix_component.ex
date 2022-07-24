@@ -1116,20 +1116,15 @@ defmodule Phoenix.Component do
     end
   end
 
-  @doc """
-  Defines a declarative slot.
-
-  DOCS WIP
-  """
-  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
-    {block, opts} = Keyword.pop(opts, :do, nil)
-
-    if name == :inner_block && block do
-      compile_error!(__ENV__.line, __ENV__.file, """
-      cannot define attributes for the slot :inner_block
-      """)
+  defmacro slot(name) when is_atom(name) do
+    quote bind_quoted: [name: name] do
+      Phoenix.Component.__slot__!(__MODULE__, name, [], __ENV__.line, __ENV__.file)
     end
+  end
 
+  defmacro slot(name, opts) when is_atom(name) and is_list(opts) do
+    {block, opts} = Keyword.pop(opts, :do, nil)
+    validate_slot_args!(name, block)
     slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
     quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
@@ -1137,6 +1132,24 @@ defmodule Phoenix.Component do
       slot_attrs_ast
     end
   end
+
+  defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
+    validate_slot_args!(name, block)
+    slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
+
+    quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
+      Phoenix.Component.__slot__!(__MODULE__, name, opts, __ENV__.line, __ENV__.file)
+      slot_attrs_ast
+    end
+  end
+
+  defp validate_slot_args!(:inner_block, block) when not is_nil(block) do
+    compile_error!(__ENV__.line, __ENV__.file, """
+    cannot define attributes for the slot :inner_block
+    """)
+  end
+
+  defp validate_slot_args!(_name, _block), do: :ok
 
   defp build_slot_attrs_ast(_slot, nil, _caller) do
     nil

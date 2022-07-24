@@ -536,7 +536,7 @@ defmodule Phoenix.ComponentTest do
 
       def fun_with_slot_attrs_line, do: __ENV__.line + 6
 
-      slot :slot do
+      slot :slot, required: true do
         attr :attr, :any
       end
 
@@ -660,7 +660,7 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 4,
                      name: :slot,
                      opts: [],
-                     required: false
+                     required: true
                    }
                  ]
                },
