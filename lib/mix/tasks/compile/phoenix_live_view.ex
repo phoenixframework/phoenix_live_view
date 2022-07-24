@@ -206,11 +206,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               message = "missing required slot \"#{slot_name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
+            # missing optional slot
+            {nil, _slot_attr_defs} ->
+              []
+
             # slot with attributes
             {slot_values, slot_attr_defs} ->
               for slot_value <- slot_values,
                   {attr_name, {line, _column, attr_kind, attr_value}} <- slot_value,
-                  attr_def = Map.get(slot_attr_defs, attr_name, :undef),
+                  {attr_def, slot_attr_defs} = Map.pop(slot_attr_defs, attr_name, :undef),
                   reduce: [] do
                 errors ->
                   type_mismatch_slot_attr_warnings =
