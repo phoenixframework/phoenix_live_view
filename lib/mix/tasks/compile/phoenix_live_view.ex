@@ -212,12 +212,25 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
             # slot with attributes
             {slot_values, slot_attr_defs} ->
-              for slot_value <- slot_values,
-                  {attr_name, {line, _column, attr_kind, attr_value}} <- slot_value,
-                  {attr_def, slot_attr_defs} = Map.pop(slot_attr_defs, attr_name, :undef),
-                  reduce: [] do
-                errors ->
-                  type_mismatch_slot_attr_warnings =
+              missing_slot_attrs =
+                for slot_value <- slot_values,
+                    {attr_name, %{required: true}} <- slot_attr_defs,
+                    {line, _column, _attr_kind, _attr_value} =
+                      Map.fetch!(slot_value, :inner_block),
+                    not Map.has_key?(slot_value, attr_name) do
+                  message =
+                    "missing required attribute \"#{attr_name}\" in slot \"#{slot_name}\" for component #{component(call)}"
+
+                  error(message, call.file, line)
+                end
+
+              slot_attrs_errors =
+                for slot_value <- slot_values,
+                    {attr_name, {line, _column, attr_kind, attr_value}} <- slot_value,
+                    attr_def = Map.get(slot_attr_defs, attr_name, :undef),
+                    reduce: [] do
+                  errors ->
+                    # type_mismatch_slot_attr_warnings =
                     case {attr_def, attr_kind, attr_value} do
                       # undefined attribute
                       {:undef, _attr_kind, _attr_value} when attr_name != :inner_block ->
@@ -288,17 +301,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                       {_attr_type, _attr_kind, _attr_value} ->
                         errors
                     end
+                end
 
-                  required_slot_attr_warnings =
-                    for {name, %{required: true}} <- slot_attr_defs do
-                      message =
-                        "missing required attribute \"#{name}\" in slot \"#{slot_name}\" for component #{component(call)}"
-
-                      error(message, call.file, line)
-                    end
-
-                  type_mismatch_slot_attr_warnings ++ required_slot_attr_warnings
-              end
+              missing_slot_attrs ++ slot_attrs_errors
           end
 
         {warnings, slots}
@@ -316,6 +321,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp get_slot_attr_defs(attr_defs, slot_name) do
+    # TODO: don't convert this to a map, keep it a list
     for attr_def <- attr_defs,
         attr_def.slot == slot_name,
         into: %{},

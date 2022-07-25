@@ -328,13 +328,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       atom_warnings =
         for {value, line} <- [
               {"atom", 0},
-              # {:atom, 1},
-              # {true, 2},
               {1, 3},
               {1.0, 4},
               {[], 5},
               {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6}
-              # {nil, 7},
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -351,7 +348,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         for {value, line} <- [
               {"boolean", 0},
               {:boolean, 1},
-              # {true, 2},
               {1, 3},
               {1.0, 4},
               {[], 5},
@@ -374,7 +370,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {"integer", 0},
               {:integer, 1},
               {true, 2},
-              # {1, 3},
               {1.0, 4},
               {[], 5},
               {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
@@ -397,7 +392,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {:float, 1},
               {true, 2},
               {1, 3},
-              # {1.0, 4},
               {[], 5},
               {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
               {nil, 7}
@@ -420,7 +414,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {true, 2},
               {1, 3},
               {1.0, 4},
-              # {[], 5},
               {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
               {nil, 7}
             ] do
@@ -443,7 +436,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {1, 3},
               {1.0, 4},
               {[], 5},
-              # {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
               {nil, 7}
             ] do
           %Diagnostic{
@@ -882,6 +874,65 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  list_warnings,
                  struct_warnings
                ])
+    end
+
+    defmodule RequiredSlotAttrs do
+      use Phoenix.Component
+
+      slot :slot do
+        attr :attr, :string, required: true
+      end
+
+      def func(assigns) do
+        ~H"""
+        <div>
+          <%= render_slot(@slot) %>
+        </div>
+        """
+      end
+
+      def render_line(), do: __ENV__.line + 4
+
+      def render(assigns) do
+        ~H"""
+        <.func>
+          <:slot />
+          <:slot attr="foo" />
+          <:slot>
+            foo
+          </:slot>
+          <:slot attr="bar">
+            bar
+          </:slot>
+        </.func>
+        """
+      end
+    end
+
+    test "validates required slot attrs" do
+      diagnostics =
+        Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([RequiredSlotAttrs])
+
+      assert diagnostics == [
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 severity: :warning,
+                 position: RequiredSlotAttrs.render_line() + 1,
+                 message:
+                   "missing required attribute \"attr\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1"
+               },
+               %Diagnostic{
+                 compiler_name: "phoenix_live_view",
+                 details: nil,
+                 file: __ENV__.file,
+                 severity: :warning,
+                 position: RequiredSlotAttrs.render_line() + 3,
+                 message:
+                   "missing required attribute \"attr\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1"
+               }
+             ]
     end
 
     defmodule UndefinedSlots do
