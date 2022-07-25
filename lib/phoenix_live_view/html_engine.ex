@@ -1102,9 +1102,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       pruned_attrs =
         for {attr, value, meta} <- attrs,
             is_binary(attr) and not String.starts_with?(attr, ":"),
-            do:
-              {String.to_atom(attr),
-               {meta[:line], meta[:column], component_call_value(value, env)}},
+            {kind, value} = component_call_value(value, env),
+            do: {String.to_atom(attr), {meta[:line], meta[:column], kind, value}},
             into: %{}
 
       root = List.keymember?(attrs, :root, 0)
@@ -1127,7 +1126,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp component_call_value(nil, _env) do
-    nil
+    {:lit, true}
   end
 
   defp component_call_value({:expr, value, %{line: line, column: column}}, env) do

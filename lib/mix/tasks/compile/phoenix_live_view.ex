@@ -119,67 +119,67 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                 []
 
               # global attrs cannot be directly used
-              {:global, {line, _column, {_kind, _value}}} ->
+              {:global, {line, _column, _kind, _value}} ->
                 message =
                   "global attribute \"#{name}\" in component #{component(call)} may not be provided directly"
 
                 [error(message, call.file, line)]
 
               # expressions cannot be type checked
-              {_type, {_line, _column, {:expr, _value}}} ->
+              {_type, {_line, _column, :expr, _value}} ->
                 []
 
               # string attribute type mismatch
-              {:string, {line, _column, {_kind, value}}} when not is_binary(value) ->
+              {:string, {line, _column, _kind, value}} when not is_binary(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be a :string, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # atom attribute type mismatch
-              {:atom, {line, _column, {kind, value}}} when kind != :lit or not is_atom(value) ->
+              {:atom, {line, _column, kind, value}} when kind != :lit or not is_atom(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be an :atom, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # boolean attribute type mismatch
-              {:boolean, {line, _column, {_kind, value}}} when not is_boolean(value) ->
+              {:boolean, {line, _column, _kind, value}} when not is_boolean(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be a :boolean, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # integer attribute type mismatch
-              {:integer, {line, _column, {_kind, value}}} when not is_integer(value) ->
+              {:integer, {line, _column, _kind, value}} when not is_integer(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be an :integer, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # float attribute type mismatch
-              {:float, {line, _column, {_kind, value}}} when not is_float(value) ->
+              {:float, {line, _column, _kind, value}} when not is_float(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be a :float, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # list attribute type mismatch
-              {:list, {line, _column, {_kind, value}}} when not is_list(value) ->
+              {:list, {line, _column, _kind, value}} when not is_list(value) ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be a :list, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # struct attribute type mismatch
-              {{:struct, mod}, {line, _column, {kind, value}}} when kind != :struct ->
+              {{:struct, mod}, {line, _column, kind, value}} when kind != :struct ->
                 message =
                   "attribute \"#{name}\" in component #{component(call)} must be a #{inspect(mod)}, got: #{inspect(value)}"
 
                 [error(message, call.file, line)]
 
               # attribute type match
-              {_type, {_line, _column, {_kind, _value}}} ->
+              {_type, {_line, _column, _kind, _value}} ->
                 []
             end
 
@@ -187,7 +187,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       end)
 
     attrs_undefined =
-      for {name, {line, _column, {_kind, _value}}} <- attrs,
+      for {name, {line, _column, _kind, _value}} <- attrs,
           not (has_global? and Phoenix.Component.__global__?(caller_module, Atom.to_string(name))) do
         message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
@@ -321,7 +321,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp get_slot_attr_defs(attr_defs, slot_name) do
-    # TODO: don't convert this to a map, keep it a list
     for attr_def <- attr_defs,
         attr_def.slot == slot_name,
         into: %{},
@@ -346,7 +345,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   defp print_diagnostics(diagnostics) do
     for %Diagnostic{file: file, position: line, message: message} <- diagnostics do
       rel_file = file |> Path.relative_to_cwd() |> to_charlist()
-      # Use IO.warn(message, file: ..., line: ...) on Elixir v1.14+
+      # TODO: Use IO.warn(message, file: ..., line: ...) on Elixir v1.14+
       IO.warn(message, [{nil, :__FILE__, 1, [file: rel_file, line: line]}])
     end
   end

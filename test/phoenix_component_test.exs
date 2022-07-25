@@ -475,7 +475,7 @@ defmodule Phoenix.ComponentTest do
       assert [
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, _}},
+                 attrs: %{id: {_, _, _, _}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
                  line: ^with_global_line,
@@ -484,36 +484,36 @@ defmodule Phoenix.ComponentTest do
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "1"}}},
+                 attrs: %{id: {_, _, :lit, "1"}},
                  file: ^file,
                  line: ^call_1_line
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "2"}}, email: {_, _, nil}}
+                 attrs: %{id: {_, _, :lit, "2"}, email: {_, _, :lit, true}}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "3"}}},
+                 attrs: %{id: {_, _, :lit, "3"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  file: ^file,
                  line: ^call_3_line
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "4"}}},
+                 attrs: %{id: {_, _, :lit, "4"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "5"}}},
+                 attrs: %{id: {_, _, :lit, "5"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: false
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, {:lit, "6"}}},
+                 attrs: %{id: {_, _, :lit, "6"}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: true
                }
@@ -737,7 +737,7 @@ defmodule Phoenix.ComponentTest do
                  }
                },
                %{
-                 attrs: %{rows: {596, 17, _ast}},
+                 attrs: %{rows: {596, 17, _kind, _value}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
                  file: ^file,
                  line: 596,
