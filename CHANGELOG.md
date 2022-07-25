@@ -2,7 +2,7 @@
 
 ## 0.18.0
 
-0.18.0 includes a major new feature in the form of delcarative assigns with a new `attr`
+0.18.0 includes a major new feature in the form of declarative assigns with a new `attr`
 macro for specifying which attributes a function component supports, the type, and default values.
 Attributes are compile-time verified with warnings. To support `attr` in your existing applications
 add the `:phoenix_live_view` compiler to your `mix.exs`'s `project` configuration:
@@ -34,10 +34,10 @@ Additionally, the special `let` attribute on function components have been depre
 
 ### Enhancements
   - Add declarative assigns with compile-time verifications and warnings via `attr` macro above function components
-  - [Logger] Add new LiveView logger with telemetry instrumentation for lifecyce events
+  - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
   - [Helpers] Add `dynamic_tag` function component
   - [Helpers] Add `link` function component
-  - [Helpers] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessbility
+  - [Helpers] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessibility
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessbility
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
   - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
