@@ -96,16 +96,20 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                %Diagnostic{
                  compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
-                 message:
-                   "undefined attribute \"size\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1",
+                 message: """
+                 undefined attribute \"size\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1\
+                 """,
                  position: line,
                  severity: :warning
                },
                %Diagnostic{
                  compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
-                 message:
-                   "undefined attribute \"width\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1",
+                 message: """
+                 undefined attribute \"width\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedAttrs.func/1\
+                 """,
                  position: line,
                  severity: :warning
                }
@@ -144,16 +148,21 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                %Diagnostic{
                  compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
-                 message:
-                   "missing required attribute \"attr\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1",
+                 message: """
+                 missing required attribute \"attr\" \
+                 in slot \"named\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1\
+                 """,
                  position: ExternalCalls.line() + 1,
                  severity: :warning
                },
                %Diagnostic{
                  compiler_name: "phoenix_live_view",
                  file: __ENV__.file,
-                 message:
-                   "missing required attribute \"id\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1",
+                 message: """
+                 missing required attribute \"id\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.External.render/1\
+                 """,
                  position: ExternalCalls.line(),
                  severity: :warning
                }
@@ -320,8 +329,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_string_line() + line,
-            message:
-              "attribute \"string\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :string, got: #{inspect(value)}"
+            message: """
+            attribute \"string\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be a :string, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -339,8 +352,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_atom_line() + line,
-            message:
-              "attribute \"atom\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be an :atom, got: #{inspect(value)}"
+            message: """
+            attribute \"atom\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be an :atom, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -360,8 +377,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_boolean_line() + line,
-            message:
-              "attribute \"boolean\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :boolean, got: #{inspect(value)}"
+            message: """
+            attribute \"boolean\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be a :boolean, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -381,8 +402,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_integer_line() + line,
-            message:
-              "attribute \"integer\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be an :integer, got: #{inspect(value)}"
+            message: """
+            attribute \"integer\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be an :integer, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -402,8 +427,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_float_line() + line,
-            message:
-              "attribute \"float\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :float, got: #{inspect(value)}"
+            message: """
+            attribute \"float\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be a :float, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -423,8 +452,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_list_line() + line,
-            message:
-              "attribute \"list\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a :list, got: #{inspect(value)}"
+            message: """
+            attribute \"list\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be a :list, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -444,8 +477,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: TypeAttrs.render_struct_line() + line,
-            message:
-              "attribute \"struct\" in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, got: #{inspect(value)}"
+            message: """
+            attribute \"struct\" \
+            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+            must be a Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -540,8 +577,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
-                 message:
-                   "missing required slot \"inner_block\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func/1",
+                 message: """
+                 missing required slot \"inner_block\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func/1\
+                 """,
                  position: line + 3,
                  severity: :warning
                },
@@ -549,8 +588,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
-                 message:
-                   "missing required slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func_named_slot/1",
+                 message: """
+                 missing required slot \"named\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlots.func_named_slot/1\
+                 """,
                  position: line + 12,
                  severity: :warning
                }
@@ -734,8 +775,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_string_line() + line,
-            message:
-              "attribute \"string\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :string, got: #{inspect(value)}"
+            message: """
+            attribute \"string\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be a :string, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -753,8 +799,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_atom_line() + line,
-            message:
-              "attribute \"atom\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be an :atom, got: #{inspect(value)}"
+            message: """
+            attribute \"atom\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be an :atom, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -774,8 +825,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_boolean_line() + line,
-            message:
-              "attribute \"boolean\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :boolean, got: #{inspect(value)}"
+            message: """
+            attribute \"boolean\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be a :boolean, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -795,8 +851,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_integer_line() + line,
-            message:
-              "attribute \"integer\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :integer, got: #{inspect(value)}"
+            message: """
+            attribute \"integer\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be an :integer, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -816,8 +877,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_float_line() + line,
-            message:
-              "attribute \"float\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :float, got: #{inspect(value)}"
+            message: """
+            attribute \"float\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be a :float, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -838,8 +904,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_list_line() + line,
-            message:
-              "attribute \"list\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a :list, got: #{inspect(value)}"
+            message: """
+            attribute \"list\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be a :list, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -859,8 +930,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
             file: __ENV__.file,
             severity: :warning,
             position: SlotAttrs.render_struct_line() + line,
-            message:
-              "attribute \"struct\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, got: #{inspect(value)}"
+            message: """
+            attribute \"struct\" \
+            in slot \"slot\" \
+            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+            must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, \
+            got: #{inspect(value)}\
+            """
           }
         end
 
@@ -920,8 +996,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  file: __ENV__.file,
                  severity: :warning,
                  position: RequiredSlotAttrs.render_line() + 1,
-                 message:
-                   "missing required attribute \"attr\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1"
+                 message: """
+                 missing required attribute \"attr\" \
+                 in slot \"slot\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1\
+                 """
                },
                %Diagnostic{
                  compiler_name: "phoenix_live_view",
@@ -929,8 +1008,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  file: __ENV__.file,
                  severity: :warning,
                  position: RequiredSlotAttrs.render_line() + 3,
-                 message:
-                   "missing required attribute \"attr\" in slot \"slot\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1"
+                 message: """
+                 missing required attribute \"attr\" \
+                 in slot \"slot\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.RequiredSlotAttrs.func/1\
+                 """
                }
              ]
     end
@@ -973,8 +1055,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
-                 message:
-                   "undefined slot \"undefined\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func/1",
+                 message: """
+                 undefined slot \"undefined\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func/1\
+                 """,
                  position: line + 4,
                  severity: :warning
                },
@@ -982,8 +1066,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
-                 message:
-                   "undefined attribute \"undefined\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1",
+                 message: """
+                 undefined attribute \"undefined\" \
+                 in slot \"named\" \
+                 for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1\
+                 """,
                  position: line + 10,
                  severity: :warning
                },
@@ -991,8 +1078,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  compiler_name: "phoenix_live_view",
                  details: nil,
                  file: __ENV__.file,
-                 message:
-                   "undefined attribute \"undefined\" in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1",
+                 message: """
+                 undefined attribute \"undefined\" \
+                 in slot \"named\" for component Mix.Tasks.Compile.PhoenixLiveViewTest.UndefinedSlots.func_undefined_slot_attrs/1\
+                 """,
                  position: line + 9,
                  severity: :warning
                }
