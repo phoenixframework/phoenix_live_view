@@ -586,7 +586,7 @@ defmodule Phoenix.Component do
   value of the `@doc` module attribute:
 
     * if `@doc` is a string, the attribute docs are injected into that string.
-      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where
+      The optional placeholder `[[INJECT LVDOCS]]` can be used to specify where
       in the string the docs are injected. Otherwise, the docs are appended
       to the end of the `@doc` string.
 
@@ -957,17 +957,16 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp register_component_doc(env, :def, _slots, attrs) do
-    # TODO: implement slot docs
+  defp register_component_doc(env, :def, slots, attrs) do
     case Module.get_attribute(env.module, :doc) do
       {_line, false} ->
         :ok
 
       {line, doc} ->
-        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
+        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, slots, attrs)})
 
       nil ->
-        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
+        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(slots, attrs)})
     end
   end
 
@@ -975,12 +974,12 @@ defmodule Phoenix.Component do
     :ok
   end
 
-  defp build_component_doc(doc \\ "", attrs) do
-    [left | right] = String.split(doc, "[[INSERT ATTRDOCS]]")
+  defp build_component_doc(doc \\ "", slots, attrs) do
+    [left | right] = String.split(doc, "[[INSERT LVDOCS]]")
 
     IO.iodata_to_binary([
       build_left_doc(left),
-      build_attr_docs(attrs),
+      build_component_docs(slots, attrs),
       build_right_doc(right)
     ])
   end
@@ -993,7 +992,7 @@ defmodule Phoenix.Component do
     [left, ?\n]
   end
 
-  defp build_attr_docs(attrs) do
+  defp build_component_docs(_slots, attrs) do
     [
       "## Attributes",
       ?\n,

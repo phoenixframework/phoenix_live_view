@@ -73,7 +73,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   @doc """
   fun docs
-  [[INSERT ATTRDOCS]]
+  [[INSERT LVDOCS]]
   fun docs
   """
   def fun_doc_injection(assigns), do: ~H[]
