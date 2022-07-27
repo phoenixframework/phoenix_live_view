@@ -412,6 +412,13 @@ defmodule Phoenix.LiveComponent do
   `<svg>` tags to be nested, you can wrap the component content into an
   `<svg>` tag. This will ensure that it is correctly interpreted by the
   browser.
+
+  ## Options
+
+  * `:root` - configures the directory where `LiveComponent` will look for templates.
+        Defaults to the directory of the live component.
+  * `:path` - configures the path where `LiveComponent` will look for the templates.
+        Defaults to the underscored view module name. (similar to `Phoenix.View`)
   """
 
   defmodule CID do
@@ -435,7 +442,15 @@ defmodule Phoenix.LiveComponent do
 
   alias Phoenix.LiveView.Socket
 
-  defmacro __using__(_) do
+  defmacro __using__(opts) do
+    if root = Keyword.keyword?(opts) and Keyword.get(opts, :root) do
+      Module.put_attribute(__CALLER__.module, :live_view_root, root)
+    end
+
+    if path = Keyword.keyword?(opts) and Keyword.get(opts, :path) do
+      Module.put_attribute(__CALLER__.module, :live_view_path, path)
+    end
+
     quote do
       @behaviour Phoenix.LiveComponent
       use Phoenix.Component

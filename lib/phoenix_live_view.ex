@@ -467,6 +467,10 @@ defmodule Phoenix.LiveView do
     * `:container` - configures the container the `LiveView` will be wrapped in
     * `:layout` - configures the layout the `LiveView` will be rendered in
     * `:log` - configures the log level for the `LiveView`
+    * `:root` - configures the directory where `LiveView` will look for templates.
+        Defaults to the directory of the liveview.
+    * `:path` - configures the path where `LiveView` will look for the templates.
+        Defaults to the underscored view module name. (similar to `Phoenix.View`)
   """
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
@@ -478,6 +482,14 @@ defmodule Phoenix.LiveView do
       else
         _ -> opts
       end
+
+    if root_directory = Keyword.keyword?(opts) and Keyword.get(opts, :root) do
+      Module.put_attribute(__CALLER__.module, :live_view_root, root_directory)
+    end
+
+    if path = Keyword.keyword?(opts) and Keyword.get(opts, :path) do
+      Module.put_attribute(__CALLER__.module, :live_view_path, path)
+    end
 
     quote bind_quoted: [opts: opts] do
       @behaviour Phoenix.LiveView

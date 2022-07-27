@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Renderer do
 
   defmacro __before_compile__(env) do
     render? = Module.defines?(env.module, {:render, 1})
-    root = Path.dirname(env.file)
+    root = Module.get_attribute(env.module, :live_view_root, Path.dirname(env.file))
     filename = template_filename(env)
     templates = Phoenix.Template.find_all(root, filename)
 
@@ -70,10 +70,14 @@ defmodule Phoenix.LiveView.Renderer do
   end
 
   defp template_filename(env) do
-    env.module
-    |> Module.split()
-    |> List.last()
-    |> Macro.underscore()
-    |> Kernel.<>(".html")
+    if path = Module.get_attribute(env.module, :live_view_path) do
+      path
+    else
+      env.module
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+      |> Kernel.<>(".html")
+    end
   end
 end
