@@ -28,11 +28,11 @@ defmodule Phoenix.LiveView.DetachedRootTest do
   test "supports path parameter in views" do
     {:ok, view, html} = live_isolated(build_conn(), RootAndPathLive)
     assert html =~ "Hello detached world from live!\n</div>"
-    assert render(view) =~ "Hello detached world from live!\n</div>"
+    assert render(view) =~ "Hello path world from live!\n</div>"
   end
 
   test "supports path parameter in components" do
     assert render_component(RootAndPathComponent, world: "world") =~
-             "Hello detached world from component!\n"
+             "Hello path world from component!\n"
   end
 end
