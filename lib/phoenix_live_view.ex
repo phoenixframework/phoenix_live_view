@@ -994,7 +994,7 @@ defmodule Phoenix.LiveView do
   *Note*: While you can use `put_flash/3` inside a `Phoenix.LiveComponent`,
   components have their own `@flash` assigns. The `@flash` assign
   in a component is only copied to its parent LiveView if the component
-  calls `push_redirect/2` or `push_patch/2`.
+  calls `push_navigate/2` or `push_patch/2`.
 
   *Note*: You must also place the `Phoenix.LiveView.Router.fetch_live_flash/2`
   plug in your browser's pipeline in place of `fetch_flash` for LiveView flash
@@ -1343,7 +1343,8 @@ defmodule Phoenix.LiveView do
       {:noreply, push_redirect(socket, to: "/", replace: true)}
 
   """
-  # TODO remove in 0.19
+  @doc deprecated: "Use push_navigate/2 instead"
+  # Deprecate in 0.19
   def push_redirect(%Socket{} = socket, opts) do
     opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})

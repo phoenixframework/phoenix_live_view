@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.Rendered do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamic, :fingerprint, :root]
+  defstruct [:static, :dynamic, :fingerprint, :root, stacktrace: []]
 
   @type t :: %__MODULE__{
           static: [String.t()],

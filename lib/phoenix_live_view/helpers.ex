@@ -4,8 +4,6 @@ defmodule Phoenix.LiveView.Helpers do
   """
   use Phoenix.Component
 
-  # TODO: Convert all functions with the `live_` prefix to function components?
-
   alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static, Utils}
 
@@ -600,48 +598,6 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a component defined by the given function.
-
-  This function is rarely invoked directly by users. Instead, it is used by `~H`
-  to render `Phoenix.Component`s. For example, the following:
-
-      <MyApp.Weather.city name="Kraków" />
-
-  Is the same as:
-
-      <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
-
-  """
-  def component(func, assigns \\ [])
-      when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
-    assigns =
-      case assigns do
-        %{__changed__: _} -> assigns
-        _ -> assigns |> Map.new() |> Map.put_new(:__changed__, nil)
-      end
-
-    case func.(assigns) do
-      %Phoenix.LiveView.Rendered{} = rendered ->
-        rendered
-
-      %Phoenix.LiveView.Component{} = component ->
-        component
-
-      other ->
-        raise RuntimeError, """
-        expected #{inspect(func)} to return a %Phoenix.LiveView.Rendered{} struct
-
-        Ensure your render function uses ~H to define its template.
-
-        Got:
-
-            #{inspect(other)}
-
-        """
-    end
-  end
-
-  @doc """
   Renders the `@inner_block` assign of a component with the given `argument`.
 
       <%= render_block(@inner_block, value: @value)
@@ -842,7 +798,6 @@ defmodule Phoenix.LiveView.Helpers do
   @doc """
   Builds a file input tag for a LiveView upload.
 
-
   ## Attributes
 
     * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
@@ -924,6 +879,16 @@ defmodule Phoenix.LiveView.Helpers do
     """
   end
 
+  @doc """
+  Renders a title with automatic prefix/suffix on `@page_title` updates.
+
+  ## Examples
+
+      <.live_title prefix="MyApp – "><%= assigns[:page_title] || "Welcome" %></.live_title>
+
+      <.live_title suffix="- MyApp"><%= assigns[:page_title] || "Welcome" %></.live_title>
+
+  """
   attr :prefix, :string, default: false
   attr :suffix, :string, default: false
 
@@ -938,9 +903,9 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
 
-      <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
   """
   @doc deprecated: "Use <.live_title> instead"
   # TODO deprecate in 0.19, remove in 0.20
@@ -953,7 +918,8 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc """
-  Renders a
+  Renders a form.
+
   This function is built on top of `Phoenix.HTML.Form.form_for/4`. For
   more information about options and how to build inputs, see
   `Phoenix.HTML.Form`.

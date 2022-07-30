@@ -39,7 +39,7 @@ defmodule Phoenix.ComponentTest do
       assigns = %{}
 
       assert h2s(~H"""
-             <%= component &hello/1, name: "WORLD" %>
+             <.hello name="WORLD" />
              """) == """
              Hello WORLD\
              """

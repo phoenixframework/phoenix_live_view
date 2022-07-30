@@ -561,7 +561,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_only/1, from: :component %>
+      <FunctionComponent.render_only from={:component} />
       """
 
       {socket, full_render, components} = render(rendered)
@@ -784,7 +784,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_with_live_component/1 %>
+      <FunctionComponent.render_with_live_component />
       """
 
       {socket, full_render, components} = render(rendered)
