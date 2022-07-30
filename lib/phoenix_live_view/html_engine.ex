@@ -17,10 +17,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   Is the same as:
 
-      <%= component(&MyApp.Weather.city/1, name: "Kraków") %>
+      <%= component(
+            &MyApp.Weather.city/1,
+            [name: "Kraków"],
+            {__ENV__.module, __ENV__.function, __ENV__.file, __ENV__.line}
+          ) %>
 
   """
-  def component(func, assigns \\ [], stacktrace \\ [])
+  def component(func, assigns, caller)
       when (is_function(func, 1) and is_list(assigns)) or is_map(assigns) do
     assigns =
       case assigns do
@@ -30,7 +34,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     case func.(assigns) do
       %Phoenix.LiveView.Rendered{} = rendered ->
-        %{rendered | stacktrace: stacktrace}
+        %{rendered | caller: caller}
 
       %Phoenix.LiveView.Component{} = component ->
         component
@@ -370,7 +374,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: tag_meta.line do
-        Phoenix.LiveView.HTMLEngine.component(&(unquote(mod_ast).unquote(fun) / 1), unquote(assigns))
+        Phoenix.LiveView.HTMLEngine.component(
+          &(unquote(mod_ast).unquote(fun) / 1),
+          unquote(assigns),
+          {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
+        )
       end
 
     state
@@ -406,7 +414,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(&(unquote(mod_ast).unquote(fun) / 1), unquote(assigns))
+        Phoenix.LiveView.HTMLEngine.component(
+          &(unquote(mod_ast).unquote(fun) / 1),
+          unquote(assigns),
+          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+        )
       end
 
     state
@@ -431,7 +443,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       quote line: line do
         Phoenix.LiveView.HTMLEngine.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns)
+          unquote(assigns),
+          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
       end
 
@@ -526,7 +539,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       quote line: line do
         Phoenix.LiveView.HTMLEngine.component(
           &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns)
+          unquote(assigns),
+          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
       end
 

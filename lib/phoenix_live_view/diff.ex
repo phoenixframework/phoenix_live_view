@@ -358,7 +358,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          socket,
-         %Rendered{fingerprint: fingerprint, dynamic: dynamic},
+         %Rendered{fingerprint: fingerprint} = rendered,
          {fingerprint, children},
          pending,
          components,
@@ -369,14 +369,14 @@ defmodule Phoenix.LiveView.Diff do
     nil = template
 
     {_counter, diff, children, pending, components, nil} =
-      traverse_dynamic(socket, dynamic.(changed?), children, pending, components, nil, changed?)
+      traverse_dynamic(socket, invoke_dynamic(rendered, changed?), children, pending, components, nil, changed?)
 
     {diff, {fingerprint, children}, pending, components, nil}
   end
 
   defp traverse(
          socket,
-         %Rendered{fingerprint: fingerprint, static: static, dynamic: dynamic},
+         %Rendered{fingerprint: fingerprint, static: static} = rendered,
          _,
          pending,
          components,
@@ -384,7 +384,7 @@ defmodule Phoenix.LiveView.Diff do
          changed?
        ) do
     {_counter, diff, children, pending, components, template} =
-      traverse_dynamic(socket, dynamic.(false), %{}, pending, components, template, changed?)
+      traverse_dynamic(socket, invoke_dynamic(rendered, false), %{}, pending, components, template, changed?)
 
     {diff, template} = maybe_template_static(diff, fingerprint, static, template)
     {diff, {fingerprint, children}, pending, components, template}
@@ -483,6 +483,33 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(_socket, iodata, _, pending, components, template, _changed?) do
     {IO.iodata_to_binary(iodata), nil, pending, components, template}
+  end
+
+  defp invoke_dynamic(%Rendered{caller: :not_available, dynamic: dynamic}, changed?) do
+    dynamic.(changed?)
+  end
+
+  defp invoke_dynamic(%Rendered{caller: caller, dynamic: dynamic}, changed?) do
+    try do
+      dynamic.(changed?)
+    rescue
+      e ->
+        {mod, {function, arity}, file, line} = caller
+        entry = {mod, function, arity, file: String.to_charlist(file), line: line}
+        reraise e, inject_stacktrace(__STACKTRACE__, entry)
+    end
+  end
+
+  defp inject_stacktrace([{__MODULE__, :invoke_dynamic, 2, _} | stacktrace], entry) do
+    [entry | Enum.drop_while(stacktrace, &elem(&1, 0) == __MODULE__)]
+  end
+
+  defp inject_stacktrace([head | tail], entry) do
+    [head | inject_stacktrace(tail, entry)]
+  end
+
+  defp inject_stacktrace([], entry) do
+    [entry]
   end
 
   defp traverse_dynamic(socket, dynamic, children, pending, components, template, changed?) do

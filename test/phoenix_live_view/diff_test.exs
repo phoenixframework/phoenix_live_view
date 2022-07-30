@@ -578,6 +578,38 @@ defmodule Phoenix.LiveView.DiffTest do
       assert components == Diff.new_components()
     end
 
+    @raises_inside_rendered_line __ENV__.line + 3
+    defp raises_inside_rendered(assigns) do
+      ~H"""
+      <%= raise "oops" %>
+      """
+    end
+
+    test "stacktrace" do
+      assigns = %{socket: %Socket{}}
+      line = __ENV__.line + 3
+
+      rendered = ~H"""
+      <.raises_inside_rendered />
+      """
+
+      try do
+        render(rendered)
+      rescue
+        RuntimeError ->
+          [{__MODULE__, _anonymous_fun, _anonymous_arity, info} | rest] = __STACKTRACE__
+          assert List.to_string(info[:file]) =~ "diff_test.exs"
+          assert info[:line] == @raises_inside_rendered_line
+
+          assert Enum.any?(rest, fn {mod, fun, arity, info} ->
+                   mod == __MODULE__ and __ENV__.function == {fun, arity} and
+                     List.to_string(info[:file]) =~ "diff_test.exs" and info[:line] == line
+                 end)
+      else
+        _ -> flunk("should have raised runtime error")
+      end
+    end
+
     test "@inner_block without args" do
       assigns = %{socket: %Socket{}}
 

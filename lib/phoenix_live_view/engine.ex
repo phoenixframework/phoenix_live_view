@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.Rendered do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamic, :fingerprint, :root, stacktrace: []]
+  defstruct [:static, :dynamic, :fingerprint, :root, caller: :not_available]
 
   @type t :: %__MODULE__{
           static: [String.t()],
@@ -116,7 +116,11 @@ defmodule Phoenix.LiveView.Rendered do
                  | Phoenix.LiveView.Component.t()
                ]),
           fingerprint: integer(),
-          root: nil | true | false
+          root: nil | true | false,
+          caller:
+            :not_available
+            | {module(), function :: {atom(), non_neg_integer()}, file :: String.t(),
+               line :: pos_integer()}
         }
 
   defimpl Phoenix.HTML.Safe do
@@ -487,8 +491,11 @@ defmodule Phoenix.LiveView.Engine do
     args =
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
-        {:component, [fun, expr]} -> [fun, to_component_tracking(fun, expr, [], vars)]
-        {_, _} -> args
+        {:component, [fun, expr, caller]} ->
+          [fun, to_component_tracking(fun, expr, [], vars), caller]
+
+        {_, _} ->
+          args
       end
 
     to_safe({left, meta, args}, true)
@@ -732,7 +739,8 @@ defmodule Phoenix.LiveView.Engine do
       value =
         if is_list(value) do
           for maybe_slot <- value do
-            with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <- maybe_slot,
+            with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <-
+                   maybe_slot,
                  {call, meta, [^key, [do: block]]} <- inner_block,
                  :inner_block <- extract_call(call) do
               inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars)]]}
