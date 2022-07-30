@@ -886,6 +886,12 @@ defmodule Phoenix.ComponentTest do
 
         @doc "my function component with attrs"
         def func_with_attr_docs(assigns), do: ~H[]
+
+        slot :slot, doc: "a named slot" do
+          attr :attr, :any, doc: "a slot attr"
+        end
+
+        def func_with_slot_docs(assigns), do: ~H[]
       end
 
       line = AttrDocs.attr_line()
@@ -941,6 +947,23 @@ defmodule Phoenix.ComponentTest do
                  ],
                  kind: :def,
                  slots: []
+               },
+               func_with_slot_docs: %{
+                 attrs: [
+                   %{
+                     doc: "a slot attr",
+                     line: line + 26,
+                     name: :attr,
+                     opts: [],
+                     required: false,
+                     slot: :slot,
+                     type: :any
+                   }
+                 ],
+                 kind: :def,
+                 slots: [
+                   %{doc: "a named slot", line: line + 25, name: :slot, opts: [], required: false}
+                 ]
                }
              }
     end
@@ -975,7 +998,7 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "raise if :doc is not a string" do
+    test "raise if attr :doc is not a string" do
       msg = ~r"doc must be a string or false, got: :foo"
 
       assert_raise CompileError, msg, fn ->
@@ -983,6 +1006,19 @@ defmodule Phoenix.ComponentTest do
           use Elixir.Phoenix.Component
 
           attr :invalid, :any, doc: :foo
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if slot :doc is not a string" do
+      msg = ~r"doc must be a string or false, got: :foo"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotDocsInvalidType do
+          use Elixir.Phoenix.Component
+
+          slot :invalid, doc: :foo
           def func(assigns), do: ~H[]
         end
       end
