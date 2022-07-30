@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView.TelemtryTest do
     @tag session: %{current_user_id: "1"}
     test "log level can be overridden for an individual Live View module", %{conn: conn} do
       log =
-        capture_log([level: :warn], fn ->
+        capture_log([level: :warning], fn ->
           {:ok, _view, _html} = live(conn, "/log-override")
         end)
 

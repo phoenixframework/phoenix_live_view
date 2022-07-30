@@ -236,7 +236,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
 end
 
 defmodule Phoenix.LiveViewTest.WithLogOverride do
-  use Phoenix.LiveView, log: :warn
+  use Phoenix.LiveView, log: :warning
 
   def mount(_params, _session, socket) do
     {:ok, socket}
