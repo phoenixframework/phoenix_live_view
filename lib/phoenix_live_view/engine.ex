@@ -1006,6 +1006,9 @@ defmodule Phoenix.LiveView.Engine do
   ## Callbacks
 
   defp fingerprint(block, static) do
+    # We don’t check for collisions and therefore it is important the algorithm we
+    # use here guarantees a very low number of collisions.
+
     <<fingerprint::8*16>> =
       [block | static]
       |> :erlang.term_to_binary()
