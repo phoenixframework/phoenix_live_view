@@ -990,7 +990,12 @@ defmodule Phoenix.ComponentTest do
         fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
         fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs\n",
         fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
-        fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n"
+        fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n",
+        fun_slot: "## Slots\n\n* `inner_block`\n",
+        fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs\n",
+        fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
+        fun_slot_with_attrs:
+          "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n\t* `attr1` (`:any`) (required) - a slot attr doc\n\t* `attr2` (`:any`) (required) - a slot attr doc\n"
       }
 
       for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do

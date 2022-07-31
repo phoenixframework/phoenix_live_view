@@ -992,7 +992,47 @@ defmodule Phoenix.Component do
     [left, ?\n]
   end
 
-  defp build_component_docs(_slots, attrs) do
+  defp build_component_docs(slots, attrs) do
+    {slots_attrs, attrs} = Enum.split_with(attrs, & &1.slot)
+
+    case {slots, attrs} do
+      {[], []} ->
+        []
+
+      {slots, [] = _attrs} ->
+        [build_slots_docs(slots, slots_attrs)]
+
+      {[] = _slots, attrs} ->
+        [build_attrs_docs(attrs)]
+
+      {slots, attrs} ->
+        [build_attrs_docs(attrs), ?\n, build_slots_docs(slots, slots_attrs)]
+    end
+  end
+
+  defp build_slots_docs(slots, slots_attrs) do
+    [
+      "## Slots",
+      ?\n,
+      for slot <- slots, slot.doc != false, into: [] do
+        slot_attrs =
+          for slot_attr <- slots_attrs,
+              slot_attr.doc != false,
+              slot_attr.slot == slot.name,
+              do: slot_attr
+
+        [
+          ?\n,
+          "* ",
+          build_slot_name(slot),
+          build_slot_required(slot),
+          build_slot_doc(slot, slot_attrs)
+        ]
+      end
+    ]
+  end
+
+  defp build_attrs_docs(attrs) do
     [
       "## Attributes",
       ?\n,
@@ -1007,6 +1047,48 @@ defmodule Phoenix.Component do
         ]
       end
     ]
+  end
+
+  defp build_slot_name(%{name: name}) do
+    ["`", Atom.to_string(name), "`"]
+  end
+
+  defp build_slot_doc(%{doc: nil}, []) do
+    []
+  end
+
+  defp build_slot_doc(%{doc: doc}, []) do
+    [" - ", doc]
+  end
+
+  defp build_slot_doc(%{doc: nil}, slot_attrs) do
+    ["Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+  end
+
+  defp build_slot_doc(%{doc: doc}, slot_attrs) do
+    [" - ", doc, ". Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+  end
+
+  defp build_slot_attrs_docs(slot_attrs) do
+    for slot_attr <- slot_attrs do
+      [
+        ?\n,
+        ?\t,
+        "* ",
+        build_attr_name(slot_attr),
+        build_attr_type(slot_attr),
+        build_attr_required(slot_attr),
+        build_attr_doc_and_default(slot_attr)
+      ]
+    end
+  end
+
+  defp build_slot_required(%{required: true}) do
+    [" (required)"]
+  end
+
+  defp build_slot_required(_slot) do
+    []
   end
 
   defp build_attr_name(%{name: name}) do

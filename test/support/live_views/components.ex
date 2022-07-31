@@ -84,6 +84,22 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   attr :attr, :any
   defp private_fun(assigns), do: ~H[]
+
+  slot :inner_block
+  def fun_slot(assigns), do: ~H[]
+
+  slot :inner_block, doc: "slot docs"
+  def fun_slot_doc(assigns), do: ~H[]
+
+  slot :inner_block, required: true
+  def fun_slot_required(assigns), do: ~H[]
+
+  slot :named, required: true, doc: "a named slot" do
+    attr :attr1, :any, required: true, doc: "a slot attr doc"
+    attr :attr2, :any, required: true, doc: "a slot attr doc"
+  end
+
+  def fun_slot_with_attrs(assigns), do: ~H[]
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do
