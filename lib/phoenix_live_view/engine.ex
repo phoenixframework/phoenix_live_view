@@ -1006,8 +1006,9 @@ defmodule Phoenix.LiveView.Engine do
   ## Callbacks
 
   defp fingerprint(block, static) do
-    # We don’t check for collisions and therefore it is important the algorithm we
-    # use here guarantees a very low number of collisions.
+    # The fingerprint must be unique and we don’t check for collisions in the
+    # Diff module as doing so would be expensive. Therefore it is important
+    # that the algorithm we use here has a low number of collisions.
 
     <<fingerprint::8*16>> =
       [block | static]
