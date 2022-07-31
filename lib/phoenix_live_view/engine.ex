@@ -1006,6 +1006,10 @@ defmodule Phoenix.LiveView.Engine do
   ## Callbacks
 
   defp fingerprint(block, static) do
+    # The fingerprint must be unique and we don’t check for collisions in the
+    # Diff module as doing so would be expensive. Therefore it is important
+    # that the algorithm we use here has a low number of collisions.
+
     <<fingerprint::8*16>> =
       [block | static]
       |> :erlang.term_to_binary()
