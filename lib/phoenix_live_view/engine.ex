@@ -1006,12 +1006,7 @@ defmodule Phoenix.LiveView.Engine do
   ## Callbacks
 
   defp fingerprint(block, static) do
-    <<fingerprint::8*16>> =
-      [block | static]
-      |> :erlang.term_to_binary()
-      |> :erlang.md5()
-
-    fingerprint
+    :erlang.phash2({block, static})
   end
 
   @doc false
