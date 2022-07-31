@@ -1,6 +1,8 @@
 defmodule Phoenix.ComponentTest do
   use ExUnit.Case, async: true
 
+  import Phoenix.LiveViewTest
+
   use Phoenix.Component
 
   defp render(mod, func, assigns) do
@@ -569,6 +571,20 @@ defmodule Phoenix.ComponentTest do
         """
       end
 
+      def fun_with_slot_attr_default_line, do: __ENV__.line + 7
+
+      slot :named do
+        attr :attr_with_default, :any, default: "a default value"
+      end
+
+      def fun_with_slot_attr_default(assigns) do
+        ~H"""
+        <%= for named <- @named do %>
+          <%= named.attr_with_default %>
+        <% end %>
+        """
+      end
+
       def render_line, do: __ENV__.line + 2
 
       def render(assigns) do
@@ -695,6 +711,29 @@ defmodule Phoenix.ComponentTest do
                      required: false
                    }
                  ]
+               },
+               fun_with_slot_attr_default: %{
+                 attrs: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 4,
+                     name: :attr_with_default,
+                     opts: [default: "a default value"],
+                     required: false,
+                     slot: :named,
+                     type: :any
+                   }
+                 ],
+                 kind: :def,
+                 slots: [
+                   %{
+                     doc: nil,
+                     line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 5,
+                     name: :named,
+                     opts: [],
+                     required: false
+                   }
+                 ]
                }
              }
     end
@@ -707,21 +746,21 @@ defmodule Phoenix.ComponentTest do
                  attrs: %{},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
                  file: ^file,
-                 line: 576,
+                 line: 592,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {578, 9, :expr, _}}]}
+                 slots: %{inner_block: [%{inner_block: {594, 9, :expr, _}}]}
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
                  file: ^file,
-                 line: 580,
+                 line: 596,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {587, 11, :expr, _}}],
-                   header: [%{inner_block: {581, 11, :expr, _}}],
-                   inner_block: [%{inner_block: {590, 9, :expr, _}}]
+                   footer: [%{inner_block: {603, 11, :expr, _}}],
+                   header: [%{inner_block: {597, 11, :expr, _}}],
+                   inner_block: [%{inner_block: {606, 9, :expr, _}}]
                  }
                },
                %{
@@ -729,28 +768,48 @@ defmodule Phoenix.ComponentTest do
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
                  file: ^file,
-                 line: 592,
+                 line: 608,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {594, 9, :expr, _}}],
-                   slot: [%{attr: {593, 11, :lit, "1"}, inner_block: {593, 11, :lit, nil}}]
+                   inner_block: [%{inner_block: {610, 9, :expr, _}}],
+                   slot: [%{attr: {609, 11, :lit, "1"}, inner_block: {609, 11, :lit, nil}}]
                  }
                },
                %{
-                 attrs: %{rows: {596, 17, _kind, _value}},
+                 attrs: %{rows: {612, 17, _kind, _value}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
                  file: ^file,
-                 line: 596,
+                 line: 612,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {597, 11, :expr, _}, label: {597, 11, :expr, _}},
-                     %{inner_block: {601, 11, :expr, _}, label: {601, 11, :lit, "Address"}}
+                     %{inner_block: {613, 11, :expr, _}, label: {613, 11, :expr, _}},
+                     %{inner_block: {617, 11, :expr, _}, label: {617, 11, :lit, "Address"}}
                    ],
-                   inner_block: [%{inner_block: {604, 9, :expr, _}}]
+                   inner_block: [%{inner_block: {620, 9, :expr, _}}]
                  }
                }
              ] = FunctionComponentWithSlots.__components_calls__()
+    end
+
+    test "renders slot attr defaults" do
+      assigns = %{}
+
+      rendered = ~H"""
+      <FunctionComponentWithSlots.fun_with_slot_attr_default>
+        <:named />
+      </FunctionComponentWithSlots.fun_with_slot_attr_default>
+      """
+
+      assert rendered_to_string(rendered) =~ "a default value"
+
+      rendered = ~H"""
+      <FunctionComponentWithSlots.fun_with_slot_attr_default>
+        <:named attr_with_default="some other value" />
+      </FunctionComponentWithSlots.fun_with_slot_attr_default>
+      """
+
+      assert rendered_to_string(rendered) =~ "some other value"
     end
 
     test "does not generate __components_calls__ if there's no call" do
@@ -995,7 +1054,7 @@ defmodule Phoenix.ComponentTest do
         fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs\n",
         fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
         fun_slot_with_attrs:
-          "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n\t* `attr1` (`:any`) (required) - a slot attr doc\n\t* `attr2` (`:any`) (required) - a slot attr doc\n"
+          "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n\t* `attr1` (`:any`) (required) - a slot attr doc\n\t* `attr2` (`:any`) - a slot attr doc. Defaults to `\"some default\"`.\n"
       }
 
       for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do

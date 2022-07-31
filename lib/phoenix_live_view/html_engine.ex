@@ -429,12 +429,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
       pop_tag!(state, token)
 
+    mod = Macro.expand(mod_ast, state.caller)
     named_slots = get_slots(state)
     attrs = remove_phx_no_break(attrs)
-    {assigns, state} = build_component_assigns(attrs, line, state)
+    {assigns, state} = build_component_assigns(mod, fun, attrs, line, state)
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
-
-    mod = Macro.expand(mod_ast, state.caller)
 
     store_component_call(
       state.module,
@@ -566,11 +565,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     named_slots = get_slots(state)
     fun = String.to_atom(fun_name)
-    {assigns, state} = build_component_assigns(attrs, line, state)
-
-    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
-
     mod = actual_component_module(state.caller, fun)
+    {assigns, state} = build_component_assigns(mod, fun, attrs, line, state)
+    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
     store_component_call(
       state.module,
@@ -914,7 +911,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {merge_component_attrs(roots, attrs, line), state}
   end
 
-  defp build_component_assigns(attrs, line, %{file: file} = state) do
+  defp build_component_assigns(mod, fun, attrs, line, %{file: file} = state) do
     {let, roots, attrs} = split_component_attrs(attrs, file)
     clauses = build_component_clauses(let, state)
 
@@ -929,8 +926,25 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {slots, state} = pop_slots(state)
 
     slot_assigns =
-      for {slot_name, slot_values} <- slots,
-          do: {slot_name, Enum.map(slot_values, &elem(&1, 0))}
+      if function_exported?(mod, :__components__, 0) do
+        for {slot_name, slot_values} <- slots do
+          defaults =
+            mod.__components__()[fun][:attrs]
+            |> Enum.reject(&(&1.slot != slot_name or not Keyword.has_key?(&1.opts, :default)))
+            |> Enum.map(&{&1.name, &1.opts[:default]})
+
+          values_with_defaults =
+            for {{:%{}, [], values}, _meta} <- slot_values do
+              {:%{}, [], Keyword.merge(defaults, values)}
+            end
+
+          {slot_name, values_with_defaults}
+        end
+      else
+        for {slot_name, slot_values} <- slots do
+          {slot_name, Enum.map(slot_values, &elem(&1, 0))}
+        end
+      end
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
     {merge_component_attrs(roots, attrs, line), state}

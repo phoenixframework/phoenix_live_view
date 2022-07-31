@@ -1116,7 +1116,7 @@ defmodule Phoenix.Component do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
-    [" - ", doc, " Defaults to `", inspect(default), "`."]
+    [" - ", doc, ". Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}) do
