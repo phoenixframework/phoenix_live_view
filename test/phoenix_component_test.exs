@@ -314,7 +314,7 @@ defmodule Phoenix.ComponentTest do
 
       def func1_line, do: __ENV__.line
       attr :id, :any, required: true
-      attr :email, :any, default: nil
+      attr :email, :string, default: nil
       def func1(assigns), do: ~H[]
 
       def func2_line, do: __ENV__.line
@@ -366,7 +366,7 @@ defmodule Phoenix.ComponentTest do
                  attrs: [
                    %{
                      name: :email,
-                     type: :any,
+                     type: :string,
                      opts: [default: nil],
                      required: false,
                      doc: nil,
@@ -1240,6 +1240,37 @@ defmodule Phoenix.ComponentTest do
 
           slot :named do
             attr :foo, :not_a_type
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if attr default does not match the type" do
+      msg = ~r"expected the default value for attr :foo to be a :string, got: :not_a_string."
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.AttrDefaultTypeMismatch do
+          use Elixir.Phoenix.Component
+
+          attr :foo, :string, default: :not_a_string
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise if slot attr default does not match the type" do
+      msg =
+        ~r"expected the default value for attr :foo in slot :named to be a :string, got: :not_a_string."
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrDefaultTypeMismatch do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            attr :foo, :string, default: :not_a_string
           end
 
           def func(assigns), do: ~H[]

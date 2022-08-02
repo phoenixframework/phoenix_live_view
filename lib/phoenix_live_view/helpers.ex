@@ -889,12 +889,12 @@ defmodule Phoenix.LiveView.Helpers do
       <.live_title suffix="- MyApp"><%= assigns[:page_title] || "Welcome" %></.live_title>
 
   """
-  attr :prefix, :string, default: false
-  attr :suffix, :string, default: false
+  attr :prefix, :string, default: nil
+  attr :suffix, :string, default: nil
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix || "" %><%= render_slot(@inner_block) %><%= @suffix || "" %></title>
+    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
     """
   end
 
@@ -1198,8 +1198,8 @@ defmodule Phoenix.LiveView.Helpers do
   attr :navigate, :string
   attr :patch, :string
   attr :href, :any
-  attr :replace, :string, default: false
-  attr :method, :atom, default: "get"
+  attr :replace, :string, default: nil
+  attr :method, :atom, default: :get
   attr :csrf_token, :string
   attr :rest, :global
 
@@ -1240,14 +1240,12 @@ defmodule Phoenix.LiveView.Helpers do
           assign(assigns, :href, href)
       end
 
-    assigns = assign(assigns, :method, to_string(assigns.method))
-
     ~H"""
     <a
-      href={if @method == "get", do: @href, else: "#"}
-      data-method={if @method != "get", do: @method}
-      data-csrf={if @method != "get", do: @csrf_token}
-      data-to={if @method != "get", do: @href}
+      href={if @method == :get, do: @href, else: "#"}
+      data-method={if @method != :get, do: @method}
+      data-csrf={if @method != :get, do: @csrf_token}
+      data-to={if @method != :get, do: @href}
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """

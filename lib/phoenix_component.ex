@@ -657,6 +657,10 @@ defmodule Phoenix.Component do
     type = validate_attr_type!(module, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
 
+    if Keyword.has_key?(opts, :default) do
+      validate_attr_default!(slot, name, type, opts[:default], line, file)
+    end
+
     Module.put_attribute(module, :__attrs__, %{
       slot: slot,
       name: name,
@@ -731,6 +735,74 @@ defmodule Phoenix.Component do
       * any Elixir struct, such as URI, MyApp.User, etc
       * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
       * :any for all other types
+    """)
+  end
+
+  defp validate_attr_default!(slot, name, type, default, line, file) do
+    case {type, default} do
+      {_type, nil} ->
+        :ok
+
+      {:any, _default} ->
+        :ok
+
+      {:string, default} when not is_binary(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:atom, default} when not is_atom(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:boolean, default} when not is_boolean(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:integer, default} when not is_integer(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:float, default} when not is_float(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:list, default} when not is_list(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {{:struct, mod}, default} when not is_struct(default, mod) ->
+        bad_default!(slot, name, mod, default, line, file)
+
+      {_type, _default} ->
+        :ok
+    end
+  end
+
+  defp bad_default!(nil, name, type, default, line, file) when type in [:atom, :integer] do
+    compile_error!(line, file, """
+    expected the default value for attr #{inspect(name)} \
+    to be an #{inspect(type)}, \
+    got: #{inspect(default)}.
+    """)
+  end
+
+  defp bad_default!(nil, name, type, default, line, file) do
+    compile_error!(line, file, """
+    expected the default value for attr #{inspect(name)} \
+    to be a #{inspect(type)}, \
+    got: #{inspect(default)}.
+    """)
+  end
+
+  defp bad_default!(slot, name, type, default, line, file) when type in [:atom, :integer] do
+    compile_error!(line, file, """
+    expected the default value for attr #{inspect(name)} \
+    in slot #{inspect(slot)} \
+    to be an #{inspect(type)}, \
+    got: #{inspect(default)}.
+    """)
+  end
+
+  defp bad_default!(slot, name, type, default, line, file) do
+    compile_error!(line, file, """
+    expected the default value for attr #{inspect(name)} \
+    in slot #{inspect(slot)} \
+    to be a #{inspect(type)}, \
+    got: #{inspect(default)}.
     """)
   end
 
