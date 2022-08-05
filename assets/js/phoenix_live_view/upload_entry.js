@@ -92,6 +92,7 @@ export default class UploadEntry {
     return {
       last_modified: this.file.lastModified,
       name: this.file.name,
+      relative_path: this.file.webkitRelativePath,
       size: this.file.size,
       type: this.file.type,
       ref: this.ref

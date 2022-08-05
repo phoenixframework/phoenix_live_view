@@ -15,6 +15,7 @@ defmodule Phoenix.LiveView.UploadEntry do
             done?: false,
             cancelled?: false,
             client_name: nil,
+            client_relative_path: nil,
             client_size: nil,
             client_type: nil,
             client_last_modified: nil
@@ -29,6 +30,7 @@ defmodule Phoenix.LiveView.UploadEntry do
           done?: boolean(),
           cancelled?: boolean(),
           client_name: String.t() | nil,
+          client_relative_path: String.t() | nil,
           client_size: integer() | nil,
           client_type: String.t() | nil,
           client_last_modified: integer() | nil
@@ -517,6 +519,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       upload_ref: conf.ref,
       upload_config: conf.name,
       client_name: Map.fetch!(client_entry, "name"),
+      client_relative_path: Map.get(client_entry, "relative_path"),
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),
       client_last_modified: Map.get(client_entry, "last_modified")

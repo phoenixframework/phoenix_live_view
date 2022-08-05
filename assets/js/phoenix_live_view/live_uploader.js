@@ -47,6 +47,7 @@ export default class LiveUploader {
       fileData[uploadRef] = fileData[uploadRef] || []
       entry.ref = this.genFileRef(file)
       entry.name = file.name || entry.ref
+      entry.relative_path = file.webkitRelativePath
       entry.type = file.type
       entry.size = file.size
       fileData[uploadRef].push(entry)

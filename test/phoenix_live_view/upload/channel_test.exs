@@ -38,6 +38,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       Enum.into(opts, %{
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
+        relative_path: "./myfile#{i}.jpeg",
         content: String.duplicate("0", 100),
         size: 1_396_009,
         type: "image/jpeg"
