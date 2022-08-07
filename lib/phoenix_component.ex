@@ -513,6 +513,7 @@ defmodule Phoenix.Component do
 
     Module.register_attribute(module, :__attrs__, accumulate: true)
     Module.register_attribute(module, :__slots__, accumulate: true)
+    Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
@@ -621,19 +622,20 @@ defmodule Phoenix.Component do
   '''
   defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
-      Phoenix.Component.__attr__!(__MODULE__, nil, name, type, opts, __ENV__.line, __ENV__.file)
+      Phoenix.Component.__attr__!(
+        __MODULE__,
+        @__slot__,
+        name,
+        type,
+        opts,
+        __ENV__.line,
+        __ENV__.file
+      )
     end
   end
 
   @doc false
-  defmacro slot_attr(slot, name, type, opts \\ []) do
-    quote bind_quoted: [slot: slot, name: name, type: type, opts: opts] do
-      Phoenix.Component.__attr__!(__MODULE__, slot, name, type, opts, __ENV__.line, __ENV__.file)
-    end
-  end
-
-  @doc false
-  def __attr__!(module, slot \\ nil, name, type, opts, line, file) do
+  def __attr__!(module, slot, name, type, opts, line, file) do
     if type == :global and Keyword.has_key?(opts, :required) do
       compile_error!(line, file, "global attributes do not support the :required option")
     end
@@ -1269,30 +1271,34 @@ defmodule Phoenix.Component do
     end
   end
 
-  defmacro slot(name) when is_atom(name) do
-    quote bind_quoted: [name: name] do
-      Phoenix.Component.__slot__!(__MODULE__, name, [], __ENV__.line, __ENV__.file)
-    end
-  end
-
-  defmacro slot(name, opts) when is_atom(name) and is_list(opts) do
+  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
     validate_slot_args!(name, block)
-    slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
-    quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
-      Phoenix.Component.__slot__!(__MODULE__, name, opts, __ENV__.line, __ENV__.file)
-      slot_attrs_ast
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
     end
   end
 
   defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
     validate_slot_args!(name, block)
-    slot_attrs_ast = build_slot_attrs_ast(name, block, __CALLER__)
 
-    quote bind_quoted: [name: name, opts: opts, slot_attrs_ast: slot_attrs_ast] do
-      Phoenix.Component.__slot__!(__MODULE__, name, opts, __ENV__.line, __ENV__.file)
-      slot_attrs_ast
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
     end
   end
 
@@ -1304,42 +1310,8 @@ defmodule Phoenix.Component do
 
   defp validate_slot_args!(_name, _block), do: :ok
 
-  defp build_slot_attrs_ast(_slot, nil, _caller) do
-    nil
-  end
-
-  defp build_slot_attrs_ast(slot, {:__block__, line, attr_asts}, caller) do
-    [do: {:__block__, line, Enum.map(attr_asts, &build_slot_attr_ast(slot, &1, caller))}]
-  end
-
-  defp build_slot_attrs_ast(slot, attr_ast, caller) do
-    [do: build_slot_attr_ast(slot, attr_ast, caller)]
-  end
-
-  defp build_slot_attr_ast(slot, {:attr, line, args}, _caller) do
-    {:slot_attr, line, [slot | args]}
-  end
-
-  defp build_slot_attr_ast(slot, {_, [line: line], _} = expression, caller) do
-    compile_error!(
-      line,
-      caller.file,
-      "unexpected expression encountered in slot #{inspect(slot)}, got: #{Macro.to_string(expression)}. " <>
-        "The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
-    )
-  end
-
-  defp build_slot_attr_ast(slot, literal, caller) do
-    compile_error!(
-      caller.line,
-      caller.file,
-      "unexpected literal encountered in slot #{inspect(slot)}, got: #{Macro.to_string(literal)}. " <>
-        "The code given to slot/2 can only contain calls to attr/3 and Elixir comments."
-    )
-  end
-
   @doc false
-  def __slot__!(module, name, opts, line, file) do
+  def __slot__!(module, name, opts, line, file, block_fun \\ fn -> :ok end) do
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do
@@ -1353,6 +1325,12 @@ defmodule Phoenix.Component do
     end
 
     validate_slot!(module, name, line, file)
+
+    Module.put_attribute(module, :__slot__, name)
+
+    block_fun.()
+
+    Module.put_attribute(module, :__slot__, nil)
 
     Module.put_attribute(module, :__slots__, %{
       name: name,
