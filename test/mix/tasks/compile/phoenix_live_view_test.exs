@@ -891,7 +891,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         for {value, line} <- [
               {nil, 7},
               {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
-              {[], 5},
               {1.0, 4},
               {1, 3},
               {true, 2},

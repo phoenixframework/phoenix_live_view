@@ -130,90 +130,19 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                 [error(message, call.file, line)]
 
-              # expressions cannot be type checked
-              {_type, {_line, _column, :expr, _value}} ->
-                []
+              {type, {line, _column, kind, value}} ->
+                if valid_type?(type, kind, value) do
+                  []
+                else
+                  message = """
+                  attribute \"#{name}\" \
+                  in component #{component(call)} \
+                  must be #{type_with_article(type)}, \
+                  got: #{inspect(value)}\
+                  """
 
-              # string attribute type mismatch
-              {:string, {line, _column, _kind, value}} when not is_binary(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be a :string, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # atom attribute type mismatch
-              {:atom, {line, _column, kind, value}} when kind != :lit or not is_atom(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be an :atom, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # boolean attribute type mismatch
-              {:boolean, {line, _column, _kind, value}} when not is_boolean(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be a :boolean, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # integer attribute type mismatch
-              {:integer, {line, _column, _kind, value}} when not is_integer(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be an :integer, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # float attribute type mismatch
-              {:float, {line, _column, _kind, value}} when not is_float(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be a :float, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # list attribute type mismatch
-              {:list, {line, _column, _kind, value}} when not is_list(value) ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be a :list, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # struct attribute type mismatch
-              {{:struct, mod}, {line, _column, kind, value}} when kind != :struct ->
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be a #{inspect(mod)}, \
-                got: #{inspect(value)}\
-                """
-
-                [error(message, call.file, line)]
-
-              # attribute type match
-              {_type, {_line, _column, _kind, _value}} ->
-                []
+                  [error(message, call.file, line)]
+                end
             end
 
           {warnings, {attrs, has_global? || type == :global}}
@@ -276,111 +205,33 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                     # type_mismatch_slot_attr_warnings =
                     case {attr_def, attr_kind, attr_value} do
                       # undefined attribute
-                      {:undef, _attr_kind, _attr_value} when attr_name != :inner_block ->
-                        message = """
-                        undefined attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)}\
-                        """
+                      {:undef, _attr_kind, _attr_value} ->
+                        if attr_name == :inner_block do
+                          errors
+                        else
+                          message = """
+                          undefined attribute \"#{attr_name}\" \
+                          in slot \"#{slot_name}\" \
+                          for component #{component(call)}\
+                          """
 
-                        [error(message, call.file, line) | errors]
+                          [error(message, call.file, line) | errors]
+                        end
 
-                      # expressions cannot be type checked
-                      {%{type: _attr_type}, :expr, _attr_value} ->
-                        errors
+                      {%{type: type}, kind, value} ->
+                        if valid_type?(type, kind, value) do
+                          errors
+                        else
+                          message = """
+                          attribute \"#{attr_name}\" \
+                          in slot \"#{slot_name}\" \
+                          for component #{component(call)} \
+                          must be #{type_with_article(type)}, \
+                          got: #{inspect(value)}\
+                          """
 
-                      # string attribute type mismatch
-                      {%{type: :string}, attr_kind, attr_value}
-                      when attr_kind != :lit or not is_binary(attr_value) ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be a :string, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # atom attribute type mismatch
-                      {%{type: :atom}, attr_kind, attr_value}
-                      when attr_kind != :lit or not is_atom(attr_value) ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be an :atom, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # boolean attribute type mismatch
-                      {%{type: :boolean}, attr_kind, attr_value}
-                      when attr_kind != :lit or not is_boolean(attr_value) ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be a :boolean, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # integer attribute type mismatch
-                      {%{type: :integer}, attr_kind, attr_value}
-                      when attr_kind != :lit or not is_integer(attr_value) ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be an :integer, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # float attribute type mismatch
-                      {%{type: :float}, attr_kind, attr_value}
-                      when attr_kind != :lit or not is_float(attr_value) ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be a :float, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # list attribute type mismatch
-                      {%{type: :list}, attr_kind, attr_value} when attr_kind != :list ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be a :list, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # struct attribute type mismatch
-                      {%{type: {:struct, mod}}, attr_kind, attr_value} when attr_kind != :struct ->
-                        message = """
-                        attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        must be a #{inspect(mod)}, \
-                        got: #{inspect(attr_value)}\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      # type attribute type match
-                      {_attr_type, _attr_kind, _attr_value} ->
-                        errors
+                          [error(message, call.file, line) | errors]
+                        end
                     end
                 end
 
@@ -407,6 +258,34 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         into: %{},
         do: {attr_def.name, attr_def}
   end
+
+  defp valid_type?(:any, _kind, _value), do: true
+
+  defp valid_type?(_type, :expr, _value), do: true
+
+  defp valid_type?(:string, :lit, value), do: is_binary(value)
+
+  defp valid_type?(:atom, :lit, value), do: is_atom(value)
+
+  defp valid_type?(:boolean, :lit, value), do: is_boolean(value)
+
+  defp valid_type?(:integer, :lit, value), do: is_integer(value)
+
+  defp valid_type?(:float, :lit, value), do: is_float(value)
+
+  defp valid_type?(:list, :list, _value), do: true
+
+  defp valid_type?(:list, :lit, value), do: is_list(value)
+
+  defp valid_type?({:struct, _mod}, :struct, _value), do: true
+
+  defp valid_type?(_type, _kind, _value), do: false
+
+  defp type_with_article({:struct, mod}), do: type_with_article(mod)
+
+  defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
+
+  defp type_with_article(type), do: "a #{inspect(type)}"
 
   defp component(%{component: {mod, fun}}) do
     "#{inspect(mod)}.#{fun}/1"
