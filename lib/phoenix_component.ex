@@ -512,6 +512,7 @@ defmodule Phoenix.Component do
     end
 
     Module.register_attribute(module, :__attrs__, accumulate: true)
+    Module.register_attribute(module, :__slot_attrs__, accumulate: true)
     Module.register_attribute(module, :__slots__, accumulate: true)
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
@@ -663,7 +664,7 @@ defmodule Phoenix.Component do
       validate_attr_default!(slot, name, type, opts[:default], line, file)
     end
 
-    Module.put_attribute(module, :__attrs__, %{
+    attr = %{
       slot: slot,
       name: name,
       type: type,
@@ -671,7 +672,13 @@ defmodule Phoenix.Component do
       opts: opts,
       doc: doc,
       line: line
-    })
+    }
+
+    if slot do
+      Module.put_attribute(module, :__slot_attrs__, attr)
+    end
+
+    Module.put_attribute(module, :__attrs__, attr)
   end
 
   @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
@@ -1313,19 +1320,34 @@ defmodule Phoenix.Component do
 
     validate_slot!(module, name, line, file)
 
-    Module.put_attribute(module, :__slot__, name)
+    try do
+      Module.put_attribute(module, :__slot__, name)
 
-    block_fun.()
+      block_fun.()
 
-    Module.put_attribute(module, :__slot__, nil)
+      slot_attrs = Module.get_attribute(module, :__slot_attrs__)
 
-    Module.put_attribute(module, :__slots__, %{
-      name: name,
-      required: required,
-      opts: opts,
-      doc: doc,
-      line: line
-    })
+      slot = %{
+        name: name,
+        required: required,
+        opts: opts,
+        doc: doc,
+        line: line,
+        attrs: slot_attrs
+      }
+
+      Module.put_attribute(module, :__slots__, slot)
+
+      Module.put_attribute(module, :__slot__, nil)
+      Module.delete_attribute(module, :__slot_attrs__)
+      Module.register_attribute(module, :__slot_attrs__, accumulate: true)
+    rescue
+      e ->
+        Module.put_attribute(module, :__slot__, nil)
+        Module.delete_attribute(module, :__slot_attrs__)
+        Module.register_attribute(module, :__slot_attrs__, accumulate: true)
+        reraise e, __STACKTRACE__
+    end
   end
 
   defp validate_slot!(module, name, line, file) do

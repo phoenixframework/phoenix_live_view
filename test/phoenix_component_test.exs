@@ -633,6 +633,7 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_slot_line() - 1,
                      name: :inner_block,
                      opts: [],
+                     attrs: [],
                      required: false
                    }
                  ]
@@ -646,6 +647,7 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_named_slots_line() - 1,
                      name: :footer,
                      opts: [],
+                     attrs: [],
                      required: false
                    },
                    %{
@@ -653,6 +655,7 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_named_slots_line() - 2,
                      name: :header,
                      opts: [],
+                     attrs: [],
                      required: false
                    }
                  ]
@@ -676,6 +679,17 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 4,
                      name: :slot,
                      opts: [],
+                     attrs: [
+                       %{
+                         doc: nil,
+                         line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 3,
+                         name: :attr,
+                         opts: [],
+                         required: false,
+                         slot: :slot,
+                         type: :any
+                       }
+                     ],
                      required: true
                    }
                  ]
@@ -708,6 +722,17 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.table_line() - 6,
                      name: :col,
                      opts: [],
+                     attrs: [
+                       %{
+                         doc: nil,
+                         line: FunctionComponentWithSlots.table_line() - 5,
+                         name: :label,
+                         opts: [],
+                         required: false,
+                         slot: :col,
+                         type: :string
+                       }
+                     ],
                      required: false
                    }
                  ]
@@ -731,6 +756,17 @@ defmodule Phoenix.ComponentTest do
                      line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 5,
                      name: :named,
                      opts: [],
+                     attrs: [
+                       %{
+                         doc: nil,
+                         line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 4,
+                         name: :attr_with_default,
+                         opts: [default: "a default value"],
+                         required: false,
+                         slot: :named,
+                         type: :any
+                       }
+                     ],
                      required: false
                    }
                  ]
@@ -864,6 +900,7 @@ defmodule Phoenix.ComponentTest do
                      line: Bodyless.example2_line(),
                      name: :slot,
                      opts: [],
+                     attrs: [],
                      required: false
                    }
                  ]
@@ -1021,7 +1058,24 @@ defmodule Phoenix.ComponentTest do
                  ],
                  kind: :def,
                  slots: [
-                   %{doc: "a named slot", line: line + 25, name: :slot, opts: [], required: false}
+                   %{
+                     doc: "a named slot",
+                     line: line + 25,
+                     name: :slot,
+                     attrs: [
+                       %{
+                         doc: "a slot attr",
+                         line: line + 26,
+                         name: :attr,
+                         opts: [],
+                         required: false,
+                         slot: :slot,
+                         type: :any
+                       }
+                     ],
+                     opts: [],
+                     required: false
+                   }
                  ]
                }
              }
@@ -1240,6 +1294,20 @@ defmodule Phoenix.ComponentTest do
 
           slot :named do
             attr :foo, :not_a_type
+          end
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "reraise exceptions in slot/3 blocks" do
+      assert_raise RuntimeError, "boom!", fn ->
+        defmodule Phoenix.ComponentTest.SlotExceptionRaised do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            raise "boom!"
           end
 
           def func(assigns), do: ~H[]
