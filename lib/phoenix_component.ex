@@ -774,27 +774,10 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp bad_default!(nil, name, type, default, line, file) when type in [:atom, :integer] do
-    compile_error!(line, file, """
-    expected the default value for attr #{inspect(name)} \
-    to be an #{inspect(type)}, \
-    got: #{inspect(default)}.
-    """)
-  end
-
   defp bad_default!(nil, name, type, default, line, file) do
     compile_error!(line, file, """
     expected the default value for attr #{inspect(name)} \
-    to be a #{inspect(type)}, \
-    got: #{inspect(default)}.
-    """)
-  end
-
-  defp bad_default!(slot, name, type, default, line, file) when type in [:atom, :integer] do
-    compile_error!(line, file, """
-    expected the default value for attr #{inspect(name)} \
-    in slot #{inspect(slot)} \
-    to be an #{inspect(type)}, \
+    to be #{type_with_article(type)}, \
     got: #{inspect(default)}.
     """)
   end
@@ -803,10 +786,14 @@ defmodule Phoenix.Component do
     compile_error!(line, file, """
     expected the default value for attr #{inspect(name)} \
     in slot #{inspect(slot)} \
-    to be a #{inspect(type)}, \
+    to be #{type_with_article(type)}, \
     got: #{inspect(default)}.
     """)
   end
+
+  defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
+
+  defp type_with_article(type), do: "a #{inspect(type)}"
 
   @valid_opts [:required, :default]
   defp validate_attr_opts!(nil, name, opts, line, file) do
