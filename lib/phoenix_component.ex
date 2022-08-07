@@ -676,9 +676,9 @@ defmodule Phoenix.Component do
 
     if slot do
       Module.put_attribute(module, :__slot_attrs__, attr)
+    else
+      Module.put_attribute(module, :__attrs__, attr)
     end
-
-    Module.put_attribute(module, :__attrs__, attr)
   end
 
   @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
@@ -688,11 +688,6 @@ defmodule Phoenix.Component do
     attrs = get_attrs(module)
 
     cond do
-      Enum.find(attrs, fn attr -> attr.name == name and attr.slot == slot end) && slot ->
-        compile_error!(line, file, """
-        a duplicate attribute with name #{inspect(name)} in slot #{inspect(slot)} already exists\
-        """)
-
       Enum.find(attrs, fn attr -> attr.name == name end) && is_nil(slot) ->
         compile_error!(line, file, """
         a duplicate attribute with name #{inspect(name)} already exists\
@@ -1061,30 +1056,28 @@ defmodule Phoenix.Component do
   end
 
   defp build_component_docs(slots, attrs) do
-    {slots_attrs, attrs} = Enum.split_with(attrs, & &1.slot)
-
     case {slots, attrs} do
       {[], []} ->
         []
 
       {slots, [] = _attrs} ->
-        [build_slots_docs(slots, slots_attrs)]
+        [build_slots_docs(slots)]
 
       {[] = _slots, attrs} ->
         [build_attrs_docs(attrs)]
 
       {slots, attrs} ->
-        [build_attrs_docs(attrs), ?\n, build_slots_docs(slots, slots_attrs)]
+        [build_attrs_docs(attrs), ?\n, build_slots_docs(slots)]
     end
   end
 
-  defp build_slots_docs(slots, slots_attrs) do
+  defp build_slots_docs(slots) do
     [
       "## Slots",
       ?\n,
       for slot <- slots, slot.doc != false, into: [] do
         slot_attrs =
-          for slot_attr <- slots_attrs,
+          for slot_attr <- slot.attrs,
               slot_attr.doc != false,
               slot_attr.slot == slot.name,
               do: slot_attr
@@ -1267,7 +1260,6 @@ defmodule Phoenix.Component do
 
   defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
-    validate_slot_args!(name, block)
 
     quote do
       Phoenix.Component.__slot__!(
@@ -1282,8 +1274,6 @@ defmodule Phoenix.Component do
   end
 
   defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
-    validate_slot_args!(name, block)
-
     quote do
       Phoenix.Component.__slot__!(
         __MODULE__,
@@ -1295,14 +1285,6 @@ defmodule Phoenix.Component do
       )
     end
   end
-
-  defp validate_slot_args!(:inner_block, block) when not is_nil(block) do
-    compile_error!(__ENV__.line, __ENV__.file, """
-    cannot define attributes for the slot :inner_block
-    """)
-  end
-
-  defp validate_slot_args!(_name, _block), do: :ok
 
   @doc false
   def __slot__!(module, name, opts, line, file, block_fun \\ fn -> :ok end) do
@@ -1318,29 +1300,10 @@ defmodule Phoenix.Component do
       compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
-    validate_slot!(module, name, line, file)
+    Module.put_attribute(module, :__slot__, name)
 
     try do
-      Module.put_attribute(module, :__slot__, name)
-
       block_fun.()
-
-      slot_attrs = Module.get_attribute(module, :__slot_attrs__)
-
-      slot = %{
-        name: name,
-        required: required,
-        opts: opts,
-        doc: doc,
-        line: line,
-        attrs: slot_attrs
-      }
-
-      Module.put_attribute(module, :__slots__, slot)
-
-      Module.put_attribute(module, :__slot__, nil)
-      Module.delete_attribute(module, :__slot_attrs__)
-      Module.register_attribute(module, :__slot_attrs__, accumulate: true)
     rescue
       e ->
         Module.put_attribute(module, :__slot__, nil)
@@ -1348,14 +1311,49 @@ defmodule Phoenix.Component do
         Module.register_attribute(module, :__slot_attrs__, accumulate: true)
         reraise e, __STACKTRACE__
     end
+
+    slot_attrs =
+      module
+      |> Module.get_attribute(:__slot_attrs__)
+      |> Enum.reverse()
+
+    slot = %{
+      name: name,
+      required: required,
+      opts: opts,
+      doc: doc,
+      line: line,
+      attrs: slot_attrs
+    }
+
+    validate_slot!(module, slot, line, file)
+
+    Module.put_attribute(module, :__slots__, slot)
+    Module.put_attribute(module, :__slot__, nil)
+    Module.delete_attribute(module, :__slot_attrs__)
+    Module.register_attribute(module, :__slot_attrs__, accumulate: true)
   end
 
-  defp validate_slot!(module, name, line, file) do
+  defp validate_slot!(module, slot, line, file) do
     slots = get_slots(module)
 
-    if Enum.find(slots, fn slot -> slot.name == name end) do
+    if Enum.find(slots, &(&1.name == slot.name)) do
       compile_error!(line, file, """
-      a duplicate slot with name #{inspect(name)} already exists
+      a duplicate slot with name #{inspect(slot.name)} already exists
+      """)
+    end
+
+    if slot.name == :inner_block and not Enum.empty?(slot.attrs) do
+      compile_error!(line, file, """
+      cannot define attributes in slot #{inspect(slot.name)}
+      """)
+    end
+
+    for {attr_name, attr_defs} <- Enum.group_by(slot.attrs, & &1.name),
+        length(attr_defs) > 1,
+        %{line: line} <- attr_defs do
+      compile_error!(line, file, """
+      a duplicate attribute with name #{inspect(attr_name)} in slot #{inspect(slot.name)} already exists
       """)
     end
   end

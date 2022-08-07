@@ -661,17 +661,7 @@ defmodule Phoenix.ComponentTest do
                  ]
                },
                fun_with_slot_attrs: %{
-                 attrs: [
-                   %{
-                     doc: nil,
-                     line: FunctionComponentWithSlots.fun_with_slot_attrs_line() - 3,
-                     name: :attr,
-                     opts: [],
-                     required: false,
-                     slot: :slot,
-                     type: :any
-                   }
-                 ],
+                 attrs: [],
                  kind: :def,
                  slots: [
                    %{
@@ -696,15 +686,6 @@ defmodule Phoenix.ComponentTest do
                },
                table: %{
                  attrs: [
-                   %{
-                     doc: nil,
-                     line: FunctionComponentWithSlots.table_line() - 5,
-                     name: :label,
-                     opts: [],
-                     required: false,
-                     slot: :col,
-                     type: :string
-                   },
                    %{
                      doc: nil,
                      line: FunctionComponentWithSlots.table_line() - 2,
@@ -738,17 +719,7 @@ defmodule Phoenix.ComponentTest do
                  ]
                },
                fun_with_slot_attr_default: %{
-                 attrs: [
-                   %{
-                     doc: nil,
-                     line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 4,
-                     name: :attr_with_default,
-                     opts: [default: "a default value"],
-                     required: false,
-                     slot: :named,
-                     type: :any
-                   }
-                 ],
+                 attrs: [],
                  kind: :def,
                  slots: [
                    %{
@@ -1045,17 +1016,7 @@ defmodule Phoenix.ComponentTest do
                  slots: []
                },
                func_with_slot_docs: %{
-                 attrs: [
-                   %{
-                     doc: "a slot attr",
-                     line: line + 26,
-                     name: :attr,
-                     opts: [],
-                     required: false,
-                     slot: :slot,
-                     type: :any
-                   }
-                 ],
+                 attrs: [],
                  kind: :def,
                  slots: [
                    %{
@@ -1441,7 +1402,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot with name :inner_block has slot attrs" do
-      msg = ~r"cannot define attributes for the slot :inner_block"
+      msg = ~r"cannot define attributes in slot :inner_block"
 
       assert_raise CompileError, msg, fn ->
         defmodule AttrsInDefaultSlot do

@@ -161,8 +161,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
     {slots_warnings, slots} =
       Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
-        %{name: slot_name, required: required} = slot_def
-        slot_attr_defs = get_slot_attr_defs(attrs_defs, slot_name)
+        %{name: slot_name, required: required, attrs: attrs} = slot_def
+        slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         warnings =
@@ -202,7 +202,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                     attr_def = Map.get(slot_attr_defs, attr_name, :undef),
                     reduce: [] do
                   errors ->
-                    # type_mismatch_slot_attr_warnings =
                     case {attr_def, attr_kind, attr_value} do
                       # undefined attribute
                       {:undef, _attr_kind, _attr_value} ->
@@ -250,13 +249,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       end
 
     slots_warnings ++ slots_undefined ++ attrs_warnings ++ attrs_undefined
-  end
-
-  defp get_slot_attr_defs(attr_defs, slot_name) do
-    for attr_def <- attr_defs,
-        attr_def.slot == slot_name,
-        into: %{},
-        do: {attr_def.name, attr_def}
   end
 
   defp valid_type?(:any, _kind, _value), do: true

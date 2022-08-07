@@ -929,9 +929,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
       if function_exported?(mod, :__components__, 0) do
         for {slot_name, slot_values} <- slots do
           defaults =
-            mod.__components__()[fun][:attrs]
-            |> Enum.reject(&(&1.slot != slot_name or not Keyword.has_key?(&1.opts, :default)))
-            |> Enum.map(&{&1.name, &1.opts[:default]})
+            for slot <- mod.__components__()[fun][:slots],
+                slot.name == slot_name,
+                %{name: name, opts: [default: default]} <- slot.attrs,
+                do: {name, default}
 
           values_with_defaults =
             for {{:%{}, [], values}, _meta} <- slot_values do
