@@ -188,6 +188,15 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       def func(assigns), do: ~H[]
 
+      def global_line, do: __ENV__.line + 4
+
+      def global_render(assigns) do
+        ~H"""
+        <.func global="global" />
+        <.func phx-click="click" id="id"/>
+        """
+      end
+
       def any_line, do: __ENV__.line + 4
 
       def any_render(assigns) do
@@ -312,9 +321,23 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     test "validate literal types" do
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([TypeAttrs])
 
+      global_warnings = [
+        %Diagnostic{
+          compiler_name: "phoenix_live_view",
+          details: nil,
+          file: __ENV__.file,
+          severity: :warning,
+          position: TypeAttrs.global_line(),
+          message: """
+          global attribute \"global\" \
+          in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
+          may not be provided directly\
+          """
+        }
+      ]
+
       string_warnings =
         for {value, line} <- [
-              # {"string", 0},
               {:string, 1},
               {true, 2},
               {1, 3},
@@ -488,6 +511,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       assert diagnostics ==
                List.flatten([
+                 global_warnings,
                  string_warnings,
                  atom_warnings,
                  boolean_warnings,
@@ -614,9 +638,21 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         attr :float, :float
         attr :list, :list
         attr :struct, Struct
+        attr :global, :global
       end
 
       def func(assigns), do: ~H[]
+
+      def render_global_line, do: __ENV__.line + 5
+
+      def render_global(assigns) do
+        ~H"""
+        <.func>
+          <:slot global="global" />
+          <:slot phx-click="click" id="id" />
+        </.func>
+        """
+      end
 
       def render_any_line, do: __ENV__.line + 5
 
@@ -758,6 +794,22 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
     test "validate slot attr types" do
       diagnostics = Mix.Tasks.Compile.PhoenixLiveView.validate_components_calls([SlotAttrs])
+
+      global_warnings = [
+        %Diagnostic{
+          compiler_name: "phoenix_live_view",
+          details: nil,
+          file: __ENV__.file,
+          severity: :warning,
+          position: SlotAttrs.render_global_line(),
+          message: """
+          global attribute \"global\" \
+          in slot \"slot\" \
+          for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
+          may not be provided directly\
+          """
+        }
+      ]
 
       string_warnings =
         for {value, line} <- [
@@ -941,6 +993,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       assert diagnostics ==
                List.flatten([
+                 global_warnings,
                  string_warnings,
                  atom_warnings,
                  boolean_warnings,

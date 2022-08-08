@@ -693,7 +693,6 @@ defmodule Phoenix.Component do
         a duplicate attribute with name #{inspect(name)} already exists\
         """)
 
-      # TODO: can slot attributes be global?
       existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
         compile_error!(line, file, """
         cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
@@ -1354,6 +1353,14 @@ defmodule Phoenix.Component do
         %{line: line} <- attr_defs do
       compile_error!(line, file, """
       a duplicate attribute with name #{inspect(attr_name)} in slot #{inspect(slot.name)} already exists
+      """)
+    end
+
+    for {:global, attr_defs} <- Enum.group_by(slot.attrs, & &1.type),
+        length(attr_defs) > 1,
+        %{line: line} <- attr_defs do
+      compile_error!(line, file, """
+      cannot define multiple global attributes in slot #{inspect(slot.name)}
       """)
     end
   end

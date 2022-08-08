@@ -97,60 +97,56 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
          attrs: attrs_defs
        }) do
     {attrs_warnings, {attrs, has_global?}} =
-      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn
-        %{slot: slot}, {attrs, has_global?} when not is_nil(slot) ->
-          {[], {attrs, has_global?}}
+      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
+        %{name: name, required: required, type: type} = attr_def
+        {value, attrs} = Map.pop(attrs, name)
 
-        attr_def, {attrs, has_global?} ->
-          %{name: name, required: required, type: type} = attr_def
-          {value, attrs} = Map.pop(attrs, name)
+        warnings =
+          case {type, value} do
+            # missing required attr
+            {_type, nil} when not root and required ->
+              message = """
+              missing required attribute \"#{name}\" \
+              for component #{component(call)}\
+              """
 
-          warnings =
-            case {type, value} do
-              # missing required attr
-              {_type, nil} when not root and required ->
-                message = """
-                missing required attribute \"#{name}\" \
-                for component #{component(call)}\
-                """
+              [error(message, call.file, call.line)]
 
-                [error(message, call.file, call.line)]
+            # missing optional attr, or dynamic attr
+            {_type, nil} when root or not required ->
+              []
 
-              # missing optional attr, or dynamic attr
-              {_type, nil} when root or not required ->
+            # global attrs cannot be directly used
+            {:global, {line, _column, _kind, _value}} ->
+              message = """
+              global attribute \"#{name}\" \
+              in component #{component(call)} \
+              may not be provided directly\
+              """
+
+              [error(message, call.file, line)]
+
+            {type, {line, _column, kind, value}} ->
+              if valid_type?(type, kind, value) do
                 []
-
-              # global attrs cannot be directly used
-              {:global, {line, _column, _kind, _value}} ->
+              else
                 message = """
-                global attribute \"#{name}\" \
+                attribute \"#{name}\" \
                 in component #{component(call)} \
-                may not be provided directly\
+                must be #{type_with_article(type)}, \
+                got: #{inspect(value)}\
                 """
 
                 [error(message, call.file, line)]
+              end
+          end
 
-              {type, {line, _column, kind, value}} ->
-                if valid_type?(type, kind, value) do
-                  []
-                else
-                  message = """
-                  attribute \"#{name}\" \
-                  in component #{component(call)} \
-                  must be #{type_with_article(type)}, \
-                  got: #{inspect(value)}\
-                  """
-
-                  [error(message, call.file, line)]
-                end
-            end
-
-          {warnings, {attrs, has_global? || type == :global}}
+        {warnings, {attrs, has_global? || type == :global}}
       end)
 
     attrs_undefined =
       for {name, {line, _column, _kind, _value}} <- attrs,
-          not (has_global? and Phoenix.Component.__global__?(caller_module, Atom.to_string(name))) do
+          not (has_global? and valid_global?(caller_module, name)) do
         message = """
         undefined attribute \"#{name}\" \
         for component #{component(call)}\
@@ -162,6 +158,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     {slots_warnings, slots} =
       Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
         %{name: slot_name, required: required, attrs: attrs} = slot_def
+        has_global? = Enum.any?(attrs, &(&1.type == :global))
         slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
         {slot_values, slots} = Map.pop(slots, slot_name)
 
@@ -205,7 +202,8 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                     case {attr_def, attr_kind, attr_value} do
                       # undefined attribute
                       {:undef, _attr_kind, _attr_value} ->
-                        if attr_name == :inner_block do
+                        if attr_name == :inner_block or
+                             (has_global? and valid_global?(caller_module, attr_name)) do
                           errors
                         else
                           message = """
@@ -216,6 +214,16 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                           [error(message, call.file, line) | errors]
                         end
+
+                      {%{type: :global}, _kind, _value} ->
+                        message = """
+                        global attribute \"#{attr_name}\" \
+                        in slot \"#{slot_name}\" \
+                        for component #{component(call)} \
+                        may not be provided directly\
+                        """
+
+                        [error(message, call.file, line) | errors]
 
                       {%{type: type}, kind, value} ->
                         if valid_type?(type, kind, value) do
@@ -249,6 +257,10 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       end
 
     slots_warnings ++ slots_undefined ++ attrs_warnings ++ attrs_undefined
+  end
+
+  defp valid_global?(caller_module, attr_name) do
+    Phoenix.Component.__global__?(caller_module, Atom.to_string(attr_name))
   end
 
   defp valid_type?(:any, _kind, _value), do: true

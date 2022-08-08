@@ -477,7 +477,7 @@ defmodule Phoenix.ComponentTest do
       assert [
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, _, _}},
+                 attrs: %{id: {_, _, _, _}, "aria-hidden": {_, _, _, _}, class: {_, _, _, _}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
                  line: ^with_global_line,
@@ -1426,6 +1426,23 @@ defmodule Phoenix.ComponentTest do
 
           attr :rest, :global
           attr :rest2, :global
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
+    test "raise on more than one :global slot attr" do
+      msg = ~r"cannot define multiple global attributes in slot :named"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.MultiSlotGlobal do
+          use Elixir.Phoenix.Component
+
+          slot :named do
+            attr :rest, :global
+            attr :rest2, :global
+          end
+
           def func(assigns), do: ~H[]
         end
       end
