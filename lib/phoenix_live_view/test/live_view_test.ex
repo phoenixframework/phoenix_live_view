@@ -145,7 +145,7 @@ defmodule Phoenix.LiveViewTest do
                  "<div>Hello, Mary!</div>"
       end
 
-  The difference is that we use `rendered_to_string` to convert the rendered
+  The difference is that we use `rendered_to_string/1` to convert the rendered
   template to a string for testing.
 
   ## Testing stateful components
