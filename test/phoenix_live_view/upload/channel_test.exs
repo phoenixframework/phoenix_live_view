@@ -570,6 +570,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         refute File.exists?(tmp_path)
       end
 
+      @tag allow: [max_entries: 1, accept: :any]
+      test "cancel_upload with invalid ref", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        assert UploadLive.exits_with(lv, avatar, ArgumentError, fn ->
+                 UploadLive.run(lv, fn socket ->
+                   {:reply, :ok, Phoenix.LiveView.cancel_upload(socket, :avatar, "bad_ref")}
+                 end)
+               end) =~ "no entry in upload \":avatar\" with ref \"bad_ref\""
+      end
+
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "cancel_upload in progress", %{lv: lv} do
         avatar =

@@ -70,11 +70,16 @@ defmodule Phoenix.LiveView.Upload do
   """
   def cancel_upload(socket, name, entry_ref) do
     upload_config = Map.fetch!(socket.assigns[:uploads] || %{}, name)
-    %UploadEntry{} = entry = UploadConfig.get_entry_by_ref(upload_config, entry_ref)
 
-    upload_config
-    |> UploadConfig.cancel_entry(entry)
-    |> update_uploads(socket)
+    case UploadConfig.get_entry_by_ref(upload_config, entry_ref) do
+      %UploadEntry{} = entry ->
+        upload_config
+        |> UploadConfig.cancel_entry(entry)
+        |> update_uploads(socket)
+
+      _ ->
+        raise ArgumentError, "no entry in upload \"#{inspect(name)}\" with ref \"#{entry_ref}\""
+    end
   end
 
   @doc """
