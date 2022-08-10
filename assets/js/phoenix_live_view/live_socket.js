@@ -612,6 +612,7 @@ export default class LiveSocket {
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){ return }
+      if(target.disabled){ return }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       this.debounce(target, e, "click", () => {
