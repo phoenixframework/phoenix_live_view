@@ -286,6 +286,38 @@ defmodule Phoenix.ComponentTest do
              </.wrapper>
              """) == [[["1", nil]]]
     end
+
+    defp optional_wrapper(assigns) do
+      assigns = assign_new(assigns, :inner_block, fn -> [] end)
+
+      ~H"""
+      <div><%= render_slot(@inner_block) || "DEFAULT!" %></div>
+      """
+    end
+
+    test "with optional @inner_block" do
+      assigns = %{foo: 1}
+
+      assert eval(~H"""
+             <.optional_wrapper>
+               <%= @foo %>
+             </.optional_wrapper>
+             """) == [[["1"]]]
+
+      assigns = %{foo: 2, __changed__: %{foo: true}}
+
+      assert eval(~H"""
+             <.optional_wrapper>
+               <%= @foo %>
+             </.optional_wrapper>
+             """) == [[["2"]]]
+
+      assigns = %{foo: 3}
+
+      assert eval(~H"""
+             <.optional_wrapper />
+             """) == [["DEFAULT!"]]
+    end
   end
 
   describe "testing" do

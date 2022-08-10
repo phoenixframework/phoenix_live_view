@@ -624,6 +624,8 @@ defmodule Phoenix.LiveView.Helpers do
 
       <%= render_slot(@inner_block, @form) %>
 
+  If the slot has no entries, nil is returned.
+
   If multiple slot entries are defined for the same slot,
   `render_slot/2` will automatically render all entries,
   merging their contents. In case you want to use the entries'
@@ -681,7 +683,7 @@ defmodule Phoenix.LiveView.Helpers do
   end
 
   @doc false
-  def __render_slot__(_, [], _), do: ""
+  def __render_slot__(_, [], _), do: nil
 
   def __render_slot__(changed, [entry], argument) do
     call_inner_block!(entry, changed, argument)
