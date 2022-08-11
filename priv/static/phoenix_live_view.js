@@ -344,11 +344,12 @@ var LiveView = (() => {
     },
     findParentCIDs(node, cids) {
       let initial = new Set(cids);
-      return cids.reduce((acc, cid) => {
+      let parentCids = cids.reduce((acc, cid) => {
         let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`;
         this.filterWithinSameLiveView(this.all(node, selector), node).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => acc.delete(childCID));
         return acc;
       }, initial);
+      return parentCids.size === 0 ? new Set(cids) : parentCids;
     },
     filterWithinSameLiveView(nodes, parent) {
       if (parent.querySelector(PHX_VIEW_SELECTOR)) {
@@ -761,6 +762,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return {
         last_modified: this.file.lastModified,
         name: this.file.name,
+        relative_path: this.file.webkitRelativePath,
         size: this.file.size,
         type: this.file.type,
         ref: this.ref
@@ -816,6 +818,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         fileData[uploadRef] = fileData[uploadRef] || [];
         entry.ref = this.genFileRef(file);
         entry.name = file.name || entry.ref;
+        entry.relative_path = file.webkitRelativePath;
         entry.type = file.type;
         entry.size = file.size;
         fileData[uploadRef].push(entry);
