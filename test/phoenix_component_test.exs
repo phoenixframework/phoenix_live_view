@@ -477,7 +477,7 @@ defmodule Phoenix.ComponentTest do
       assert [
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, _, _}, "aria-hidden": {_, _, _, _}, class: {_, _, _, _}},
+                 attrs: %{id: {_, _, _}, "aria-hidden": {_, _, _}, class: {_, _, _}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithAttrs, :button},
                  file: ^file,
                  line: ^with_global_line,
@@ -486,36 +486,36 @@ defmodule Phoenix.ComponentTest do
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "1"}},
+                 attrs: %{id: {_, _, {:string, "1"}}},
                  file: ^file,
                  line: ^call_1_line
                },
                %{
                  component: {FunctionComponentWithAttrs, :func1},
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "2"}, email: {_, _, :lit, true}}
+                 attrs: %{id: {_, _, {:string, "2"}}, email: {_, _, {:boolean, true}}}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "3"}},
+                 attrs: %{id: {_, _, {:string, "3"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  file: ^file,
                  line: ^call_3_line
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "4"}},
+                 attrs: %{id: {_, _, {:string, "4"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote}
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "5"}},
+                 attrs: %{id: {_, _, {:string, "5"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: false
                },
                %{
                  slots: %{},
-                 attrs: %{id: {_, _, :lit, "6"}},
+                 attrs: %{id: {_, _, {:string, "6"}}},
                  component: {RemoteFunctionComponentWithAttrs, :remote},
                  root: true
                }
@@ -755,7 +755,7 @@ defmodule Phoenix.ComponentTest do
                  file: ^file,
                  line: 592,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {594, 9, :expr, _}}]}
+                 slots: %{inner_block: [%{inner_block: {594, 9, :any}}]}
                },
                %{
                  attrs: %{},
@@ -765,9 +765,9 @@ defmodule Phoenix.ComponentTest do
                  line: 596,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {603, 11, :expr, _}}],
-                   header: [%{inner_block: {597, 11, :expr, _}}],
-                   inner_block: [%{inner_block: {606, 9, :expr, _}}]
+                   footer: [%{inner_block: {603, 11, :any}}],
+                   header: [%{inner_block: {597, 11, :any}}],
+                   inner_block: [%{inner_block: {606, 9, :any}}]
                  }
                },
                %{
@@ -778,22 +778,22 @@ defmodule Phoenix.ComponentTest do
                  line: 608,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {610, 9, :expr, _}}],
-                   slot: [%{attr: {609, 11, :lit, "1"}, inner_block: {609, 11, :lit, nil}}]
+                   inner_block: [%{inner_block: {610, 9, :any}}],
+                   slot: [%{attr: {609, 11, {:string, "1"}}, inner_block: {609, 11, {:atom, nil}}}]
                  }
                },
                %{
-                 attrs: %{rows: {612, 17, _kind, _value}},
+                 attrs: %{rows: {612, 17, _type_value}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
                  file: ^file,
                  line: 612,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {613, 11, :expr, _}, label: {613, 11, :expr, _}},
-                     %{inner_block: {617, 11, :expr, _}, label: {617, 11, :lit, "Address"}}
+                     %{inner_block: {613, 11, :any}, label: {613, 11, :any}},
+                     %{inner_block: {617, 11, :any}, label: {617, 11, {:string, "Address"}}}
                    ],
-                   inner_block: [%{inner_block: {620, 9, :expr, _}}]
+                   inner_block: [%{inner_block: {620, 9, :any}}]
                  }
                }
              ] = FunctionComponentWithSlots.__components_calls__()

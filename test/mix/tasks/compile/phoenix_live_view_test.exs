@@ -172,10 +172,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule TypeAttrs do
       use Phoenix.Component, global_prefixes: ~w(myprefix-)
 
-      defmodule Struct do
-        defstruct []
-      end
-
       attr :any, :any
       attr :string, :string
       attr :atom, :atom
@@ -183,7 +179,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
       attr :integer, :integer
       attr :float, :float
       attr :list, :list
-      attr :struct, Struct
       attr :global, :global
 
       def func(assigns), do: ~H[]
@@ -207,7 +202,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func any={1} />
         <.func any={1.0} />
         <.func any={[]} />
-        <.func any={%Struct{}} />
         <.func any={nil} />
         """
       end
@@ -222,7 +216,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func string={1} />
         <.func string={1.0} />
         <.func string={[]} />
-        <.func string={%Struct{}} />
         <.func string={nil} />
         """
       end
@@ -237,7 +230,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func atom={1} />
         <.func atom={1.0} />
         <.func atom={[]} />
-        <.func atom={%Struct{}} />
         <.func atom={nil} />
         """
       end
@@ -252,7 +244,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func boolean={1} />
         <.func boolean={1.0} />
         <.func boolean={[]} />
-        <.func boolean={%Struct{}} />
         <.func boolean={nil} />
         """
       end
@@ -267,7 +258,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func integer={1} />
         <.func integer={1.0} />
         <.func integer={[]} />
-        <.func integer={%Struct{}} />
         <.func integer={nil} />
         """
       end
@@ -282,7 +272,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func float={1} />
         <.func float={1.0} />
         <.func float={[]} />
-        <.func float={%Struct{}} />
         <.func float={nil} />
         """
       end
@@ -297,23 +286,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         <.func list={1} />
         <.func list={1.0} />
         <.func list={[]} />
-        <.func list={%Struct{}} />
         <.func list={nil} />
-        """
-      end
-
-      def render_struct_line, do: __ENV__.line + 4
-
-      def struct_render(assigns) do
-        ~H"""
-        <.func struct="struct" />
-        <.func struct={:struct} />
-        <.func struct={true} />
-        <.func struct={1} />
-        <.func struct={1.0} />
-        <.func struct={[]} />
-        <.func struct={%Struct{}} />
-        <.func struct={nil} />
         """
       end
     end
@@ -343,8 +316,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {1, 3},
               {1.0, 4},
               {[], 5},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
-              {nil, 7}
+              {nil, 6}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -366,8 +338,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {"atom", 0},
               {1, 3},
               {1.0, 4},
-              {[], 5},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6}
+              {[], 5}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -391,8 +362,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {1, 3},
               {1.0, 4},
               {[], 5},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
-              {nil, 7}
+              {nil, 6}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -416,8 +386,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {true, 2},
               {1.0, 4},
               {[], 5},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
-              {nil, 7}
+              {nil, 6}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -441,8 +410,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {true, 2},
               {1, 3},
               {[], 5},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
-              {nil, 7}
+              {nil, 6}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -466,8 +434,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
               {true, 2},
               {1, 3},
               {1.0, 4},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, 6},
-              {nil, 7}
+              {nil, 6}
             ] do
           %Diagnostic{
             compiler_name: "phoenix_live_view",
@@ -484,31 +451,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           }
         end
 
-      struct_warnings =
-        for {value, line} <- [
-              {"struct", 0},
-              {:struct, 1},
-              {true, 2},
-              {1, 3},
-              {1.0, 4},
-              {[], 5},
-              {nil, 7}
-            ] do
-          %Diagnostic{
-            compiler_name: "phoenix_live_view",
-            details: nil,
-            file: __ENV__.file,
-            severity: :warning,
-            position: TypeAttrs.render_struct_line() + line,
-            message: """
-            attribute \"struct\" \
-            in component Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.func/1 \
-            must be a Mix.Tasks.Compile.PhoenixLiveViewTest.TypeAttrs.Struct, \
-            got: #{inspect(value)}\
-            """
-          }
-        end
-
       assert diagnostics ==
                List.flatten([
                  global_warnings,
@@ -518,7 +460,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  integer_warnings,
                  float_warnings,
                  list_warnings,
-                 struct_warnings
                ])
     end
 
@@ -625,10 +566,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
     defmodule SlotAttrs do
       use Phoenix.Component
 
-      defmodule Struct do
-        defstruct []
-      end
-
       slot :slot do
         attr :any, :any
         attr :string, :string
@@ -637,7 +574,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
         attr :integer, :integer
         attr :float, :float
         attr :list, :list
-        attr :struct, Struct
         attr :global, :global
       end
 
@@ -666,7 +602,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot any={1} />
           <:slot any={1.0} />
           <:slot any={[]} />
-          <:slot any={%Struct{}} />
         </.func>
         """
       end
@@ -682,7 +617,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot string={1} />
           <:slot string={1.0} />
           <:slot string={[]} />
-          <:slot string={%Struct{}} />
           <:slot string={nil} />
         </.func>
         """
@@ -699,7 +633,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot atom={1} />
           <:slot atom={1.0} />
           <:slot atom={[]} />
-          <:slot atom={%Struct{}} />
           <:slot atom={nil} />
         </.func>
         """
@@ -716,7 +649,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot boolean={1} />
           <:slot boolean={1.0} />
           <:slot boolean={[]} />
-          <:slot boolean={%Struct{}} />
           <:slot boolean={nil} />
         </.func>
         """
@@ -733,7 +665,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot integer={1} />
           <:slot integer={1.0} />
           <:slot integer={[]} />
-          <:slot integer={%Struct{}} />
           <:slot integer={nil} />
         </.func>
         """
@@ -750,7 +681,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot float={1} />
           <:slot float={1.0} />
           <:slot float={[]} />
-          <:slot float={%Struct{}} />
           <:slot float={nil} />
         </.func>
         """
@@ -767,26 +697,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot list={1} />
           <:slot list={1.0} />
           <:slot list={[]} />
-          <:slot list={%Struct{}} />
           <:slot list={nil} />
-        </.func>
-        """
-      end
-
-      def render_struct_line, do: __ENV__.line + 5
-
-      def render_struct(assigns) do
-        ~H"""
-        <.func>
-          <:slot struct="struct" />
-          <:slot struct={:struct} />
-          <:slot struct={true} />
-          <:slot struct={1} />
-          <:slot struct={1.0} />
-          <:slot struct={[]} />
-          <:slot struct={%Struct{}} />
-          <:slot struct={nil} />
-          <:slot struct={%Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct{}} />
         </.func>
         """
       end
@@ -813,8 +724,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       string_warnings =
         for {value, line} <- [
-              {nil, 7},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
+              {nil, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -839,7 +749,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       atom_warnings =
         for {value, line} <- [
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -863,8 +772,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       boolean_warnings =
         for {value, line} <- [
-              {nil, 7},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
+              {nil, 6},
               {[], 5},
               {1.0, 4},
               {1, 3},
@@ -889,8 +797,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       integer_warnings =
         for {value, line} <- [
-              {nil, 7},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
+              {nil, 6},
               {[], 5},
               {1.0, 4},
               {true, 2},
@@ -915,8 +822,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       float_warnings =
         for {value, line} <- [
-              {nil, 7},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
+              {nil, 6},
               {[], 5},
               {1, 3},
               {true, 2},
@@ -941,8 +847,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
 
       list_warnings =
         for {value, line} <- [
-              {nil, 7},
-              {Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, 6},
+              {nil, 6},
               {1.0, 4},
               {1, 3},
               {true, 2},
@@ -965,32 +870,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           }
         end
 
-      struct_warnings =
-        for {value, line} <- [
-              {nil, 7},
-              {[], 5},
-              {1.0, 4},
-              {1, 3},
-              {true, 2},
-              {:struct, 1},
-              {"struct", 0}
-            ] do
-          %Diagnostic{
-            compiler_name: "phoenix_live_view",
-            details: nil,
-            file: __ENV__.file,
-            severity: :warning,
-            position: SlotAttrs.render_struct_line() + line,
-            message: """
-            attribute \"struct\" \
-            in slot \"slot\" \
-            for component Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.func/1 \
-            must be a Mix.Tasks.Compile.PhoenixLiveViewTest.SlotAttrs.Struct, \
-            got: #{inspect(value)}\
-            """
-          }
-        end
-
       assert diagnostics ==
                List.flatten([
                  global_warnings,
@@ -999,8 +878,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
                  boolean_warnings,
                  integer_warnings,
                  float_warnings,
-                 list_warnings,
-                 struct_warnings
+                 list_warnings
                ])
     end
 

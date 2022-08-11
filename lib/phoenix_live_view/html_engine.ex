@@ -1117,8 +1117,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       pruned_attrs =
         for {attr, value, meta} <- attrs,
             is_binary(attr) and not String.starts_with?(attr, ":"),
-            {kind, value} = component_call_value(value, env),
-            do: {String.to_atom(attr), {meta[:line], meta[:column], kind, value}},
+            type_value = component_call_value(value, env),
+            do: {String.to_atom(attr), {meta[:line], meta[:column], type_value}},
             into: %{}
 
       root = List.keymember?(attrs, :root, 0)
@@ -1137,54 +1137,33 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp component_call_value({:string, value, _meta}, _env) do
-    {:lit, value}
+    {:string, value}
   end
 
   defp component_call_value(nil, _env) do
-    {:lit, true}
+    {:boolean, true}
   end
 
   defp component_call_value({:expr, value, %{line: line, column: column}}, env) do
-    case Code.string_to_quoted!(value, line: line, column: column, file: env.file) do
-      # lists
-      {ast, _, _} = value when is_list(ast) ->
-        {:list, value}
-
-      # structs
-      {:%, _, [{_, _, [mod]} | _]} ->
-        {:struct, lookup_alias(env, mod)}
-
-      # expressions
-      {_, _, _} = value ->
-        {:expr, value}
-
-      # literals
-      value ->
-        {:lit, value}
-    end
+    value
+    |> Code.string_to_quoted!(line: line, column: column, file: env.file)
+    |> attr_type()
   end
 
   defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}, env) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
-      case value do
-        # lists
-        {ast, _, _} = value when is_list(ast) ->
-          {name, {line, column, :list, value}}
-
-        # structs
-        {:%, _, [{_, _, [mod]} | _]} ->
-          {name, {line, column, :struct, lookup_alias(env, mod)}}
-
-        # expressions
-        {_, _, _} = value ->
-          {name, {line, column, :expr, value}}
-
-        # literals
-        value ->
-          {name, {line, column, :lit, value}}
-      end
+      {name, {line, column, attr_type(value)}}
     end
   end
+
+  defp attr_type({:<<>>, _, _} = value), do: {:string, value}
+  defp attr_type(value) when is_list(value), do: {:list, value}
+  defp attr_type(value) when is_binary(value), do: {:string, value}
+  defp attr_type(value) when is_integer(value), do: {:integer, value}
+  defp attr_type(value) when is_float(value), do: {:float, value}
+  defp attr_type(value) when is_boolean(value), do: {:boolean, value}
+  defp attr_type(value) when is_atom(value), do: {:atom, value}
+  defp attr_type(value), do: :any
 
   ## Helpers
 
@@ -1209,14 +1188,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
     f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
     m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
     f ++ m
-  end
-
-  # TODO: Use Macro.Env.fetch_alias/2 when we require Elixir v1.13+
-  defp lookup_alias(%Macro.Env{aliases: aliases}, mod) do
-    case Keyword.fetch(aliases, :"Elixir.#{mod}") do
-      {:ok, alias} -> alias
-      :error -> mod
-    end
   end
 
   defp remove_phx_no_break(attrs) do

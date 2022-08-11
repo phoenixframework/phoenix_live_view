@@ -767,7 +767,7 @@ defmodule Phoenix.Component do
       {:list, default} when not is_list(default) ->
         bad_default!(slot, name, type, default, line, file)
 
-      {{:struct, mod}, default} when not is_struct(default, mod) ->
+      {{:struct, mod}, default} when not is_struct(default) ->
         bad_default!(slot, name, mod, default, line, file)
 
       {_type, _default} ->

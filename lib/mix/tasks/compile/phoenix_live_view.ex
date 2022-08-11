@@ -117,7 +117,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               []
 
             # global attrs cannot be directly used
-            {:global, {line, _column, _kind, _value}} ->
+            {:global, {line, _column, _type_value}} ->
               message = """
               global attribute \"#{name}\" \
               in component #{component(call)} \
@@ -126,18 +126,18 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
               [error(message, call.file, line)]
 
-            {type, {line, _column, kind, value}} ->
-              if valid_type?(type, kind, value) do
-                []
-              else
+            {type, {line, _column, type_value}} ->
+              if value_ast_to_string = invalid_type(type, type_value) do
                 message = """
                 attribute \"#{name}\" \
                 in component #{component(call)} \
                 must be #{type_with_article(type)}, \
-                got: #{inspect(value)}\
+                got: #{value_ast_to_string}\
                 """
 
                 [error(message, call.file, line)]
+              else
+                []
               end
           end
 
@@ -145,7 +145,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       end)
 
     attrs_undefined =
-      for {name, {line, _column, _kind, _value}} <- attrs,
+      for {name, {line, _column, _type_value}} <- attrs,
           not (has_global? and valid_global?(caller_module, name)) do
         message = """
         undefined attribute \"#{name}\" \
@@ -182,7 +182,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               missing_slot_attrs =
                 for slot_value <- slot_values,
                     {attr_name, %{required: true}} <- slot_attr_defs,
-                    {line, _, _, _} = Map.fetch!(slot_value, :inner_block),
+                    {line, _, _} = Map.fetch!(slot_value, :inner_block),
                     not Map.has_key?(slot_value, attr_name) do
                   message = """
                   missing required attribute \"#{attr_name}\" \
@@ -195,13 +195,13 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
               slot_attrs_errors =
                 for slot_value <- slot_values,
-                    {attr_name, {line, _column, attr_kind, attr_value}} <- slot_value,
+                    {attr_name, {line, _column, type_value}} <- slot_value,
                     attr_def = Map.get(slot_attr_defs, attr_name, :undef),
                     reduce: [] do
                   errors ->
-                    case {attr_def, attr_kind, attr_value} do
+                    case attr_def do
                       # undefined attribute
-                      {:undef, _attr_kind, _attr_value} ->
+                      :undef ->
                         if attr_name == :inner_block or
                              (has_global? and valid_global?(caller_module, attr_name)) do
                           errors
@@ -215,7 +215,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
                           [error(message, call.file, line) | errors]
                         end
 
-                      {%{type: :global}, _kind, _value} ->
+                      %{type: :global} ->
                         message = """
                         global attribute \"#{attr_name}\" \
                         in slot \"#{slot_name}\" \
@@ -225,19 +225,19 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
                         [error(message, call.file, line) | errors]
 
-                      {%{type: type}, kind, value} ->
-                        if valid_type?(type, kind, value) do
-                          errors
-                        else
+                      %{type: type} ->
+                        if value_ast_to_string = invalid_type(type, type_value) do
                           message = """
                           attribute \"#{attr_name}\" \
                           in slot \"#{slot_name}\" \
                           for component #{component(call)} \
                           must be #{type_with_article(type)}, \
-                          got: #{inspect(value)}\
+                          got: #{value_ast_to_string}\
                           """
 
                           [error(message, call.file, line) | errors]
+                        else
+                          errors
                         end
                     end
                 end
@@ -251,7 +251,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     slots_undefined =
       for {slot_name, slot_values} <- slots,
           slot_name != :inner_block,
-          %{inner_block: {line, _column, _attr_kind, _attr_value}} <- slot_values do
+          %{inner_block: {line, _column, _type_value}} <- slot_values do
         message = "undefined slot \"#{slot_name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
@@ -263,19 +263,12 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     Phoenix.Component.__global__?(caller_module, Atom.to_string(attr_name))
   end
 
-  defp valid_type?(:any, _kind, _value), do: true
-  defp valid_type?(_type, :expr, _value), do: true
-  defp valid_type?(:string, :lit, value), do: is_binary(value)
-  defp valid_type?(:atom, :lit, value), do: is_atom(value)
-  defp valid_type?(:boolean, :lit, value), do: is_boolean(value)
-  defp valid_type?(:integer, :lit, value), do: is_integer(value)
-  defp valid_type?(:float, :lit, value), do: is_float(value)
-  defp valid_type?(:list, :list, _value), do: true
-  defp valid_type?(:list, :lit, value), do: is_list(value)
-  defp valid_type?({:struct, _mod}, :struct, _value), do: true
-  defp valid_type?(_type, _kind, _value), do: false
+  defp invalid_type(:any, _type_value), do: nil
+  defp invalid_type(_type, :any), do: nil
+  defp invalid_type(type, {type, _value}), do: nil
+  defp invalid_type(:atom, {:boolean, _value}), do: nil
+  defp invalid_type(_type, {_, value}), do: Macro.to_string(value)
 
-  defp type_with_article({:struct, mod}), do: type_with_article(mod)
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
   defp type_with_article(type), do: "a #{inspect(type)}"
 
