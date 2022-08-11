@@ -264,31 +264,19 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp valid_type?(:any, _kind, _value), do: true
-
   defp valid_type?(_type, :expr, _value), do: true
-
   defp valid_type?(:string, :lit, value), do: is_binary(value)
-
   defp valid_type?(:atom, :lit, value), do: is_atom(value)
-
   defp valid_type?(:boolean, :lit, value), do: is_boolean(value)
-
   defp valid_type?(:integer, :lit, value), do: is_integer(value)
-
   defp valid_type?(:float, :lit, value), do: is_float(value)
-
   defp valid_type?(:list, :list, _value), do: true
-
   defp valid_type?(:list, :lit, value), do: is_list(value)
-
   defp valid_type?({:struct, _mod}, :struct, _value), do: true
-
   defp valid_type?(_type, _kind, _value), do: false
 
   defp type_with_article({:struct, mod}), do: type_with_article(mod)
-
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
-
   defp type_with_article(type), do: "a #{inspect(type)}"
 
   defp component(%{component: {mod, fun}}) do
