@@ -1277,7 +1277,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if attr default does not match the type" do
-      msg = ~r"expected the default value for attr :foo to be a :string, got: :not_a_string."
+      msg = ~r"expected the default value for attr :foo to be a :string, got: :not_a_string"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.AttrDefaultTypeMismatch do
@@ -1292,7 +1292,7 @@ defmodule Phoenix.ComponentTest do
 
     test "raise if slot attr default does not match the type" do
       msg =
-        ~r"expected the default value for attr :foo in slot :named to be a :string, got: :not_a_string."
+        ~r"expected the default value for attr :foo in slot :named to be a :string, got: :not_a_string"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.SlotAttrDefaultTypeMismatch do

@@ -12,7 +12,7 @@ defmodule Phoenix.Component do
         use Phoenix.Component
 
         # Optionally also bring the HTML helpers
-        # use Phoenix.HTML
+        # import Phoenix.LiveView.Helpers
 
         def greet(assigns) do
           ~H"""
@@ -719,20 +719,9 @@ defmodule Phoenix.Component do
     raise CompileError, line: line, file: file, description: msg
   end
 
-  defp bad_type!(nil, name, type, line, file) do
-    compile_error!(line, file, """
-    invalid type #{inspect(type)} for attr #{inspect(name)}. \
-    The following types are supported:
-
-      * any Elixir struct, such as URI, MyApp.User, etc
-      * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
-      * :any for all other types
-    """)
-  end
-
   defp bad_type!(slot, name, type, line, file) do
     compile_error!(line, file, """
-    invalid type #{inspect(type)} for attr #{inspect(name)} in slot #{inspect(slot)}. \
+    invalid type #{inspect(type)} for #{attr_slot(name, slot)}. \
     The following types are supported:
 
       * any Elixir struct, such as URI, MyApp.User, etc
@@ -740,6 +729,9 @@ defmodule Phoenix.Component do
       * :any for all other types
     """)
   end
+
+  defp attr_slot(name, nil), do: "attr #{inspect(name)}"
+  defp attr_slot(name, slot), do: "attr #{inspect(name)} in slot #{inspect(slot)}"
 
   defp validate_attr_default!(slot, name, type, default, line, file) do
     case {type, default} do
@@ -775,20 +767,10 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp bad_default!(nil, name, type, default, line, file) do
-    compile_error!(line, file, """
-    expected the default value for attr #{inspect(name)} \
-    to be #{type_with_article(type)}, \
-    got: #{inspect(default)}.
-    """)
-  end
-
   defp bad_default!(slot, name, type, default, line, file) do
     compile_error!(line, file, """
-    expected the default value for attr #{inspect(name)} \
-    in slot #{inspect(slot)} \
-    to be #{type_with_article(type)}, \
-    got: #{inspect(default)}.
+    expected the default value for #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(default)}
     """)
   end
 
@@ -797,19 +779,10 @@ defmodule Phoenix.Component do
   defp type_with_article(type), do: "a #{inspect(type)}"
 
   @valid_opts [:required, :default]
-  defp validate_attr_opts!(nil, name, opts, line, file) do
-    for {key, _} <- opts, key not in @valid_opts do
-      compile_error!(line, file, """
-      invalid option #{inspect(key)} for attr #{inspect(name)}. \
-      The supported options are: #{inspect(@valid_opts)}
-      """)
-    end
-  end
-
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, key not in @valid_opts do
       compile_error!(line, file, """
-      invalid option #{inspect(key)} for attr #{inspect(name)} in slot #{inspect(slot)}. \
+      invalid option #{inspect(key)} for #{attr_slot(name, slot)}. \
       The supported options are: #{inspect(@valid_opts)}
       """)
     end
