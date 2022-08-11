@@ -89,13 +89,13 @@ defmodule Phoenix.LiveView.HelpersTest do
       end
     end
 
-    test "csrf with :get method" do
+    test "csrf with get method" do
       assigns = %{}
 
-      assert render(~H|<.link href="/" method={:get}>text</.link>|) ==
+      assert render(~H|<.link href="/" method="get">text</.link>|) ==
                ~s|<a href="/">text</a>|
 
-      assert render(~H|<.link href="/" method={:get} csrf_token="123">text</.link>|) ==
+      assert render(~H|<.link href="/" method="get" csrf_token="123">text</.link>|) ==
                ~s|<a href="/">text</a>|
     end
 

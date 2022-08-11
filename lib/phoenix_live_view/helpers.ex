@@ -1110,7 +1110,6 @@ defmodule Phoenix.LiveView.Helpers do
     * `:csrf_token` - a custom token to use for links with a method
       other than `:get`.
 
-
      * `:replace` - when using `:patch` or `:navigate`, whether to replace the
        browser's pushState history. Default false.
 
@@ -1198,8 +1197,8 @@ defmodule Phoenix.LiveView.Helpers do
   attr :navigate, :string
   attr :patch, :string
   attr :href, :any
-  attr :replace, :string, default: nil
-  attr :method, :atom, default: :get
+  attr :replace, :boolean, default: false
+  attr :method, :string, default: "get"
   attr :csrf_token, :string
   attr :rest, :global
 
@@ -1242,10 +1241,10 @@ defmodule Phoenix.LiveView.Helpers do
 
     ~H"""
     <a
-      href={if @method == :get, do: @href, else: "#"}
-      data-method={if @method != :get, do: @method}
-      data-csrf={if @method != :get, do: @csrf_token}
-      data-to={if @method != :get, do: @href}
+      href={if @method == "get", do: @href, else: "#"}
+      data-method={if @method != "get", do: @method}
+      data-csrf={if @method != "get", do: @csrf_token}
+      data-to={if @method != "get", do: @href}
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
