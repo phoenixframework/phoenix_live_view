@@ -911,7 +911,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {merge_component_attrs(roots, attrs, line), state}
   end
 
-  defp build_component_assigns(mod, fun, attrs, line, %{file: file} = state) do
+  defp build_component_assigns(_mod, _fun, attrs, line, %{file: file} = state) do
     {let, roots, attrs} = split_component_attrs(attrs, file)
     clauses = build_component_clauses(let, state)
 
@@ -1133,7 +1133,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> attr_type()
   end
 
-  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}, env) do
+  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}, _env) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       {name, {line, column, attr_type(value)}}
     end
@@ -1146,7 +1146,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp attr_type(value) when is_float(value), do: {:float, value}
   defp attr_type(value) when is_boolean(value), do: {:boolean, value}
   defp attr_type(value) when is_atom(value), do: {:atom, value}
-  defp attr_type(value), do: :any
+  defp attr_type(_value), do: :any
 
   ## Helpers
 
