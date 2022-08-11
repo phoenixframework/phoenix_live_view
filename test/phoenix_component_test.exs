@@ -1418,7 +1418,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise on more than one :global attr" do
-      msg = ~r"cannot define global attribute :rest2 because one is already defined under :rest"
+      msg = ~r"cannot define :global attribute :rest2 because one is already defined as :rest"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.MultiGlobal do
@@ -1432,7 +1432,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise on more than one :global slot attr" do
-      msg = ~r"cannot define multiple global attributes in slot :named"
+      msg = ~r"cannot define :global attribute :rest2 because one is already defined as :rest in slot :named"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.MultiSlotGlobal do

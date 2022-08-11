@@ -657,7 +657,8 @@ defmodule Phoenix.Component do
       compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    type = validate_attr_type!(module, slot, name, type, line, file)
+    key = if slot, do: :__slot_attrs__, else: :__attrs__
+    type = validate_attr_type!(module, key, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
 
     if Keyword.has_key?(opts, :default) do
@@ -674,30 +675,27 @@ defmodule Phoenix.Component do
       line: line
     }
 
-    if slot do
-      Module.put_attribute(module, :__slot_attrs__, attr)
-    else
-      Module.put_attribute(module, :__attrs__, attr)
-    end
+    Module.put_attribute(module, key, attr)
+    :ok
   end
 
   @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(module, slot, name, type, line, file) when is_atom(type) do
-    attrs = get_attrs(module)
+  defp validate_attr_type!(module, key, slot, name, type, line, file) when is_atom(type) do
+    attrs = Module.get_attribute(module, key) || []
 
     cond do
-      Enum.find(attrs, fn attr -> attr.name == name end) && is_nil(slot) ->
+      Enum.find(attrs, fn attr -> attr.name == name end) ->
         compile_error!(line, file, """
-        a duplicate attribute with name #{inspect(name)} already exists\
+        a duplicate attribute with name #{attr_slot(name, slot)} already exists\
         """)
 
       existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
         compile_error!(line, file, """
-        cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
-
-        Only a single global attribute may be defined.
+        cannot define :global attribute #{inspect(name)} because one \
+        is already defined as #{attr_slot(existing.name, slot)}. \
+        Only a single :global attribute may be defined
         """)
 
       true ->
@@ -711,17 +709,13 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp validate_attr_type!(_module, slot, name, type, line, file) do
+  defp validate_attr_type!(_module, _key, slot, name, type, line, file) do
     bad_type!(slot, name, type, line, file)
-  end
-
-  defp compile_error!(line, file, msg) do
-    raise CompileError, line: line, file: file, description: msg
   end
 
   defp bad_type!(slot, name, type, line, file) do
     compile_error!(line, file, """
-    invalid type #{inspect(type)} for #{attr_slot(name, slot)}. \
+    invalid type #{inspect(type)} for attr #{attr_slot(name, slot)}. \
     The following types are supported:
 
       * any Elixir struct, such as URI, MyApp.User, etc
@@ -730,8 +724,8 @@ defmodule Phoenix.Component do
     """)
   end
 
-  defp attr_slot(name, nil), do: "attr #{inspect(name)}"
-  defp attr_slot(name, slot), do: "attr #{inspect(name)} in slot #{inspect(slot)}"
+  defp attr_slot(name, nil), do: "#{inspect(name)}"
+  defp attr_slot(name, slot), do: "#{inspect(name)} in slot #{inspect(slot)}"
 
   defp validate_attr_default!(slot, name, type, default, line, file) do
     case {type, default} do
@@ -769,7 +763,7 @@ defmodule Phoenix.Component do
 
   defp bad_default!(slot, name, type, default, line, file) do
     compile_error!(line, file, """
-    expected the default value for #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    expected the default value for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
     got: #{inspect(default)}
     """)
   end
@@ -782,10 +776,14 @@ defmodule Phoenix.Component do
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, key not in @valid_opts do
       compile_error!(line, file, """
-      invalid option #{inspect(key)} for #{attr_slot(name, slot)}. \
+      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. \
       The supported options are: #{inspect(@valid_opts)}
       """)
     end
+  end
+
+  defp compile_error!(line, file, msg) do
+    raise CompileError, line: line, file: file, description: msg
   end
 
   @doc false
@@ -1180,17 +1178,9 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp get_attrs(module) do
-    Module.get_attribute(module, :__attrs__) || []
-  end
-
   defp pop_attrs(env) do
     slots = Module.delete_attribute(env.module, :__attrs__) || []
     Enum.reverse(slots)
-  end
-
-  defp get_slots(module) do
-    Module.get_attribute(module, :__slots__) || []
   end
 
   defp pop_slots(env) do
@@ -1284,33 +1274,17 @@ defmodule Phoenix.Component do
   end
 
   defp validate_slot!(module, slot, line, file) do
-    slots = get_slots(module)
+    slots = Module.get_attribute(module, :__slots__) || []
 
     if Enum.find(slots, &(&1.name == slot.name)) do
       compile_error!(line, file, """
-      a duplicate slot with name #{inspect(slot.name)} already exists
+      a duplicate slot with name #{inspect(slot.name)} already exists\
       """)
     end
 
-    if slot.name == :inner_block and not Enum.empty?(slot.attrs) do
+    if slot.name == :inner_block and slot.attrs != [] do
       compile_error!(line, file, """
       cannot define attributes in slot #{inspect(slot.name)}
-      """)
-    end
-
-    for {attr_name, attr_defs} <- Enum.group_by(slot.attrs, & &1.name),
-        length(attr_defs) > 1,
-        %{line: line} <- attr_defs do
-      compile_error!(line, file, """
-      a duplicate attribute with name #{inspect(attr_name)} in slot #{inspect(slot.name)} already exists
-      """)
-    end
-
-    for {:global, attr_defs} <- Enum.group_by(slot.attrs, & &1.type),
-        length(attr_defs) > 1,
-        %{line: line} <- attr_defs do
-      compile_error!(line, file, """
-      cannot define multiple global attributes in slot #{inspect(slot.name)}
       """)
     end
   end
