@@ -12,7 +12,7 @@ defmodule Phoenix.Component do
         use Phoenix.Component
 
         # Optionally also bring the HTML helpers
-        # use Phoenix.HTML
+        # import Phoenix.LiveView.Helpers
 
         def greet(assigns) do
           ~H"""
@@ -512,12 +512,83 @@ defmodule Phoenix.Component do
     end
 
     Module.register_attribute(module, :__attrs__, accumulate: true)
+    Module.register_attribute(module, :__slot_attrs__, accumulate: true)
+    Module.register_attribute(module, :__slots__, accumulate: true)
+    Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 
     prefixes
+  end
+
+  defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
+    end
+  end
+
+  @doc false
+  def __slot__!(module, name, opts, line, file, block_fun) do
+    {doc, opts} = Keyword.pop(opts, :doc, nil)
+
+    unless is_binary(doc) or is_nil(doc) or doc == false do
+      compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
+    end
+
+    {required, opts} = Keyword.pop(opts, :required, false)
+
+    unless is_boolean(required) do
+      compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
+    end
+
+    Module.put_attribute(module, :__slot__, name)
+
+    slot_attrs =
+      try do
+        block_fun.()
+        module |> Module.get_attribute(:__slot_attrs__) |> Enum.reverse()
+      after
+        Module.put_attribute(module, :__slot__, nil)
+        Module.delete_attribute(module, :__slot_attrs__)
+      end
+
+    slot = %{
+      name: name,
+      required: required,
+      opts: opts,
+      doc: doc,
+      line: line,
+      attrs: slot_attrs
+    }
+
+    validate_slot!(module, slot, line, file)
+    Module.put_attribute(module, :__slots__, slot)
+    :ok
+  end
+
+  defp validate_slot!(module, slot, line, file) do
+    slots = Module.get_attribute(module, :__slots__) || []
+
+    if Enum.find(slots, &(&1.name == slot.name)) do
+      compile_error!(line, file, """
+      a duplicate slot with name #{inspect(slot.name)} already exists\
+      """)
+    end
+
+    if slot.name == :inner_block and slot.attrs != [] do
+      compile_error!(line, file, """
+      cannot define attributes in slot #{inspect(slot.name)}
+      """)
+    end
   end
 
   @doc ~S'''
@@ -585,7 +656,7 @@ defmodule Phoenix.Component do
   value of the `@doc` module attribute:
 
     * if `@doc` is a string, the attribute docs are injected into that string.
-      The optional placeholder `[[INJECT ATTRDOCS]]` can be used to specify where
+      The optional placeholder `[[INJECT LVDOCS]]` can be used to specify where
       in the string the docs are injected. Otherwise, the docs are appended
       to the end of the `@doc` string.
 
@@ -618,28 +689,24 @@ defmodule Phoenix.Component do
         """
       end
   '''
-  defmacro attr(name, type, opts \\ []) do
+  defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
-      Phoenix.Component.__attr__!(__MODULE__, name, type, opts, __ENV__.line, __ENV__.file)
+      Phoenix.Component.__attr__!(
+        __MODULE__,
+        @__slot__,
+        name,
+        type,
+        opts,
+        __ENV__.line,
+        __ENV__.file
+      )
     end
   end
 
   @doc false
-  def __attr__!(module, name, type, opts, line, file) do
-    cond do
-      not is_atom(name) ->
-        compile_error!(line, file, "attribute names must be atoms, got: #{inspect(name)}")
-
-      not is_list(opts) ->
-        compile_error!(line, file, """
-        expected attr/3 to receive keyword list of options, but got #{inspect(opts)}\
-        """)
-
-      type == :global and Keyword.has_key?(opts, :required) ->
-        compile_error!(line, file, "global attributes do not support the :required option")
-
-      true ->
-        :ok
+  def __attr__!(module, slot, name, type, opts, line, file) do
+    if type == :global and Keyword.has_key?(opts, :required) do
+      compile_error!(line, file, "global attributes do not support the :required option")
     end
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
@@ -658,36 +725,45 @@ defmodule Phoenix.Component do
       compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    type = validate_attr_type!(module, name, type, line, file)
-    validate_attr_opts!(name, opts, line, file)
+    key = if slot, do: :__slot_attrs__, else: :__attrs__
+    type = validate_attr_type!(module, key, slot, name, type, line, file)
+    validate_attr_opts!(slot, name, opts, line, file)
 
-    Module.put_attribute(module, :__attrs__, %{
+    if Keyword.has_key?(opts, :default) do
+      validate_attr_default!(slot, name, type, opts[:default], line, file)
+    end
+
+    attr = %{
+      slot: slot,
       name: name,
       type: type,
       required: required,
       opts: opts,
       doc: doc,
       line: line
-    })
+    }
+
+    Module.put_attribute(module, key, attr)
+    :ok
   end
 
   @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(module, name, type, line, file) when is_atom(type) do
-    attrs = get_attrs(module)
+  defp validate_attr_type!(module, key, slot, name, type, line, file) when is_atom(type) do
+    attrs = Module.get_attribute(module, key) || []
 
     cond do
       Enum.find(attrs, fn attr -> attr.name == name end) ->
         compile_error!(line, file, """
-        a duplicate attribute with name #{inspect(name)} already exists\
+        a duplicate attribute with name #{attr_slot(name, slot)} already exists\
         """)
 
       existing = type == :global && Enum.find(attrs, fn attr -> attr.type == :global end) ->
         compile_error!(line, file, """
-        cannot define global attribute #{inspect(name)} because one is already defined under #{inspect(existing.name)}.
-
-        Only a single global attribute may be defined.
+        cannot define :global attribute #{inspect(name)} because one \
+        is already defined as #{attr_slot(existing.name, slot)}. \
+        Only a single :global attribute may be defined
         """)
 
       true ->
@@ -697,21 +773,17 @@ defmodule Phoenix.Component do
     case Atom.to_string(type) do
       "Elixir." <> _ -> {:struct, type}
       _ when type in @valid_types -> type
-      _ -> bad_type!(name, type, line, file)
+      _ -> bad_type!(slot, name, type, line, file)
     end
   end
 
-  defp validate_attr_type!(_module, name, type, line, file) do
-    bad_type!(name, type, line, file)
+  defp validate_attr_type!(_module, _key, slot, name, type, line, file) do
+    bad_type!(slot, name, type, line, file)
   end
 
-  defp compile_error!(line, file, msg) do
-    raise CompileError, line: line, file: file, description: msg
-  end
-
-  defp bad_type!(name, type, line, file) do
+  defp bad_type!(slot, name, type, line, file) do
     compile_error!(line, file, """
-    invalid type #{inspect(type)} for attr #{inspect(name)}. \
+    invalid type #{inspect(type)} for attr #{attr_slot(name, slot)}. \
     The following types are supported:
 
       * any Elixir struct, such as URI, MyApp.User, etc
@@ -720,14 +792,74 @@ defmodule Phoenix.Component do
     """)
   end
 
-  @valid_opts [:required, :default]
-  defp validate_attr_opts!(name, opts, line, file) do
-    for {key, _} <- opts, key not in @valid_opts do
+  defp attr_slot(name, nil), do: "#{inspect(name)}"
+  defp attr_slot(name, slot), do: "#{inspect(name)} in slot #{inspect(slot)}"
+
+  defp validate_attr_default!(slot, name, type, default, line, file) do
+    case {type, default} do
+      {_type, nil} ->
+        :ok
+
+      {:any, _default} ->
+        :ok
+
+      {:string, default} when not is_binary(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:atom, default} when not is_atom(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:boolean, default} when not is_boolean(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:integer, default} when not is_integer(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:float, default} when not is_float(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {:list, default} when not is_list(default) ->
+        bad_default!(slot, name, type, default, line, file)
+
+      {{:struct, mod}, default} when not is_struct(default) ->
+        bad_default!(slot, name, mod, default, line, file)
+
+      {_type, _default} ->
+        :ok
+    end
+  end
+
+  defp bad_default!(slot, name, type, default, line, file) do
+    compile_error!(line, file, """
+    expected the default value for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(default)}
+    """)
+  end
+
+  defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
+  defp type_with_article(type), do: "a #{inspect(type)}"
+
+  defp validate_attr_opts!(slot, name, opts, line, file) do
+    for {key, _} <- opts, message = invalid_attr_message(key, slot) do
       compile_error!(line, file, """
-      invalid option #{inspect(key)} for attr #{inspect(name)}. \
-      The supported options are: #{inspect(@valid_opts)}
+      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. #{message}
       """)
     end
+  end
+
+  defp invalid_attr_message(:default, nil), do: nil
+
+  defp invalid_attr_message(:default, _),
+    do:
+      ":default is not supported inside slot attributes, " <>
+        "instead use Map.get/3 with a default value when accessing a slot attribute"
+
+  defp invalid_attr_message(:required, _), do: nil
+  defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
+  defp invalid_attr_message(_key, _slot), do: "The supported options are: [:required]"
+
+  defp compile_error!(line, file, msg) do
+    raise CompileError, line: line, file: file, description: msg
   end
 
   @doc false
@@ -761,7 +893,7 @@ defmodule Phoenix.Component do
 
   defmacro __pattern__!(kind, arg) do
     {name, 1} = __CALLER__.function
-    attrs = register_component!(kind, __CALLER__, name, true)
+    {_slots, attrs} = register_component!(kind, __CALLER__, name, true)
 
     fields =
       for %{name: name, required: true, type: {:struct, struct}} <- attrs do
@@ -794,6 +926,19 @@ defmodule Phoenix.Component do
               "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
           end
         end)
+
+        slots = pop_slots(env)
+
+        validate_misplaced_slots!(slots, env.file, fn ->
+          case length(args) do
+            1 ->
+              "could not define slots for function #{name}/1. " <>
+                "Components cannot be dynamically defined or have default arguments"
+
+            arity ->
+              "cannot declare slots for function #{name}/#{arity}. Components must be functions with arity 1"
+          end
+        end)
     end
   end
 
@@ -803,6 +948,12 @@ defmodule Phoenix.Component do
 
     validate_misplaced_attrs!(attrs, env.file, fn ->
       "cannot define attributes without a related function component"
+    end)
+
+    slots = pop_slots(env)
+
+    validate_misplaced_slots!(slots, env.file, fn ->
+      "cannot define slots without a related function component"
     end)
 
     components = Module.get_attribute(env.module, :__components__)
@@ -830,9 +981,9 @@ defmodule Phoenix.Component do
               {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
 
               globals =
-                case Map.fetch(assigns, unquote(global_name)) do
-                  {:ok, explicit_global_assign} -> explicit_global_assign
-                  :error -> Map.merge(unquote(global_default), caller_globals)
+                case assigns do
+                  %{unquote(global_name) => explicit_global_assign} -> explicit_global_assign
+                  %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
               merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
@@ -883,55 +1034,61 @@ defmodule Phoenix.Component do
   end
 
   defp register_component!(kind, env, name, check_if_defined?) do
+    slots = pop_slots(env)
     attrs = pop_attrs(env)
 
     cond do
-      attrs != [] ->
-        check_if_defined? and raise_if_function_already_defined!(env, name, attrs)
+      slots != [] or attrs != [] ->
+        check_if_defined? and raise_if_function_already_defined!(env, name, slots, attrs)
 
-        register_component_doc(env, kind, attrs)
+        register_component_doc(env, kind, slots, attrs)
 
         components =
           env.module
           |> Module.get_attribute(:__components__)
           # Sort by name as this is used when they are validated
-          |> Map.put(name, %{kind: kind, attrs: Enum.sort_by(attrs, & &1.name)})
+          |> Map.put(name, %{
+            kind: kind,
+            attrs: Enum.sort_by(attrs, & &1.name),
+            slots: Enum.sort_by(slots, & &1.name)
+          })
 
         Module.put_attribute(env.module, :__components__, components)
         Module.put_attribute(env.module, :__last_component__, name)
-        attrs
+        {slots, attrs}
 
       Module.get_attribute(env.module, :__last_component__) == name ->
-        Module.get_attribute(env.module, :__components__)[name].attrs
+        %{slots: slots, attrs: attrs} = Module.get_attribute(env.module, :__components__)[name]
+        {slots, attrs}
 
       true ->
-        []
+        {[], []}
     end
   end
 
-  defp register_component_doc(env, :def, attrs) do
+  defp register_component_doc(env, :def, slots, attrs) do
     case Module.get_attribute(env.module, :doc) do
       {_line, false} ->
         :ok
 
       {line, doc} ->
-        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, attrs)})
+        Module.put_attribute(env.module, :doc, {line, build_component_doc(doc, slots, attrs)})
 
       nil ->
-        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(attrs)})
+        Module.put_attribute(env.module, :doc, {env.line, build_component_doc(slots, attrs)})
     end
   end
 
-  defp register_component_doc(_env, :defp, _attrs) do
+  defp register_component_doc(_env, :defp, _slots, _attrs) do
     :ok
   end
 
-  defp build_component_doc(doc \\ "", attrs) do
-    [left | right] = String.split(doc, "[[INSERT ATTRDOCS]]")
+  defp build_component_doc(doc \\ "", slots, attrs) do
+    [left | right] = String.split(doc, "[[INSERT LVDOCS]]")
 
     IO.iodata_to_binary([
       build_left_doc(left),
-      build_attr_docs(attrs),
+      build_component_docs(slots, attrs),
       build_right_doc(right)
     ])
   end
@@ -944,7 +1101,45 @@ defmodule Phoenix.Component do
     [left, ?\n]
   end
 
-  defp build_attr_docs(attrs) do
+  defp build_component_docs(slots, attrs) do
+    case {slots, attrs} do
+      {[], []} ->
+        []
+
+      {slots, [] = _attrs} ->
+        [build_slots_docs(slots)]
+
+      {[] = _slots, attrs} ->
+        [build_attrs_docs(attrs)]
+
+      {slots, attrs} ->
+        [build_attrs_docs(attrs), ?\n, build_slots_docs(slots)]
+    end
+  end
+
+  defp build_slots_docs(slots) do
+    [
+      "## Slots",
+      ?\n,
+      for slot <- slots, slot.doc != false, into: [] do
+        slot_attrs =
+          for slot_attr <- slot.attrs,
+              slot_attr.doc != false,
+              slot_attr.slot == slot.name,
+              do: slot_attr
+
+        [
+          ?\n,
+          "* ",
+          build_slot_name(slot),
+          build_slot_required(slot),
+          build_slot_doc(slot, slot_attrs)
+        ]
+      end
+    ]
+  end
+
+  defp build_attrs_docs(attrs) do
     [
       "## Attributes",
       ?\n,
@@ -959,6 +1154,48 @@ defmodule Phoenix.Component do
         ]
       end
     ]
+  end
+
+  defp build_slot_name(%{name: name}) do
+    ["`", Atom.to_string(name), "`"]
+  end
+
+  defp build_slot_doc(%{doc: nil}, []) do
+    []
+  end
+
+  defp build_slot_doc(%{doc: doc}, []) do
+    [" - ", doc]
+  end
+
+  defp build_slot_doc(%{doc: nil}, slot_attrs) do
+    ["Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+  end
+
+  defp build_slot_doc(%{doc: doc}, slot_attrs) do
+    [" - ", doc, ". Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+  end
+
+  defp build_slot_attrs_docs(slot_attrs) do
+    for slot_attr <- slot_attrs do
+      [
+        ?\n,
+        ?\t,
+        "* ",
+        build_attr_name(slot_attr),
+        build_attr_type(slot_attr),
+        build_attr_required(slot_attr),
+        build_attr_doc_and_default(slot_attr)
+      ]
+    end
+  end
+
+  defp build_slot_required(%{required: true}) do
+    [" (required)"]
+  end
+
+  defp build_slot_required(_slot) do
+    []
   end
 
   defp build_attr_name(%{name: name}) do
@@ -986,7 +1223,7 @@ defmodule Phoenix.Component do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
-    [" - ", doc, " Defaults to `", inspect(default), "`."]
+    [" - ", doc, ". Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}) do
@@ -1011,28 +1248,52 @@ defmodule Phoenix.Component do
     end
   end
 
-  defp get_attrs(module) do
-    Module.get_attribute(module, :__attrs__) || []
+  defp validate_misplaced_slots!(slots, file, message_fun) do
+    with [%{line: first_slot_line} | _] <- slots do
+      compile_error!(first_slot_line, file, message_fun.())
+    end
   end
 
   defp pop_attrs(env) do
-    attrs =
-      env.module
-      |> get_attrs()
-      |> Enum.reverse()
-
-    Module.delete_attribute(env.module, :__attrs__)
-    attrs
+    slots = Module.delete_attribute(env.module, :__attrs__) || []
+    Enum.reverse(slots)
   end
 
-  defp raise_if_function_already_defined!(env, name, attrs) do
+  defp pop_slots(env) do
+    slots = Module.delete_attribute(env.module, :__slots__) || []
+    Enum.reverse(slots)
+  end
+
+  defp raise_if_function_already_defined!(env, name, slots, attrs) do
     if Module.defines?(env.module, {name, 1}) do
       {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
-      [%{line: first_attr_line} | _] = attrs
 
-      compile_error!(first_attr_line, env.file, """
-      attributes must be defined before the first function clause at line #{meta[:line]}
-      """)
+      with [%{line: first_attr_line} | _] <- attrs do
+        compile_error!(first_attr_line, env.file, """
+        attributes must be defined before the first function clause at line #{meta[:line]}
+        """)
+      end
+
+      with [%{line: first_slot_line} | _] <- slots do
+        compile_error!(first_slot_line, env.file, """
+        slots must be defined before the first function clause at line #{meta[:line]}
+        """)
+      end
+    end
+  end
+
+  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
+    {block, opts} = Keyword.pop(opts, :do, nil)
+
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
     end
   end
 end
