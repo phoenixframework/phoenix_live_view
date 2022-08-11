@@ -747,21 +747,21 @@ defmodule Phoenix.ComponentTest do
                  attrs: %{},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
                  file: ^file,
-                 line: 578,
+                 line: 610,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {580, 9, :any}}]}
+                 slots: %{inner_block: [%{inner_block: {612, 9, :any}}]}
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
                  file: ^file,
-                 line: 582,
+                 line: 614,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {589, 11, :any}}],
-                   header: [%{inner_block: {583, 11, :any}}],
-                   inner_block: [%{inner_block: {592, 9, :any}}]
+                   footer: [%{inner_block: {621, 11, :any}}],
+                   header: [%{inner_block: {615, 11, :any}}],
+                   inner_block: [%{inner_block: {624, 9, :any}}]
                  }
                },
                %{
@@ -769,25 +769,25 @@ defmodule Phoenix.ComponentTest do
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
                  file: ^file,
-                 line: 594,
+                 line: 626,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {596, 9, :any}}],
-                   slot: [%{attr: {595, 11, {:string, "1"}}, inner_block: {595, 11, {:atom, nil}}}]
+                   inner_block: [%{inner_block: {628, 9, :any}}],
+                   slot: [%{attr: {627, 11, {:string, "1"}}, inner_block: {627, 11, {:atom, nil}}}]
                  }
                },
                %{
-                 attrs: %{rows: {598, 17, _type_value}},
+                 attrs: %{rows: {630, 17, _type_value}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
                  file: ^file,
-                 line: 598,
+                 line: 630,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {599, 11, :any}, label: {599, 11, :any}},
-                     %{inner_block: {603, 11, :any}, label: {603, 11, {:string, "Address"}}}
+                     %{inner_block: {631, 11, :any}, label: {631, 11, :any}},
+                     %{inner_block: {635, 11, :any}, label: {635, 11, {:string, "Address"}}}
                    ],
-                   inner_block: [%{inner_block: {606, 9, :any}}]
+                   inner_block: [%{inner_block: {638, 9, :any}}]
                  }
                }
              ] = FunctionComponentWithSlots.__components_calls__()
