@@ -1185,13 +1185,8 @@ defmodule Phoenix.Component do
   end
 
   defp pop_attrs(env) do
-    attrs =
-      env.module
-      |> get_attrs()
-      |> Enum.reverse()
-
-    Module.delete_attribute(env.module, :__attrs__)
-    attrs
+    slots = Module.delete_attribute(env.module, :__attrs__) || []
+    Enum.reverse(slots)
   end
 
   defp get_slots(module) do
@@ -1199,30 +1194,21 @@ defmodule Phoenix.Component do
   end
 
   defp pop_slots(env) do
-    slots =
-      env.module
-      |> get_slots()
-      |> Enum.reverse()
-
-    Module.delete_attribute(env.module, :__slots__)
-    slots
+    slots = Module.delete_attribute(env.module, :__slots__) || []
+    Enum.reverse(slots)
   end
 
   defp raise_if_function_already_defined!(env, name, slots, attrs) do
     if Module.defines?(env.module, {name, 1}) do
       {:v1, _, meta, _} = Module.get_definition(env.module, {name, 1})
 
-      unless Enum.empty?(attrs) do
-        [%{line: first_attr_line} | _] = attrs
-
+      with [%{line: first_attr_line} | _] <- attrs do
         compile_error!(first_attr_line, env.file, """
         attributes must be defined before the first function clause at line #{meta[:line]}
         """)
       end
 
-      unless Enum.empty?(slots) do
-        [%{line: first_slot_line} | _] = slots
-
+      with [%{line: first_slot_line} | _] <- slots do
         compile_error!(first_slot_line, env.file, """
         slots must be defined before the first function clause at line #{meta[:line]}
         """)
@@ -1259,7 +1245,7 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __slot__!(module, name, opts, line, file, block_fun \\ fn -> :ok end) do
+  def __slot__!(module, name, opts, line, file, block_fun) do
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do
@@ -1274,20 +1260,14 @@ defmodule Phoenix.Component do
 
     Module.put_attribute(module, :__slot__, name)
 
-    try do
-      block_fun.()
-    rescue
-      e ->
+    slot_attrs =
+      try do
+        block_fun.()
+        module |> Module.get_attribute(:__slot_attrs__) |> Enum.reverse()
+      after
         Module.put_attribute(module, :__slot__, nil)
         Module.delete_attribute(module, :__slot_attrs__)
-        Module.register_attribute(module, :__slot_attrs__, accumulate: true)
-        reraise e, __STACKTRACE__
-    end
-
-    slot_attrs =
-      module
-      |> Module.get_attribute(:__slot_attrs__)
-      |> Enum.reverse()
+      end
 
     slot = %{
       name: name,
@@ -1299,11 +1279,8 @@ defmodule Phoenix.Component do
     }
 
     validate_slot!(module, slot, line, file)
-
     Module.put_attribute(module, :__slots__, slot)
-    Module.put_attribute(module, :__slot__, nil)
-    Module.delete_attribute(module, :__slot_attrs__)
-    Module.register_attribute(module, :__slot_attrs__, accumulate: true)
+    :ok
   end
 
   defp validate_slot!(module, slot, line, file) do
