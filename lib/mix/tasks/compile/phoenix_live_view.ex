@@ -92,10 +92,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         do: diagnostic
   end
 
-  defp diagnostics(caller_module, %{slots: slots, attrs: attrs, root: root} = call, %{
-         slots: slots_defs,
-         attrs: attrs_defs
-       }) do
+  defp diagnostics(
+         caller_module,
+         %{slots: slots, attrs: attrs, root: root} = call,
+         %{slots: slots_defs, attrs: attrs_defs}
+       ) do
     {attrs_warnings, {attrs, has_global?}} =
       Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
@@ -163,9 +164,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         warnings =
-          case {slot_values, slot_attr_defs} do
+          case slot_values do
             # missing required slot
-            {nil, _slot_attr_defs} when required ->
+            nil when required ->
               message = """
               missing required slot \"#{slot_name}\" \
               for component #{component(call)}\
@@ -174,11 +175,11 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               [error(message, call.file, call.line)]
 
             # missing optional slot
-            {nil, _slot_attr_defs} ->
+            nil ->
               []
 
             # slot with attributes
-            {slot_values, slot_attr_defs} ->
+            slot_values ->
               missing_slot_attrs =
                 for slot_value <- slot_values,
                     {attr_name, %{required: true}} <- slot_attr_defs,

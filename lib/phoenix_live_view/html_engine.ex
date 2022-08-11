@@ -926,25 +926,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {slots, state} = pop_slots(state)
 
     slot_assigns =
-      if function_exported?(mod, :__components__, 0) do
-        for {slot_name, slot_values} <- slots do
-          defaults =
-            for slot <- mod.__components__()[fun][:slots],
-                slot.name == slot_name,
-                %{name: name, opts: [default: default]} <- slot.attrs,
-                do: {name, default}
-
-          values_with_defaults =
-            for {{:%{}, [], values}, _meta} <- slot_values do
-              {:%{}, [], Keyword.merge(defaults, values)}
-            end
-
-          {slot_name, values_with_defaults}
-        end
-      else
-        for {slot_name, slot_values} <- slots do
-          {slot_name, Enum.map(slot_values, &elem(&1, 0))}
-        end
+      for {slot_name, slot_values} <- slots do
+        {slot_name, Enum.map(slot_values, &elem(&1, 0))}
       end
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]

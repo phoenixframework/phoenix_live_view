@@ -96,7 +96,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   slot :named, required: true, doc: "a named slot" do
     attr :attr1, :any, required: true, doc: "a slot attr doc"
-    attr :attr2, :any, default: "some default", doc: "a slot attr doc"
+    attr :attr2, :any, doc: "a slot attr doc"
   end
 
   def fun_slot_with_attrs(assigns), do: ~H[]

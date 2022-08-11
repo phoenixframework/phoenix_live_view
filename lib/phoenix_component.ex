@@ -523,6 +523,74 @@ defmodule Phoenix.Component do
     prefixes
   end
 
+  defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
+    end
+  end
+
+  @doc false
+  def __slot__!(module, name, opts, line, file, block_fun) do
+    {doc, opts} = Keyword.pop(opts, :doc, nil)
+
+    unless is_binary(doc) or is_nil(doc) or doc == false do
+      compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
+    end
+
+    {required, opts} = Keyword.pop(opts, :required, false)
+
+    unless is_boolean(required) do
+      compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
+    end
+
+    Module.put_attribute(module, :__slot__, name)
+
+    slot_attrs =
+      try do
+        block_fun.()
+        module |> Module.get_attribute(:__slot_attrs__) |> Enum.reverse()
+      after
+        Module.put_attribute(module, :__slot__, nil)
+        Module.delete_attribute(module, :__slot_attrs__)
+      end
+
+    slot = %{
+      name: name,
+      required: required,
+      opts: opts,
+      doc: doc,
+      line: line,
+      attrs: slot_attrs
+    }
+
+    validate_slot!(module, slot, line, file)
+    Module.put_attribute(module, :__slots__, slot)
+    :ok
+  end
+
+  defp validate_slot!(module, slot, line, file) do
+    slots = Module.get_attribute(module, :__slots__) || []
+
+    if Enum.find(slots, &(&1.name == slot.name)) do
+      compile_error!(line, file, """
+      a duplicate slot with name #{inspect(slot.name)} already exists\
+      """)
+    end
+
+    if slot.name == :inner_block and slot.attrs != [] do
+      compile_error!(line, file, """
+      cannot define attributes in slot #{inspect(slot.name)}
+      """)
+    end
+  end
+
   @doc ~S'''
   Declares attributes for a HEEx function components with compile-time verification and documentation generation.
 
@@ -769,18 +837,26 @@ defmodule Phoenix.Component do
   end
 
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
-
   defp type_with_article(type), do: "a #{inspect(type)}"
 
-  @valid_opts [:required, :default]
   defp validate_attr_opts!(slot, name, opts, line, file) do
-    for {key, _} <- opts, key not in @valid_opts do
+    for {key, _} <- opts, message = invalid_attr_message(key, slot) do
       compile_error!(line, file, """
-      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. \
-      The supported options are: #{inspect(@valid_opts)}
+      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. #{message}
       """)
     end
   end
+
+  defp invalid_attr_message(:default, nil), do: nil
+
+  defp invalid_attr_message(:default, _),
+    do:
+      ":default is not supported inside slot attributes, " <>
+        "instead use Map.get/3 with a default value when accessing a slot attribute"
+
+  defp invalid_attr_message(:required, _), do: nil
+  defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
+  defp invalid_attr_message(_key, _slot), do: "The supported options are: [:required]"
 
   defp compile_error!(line, file, msg) do
     raise CompileError, line: line, file: file, description: msg
@@ -905,9 +981,9 @@ defmodule Phoenix.Component do
               {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
 
               globals =
-                case Map.fetch(assigns, unquote(global_name)) do
-                  {:ok, explicit_global_assign} -> explicit_global_assign
-                  :error -> Map.merge(unquote(global_default), caller_globals)
+                case assigns do
+                  %{unquote(global_name) => explicit_global_assign} -> explicit_global_assign
+                  %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
               merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
@@ -1218,74 +1294,6 @@ defmodule Phoenix.Component do
         __ENV__.file,
         fn -> unquote(block) end
       )
-    end
-  end
-
-  defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
-    quote do
-      Phoenix.Component.__slot__!(
-        __MODULE__,
-        unquote(name),
-        unquote(opts),
-        __ENV__.line,
-        __ENV__.file,
-        fn -> unquote(block) end
-      )
-    end
-  end
-
-  @doc false
-  def __slot__!(module, name, opts, line, file, block_fun) do
-    {doc, opts} = Keyword.pop(opts, :doc, nil)
-
-    unless is_binary(doc) or is_nil(doc) or doc == false do
-      compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
-    end
-
-    {required, opts} = Keyword.pop(opts, :required, false)
-
-    unless is_boolean(required) do
-      compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
-    end
-
-    Module.put_attribute(module, :__slot__, name)
-
-    slot_attrs =
-      try do
-        block_fun.()
-        module |> Module.get_attribute(:__slot_attrs__) |> Enum.reverse()
-      after
-        Module.put_attribute(module, :__slot__, nil)
-        Module.delete_attribute(module, :__slot_attrs__)
-      end
-
-    slot = %{
-      name: name,
-      required: required,
-      opts: opts,
-      doc: doc,
-      line: line,
-      attrs: slot_attrs
-    }
-
-    validate_slot!(module, slot, line, file)
-    Module.put_attribute(module, :__slots__, slot)
-    :ok
-  end
-
-  defp validate_slot!(module, slot, line, file) do
-    slots = Module.get_attribute(module, :__slots__) || []
-
-    if Enum.find(slots, &(&1.name == slot.name)) do
-      compile_error!(line, file, """
-      a duplicate slot with name #{inspect(slot.name)} already exists\
-      """)
-    end
-
-    if slot.name == :inner_block and slot.attrs != [] do
-      compile_error!(line, file, """
-      cannot define attributes in slot #{inspect(slot.name)}
-      """)
     end
   end
 end

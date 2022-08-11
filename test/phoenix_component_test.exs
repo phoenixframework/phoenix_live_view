@@ -571,20 +571,6 @@ defmodule Phoenix.ComponentTest do
         """
       end
 
-      def fun_with_slot_attr_default_line, do: __ENV__.line + 7
-
-      slot :named do
-        attr :attr_with_default, :any, default: "a default value"
-      end
-
-      def fun_with_slot_attr_default(assigns) do
-        ~H"""
-        <%= for named <- @named do %>
-          <%= named.attr_with_default %>
-        <% end %>
-        """
-      end
-
       def render_line, do: __ENV__.line + 2
 
       def render(assigns) do
@@ -717,30 +703,6 @@ defmodule Phoenix.ComponentTest do
                      required: false
                    }
                  ]
-               },
-               fun_with_slot_attr_default: %{
-                 attrs: [],
-                 kind: :def,
-                 slots: [
-                   %{
-                     doc: nil,
-                     line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 5,
-                     name: :named,
-                     opts: [],
-                     attrs: [
-                       %{
-                         doc: nil,
-                         line: FunctionComponentWithSlots.fun_with_slot_attr_default_line() - 4,
-                         name: :attr_with_default,
-                         opts: [default: "a default value"],
-                         required: false,
-                         slot: :named,
-                         type: :any
-                       }
-                     ],
-                     required: false
-                   }
-                 ]
                }
              }
     end
@@ -753,21 +715,21 @@ defmodule Phoenix.ComponentTest do
                  attrs: %{},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot},
                  file: ^file,
-                 line: 592,
+                 line: 578,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {594, 9, :any}}]}
+                 slots: %{inner_block: [%{inner_block: {580, 9, :any}}]}
                },
                %{
                  attrs: %{},
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_named_slots},
                  file: ^file,
-                 line: 596,
+                 line: 582,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {603, 11, :any}}],
-                   header: [%{inner_block: {597, 11, :any}}],
-                   inner_block: [%{inner_block: {606, 9, :any}}]
+                   footer: [%{inner_block: {589, 11, :any}}],
+                   header: [%{inner_block: {583, 11, :any}}],
+                   inner_block: [%{inner_block: {592, 9, :any}}]
                  }
                },
                %{
@@ -775,48 +737,28 @@ defmodule Phoenix.ComponentTest do
                  component:
                    {Phoenix.ComponentTest.FunctionComponentWithSlots, :fun_with_slot_attrs},
                  file: ^file,
-                 line: 608,
+                 line: 594,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {610, 9, :any}}],
-                   slot: [%{attr: {609, 11, {:string, "1"}}, inner_block: {609, 11, {:atom, nil}}}]
+                   inner_block: [%{inner_block: {596, 9, :any}}],
+                   slot: [%{attr: {595, 11, {:string, "1"}}, inner_block: {595, 11, {:atom, nil}}}]
                  }
                },
                %{
-                 attrs: %{rows: {612, 17, _type_value}},
+                 attrs: %{rows: {598, 17, _type_value}},
                  component: {Phoenix.ComponentTest.FunctionComponentWithSlots, :table},
                  file: ^file,
-                 line: 612,
+                 line: 598,
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {613, 11, :any}, label: {613, 11, :any}},
-                     %{inner_block: {617, 11, :any}, label: {617, 11, {:string, "Address"}}}
+                     %{inner_block: {599, 11, :any}, label: {599, 11, :any}},
+                     %{inner_block: {603, 11, :any}, label: {603, 11, {:string, "Address"}}}
                    ],
-                   inner_block: [%{inner_block: {620, 9, :any}}]
+                   inner_block: [%{inner_block: {606, 9, :any}}]
                  }
                }
              ] = FunctionComponentWithSlots.__components_calls__()
-    end
-
-    test "renders slot attr defaults" do
-      assigns = %{}
-
-      rendered = ~H"""
-      <FunctionComponentWithSlots.fun_with_slot_attr_default>
-        <:named />
-      </FunctionComponentWithSlots.fun_with_slot_attr_default>
-      """
-
-      assert rendered_to_string(rendered) =~ "a default value"
-
-      rendered = ~H"""
-      <FunctionComponentWithSlots.fun_with_slot_attr_default>
-        <:named attr_with_default="some other value" />
-      </FunctionComponentWithSlots.fun_with_slot_attr_default>
-      """
-
-      assert rendered_to_string(rendered) =~ "some other value"
     end
 
     test "does not generate __components_calls__ if there's no call" do
@@ -1069,7 +1011,7 @@ defmodule Phoenix.ComponentTest do
         fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs\n",
         fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
         fun_slot_with_attrs:
-          "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n\t* `attr1` (`:any`) (required) - a slot attr doc\n\t* `attr2` (`:any`) - a slot attr doc. Defaults to `\"some default\"`.\n"
+          "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n\t* `attr1` (`:any`) (required) - a slot attr doc\n\t* `attr2` (`:any`) - a slot attr doc\n"
       }
 
       for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
@@ -1290,16 +1232,15 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
-    test "raise if slot attr default does not match the type" do
-      msg =
-        ~r"expected the default value for attr :foo in slot :named to be a :string, got: :not_a_string"
+    test "raise if slot attr has default" do
+      msg = ~r" invalid option :default for attr :foo in slot :named"
 
       assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.SlotAttrDefaultTypeMismatch do
+        defmodule Phoenix.ComponentTest.SlotAttrDefault do
           use Elixir.Phoenix.Component
 
           slot :named do
-            attr :foo, :string, default: :not_a_string
+            attr :foo, :any, default: :whatever
           end
 
           def func(assigns), do: ~H[]
