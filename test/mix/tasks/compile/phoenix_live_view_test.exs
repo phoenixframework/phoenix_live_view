@@ -910,6 +910,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveViewTest do
           <:slot attr="bar">
             bar
           </:slot>
+          <:slot {[attr: "bar"]} />
         </.func>
         """
       end

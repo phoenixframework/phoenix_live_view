@@ -262,22 +262,28 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{state | slots: [[] | state.slots]}
   end
 
+  defp add_inner_block({roots?, attrs, locs}, ast, tag_meta) do
+    {roots?, [{:inner_block, ast} | attrs], [line_column(tag_meta) | locs]}
+  end
+
   defp add_slot!(
          %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
            state,
          slot_name,
-         slot_ast,
+         slot_assigns,
+         slot_info,
          tag_meta
        )
        when first in ?A..?Z or first == ?. do
-    slot = {slot_name, slot_ast, tag_meta}
+    slot = {slot_name, slot_assigns, {tag_meta, slot_info}}
     %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
   end
 
   defp add_slot!(
          %{file: file} = _state,
          slot_name,
-         _slot_ast,
+         _slot_assigns,
+         _slot_info,
          %{line: line, column: column} = _tag_meta
        ) do
     message =
@@ -286,33 +292,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
     raise ParseError, line: line, column: column, file: file, description: message
   end
 
-  defp merge_default_slot(slots, {_, _, asts}, tag_meta) when is_list(asts) do
-    slot_ast = asts[:inner_block]
-
-    if slot_ast do
-      Keyword.put(slots, :inner_block, [{hd(slot_ast), tag_meta}])
-    else
-      slots
-    end
-  end
-
-  defp merge_default_slot(slots, _, _) do
-    slots
-  end
-
-  defp get_slots(%{slots: [slots | _other_slots]} = _state) do
-    group_slots(slots)
-  end
-
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
-    {group_slots(slots), %{state | slots: other_slots}}
-  end
+    # Perform group_by by hand as we need to group two distinct maps.
+    {acc_assigns, acc_info} =
+      Enum.reduce(slots, {%{}, %{}}, fn {key, assigns, info}, {acc_assigns, acc_info} ->
+        case acc_assigns do
+          %{^key => existing_assigns} ->
+            acc_assigns = %{acc_assigns | key => [assigns | existing_assigns]}
+            %{^key => existing_info} = acc_info
+            acc_info = %{acc_info | key => [info | existing_info]}
+            {acc_assigns, acc_info}
 
-  defp group_slots(slots) do
-    slots
-    |> Enum.reverse()
-    |> Enum.group_by(&elem(&1, 0), fn {_slot_name, slot_ast, tag_meta} -> {slot_ast, tag_meta} end)
-    |> Map.to_list()
+          %{} ->
+            {Map.put(acc_assigns, key, [assigns]), Map.put(acc_info, key, [info])}
+        end
+      end)
+
+    {Map.to_list(acc_assigns), Map.to_list(acc_info), %{state | slots: other_slots}}
   end
 
   defp push_tag(state, token) do
@@ -387,13 +383,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
        )
        when first in ?A..?Z do
     attrs = remove_phx_no_break(attrs)
-    slots = %{}
     file = state.file
     {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
-    {assigns, call_info, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
+    {assigns, attr_info, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call({mod, fun}, slots, call_info, line, state)
+    store_component_call({mod, fun}, attr_info, [], line, state)
 
     ast =
       quote line: tag_meta.line do
@@ -424,18 +419,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, <<first, _::binary>>, tag_close_meta} = token, state)
+  defp handle_token({:tag_close, <<first, _::binary>>, _tag_close_meta} = token, state)
        when first in ?A..?Z do
-    {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line}}, state} =
+    {{:tag_open, _name, attrs, %{mod_fun: {mod_ast, fun}, line: line} = tag_meta}, state} =
       pop_tag!(state, token)
 
     mod = Macro.expand(mod_ast, state.caller)
-    named_slots = get_slots(state)
     attrs = remove_phx_no_break(attrs)
-    {assigns, call_info, state} = build_component_assigns(mod, fun, attrs, line, state)
-    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
-
-    store_component_call({mod, fun}, all_slots, call_info, line, state)
+    {assigns, attr_info, slot_info, state} = build_component_assigns(attrs, line, tag_meta, state)
+    store_component_call({mod, fun}, attr_info, slot_info, line, state)
 
     ast =
       quote line: line do
@@ -458,12 +450,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
          state
        ) do
     attrs = remove_phx_no_break(attrs)
-    slots = %{}
     fun = String.to_atom(name)
-    {assigns, call_info, state} = build_self_close_component_assigns(attrs, line, state)
+    {assigns, attr_info, state} = build_self_close_component_assigns(attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call({mod, fun}, slots, call_info, line, state)
+    store_component_call({mod, fun}, attr_info, [], line, state)
 
     ast =
       quote line: line do
@@ -495,8 +486,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
     slot_name = String.to_atom(slot_name)
-
-    {let, roots, attrs, _call_info} = split_component_attrs(attrs, state.file)
+    {let, roots, attrs, attr_info} = split_component_attrs(attrs, state.file)
 
     with {_, let_meta} <- let do
       raise ParseError,
@@ -508,7 +498,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
     assigns = merge_component_attrs(roots, attrs, line)
-    add_slot!(state, slot_name, assigns, tag_meta)
+    add_slot!(state, slot_name, assigns, attr_info, tag_meta)
   end
 
   # Slot (with inner content)
@@ -525,7 +515,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     slot_name = String.to_atom(slot_name)
 
-    {let, roots, attrs, _call_info} = split_component_attrs(attrs, state.file)
+    {let, roots, attrs, attr_info} = split_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
@@ -537,7 +527,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     assigns = merge_component_attrs(roots, attrs, line)
 
     state
-    |> add_slot!(slot_name, assigns, tag_meta)
+    |> add_slot!(slot_name, assigns, add_inner_block(attr_info, ast, tag_meta), tag_meta)
     |> pop_substate_from_stack()
   end
 
@@ -552,16 +542,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
     |> update_subengine(:handle_begin, [])
   end
 
-  defp handle_token({:tag_close, "." <> fun_name, tag_close_meta} = token, state) do
-    {{:tag_open, _name, attrs, %{line: line}}, state} = pop_tag!(state, token)
+  defp handle_token({:tag_close, "." <> fun_name, _tag_close_meta} = token, state) do
+    {{:tag_open, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
     attrs = remove_phx_no_break(attrs)
-    named_slots = get_slots(state)
     fun = String.to_atom(fun_name)
     mod = actual_component_module(state.caller, fun)
-    {assigns, call_info, state} = build_component_assigns(mod, fun, attrs, line, state)
-    all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
-    store_component_call({mod, fun}, all_slots, call_info, line, state)
+    {assigns, attr_info, slot_info, state} = build_component_assigns(attrs, line, tag_meta, state)
+    store_component_call({mod, fun}, attr_info, slot_info, line, state)
 
     ast =
       quote line: line do
@@ -890,42 +878,46 @@ defmodule Phoenix.LiveView.HTMLEngine do
   ## build_self_close_component_assigns/build_component_assigns
 
   defp build_self_close_component_assigns(attrs, line, %{file: file} = state) do
-    {let, roots, attrs, locs} = split_component_attrs(attrs, file)
-    call_info = {roots != [], attrs, locs}
+    {let, roots, attrs, attr_info} = split_component_attrs(attrs, file)
     raise_if_let!(let, file)
-
-    {merge_component_attrs(roots, attrs, line), call_info, state}
+    {merge_component_attrs(roots, attrs, line), attr_info, state}
   end
 
-  defp build_component_assigns(_mod, _fun, attrs, line, %{file: file} = state) do
-    {let, roots, attrs, locs} = split_component_attrs(attrs, file)
-    call_info = {roots != [], attrs, locs}
-
+  defp build_component_assigns(attrs, line, tag_meta, %{file: file} = state) do
+    {let, roots, attrs, attr_info} = split_component_attrs(attrs, file)
     clauses = build_component_clauses(let, state)
+
+    inner_block =
+      quote line: line do
+        Phoenix.LiveView.HTMLEngine.inner_block(:inner_block, do: unquote(clauses))
+      end
 
     inner_block_assigns =
       quote line: line do
         %{
           __slot__: :inner_block,
-          inner_block: Phoenix.LiveView.HTMLEngine.inner_block(:inner_block, do: unquote(clauses))
+          inner_block: unquote(inner_block)
         }
       end
 
-    {slots, state} = pop_slots(state)
+    {slot_assigns, slot_info, state} = pop_slots(state)
 
-    slot_assigns =
-      for {slot_name, slot_values} <- slots do
-        {slot_name, Enum.map(slot_values, &elem(&1, 0))}
-      end
+    slot_info = [
+      {:inner_block, [{tag_meta, add_inner_block({false, [], []}, inner_block, tag_meta)}]}
+      | slot_info
+    ]
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
-    {merge_component_attrs(roots, attrs, line), call_info, state}
+    {merge_component_attrs(roots, attrs, line), attr_info, slot_info, state}
   end
 
   defp split_component_attrs(attrs, file) do
-    attrs
-    |> Enum.reverse()
-    |> Enum.reduce({nil, [], [], []}, &split_component_attr(&1, &2, file))
+    {let, roots, attrs, locs} =
+      attrs
+      |> Enum.reverse()
+      |> Enum.reduce({nil, [], [], []}, &split_component_attr(&1, &2, file))
+
+    {let, roots, attrs, {roots != [], attrs, locs}}
   end
 
   defp split_component_attr(
@@ -1084,19 +1076,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp store_component_call(component, slots, call_info, line, %{module: module} = state) do
+  defp store_component_call(component, attr_info, slot_info, line, %{module: module} = state) do
     if Module.open?(module) do
       pruned_slots =
-        for {slot_name, slot_values} <- slots,
-            do: {slot_name, Enum.map(slot_values, &slot_call_value(&1))},
-            into: %{}
+        for {slot_name, slot_values} <- slot_info, into: %{} do
+          values =
+            for {tag_meta, {root?, attrs, locs}} <- slot_values do
+              %{line: tag_meta.line, root: root?, attrs: attrs_for_call(attrs, locs)}
+            end
 
-      {root?, attrs, locs} = call_info
+          {slot_name, values}
+        end
 
-      pruned_attrs =
-        for {{attr, value}, {line, column}} <- Enum.zip(attrs, locs),
-            do: {attr, {line, column, attr_type(value)}},
-            into: %{}
+      {root?, attrs, locs} = attr_info
+      pruned_attrs = attrs_for_call(attrs, locs)
 
       call = %{
         component: component,
@@ -1111,10 +1104,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
-    for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
-      {name, {line, column, attr_type(value)}}
-    end
+  defp attrs_for_call(attrs, locs) do
+    for {{attr, value}, {line, column}} <- Enum.zip(attrs, locs),
+        do: {attr, {line, column, attr_type(value)}},
+        into: %{}
   end
 
   defp attr_type({:<<>>, _, _} = value), do: {:string, value}

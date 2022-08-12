@@ -106,11 +106,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
           case {type, value} do
             # missing required attr
             {_type, nil} when not root and required ->
-              message = """
-              missing required attribute \"#{name}\" \
-              for component #{component(call)}\
-              """
-
+              message = "missing required attribute \"#{name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
             # missing optional attr, or dynamic attr
@@ -119,22 +115,16 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
             # global attrs cannot be directly used
             {:global, {line, _column, _type_value}} ->
-              message = """
-              global attribute \"#{name}\" \
-              in component #{component(call)} \
-              may not be provided directly\
-              """
+              message =
+                "global attribute \"#{name}\" in component #{component(call)} may not be provided directly"
 
               [error(message, call.file, line)]
 
             {type, {line, _column, type_value}} ->
               if value_ast_to_string = invalid_type(type, type_value) do
-                message = """
-                attribute \"#{name}\" \
-                in component #{component(call)} \
-                must be #{type_with_article(type)}, \
-                got: #{value_ast_to_string}\
-                """
+                message =
+                  "attribute \"#{name}\" in component #{component(call)} must be #{type_with_article(type)}, got: " <>
+                    value_ast_to_string
 
                 [error(message, call.file, line)]
               else
@@ -148,30 +138,20 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     attrs_undefined =
       for {name, {line, _column, _type_value}} <- attrs,
           not (has_global? and valid_global?(caller_module, name)) do
-        message = """
-        undefined attribute \"#{name}\" \
-        for component #{component(call)}\
-        """
-
+        message = "undefined attribute \"#{name}\" for component #{component(call)}"
         error(message, call.file, line)
       end
 
     {slots_warnings, slots} =
       Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
         %{name: slot_name, required: required, attrs: attrs} = slot_def
-        has_global? = Enum.any?(attrs, &(&1.type == :global))
-        slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         warnings =
           case slot_values do
             # missing required slot
             nil when required ->
-              message = """
-              missing required slot \"#{slot_name}\" \
-              for component #{component(call)}\
-              """
-
+              message = "missing required slot \"#{slot_name}\" for component #{component(call)}"
               [error(message, call.file, call.line)]
 
             # missing optional slot
@@ -179,66 +159,58 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
               []
 
             # slot with attributes
-            slot_values ->
-              missing_slot_attrs =
-                for slot_value <- slot_values,
-                    {attr_name, %{required: true}} <- slot_attr_defs,
-                    {line, _, _} = Map.fetch!(slot_value, :inner_block),
-                    not Map.has_key?(slot_value, attr_name) do
-                  message = """
-                  missing required attribute \"#{attr_name}\" \
-                  in slot \"#{slot_name}\" \
-                  for component #{component(call)}\
-                  """
+            _ ->
+              has_global? = Enum.any?(attrs, &(&1.type == :global))
+              slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
+              required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
-                  error(message, call.file, line)
+              missing_slot_attrs =
+                for %{attrs: slot_attrs, line: slot_line, root: false} <- slot_values,
+                    attr_name <- required_attrs,
+                    not Map.has_key?(slot_attrs, attr_name) do
+                  message =
+                    "missing required attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                      "for component #{component(call)}"
+
+                  error(message, call.file, slot_line)
                 end
 
               slot_attrs_errors =
-                for slot_value <- slot_values,
-                    {attr_name, {line, _column, type_value}} <- slot_value,
-                    attr_def = Map.get(slot_attr_defs, attr_name, :undef),
+                for %{attrs: slot_attrs} <- slot_values,
+                    {attr_name, {line, _column, type_value}} <- slot_attrs,
                     reduce: [] do
                   errors ->
-                    case attr_def do
+                    case slot_attr_defs do
+                      %{^attr_name => %{type: :global}} ->
+                        message =
+                          "global attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                            "for component #{component(call)} may not be provided directly"
+
+                        [error(message, call.file, line) | errors]
+
+                      %{^attr_name => %{type: type}} ->
+                        if value_ast_to_string = invalid_type(type, type_value) do
+                          message =
+                            "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                              "for component #{component(call)} must be #{type_with_article(type)}, got: " <>
+                              value_ast_to_string
+
+                          [error(message, call.file, line) | errors]
+                        else
+                          errors
+                        end
+
                       # undefined attribute
-                      :undef ->
+                      %{} ->
                         if attr_name == :inner_block or
                              (has_global? and valid_global?(caller_module, attr_name)) do
                           errors
                         else
-                          message = """
-                          undefined attribute \"#{attr_name}\" \
-                          in slot \"#{slot_name}\" \
-                          for component #{component(call)}\
-                          """
+                          message =
+                            "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                              "for component #{component(call)}"
 
                           [error(message, call.file, line) | errors]
-                        end
-
-                      %{type: :global} ->
-                        message = """
-                        global attribute \"#{attr_name}\" \
-                        in slot \"#{slot_name}\" \
-                        for component #{component(call)} \
-                        may not be provided directly\
-                        """
-
-                        [error(message, call.file, line) | errors]
-
-                      %{type: type} ->
-                        if value_ast_to_string = invalid_type(type, type_value) do
-                          message = """
-                          attribute \"#{attr_name}\" \
-                          in slot \"#{slot_name}\" \
-                          for component #{component(call)} \
-                          must be #{type_with_article(type)}, \
-                          got: #{value_ast_to_string}\
-                          """
-
-                          [error(message, call.file, line) | errors]
-                        else
-                          errors
                         end
                     end
                 end
@@ -252,7 +224,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
     slots_undefined =
       for {slot_name, slot_values} <- slots,
           slot_name != :inner_block,
-          %{inner_block: {line, _column, _type_value}} <- slot_values do
+          %{line: line} <- slot_values do
         message = "undefined slot \"#{slot_name}\" for component #{component(call)}"
         error(message, call.file, line)
       end

@@ -749,7 +749,9 @@ defmodule Phoenix.ComponentTest do
                  file: ^file,
                  line: 610,
                  root: false,
-                 slots: %{inner_block: [%{inner_block: {612, 9, :any}}]}
+                 slots: %{
+                   inner_block: [%{attrs: %{inner_block: {610, 9, :any}}, line: 610, root: false}]
+                 }
                },
                %{
                  attrs: %{},
@@ -759,9 +761,9 @@ defmodule Phoenix.ComponentTest do
                  line: 614,
                  root: false,
                  slots: %{
-                   footer: [%{inner_block: {621, 11, :any}}],
-                   header: [%{inner_block: {615, 11, :any}}],
-                   inner_block: [%{inner_block: {624, 9, :any}}]
+                   footer: [%{attrs: %{inner_block: {621, 11, :any}}, line: 621, root: false}],
+                   header: [%{attrs: %{inner_block: {615, 11, :any}}, line: 615, root: false}],
+                   inner_block: [%{attrs: %{inner_block: {614, 9, :any}}, line: 614, root: false}]
                  }
                },
                %{
@@ -772,8 +774,8 @@ defmodule Phoenix.ComponentTest do
                  line: 626,
                  root: false,
                  slots: %{
-                   inner_block: [%{inner_block: {628, 9, :any}}],
-                   slot: [%{attr: {627, 11, {:string, "1"}}, inner_block: {627, 11, {:atom, nil}}}]
+                   inner_block: [%{attrs: %{inner_block: {626, 9, :any}}, line: 626, root: false}],
+                   slot: [%{attrs: %{attr: {627, 18, {:string, "1"}}}, line: 627, root: false}]
                  }
                },
                %{
@@ -784,10 +786,21 @@ defmodule Phoenix.ComponentTest do
                  root: false,
                  slots: %{
                    col: [
-                     %{inner_block: {631, 11, :any}, label: {631, 11, :any}},
-                     %{inner_block: {635, 11, :any}, label: {635, 11, {:string, "Address"}}}
+                     %{
+                       attrs: %{inner_block: {631, 11, :any}, label: {631, 29, :any}},
+                       line: 631,
+                       root: false
+                     },
+                     %{
+                       attrs: %{
+                         inner_block: {635, 11, :any},
+                         label: {635, 29, {:string, "Address"}}
+                       },
+                       line: 635,
+                       root: false
+                     }
                    ],
-                   inner_block: [%{inner_block: {638, 9, :any}}]
+                   inner_block: [%{attrs: %{inner_block: {630, 9, :any}}, line: 630, root: false}]
                  }
                }
              ] = FunctionComponentWithSlots.__components_calls__()
@@ -1405,7 +1418,8 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise on more than one :global slot attr" do
-      msg = ~r"cannot define :global attribute :rest2 because one is already defined as :rest in slot :named"
+      msg =
+        ~r"cannot define :global attribute :rest2 because one is already defined as :rest in slot :named"
 
       assert_raise CompileError, msg, fn ->
         defmodule Phoenix.ComponentTest.MultiSlotGlobal do
